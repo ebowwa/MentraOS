@@ -23,8 +23,6 @@ target 'AugmentOS_Manager' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  pod 'react-native-bluetooth-classic', :path => '../node_modules/react-native-bluetooth-classic/ios'
-
   target 'AugmentOS_ManagerTests' do
     inherit! :complete
     # Pods for testing
