@@ -42,12 +42,15 @@ interface AnimatedSectionProps extends PropsWithChildren {
 
 const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();
-  const { status } = useStatus();
+  const { status, startBluetoothAndCore } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [appStoreData, setAppStoreData] = useState<AppStoreItem[]>([]);
   // We keep these only if you want them for display; no longer rely on them for immediate comparison
   const [localVersion, setLocalVersion] = useState<string | null>(null);
   const [storeVersion, setStoreVersion] = useState<string | null>(null);
+
+  // TODO: iOS HACK for testing to start the bluetooth service on refresh
+  startBluetoothAndCore();
 
   const [isAugmentOSNotUpdatedString, setIsAugmentOSNotUpdatedString] =
     useState('');
