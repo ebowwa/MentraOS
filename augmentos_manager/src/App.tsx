@@ -61,7 +61,7 @@ const App: React.FC = () => {
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <NotificationListener>
+      {/* <NotificationListener> TODO: ios */}
         <AuthProvider>
         <StatusProvider>
           <SearchResultsProvider>
@@ -318,7 +318,7 @@ const App: React.FC = () => {
           </SearchResultsProvider>
         </StatusProvider>
         </AuthProvider>
-      </NotificationListener>
+      {/* </NotificationListener> */}
     </GestureHandlerRootView>
   )
 };
