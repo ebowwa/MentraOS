@@ -17,6 +17,7 @@
 		59E61647C0F7495D97C990AD /* Montserrat-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2217E0C51BEC4E8E87F34504 /* Montserrat-Regular.ttf */; };
 		7699B88040F8A987B510C191 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		C5DC28E02D70ED4800B3F8D3 /* ERG1Module.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,6 +50,10 @@
 		7BFAFAC57807483494D4A11A /* Montserrat-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Bold.ttf"; path = "../src/assets/fonts/Montserrat-Bold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = AugmentOS_Manager/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; sourceTree = "<group>"; };
+		C5DC28D92D70EABE00B3F8D3 /* EvenRealitiesG1Manager.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EvenRealitiesG1Manager.m; path = AugmentOS_Manager/EvenRealitiesG1Manager.m; sourceTree = "<group>"; };
+		C5DC28DB2D70EAC800B3F8D3 /* EvenRealitiesG1ManagerBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EvenRealitiesG1ManagerBridge.m; path = AugmentOS_Manager/EvenRealitiesG1ManagerBridge.m; sourceTree = "<group>"; };
+		C5DC28DE2D70ECBD00B3F8D3 /* ERG1Module.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ERG1Module.h; sourceTree = "<group>"; };
+		C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ERG1Module.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FE140319366160A1E25CF788 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AugmentOS_Manager/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -93,6 +98,7 @@
 		13B07FAE1A68108700A75B9A /* AugmentOS_Manager */ = {
 			isa = PBXGroup;
 			children = (
+				C5DC28DD2D70EC5100B3F8D3 /* BleManager */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -125,6 +131,8 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				C5DC28DB2D70EAC800B3F8D3 /* EvenRealitiesG1ManagerBridge.m */,
+				C5DC28D92D70EABE00B3F8D3 /* EvenRealitiesG1Manager.m */,
 				13B07FAE1A68108700A75B9A /* AugmentOS_Manager */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				00E356EF1AD99517003FC87E /* AugmentOS_ManagerTests */,
@@ -165,6 +173,15 @@
 				89C6BE57DB24E9ADA2F236DE /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		C5DC28DD2D70EC5100B3F8D3 /* BleManager */ = {
+			isa = PBXGroup;
+			children = (
+				C5DC28DE2D70ECBD00B3F8D3 /* ERG1Module.h */,
+				C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */,
+			);
+			path = BleManager;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -415,6 +432,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
+				C5DC28E02D70ED4800B3F8D3 /* ERG1Module.m in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

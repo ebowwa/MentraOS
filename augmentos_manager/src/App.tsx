@@ -68,7 +68,7 @@ const App: React.FC = () => {
             <GlassesMirrorProvider>
             <MessageBanner />
             <NavigationContainer linking={linking}>
-              <Stack.Navigator initialRouteName="SplashScreen">
+              <Stack.Navigator initialRouteName="Home">
                 <Stack.Screen
                   name="SplashScreen"
                   component={SplashScreen}

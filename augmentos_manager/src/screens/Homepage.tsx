@@ -26,6 +26,9 @@ import semver from 'semver';
 import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
 
+import { NativeModules } from 'react-native';
+const { ERG1Module } = NativeModules;
+
 interface HomepageProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
@@ -43,6 +46,13 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
+
+
+  useEffect(() => {
+    console.log('ERG1Module:', ERG1Module);
+    var res = ERG1Module.getDeviceID();
+    console.log('res:', res);
+  }, []);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -119,9 +129,9 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   };
 
   // Check version once on mount
-  useEffect(() => {
-    checkCloudVersion();
-  }, []);
+  // useEffect(() => {
+  //   checkCloudVersion();
+  // }, []);
 
   // Simple animated wrapper so we do not duplicate logic
   const AnimatedSection: React.FC<AnimatedSectionProps> = useCallback(
