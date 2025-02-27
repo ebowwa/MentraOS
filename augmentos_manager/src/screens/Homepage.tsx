@@ -27,7 +27,7 @@ import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
 
 import { NativeModules } from 'react-native';
-const { ERG1Module } = NativeModules;
+const { ERG1Manager } = NativeModules;
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -49,9 +49,31 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
 
   useEffect(() => {
-    console.log('ERG1Module:', ERG1Module);
-    var res = ERG1Module.getDeviceID();
-    console.log('res:', res);
+    console.log('ERG1Manager:', ERG1Manager);
+    ERG1Manager.getDeviceID((success: any) => {
+      console.log('success:', success);
+    }, (error: any) => {
+      console.log('error:', error);
+    });
+
+    // Get device ID
+    ERG1Manager.getDeviceID(
+      (deviceId) => console.log('Device ID:', deviceId),
+      (error) => console.error('Error getting device ID:', error)
+    );
+
+    // Start scanning
+    ERG1Manager.startScan(
+      (result) => console.log('Scan result:', result),
+      (error) => console.error('Scan error:', error)
+    );
+
+    // Connect to a device
+    ERG1Manager.connectToDevice(
+      'device-uuid-here',
+      (device) => console.log('Connected to device:', device),
+      (error) => console.error('Connection error:', error)
+    );
   }, []);
 
   // Get local version from env file
