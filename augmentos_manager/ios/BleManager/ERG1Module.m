@@ -85,12 +85,12 @@ RCT_EXPORT_METHOD(getDeviceID:(RCTResponseSenderBlock)successCallback errorCallb
 RCT_EXPORT_METHOD(startScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback) {
     @try {
         if (_centralManager.state != CBManagerStatePoweredOn) {
-            errorCallback(@[@"Bluetooth is not powered on"]);
+            errorCallback(@[@"bluetooth_not_on"]);
             return;
         }
         
         if (_isScanning) {
-            successCallback(@[@"Already scanning"]);
+            errorCallback(@[@"already_scanning"]);
             return;
         }
         
@@ -107,7 +107,7 @@ RCT_EXPORT_METHOD(startScan:(RCTResponseSenderBlock)successCallback errorCallbac
         [_centralManager scanForPeripheralsWithServices:nil options:options];
         
         NSLog(@"Started scanning for Even Realities G1 glasses");
-        successCallback(@[@"Scanning started"]);
+        // successCallback(@[@"scanning_started"]);
         
         // Stop scan after 10 seconds to avoid battery drain
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(10 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
