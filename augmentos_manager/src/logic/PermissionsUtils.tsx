@@ -75,6 +75,11 @@ export const getAndroidPermissions = (): Permission[] => {
     if (Platform.Version >= 23) {
       list.push(PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION);
     }
+    // Android 11 (API 30) needs legacy Bluetooth permissions
+    if (Platform.Version >= 30 && Platform.Version < 31) {
+      list.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH);
+      list.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADMIN);
+    }
     if (Platform.Version >= 31) {
       list.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
       list.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
@@ -89,7 +94,6 @@ export const getAndroidPermissions = (): Permission[] => {
     list.push(PermissionsAndroid.PERMISSIONS.READ_CALENDAR);
     list.push(PermissionsAndroid.PERMISSIONS.WRITE_CALENDAR);
     list.push(PermissionsAndroid.PERMISSIONS.RECORD_AUDIO);
-    list.push(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
   }
   return list as Permission[];
 }
