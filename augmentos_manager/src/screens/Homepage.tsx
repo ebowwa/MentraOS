@@ -27,7 +27,7 @@ import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
 
 import { NativeModules } from 'react-native';
-const { ERG1Manager } = NativeModules;
+const { ERG1Module } = NativeModules;
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -49,27 +49,38 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
 
   useEffect(() => {
-    console.log('ERG1Manager:', ERG1Manager);
-    ERG1Manager.getDeviceID((success: any) => {
-      console.log('success:', success);
-    }, (error: any) => {
-      console.log('error:', error);
-    });
+    console.log('ERG1Module:', ERG1Module);
+    // ERG1Module.getDeviceID((success: any) => {
+    //   console.log('success:', success);
+    // }, (error: any) => {
+    //   console.log('error:', error);
+    // });
 
-    // Get device ID
-    ERG1Manager.getDeviceID(
-      (deviceId) => console.log('Device ID:', deviceId),
-      (error) => console.error('Error getting device ID:', error)
-    );
+    // // Get device ID
+    // ERG1Module.getDeviceID(
+    //   (deviceId) => console.log('Device ID:', deviceId),
+    //   (error) => console.error('Error getting device ID:', error)
+    // );
 
     // Start scanning
-    ERG1Manager.startScan(
-      (result) => console.log('Scan result:', result),
-      (error) => console.error('Scan error:', error)
+    ERG1Module.startScan(
+      (result: any) => console.log('Scan result:', result),
+      (error: any) => console.error('Scan error:', error)
     );
 
-    // Connect to a device
-    ERG1Manager.connectToDevice(
+
+    setTimeout(() => {
+      setInterval(() => {
+        ERG1Module.sendText(
+          'Hello, world!',
+          (result: any) => console.log('Send result:', result),
+          (error: any) => console.error('Send error:', error)
+        );
+      }, 10000);
+    }, 10000);
+
+    // // Connect to a device
+    ERG1Module.connectToDevice(
       'device-uuid-here',
       (device) => console.log('Connected to device:', device),
       (error) => console.error('Connection error:', error)
