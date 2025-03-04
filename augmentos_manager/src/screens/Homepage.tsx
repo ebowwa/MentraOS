@@ -185,9 +185,9 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   };
 
   // Check version once on mount
-  // useEffect(() => {
-  //   checkCloudVersion();
-  // }, []);
+  useEffect(() => {
+    //checkCloudVersion();
+  }, []);
 
   // Simple animated wrapper so we do not duplicate logic
   const AnimatedSection: React.FC<AnimatedSectionProps> = useCallback(
