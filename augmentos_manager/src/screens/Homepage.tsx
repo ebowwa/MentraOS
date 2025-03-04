@@ -26,8 +26,9 @@ import semver from 'semver';
 import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
 
-import { NativeModules } from 'react-native';
-const { ERG1Module } = NativeModules;
+import { NativeModules, NativeEventEmitter } from 'react-native';
+const { ERG1Module, RNEventEmitter } = NativeModules;
+const ERG1EventEmitter = new NativeEventEmitter(RNEventEmitter);
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -38,6 +39,24 @@ interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number;
 }
 
+// Listen for connection state changes
+const connectionStateListener = ERG1EventEmitter.addListener(
+  'onConnectionStateChanged', 
+  (event: any) => {
+    console.log('Connection state changed:', event);
+    // Update UI based on connection state
+  }
+);
+
+// // Listen for disconnection events
+// const disconnectListener = ERG1EventEmitter.addListener(
+//   'onGlassesDisconnected',
+//   (event: any) => {
+//     console.log('Glasses disconnected:', event);
+//     // Show disconnected UI
+//   }
+// );
+
 const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();
   const { status, startBluetoothAndCore } = useStatus();
@@ -46,46 +65,6 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
-
-
-  useEffect(() => {
-    console.log('ERG1Module:', ERG1Module);
-    // ERG1Module.getDeviceID((success: any) => {
-    //   console.log('success:', success);
-    // }, (error: any) => {
-    //   console.log('error:', error);
-    // });
-
-    // // Get device ID
-    // ERG1Module.getDeviceID(
-    //   (deviceId) => console.log('Device ID:', deviceId),
-    //   (error) => console.error('Error getting device ID:', error)
-    // );
-
-    // // Start scanning
-    // ERG1Module.startScan(
-    //   (result: any) => console.log('Scan result:', result),
-    //   (error: any) => console.error('Scan error:', error)
-    // );
-
-
-  //   setTimeout(() => {
-  //     setInterval(() => {
-  //       ERG1Module.sendText(
-  //         'Hello, world!',
-  //         (result: any) => console.log('Send result:', result),
-  //         (error: any) => console.error('Send error:', error)
-  //       );
-  //     }, 20000);
-  //   }, 10000);
-
-  //   // // Connect to a device
-  //   ERG1Module.connectToDevice(
-  //     'device-uuid-here',
-  //     (device) => console.log('Connected to device:', device),
-  //     (error) => console.error('Connection error:', error)
-  //   );
-  // }, []);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -168,12 +147,13 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
     );
   };
 
-  const connectToDevice = () => {
-    ERG1Module.connectToDevice(
-      'device-uuid-here',
-      (device: any) => console.log('Connected to device:', device),
-      (error: any) => console.error('Connection error:', error)
-    );
+  const connectGlasses = async () => {
+    try {
+      await ERG1Module.connectGlasses();
+      console.log("Glasses are paired, connecting now...");
+    } catch (error) {
+      console.error('connectGlasses() error:', error);
+    }
   };
 
   const sendText = () => {
@@ -275,7 +255,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
         {/* buttons to test ERG1Module */}
         <AnimatedSection>
           <Button title="Send Text" onPress={sendText} />
-          <Button title="Connect to Device" onPress={connectToDevice} />
+          <Button title="Connect Glasses" onPress={connectGlasses} />
           <Button title="Start Scan" onPress={startScan} />
         </AnimatedSection>
 

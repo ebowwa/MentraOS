@@ -10,6 +10,7 @@
 
 #import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
 
 @interface ERG1Module : NSObject <RCTBridgeModule>
 
@@ -21,10 +22,14 @@
 - (void)stopScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 
 // Connection methods
-- (void)connectToDevice:(NSString *)deviceId successCallback:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
+- (void)connectGlasses:(RCTPromiseResolveBlock)resolve errorCallback:(RCTPromiseRejectBlock)reject;
 - (void)disconnect:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 
+//- (void)sendText:(NSString *)text successCallback:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 - (void)sendText:(NSString *)text successCallback:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
+
+// Add support for events
+- (NSArray<NSString *> *)supportedEvents;
 
 @end
 

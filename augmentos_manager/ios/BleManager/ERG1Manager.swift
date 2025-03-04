@@ -43,6 +43,16 @@ struct SendRequest {
     }
 }
 
+// Simple struct to hold app info
+struct AppInfo {
+  let id: String
+  let name: String
+}
+
+enum GlassesError: Error {
+    case missingGlasses(String)
+}
+
 
 class BooleanWaiter {
     private var flag = true
@@ -137,6 +147,9 @@ class BooleanWaiter {
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
   }
   
+  // @@@ REACT NATIVE FUNCTIONS @@@
+  
+  // this scans for new (un-paired) glasses to connect to:
   @objc func startScan() {
       guard centralManager.state == .poweredOn else {
           print("Bluetooth is not powered on.")
@@ -146,7 +159,8 @@ class BooleanWaiter {
       print("Scanning for devices...")
   }
   
-  @objc func connectToGlasses() {
+  // connect to glasses we've already paired with:
+  @objc public func connectGlasses() -> Bool {
       if let leftPeripheral = leftPeripheral {
           centralManager.connect(leftPeripheral, options: nil)
       }
@@ -154,8 +168,13 @@ class BooleanWaiter {
       if let rightPeripheral = rightPeripheral {
           centralManager.connect(rightPeripheral, options: nil)
       }
-      guard let leftPeripheral, let rightPeripheral else { return }
-      startHeartbeatTimer()
+      // just return if we don't have both a left and right arm:
+      guard let leftPeripheral, let rightPeripheral else {
+        return false;
+      }
+    startHeartbeatTimer();
+    print("Connected to both glasses");
+    return true
   }
   
   @objc func stopScan() {
@@ -173,6 +192,12 @@ class BooleanWaiter {
       }
       
       print("Disconnected from glasses")
+  }
+  
+  // @@@ END REACT NATIVE FUNCTIONS
+  
+  private func connectBothGlasses() {
+    
   }
   
   private func startAITriggerTimeoutTimer() {
@@ -234,7 +259,9 @@ class BooleanWaiter {
   }
   
   private func handleNotification(from peripheral: CBPeripheral, data: Data) {
-      guard let command = data.first else { return }
+      guard let command = data.first else { return }// ensure the data isn't empty
+      
+      print("received from G1: \(data.hexEncodedString())")
       
       switch Commands(rawValue: command) {
       case .BLE_REQ_MIC_ON:
@@ -315,7 +342,8 @@ class BooleanWaiter {
           }
           print("Received EvenAI response: \(data.hexEncodedString())")
       default:
-          print("received from G1(not handled): \(data.hexEncodedString())")
+//          print("received from G1(not handled): \(data.hexEncodedString())")
+        break
       }
   }
 }
@@ -404,12 +432,6 @@ extension ERG1Manager {
     return chunks
   }
   
-  // Simple struct to hold app info
-  struct AppInfo {
-    let id: String
-    let name: String
-  }
-  
   func exitAllFunctions(to peripheral: CBPeripheral, characteristic: CBCharacteristic) {
     var data = Data()
     data.append(Commands.BLE_EXIT_ALL_FUNCTIONS.rawValue)
@@ -449,37 +471,37 @@ extension ERG1Manager {
   }
   
   
-  public func sendCommand(_ command: [UInt8]) async {
-    // Ensure command is exactly 20 bytes
-    var paddedCommand = command
-    while paddedCommand.count < 20 {
-      paddedCommand.append(0x00)
-    }
-    
-    // Convert to Data
-    let commandData = Data(paddedCommand)
-    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
-    
-    // Send to right glass first
-    if let rightPeripheral = rightPeripheral,
-       let characteristic = rightPeripheral.services?
-      .first(where: { $0.uuid == UART_SERVICE_UUID })?
-      .characteristics?
-      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-      rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
-    }
-    
-    // Then send to left glass
-    if let leftPeripheral = leftPeripheral,
-       let characteristic = leftPeripheral.services?
-      .first(where: { $0.uuid == UART_SERVICE_UUID })?
-      .characteristics?
-      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-      leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
-    }
-  }
+//  public func sendCommand(_ command: [UInt8]) async {
+//    // Ensure command is exactly 20 bytes
+//    var paddedCommand = command
+//    while paddedCommand.count < 20 {
+//      paddedCommand.append(0x00)
+//    }
+//    
+//    // Convert to Data
+//    let commandData = Data(paddedCommand)
+//    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+//    
+//    // Send to right glass first
+//    if let rightPeripheral = rightPeripheral,
+//       let characteristic = rightPeripheral.services?
+//      .first(where: { $0.uuid == UART_SERVICE_UUID })?
+//      .characteristics?
+//      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
+//      rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
+//    }
+//    
+//    // Then send to left glass
+//    if let leftPeripheral = leftPeripheral,
+//       let characteristic = leftPeripheral.services?
+//      .first(where: { $0.uuid == UART_SERVICE_UUID })?
+//      .characteristics?
+//      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
+//      leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
+//    }
+//  }
   
   // Non-blocking function to add new send request
   func sendDataSequentially(_ data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
@@ -893,6 +915,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     return false
   }
   
+  // On BT discovery, automatically connect to both arms if we have them:
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
     if let name = peripheral.name {
       if name.contains("_L_") {
@@ -905,7 +928,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       
       if leftPeripheral != nil && rightPeripheral != nil {
         central.stopScan()
-        connectToGlasses()
+        connectGlasses()
       }
     }
   }
@@ -918,6 +941,16 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       // Update the last connection timestamp
       lastConnectionTimestamp = Date()
       print("Connected to peripheral: \(peripheral.name ?? "Unknown")")
+    
+    
+      // Emit connection event
+      let isLeft = peripheral == leftPeripheral
+      let eventBody: [String: Any] = [
+          "side": isLeft ? "left" : "right",
+          "name": peripheral.name ?? "Unknown",
+          "id": peripheral.identifier.uuidString
+      ]
+      RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {

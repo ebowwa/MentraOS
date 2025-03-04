@@ -74,24 +74,17 @@ RCT_EXPORT_METHOD(stopScan:(RCTResponseSenderBlock)successCallback errorCallback
     }
 }
 
-//// Connect to a specific device
-RCT_EXPORT_METHOD(connectToDevice:(NSString *)deviceId successCallback:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback) {
-    @try {
-        // Call the Swift connectToGlasses method
-        // Note: The Swift method doesn't take a device ID parameter,
-        // it just connects to whatever was found during scanning
-        [self.erg1Manager connectToGlasses];
-        
-        // Since the Swift method doesn't provide a way to know when connection is complete,
-        // we'll just assume it was successful for now
-        successCallback(@[@{
-            @"id": deviceId,
-            @"name": @"Even G1"
-        }]);
-    }
-    @catch(NSException *exception) {
-        errorCallback(@[exception.description]);
-    }
+// connect to glasses we've already paired with:
+RCT_EXPORT_METHOD(
+  connectGlasses:
+  (RCTPromiseResolveBlock) resolve
+  rejecter: (RCTPromiseRejectBlock) reject
+) {
+  if ([self.erg1Manager connectGlasses]) {
+    resolve(@"connected");
+  } else {
+    reject(@"0", @"glasses_not_paired", nil);
+  }
 }
 
 // Disconnect from the connected device
