@@ -76,7 +76,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           (result: any) => console.log('Send result:', result),
           (error: any) => console.error('Send error:', error)
         );
-      }, 10000);
+      }, 20000);
     }, 10000);
 
     // // Connect to a device

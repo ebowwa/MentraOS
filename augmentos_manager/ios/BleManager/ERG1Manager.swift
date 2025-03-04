@@ -643,155 +643,6 @@ extension ERG1Manager {
     }
   }
   
-//  public func sendText(text: String, newScreen: Bool = true, currentPage: UInt8 = 1, maxPages: UInt8 = 1, isCommand: Bool = false, status: DisplayStatus = .NORMAL_TEXT) async -> Bool {
-//    print("Starting sendText with: \(text)")
-//    print("Left peripheral connected: \(leftPeripheral != nil)")
-//    print("Right peripheral connected: \(rightPeripheral != nil)")
-//    
-//    // Check if glasses are connected
-//    guard g1Ready, leftPeripheral != nil, rightPeripheral != nil else {
-//      print("Glasses not ready or not connected")
-//      return false
-//    }
-//    
-//    // Format text into lines for display
-//    let lines = formatTextLines(text: text)
-//    // Calculate total pages based on lines
-//    let totalPages = UInt8((lines.count + 3) / 4)
-//    // Reset sequence number for new text
-//    evenaiSeq = 1
-//    
-//    // Single page text handling
-//    if lines.count <= 4 {
-//      let displayText = lines.joined(separator: "\n")
-//      // Make multiple attempts to ensure delivery
-//      var success = false
-//      
-//      // Try up to 3 times to send the text
-//      for attempt in 1...3 {
-//        print("Attempt \(attempt) to send single page text")
-//        success = await sendTextPacket(displayText: displayText, newScreen: true, status: status, currentPage: 1, maxPages: 1)
-//        if success {
-//          print("Text sent successfully on attempt \(attempt)")
-//          break
-//        }
-//        // Add a small delay between attempts
-//        try? await Task.sleep(nanoseconds: 100 * 1_000_000)
-//      }
-//      return success
-//    } else {
-//      // Multi-page text handling
-//      self.responseModel = AiResponseToG1Model(
-//        lines: lines,
-//        totalPages: totalPages,
-//        newScreen: newScreen,
-//        currentPage: currentPage,
-//        maxPages: totalPages,
-//        status: status
-//      )
-//      return await self.manualTextControl()
-//    }
-//  }
-//  
-//  private func sendTextPacket(displayText: String, newScreen: Bool, status: DisplayStatus, currentPage: UInt8, maxPages: UInt8) async -> Bool {
-//    // Convert text to UTF-8 data
-//    guard let textData = displayText.data(using: .utf8) else {
-//      print("Failed to convert text to UTF-8 data")
-//      return false
-//    }
-//    
-//    // Split text into manageable chunks
-//    let chunks = textData.chunked(into: 191)
-//    print("Text split into \(chunks.count) chunks")
-//    
-//    // Process each chunk
-//    for (i, chunk) in chunks.enumerated() {
-//      // Reset acknowledgment flags for this chunk
-//      receivedAck = false
-//      displayingResponseAiRightAck = false
-//      displayingResponseAiLeftAck = false
-//      
-//      // Get write characteristics for both glasses
-//      guard let leftChar = getWriteCharacteristic(for: leftPeripheral),
-//            let rightChar = getWriteCharacteristic(for: rightPeripheral) else {
-//        print("Failed to get write characteristics")
-//        return false
-//      }
-//      
-//      // Create display command
-//      var displayCommand = Data()
-//      displayCommand.append(0x4E) // Text display command
-//      displayCommand.append(0x71) // Direct text subcode
-//      displayCommand.append(UInt8(chunk.count)) // Text length
-//      displayCommand.append(chunk)
-//      
-//      // Send display command to both glasses with proper timing
-//      print("Sending display command chunk \(i+1)/\(chunks.count)")
-//      rightPeripheral?.writeValue(displayCommand, for: rightChar, type: .withResponse)
-//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-//      leftPeripheral?.writeValue(displayCommand, for: leftChar, type: .withResponse)
-//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-//      
-//      // Create AI packet for proper display state
-//      let header = Data([
-//        Commands.BLE_REQ_EVENAI.rawValue,
-//        evenaiSeq,
-//        UInt8(chunks.count),
-//        UInt8(i),
-//        status.rawValue | (newScreen ? 1 : 0),
-//        0, 0,
-//        currentPage,
-//        maxPages
-//      ])
-//      let aiPacket = header + chunk
-//      
-//      // Try multiple times for reliable delivery
-//      for attempt in 1...3 {
-//        print("Attempt \(attempt) to send text packet chunk \(i+1)/\(chunks.count)")
-//        
-//        // Send to right glass
-//        rightPeripheral?.writeValue(aiPacket, for: rightChar, type: .withResponse)
-//        try? await Task.sleep(nanoseconds: 20 * 1_000_000) // 20ms delay
-//        
-//        // Send to left glass
-//        leftPeripheral?.writeValue(aiPacket, for: leftChar, type: .withResponse)
-//        
-//        // Wait for acknowledgments with timeout
-//        let ackTimeout = 0.5 // 500ms timeout - increased from 300ms for reliability
-//        let startTime = Date()
-//        
-//        // Poll for acknowledgment
-//        while Date().timeIntervalSince(startTime) < ackTimeout {
-//          if displayingResponseAiRightAck && displayingResponseAiLeftAck {
-//            print("Both glasses acknowledged packet")
-//            receivedAck = true
-//            break
-//          }
-//          try? await Task.sleep(nanoseconds: 10 * 1_000_000) // 10ms check interval
-//        }
-//        
-//        if receivedAck {
-//          break // Success, move to next chunk
-//        } else {
-//          print("Attempt \(attempt) failed. Right ack: \(displayingResponseAiRightAck), Left ack: \(displayingResponseAiLeftAck)")
-//          if attempt == 3 {
-//            print("Failed to get acknowledgment from glasses after 3 attempts")
-//            return false
-//          }
-//          // Reset flags for next attempt
-//          displayingResponseAiRightAck = false
-//          displayingResponseAiLeftAck = false
-//          try? await Task.sleep(nanoseconds: 100 * 1_000_000) // 100ms delay before retry (increased)
-//        }
-//      }
-//      
-//      // Increment sequence number for next chunk
-//      evenaiSeq += 1
-//    }
-//    
-//    return true
-//  }
-  
   // Update sendText to use the queue system
   public func sendText(text: String, newScreen: Bool = true, currentPage: UInt8 = 1, maxPages: UInt8 = 1, isCommand: Bool = false, status: DisplayStatus = .NORMAL_TEXT) async -> Bool {
       print("Starting sendText with: \(text)")
@@ -1045,8 +896,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
     if let name = peripheral.name {
       if name.contains("_L_") {
+        print("Found left arm: \(name)")
         leftPeripheral = peripheral
       } else if name.contains("_R_") {
+        print("Found right arm: \(name)")
         rightPeripheral = peripheral
       }
       
