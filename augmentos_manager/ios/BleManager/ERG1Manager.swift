@@ -974,6 +974,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     } else {
       print("Bluetooth is not available.")
     }
+    // TODO: notify react native here
   }
   
   // Update didUpdateValueFor to set waiters

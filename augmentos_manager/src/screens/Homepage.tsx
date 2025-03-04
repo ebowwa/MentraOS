@@ -5,7 +5,7 @@ import React, {
   useState,
   useEffect,
 } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated, Text, Button } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -62,30 +62,30 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
     //   (error) => console.error('Error getting device ID:', error)
     // );
 
-    // Start scanning
-    ERG1Module.startScan(
-      (result: any) => console.log('Scan result:', result),
-      (error: any) => console.error('Scan error:', error)
-    );
+    // // Start scanning
+    // ERG1Module.startScan(
+    //   (result: any) => console.log('Scan result:', result),
+    //   (error: any) => console.error('Scan error:', error)
+    // );
 
 
-    setTimeout(() => {
-      setInterval(() => {
-        ERG1Module.sendText(
-          'Hello, world!',
-          (result: any) => console.log('Send result:', result),
-          (error: any) => console.error('Send error:', error)
-        );
-      }, 20000);
-    }, 10000);
+  //   setTimeout(() => {
+  //     setInterval(() => {
+  //       ERG1Module.sendText(
+  //         'Hello, world!',
+  //         (result: any) => console.log('Send result:', result),
+  //         (error: any) => console.error('Send error:', error)
+  //       );
+  //     }, 20000);
+  //   }, 10000);
 
-    // // Connect to a device
-    ERG1Module.connectToDevice(
-      'device-uuid-here',
-      (device) => console.log('Connected to device:', device),
-      (error) => console.error('Connection error:', error)
-    );
-  }, []);
+  //   // // Connect to a device
+  //   ERG1Module.connectToDevice(
+  //     'device-uuid-here',
+  //     (device) => console.log('Connected to device:', device),
+  //     (error) => console.error('Connection error:', error)
+  //   );
+  // }, []);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -159,6 +159,29 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
       });
       setIsCheckingVersion(false);
     }
+  };
+
+  const startScan = () => {
+    ERG1Module.startScan(
+      (result: any) => console.log('Scan result:', result),
+      (error: any) => console.error('Scan error:', error)
+    );
+  };
+
+  const connectToDevice = () => {
+    ERG1Module.connectToDevice(
+      'device-uuid-here',
+      (device: any) => console.log('Connected to device:', device),
+      (error: any) => console.error('Connection error:', error)
+    );
+  };
+
+  const sendText = () => {
+    ERG1Module.sendText(
+      'Hello, world2!',
+      (result: any) => console.log('Send result:', result),
+      (error: any) => console.error('Send error:', error)
+    );
   };
 
   // Check version once on mount
@@ -247,6 +270,13 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
         <AnimatedSection>
           <ConnectedDeviceInfo isDarkTheme={isDarkTheme} />
+        </AnimatedSection>
+
+        {/* buttons to test ERG1Module */}
+        <AnimatedSection>
+          <Button title="Send Text" onPress={sendText} />
+          <Button title="Connect to Device" onPress={connectToDevice} />
+          <Button title="Start Scan" onPress={startScan} />
         </AnimatedSection>
 
         {status.core_info.puck_connected && (
