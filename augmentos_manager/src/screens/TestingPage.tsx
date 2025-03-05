@@ -6,26 +6,15 @@ import React, {
   useEffect,
 } from 'react';
 import { View, StyleSheet, Animated, Text, Button, Switch } from 'react-native';
-import Slider from '@react-native-community/slider';
+import { Slider } from 'react-native-elements';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
-import ConnectedDeviceInfo from '../components/ConnectedDeviceInfo';
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
 import NavigationBar from '../components/NavigationBar';
-import PuckConnection from '../components/PuckConnection';
 import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import { ScrollView } from 'react-native-gesture-handler';
-import {
-  SETTINGS_KEYS,
-  SIMULATED_PUCK_DEFAULT,
-} from '../consts';
-import { loadSetting } from '../logic/SettingsHelper.tsx';
-import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
-import semver from 'semver';
-import { Config } from 'react-native-config';
-import CloudConnection from '../components/CloudConnection.tsx';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -68,6 +57,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
   const [autoBrightness, setAutoBrightness] = useState(false);
   const brightnessTimerRef = useRef<NodeJS.Timeout | null>(null);
   const clearScreenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [micEnabled, setMicEnabled] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -106,7 +96,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
     if (clearScreenTimeoutRef.current) {
       clearTimeout(clearScreenTimeoutRef.current);
     }
-    
+
     clearScreenTimeoutRef.current = setTimeout(() => {
       ERG1Module.sendText(
         " ",
@@ -122,6 +112,16 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
       console.log(`Brightness set to: ${value}`);
     } catch (error) {
       console.error('setBrightness() error:', error);
+    }
+  };
+
+  const toggleMicEnabled = async (value: boolean) => {
+    try {
+      await ERG1Module.setMicEnabled(value);
+      setMicEnabled(value);
+      console.log(`Mic state set to: ${value}`);
+    } catch (error) {
+      console.error('toggleMicEnabled() error:', error);
     }
   };
 
@@ -156,19 +156,6 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
     ),
     [fadeAnim, slideAnim],
   );
-
-  // Load SIMULATED_PUCK setting once
-  React.useEffect(() => {
-    const loadSimulatedPuckSetting = async () => {
-      const simulatedPuck = await loadSetting(
-        SETTINGS_KEYS.SIMULATED_PUCK,
-        SIMULATED_PUCK_DEFAULT,
-      );
-      setIsSimulatedPuck(simulatedPuck);
-    };
-
-    loadSimulatedPuckSetting();
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
@@ -213,9 +200,10 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
           {/* buttons to test ERG1Module */}
           <AnimatedSection>
-            <Button title="Send Text" onPress={sendText} />
-            <Button title="Connect Glasses" onPress={connectGlasses} />
             <Button title="Start Scan" onPress={startScan} />
+            {/* <Button title="Connect Glasses" onPress={connectGlasses} /> */}
+            <Button title="Send Text" onPress={sendText} />
+            <Button title={`Toggle Mic ${micEnabled ? "Off" : "On"}`} onPress={() => toggleMicEnabled(!micEnabled)} />
 
             <View style={currentThemeStyles.brightnessContainer}>
               <View style={currentThemeStyles.brightnessRow}>

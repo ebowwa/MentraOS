@@ -143,7 +143,24 @@ RCT_EXPORT_METHOD(
     resolve(@[@"Set brightness"]);
   }
   @catch(NSException *exception) {
-    reject(@"0", @[exception.description], nil);
+    reject(@"0", exception.description, nil);
+  }
+}
+
+
+RCT_EXPORT_METHOD(
+  setMicEnabled:
+  (BOOL)enabled
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    [self.erg1Manager RN_setMicEnabled:enabled];
+    resolve(@[@"Set mic enabled"]);
+  } 
+  @catch(NSException *exception) {
+    reject(@"0", exception.description, nil);
   }
 }
 

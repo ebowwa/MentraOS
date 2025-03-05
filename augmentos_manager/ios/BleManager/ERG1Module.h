@@ -30,6 +30,8 @@
 
 - (void)setBrightness:(int)level :(BOOL)autoBrightness :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
+- (void)setMicEnabled:(BOOL)enabled :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+
 // Add support for events
 - (NSArray<NSString *> *)supportedEvents;
 

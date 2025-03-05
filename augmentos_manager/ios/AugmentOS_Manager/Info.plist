@@ -40,7 +40,6 @@
 		<!-- Bluetooth in the background -->
 		<key>UIBackgroundModes</key>
 		<array>
-			<string>central-peripheral</string>
 			<string>external-accessory</string>
 			<string>audio</string>
 			<string>fetch</string>

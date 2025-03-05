@@ -113,6 +113,7 @@ class BooleanWaiter {
   let UART_RX_CHAR_UUID = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
   
   var sendQueue: [Array<SendRequest>] = []
+  var cancellables = Set<AnyCancellable>()
   var isWorkerRunning = false
   let sendQueueLock = NSLock()
 
@@ -161,6 +162,7 @@ class BooleanWaiter {
   override init() {
       super.init()
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+    handleIncomingVoiceData()
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -239,8 +241,37 @@ class BooleanWaiter {
   
   // @@@ END REACT NATIVE FUNCTIONS
   
-  private func connectBothGlasses() {
-    
+  private func handleIncomingVoiceData() {
+      self.$voiceData.sink { [weak self] data in
+          guard let self = self else { return }
+          
+          // Ensure we have enough data to process
+          guard data.count > 2 else {
+              print("Received invalid PCM data size: \(data.count)")
+              return
+          }
+          
+          // Skip the first 2 bytes which are command bytes
+          let effectiveData = data.subdata(in: 2..<data.count)
+          
+          // Ensure we have valid PCM data
+          guard effectiveData.count > 0 else {
+              print("No PCM data after removing command bytes")
+              return
+          }
+          
+          let pcmConverter = PcmConverter()
+          let pcmData = pcmConverter.decode(effectiveData)
+          
+          // Only log and process if we have valid PCM data
+          if pcmData.count > 0 {
+              print("Got PCM data of size: \(pcmData.count)")
+//              self.speechRecognizer.appendPCMData(pcmData as Data)
+          } else {
+              print("PCM conversion resulted in empty data")
+          }
+      }
+      .store(in: &cancellables)
   }
   
   private func startAITriggerTimeoutTimer() {
@@ -343,11 +374,14 @@ class BooleanWaiter {
           }
       case .BLE_REQ_TRANSFER_MIC_DATA:
           self.voiceData = data
+          print("Got voice data: " + String(data.count))
+          break
       case .BLE_REQ_DEVICE_ORDER:
           let order = data[1]
           switch DeviceOrders(rawValue: order) {
           case .HEAD_UP:
             print("HEAD_UP")
+            RN_sendText("HEAD_UP");
             break
           case .HEAD_DOWN:
             print("HEAD_DOWN")
@@ -1065,10 +1099,49 @@ extension ERG1Manager {
   }
   
   public func setBrightness(_ level: UInt8, autoMode: Bool = false) async -> Bool {
-      // Ensure level is between 0x00 and 0x29 (0-41)
-      guard level <= 0x29 else { return false }
-      
-      let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, level, autoMode ? 0x01 : 0x00]
+    // Ensure level is between 0x00 and 0x29 (0-41)
+    var lvl: UInt8 = level
+    if (level > 0x29) {
+      lvl = 0x29
+    }
+
+    let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
+
+    // Send to both glasses with proper timing
+    if let rightGlass = rightPeripheral,
+       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+        rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+        try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+    }
+
+    if let leftGlass = leftPeripheral,
+       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+        leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+    }
+
+    return true
+  }
+  
+  @objc public func RN_setHeadUpAngle(_ angle: Int) {
+    var agl: Int = angle
+    if (angle < 0) {
+      agl = 0;
+    } else if (angle > 60) {
+      agl = 60;
+    }
+    
+    // Call the async function from a non-async context
+    Task {
+        let success = await setHeadUpAngle(UInt8(agl))
+        if !success {
+            NSLog("Failed to set angle to \(angle)")
+        }
+    }
+  }
+  
+  public func setHeadUpAngle(_ angle: UInt8) async -> Bool {
+    
+      let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
       
       // Send to both glasses with proper timing
       if let rightGlass = rightPeripheral,
@@ -1081,9 +1154,6 @@ extension ERG1Manager {
          let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
           leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
       }
-      
-      // Save brightness settings - fix arithmetic overflow
-      let brightnessPercentage = Int((Double(level) / 41.0) * 100.0)
       return true
   }
   
@@ -1126,6 +1196,73 @@ extension ERG1Manager {
       rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
       try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
       leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+      return true
+  }
+  
+  @objc public func RN_setMicEnabled(_ enabled: Bool) {
+    Task {
+      await setMicEnabled(enabled: enabled)
+    }
+  }
+
+  public func setMicEnabled(enabled: Bool) async -> Bool {
+      guard let rightGlass = rightPeripheral,
+            let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) else {
+          return false
+      }
+    
+    sendMicOn(to: rightGlass, isOn: enabled)
+      
+//      let isContinuousListening = !enabled
+//      
+//      if isContinuousListening {
+//          // Create a repeating task for wake word detection
+//          Task {
+//              while isContinuousListening {
+//                  // Send mic on command
+//                  var micOnData = Data()
+//                  micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+//                  micOnData.append(0x01)
+//                  rightGlass.writeValue(micOnData, for: rightTxChar, type: .withResponse)
+//                  print("Starting wake word detection cycle")
+//                  
+//                  // Start wake word detection
+////                  speechRecognizer.startWakeWordDetection()
+//                  
+//                  // Wait for 30 seconds
+//                  try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+//                  
+//                  // Turn off mic if still in continuous mode
+//                  if isContinuousListening {
+//                      var micOffData = Data()
+//                      micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+//                      micOffData.append(0x00)
+//                      rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
+//                      print("Ending wake word detection cycle")
+//                      
+//                      // Stop wake word detection
+////                      speechRecognizer.stopWakeWordDetection()
+//                      
+//                      // Small delay before next cycle
+//                      try? await Task.sleep(nanoseconds: 100 * 1_000_000)
+//                  }
+//              }
+//          }
+//      } else {
+//          // Just turn off the mic without any additional actions
+//          var micOffData = Data()
+//          micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+//          micOffData.append(0x00)
+//          rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
+//          print("Turning microphone off")
+//          
+//          // Stop any ongoing recognition without triggering AI
+////          speechRecognizer.stopWakeWordDetection()
+//          
+//          // Reset any ongoing states
+//          aiMode = .AI_IDLE
+//      }
+      
       return true
   }
   

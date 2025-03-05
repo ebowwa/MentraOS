@@ -17,6 +17,21 @@
 		59E61647C0F7495D97C990AD /* Montserrat-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2217E0C51BEC4E8E87F34504 /* Montserrat-Regular.ttf */; };
 		7699B88040F8A987B510C191 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		C56BE8642D78E51100407B70 /* makefile.mk in Resources */ = {isa = PBXBuildFile; fileRef = C56BE84F2D78E51100407B70 /* makefile.mk */; };
+		C56BE8652D78E51100407B70 /* meson.build in Resources */ = {isa = PBXBuildFile; fileRef = C56BE8532D78E51100407B70 /* meson.build */; };
+		C56BE8662D78E51100407B70 /* energy.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8452D78E51100407B70 /* energy.c */; };
+		C56BE8672D78E51100407B70 /* tables.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE85E2D78E51100407B70 /* tables.c */; };
+		C56BE8682D78E51100407B70 /* tns.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8602D78E51100407B70 /* tns.c */; };
+		C56BE8692D78E51100407B70 /* plc.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8572D78E51100407B70 /* plc.c */; };
+		C56BE86A2D78E51100407B70 /* lc3.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8482D78E51100407B70 /* lc3.c */; };
+		C56BE86B2D78E51100407B70 /* attdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE83D2D78E51100407B70 /* attdet.c */; };
+		C56BE86C2D78E51100407B70 /* bits.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE83F2D78E51100407B70 /* bits.c */; };
+		C56BE86D2D78E51100407B70 /* PcmConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8552D78E51100407B70 /* PcmConverter.m */; };
+		C56BE86E2D78E51100407B70 /* ltpf.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE84C2D78E51100407B70 /* ltpf.c */; };
+		C56BE86F2D78E51100407B70 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE85A2D78E51100407B70 /* sns.c */; };
+		C56BE8702D78E51100407B70 /* mdct.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8512D78E51100407B70 /* mdct.c */; };
+		C56BE8712D78E51100407B70 /* bwdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8412D78E51100407B70 /* bwdet.c */; };
+		C56BE8722D78E51100407B70 /* spec.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE85C2D78E51100407B70 /* spec.c */; };
 		C5DC28E02D70ED4800B3F8D3 /* ERG1Module.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */; };
 		C5DC28FB2D765C2500B3F8D3 /* ERG1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DC28FA2D765C2500B3F8D3 /* ERG1Manager.swift */; };
 		C5DC29052D765EFA00B3F8D3 /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DC29042D765EFA00B3F8D3 /* Enums.swift */; };
@@ -55,6 +70,44 @@
 		7BFAFAC57807483494D4A11A /* Montserrat-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Bold.ttf"; path = "../src/assets/fonts/Montserrat-Bold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = AugmentOS_Manager/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; sourceTree = "<group>"; };
+		C56BE83A2D78E51100407B70 /* g1-sample-header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "g1-sample-header.h"; sourceTree = "<group>"; };
+		C56BE83C2D78E51100407B70 /* attdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = attdet.h; sourceTree = "<group>"; };
+		C56BE83D2D78E51100407B70 /* attdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = attdet.c; sourceTree = "<group>"; };
+		C56BE83E2D78E51100407B70 /* bits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bits.h; sourceTree = "<group>"; };
+		C56BE83F2D78E51100407B70 /* bits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bits.c; sourceTree = "<group>"; };
+		C56BE8402D78E51100407B70 /* bwdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bwdet.h; sourceTree = "<group>"; };
+		C56BE8412D78E51100407B70 /* bwdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bwdet.c; sourceTree = "<group>"; };
+		C56BE8422D78E51100407B70 /* common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
+		C56BE8432D78E51100407B70 /* CoreObjC.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoreObjC.xcodeproj; sourceTree = "<group>"; };
+		C56BE8442D78E51100407B70 /* energy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = energy.h; sourceTree = "<group>"; };
+		C56BE8452D78E51100407B70 /* energy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = energy.c; sourceTree = "<group>"; };
+		C56BE8462D78E51100407B70 /* fastmath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fastmath.h; sourceTree = "<group>"; };
+		C56BE8472D78E51100407B70 /* lc3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lc3.h; sourceTree = "<group>"; };
+		C56BE8482D78E51100407B70 /* lc3.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lc3.c; sourceTree = "<group>"; };
+		C56BE8492D78E51100407B70 /* lc3_cpp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lc3_cpp.h; sourceTree = "<group>"; };
+		C56BE84A2D78E51100407B70 /* lc3_private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lc3_private.h; sourceTree = "<group>"; };
+		C56BE84B2D78E51100407B70 /* ltpf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ltpf.h; sourceTree = "<group>"; };
+		C56BE84C2D78E51100407B70 /* ltpf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ltpf.c; sourceTree = "<group>"; };
+		C56BE84D2D78E51100407B70 /* ltpf_arm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ltpf_arm.h; sourceTree = "<group>"; };
+		C56BE84E2D78E51100407B70 /* ltpf_neon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ltpf_neon.h; sourceTree = "<group>"; };
+		C56BE84F2D78E51100407B70 /* makefile.mk */ = {isa = PBXFileReference; lastKnownFileType = text; path = makefile.mk; sourceTree = "<group>"; };
+		C56BE8502D78E51100407B70 /* mdct.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mdct.h; sourceTree = "<group>"; };
+		C56BE8512D78E51100407B70 /* mdct.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mdct.c; sourceTree = "<group>"; };
+		C56BE8522D78E51100407B70 /* mdct_neon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mdct_neon.h; sourceTree = "<group>"; };
+		C56BE8532D78E51100407B70 /* meson.build */ = {isa = PBXFileReference; lastKnownFileType = text; path = meson.build; sourceTree = "<group>"; };
+		C56BE8542D78E51100407B70 /* PcmConverter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PcmConverter.h; sourceTree = "<group>"; };
+		C56BE8552D78E51100407B70 /* PcmConverter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PcmConverter.m; sourceTree = "<group>"; };
+		C56BE8562D78E51100407B70 /* plc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = plc.h; sourceTree = "<group>"; };
+		C56BE8572D78E51100407B70 /* plc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = plc.c; sourceTree = "<group>"; };
+		C56BE8582D78E51100407B70 /* rnnoise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rnnoise.h; sourceTree = "<group>"; };
+		C56BE8592D78E51100407B70 /* sns.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sns.h; sourceTree = "<group>"; };
+		C56BE85A2D78E51100407B70 /* sns.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = sns.c; sourceTree = "<group>"; };
+		C56BE85B2D78E51100407B70 /* spec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = spec.h; sourceTree = "<group>"; };
+		C56BE85C2D78E51100407B70 /* spec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = spec.c; sourceTree = "<group>"; };
+		C56BE85D2D78E51100407B70 /* tables.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tables.h; sourceTree = "<group>"; };
+		C56BE85E2D78E51100407B70 /* tables.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tables.c; sourceTree = "<group>"; };
+		C56BE85F2D78E51100407B70 /* tns.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tns.h; sourceTree = "<group>"; };
+		C56BE8602D78E51100407B70 /* tns.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tns.c; sourceTree = "<group>"; };
 		C5DC28DE2D70ECBD00B3F8D3 /* ERG1Module.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ERG1Module.h; sourceTree = "<group>"; };
 		C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ERG1Module.m; sourceTree = "<group>"; };
 		C5DC28F92D765C2500B3F8D3 /* AugmentOS_Manager-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AugmentOS_Manager-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -135,6 +188,7 @@
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				C56BE8612D78E51100407B70 /* CoreObjC */,
 			);
 			name = Libraries;
 			sourceTree = "<group>";
@@ -182,6 +236,67 @@
 				89C6BE57DB24E9ADA2F236DE /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		C56BE83B2D78E51100407B70 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				C56BE83A2D78E51100407B70 /* g1-sample-header.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		C56BE8612D78E51100407B70 /* CoreObjC */ = {
+			isa = PBXGroup;
+			children = (
+				C56BE83B2D78E51100407B70 /* include */,
+				C56BE83C2D78E51100407B70 /* attdet.h */,
+				C56BE83D2D78E51100407B70 /* attdet.c */,
+				C56BE83E2D78E51100407B70 /* bits.h */,
+				C56BE83F2D78E51100407B70 /* bits.c */,
+				C56BE8402D78E51100407B70 /* bwdet.h */,
+				C56BE8412D78E51100407B70 /* bwdet.c */,
+				C56BE8422D78E51100407B70 /* common.h */,
+				C56BE8432D78E51100407B70 /* CoreObjC.xcodeproj */,
+				C56BE8442D78E51100407B70 /* energy.h */,
+				C56BE8452D78E51100407B70 /* energy.c */,
+				C56BE8462D78E51100407B70 /* fastmath.h */,
+				C56BE8472D78E51100407B70 /* lc3.h */,
+				C56BE8482D78E51100407B70 /* lc3.c */,
+				C56BE8492D78E51100407B70 /* lc3_cpp.h */,
+				C56BE84A2D78E51100407B70 /* lc3_private.h */,
+				C56BE84B2D78E51100407B70 /* ltpf.h */,
+				C56BE84C2D78E51100407B70 /* ltpf.c */,
+				C56BE84D2D78E51100407B70 /* ltpf_arm.h */,
+				C56BE84E2D78E51100407B70 /* ltpf_neon.h */,
+				C56BE84F2D78E51100407B70 /* makefile.mk */,
+				C56BE8502D78E51100407B70 /* mdct.h */,
+				C56BE8512D78E51100407B70 /* mdct.c */,
+				C56BE8522D78E51100407B70 /* mdct_neon.h */,
+				C56BE8532D78E51100407B70 /* meson.build */,
+				C56BE8542D78E51100407B70 /* PcmConverter.h */,
+				C56BE8552D78E51100407B70 /* PcmConverter.m */,
+				C56BE8562D78E51100407B70 /* plc.h */,
+				C56BE8572D78E51100407B70 /* plc.c */,
+				C56BE8582D78E51100407B70 /* rnnoise.h */,
+				C56BE8592D78E51100407B70 /* sns.h */,
+				C56BE85A2D78E51100407B70 /* sns.c */,
+				C56BE85B2D78E51100407B70 /* spec.h */,
+				C56BE85C2D78E51100407B70 /* spec.c */,
+				C56BE85D2D78E51100407B70 /* tables.h */,
+				C56BE85E2D78E51100407B70 /* tables.c */,
+				C56BE85F2D78E51100407B70 /* tns.h */,
+				C56BE8602D78E51100407B70 /* tns.c */,
+			);
+			name = CoreObjC;
+			path = Packages/CoreObjC;
+			sourceTree = "<group>";
+		};
+		C56BE8622D78E51100407B70 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		C5DC28DD2D70EC5100B3F8D3 /* BleManager */ = {
@@ -268,8 +383,16 @@
 				Base,
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
+			packageReferences = (
+			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C56BE8622D78E51100407B70 /* Products */;
+					ProjectRef = C56BE8432D78E51100407B70 /* CoreObjC.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* AugmentOS_Manager */,
@@ -290,6 +413,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C56BE8642D78E51100407B70 /* makefile.mk in Resources */,
+				C56BE8652D78E51100407B70 /* meson.build in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				30C6EEA65F2C40649EF067EB /* Montserrat-Bold.ttf in Resources */,
@@ -447,6 +572,19 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				C5DC28E02D70ED4800B3F8D3 /* ERG1Module.m in Sources */,
 				C5DC28FB2D765C2500B3F8D3 /* ERG1Manager.swift in Sources */,
+				C56BE8662D78E51100407B70 /* energy.c in Sources */,
+				C56BE8672D78E51100407B70 /* tables.c in Sources */,
+				C56BE8682D78E51100407B70 /* tns.c in Sources */,
+				C56BE8692D78E51100407B70 /* plc.c in Sources */,
+				C56BE86A2D78E51100407B70 /* lc3.c in Sources */,
+				C56BE86B2D78E51100407B70 /* attdet.c in Sources */,
+				C56BE86C2D78E51100407B70 /* bits.c in Sources */,
+				C56BE86D2D78E51100407B70 /* PcmConverter.m in Sources */,
+				C56BE86E2D78E51100407B70 /* ltpf.c in Sources */,
+				C56BE86F2D78E51100407B70 /* sns.c in Sources */,
+				C56BE8702D78E51100407B70 /* mdct.c in Sources */,
+				C56BE8712D78E51100407B70 /* bwdet.c in Sources */,
+				C56BE8722D78E51100407B70 /* spec.c in Sources */,
 				C5DC29092D765F5900B3F8D3 /* Models.swift in Sources */,
 				C5DC29052D765EFA00B3F8D3 /* Enums.swift in Sources */,
 				C5DC29852D77938700B3F8D3 /* RNEventEmitter.swift in Sources */,
@@ -646,10 +784,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -722,10 +857,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

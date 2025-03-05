@@ -26,6 +26,7 @@ enum Commands: UInt8 {
     case BRIGHTNESS = 0x01
     case SILENT_MODE = 0x03
     case DASHBOARD_POSITION_COMMAND = 0x26
+    case HEAD_UP_ANGLE = 0x0B
 }
 
 enum DeviceOrders: UInt8 {

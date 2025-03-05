@@ -20,6 +20,8 @@
 - Navigation: Stack-based using React Navigation with typed params
 - State management: Context API for app-wide state
 - Error handling: Try/catch blocks with meaningful error messages
+- Types: Define interfaces/types in appropriate files or components/types.ts
+- Testing: Jest for unit tests, component testing with react-test-renderer
 
 ## Working with AugmentOS
 - Backend server required: `adb reverse tcp:7002 tcp:7002` for local testing
