@@ -354,6 +354,7 @@ class BooleanWaiter {
             break
           case .HEAD_UP2:
             print("HEAD_UP2")
+            RN_sendText("HEAD_UP2");
             break
           case .HEAD_DOWN2:
             print("HEAD_DOWN2")
