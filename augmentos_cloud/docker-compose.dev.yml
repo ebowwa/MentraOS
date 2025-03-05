@@ -1,0 +1,193 @@
+services:
+  # Build shared packages first
+  shared-packages:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: >
+      bash -c "cd packages/utils && bun run build &&
+               cd ../sdk && bun run build &&
+               cd ../agents && bun run build"
+    networks:
+      - augmentos-network
+
+  # Services that depend on shared packages
+  cloud:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: >
+      bash -c "cd packages/utils && bun run dev &
+               cd ../sdk && bun run dev &
+               cd ../agents && bun run dev &
+               cd ../cloud && bun run dev"
+    depends_on:
+      - shared-packages
+      - mongodb
+    # other configuration...
+
+  # Live Captions service
+  live-captions:
+    build:
+      context: .
+      dockerfile: Dockerfile.live-captions
+    restart: unless-stopped
+    ports:
+      - "8010:8010"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      # MongoDB
+      - MONGO_URL=mongodb://mongodb:27017/augmentos
+      # Azure Speech
+      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION}
+      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
+      # JWT Secrets
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - augmentos-network
+    depends_on:
+      - shared-packages
+      - cloud
+
+  # Flash service
+  flash:
+    build:
+      context: .
+      dockerfile: Dockerfile.flash
+    restart: unless-stopped
+    ports:
+      - "8011:8011"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      # MongoDB
+      - MONGO_URL=mongodb://mongodb:27017/augmentos
+      # JWT Secrets
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - augmentos-network
+    depends_on:
+      - augmentos-cloud-base
+      - mongodb
+      - cloud
+
+  # Dashboard Manager service
+  dashboard-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard-manager
+    restart: unless-stopped
+    ports:
+      - "8012:8012"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      # MongoDB
+      - MONGO_URL=mongodb://mongodb:27017/augmentos
+      # JWT Secrets
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - augmentos-network
+    depends_on:
+      - augmentos-cloud-base
+      - mongodb
+      - cloud
+
+  # Notifications service
+  notify:
+    build:
+      context: .
+      dockerfile: Dockerfile.notify
+    restart: unless-stopped
+    ports:
+      - "8014:8014"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      # MongoDB
+      - MONGO_URL=mongodb://mongodb:27017/augmentos
+      # JWT Secrets
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - augmentos-network
+    depends_on:
+      - augmentos-cloud-base
+      - mongodb
+      - cloud
+
+  # Mira AI service
+  miraai:
+    build:
+      context: .
+      dockerfile: Dockerfile.miraai
+    restart: unless-stopped
+    ports:
+      - "8015:8015"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      # MongoDB
+      - MONGO_URL=mongodb://mongodb:27017/augmentos
+      # LLM Configuration
+      - LLM_PROVIDER=${LLM_PROVIDER}
+      - LLM_MODEL=${LLM_MODEL}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
+      - AZURE_OPENAI_API_INSTANCE_NAME=${AZURE_OPENAI_API_INSTANCE_NAME}
+      - AZURE_OPENAI_API_DEPLOYMENT_NAME=${AZURE_OPENAI_API_DEPLOYMENT_NAME}
+      - AZURE_OPENAI_API_VERSION=2023-05-15
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Search API
+      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
+      # JWT Secrets
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - augmentos-network
+    depends_on:
+      - augmentos-cloud-base
+      - mongodb
+      - cloud
+
+  mongodb:
+    image: mongo:latest
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - augmentos-network
+
+networks:
+  augmentos-network:
+    driver: bridge
+
+volumes:
+  mongodb-data: 

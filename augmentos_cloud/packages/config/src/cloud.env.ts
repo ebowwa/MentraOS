@@ -49,7 +49,12 @@ export const systemApps = {
     port: BASE_PORT + 15,
     packageName: 'org.augmentos.miraai',
     name: 'Mira AI'
-  }
+  },
+  liveTranslation: {
+    port: BASE_PORT + 17,
+    packageName: 'com.augmentos.live-translation',
+    name: 'Live Translation',
+  },
 };
 
 // Environment Variables
