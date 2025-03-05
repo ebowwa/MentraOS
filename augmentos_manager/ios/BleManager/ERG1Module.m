@@ -44,7 +44,7 @@ RCT_EXPORT_METHOD(getDeviceID:(RCTResponseSenderBlock)successCallback errorCallb
 RCT_EXPORT_METHOD(startScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback) {
     @try {
         // Call the Swift startScan method
-        [self.erg1Manager startScan];
+        [self.erg1Manager RN_startScan];
         successCallback(@[@"scanning_started"]);
         
         // Schedule to stop scan after 10 seconds
@@ -77,10 +77,10 @@ RCT_EXPORT_METHOD(stopScan:(RCTResponseSenderBlock)successCallback errorCallback
 // connect to glasses we've already paired with:
 RCT_EXPORT_METHOD(
   connectGlasses:
-  (RCTPromiseResolveBlock) resolve
-  rejecter: (RCTPromiseRejectBlock) reject
+  (RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
 ) {
-  if ([self.erg1Manager connectGlasses]) {
+  if ([self.erg1Manager RN_connectGlasses]) {
     resolve(@"connected");
   } else {
     reject(@"0", @"glasses_not_paired", nil);
@@ -117,7 +117,7 @@ RCT_EXPORT_METHOD(sendText:(NSString *)text disconnect:(RCTResponseSenderBlock)s
 //      }];
 //    });
     
-    [self.erg1Manager sendTextExample:text];
+    [self.erg1Manager RN_sendText:text];
     
     // Wait for the operation to complete with a timeout
 //    dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, 10 * NSEC_PER_SEC));
@@ -126,6 +126,24 @@ RCT_EXPORT_METHOD(sendText:(NSString *)text disconnect:(RCTResponseSenderBlock)s
   }
   @catch(NSException *exception) {
     errorCallback(@[exception.description]);
+  }
+}
+
+
+RCT_EXPORT_METHOD(
+  setBrightness:
+  (NSInteger)brightnessValue// first param is special and doesn't get a name
+  autoBrightness:(BOOL)autoBrightness
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    [self.erg1Manager RN_setBrightness:brightnessValue autoMode:autoBrightness];
+    resolve(@[@"Set brightness"]);
+  }
+  @catch(NSException *exception) {
+    reject(@"0", @[exception.description], nil);
   }
 }
 

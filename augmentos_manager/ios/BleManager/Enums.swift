@@ -21,6 +21,11 @@ enum Commands: UInt8 {
     case BLE_REQ_TRANSFER_MIC_DATA = 0xF1
     case BLE_REQ_DEVICE_ORDER = 0xF5
     case BLE_REQ_MIC_ON = 0x0E
+    case QUICK_NOTE_ADD = 0x1E
+    case BATTERY_STATUS = 0x2D
+    case BRIGHTNESS = 0x01
+    case SILENT_MODE = 0x03
+    case DASHBOARD_POSITION_COMMAND = 0x26
 }
 
 enum DeviceOrders: UInt8 {
@@ -33,6 +38,8 @@ enum DeviceOrders: UInt8 {
     case HEAD_DOWN = 0x1f
     case SILENCED = 0x04
     case ACTIVATED = 0x05
+    case HEAD_UP2 = 0x02
+    case HEAD_DOWN2 = 0x03
 }
 
 enum DisplayStatus: UInt8 {
@@ -41,4 +48,22 @@ enum DisplayStatus: UInt8 {
     case MANUAL_PAGE = 0x50
     case ERROR_TEXT = 0x60
     case SIMPLE_TEXT = 0x70
+}
+
+public enum DashboardPosition: UInt8 {
+    case position0 = 0x00  // Bottom
+    case position1 = 0x01
+    case position2 = 0x02
+    case position3 = 0x03
+    case position4 = 0x04
+    case position5 = 0x05
+    case position6 = 0x06
+    case position7 = 0x07
+    case position8 = 0x08  // Top
+}
+
+public enum DashboardMode: UInt8 {
+    case full = 0x00
+    case dual = 0x01
+    case minimal = 0x02
 }

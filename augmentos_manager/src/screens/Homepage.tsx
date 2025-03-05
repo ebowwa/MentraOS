@@ -5,7 +5,8 @@ import React, {
   useState,
   useEffect,
 } from 'react';
-import { View, StyleSheet, Animated, Text, Button } from 'react-native';
+import { View, StyleSheet, Animated, Text, Button, Switch } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -41,7 +42,7 @@ interface AnimatedSectionProps extends PropsWithChildren {
 
 // Listen for connection state changes
 const connectionStateListener = ERG1EventEmitter.addListener(
-  'onConnectionStateChanged', 
+  'onConnectionStateChanged',
   (event: any) => {
     console.log('Connection state changed:', event);
     // Update UI based on connection state
@@ -62,6 +63,9 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const { status, startBluetoothAndCore } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
+  const [brightness, setBrightness] = useState(50);
+  const [autoBrightness, setAutoBrightness] = useState(false);
+  const brightnessTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -157,12 +161,46 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   };
 
   const sendText = () => {
+    let sampleText = "";
+    // generate random words from a list of 1000 words:
+    const words = "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum";
+    const wordArray = words.split(" ");
+    for (let i = 0; i < 10; i++) {
+      sampleText += wordArray[Math.floor(Math.random() * wordArray.length)] + " ";
+    }
+    sampleText = sampleText.trim();
     ERG1Module.sendText(
-      'Hello, world2!',
+      sampleText,
       (result: any) => console.log('Send result:', result),
       (error: any) => console.error('Send error:', error)
     );
   };
+
+  const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
+    try {
+      await ERG1Module.setBrightness(value, autoBrightness);
+      console.log(`Brightness set to: ${value}`);
+    } catch (error) {
+      console.error('setBrightness() error:', error);
+    }
+  };
+
+  // Debounced function to handle brightness changes
+  const handleBrightnessChange = (value: number) => {
+
+    // Clear any existing timer
+    if (brightnessTimerRef.current) {
+      clearTimeout(brightnessTimerRef.current);
+    }
+
+    brightnessTimerRef.current = setTimeout(() => {
+      setBrightness(value);
+    }, 300); // 300ms debounce time
+  };
+
+  useEffect(() => {
+    sendBrightnessSetting(brightness, autoBrightness);
+  }, [brightness, autoBrightness]);
 
   // Check version once on mount
   useEffect(() => {
@@ -257,6 +295,33 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           <Button title="Send Text" onPress={sendText} />
           <Button title="Connect Glasses" onPress={connectGlasses} />
           <Button title="Start Scan" onPress={startScan} />
+
+          <View style={currentThemeStyles.brightnessContainer}>
+            <View style={currentThemeStyles.brightnessRow}>
+              <Text style={currentThemeStyles.brightnessText}>Brightness: {brightness}%</Text>
+              <View style={currentThemeStyles.brightnessRow}>
+                <Text style={currentThemeStyles.brightnessText}>Auto </Text>
+                <Switch
+                  value={autoBrightness}
+                  onValueChange={(value) => {
+                    setAutoBrightness(value);
+                    handleBrightnessChange(brightness);
+                  }}
+                />
+              </View>
+            </View>
+            <Slider
+              style={{ width: '100%', height: 40 }}
+              minimumValue={0}
+              maximumValue={100}
+              step={1}
+              value={brightness}
+              onValueChange={handleBrightnessChange}
+              minimumTrackTintColor={isDarkTheme ? '#FFFFFF' : '#000000'}
+              maximumTrackTintColor={isDarkTheme ? '#555555' : '#CCCCCC'}
+              thumbTintColor={isDarkTheme ? '#FFFFFF' : '#000000'}
+            />
+          </View>
         </AnimatedSection>
 
         {status.core_info.puck_connected && (
@@ -306,6 +371,23 @@ const lightThemeStyles = StyleSheet.create({
     color: '#000000',
     fontFamily: 'Montserrat-Regular',
   },
+  brightnessContainer: {
+    marginTop: 15,
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 8,
+  },
+  brightnessText: {
+    color: '#000000',
+    marginBottom: 5,
+    fontFamily: 'Montserrat-Regular',
+  },
+  brightnessRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
 });
 
 const darkThemeStyles = StyleSheet.create({
@@ -322,6 +404,23 @@ const darkThemeStyles = StyleSheet.create({
   noAppsText: {
     color: '#ffffff',
     fontFamily: 'Montserrat-Regular',
+  },
+  brightnessContainer: {
+    marginTop: 15,
+    marginBottom: 10,
+    padding: 10,
+    backgroundColor: '#222222',
+    borderRadius: 8,
+  },
+  brightnessText: {
+    color: '#ffffff',
+    marginBottom: 5,
+    fontFamily: 'Montserrat-Regular',
+  },
+  brightnessRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
 });
 

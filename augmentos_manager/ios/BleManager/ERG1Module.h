@@ -22,11 +22,13 @@
 - (void)stopScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 
 // Connection methods
-- (void)connectGlasses:(RCTPromiseResolveBlock)resolve errorCallback:(RCTPromiseRejectBlock)reject;
+- (void)connectGlasses:(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 - (void)disconnect:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 
 //- (void)sendText:(NSString *)text successCallback:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 - (void)sendText:(NSString *)text successCallback:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
+
+- (void)setBrightness:(int)level :(BOOL)autoBrightness :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
 // Add support for events
 - (NSArray<NSString *> *)supportedEvents;
