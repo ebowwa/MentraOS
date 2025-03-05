@@ -35,6 +35,7 @@ import ConnectingToPuckComponent from './components/ConnectingToPuckComponent.ts
 import VersionUpdateScreen from './screens/VersionUpdateScreen.tsx';
 import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
+import TestingPage from './screens/TestingPage.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -69,7 +70,7 @@ const App: React.FC = () => {
             <GlassesMirrorProvider>
             <MessageBanner />
             <NavigationContainer linking={linking}>
-              <Stack.Navigator initialRouteName="Home">
+              <Stack.Navigator initialRouteName="Testing">
                 <Stack.Screen
                   name="SplashScreen"
                   component={SplashScreen}
@@ -99,6 +100,15 @@ const App: React.FC = () => {
                 <Stack.Screen name="Home" options={{ headerShown: false }}>
                   {() => (
                     <Homepage
+                      isDarkTheme={isDarkTheme}
+                      toggleTheme={toggleTheme}
+                    />
+                  )}
+                </Stack.Screen>
+
+                <Stack.Screen name="Testing" options={{ headerShown: false }}>
+                  {() => (
+                    <TestingPage
                       isDarkTheme={isDarkTheme}
                       toggleTheme={toggleTheme}
                     />

@@ -28,10 +28,11 @@ import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 const { ERG1Module, RNEventEmitter } = NativeModules;
 const ERG1EventEmitter = new NativeEventEmitter(RNEventEmitter);
 
-interface HomepageProps {
+interface TestingPageProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
 }
@@ -58,93 +59,88 @@ const connectionStateListener = ERG1EventEmitter.addListener(
 //   }
 // );
 
-const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
+const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();
   const { status, startBluetoothAndCore } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
-  
+  const [brightness, setBrightness] = useState(50);
+  const [autoBrightness, setAutoBrightness] = useState(false);
+  const brightnessTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const clearScreenTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
 
-  // Get local version from env file
-  const getLocalVersion = () => {
+  const startScan = () => {
+    ERG1Module.startScan(
+      (result: any) => console.log('Scan result:', result),
+      (error: any) => console.error('Scan error:', error)
+    );
+  };
+
+  const connectGlasses = async () => {
     try {
-      const version = Config.AUGMENTOS_VERSION;
-      console.log('Local version from env:', version);
-      return version || null;
+      await ERG1Module.connectGlasses();
+      console.log("Glasses are paired, connecting now...");
     } catch (error) {
-      console.error('Error getting local version:', error);
-      return null;
+      console.error('connectGlasses() error:', error);
     }
   };
 
-  // Check cloud version and navigate if needed
-  const checkCloudVersion = async () => {
-    if (isCheckingVersion) return;
-    setIsCheckingVersion(true);
+  const sendText = () => {
+    let sampleText = "";
+    // generate random words from a list of 1000 words:
+    const words = "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum";
+    const wordArray = words.split(" ");
+    for (let i = 0; i < 10; i++) {
+      sampleText += wordArray[Math.floor(Math.random() * wordArray.length)] + " ";
+    }
+    sampleText = sampleText.trim();
+    ERG1Module.sendText(
+      sampleText,
+      (result: any) => console.log('Send result:', result),
+      (error: any) => console.error('Send error:', error)
+    );
 
+    if (clearScreenTimeoutRef.current) {
+      clearTimeout(clearScreenTimeoutRef.current);
+    }
+    
+    clearScreenTimeoutRef.current = setTimeout(() => {
+      ERG1Module.sendText(
+        " ",
+        (result: any) => console.log('Send result:', result),
+        (error: any) => console.error('Send error:', error)
+      );
+    }, 3000);
+  };
+
+  const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
     try {
-      const backendComms = BackendServerComms.getInstance();
-      const localVer = getLocalVersion();
-
-      if (!localVer) {
-        console.error('Failed to get local version from env file');
-        // Navigate to update screen with connection error
-        navigation.navigate('VersionUpdateScreen', {
-          isDarkTheme,
-          connectionError: true
-        });
-        setIsCheckingVersion(false);
-        return;
-      }
-
-      // Call the endpoint to get cloud version
-      await backendComms.restRequest('/apps/version', null, {
-        onSuccess: (data) => {
-          const cloudVer = data.version;
-          console.log(`Comparing local version (${localVer}) with cloud version (${cloudVer})`);
-
-          // Compare versions using semver
-          if (semver.lt(localVer, cloudVer)) {
-            console.log('A new version is available. Navigate to update screen.');
-            // Navigate to update screen with version mismatch
-            navigation.navigate('VersionUpdateScreen', {
-              isDarkTheme,
-              localVersion: localVer,
-              cloudVersion: cloudVer
-            });
-          } else {
-            console.log('Local version is up-to-date.');
-            // Stay on homepage, no navigation needed
-          }
-          setIsCheckingVersion(false);
-        },
-        onFailure: (errorCode) => {
-          console.error('Failed to fetch cloud version:', errorCode);
-          // Navigate to update screen with connection error
-          navigation.navigate('VersionUpdateScreen', {
-            isDarkTheme,
-            connectionError: true
-          });
-          setIsCheckingVersion(false);
-        }
-      });
+      await ERG1Module.setBrightness(value, autoBrightness);
+      console.log(`Brightness set to: ${value}`);
     } catch (error) {
-      console.error('Error checking cloud version:', error);
-      // Navigate to update screen with connection error
-      navigation.navigate('VersionUpdateScreen', {
-        isDarkTheme,
-        connectionError: true
-      });
-      setIsCheckingVersion(false);
+      console.error('setBrightness() error:', error);
     }
   };
 
-  // Check version once on mount
+  // Debounced function to handle brightness changes
+  const handleBrightnessChange = (value: number) => {
+
+    // Clear any existing timer
+    if (brightnessTimerRef.current) {
+      clearTimeout(brightnessTimerRef.current);
+    }
+
+    brightnessTimerRef.current = setTimeout(() => {
+      setBrightness(value);
+    }, 300); // 300ms debounce time
+  };
+
   useEffect(() => {
-    //checkCloudVersion();
-  }, []);
+    sendBrightnessSetting(brightness, autoBrightness);
+  }, [brightness, autoBrightness]);
 
   // Simple animated wrapper so we do not duplicate logic
   const AnimatedSection: React.FC<AnimatedSectionProps> = useCallback(
@@ -207,56 +203,77 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const currentThemeStyles = isDarkTheme ? darkThemeStyles : lightThemeStyles;
 
   return (
-    <View style={currentThemeStyles.container}>
-      <ScrollView style={currentThemeStyles.contentContainer}>
-        <AnimatedSection>
-          <Header isDarkTheme={isDarkTheme} navigation={navigation} />
-        </AnimatedSection>
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={currentThemeStyles.container}>
+        <ScrollView style={currentThemeStyles.contentContainer}>
 
-        {!isSimulatedPuck && (
           <AnimatedSection>
-            <PuckConnection isDarkTheme={isDarkTheme} />
+            <Header isDarkTheme={isDarkTheme} navigation={navigation} />
           </AnimatedSection>
-        )}
 
-        {status.core_info.cloud_connection_status !== 'CONNECTED' &&
+          {/* buttons to test ERG1Module */}
           <AnimatedSection>
-            <CloudConnection isDarkTheme={isDarkTheme} />
-          </AnimatedSection>
-        }
+            <Button title="Send Text" onPress={sendText} />
+            <Button title="Connect Glasses" onPress={connectGlasses} />
+            <Button title="Start Scan" onPress={startScan} />
 
-        <AnimatedSection>
-          <ConnectedDeviceInfo isDarkTheme={isDarkTheme} />
-        </AnimatedSection>
-
-        {status.core_info.puck_connected && (
-          <>
-            {status.apps.length > 0 ? (
-              <>
-                <AnimatedSection>
-                  <RunningAppsList isDarkTheme={isDarkTheme} />
-                </AnimatedSection>
-
-                <AnimatedSection>
-                  <YourAppsList
-                    isDarkTheme={isDarkTheme}
-                    key={`apps-list-${status.apps.length}`}
+            <View style={currentThemeStyles.brightnessContainer}>
+              <View style={currentThemeStyles.brightnessRow}>
+                <Text style={currentThemeStyles.brightnessText}>Brightness: {brightness}%</Text>
+                <View style={currentThemeStyles.brightnessRow}>
+                  <Text style={currentThemeStyles.brightnessText}>Auto </Text>
+                  <Switch
+                    value={autoBrightness}
+                    onValueChange={(value) => {
+                      setAutoBrightness(value);
+                      handleBrightnessChange(brightness);
+                    }}
                   />
+                </View>
+              </View>
+              <Slider
+                style={{ width: '100%', height: 40 }}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
+                value={brightness}
+                onValueChange={handleBrightnessChange}
+                minimumTrackTintColor={isDarkTheme ? '#FFFFFF' : '#000000'}
+                maximumTrackTintColor={isDarkTheme ? '#555555' : '#CCCCCC'}
+                thumbTintColor={isDarkTheme ? '#FFFFFF' : '#000000'}
+              />
+            </View>
+          </AnimatedSection>
+
+          {status.core_info.puck_connected && (
+            <>
+              {status.apps.length > 0 ? (
+                <>
+                  <AnimatedSection>
+                    <RunningAppsList isDarkTheme={isDarkTheme} />
+                  </AnimatedSection>
+
+                  <AnimatedSection>
+                    <YourAppsList
+                      isDarkTheme={isDarkTheme}
+                      key={`apps-list-${status.apps.length}`}
+                    />
+                  </AnimatedSection>
+                </>
+              ) : (
+                <AnimatedSection>
+                  <Text style={currentThemeStyles.noAppsText}>
+                    No apps found. Visit the AugmentOS App Store to explore and
+                    download apps for your device.
+                  </Text>
                 </AnimatedSection>
-              </>
-            ) : (
-              <AnimatedSection>
-                <Text style={currentThemeStyles.noAppsText}>
-                  No apps found. Visit the AugmentOS App Store to explore and
-                  download apps for your device.
-                </Text>
-              </AnimatedSection>
-            )}
-          </>
-        )}
-      </ScrollView>
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
-    </View>
+              )}
+            </>
+          )}
+        </ScrollView>
+        <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
+      </View>
+    </SafeAreaView>
   );
 };
 
