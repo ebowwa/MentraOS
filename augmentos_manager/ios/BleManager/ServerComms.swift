@@ -14,10 +14,10 @@ protocol ServerCommsCallback {
     func onConnectionError(_ error: String)
     func onAuthError()
     func onMicrophoneStateChange(_ isEnabled: Bool)
-    func onDashboardDisplayEvent(_ event: [String: Any])
     func onDisplayEvent(_ event: [String: Any])
     func onRequestSingle(_ dataType: String)
     func onConnectionStatusChange(_ status: WebSocketStatus)
+    
 }
 
 class ServerComms {
@@ -229,14 +229,9 @@ class ServerComms {
             
         case "display_event":
             if let view = msg["view"] as? String {
-                let isDashboard = view == "dashboard"
-                
+//                let isDashboard = view == "dashboard"
                 if let callback = serverCommsCallback {
-                    if isDashboard {
-                        callback.onDashboardDisplayEvent(msg)
-                    } else {
-                        callback.onDisplayEvent(msg)
-                    }
+                  callback.onDisplayEvent(msg)
                 }
             }
             
@@ -307,7 +302,7 @@ class ServerComms {
     
     private func getServerUrl() -> String {
         // TODO: ios get these from .env:
-        let host = "staging.augmentos.com"
+        let host = "staging.augmentos.org"
         let port = "443"
         let secureServer = true
         return "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"

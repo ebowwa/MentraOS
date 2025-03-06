@@ -92,6 +92,13 @@ class BooleanWaiter {
     }
 }
 
+struct ViewState {
+  var topText: String
+  var bottomText: String
+  var layoutType: String
+  var text: String
+}
+
 @objc(ERG1Manager) class ERG1Manager: NSObject {
   
   // todo: we probably don't need this
@@ -101,6 +108,11 @@ class BooleanWaiter {
   @Published public var g1Ready: Bool = false
   @Published public var voiceData: Data = Data()
   @Published public var aiListening: Bool = false
+  
+  var viewStates: [ViewState] = [
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "default_dashboard"),
+  ]
   
   enum AiMode: String {
       case AI_REQUESTED
@@ -127,6 +139,7 @@ class BooleanWaiter {
   let DELAY_BETWEEN_CHUNKS_SEND: UInt64 = 16_000_000 // 16ms
   let DELAY_BETWEEN_SENDS_MS: UInt64 = 8_000_000 // 8ms
   let INITIAL_CONNECTION_DELAY_MS: UInt64 = 350_000_000 // 350ms
+  public var textHelper = G1Text()
   
   public let WHITELIST_CMD: UInt8 = 0x04 // Command ID for whitelist
   
@@ -159,8 +172,9 @@ class BooleanWaiter {
   private var aiTriggerTimeoutTimer: Timer?
   
   override init() {
-      super.init()
+    super.init()
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -217,6 +231,100 @@ class BooleanWaiter {
       
 //      let success = await sendText(text: text)
 //      print("Send text operation completed with result: \(success)")
+    }
+  }
+  
+  @objc public func RN_sendTextWall(_ text: String) -> Void {
+      let chunks = textHelper.createTextWallChunks(text)
+//      sendChunks(chunks)
+      for chunk in chunks {
+      print("Sending chunk: \(chunk)")
+        Task {
+          await sendCommand(chunk)
+        }
+    }
+  }
+  
+  
+  @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
+      let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
+      for chunk in chunks {
+      print("Sending chunk: \(chunk)")
+        Task {
+          await sendCommand(chunk)
+        }
+    }
+  }
+  
+  public func handleDisplayEvent(_ event: [String: Any]) -> Void {
+    
+    if let view = event["view"] as? String {
+      let isDashboard = view == "dashboard"
+      
+      var stateIndex = 0;
+      if (isDashboard) {
+        stateIndex = 1
+      } else {
+        stateIndex = 0
+      }
+      
+      let layout = event["layout"] as! [String: Any];
+      self.viewStates[stateIndex].layoutType = layout["layoutType"] as! String
+      
+      switch self.viewStates[stateIndex].layoutType {
+        case "text_wall":
+        self.viewStates[stateIndex].text = layout["text"] as? String ?? " "
+          break
+      case "double_text_wall":
+//        print("GOT double_text_wall")
+//        print(event)
+//        print(event["topText"])
+//        print(event["bottomText"])
+        self.viewStates[stateIndex].topText = layout["topText"] as? String ?? " "
+        self.viewStates[stateIndex].bottomText = layout["bottomText"] as? String ?? " "
+        break
+      default:
+        break
+      }
+      
+    }
+  }
+  
+  public func sendCurrentState(_ isDashboard: Bool) -> Void {
+    Task {
+      var currentViewState: ViewState!;
+      if (isDashboard) {
+        currentViewState = self.viewStates[1]
+      } else {
+        currentViewState = self.viewStates[0]
+      }
+      
+      let layoutType = currentViewState.layoutType
+      switch layoutType {
+      case "text_wall":
+        let text = currentViewState.text
+//        let chunks = textHelper.createTextWallChunks(text)
+//        for chunk in chunks {
+//          print("Sending chunk: \(chunk)")
+//          await sendCommand(chunk)
+//        }
+        RN_sendText(text);
+        break
+      case "double_text_wall":
+        let topText = currentViewState.topText
+        let bottomText = currentViewState.bottomText
+        let chunks = textHelper.createDoubleTextWallChunks(textTop: topText, textBottom: bottomText)
+        for chunk in chunks {
+          // sleep for 50ms:
+          usleep(50000)
+          print("Sending chunk: \(chunk)")
+          await sendCommand(chunk)
+        }
+        break
+      default:
+        break
+      }
+      
     }
   }
   
@@ -346,18 +454,21 @@ class BooleanWaiter {
           switch DeviceOrders(rawValue: order) {
           case .HEAD_UP:
             print("HEAD_UP")
-            RN_sendText("HEAD_UP");
+            sendCurrentState(true)
             break
           case .HEAD_DOWN:
+            sendCurrentState(false)
             print("HEAD_DOWN")
             break
           case .HEAD_UP2:
             print("HEAD_UP2")
-            RN_sendText("HEAD_UP2");
+//            RN_sendText("HEAD_UP2");
+            sendCurrentState(true)
             break
           case .HEAD_DOWN2:
             print("HEAD_DOWN2")
-            RN_sendText(" ");
+//            RN_sendText(" ");
+            sendCurrentState(false)
             break
           case .ACTIVATED:
             print("ACTIVATED")
@@ -519,7 +630,6 @@ extension ERG1Manager {
   }
   
   private func sendMicOn(to peripheral: CBPeripheral, isOn: Bool) {
-    
     var micOnData = Data()
     micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
     if isOn {
@@ -552,11 +662,6 @@ extension ERG1Manager {
       if leftInitialized && rightInitialized {
           print("Both arms initialized")
           g1Ready = true
-          Task {
-              // First fetch battery status
-//              await fetchBatteryStatus()
-//              try? await Task.sleep(nanoseconds: 200 * 1_000_000)
-          }
       }
   }
   
@@ -764,7 +869,6 @@ extension ERG1Manager {
       }
   }
   
-  // Update sendText to use the queue system
   public func sendText(text: String, newScreen: Bool = true, currentPage: UInt8 = 1, maxPages: UInt8 = 1, isCommand: Bool = false, status: DisplayStatus = .NORMAL_TEXT) async -> Bool {
       print("Starting sendText with: \(text)")
       print("Left peripheral connected: \(leftPeripheral != nil)")
@@ -778,30 +882,12 @@ extension ERG1Manager {
       
       // Format text into lines for display
       let lines = formatTextLines(text: text)
-      // Calculate total pages based on lines
-      let totalPages = UInt8((lines.count + 3) / 4)
-      // Reset sequence number for new text
-      evenaiSeq = 1
-      
-      // Single page text handling
-      if lines.count <= 4 {
-          let displayText = lines.joined(separator: "\n")
-          // Use the improved sendTextPacket with our new queue system
-          return await sendTextPacket(displayText: displayText, newScreen: true, status: status, currentPage: 1, maxPages: 1)
-      } else {
-          // Multi-page text handling
-          self.responseModel = AiResponseToG1Model(
-              lines: lines,
-              totalPages: totalPages,
-              newScreen: newScreen,
-              currentPage: currentPage,
-              maxPages: totalPages,
-              status: status
-          )
-          return await self.manualTextControl()
-      }
+      let displayText = lines.joined(separator: "\n")
+      // Use the improved sendTextPacket with our new queue system
+      return await sendTextPacket(displayText: displayText, newScreen: true, status: status, currentPage: 1, maxPages: 1)
   }
 
+  // TODO: ios fix this broken garbage
   // Updated sendTextPacket to use the queue system
 //  private func sendTextPacket(displayText: String, newScreen: Bool, status: DisplayStatus, currentPage: UInt8, maxPages: UInt8) async -> Bool {
 //      // Convert text to UTF-8 data

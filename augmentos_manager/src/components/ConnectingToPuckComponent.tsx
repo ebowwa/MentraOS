@@ -26,7 +26,7 @@ const ConnectingToPuckComponent = ({
 
   useEffect(() => {
     // We only proceed once the core is connected, the user is loaded, etc.
-    if (status.core_info.puck_connected && !loading && user) {
+    if ((status.core_info.puck_connected || true) && !loading && user) {
       // 1) Get the Supabase token from your AuthContext
       const supabaseToken = session?.access_token;
       if (!supabaseToken) {
@@ -43,6 +43,7 @@ const ConnectingToPuckComponent = ({
         backend.exchangeToken(supabaseToken)
           .then((coreToken) => {
             let uid = user.email || user.id;
+            console.log("SETTING AUTH KEY FOR ", uid, coreToken);
             bluetoothService.setAuthenticationSecretKey(uid, coreToken);
 
             // const appStoreUrl: string = Config.AUGMENTOS_APPSTORE_URL || "";

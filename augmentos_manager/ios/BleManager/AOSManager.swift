@@ -125,6 +125,76 @@ import React
     onAppStateChange?(["apps": appDicts])
   }
   
+  
+//  func parseDisplayEventMessage(msg: [String: Any]) -> (() -> Void) {
+//      guard let layout = msg["layout"] as? [String: Any],
+//            let layoutType = layout["layoutType"] as? String else {
+//          print("ISSUE PARSING LAYOUT: Missing layout or layoutType")
+//          return {}
+//      }
+//      
+//      switch layoutType {
+//      case "reference_card":
+//          guard let title = layout["title"] as? String,
+//                let text = layout["text"] as? String else {
+//              print("ISSUE PARSING REFERENCE CARD: Missing title or text")
+//              return {}
+//          }
+//          return { [weak self] in
+////            self?.g1Manager.sendReferenceCard(title: title, text: text)
+//          }
+//          
+//      case "text_wall", "text_line":
+//          guard let text = layout["text"] as? String else {
+//              print("ISSUE PARSING TEXT WALL: Missing text")
+//              return {}
+//          }
+//          return { [weak self] in
+//              self?.g1Manager.RN_sendTextWall(text)
+//          }
+//          
+//      case "double_text_wall":
+//          guard let topText = layout["topText"] as? String,
+//                let bottomText = layout["bottomText"] as? String else {
+//              print("ISSUE PARSING DOUBLE TEXT WALL: Missing topText or bottomText")
+//              return {}
+//          }
+//          return { [weak self] in
+////              self?.g1Manager.sendDoubleTextWall(topText: topText, bottomText: bottomText)
+//          }
+//          
+//      case "text_rows":
+//          guard let rowsArray = layout["text"] as? [String] else {
+//              print("ISSUE PARSING TEXT ROWS: Missing text array")
+//              return {}
+//          }
+//          return { [weak self] in
+////              self?.g1Manager.sendRowsCard(strings: rowsArray)
+//          }
+//          
+//      case "bitmap_view":
+//          guard let base64Data = layout["data"] as? String,
+//                let decodedData = Data(base64Encoded: base64Data) else {
+//              print("ISSUE PARSING BITMAP VIEW: Missing or invalid data")
+//              return {}
+//          }
+//          
+//          // Create UIImage from data
+//          guard let image = UIImage(data: decodedData) else {
+//              print("ISSUE PARSING BITMAP VIEW: Could not create image from data")
+//              return {}
+//          }
+//          
+//          return { [weak self] in
+////              self?.smartGlassesService.sendBitmap(image: image)
+//          }
+//          
+//      default:
+//          print("ISSUE PARSING LAYOUT: Unknown layoutType \(layoutType)")
+//          return {}
+//      }
+//  }
+  
   func onConnectionError(_ error: String) {
     onConnectionStatusChange?(["status": "error", "message": error])
   }
@@ -137,12 +207,19 @@ import React
     // Handle microphone state change if needed
   }
   
-  func onDashboardDisplayEvent(_ event: [String: Any]) {
-    onDisplayEvent?(["event": event, "type": "dashboard"])
-  }
+//  func onDashboardDisplayEvent(_ event: [String: Any]) {
+//    print("got dashboard display event")
+////    onDisplayEvent?(["event": event, "type": "dashboard"])
+//    print(event)
+////    Task {
+////      await self.g1Manager.sendText(text: "\(event)")
+////    }
+//  }
   
   func onDisplayEvent(_ event: [String: Any]) {
-    onDisplayEvent?(["event": event, "type": "normal"])
+    print("displayEvent \(event)", event)
+    
+    self.g1Manager.handleDisplayEvent(event)
   }
   
   func onRequestSingle(_ dataType: String) {

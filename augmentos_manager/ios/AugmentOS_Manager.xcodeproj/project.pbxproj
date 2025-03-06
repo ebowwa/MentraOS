@@ -36,6 +36,7 @@
 		C56BE8792D78F2E400407B70 /* AOSModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8782D78F2E400407B70 /* AOSModule.m */; };
 		C56BE87B2D79030800407B70 /* ServerComms.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56BE87A2D79030800407B70 /* ServerComms.swift */; };
 		C56BE87F2D79035300407B70 /* WebSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56BE87E2D79034C00407B70 /* WebSocketManager.swift */; };
+		C56BE88A2D793E2E00407B70 /* G1Text.swift in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8892D793E2E00407B70 /* G1Text.swift */; };
 		C5DC28E02D70ED4800B3F8D3 /* ERG1Module.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */; };
 		C5DC28FB2D765C2500B3F8D3 /* ERG1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DC28FA2D765C2500B3F8D3 /* ERG1Manager.swift */; };
 		C5DC29052D765EFA00B3F8D3 /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DC29042D765EFA00B3F8D3 /* Enums.swift */; };
@@ -117,6 +118,7 @@
 		C56BE8782D78F2E400407B70 /* AOSModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AOSModule.m; sourceTree = "<group>"; };
 		C56BE87A2D79030800407B70 /* ServerComms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerComms.swift; sourceTree = "<group>"; };
 		C56BE87E2D79034C00407B70 /* WebSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManager.swift; sourceTree = "<group>"; };
+		C56BE8892D793E2E00407B70 /* G1Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G1Text.swift; sourceTree = "<group>"; };
 		C5DC28DE2D70ECBD00B3F8D3 /* ERG1Module.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ERG1Module.h; sourceTree = "<group>"; };
 		C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ERG1Module.m; sourceTree = "<group>"; };
 		C5DC28F92D765C2500B3F8D3 /* AugmentOS_Manager-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AugmentOS_Manager-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -311,6 +313,7 @@
 		C5DC28DD2D70EC5100B3F8D3 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
+				C56BE8892D793E2E00407B70 /* G1Text.swift */,
 				C56BE87E2D79034C00407B70 /* WebSocketManager.swift */,
 				C5DC28DE2D70ECBD00B3F8D3 /* ERG1Module.h */,
 				C5DC28DF2D70ED4800B3F8D3 /* ERG1Module.m */,
@@ -599,6 +602,7 @@
 				C56BE8702D78E51100407B70 /* mdct.c in Sources */,
 				C56BE87F2D79035300407B70 /* WebSocketManager.swift in Sources */,
 				C56BE8712D78E51100407B70 /* bwdet.c in Sources */,
+				C56BE88A2D793E2E00407B70 /* G1Text.swift in Sources */,
 				C56BE8722D78E51100407B70 /* spec.c in Sources */,
 				C5DC29092D765F5900B3F8D3 /* Models.swift in Sources */,
 				C5DC29052D765EFA00B3F8D3 /* Enums.swift in Sources */,
@@ -800,10 +804,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -876,10 +877,7 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

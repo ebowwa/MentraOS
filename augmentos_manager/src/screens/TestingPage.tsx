@@ -121,6 +121,14 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
     }
   };
 
+  const connectServer = async () => {
+    try {
+      await AOSModule.connectServer("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJqb2VAbWFtYXMuaG91c2UiLCJpYXQiOjE3Mzk2NjY4MTB9.mJkSEyP7v_jHlzRjc-HzjhCjDopG12aIlOeYxo-kp0M");
+    } catch (error) {
+      console.error('connectServer() error:', error);
+    }
+  };
+
   // Debounced function to handle brightness changes
   const handleBrightnessChange = (value: number) => {
 
@@ -200,6 +208,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
             {/* <Button title="Connect Glasses" onPress={connectGlasses} /> */}
             <Button title="Send Text" onPress={sendText} />
             <Button title={`Toggle Mic ${micEnabled ? "Off" : "On"}`} onPress={() => toggleMicEnabled(!micEnabled)} />
+            <Button title="Connect Server" onPress={connectServer} />
 
             <View style={currentThemeStyles.brightnessContainer}>
               <View style={currentThemeStyles.brightnessRow}>
