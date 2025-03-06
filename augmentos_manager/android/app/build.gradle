@@ -72,6 +72,15 @@ android {
             excludes += ["META-INF/INDEX.LIST"]
         }
     }
+    configurations.all {
+        resolutionStrategy.dependencySubstitution {
+            substitute module('AugmentOS_Manager:react-native-camera') using project(':react-native-camera') with {
+                attributes {
+                    attribute(Attribute.of("react-native-camera", String), "general")
+                }
+            }
+        }
+    }
 }
 dependencies {
     // React Native core dependencies
@@ -90,8 +99,6 @@ dependencies {
     implementation project(':react-native-linear-gradient')
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     
-    // Add react-native-camera
-    //implementation project(':react-native-camera')
     implementation(project(':react-native-camera')) {
         attributes {
             attribute(Attribute.of('react-native-camera', String), 'general') // Or 'mlkit'

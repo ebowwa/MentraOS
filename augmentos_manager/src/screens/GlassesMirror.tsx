@@ -139,8 +139,9 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
             <RNCamera
               ref={cameraRef}
               style={styles.cameraBackground}
-              type={RNCamera.Constants.Type.back}
+              type={RNCamera.Constants.Type.front}
               captureAudio={false}
+              // ratio='1:1' this works on flipped razr 2024?
               androidCameraPermissionOptions={{
                 title: 'Camera Permission',
                 message: 'This app needs access to your camera for the fullscreen mirror mode.',
@@ -308,6 +309,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
+    aspectRatio: 1, // Force a square aspect ratio
+    alignSelf: 'center',
   },
   titleContainer: {
     paddingVertical: 15,
