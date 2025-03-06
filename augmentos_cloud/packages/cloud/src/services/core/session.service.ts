@@ -150,15 +150,17 @@ export class SessionService {
     userSession.lastAudioTimestamp = Date.now();
   
     // If not transcribing, just ignore the audio
-    if (!userSession.isTranscribing) {
-      if (LOG_AUDIO) console.log('🔇 Skipping audio while transcription is paused');
-      return;
-    }
+    // if (!userSession.isTranscribing) {
+    //   if (LOG_AUDIO) console.log('🔇 Skipping audio while transcription is paused');
+    //   return;
+    // }
   
     // Process LC3 first if needed
     let processedAudioData = audioData;
+    console.log(`🚀🚀🚀[session.service] Processing audio data for session ${userSession.sessionId}`);
     if (isLC3 && userSession.lc3Service) {
       try {
+        console.log(`⚡️⚡️⚡️[session.service] Decoding LC3 audio for session ${userSession.sessionId}`);
         processedAudioData = await userSession.lc3Service.decodeAudioChunk(audioData);
         if (!processedAudioData) {
           if (LOG_AUDIO) console.error(`❌ LC3 decode returned null for session ${userSession.sessionId}`);
@@ -170,6 +172,7 @@ export class SessionService {
       }
     }
 
+    console.log(`🔥🔥🔥[session.service] Processed audio data for session ${userSession.sessionId}`);
     transcriptionService.feedAudioToTranscriptionStreams(userSession, processedAudioData);
     return processedAudioData;
   }

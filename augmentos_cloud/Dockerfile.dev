@@ -1,18 +1,16 @@
 FROM node:18-slim
 
-# Install Bun manually and required packages
-RUN apt-get update && apt-get install -y curl unzip git python3 make g++ && \
+# Install required tools
+RUN apt-get update && apt-get install -y curl unzip git python3 make g++ tini && \
     curl -fsSL https://bun.sh/install | bash && \
     npm install -g typescript tsx ws
 
 ENV PATH="/root/.bun/bin:${PATH}"
 ENV NODE_ENV=development
-ENV SKIP_SENTRY_UPLOAD=true
 
 WORKDIR /app
 
-# Set environment variable to skip strict type checking for build
-ENV TS_NODE_TRANSPILE_ONLY=1
+# Use tini as an init system to handle signals properly
+ENTRYPOINT ["/usr/bin/tini", "--"]
 
-# Default command
 CMD ["echo", "Ready to run services"]

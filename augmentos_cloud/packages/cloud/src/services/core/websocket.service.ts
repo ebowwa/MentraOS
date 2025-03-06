@@ -241,11 +241,8 @@ export class WebSocketService {
     } else if (streamType === StreamType.TRANSCRIPTION) {
       effectiveSubscription = `${streamType}:${(data as any).transcribeLanguage}`;
     }
-    // console.log("🎤 Effective subscription: ", effectiveSubscription);
 
     const subscribedApps = this.subscriptionService.getSubscribedApps(userSessionId, effectiveSubscription);
-
-    console.log(`🎤 Subscribed apps: ${JSON.stringify(subscribedApps)}`);
     
     subscribedApps.forEach(packageName => {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
@@ -335,12 +332,13 @@ export class WebSocketService {
     ws.on('message', async (message: Buffer | string, isBinary: boolean) => {
       try {
         if (isBinary && Buffer.isBuffer(message)) {
+
           // Convert Node.js Buffer to ArrayBuffer
           const arrayBuf: ArrayBufferLike = message.buffer.slice(
             message.byteOffset,
             message.byteOffset + message.byteLength
           );
-
+          console.log(`[${userSession.userId}]: Received audio chunk: ${arrayBuf.byteLength} bytes`);
           // Pass the ArrayBuffer to Azure Speech or wherever you need it
           const _arrayBuffer = await this.sessionService.handleAudioData(userSession, arrayBuf);
           // send audio chunk to TPA's subscribed to audio_chunk.
@@ -417,7 +415,6 @@ export class WebSocketService {
       switch (message.type) {
         // 'connection_init'
         case GlassesToCloudMessageType.CONNECTION_INIT: {
-          // const initMessage = message as GlassesConnectionInitMessage;
           const initMessage = message as ConnectionInit;
           const coreToken = initMessage.coreToken || "";
           let userId = '';
@@ -432,10 +429,7 @@ export class WebSocketService {
           }
           catch (error) {
             console.error(`[websocket.service] Error verifying core token:`, error);
-            console.error('User ID is required');
-            // const errorMessage: CloudAuthErrorMessage = {
             const errorMessage: AuthError = {
-              // type: 'auth_error',
               type: CloudToGlassesMessageType.AUTH_ERROR,
               message: 'User not authenticated',
               timestamp: new Date()
@@ -537,15 +531,15 @@ export class WebSocketService {
 
         case 'start_app': {
           const startMessage = message as StartApp;
-          console.log(`Starting app ${startMessage.packageName}`);
+          console.log(`\n\n\n\n🚀🚀🚀[START_APP]: Starting app ${startMessage.packageName}`);
+          console.log(`🚀🚀🚀[START_APP]: ${JSON.stringify(message)}\n\n\n\n`);
+
           await this.startAppSession(userSession, startMessage.packageName);
 
           userSession.activeAppSessions.push(startMessage.packageName);
 
           // Get the list of active apps.
           const activeAppPackageNames = Array.from(new Set(userSession.activeAppSessions));
-
-          // console.log("🎤1111 Active app package names: ", activeAppPackageNames);
 
           // create a map of active apps and what steam types they are subscribed to.
           const appSubscriptions = new Map<string, ExtendedStreamType[]>(); // packageName -> streamTypes
@@ -628,7 +622,8 @@ export class WebSocketService {
             const app = await this.appService.getApp(stopMessage.packageName);
             if (!app) throw new Error(`App ${stopMessage.packageName} not found`);
 
-            // Call stop webhook // TODO(isaiah): Implement stop webhook in TPA typescript client lib.
+            // Call stop webhook 
+            // TODO(isaiah): Implement stop webhook in TPA typescript client lib.
             // const tpaSessionId = `${userSession.sessionId}-${stopMessage.packageName}`;
 
             // try {
@@ -889,9 +884,6 @@ export class WebSocketService {
               }
             
               const subMessage = message as TpaSubscriptionUpdate;
-
-              console.log("🎤 Subscriptions before update: ", JSON.stringify(subMessage));
-              console.log("🎤 2222 User session: ", JSON.stringify(subMessage.subscriptions));
               
               // Get the minimal language subscriptions before update
               const previousLanguageSubscriptions = this.subscriptionService.getMinimalLanguageSubscriptions(userSessionId);

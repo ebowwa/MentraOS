@@ -285,7 +285,7 @@ export class TranscriptionService {
   }
 
   feedAudioToTranscriptionStreams(userSession: ExtendedUserSession, audioData: Uint8Array) {
-    if (!userSession.transcriptionStreams) return;
+    if (!userSession.transcriptionStreams) return console.error('No transcription streams found for session');
     userSession.transcriptionStreams.forEach(instance => {
       (instance.pushStream as any).write(audioData);
     });

@@ -17,8 +17,16 @@ services:
 
   # Cloud service
   cloud:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
+    restart: unless-stopped  # Keep this for auto-restart
+    deploy:  # Add resource limits
+      resources:
+        limits:
+          cpus: '0.5'  # Limit to 50% of a CPU core
+          memory: 512M  # Limit to 512MB of RAM
+        reservations:
+          memory: 128M  # Ensure at least 128MB is available
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -40,8 +48,8 @@ services:
 
   # Live Captions service
   live-captions:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 5s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
