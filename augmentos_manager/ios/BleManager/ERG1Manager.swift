@@ -111,7 +111,7 @@ struct ViewState {
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "default_dashboard"),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "AUGMENTOS_SERVER_NOT_CONNECTED"),
   ]
   
   enum AiMode: String {
@@ -179,6 +179,10 @@ struct ViewState {
   
   // @@@ REACT NATIVE FUNCTIONS @@@
   
+  @objc func RN_setSearchId(_ searchId: String) {
+    DEVICE_SEARCH_ID = searchId
+  }
+  
   // this scans for new (un-paired) glasses to connect to:
   @objc func RN_startScan() {
       guard centralManager.state == .poweredOn else {
@@ -202,8 +206,11 @@ struct ViewState {
       guard let leftPeripheral, let rightPeripheral else {
         return false;
       }
+    print("Connected to both glasses, starting heartbeat timer and turning off silent mode...");
     startHeartbeatTimer();
-    print("Connected to both glasses");
+    Task {
+      await setSilentMode(false);
+    }
     return true
   }
   
@@ -247,12 +254,12 @@ struct ViewState {
   
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
-      let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
+    let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
+    Task {
       for chunk in chunks {
-      print("Sending chunk: \(chunk)")
-        Task {
-          await sendCommand(chunk)
-        }
+        usleep(50000)// sleep for 50ms// TODO: ios not sure if necessary
+        await sendCommand(chunk)
+      }
     }
   }
   
@@ -313,13 +320,7 @@ struct ViewState {
       case "double_text_wall":
         let topText = currentViewState.topText
         let bottomText = currentViewState.bottomText
-        let chunks = textHelper.createDoubleTextWallChunks(textTop: topText, textBottom: bottomText)
-        for chunk in chunks {
-          // sleep for 50ms:
-          usleep(50000)
-          print("Sending chunk: \(chunk)")
-          await sendCommand(chunk)
-        }
+        RN_sendDoubleTextWall(topText, bottomText);
         break
       default:
         break

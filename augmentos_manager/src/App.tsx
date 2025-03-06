@@ -70,7 +70,7 @@ const App: React.FC = () => {
                 <GlassesMirrorProvider>
                   <MessageBanner />
                   <NavigationContainer linking={linking}>
-                    <Stack.Navigator initialRouteName="Testing">
+                    <Stack.Navigator initialRouteName="SplashScreen">
                       <Stack.Screen
                         name="SplashScreen"
                         component={SplashScreen}
