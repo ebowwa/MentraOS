@@ -308,7 +308,7 @@ function debounceAndShowTranscript(sessionId: string, userId: string, ws: WebSoc
   const now = Date.now();
 
   if (isFinal) {
-    setTimeout(() => showTranscriptsToUser(sessionId, ws, transcript, true), 20);
+    showTranscriptsToUser(sessionId, ws, transcript, true);
     currentDebouncer.lastSentTime = now;
     return;
   }
@@ -328,6 +328,8 @@ function debounceAndShowTranscript(sessionId: string, userId: string, ws: WebSoc
  * Sends a display event (transcript) to the cloud.
  */
 function showTranscriptsToUser(sessionId: string, ws: WebSocket, transcript: string, isFinal: boolean) {
+  console.log(`[Session ${sessionId}]: Transcript to show: \n${transcript}`);
+
   const displayRequest: DisplayRequest = {
     type: TpaToCloudMessageType.DISPLAY_REQUEST,
     view: ViewType.MAIN,
@@ -339,8 +341,8 @@ function showTranscriptsToUser(sessionId: string, ws: WebSocket, transcript: str
     },
     timestamp: new Date(),
     // Use a fixed duration for final transcripts; non-final ones omit the duration
-    // durationMs: isFinal ? 3000 : undefined
-    durationMs: 20 * 1000 // 20 seconds. If no other transcript is received it will be cleared after this time.
+    durationMs: isFinal ? 20 * 1000 : undefined
+    // durationMs: 20 * 1000 // 20 seconds. If no other transcript is received it will be cleared after this time.
   };
 
   ws.send(JSON.stringify(displayRequest));
