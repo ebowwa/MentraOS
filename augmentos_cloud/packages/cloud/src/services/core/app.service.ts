@@ -23,41 +23,42 @@ export const APP_STORE: AppI[] = [
     packageName: systemApps.captions.packageName,
     name: systemApps.captions.name,
     tpaType: TpaType.STANDARD,
-    description: "Constant Live captions from your device microphone 🗣️🎙️",
-    webhookURL: `http://${systemApps.captions.host}:${systemApps.captions.port}/webhook`,
+    webhookURL: `http://localhost:${systemApps.captions.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
+    description: systemApps.captions.description
   },
   {
     packageName: systemApps.notify.packageName,
     name: systemApps.notify.name,
     tpaType: TpaType.BACKGROUND,
-    description: "Show notifications from your device 🔔",
-    webhookURL: `http://${systemApps.notify.host}:${systemApps.notify.port}/webhook`,
+    webhookURL: `http://localhost:${systemApps.notify.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
+    description: systemApps.notify.description,
+
   },
   {
     packageName: systemApps.mira.packageName,
     name: systemApps.mira.name,
     tpaType: TpaType.BACKGROUND,
-    description: "Mira AI, your proactive agent making all of your conversations better one insight at a time. 🚀",
-    webhookURL: `http://${systemApps.mira.host}:${systemApps.mira.port}/webhook`,
+    webhookURL: `http://localhost:${systemApps.mira.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
+    description: systemApps.mira.description,
   },
   {
     packageName: systemApps.merge.packageName,
     name: systemApps.merge.name,
     tpaType: TpaType.BACKGROUND,
-    description: "Merge AI, your proactive agent making all of your conversations better one insight at a time. 🚀",
-    webhookURL: `http://${systemApps.merge.host}:${systemApps.merge.port}/webhook`,
+    webhookURL: `http://localhost:${systemApps.merge.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
+    description: systemApps.merge.description,
   },
   {
     packageName: systemApps.liveTranslation.packageName,
     name: systemApps.liveTranslation.name,
     tpaType: TpaType.STANDARD,
-    description: "Live translation app for smart glasses.",
     webhookURL: `http://localhost:${systemApps.liveTranslation.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
+    description: systemApps.liveTranslation.description,
   }
 ];
 
@@ -68,7 +69,7 @@ if (process.env.NODE_ENV !== 'production') {
     name: systemApps.flash.name,
     tpaType: TpaType.BACKGROUND,
     description: "⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️",
-    webhookURL: `http://${systemApps.flash.host}:${systemApps.flash.port}/webhook`,
+    webhookURL: `http://localhost:${systemApps.flash.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
   });
 }
@@ -84,7 +85,7 @@ export const SYSTEM_TPAS: AppI[] = [
     name: systemApps.dashboard.name,
     tpaType: TpaType.BACKGROUND,
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    webhookURL: `http://${systemApps.dashboard.host}:${systemApps.dashboard.port}/webhook`,
+    webhookURL: `http:/localhost:${systemApps.dashboard.port}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
   },
 ];

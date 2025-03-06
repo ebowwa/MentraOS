@@ -1,6 +1,9 @@
 // posthog.service.ts
 import { PostHog } from 'posthog-node';
-import { POSTHOG_PROJECT_API_KEY, POSTHOG_HOST } from '@augmentos/config';
+// import { POSTHOG_PROJECT_API_KEY, POSTHOG_HOST } from '@augmentos/config';
+
+export const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY || "";
+export const POSTHOG_HOST = process.env.POSTHOG_HOST || "https://app.posthog.com";
 
 // Initialize PostHog client if API key is provided
 let posthogClient: PostHog | null = null;

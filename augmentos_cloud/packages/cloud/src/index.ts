@@ -22,14 +22,13 @@ import tpaSettingsRoutes from './routes/tpa-settings.routes';
 import path from 'path';
 
 // Load configuration from environment
-import { CLOUD_PORT } from '@augmentos/config';
 import * as mongoConnection from "./connections/mongodb.connection";
 
 // Initialize MongoDB connection
 mongoConnection.init();
 
 // Initialize Express and HTTP server
-const PORT = CLOUD_PORT;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const app = express();
 const server = new Server(app);
 

@@ -8,52 +8,52 @@ services:
       - ./:/app
       - /app/node_modules
     command: >
-      bash -c "cd packages/utils && bun run build &&
-               cd ../sdk && bun run build &&
-               cd ../agents && bun run build"
+      bash -c "bun install && 
+              cd packages/utils && bun run build &&
+              cd ../sdk && bun run build &&
+              cd ../agents && bun run build"
     networks:
       - augmentos-network
 
-  # Services that depend on shared packages
+  # Cloud service
   cloud:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    ports:
+      - "8002:80"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+    env_file:
+      - .env
     volumes:
       - ./:/app
-      - /app/node_modules
-    command: >
-      bash -c "cd packages/utils && bun run dev &
-               cd ../sdk && bun run dev &
-               cd ../agents && bun run dev &
-               cd ../cloud && bun run dev"
+      - node_modules:/app/node_modules
+    command: bash -c "bun install && cd packages/cloud && bun run dev"
+    networks:
+      - augmentos-network
     depends_on:
       - shared-packages
-      - mongodb
-    # other configuration...
 
   # Live Captions service
   live-captions:
     build:
       context: .
-      dockerfile: Dockerfile.live-captions
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "8010:8010"
+      - "8010:80"
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      # MongoDB
-      - MONGO_URL=mongodb://mongodb:27017/augmentos
-      # Azure Speech
-      - AZURE_SPEECH_REGION=${AZURE_SPEECH_REGION}
-      - AZURE_SPEECH_KEY=${AZURE_SPEECH_KEY}
-      # JWT Secrets
-      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
     env_file:
       - .env
     volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
       - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/live-captions && bun run dev"
     networks:
       - augmentos-network
     depends_on:
@@ -64,130 +64,147 @@ services:
   flash:
     build:
       context: .
-      dockerfile: Dockerfile.flash
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "8011:8011"
+      - "8011:80"
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      # MongoDB
-      - MONGO_URL=mongodb://mongodb:27017/augmentos
-      # JWT Secrets
-      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
     env_file:
       - .env
     volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
       - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/flash && bun run dev"
     networks:
       - augmentos-network
     depends_on:
-      - augmentos-cloud-base
-      - mongodb
+      - shared-packages
       - cloud
 
   # Dashboard Manager service
   dashboard-manager:
     build:
       context: .
-      dockerfile: Dockerfile.dashboard-manager
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "8012:8012"
+      - "8012:80"
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      # MongoDB
-      - MONGO_URL=mongodb://mongodb:27017/augmentos
-      # JWT Secrets
-      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
     env_file:
       - .env
     volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
       - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/dashboard-manager && bun run dev"
     networks:
       - augmentos-network
     depends_on:
-      - augmentos-cloud-base
-      - mongodb
+      - shared-packages
       - cloud
 
   # Notifications service
   notify:
     build:
       context: .
-      dockerfile: Dockerfile.notify
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "8014:8014"
+      - "8014:80"
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      # MongoDB
-      - MONGO_URL=mongodb://mongodb:27017/augmentos
-      # JWT Secrets
-      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
     env_file:
       - .env
     volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
       - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/notify && bun run dev"
     networks:
       - augmentos-network
     depends_on:
-      - augmentos-cloud-base
-      - mongodb
+      - shared-packages
       - cloud
+
+  # Note Merge runs in a separate repo.
 
   # Mira AI service
-  miraai:
+  mira:
     build:
       context: .
-      dockerfile: Dockerfile.miraai
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "8015:8015"
+      - "8015:80"
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      # MongoDB
-      - MONGO_URL=mongodb://mongodb:27017/augmentos
-      # LLM Configuration
-      - LLM_PROVIDER=${LLM_PROVIDER}
-      - LLM_MODEL=${LLM_MODEL}
-      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY}
-      - AZURE_OPENAI_API_INSTANCE_NAME=${AZURE_OPENAI_API_INSTANCE_NAME}
-      - AZURE_OPENAI_API_DEPLOYMENT_NAME=${AZURE_OPENAI_API_DEPLOYMENT_NAME}
-      - AZURE_OPENAI_API_VERSION=2023-05-15
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      # Search API
-      - SERPAPI_API_KEY=${SERPAPI_API_KEY}
-      # JWT Secrets
-      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
     env_file:
       - .env
     volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
       - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/miraai && bun run dev"
     networks:
       - augmentos-network
     depends_on:
-      - augmentos-cloud-base
-      - mongodb
+      - shared-packages
       - cloud
-
-  mongodb:
-    image: mongo:latest
+  live-translation:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "8017:80"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+    env_file:
+      - .env
     volumes:
-      - mongodb-data:/data/db
+      - ./:/app
+      - node_modules:/app/node_modules
+      - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/live-translation && bun run dev"
     networks:
       - augmentos-network
+    depends_on:
+      - shared-packages
+      - cloud
+  isaiah:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "42022:80"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+      - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/isaiah && bun run dev"
+    networks:
+      - augmentos-network
+    depends_on:
+      - shared-packages
+      - cloud
 
 networks:
   augmentos-network:
     driver: bridge
 
 volumes:
-  mongodb-data: 
+  node_modules:

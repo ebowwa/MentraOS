@@ -15,7 +15,8 @@
  */
 
 
-import { WebSocketServer, WebSocket } from 'ws';
+// import { WebSocketServer, WebSocket } from 'ws';
+import WebSocket from 'ws';
 import { Server } from 'http';
 import sessionService, { SessionService } from './session.service';
 import subscriptionService, { SubscriptionService } from './subscription.service';
@@ -24,9 +25,13 @@ import appService, { AppService } from './app.service';
 import { AppStateChange, AuthError, CloudToGlassesMessage, CloudToGlassesMessageType, CloudToTpaMessage, CloudToTpaMessageType, ConnectionAck, ConnectionError, ConnectionInit, DataStream, DisplayRequest, ExtendedStreamType, GlassesConnectionState, GlassesToCloudMessage, GlassesToCloudMessageType, HeadPosition, LocationUpdate, MicrophoneStateChange, StartApp, StopApp, StreamType, TpaConnectionAck, TpaConnectionError, TpaConnectionInit, TpaSubscriptionUpdate, TpaToCloudMessage, UserSession, Vad } from '@augmentos/sdk';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../logging/posthog.service';
-import { AUGMENTOS_AUTH_JWT_SECRET, systemApps } from '@augmentos/config';
+import { systemApps } from '@augmentos/config';
 import { User } from '../../models/user.model';
 import { Connection } from 'microsoft-cognitiveservices-speech-sdk';
+
+export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+
+const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 
 // Constants
 const TPA_SESSION_TIMEOUT_MS = 5000;  // 30 seconds
@@ -36,8 +41,8 @@ const TPA_SESSION_TIMEOUT_MS = 5000;  // 30 seconds
  * ⚡️🕸️🚀 Implementation of the WebSocket service.
  */
 export class WebSocketService {
-  private glassesWss: WebSocketServer;
-  private tpaWss: WebSocketServer;
+  private glassesWss: WebSocket.Server;
+  private tpaWss: WebSocket.Server;
   // private tpaConnections = new Map<string, TpaConnection>();
   private pingInterval: NodeJS.Timeout | null = null;
 
@@ -308,11 +313,11 @@ export class WebSocketService {
       const { url } = request;
 
       if (url === '/glasses-ws') {
-        this.glassesWss.handleUpgrade(request, socket, head, (ws) => {
+        this.glassesWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
           this.glassesWss.emit('connection', ws, request);
         });
       } else if (url === '/tpa-ws') {
-        this.tpaWss.handleUpgrade(request, socket, head, (ws) => {
+        this.tpaWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
           this.tpaWss.emit('connection', ws, request);
         });
       } else {
