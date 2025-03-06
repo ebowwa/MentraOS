@@ -155,7 +155,7 @@ import React
   //  }
   
   func onDisplayEvent(_ event: [String: Any]) {
-        print("displayEvent \(event)", event)
+    //    print("displayEvent \(event)", event)
     
     self.g1Manager.handleDisplayEvent(event)
   }

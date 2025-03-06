@@ -175,7 +175,6 @@ struct ViewState {
   override init() {
     super.init()
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
-    
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -685,7 +684,6 @@ extension ERG1Manager {
     
     if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
       let hexString = heartbeatData.map { String(format: "%02X", $0) }.joined()
-      //print("Hex String Send: \(hexString)")
       peripheral.writeValue(heartbeatData, for: txChar, type: .withoutResponse)
     }
   }
@@ -1468,7 +1466,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         }
       }
       // try to pair the missing arm if not found:
-      if leftPeripheral == nil && rightPeripheral == nil {
+      if leftPeripheral == nil || rightPeripheral == nil && !DEVICE_SEARCH_ID.isEmpty {
         RN_startScan()
       } else {
         RN_connectGlasses()
