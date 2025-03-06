@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import mongoose from 'mongoose';
-import { MONGO_URL } from '@augmentos/config';
+// import { MONGO_URL } from '@augmentos/config';
 
 dotenv.config();
-// const MONGO_URL: string | undefined = process.env.MONGO_URL;
+const MONGO_URL: string | undefined = process.env.MONGO_URL;
 // Connect to mongo db.
 export async function init(): Promise<void> {
   if (!MONGO_URL) throw "MONGO_URL is undefined";
