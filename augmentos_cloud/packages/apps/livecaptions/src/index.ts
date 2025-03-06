@@ -42,6 +42,9 @@ const transcriptDebouncers: Map<string, TranscriptDebouncer> = new Map();
 // Parse JSON bodies
 app.use(express.json());
 
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, './public')));
+
 // Track active sessions
 const activeSessions = new Map<string, WebSocket>();
 
@@ -54,7 +57,7 @@ function convertLineWidth(width: string | number, isHanzi: boolean): number {
       case 'very narrow': return 21;
       case 'narrow': return 30;
       case 'medium': return 38;
-      case 'wide': return 46;
+      case 'wide': return 44;
       case 'very wide': return 52;
       default: return 45;
     }

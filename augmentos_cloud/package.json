@@ -5,6 +5,7 @@
   ],
   "scripts": {
     "docker:dev": "ENV=development docker-compose -f docker-compose.dev.yml up",
+    "build": "concurrently \"cd packages/sdk && bun run build\" \"cd packages/config && bun run build\" \"cd packages/utils && bun run build\" \"cd packages/agents && bun run build\"  \"cd packages/apps/dashboard-manager && bun run build\" \"cd packages/apps/flash && bun run build\" \"cd packages/apps/livecaptions && bun run build\" \"cd packages/apps/miraai && bun run build\" \"cd packages/apps/notify && bun run build\" \"cd packages/cloud && bun run build\"",
 
     "docker:dev:detached": "ENV=development docker-compose -f docker-compose.dev.yml up -d",
     "docker:dev:stop": "docker-compose -f docker-compose.dev.yml down",

@@ -8,6 +8,9 @@ import { systemApps } from '@augmentos/config';
 import { User } from '../models/user.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+import appService from '../services/core/app.service';
+console.log('systemApps', systemApps);
+
 
 const router = express.Router();
 
@@ -44,14 +47,38 @@ router.get('/:tpaName', async (req, res) => {
     }
 
     // Read TPA configuration file.
-    const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json');
+    // const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json');
     let tpaConfig;
     try {
-      const rawData = fs.readFileSync(configFilePath, 'utf8');
-      tpaConfig = JSON.parse(rawData);
+      // const rawData = fs.readFileSync(configFilePath, 'utf8');
+      // tpaConfig = JSON.parse(rawData);
+      // find the app, then call it with it's port. i.e: http://localhost:8017/tpa_config.json
+      const _tpa = await appService.getApp(req.params.tpaName);
+      const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
+      
+      if (!host || !_tpa) {
+        throw new Error('Port / TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
+      }
+      const _tpaConfig = (await axios.get(`http://${host}/tpa_config.json`)).data; 
+      console.log('TPA Config:', _tpaConfig);
+      tpaConfig = _tpaConfig;
+
     } catch (err) {
-      console.error('Error reading TPA config file:', err);
-      return res.status(500).json({ error: 'Error reading TPA config file' });
+      const _tpa = await appService.getApp(req.params.tpaName);
+      if (_tpa) {
+        tpaConfig = {
+          name: _tpa.name || req.params.tpaName,
+          description: _tpa.description || '',
+          version: "1.0.0",
+          settings: []
+        }
+      } else {
+        console.error('Error reading TPA config file:', err);
+        return res.status(500).json({ error: 'Error reading TPA config file' });
+      }
+      // If the config file doesn't exist or is invalid, just return 
+      // console.error('Error reading TPA config file:', err);
+      // return res.status(500).json({ error: 'Error reading TPA config file' });
     }
 
     // Find or create the user.
@@ -159,12 +186,12 @@ router.post('/:tpaName', async (req, res) => {
     );
 
     if (matchingApp) {
-      const appEndpoint = `http://localhost:${matchingApp.port}/settings`;
+      const appEndpoint = `http://${matchingApp.host}/settings`;
       try {
         // Add userIdForSettings to the payload that the captions app expects
-        const response = await axios.post(appEndpoint, { 
-          userIdForSettings: userId, 
-          settings: updatedPayload 
+        const response = await axios.post(appEndpoint, {
+          userIdForSettings: userId,
+          settings: updatedPayload
         });
         console.log(`Called app endpoint at ${appEndpoint} with response:`, response.data);
       } catch (err) {

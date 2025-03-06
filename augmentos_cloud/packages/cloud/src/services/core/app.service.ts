@@ -12,13 +12,14 @@ import axios, { AxiosError } from 'axios';
 import { systemApps } from '@augmentos/config';
 import App from '../../models/app.model';
 
+const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging';
 
 /**
  * System TPAs that are always available.
  * These are core applications provided by the platform.
  * @Param developerId - leaving this undefined indicates a system app.
  */
-export const APP_STORE: AppI[] = [
+export const LOCAL_APPS: AppI[] = [
   {
     packageName: systemApps.captions.packageName,
     name: systemApps.captions.name,
@@ -64,11 +65,11 @@ export const APP_STORE: AppI[] = [
 
 // if we are not in production, add the dashboard to the app 
 if (process.env.NODE_ENV !== 'production') {
-  APP_STORE.push({
+  LOCAL_APPS.push({
     packageName: systemApps.flash.packageName,
     name: systemApps.flash.name,
+    description: systemApps.flash.description,
     tpaType: TpaType.BACKGROUND,
-    description: "⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️",
     webhookURL: `http://${systemApps.flash.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
   });
@@ -132,8 +133,11 @@ export class AppService {
    * @returns Promise resolving to array of all apps
    */
   async getAllApps(): Promise<AppI[]> {
-    const apps = await App.find() as AppI[];
-    const allApps = [...APP_STORE, ...apps];
+    let appstoreApps: AppI[] = [];
+    if (APPSTORE_ENABLED) {
+      appstoreApps = await App.find() as AppI[];
+    }
+    const allApps = [...LOCAL_APPS, ...appstoreApps];
     return allApps;
   }
 
@@ -152,12 +156,15 @@ export class AppService {
    */
   async getApp(packageName: string): Promise<AppI | undefined> {
     // return [...SYSTEM_TPAS, ...APP_STORE].find(app => app.packageName === packageName);
-    let app: AppI | undefined = [...SYSTEM_TPAS, ...APP_STORE].find(app => app.packageName === packageName);
+    let app: AppI | undefined = [...SYSTEM_TPAS, ...LOCAL_APPS].find(app => app.packageName === packageName);
     // if we can't find the app, try checking the appstore via the App Mongodb model.
-    if (!app) {
-      app = await App.findOne({
-        packageName: packageName
-      }) as AppI;
+
+    if (APPSTORE_ENABLED) {
+      if (!app) {
+        app = await App.findOne({
+          packageName: packageName
+        }) as AppI;
+      }
     }
 
     return app;

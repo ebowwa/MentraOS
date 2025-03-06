@@ -391,8 +391,8 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
 
         // Set up backend comms
         this.httpServerComms = new HTTPServerComms();
-        if(authHandler.getCoreToken() != null)
-            ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
+        //if(authHandler.getCoreToken() != null)
+        //    ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
         initializeServerCommsCallbacks();
 
         httpServerComms.getApps(new Callback() {
@@ -861,9 +861,8 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         ServerComms.getInstance().setServerCommsCallback(new ServerCommsCallback() {
             @Override
             public void onConnectionAck() {
-                locationSystem.sendLocationToServer();
+                new Handler(Looper.getMainLooper()).postDelayed(() -> locationSystem.sendLocationToServer(), 15000);
             }
-
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
                 cachedThirdPartyAppList = appList;

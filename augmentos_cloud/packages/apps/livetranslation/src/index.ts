@@ -46,6 +46,9 @@ const transcriptDebouncers: Map<string, TranscriptDebouncer> = new Map();
 // Parse JSON bodies
 app.use(express.json());
 
+// Serve static files from the public directory
+app.use(express.static(path.join(__dirname, './public')));
+
 // Track active sessions (WebSocket connections)
 const activeSessions = new Map<string, WebSocket>();
 
@@ -55,12 +58,14 @@ const activeSessions = new Map<string, WebSocket>();
 function convertLineWidth(width: string | number, isHanzi: boolean = false): number {
   if (typeof width === 'number') return width;
 
+  console.log('Line width:', isHanzi);
+
   if (!isHanzi) {
   switch (width.toLowerCase()) {
       case 'very narrow': return 21;
       case 'narrow': return 30;
       case 'medium': return 38;
-      case 'wide': return 46;
+      case 'wide': return 44;
       case 'very wide': return 52;
       default: return 45;
     }
@@ -96,14 +101,14 @@ async function fetchAndApplySettings(sessionId: string, userId: string) {
     const numberOfLines = numberOfLinesSetting ? Number(numberOfLinesSetting.value) : 3;
     
     // Determine languages: default source is en-US; default target can be set (here defaulting to es-ES)
-    const sourceLang = transcribeLanguageSetting?.value ? languageToLocale(transcribeLanguageSetting.value) : 'en-US';
-    const targetLang = translateLanguageSetting?.value ? languageToLocale(translateLanguageSetting.value) : 'es-ES';
+    const sourceLang = transcribeLanguageSetting?.value ? languageToLocale(transcribeLanguageSetting.value) : 'zh-CN';
+    const targetLang = translateLanguageSetting?.value ? languageToLocale(translateLanguageSetting.value) : 'en-US';
     
     usertranscribeLanguageSettings.set(userId, sourceLang);
     userTranslateLanguageSettings.set(userId, targetLang);
     console.log(`Settings for user ${userId}: source=${sourceLang}, target=${targetLang}`);
     
-    const isChineseLanguage = targetLang.startsWith('zh-') || targetLang.startsWith('ja-');
+    const isChineseLanguage = targetLang.toLowerCase().startsWith('zh-') || targetLang.toLowerCase().startsWith('ja-');
 
     const lineWidth = lineWidthSetting ? convertLineWidth(lineWidthSetting.value, isChineseLanguage) : 30;
     const transcriptProcessor = new TranscriptProcessor(lineWidth, numberOfLines);
@@ -118,9 +123,9 @@ async function fetchAndApplySettings(sessionId: string, userId: string) {
     // Fallback defaults
     const transcriptProcessor = new TranscriptProcessor(30, 3);
     userTranscriptProcessors.set(userId, transcriptProcessor);
-    usertranscribeLanguageSettings.set(userId, 'en-US');
-    userTranslateLanguageSettings.set(userId, 'es-ES');
-    return { sourceLang: 'en-US', targetLang: 'es-ES' };
+    usertranscribeLanguageSettings.set(userId, 'zh-CN');
+    userTranslateLanguageSettings.set(userId, 'en-US');
+    return { sourceLang: 'zh-CN', targetLang: 'en-US' };
   }
 }
 
@@ -132,8 +137,8 @@ function updateSubscriptionForSession(sessionId: string, userId: string) {
   const ws = activeSessions.get(sessionId);
   if (!ws || ws.readyState !== WebSocket.OPEN) return;
 
-  const source = usertranscribeLanguageSettings.get(userId) || 'en-US';
-  const target = userTranslateLanguageSettings.get(userId) || 'es-ES';
+  const source = usertranscribeLanguageSettings.get(userId) || 'zh-CN';
+  const target = userTranslateLanguageSettings.get(userId) || 'en-US';
   const translationStream = createTranslationStream(source, target);
   console.log(`Updating subscription for session ${sessionId} to translation stream: ${translationStream}`);
 
@@ -161,8 +166,8 @@ function handleTranslation(sessionId: string, userId: string, ws: WebSocket, tra
   const isFinal = translationData.isFinal;
   const newText = translationData.text;
   // For translation, we might have both source and target languages in the data.
-  const sourceLanguage = translationData.language || 'en-US';
-  const targetLanguage = translationData.targetLanguage || 'es-ES';
+  const sourceLanguage = translationData.language || 'zh-CN';
+  const targetLanguage = translationData.targetLanguage || 'en-US';
 
   console.log(`[Session ${sessionId}]: Received translation (${sourceLanguage}->${targetLanguage})`);
 
@@ -333,8 +338,8 @@ function handleMessage(sessionId: string, userId: string, ws: WebSocket, message
   switch (message.type) {
     case CloudToTpaMessageType.CONNECTION_ACK: {
       // Connection acknowledged; update subscription for translation.
-      const source = usertranscribeLanguageSettings.get(userId) || 'en-US';
-      const target = userTranslateLanguageSettings.get(userId) || 'es-ES';
+      const source = usertranscribeLanguageSettings.get(userId) || 'zh-CN';
+      const target = userTranslateLanguageSettings.get(userId) || 'en-US';
       const translationStream = createTranslationStream(source, target);
       const subMessage: TpaSubscriptionUpdate = {
         type: TpaToCloudMessageType.SUBSCRIPTION_UPDATE,
@@ -370,24 +375,24 @@ app.post('/settings', async (req, res) => {
     const transcribeLanguageSetting = settings.find((s: any) => s.key === 'transcribe_language');
     const translateLanguageSetting = settings.find((s: any) => s.key === 'translate_language');
 
-    const isChineseLanguage = translateLanguageSetting?.value?.startsWith('zh-') || translateLanguageSetting?.value?.startsWith('ja-');
-    const lineWidth = lineWidthSetting ? convertLineWidth(lineWidthSetting.value, isChineseLanguage) : 30;
     let numberOfLines = numberOfLinesSetting ? Number(numberOfLinesSetting.value) : 3;
     if (isNaN(numberOfLines) || numberOfLines < 1) numberOfLines = 3;
     
-    const sourceLanguage = transcribeLanguageSetting?.value ? languageToLocale(transcribeLanguageSetting.value) : 'en-US';
-    const targetLanguage = translateLanguageSetting?.value ? languageToLocale(translateLanguageSetting.value) : 'es-ES';
-
+    const sourceLanguage = transcribeLanguageSetting?.value ? languageToLocale(transcribeLanguageSetting.value) : 'zh-CN';
+    const targetLanguage = translateLanguageSetting?.value ? languageToLocale(translateLanguageSetting.value) : 'en-US';
+    
     const prevSource = usertranscribeLanguageSettings.get(userIdForSettings);
     const prevTarget = userTranslateLanguageSettings.get(userIdForSettings);
     const languageChanged = sourceLanguage !== prevSource || targetLanguage !== prevTarget;
-
+    
+    const isChineseLanguage = targetLanguage.toLowerCase().startsWith('zh-') || targetLanguage.toLowerCase().startsWith('ja-');
+    const lineWidth = lineWidthSetting ? convertLineWidth(lineWidthSetting.value, isChineseLanguage) : 30;
     if (languageChanged) {
       console.log(`Language settings changed for user ${userIdForSettings}: source ${prevSource} -> ${sourceLanguage}, target ${prevTarget} -> ${targetLanguage}`);
       usertranscribeLanguageSettings.set(userIdForSettings, sourceLanguage);
       userTranslateLanguageSettings.set(userIdForSettings, targetLanguage);
     }
-
+    
     console.log(`Updating settings for user ${userIdForSettings}: lineWidth=${lineWidth}, numberOfLines=${numberOfLines}, source=${sourceLanguage}, target=${targetLanguage}`);
     
     // Determine what to do with the transcript based on language change
