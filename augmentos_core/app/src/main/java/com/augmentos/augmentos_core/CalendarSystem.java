@@ -93,7 +93,7 @@ public class CalendarSystem {
 
         if (calendarItem == null) return;
 
-        ServerComms.getInstance().sendCalendarUpdate(calendarItem);
+        ServerComms.getInstance().sendCalendarEvent(calendarItem);
     }
 
     /**

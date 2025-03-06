@@ -29,7 +29,7 @@ const API_KEY = 'test_key'; // In production, this would be securely stored
 const userTranscriptProcessors: Map<string, TranscriptProcessor> = new Map();
 const userSessions = new Map<string, Set<string>>(); // userId -> Set<sessionId>
 const userLanguageSettings: Map<string, string> = new Map(); // userId -> language code
-const MAX_FINAL_TRANSCRIPTS = 3; // Hardcoded to 3 final transcripts
+const MAX_FINAL_TRANSCRIPTS = 5; // Hardcoded to 3 final transcripts
 
 // For debouncing transcripts per session
 interface TranscriptDebouncer {
