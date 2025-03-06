@@ -26,6 +26,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecording
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
 import com.augmentos.augmentos_core.smarterglassesmanager.comms.MessageTypes;
+import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.special.VirtualWearable;
 import com.augmentos.augmentoslib.events.BulletPointListViewRequestEvent;
 import com.augmentos.augmentoslib.events.CenteredTextViewRequestEvent;
 import com.augmentos.augmentoslib.events.DoubleTextWallViewRequestEvent;
@@ -420,7 +421,8 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
                         new VuzixShield(),
                         new InmoAirOne(),
                         new TCLRayNeoXTwo(),
-                        new AudioWearable()
+                        new AudioWearable(),
+                        new VirtualWearable()
                 )
         );
 

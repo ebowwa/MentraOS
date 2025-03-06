@@ -89,6 +89,14 @@ dependencies {
     implementation project(':react-native-ble-manager')
     implementation project(':react-native-linear-gradient')
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
+    
+    // Add react-native-camera
+    //implementation project(':react-native-camera')
+    implementation(project(':react-native-camera')) {
+        attributes {
+            attribute(Attribute.of('react-native-camera', String), 'general') // Or 'mlkit'
+        }
+    }
 
     // Add react-native-svg
     implementation project(':react-native-svg')  // Add this line
