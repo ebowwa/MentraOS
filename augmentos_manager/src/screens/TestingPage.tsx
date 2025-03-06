@@ -102,6 +102,19 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
     }, 3000);
   };
 
+  const startLiveCaptions = async () => {
+    try {
+      await AOSModule.sendCommand(JSON.stringify({
+        command: "start_app",
+        params: {
+          target: "com.augmentos.livecaptions",
+        }
+      }));
+    } catch (error) {
+      console.error('startLiveCaptions() error:', error);
+    }
+  };
+
   const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
     try {
       await AOSModule.setBrightness(value, autoBrightness);
@@ -123,7 +136,8 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const connectServer = async () => {
     try {
-      await AOSModule.connectServer("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJqb2VAbWFtYXMuaG91c2UiLCJpYXQiOjE3Mzk2NjY4MTB9.mJkSEyP7v_jHlzRjc-HzjhCjDopG12aIlOeYxo-kp0M");
+      await AOSModule.setCoreToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJqb2VAbWFtYXMuaG91c2UiLCJpYXQiOjE3Mzk2NjY4MTB9.mJkSEyP7v_jHlzRjc-HzjhCjDopG12aIlOeYxo-kp0M");
+      await AOSModule.connectServer(" ");
     } catch (error) {
       console.error('connectServer() error:', error);
     }
@@ -204,11 +218,14 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
           {/* buttons to test ERG1Module */}
           <AnimatedSection>
-            <Button title="Start Scan" onPress={startScan} />
-            {/* <Button title="Connect Glasses" onPress={connectGlasses} /> */}
-            <Button title="Send Text" onPress={sendText} />
-            <Button title={`Toggle Mic ${micEnabled ? "Off" : "On"}`} onPress={() => toggleMicEnabled(!micEnabled)} />
-            <Button title="Connect Server" onPress={connectServer} />
+            <View style={{ flexDirection: 'column', gap: 25 }}>
+              <Button title="Start Scan" onPress={startScan} />
+              {/* <Button title="Connect Glasses" onPress={connectGlasses} /> */}
+              <Button title="Send Text" onPress={sendText} />
+              <Button title={`Toggle Mic ${micEnabled ? "Off" : "On"}`} onPress={() => toggleMicEnabled(!micEnabled)} />
+              <Button title="Connect Server" onPress={connectServer} />
+              <Button title="Start Live Captions" onPress={startLiveCaptions} />
+            </View>
 
             <View style={currentThemeStyles.brightnessContainer}>
               <View style={currentThemeStyles.brightnessRow}>

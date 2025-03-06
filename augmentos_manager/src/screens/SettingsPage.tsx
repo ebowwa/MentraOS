@@ -57,11 +57,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled
   );
-  const [brightness, setBrightness] = useState<number|null>(null);
+  const [brightness, setBrightness] = useState<number | null>(null);
 
   // -- HEAD UP ANGLE STATES --
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false);
-  const [headUpAngle, setHeadUpAngle] = useState<number|null>(null); // default or loaded
+  const [headUpAngle, setHeadUpAngle] = useState<number | null>(null); // default or loaded
 
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
@@ -100,10 +100,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     }
 
     if (newBrightness == null) {
-        return;
+      return;
     }
 
-    if (status.glasses_info.brightness === '-') {return;} // or handle accordingly
+    if (status.glasses_info.brightness === '-') { return; } // or handle accordingly
     await BluetoothService.getInstance().setGlassesBrightnessMode(newBrightness, false);
     setBrightness(newBrightness);
   };
@@ -114,7 +114,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       return;
     }
     if (newHeadUpAngle == null) {
-        return;
+      return;
     }
 
     setHeadUpAngleComponentVisible(false);
@@ -145,8 +145,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       // Handle sign-out error
     } else {
       console.log('Sign-out successful');
-      ManagerCoreCommsService.stopService();
-      BluetoothService.resetInstance();
+      try {
+        ManagerCoreCommsService.stopService();
+        BluetoothService.resetInstance();
+      } catch (error) {
+        console.error(error);
+      }
       navigation.reset({
         index: 0,
         routes: [{ name: 'SplashScreen' }],
@@ -203,27 +207,27 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     status.glasses_info?.brightness === '-' ||
     !status.glasses_info.model_name.toLowerCase().includes('even');
 
- // Fixed slider props to avoid warning
- const sliderProps = {
-  disabled: !status.glasses_info?.model_name ||
-           status.glasses_info?.brightness === '-' ||
-           !status.glasses_info.model_name.toLowerCase().includes('even'),
-  style: styles.slider,
-  minimumValue: 0,
-  maximumValue: 100,
-  step: 1,
-  onSlidingComplete: (value: number) => changeBrightness(value),
-  value: brightness ?? 50,
-  minimumTrackTintColor: styles.minimumTrackTintColor.color,
-  maximumTrackTintColor: isDarkTheme 
-    ? styles.maximumTrackTintColorDark.color 
-    : styles.maximumTrackTintColorLight.color,
-  thumbTintColor: styles.thumbTintColor.color,
-  // Using inline objects instead of defaultProps
-  thumbTouchSize: { width: 40, height: 40 },
-  trackStyle: { height: 5 },
-  thumbStyle: { height: 20, width: 20 }
-};
+  // Fixed slider props to avoid warning
+  const sliderProps = {
+    disabled: !status.glasses_info?.model_name ||
+      status.glasses_info?.brightness === '-' ||
+      !status.glasses_info.model_name.toLowerCase().includes('even'),
+    style: styles.slider,
+    minimumValue: 0,
+    maximumValue: 100,
+    step: 1,
+    onSlidingComplete: (value: number) => changeBrightness(value),
+    value: brightness ?? 50,
+    minimumTrackTintColor: styles.minimumTrackTintColor.color,
+    maximumTrackTintColor: isDarkTheme
+      ? styles.maximumTrackTintColorDark.color
+      : styles.maximumTrackTintColorLight.color,
+    thumbTintColor: styles.thumbTintColor.color,
+    // Using inline objects instead of defaultProps
+    thumbTouchSize: { width: 40, height: 40 },
+    trackStyle: { height: 5 },
+    thumbStyle: { height: 20, width: 20 }
+  };
 
   return (
     <SafeAreaView
@@ -326,13 +330,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
                 ]}
               >
-                {`Show a summary of your phone notifications when you ${
-                  status.glasses_info?.model_name
+                {`Show a summary of your phone notifications when you ${status.glasses_info?.model_name
                     .toLowerCase()
                     .includes('even')
                     ? 'look up'
                     : 'tap your smart glasses'
-                }.`}
+                  }.`}
               </Text>
             )}
           </View>
@@ -371,15 +374,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           />
         </TouchableOpacity>
 
-               {/* Brightness Slider */}
-               <View style={styles.settingItem}>
+        {/* Brightness Slider */}
+        <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
                 styles.label,
                 isDarkTheme ? styles.lightText : styles.darkText,
                 (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
+                styles.disabledItem,
               ]}
             >
               Brightness
@@ -389,7 +392,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 styles.value,
                 isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
                 (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
+                styles.disabledItem,
               ]}
             >
               Adjust the brightness level of your smart glasses.
@@ -412,7 +415,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 styles.label,
                 styles.redText,
                 (!status.core_info.puck_connected || status.core_info.default_wearable === '') &&
-                  styles.disabledItem,
+                styles.disabledItem,
               ]}
             >
               Forget Glasses

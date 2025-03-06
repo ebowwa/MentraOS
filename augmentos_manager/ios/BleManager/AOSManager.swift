@@ -36,8 +36,12 @@ import React
   
   // MARK: - Public Methods (for React Native)
   
-  @objc func connectToServer(_ coreToken: String) {
-    serverComms.connectWebSocket(coreToken: coreToken)
+  @objc func connectToServer() {
+    serverComms.connectWebSocket()
+  }
+  
+  @objc func setCoreToken(_ coreToken: String) {
+    serverComms.setAuthCredentials("", coreToken)
   }
   
   @objc func disconnectFromServer() {
@@ -53,7 +57,7 @@ import React
   }
   
   @objc func sendCommandToCore(_ command: String) {
-//    
+    //
   }
   
   // MARK: - Voice Data Handling
@@ -64,8 +68,8 @@ import React
       
       // Ensure we have enough data to process
       guard data.count > 2 else {
-          print("Received invalid PCM data size: \(data.count)")
-          return
+        print("Received invalid PCM data size: \(data.count)")
+        return
       }
       
       // Skip the first 2 bytes which are command bytes
@@ -73,32 +77,36 @@ import React
       
       // Ensure we have valid PCM data
       guard effectiveData.count > 0 else {
-          print("No PCM data after removing command bytes")
-          return
+        print("No PCM data after removing command bytes")
+        return
       }
       
-      let pcmConverter = PcmConverter()
-      let pcmData = pcmConverter.decode(effectiveData)
+
       
       // send LC3 data over the websocket:
       self.serverComms.sendAudioChunk(effectiveData)
+      print("got audio data of size: \(effectiveData.count)")
       
-      if pcmData.count > 0 {
-          print("Got PCM data of size: \(pcmData.count)")
-      } else {
-          print("PCM conversion resulted in empty data")
-      }
+//      TODO: ios PCM / VAD
+//      let pcmConverter = PcmConverter()
+//      let pcmData = pcmConverter.decode(effectiveData)
+      
+//      if pcmData.count > 0 {
+//        print("Got PCM data of size: \(pcmData.count)")
+//      } else {
+//        print("PCM conversion resulted in empty data")
+//      }
     }
     .store(in: &cancellables)
     
-//    // Set up speech recognition callback
-//    serverComms.setSpeechRecCallback { [weak self] speechJson in
-//      // Handle speech recognition results if needed
-//      print("Received speech recognition result: \(speechJson)")
-//      
-//      // Forward to React Native if needed
-//      // self?.onSpeechResult?(["result": speechJson])
-//    }
+    //    // Set up speech recognition callback
+    //    serverComms.setSpeechRecCallback { [weak self] speechJson in
+    //      // Handle speech recognition results if needed
+    //      print("Received speech recognition result: \(speechJson)")
+    //
+    //      // Forward to React Native if needed
+    //      // self?.onSpeechResult?(["result": speechJson])
+    //    }
   }
   
   // MARK: - ServerCommsCallback Implementation
@@ -125,76 +133,6 @@ import React
     onAppStateChange?(["apps": appDicts])
   }
   
-  
-//  func parseDisplayEventMessage(msg: [String: Any]) -> (() -> Void) {
-//      guard let layout = msg["layout"] as? [String: Any],
-//            let layoutType = layout["layoutType"] as? String else {
-//          print("ISSUE PARSING LAYOUT: Missing layout or layoutType")
-//          return {}
-//      }
-//      
-//      switch layoutType {
-//      case "reference_card":
-//          guard let title = layout["title"] as? String,
-//                let text = layout["text"] as? String else {
-//              print("ISSUE PARSING REFERENCE CARD: Missing title or text")
-//              return {}
-//          }
-//          return { [weak self] in
-////            self?.g1Manager.sendReferenceCard(title: title, text: text)
-//          }
-//          
-//      case "text_wall", "text_line":
-//          guard let text = layout["text"] as? String else {
-//              print("ISSUE PARSING TEXT WALL: Missing text")
-//              return {}
-//          }
-//          return { [weak self] in
-//              self?.g1Manager.RN_sendTextWall(text)
-//          }
-//          
-//      case "double_text_wall":
-//          guard let topText = layout["topText"] as? String,
-//                let bottomText = layout["bottomText"] as? String else {
-//              print("ISSUE PARSING DOUBLE TEXT WALL: Missing topText or bottomText")
-//              return {}
-//          }
-//          return { [weak self] in
-////              self?.g1Manager.sendDoubleTextWall(topText: topText, bottomText: bottomText)
-//          }
-//          
-//      case "text_rows":
-//          guard let rowsArray = layout["text"] as? [String] else {
-//              print("ISSUE PARSING TEXT ROWS: Missing text array")
-//              return {}
-//          }
-//          return { [weak self] in
-////              self?.g1Manager.sendRowsCard(strings: rowsArray)
-//          }
-//          
-//      case "bitmap_view":
-//          guard let base64Data = layout["data"] as? String,
-//                let decodedData = Data(base64Encoded: base64Data) else {
-//              print("ISSUE PARSING BITMAP VIEW: Missing or invalid data")
-//              return {}
-//          }
-//          
-//          // Create UIImage from data
-//          guard let image = UIImage(data: decodedData) else {
-//              print("ISSUE PARSING BITMAP VIEW: Could not create image from data")
-//              return {}
-//          }
-//          
-//          return { [weak self] in
-////              self?.smartGlassesService.sendBitmap(image: image)
-//          }
-//          
-//      default:
-//          print("ISSUE PARSING LAYOUT: Unknown layoutType \(layoutType)")
-//          return {}
-//      }
-//  }
-  
   func onConnectionError(_ error: String) {
     onConnectionStatusChange?(["status": "error", "message": error])
   }
@@ -207,17 +145,17 @@ import React
     // Handle microphone state change if needed
   }
   
-//  func onDashboardDisplayEvent(_ event: [String: Any]) {
-//    print("got dashboard display event")
-////    onDisplayEvent?(["event": event, "type": "dashboard"])
-//    print(event)
-////    Task {
-////      await self.g1Manager.sendText(text: "\(event)")
-////    }
-//  }
+  //  func onDashboardDisplayEvent(_ event: [String: Any]) {
+  //    print("got dashboard display event")
+  ////    onDisplayEvent?(["event": event, "type": "dashboard"])
+  //    print(event)
+  ////    Task {
+  ////      await self.g1Manager.sendText(text: "\(event)")
+  ////    }
+  //  }
   
   func onDisplayEvent(_ event: [String: Any]) {
-    print("displayEvent \(event)", event)
+        print("displayEvent \(event)", event)
     
     self.g1Manager.handleDisplayEvent(event)
   }
@@ -245,6 +183,113 @@ import React
     
     onConnectionStatusChange?(["status": statusString])
   }
+  
+  
+  
+  @objc func handleCommand(_ command: String) {
+    print("Received command: \(command)")
+    
+    // Define command types enum
+    enum CommandType: String {
+      case setAuthSecretKey = "set_auth_secret_key"
+      case requestStatus = "request_status"
+      case connectWearable = "connect_wearable"
+      case connectDefaultWearable = "connect_default_wearable"
+      case startApp = "start_app"
+      case stopApp = "stop_app"
+      case unknown
+    }
+    
+    // Try to parse JSON
+    guard let data = command.data(using: .utf8) else {
+      print("Could not convert command string to data")
+      return
+    }
+    
+    do {
+      if let jsonDict = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] {
+        // Extract command type
+        guard let commandString = jsonDict["command"] as? String else {
+          print("Invalid command format: missing 'command' field")
+          return
+        }
+        
+        let commandType = CommandType(rawValue: commandString) ?? .unknown
+        let params = jsonDict["params"] as? [String: Any]
+        
+        // Process based on command type
+        switch commandType {
+        case .setAuthSecretKey:
+          if let params = params,
+             let userId = params["userId"] as? String,
+             let authSecretKey = params["authSecretKey"] as? String {
+            handleSetAuthSecretKey(userId: userId, authSecretKey: authSecretKey)
+          } else {
+            print("Invalid params for set_auth_secret_key")
+          }
+          
+        case .requestStatus:
+          handleRequestStatus()
+          
+        case .connectWearable:
+          if let params = params, let target = params["target"] as? String {
+            handleConnectWearable(deviceId: target)
+          } else {
+            print("Invalid params for connect_wearable")
+          }
+          
+        case .connectDefaultWearable:
+          handleConnectDefaultWearable()
+          
+        case .startApp:
+          if let params = params, let target = params["target"] as? String {
+            print("Starting app: \(target)")
+            serverComms.startApp(packageName: target)
+          } else {
+            print("Invalid params for start_app")
+          }
+          
+        case .stopApp:
+          if let params = params, let target = params["target"] as? String {
+            print("Stopping app: \(target)")
+            serverComms.stopApp(packageName: target)
+          } else {
+            print("Invalid params for stop_app")
+          }
+          
+        case .unknown:
+          print("Unknown command type: \(commandString)")
+        }
+      }
+    } catch {
+      print("Error parsing JSON command: \(error.localizedDescription)")
+    }
+  }
+  
+  // Handler methods for each command type
+  private func handleSetAuthSecretKey(userId: String, authSecretKey: String) {
+    print("Setting auth secret key for user: \(userId)")
+    serverComms.setAuthCredentials(userId, authSecretKey)
+  }
+  
+  private func handleRequestStatus() {
+    print("Requesting status")
+    // TODO: Implement status request logic
+    // Example: let status = g1Manager.getStatus(); serverComms.sendStatusUpdate(status)
+  }
+  
+  private func handleConnectWearable(deviceId: String) {
+    print("Connecting to wearable: \(deviceId)")
+    // TODO: Implement connection logic
+    // Example: g1Manager.connectToDevice(deviceId)
+  }
+  
+  private func handleConnectDefaultWearable() {
+    print("Connecting to default wearable")
+    // TODO: Implement default connection logic
+    // Example: g1Manager.connectToDefaultDevice()
+  }
+  
   
   // MARK: - Cleanup
   

@@ -137,13 +137,12 @@ RCT_EXPORT_METHOD(
 
 RCT_EXPORT_METHOD(
   connectServer:
-  (NSString *)token
   resolver:(RCTPromiseResolveBlock)resolve
   rejecter:(RCTPromiseRejectBlock)reject
 )
 {
   @try {
-    [self.aosManager connectToServer:token];
+    [self.aosManager connectToServer];
     resolve(@[@"Connected to server!"]);
   }
   @catch(NSException *exception) {
@@ -152,14 +151,30 @@ RCT_EXPORT_METHOD(
 }
 
 RCT_EXPORT_METHOD(
-  command:
+  setCoreToken:
+  (NSString *)token
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    [self.aosManager setCoreToken:token];
+    resolve(@[@"Set core token!"]);
+  }
+  @catch(NSException *exception) {
+    reject(@"0", exception.description, nil);
+  }
+}
+
+RCT_EXPORT_METHOD(
+  sendCommand:
   (NSString *)command
   resolver:(RCTPromiseResolveBlock)resolve
   rejecter:(RCTPromiseRejectBlock)reject
 )
 {
   @try {
-//    [self.aosManager sendCommandToCore:command];
+    [self.aosManager handleCommand:command];
     resolve(@[@"Command sent!"]);
   }
   @catch(NSException *exception) {

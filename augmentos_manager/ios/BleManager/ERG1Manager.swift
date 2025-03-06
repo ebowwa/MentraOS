@@ -12,35 +12,35 @@ import UIKit
 import React
 
 extension Data {
-    func chunked(into size: Int) -> [Data] {
-        var chunks = [Data]()
-        var index = 0
-        while index < count {
-            let chunkSize = Swift.min(size, count - index)
-            let chunk = subdata(in: index..<(index + chunkSize))
-            chunks.append(chunk)
-            index += chunkSize
-        }
-        return chunks
+  func chunked(into size: Int) -> [Data] {
+    var chunks = [Data]()
+    var index = 0
+    while index < count {
+      let chunkSize = Swift.min(size, count - index)
+      let chunk = subdata(in: index..<(index + chunkSize))
+      chunks.append(chunk)
+      index += chunkSize
     }
-    
-    func hexEncodedString() -> String {
-        return map { String(format: "%02x", $0) }.joined()
-    }
+    return chunks
+  }
+  
+  func hexEncodedString() -> String {
+    return map { String(format: "%02x", $0) }.joined()
+  }
 }
 
 struct SendRequest {
-    let data: Data
-    let onlyLeft: Bool
-    let onlyRight: Bool
-    var waitTime: Int
-    
-    init(data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
-        self.data = data
-        self.onlyLeft = onlyLeft
-        self.onlyRight = onlyRight
-        self.waitTime = waitTime
-    }
+  let data: Data
+  let onlyLeft: Bool
+  let onlyRight: Bool
+  var waitTime: Int
+  
+  init(data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
+    self.data = data
+    self.onlyLeft = onlyLeft
+    self.onlyRight = onlyRight
+    self.waitTime = waitTime
+  }
 }
 
 struct SendRequest2 {
@@ -50,10 +50,10 @@ struct SendRequest2 {
   var waitTime: Int
   
   init(data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
-      self.data = data
-      self.onlyLeft = onlyLeft
-      self.onlyRight = onlyRight
-      self.waitTime = waitTime
+    self.data = data
+    self.onlyLeft = onlyLeft
+    self.onlyRight = onlyRight
+    self.waitTime = waitTime
   }
 }
 
@@ -64,32 +64,32 @@ struct AppInfo {
 }
 
 enum GlassesError: Error {
-    case missingGlasses(String)
+  case missingGlasses(String)
 }
 
 
 class BooleanWaiter {
-    private var flag = true
-    private let semaphore = DispatchSemaphore(value: 0)
-    
-    func waitWhileTrue(_ timeout: DispatchTime) -> Bool {
-        guard flag else { return true }
-        let result = semaphore.wait(timeout: timeout)
-        return result == .success
-    }
-    
-    func setTrue() {
-        flag = true
-    }
-    
-    func setFalse() {
-        flag = false
-        semaphore.signal()
-    }
-    
-    var isTrue: Bool {
-        return flag
-    }
+  private var flag = true
+  private let semaphore = DispatchSemaphore(value: 0)
+  
+  func waitWhileTrue(_ timeout: DispatchTime) -> Bool {
+    guard flag else { return true }
+    let result = semaphore.wait(timeout: timeout)
+    return result == .success
+  }
+  
+  func setTrue() {
+    flag = true
+  }
+  
+  func setFalse() {
+    flag = false
+    semaphore.signal()
+  }
+  
+  var isTrue: Bool {
+    return flag
+  }
 }
 
 struct ViewState {
@@ -103,7 +103,7 @@ struct ViewState {
   
   // todo: we probably don't need this
   @objc static func requiresMainQueueSetup() -> Bool { return true }
-    
+  
   
   @Published public var g1Ready: Bool = false
   @Published public var voiceData: Data = Data()
@@ -115,9 +115,9 @@ struct ViewState {
   ]
   
   enum AiMode: String {
-      case AI_REQUESTED
-      case AI_MIC_ON
-      case AI_IDLE
+    case AI_REQUESTED
+    case AI_MIC_ON
+    case AI_IDLE
   }
   
   let UART_SERVICE_UUID = CBUUID(string: "6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
@@ -127,13 +127,13 @@ struct ViewState {
   var sendQueue: [Array<SendRequest>] = []
   var isWorkerRunning = false
   let sendQueueLock = NSLock()
-
+  
   // Waiters for synchronization
   let leftWaiter = BooleanWaiter()
   let rightWaiter = BooleanWaiter()
   let leftServicesWaiter = BooleanWaiter()
   let rightServicesWaiter = BooleanWaiter()
-
+  
   // Constants
   var DEVICE_SEARCH_ID = "74_"
   let DELAY_BETWEEN_CHUNKS_SEND: UInt64 = 16_000_000 // 16ms
@@ -146,13 +146,13 @@ struct ViewState {
   public static let _bluetoothQueue = DispatchQueue(label: "BluetoothG1", qos: .userInitiated)
   
   private var aiMode: AiMode = .AI_IDLE {
-      didSet {
-          if aiMode == .AI_MIC_ON {
-              aiListening = true
-          } else {
-              aiListening = false
-          }
+    didSet {
+      if aiMode == .AI_MIC_ON {
+        aiListening = true
+      } else {
+        aiListening = false
       }
+    }
   }
   
   private var responseModel:AiResponseToG1Model?
@@ -168,13 +168,14 @@ struct ViewState {
   var lastConnectionTimestamp: Date = Date.distantPast
   private var leftInitialized: Bool = false
   private var rightInitialized: Bool = false
+  private var isHeadUp = false
   
   private var aiTriggerTimeoutTimer: Timer?
   
   override init() {
     super.init()
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
-
+    
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -185,27 +186,27 @@ struct ViewState {
   
   // this scans for new (un-paired) glasses to connect to:
   @objc func RN_startScan() {
-      guard centralManager.state == .poweredOn else {
-          print("Bluetooth is not powered on.")
-          return
-      }
-      centralManager.scanForPeripherals(withServices: nil, options: nil)
-      print("Scanning for devices...")
+    guard centralManager.state == .poweredOn else {
+      print("Bluetooth is not powered on.")
+      return
+    }
+    centralManager.scanForPeripherals(withServices: nil, options: nil)
+    print("Scanning for devices...")
   }
   
   // connect to glasses we've already paired with:
   @objc public func RN_connectGlasses() -> Bool {
-      if let leftPeripheral = leftPeripheral {
-          centralManager.connect(leftPeripheral, options: nil)
-      }
-      
-      if let rightPeripheral = rightPeripheral {
-          centralManager.connect(rightPeripheral, options: nil)
-      }
-      // just return if we don't have both a left and right arm:
-      guard let leftPeripheral, let rightPeripheral else {
-        return false;
-      }
+    if let leftPeripheral = leftPeripheral {
+      centralManager.connect(leftPeripheral, options: nil)
+    }
+    
+    if let rightPeripheral = rightPeripheral {
+      centralManager.connect(rightPeripheral, options: nil)
+    }
+    // just return if we don't have both a left and right arm:
+    guard let leftPeripheral, let rightPeripheral else {
+      return false;
+    }
     print("Connected to both glasses, starting heartbeat timer and turning off silent mode...");
     startHeartbeatTimer();
     Task {
@@ -222,33 +223,33 @@ struct ViewState {
       guard let textData = displayText.data(using: .utf8) else { return }
       
       var command: [UInt8] = [
-          0x4E,           // SEND_RESULT command
-          0x00,           // sequence number
-          0x01,           // total packages
-          0x00,           // current package
-          0x71,           // screen status (0x70 Text Show | 0x01 New Content)
-          0x00,           // char position 0
-          0x00,           // char position 1
-          0x01,           // page number
-          0x01            // max pages
+        0x4E,           // SEND_RESULT command
+        0x00,           // sequence number
+        0x01,           // total packages
+        0x00,           // current package
+        0x71,           // screen status (0x70 Text Show | 0x01 New Content)
+        0x00,           // char position 0
+        0x00,           // char position 1
+        0x01,           // page number
+        0x01            // max pages
       ]
       command.append(contentsOf: Array(textData))
       
       await sendCommand(command)
       
-//      let success = await sendText(text: text)
-//      print("Send text operation completed with result: \(success)")
+      //      let success = await sendText(text: text)
+      //      print("Send text operation completed with result: \(success)")
     }
   }
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
-      let chunks = textHelper.createTextWallChunks(text)
-//      sendChunks(chunks)
-      for chunk in chunks {
+    let chunks = textHelper.createTextWallChunks(text)
+    //      sendChunks(chunks)
+    for chunk in chunks {
       print("Sending chunk: \(chunk)")
-        Task {
-          await sendCommand(chunk)
-        }
+      Task {
+        await sendCommand(chunk)
+      }
     }
   }
   
@@ -265,35 +266,43 @@ struct ViewState {
   
   public func handleDisplayEvent(_ event: [String: Any]) -> Void {
     
-    if let view = event["view"] as? String {
-      let isDashboard = view == "dashboard"
-      
-      var stateIndex = 0;
-      if (isDashboard) {
-        stateIndex = 1
-      } else {
-        stateIndex = 0
-      }
-      
-      let layout = event["layout"] as! [String: Any];
-      self.viewStates[stateIndex].layoutType = layout["layoutType"] as! String
-      
-      switch self.viewStates[stateIndex].layoutType {
-        case "text_wall":
-        self.viewStates[stateIndex].text = layout["text"] as? String ?? " "
-          break
-      case "double_text_wall":
-//        print("GOT double_text_wall")
-//        print(event)
-//        print(event["topText"])
-//        print(event["bottomText"])
-        self.viewStates[stateIndex].topText = layout["topText"] as? String ?? " "
-        self.viewStates[stateIndex].bottomText = layout["bottomText"] as? String ?? " "
-        break
-      default:
-        break
-      }
-      
+    guard let view = event["view"] as? String else {
+      print("invalid view")
+      return
+    }
+    let isDashboard = view == "dashboard"
+    
+    var stateIndex = 0;
+    if (isDashboard) {
+      stateIndex = 1
+    } else {
+      stateIndex = 0
+    }
+    
+    let layout = event["layout"] as! [String: Any];
+    self.viewStates[stateIndex].layoutType = layout["layoutType"] as! String
+    
+    switch self.viewStates[stateIndex].layoutType {
+    case "text_wall":
+      self.viewStates[stateIndex].text = layout["text"] as? String ?? " "
+      break
+    case "double_text_wall":
+      //        print("GOT double_text_wall")
+      //        print(event)
+      //        print(event["topText"])
+      //        print(event["bottomText"])
+      self.viewStates[stateIndex].topText = layout["topText"] as? String ?? " "
+      self.viewStates[stateIndex].bottomText = layout["bottomText"] as? String ?? " "
+      break
+    default:
+      break
+    }
+    
+    // send the state we just received if the user is currently in that state:
+    if (stateIndex == 0 && !isHeadUp) {
+      sendCurrentState(false)
+    } else if (stateIndex == 1 && isHeadUp) {
+      sendCurrentState(true)
     }
   }
   
@@ -310,11 +319,11 @@ struct ViewState {
       switch layoutType {
       case "text_wall":
         let text = currentViewState.text
-//        let chunks = textHelper.createTextWallChunks(text)
-//        for chunk in chunks {
-//          print("Sending chunk: \(chunk)")
-//          await sendCommand(chunk)
-//        }
+        //        let chunks = textHelper.createTextWallChunks(text)
+        //        for chunk in chunks {
+        //          print("Sending chunk: \(chunk)")
+        //          await sendCommand(chunk)
+        //        }
         RN_sendText(text);
         break
       case "double_text_wall":
@@ -330,213 +339,216 @@ struct ViewState {
   }
   
   @objc func stopScan() {
-      centralManager.stopScan()
-      print("Stopped scanning for devices")
+    centralManager.stopScan()
+    print("Stopped scanning for devices")
   }
-
+  
   @objc func disconnect() {
-      if let leftPeripheral = leftPeripheral {
-          centralManager.cancelPeripheralConnection(leftPeripheral)
-      }
-      
-      if let rightPeripheral = rightPeripheral {
-          centralManager.cancelPeripheralConnection(rightPeripheral)
-      }
-      
-      print("Disconnected from glasses")
+    if let leftPeripheral = leftPeripheral {
+      centralManager.cancelPeripheralConnection(leftPeripheral)
+    }
+    
+    if let rightPeripheral = rightPeripheral {
+      centralManager.cancelPeripheralConnection(rightPeripheral)
+    }
+    
+    print("Disconnected from glasses")
   }
   
   // @@@ END REACT NATIVE FUNCTIONS
   
   private func startAITriggerTimeoutTimer() {
-      let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
-      
-      backgroundQueue.async { [weak self] in
-          self?.aiTriggerTimeoutTimer = Timer(timeInterval: 6.0, repeats: false) { [weak self] _ in
-              guard let self = self else { return }
-              guard let rightPeripheral = self.rightPeripheral else { return }
-              guard let leftPeripheral = self.leftPeripheral else { return }
-              sendMicOn(to: rightPeripheral, isOn: false)
-              
-              if let leftChar = getWriteCharacteristic(for: leftPeripheral),
-                 let rightChar = getWriteCharacteristic(for: rightPeripheral) {
-                  exitAllFunctions(to: leftPeripheral, characteristic: leftChar)
-                  exitAllFunctions(to: rightPeripheral, characteristic: rightChar)
-              }
-          }
-          
-          RunLoop.current.add((self?.aiTriggerTimeoutTimer)!, forMode: .default)
-          RunLoop.current.run()
+    let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
+    
+    backgroundQueue.async { [weak self] in
+      self?.aiTriggerTimeoutTimer = Timer(timeInterval: 6.0, repeats: false) { [weak self] _ in
+        guard let self = self else { return }
+        guard let rightPeripheral = self.rightPeripheral else { return }
+        guard let leftPeripheral = self.leftPeripheral else { return }
+        sendMicOn(to: rightPeripheral, isOn: false)
+        
+        if let leftChar = getWriteCharacteristic(for: leftPeripheral),
+           let rightChar = getWriteCharacteristic(for: rightPeripheral) {
+          exitAllFunctions(to: leftPeripheral, characteristic: leftChar)
+          exitAllFunctions(to: rightPeripheral, characteristic: rightChar)
+        }
       }
+      
+      RunLoop.current.add((self?.aiTriggerTimeoutTimer)!, forMode: .default)
+      RunLoop.current.run()
+    }
   }
   
   func startHeartbeatTimer() {
-      let backgroundQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
-      
-      backgroundQueue.async { [weak self] in
-          let timer = Timer(timeInterval: 15.0, repeats: true) { [weak self] _ in
-              guard let self = self else { return }
-              guard let leftPeripheral = self.leftPeripheral else { return }
-              self.sendHeartbeat(to: leftPeripheral)
-              guard let rightPeripheral = self.rightPeripheral else { return }
-              self.sendHeartbeat(to: rightPeripheral)
-          }
-          
-          RunLoop.current.add(timer, forMode: .default)
-          RunLoop.current.run()
+    let backgroundQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
+    
+    backgroundQueue.async { [weak self] in
+      let timer = Timer(timeInterval: 15.0, repeats: true) { [weak self] _ in
+        guard let self = self else { return }
+        guard let leftPeripheral = self.leftPeripheral else { return }
+        self.sendHeartbeat(to: leftPeripheral)
+        guard let rightPeripheral = self.rightPeripheral else { return }
+        self.sendHeartbeat(to: rightPeripheral)
       }
+      
+      RunLoop.current.add(timer, forMode: .default)
+      RunLoop.current.run()
+    }
   }
   
   private func findCharacteristic(uuid: CBUUID, peripheral: CBPeripheral) -> CBCharacteristic? {
-      for service in peripheral.services ?? [] {
-          for characteristic in service.characteristics ?? [] {
-              if characteristic.uuid == uuid {
-                  return characteristic
-              }
-          }
+    for service in peripheral.services ?? [] {
+      for characteristic in service.characteristics ?? [] {
+        if characteristic.uuid == uuid {
+          return characteristic
+        }
       }
-      return nil
+    }
+    return nil
   }
   
   private func getConnectedDevices() -> [CBPeripheral] {
-      let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
-      for peripheral in connectedPeripherals {
-          print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
-      }
-      return connectedPeripherals
+    let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
+    for peripheral in connectedPeripherals {
+      print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
+    }
+    return connectedPeripherals
   }
   
   private func handleNotification(from peripheral: CBPeripheral, data: Data) {
-      guard let command = data.first else { return }// ensure the data isn't empty
+    guard let command = data.first else { return }// ensure the data isn't empty
+    
+    //      print("received from G1: \(data.hexEncodedString())")
+    
+    
+    // Clear the appropriate waiter when we get acknowledgment
+    if data.count > 1 {
+      let command = data[0]
+      let response = data.count > 1 ? data[1] : 0
       
-//      print("received from G1: \(data.hexEncodedString())")
-    
-    
-      // Clear the appropriate waiter when we get acknowledgment
-      if data.count > 1 {
-          let command = data[0]
-          let response = data.count > 1 ? data[1] : 0
-          
-          // Check for ACK response in various commands
-          if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
-              if peripheral == rightPeripheral {
-                  rightWaiter.setFalse()
-                  print("Right glass acknowledged")
-              } else if peripheral == leftPeripheral {
-                  leftWaiter.setFalse()
-                  print("Left glass acknowledged")
-              }
-          }
+      // Check for ACK response in various commands
+      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
+        if peripheral == rightPeripheral {
+          rightWaiter.setFalse()
+          print("Right glass acknowledged")
+        } else if peripheral == leftPeripheral {
+          leftWaiter.setFalse()
+          print("Left glass acknowledged")
+        }
       }
-      
-      switch Commands(rawValue: command) {
-      case .BLE_REQ_INIT:
-        handleInitResponse(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    }
+    
+    switch Commands(rawValue: command) {
+    case .BLE_REQ_INIT:
+      handleInitResponse(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+      break
+    case .BLE_REQ_MIC_ON:
+      let acknowledge = CommandResponse(rawValue: data[1])
+      if acknowledge == .ACK {
+        if aiMode == .AI_REQUESTED {
+          aiMode = .AI_MIC_ON
+          print("Microphone turned on successfully")
+        } else {
+          print("Microphone turned on in continuous listening mode")
+        }
+      } else {
+        print("Microphone activation failed")
+        aiMode = .AI_IDLE
+      }
+    case .BLE_REQ_TRANSFER_MIC_DATA:
+      self.voiceData = data
+      //          print("Got voice data: " + String(data.count))
+      break
+    case .BLE_REQ_DEVICE_ORDER:
+      let order = data[1]
+      switch DeviceOrders(rawValue: order) {
+      case .HEAD_UP:
+        //        print("HEAD_UP")
+        isHeadUp = true
+        sendCurrentState(true)
         break
-      case .BLE_REQ_MIC_ON:
-          let acknowledge = CommandResponse(rawValue: data[1])
-          if acknowledge == .ACK {
-              if aiMode == .AI_REQUESTED {
-                  aiMode = .AI_MIC_ON
-                  print("Microphone turned on successfully")
-              } else {
-                  print("Microphone turned on in continuous listening mode")
-              }
-          } else {
-              print("Microphone activation failed")
-              aiMode = .AI_IDLE
+      case .HEAD_DOWN:
+        isHeadUp = false
+        sendCurrentState(false)
+        //        print("HEAD_DOWN")
+        break
+      case .HEAD_UP2:
+        isHeadUp = true
+        //        print("HEAD_UP2")
+        sendCurrentState(true)
+        break
+      case .HEAD_DOWN2:
+        isHeadUp = false
+        //        print("HEAD_DOWN2")
+        //            RN_sendText(" ");
+        sendCurrentState(false)
+        break
+      case .ACTIVATED:
+        print("ACTIVATED")
+        break
+      case .SILENCED:
+        print("SILENCED")
+        break
+      case .DISPLAY_READY:
+        self.responseModel = nil
+      case .TRIGGER_FOR_AI:
+        if let rightPeripheral {
+          aiTriggerTimeoutTimer?.invalidate()
+          aiTriggerTimeoutTimer = nil
+          startAITriggerTimeoutTimer()
+          aiMode = .AI_REQUESTED
+          sendMicOn(to: rightPeripheral, isOn: true)
+        }
+        print("Trigger AI")
+      case .TRIGGER_FOR_STOP_RECORDING:
+        aiTriggerTimeoutTimer?.invalidate()
+        aiTriggerTimeoutTimer = nil
+        aiMode = .AI_IDLE
+      case .TRIGGER_CHANGE_PAGE:
+        guard var responseModel else { return }
+        print("Change Page right")
+        if responseModel.currentPage < responseModel.totalPages {
+          responseModel.currentPage += 1
+          self.responseModel = responseModel
+          Task {
+            await self.manualTextControl()
           }
-      case .BLE_REQ_TRANSFER_MIC_DATA:
-          self.voiceData = data
-//          print("Got voice data: " + String(data.count))
-          break
-      case .BLE_REQ_DEVICE_ORDER:
-          let order = data[1]
-          switch DeviceOrders(rawValue: order) {
-          case .HEAD_UP:
-            print("HEAD_UP")
-            sendCurrentState(true)
-            break
-          case .HEAD_DOWN:
-            sendCurrentState(false)
-            print("HEAD_DOWN")
-            break
-          case .HEAD_UP2:
-            print("HEAD_UP2")
-//            RN_sendText("HEAD_UP2");
-            sendCurrentState(true)
-            break
-          case .HEAD_DOWN2:
-            print("HEAD_DOWN2")
-//            RN_sendText(" ");
-            sendCurrentState(false)
-            break
-          case .ACTIVATED:
-            print("ACTIVATED")
-            break
-          case .SILENCED:
-            print("SILENCED")
-            break
-          case .DISPLAY_READY:
-              self.responseModel = nil
-          case .TRIGGER_FOR_AI:
-              if let rightPeripheral {
-                  aiTriggerTimeoutTimer?.invalidate()
-                  aiTriggerTimeoutTimer = nil
-                  startAITriggerTimeoutTimer()
-                  aiMode = .AI_REQUESTED
-                  sendMicOn(to: rightPeripheral, isOn: true)
-              }
-              print("Trigger AI")
-          case .TRIGGER_FOR_STOP_RECORDING:
-              aiTriggerTimeoutTimer?.invalidate()
-              aiTriggerTimeoutTimer = nil
-              aiMode = .AI_IDLE
-          case .TRIGGER_CHANGE_PAGE:
-              guard var responseModel else { return }
-              print("Change Page right")
-              if responseModel.currentPage < responseModel.totalPages {
-                  responseModel.currentPage += 1
-                  self.responseModel = responseModel
-                  Task {
-                      await self.manualTextControl()
-                  }
-              } else {
-                  print("Change Page left")
-                  if responseModel.currentPage > 1 {
-                      responseModel.currentPage -= 1
-                      self.responseModel = responseModel
-                      Task {
-                          await self.manualTextControl()
-                      }
-                  }
-              }
-          case .G1_IS_READY:
-              g1Ready = true
-          default:
-              print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
-              break
+        } else {
+          print("Change Page left")
+          if responseModel.currentPage > 1 {
+            responseModel.currentPage -= 1
+            self.responseModel = responseModel
+            Task {
+              await self.manualTextControl()
+            }
           }
-      case .BLE_REQ_EVENAI:
-          if data.count > 1 {
-              let acknowledge = CommandResponse(rawValue: data[1])
-              if acknowledge == .ACK {
-                  if peripheral == self.rightPeripheral {
-                      rightWaiter.setFalse()
-                      self.displayingResponseAiRightAck = true
-                  }
-                  if peripheral == self.leftPeripheral {
-                      leftWaiter.setFalse()
-                      self.displayingResponseAiLeftAck = true
-                  }
-                  receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
-              }
-          }
-          print("Received EvenAI response: \(data.hexEncodedString())")
+        }
+      case .G1_IS_READY:
+        g1Ready = true
       default:
-//          print("received from G1(not handled): \(data.hexEncodedString())")
+        print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
       }
+    case .BLE_REQ_EVENAI:
+      if data.count > 1 {
+        let acknowledge = CommandResponse(rawValue: data[1])
+        if acknowledge == .ACK {
+          if peripheral == self.rightPeripheral {
+            rightWaiter.setFalse()
+            self.displayingResponseAiRightAck = true
+          }
+          if peripheral == self.leftPeripheral {
+            leftWaiter.setFalse()
+            self.displayingResponseAiLeftAck = true
+          }
+          receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
+        }
+      }
+      print("Received EvenAI response: \(data.hexEncodedString())")
+    default:
+      //          print("received from G1(not handled): \(data.hexEncodedString())")
+      break
+    }
   }
 }
 // MARK: Commands
@@ -650,20 +662,20 @@ extension ERG1Manager {
   }
   
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
-      print("Received init response from \(peripheral.name ?? "Unknown"): \(success)")
-      if peripheral == leftPeripheral {
-          leftInitialized = success
-          print("Left arm initialized: \(success)")
-      } else if peripheral == rightPeripheral {
-          rightInitialized = success
-          print("Right arm initialized: \(success)")
-      }
-      
-      // Only proceed if both glasses are initialized
-      if leftInitialized && rightInitialized {
-          print("Both arms initialized")
-          g1Ready = true
-      }
+    print("Received init response from \(peripheral.name ?? "Unknown"): \(success)")
+    if peripheral == leftPeripheral {
+      leftInitialized = success
+      print("Left arm initialized: \(success)")
+    } else if peripheral == rightPeripheral {
+      rightInitialized = success
+      print("Right arm initialized: \(success)")
+    }
+    
+    // Only proceed if both glasses are initialized
+    if leftInitialized && rightInitialized {
+      print("Both arms initialized")
+      g1Ready = true
+    }
   }
   
   private func sendHeartbeat(to peripheral: CBPeripheral) {
@@ -711,337 +723,337 @@ extension ERG1Manager {
       try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
     }
     
-
+    
   }
   
   // Non-blocking function to add new send request
   func sendDataSequentially(_ data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
-      let requests = [SendRequest(data: data, onlyLeft: onlyLeft, onlyRight: onlyRight, waitTime: waitTime)]
-      
-      sendQueueLock.lock()
-      sendQueue.append(requests)
-      sendQueueLock.unlock()
-      
-      startWorkerIfNeeded()
+    let requests = [SendRequest(data: data, onlyLeft: onlyLeft, onlyRight: onlyRight, waitTime: waitTime)]
+    
+    sendQueueLock.lock()
+    sendQueue.append(requests)
+    sendQueueLock.unlock()
+    
+    startWorkerIfNeeded()
   }
   
   // Non-blocking function to add multiple chunks
   func sendDataSequentially(_ chunks: [Data], onlyLeft: Bool = false, onlyRight: Bool = false) {
-      let requests = chunks.map { SendRequest(data: $0, onlyLeft: onlyLeft, onlyRight: onlyRight) }
-      
-      sendQueueLock.lock()
-      sendQueue.append(requests)
-      sendQueueLock.unlock()
-      
-      startWorkerIfNeeded()
+    let requests = chunks.map { SendRequest(data: $0, onlyLeft: onlyLeft, onlyRight: onlyRight) }
+    
+    sendQueueLock.lock()
+    sendQueue.append(requests)
+    sendQueueLock.unlock()
+    
+    startWorkerIfNeeded()
   }
   
   // Start the worker if it's not already running
   func startWorkerIfNeeded() {
-      sendQueueLock.lock()
-      defer { sendQueueLock.unlock() }
-      
-      if !isWorkerRunning {
-          isWorkerRunning = true
-          Task {
-              await processQueue()
-          }
+    sendQueueLock.lock()
+    defer { sendQueueLock.unlock() }
+    
+    if !isWorkerRunning {
+      isWorkerRunning = true
+      Task {
+        await processQueue()
       }
+    }
   }
   
   // Process the queue in background
   func processQueue() async {
-      print("Starting queue processing")
+    print("Starting queue processing")
+    
+    // First wait until services are setup
+    print("Waiting for services to be ready")
+    let servicesReadyTimeout = DispatchTime.now() + .seconds(10)
+    
+    // Wait until both peripherals are ready to receive data
+    let leftReady = await withCheckedContinuation { continuation in
+      Task {
+        let result = leftServicesWaiter.waitWhileTrue(servicesReadyTimeout)
+        continuation.resume(returning: result)
+      }
+    }
+    
+    let rightReady = await withCheckedContinuation { continuation in
+      Task {
+        let result = rightServicesWaiter.waitWhileTrue(servicesReadyTimeout)
+        continuation.resume(returning: result)
+      }
+    }
+    
+    if !leftReady || !rightReady {
+      print("Timed out waiting for services to be ready")
+      isWorkerRunning = false
+      return
+    }
+    
+    print("Services are ready, processing queue")
+    
+    // Process each request in the queue
+    while true {
+      // Pop the next batch of requests
+      sendQueueLock.lock()
+      let requests = sendQueue.isEmpty ? nil : sendQueue.removeFirst()
+      sendQueueLock.unlock()
       
-      // First wait until services are setup
-      print("Waiting for services to be ready")
-      let servicesReadyTimeout = DispatchTime.now() + .seconds(10)
-      
-      // Wait until both peripherals are ready to receive data
-      let leftReady = await withCheckedContinuation { continuation in
-          Task {
-              let result = leftServicesWaiter.waitWhileTrue(servicesReadyTimeout)
-              continuation.resume(returning: result)
-          }
+      guard let requests = requests, !requests.isEmpty else {
+        // No more requests, exit the worker
+        isWorkerRunning = false
+        print("No more requests, worker stopped")
+        return
       }
       
-      let rightReady = await withCheckedContinuation { continuation in
-          Task {
-              let result = rightServicesWaiter.waitWhileTrue(servicesReadyTimeout)
-              continuation.resume(returning: result)
-          }
-      }
-      
-      if !leftReady || !rightReady {
-          print("Timed out waiting for services to be ready")
-          isWorkerRunning = false
-          return
-      }
-      
-      print("Services are ready, processing queue")
-      
-      // Process each request in the queue
-      while true {
-          // Pop the next batch of requests
-          sendQueueLock.lock()
-          let requests = sendQueue.isEmpty ? nil : sendQueue.removeFirst()
-          sendQueueLock.unlock()
+      // Process each request in the batch
+      for request in requests {
+        // Force an initial delay after connection
+        let timeSinceConnection = Date().timeIntervalSince(lastConnectionTimestamp)
+        if timeSinceConnection < 0.35 { // 350ms
+          try? await Task.sleep(nanoseconds: INITIAL_CONNECTION_DELAY_MS - UInt64(timeSinceConnection * 1_000_000_000))
+        }
+        
+        var leftSuccess = true
+        var rightSuccess = true
+        
+        // Send to left glass if requested
+        if !request.onlyRight, let leftGlassGatt = leftPeripheral, let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlassGatt), g1Ready {
+          leftWaiter.setTrue()
+          print("sending to left");
           
-          guard let requests = requests, !requests.isEmpty else {
-              // No more requests, exit the worker
-              isWorkerRunning = false
-              print("No more requests, worker stopped")
-              return
+          // Send the data and wait for completion
+          leftGlassGatt.writeValue(request.data, for: leftTxChar, type: .withResponse)
+          
+          // Wait for acknowledgment
+          let leftAckTimeout = DispatchTime.now() + .milliseconds(300)
+          leftSuccess = await withCheckedContinuation { continuation in
+            Task {
+              let result = leftWaiter.waitWhileTrue(leftAckTimeout)
+              continuation.resume(returning: result)
+            }
           }
           
-          // Process each request in the batch
-          for request in requests {
-              // Force an initial delay after connection
-              let timeSinceConnection = Date().timeIntervalSince(lastConnectionTimestamp)
-              if timeSinceConnection < 0.35 { // 350ms
-                  try? await Task.sleep(nanoseconds: INITIAL_CONNECTION_DELAY_MS - UInt64(timeSinceConnection * 1_000_000_000))
-              }
-              
-              var leftSuccess = true
-              var rightSuccess = true
-              
-              // Send to left glass if requested
-              if !request.onlyRight, let leftGlassGatt = leftPeripheral, let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlassGatt), g1Ready {
-                  leftWaiter.setTrue()
-                print("sending to left");
-                  
-                  // Send the data and wait for completion
-                  leftGlassGatt.writeValue(request.data, for: leftTxChar, type: .withResponse)
-                  
-                  // Wait for acknowledgment
-                  let leftAckTimeout = DispatchTime.now() + .milliseconds(300)
-                  leftSuccess = await withCheckedContinuation { continuation in
-                      Task {
-                          let result = leftWaiter.waitWhileTrue(leftAckTimeout)
-                          continuation.resume(returning: result)
-                      }
-                  }
-                  
-                  if !leftSuccess {
-                      print("Left glass write timed out")
-                  }
-              }
-              
-              // Add small delay between sending to left and right
-              try? await Task.sleep(nanoseconds: DELAY_BETWEEN_SENDS_MS)
-              
-              // Send to right glass if requested
-              if !request.onlyLeft, let rightGlassGatt = rightPeripheral, let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlassGatt), g1Ready {
-                  rightWaiter.setTrue()
-                
-                print("sending to right");
-                  
-                  // Send the data and wait for completion
-                  rightGlassGatt.writeValue(request.data, for: rightTxChar, type: .withResponse)
-                  
-                  // Wait for acknowledgment
-                  let rightAckTimeout = DispatchTime.now() + .milliseconds(300)
-                  rightSuccess = await withCheckedContinuation { continuation in
-                      Task {
-                          let result = rightWaiter.waitWhileTrue(rightAckTimeout)
-                          continuation.resume(returning: result)
-                      }
-                  }
-                  
-                  if !rightSuccess {
-                      print("Right glass write timed out")
-                  }
-              }
-              
-              // Add delay between chunks
-              try? await Task.sleep(nanoseconds: DELAY_BETWEEN_CHUNKS_SEND)
-              
-              // Add custom wait time if specified
-              if request.waitTime > 0 {
-                  try? await Task.sleep(nanoseconds: UInt64(request.waitTime) * 1_000_000)
-              }
-              
-              // If both glasses failed, we might want to try again or exit
-              if !leftSuccess && !rightSuccess {
-                  print("Both glasses failed to acknowledge")
-                  // Consider reinserting the request or notifying failure
-              }
+          if !leftSuccess {
+            print("Left glass write timed out")
           }
+        }
+        
+        // Add small delay between sending to left and right
+        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_SENDS_MS)
+        
+        // Send to right glass if requested
+        if !request.onlyLeft, let rightGlassGatt = rightPeripheral, let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlassGatt), g1Ready {
+          rightWaiter.setTrue()
+          
+          print("sending to right");
+          
+          // Send the data and wait for completion
+          rightGlassGatt.writeValue(request.data, for: rightTxChar, type: .withResponse)
+          
+          // Wait for acknowledgment
+          let rightAckTimeout = DispatchTime.now() + .milliseconds(300)
+          rightSuccess = await withCheckedContinuation { continuation in
+            Task {
+              let result = rightWaiter.waitWhileTrue(rightAckTimeout)
+              continuation.resume(returning: result)
+            }
+          }
+          
+          if !rightSuccess {
+            print("Right glass write timed out")
+          }
+        }
+        
+        // Add delay between chunks
+        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_CHUNKS_SEND)
+        
+        // Add custom wait time if specified
+        if request.waitTime > 0 {
+          try? await Task.sleep(nanoseconds: UInt64(request.waitTime) * 1_000_000)
+        }
+        
+        // If both glasses failed, we might want to try again or exit
+        if !leftSuccess && !rightSuccess {
+          print("Both glasses failed to acknowledge")
+          // Consider reinserting the request or notifying failure
+        }
       }
+    }
   }
   
   public func sendText(text: String, newScreen: Bool = true, currentPage: UInt8 = 1, maxPages: UInt8 = 1, isCommand: Bool = false, status: DisplayStatus = .NORMAL_TEXT) async -> Bool {
-      print("Starting sendText with: \(text)")
-      print("Left peripheral connected: \(leftPeripheral != nil)")
-      print("Right peripheral connected: \(rightPeripheral != nil)")
-      
-      // Check if glasses are connected
-      guard g1Ready, leftPeripheral != nil, rightPeripheral != nil else {
-          print("Glasses not ready or not connected")
-          return false
-      }
-      
-      // Format text into lines for display
-      let lines = formatTextLines(text: text)
-      let displayText = lines.joined(separator: "\n")
-      // Use the improved sendTextPacket with our new queue system
-      return await sendTextPacket(displayText: displayText, newScreen: true, status: status, currentPage: 1, maxPages: 1)
+    print("Starting sendText with: \(text)")
+    print("Left peripheral connected: \(leftPeripheral != nil)")
+    print("Right peripheral connected: \(rightPeripheral != nil)")
+    
+    // Check if glasses are connected
+    guard g1Ready, leftPeripheral != nil, rightPeripheral != nil else {
+      print("Glasses not ready or not connected")
+      return false
+    }
+    
+    // Format text into lines for display
+    let lines = formatTextLines(text: text)
+    let displayText = lines.joined(separator: "\n")
+    // Use the improved sendTextPacket with our new queue system
+    return await sendTextPacket(displayText: displayText, newScreen: true, status: status, currentPage: 1, maxPages: 1)
   }
-
+  
   // TODO: ios fix this broken garbage
   // Updated sendTextPacket to use the queue system
-//  private func sendTextPacket(displayText: String, newScreen: Bool, status: DisplayStatus, currentPage: UInt8, maxPages: UInt8) async -> Bool {
-//      // Convert text to UTF-8 data
-//      guard let textData = displayText.data(using: .utf8) else {
-//          print("Failed to convert text to UTF-8 data")
-//          return false
-//      }
-//      
-//      // Split text into manageable chunks
-//      let chunks = textData.chunked(into: 191)
-//      print("Text split into \(chunks.count) chunks")
-//      
-//      // Track completion with a dedicated task
-//      return await withCheckedContinuation { continuation in
-//          Task {
-//              var allChunksSucceeded = true
-//              
-//              // Process each chunk
-//              for (i, chunk) in chunks.enumerated() {
-//                  // Create display command
-//                  var displayCommand = Data()
-//                  displayCommand.append(0x4E) // Text display command
-//                  displayCommand.append(0x71) // Direct text subcode
-//                  displayCommand.append(UInt8(chunk.count)) // Text length
-//                  displayCommand.append(chunk)
-//                  
-//                  // Send display command through queue
-//                  sendDataSequentially(displayCommand, waitTime: 50)
-//                  
-//                  // Create AI packet for proper display state
-//                  let header = Data([
-//                      Commands.BLE_REQ_EVENAI.rawValue,
-//                      evenaiSeq,
-//                      UInt8(chunks.count),
-//                      UInt8(i),
-//                      status.rawValue | (newScreen ? 1 : 0),
-//                      0, 0,
-//                      currentPage,
-//                      maxPages
-//                  ])
-//                  let aiPacket = header + chunk
-//                  
-//                  // Try multiple times for reliable delivery
-//                  var chunkSucceeded = false
-//                  
-//                  for attempt in 1...3 {
-//                      print("Attempt \(attempt) to send text packet chunk \(i+1)/\(chunks.count)")
-//                      
-//                      // Reset acknowledgment flags
-////                      rightWaiter.setTrue()
-////                      leftWaiter.setTrue()
-//                      
-//                      // Send AI packet through queue with increased wait time
-//                      sendDataSequentially(aiPacket, waitTime: 100)
-//                      
-//                      // Wait for a bit to ensure the request is processed
-//                      try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
-//                      
-//                      // Check if both peripherals acknowledged
-//                      if !rightWaiter.isTrue && !leftWaiter.isTrue {
-//                          print("Both glasses acknowledged packet on attempt \(attempt)")
-//                          chunkSucceeded = true
-//                          break
-//                      }
-//                      
-//                      // Wait before retry
-//                      try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
-//                  }
-//                  
-//                  if !chunkSucceeded {
-//                      print("Failed to get acknowledgment for chunk \(i+1) after multiple attempts")
-//                      allChunksSucceeded = false
-//                      break
-//                  }
-//                  
-//                  // Increment sequence number for next chunk
-//                  evenaiSeq += 1
-//              }
-//              
-//              continuation.resume(returning: allChunksSucceeded)
-//          }
-//      }
-//  }
+  //  private func sendTextPacket(displayText: String, newScreen: Bool, status: DisplayStatus, currentPage: UInt8, maxPages: UInt8) async -> Bool {
+  //      // Convert text to UTF-8 data
+  //      guard let textData = displayText.data(using: .utf8) else {
+  //          print("Failed to convert text to UTF-8 data")
+  //          return false
+  //      }
+  //
+  //      // Split text into manageable chunks
+  //      let chunks = textData.chunked(into: 191)
+  //      print("Text split into \(chunks.count) chunks")
+  //
+  //      // Track completion with a dedicated task
+  //      return await withCheckedContinuation { continuation in
+  //          Task {
+  //              var allChunksSucceeded = true
+  //
+  //              // Process each chunk
+  //              for (i, chunk) in chunks.enumerated() {
+  //                  // Create display command
+  //                  var displayCommand = Data()
+  //                  displayCommand.append(0x4E) // Text display command
+  //                  displayCommand.append(0x71) // Direct text subcode
+  //                  displayCommand.append(UInt8(chunk.count)) // Text length
+  //                  displayCommand.append(chunk)
+  //
+  //                  // Send display command through queue
+  //                  sendDataSequentially(displayCommand, waitTime: 50)
+  //
+  //                  // Create AI packet for proper display state
+  //                  let header = Data([
+  //                      Commands.BLE_REQ_EVENAI.rawValue,
+  //                      evenaiSeq,
+  //                      UInt8(chunks.count),
+  //                      UInt8(i),
+  //                      status.rawValue | (newScreen ? 1 : 0),
+  //                      0, 0,
+  //                      currentPage,
+  //                      maxPages
+  //                  ])
+  //                  let aiPacket = header + chunk
+  //
+  //                  // Try multiple times for reliable delivery
+  //                  var chunkSucceeded = false
+  //
+  //                  for attempt in 1...3 {
+  //                      print("Attempt \(attempt) to send text packet chunk \(i+1)/\(chunks.count)")
+  //
+  //                      // Reset acknowledgment flags
+  ////                      rightWaiter.setTrue()
+  ////                      leftWaiter.setTrue()
+  //
+  //                      // Send AI packet through queue with increased wait time
+  //                      sendDataSequentially(aiPacket, waitTime: 100)
+  //
+  //                      // Wait for a bit to ensure the request is processed
+  //                      try? await Task.sleep(nanoseconds: 500_000_000) // 500ms
+  //
+  //                      // Check if both peripherals acknowledged
+  //                      if !rightWaiter.isTrue && !leftWaiter.isTrue {
+  //                          print("Both glasses acknowledged packet on attempt \(attempt)")
+  //                          chunkSucceeded = true
+  //                          break
+  //                      }
+  //
+  //                      // Wait before retry
+  //                      try? await Task.sleep(nanoseconds: 100_000_000) // 100ms
+  //                  }
+  //
+  //                  if !chunkSucceeded {
+  //                      print("Failed to get acknowledgment for chunk \(i+1) after multiple attempts")
+  //                      allChunksSucceeded = false
+  //                      break
+  //                  }
+  //
+  //                  // Increment sequence number for next chunk
+  //                  evenaiSeq += 1
+  //              }
+  //
+  //              continuation.resume(returning: allChunksSucceeded)
+  //          }
+  //      }
+  //  }
   
   private func sendTextPacket(displayText: String, newScreen: Bool, status: DisplayStatus, currentPage: UInt8, maxPages: UInt8) async -> Bool {
-      guard let textData = displayText.data(using: .utf8) else { return false }
-      let chunks = textData.chunked(into: 191)
+    guard let textData = displayText.data(using: .utf8) else { return false }
+    let chunks = textData.chunked(into: 191)
+    
+    for (i, chunk) in chunks.enumerated() {
+      // Reset acknowledgment flags
+      receivedAck = false
+      displayingResponseAiRightAck = false
+      displayingResponseAiLeftAck = false
       
-      for (i, chunk) in chunks.enumerated() {
-          // Reset acknowledgment flags
-          receivedAck = false
-          displayingResponseAiRightAck = false
-          displayingResponseAiLeftAck = false
+      // First send the text display command
+      var displayCommand = Data()
+      displayCommand.append(0x4E) // Text display command
+      displayCommand.append(0x71) // Direct text subcode
+      displayCommand.append(UInt8(chunk.count)) // Text length
+      displayCommand.append(chunk)
+      
+      if let leftChar = getWriteCharacteristic(for: leftPeripheral),
+         let rightChar = getWriteCharacteristic(for: rightPeripheral) {
+        
+        // Send display command to both glasses
+        rightPeripheral?.writeValue(displayCommand, for: rightChar, type: .withResponse)
+        try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+        leftPeripheral?.writeValue(displayCommand, for: leftChar, type: .withResponse)
+        try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+        
+        // Then send the AI packet for proper display state
+        let header = Data([Commands.BLE_REQ_EVENAI.rawValue, evenaiSeq, UInt8(chunks.count), UInt8(i), status.rawValue | (newScreen ? 1 : 0), 0, 0, currentPage, maxPages])
+        let aiPacket = header + chunk
+        
+        // Try up to 3 times for each glass
+        for attempt in 1...3 {
+          print("Attempt \(attempt) to send text packet")
           
-          // First send the text display command
-          var displayCommand = Data()
-          displayCommand.append(0x4E) // Text display command
-          displayCommand.append(0x71) // Direct text subcode
-          displayCommand.append(UInt8(chunk.count)) // Text length
-          displayCommand.append(chunk)
+          rightPeripheral?.writeValue(aiPacket, for: rightChar, type: .withResponse)
+          try? await Task.sleep(nanoseconds: 20 * 1_000_000) // 20ms delay
+          leftPeripheral?.writeValue(aiPacket, for: leftChar, type: .withResponse)
           
-          if let leftChar = getWriteCharacteristic(for: leftPeripheral),
-             let rightChar = getWriteCharacteristic(for: rightPeripheral) {
-              
-              // Send display command to both glasses
-              rightPeripheral?.writeValue(displayCommand, for: rightChar, type: .withResponse)
-              try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-              leftPeripheral?.writeValue(displayCommand, for: leftChar, type: .withResponse)
-              try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-              
-              // Then send the AI packet for proper display state
-              let header = Data([Commands.BLE_REQ_EVENAI.rawValue, evenaiSeq, UInt8(chunks.count), UInt8(i), status.rawValue | (newScreen ? 1 : 0), 0, 0, currentPage, maxPages])
-              let aiPacket = header + chunk
-              
-              // Try up to 3 times for each glass
-              for attempt in 1...3 {
-                  print("Attempt \(attempt) to send text packet")
-                  
-                  rightPeripheral?.writeValue(aiPacket, for: rightChar, type: .withResponse)
-                  try? await Task.sleep(nanoseconds: 20 * 1_000_000) // 20ms delay
-                  leftPeripheral?.writeValue(aiPacket, for: leftChar, type: .withResponse)
-                  
-                  // Wait for acknowledgments
-                  let ackTimeout = 0.3 // 300ms timeout
-                  let startTime = Date()
-                  
-                  while Date().timeIntervalSince(startTime) < ackTimeout {
-                      if displayingResponseAiRightAck && displayingResponseAiLeftAck {
-                          print("Both glasses acknowledged packet")
-                          receivedAck = true
-                          break
-                      }
-                      try? await Task.sleep(nanoseconds: 10 * 1_000_000) // 10ms check interval
-                  }
-                  
-                  if receivedAck {
-                      break // Success, move to next chunk
-                  } else {
-                      print("Attempt \(attempt) failed. Right ack: \(displayingResponseAiRightAck), Left ack: \(displayingResponseAiLeftAck)")
-                      if attempt == 3 {
-                          print("Failed to get acknowledgment from glasses after 3 attempts")
-                          return false
-                      }
-                      // Reset flags for next attempt
-                      displayingResponseAiRightAck = false
-                      displayingResponseAiLeftAck = false
-                      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay before retry
-                  }
-              }
-              evenaiSeq += 1
+          // Wait for acknowledgments
+          let ackTimeout = 0.3 // 300ms timeout
+          let startTime = Date()
+          
+          while Date().timeIntervalSince(startTime) < ackTimeout {
+            if displayingResponseAiRightAck && displayingResponseAiLeftAck {
+              print("Both glasses acknowledged packet")
+              receivedAck = true
+              break
+            }
+            try? await Task.sleep(nanoseconds: 10 * 1_000_000) // 10ms check interval
           }
+          
+          if receivedAck {
+            break // Success, move to next chunk
+          } else {
+            print("Attempt \(attempt) failed. Right ack: \(displayingResponseAiRightAck), Left ack: \(displayingResponseAiLeftAck)")
+            if attempt == 3 {
+              print("Failed to get acknowledgment from glasses after 3 attempts")
+              return false
+            }
+            // Reset flags for next attempt
+            displayingResponseAiRightAck = false
+            displayingResponseAiLeftAck = false
+            try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay before retry
+          }
+        }
+        evenaiSeq += 1
       }
-      return true
+    }
+    return true
   }
   
   
@@ -1143,10 +1155,10 @@ extension ERG1Manager {
     
     // Call the async function from a non-async context
     Task {
-        let success = await setBrightness(brightnessLevel, autoMode: autoMode)
-        if !success {
-            NSLog("Failed to set brightness to level \(level)% (mapped to \(mappedLevel))")
-        }
+      let success = await setBrightness(brightnessLevel, autoMode: autoMode)
+      if !success {
+        NSLog("Failed to set brightness to level \(level)% (mapped to \(mappedLevel))")
+      }
     }
   }
   
@@ -1156,21 +1168,21 @@ extension ERG1Manager {
     if (level > 0x29) {
       lvl = 0x29
     }
-
+    
     let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
-
+    
     // Send to both glasses with proper timing
     if let rightGlass = rightPeripheral,
        let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-        rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-        try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
     }
-
+    
     if let leftGlass = leftPeripheral,
        let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-        leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
     }
-
+    
     return true
   }
   
@@ -1184,71 +1196,71 @@ extension ERG1Manager {
     
     // Call the async function from a non-async context
     Task {
-        let success = await setHeadUpAngle(UInt8(agl))
-        if !success {
-            NSLog("Failed to set angle to \(angle)")
-        }
+      let success = await setHeadUpAngle(UInt8(agl))
+      if !success {
+        NSLog("Failed to set angle to \(angle)")
+      }
     }
   }
   
   public func setHeadUpAngle(_ angle: UInt8) async -> Bool {
     
-      let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
-      
-      // Send to both glasses with proper timing
-      if let rightGlass = rightPeripheral,
-         let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-          rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-          try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-      }
-      
-      if let leftGlass = leftPeripheral,
-         let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-          leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-      }
-      return true
+    let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
+    
+    // Send to both glasses with proper timing
+    if let rightGlass = rightPeripheral,
+       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+    }
+    
+    if let leftGlass = leftPeripheral,
+       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+    }
+    return true
   }
   
   public func setSilentMode(_ enabled: Bool) async -> Bool {
-      let command: [UInt8] = [Commands.SILENT_MODE.rawValue, enabled ? 0x0C : 0x0A, 0x00]
-      
-      // Send to both glasses with proper timing
-      if let rightGlass = rightPeripheral,
-         let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-          rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-          try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-      }
-      
-      if let leftGlass = leftPeripheral,
-         let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-          leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-      }
-      return true
-  }
-
-  public func setDashboardPosition(_ position: DashboardPosition) async -> Bool {
-      guard let rightGlass = rightPeripheral,
-            let leftGlass = leftPeripheral,
-            let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
-            let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
-          return false
-      }
-
-      // Build dashboard position command
-      var command = Data()
-      command.append(Commands.DASHBOARD_POSITION_COMMAND.rawValue)
-      command.append(0x07) // Length
-      command.append(0x00) // Sequence
-      command.append(0x01) // Fixed value
-      command.append(0x02) // Fixed value
-      command.append(0x01) // State ON
-      command.append(position.rawValue) // Position value
-
-      // Send command to both glasses with proper timing
-      rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
+    let command: [UInt8] = [Commands.SILENT_MODE.rawValue, enabled ? 0x0C : 0x0A, 0x00]
+    
+    // Send to both glasses with proper timing
+    if let rightGlass = rightPeripheral,
+       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
       try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-      leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
-      return true
+    }
+    
+    if let leftGlass = leftPeripheral,
+       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+    }
+    return true
+  }
+  
+  public func setDashboardPosition(_ position: DashboardPosition) async -> Bool {
+    guard let rightGlass = rightPeripheral,
+          let leftGlass = leftPeripheral,
+          let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
+          let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
+      return false
+    }
+    
+    // Build dashboard position command
+    var command = Data()
+    command.append(Commands.DASHBOARD_POSITION_COMMAND.rawValue)
+    command.append(0x07) // Length
+    command.append(0x00) // Sequence
+    command.append(0x01) // Fixed value
+    command.append(0x02) // Fixed value
+    command.append(0x01) // State ON
+    command.append(position.rawValue) // Position value
+    
+    // Send command to both glasses with proper timing
+    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
+    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+    return true
   }
   
   @objc public func RN_setMicEnabled(_ enabled: Bool) {
@@ -1256,71 +1268,71 @@ extension ERG1Manager {
       await setMicEnabled(enabled: enabled)
     }
   }
-
+  
   public func setMicEnabled(enabled: Bool) async -> Bool {
-      guard let rightGlass = rightPeripheral,
-            let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) else {
-          return false
-      }
+    guard let rightGlass = rightPeripheral,
+          let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) else {
+      return false
+    }
     
     sendMicOn(to: rightGlass, isOn: enabled)
-      
-//      let isContinuousListening = !enabled
-//      
-//      if isContinuousListening {
-//          // Create a repeating task for wake word detection
-//          Task {
-//              while isContinuousListening {
-//                  // Send mic on command
-//                  var micOnData = Data()
-//                  micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-//                  micOnData.append(0x01)
-//                  rightGlass.writeValue(micOnData, for: rightTxChar, type: .withResponse)
-//                  print("Starting wake word detection cycle")
-//                  
-//                  // Start wake word detection
-////                  speechRecognizer.startWakeWordDetection()
-//                  
-//                  // Wait for 30 seconds
-//                  try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
-//                  
-//                  // Turn off mic if still in continuous mode
-//                  if isContinuousListening {
-//                      var micOffData = Data()
-//                      micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-//                      micOffData.append(0x00)
-//                      rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
-//                      print("Ending wake word detection cycle")
-//                      
-//                      // Stop wake word detection
-////                      speechRecognizer.stopWakeWordDetection()
-//                      
-//                      // Small delay before next cycle
-//                      try? await Task.sleep(nanoseconds: 100 * 1_000_000)
-//                  }
-//              }
-//          }
-//      } else {
-//          // Just turn off the mic without any additional actions
-//          var micOffData = Data()
-//          micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-//          micOffData.append(0x00)
-//          rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
-//          print("Turning microphone off")
-//          
-//          // Stop any ongoing recognition without triggering AI
-////          speechRecognizer.stopWakeWordDetection()
-//          
-//          // Reset any ongoing states
-//          aiMode = .AI_IDLE
-//      }
-      
-      return true
+    
+    //      let isContinuousListening = !enabled
+    //
+    //      if isContinuousListening {
+    //          // Create a repeating task for wake word detection
+    //          Task {
+    //              while isContinuousListening {
+    //                  // Send mic on command
+    //                  var micOnData = Data()
+    //                  micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+    //                  micOnData.append(0x01)
+    //                  rightGlass.writeValue(micOnData, for: rightTxChar, type: .withResponse)
+    //                  print("Starting wake word detection cycle")
+    //
+    //                  // Start wake word detection
+    ////                  speechRecognizer.startWakeWordDetection()
+    //
+    //                  // Wait for 30 seconds
+    //                  try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
+    //
+    //                  // Turn off mic if still in continuous mode
+    //                  if isContinuousListening {
+    //                      var micOffData = Data()
+    //                      micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+    //                      micOffData.append(0x00)
+    //                      rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
+    //                      print("Ending wake word detection cycle")
+    //
+    //                      // Stop wake word detection
+    ////                      speechRecognizer.stopWakeWordDetection()
+    //
+    //                      // Small delay before next cycle
+    //                      try? await Task.sleep(nanoseconds: 100 * 1_000_000)
+    //                  }
+    //              }
+    //          }
+    //      } else {
+    //          // Just turn off the mic without any additional actions
+    //          var micOffData = Data()
+    //          micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+    //          micOffData.append(0x00)
+    //          rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
+    //          print("Turning microphone off")
+    //
+    //          // Stop any ongoing recognition without triggering AI
+    ////          speechRecognizer.stopWakeWordDetection()
+    //
+    //          // Reset any ongoing states
+    //          aiMode = .AI_IDLE
+    //      }
+    
+    return true
   }
   
   
 }
-  
+
 // MARK: BLE Stubs
 extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
@@ -1380,28 +1392,28 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update didConnect to set timestamp
   public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-      peripheral.delegate = self
-      peripheral.discoverServices([UART_SERVICE_UUID])
-      
-      // Update the last connection timestamp
-      lastConnectionTimestamp = Date()
-      print("Connected to peripheral: \(peripheral.name ?? "Unknown")")
+    peripheral.delegate = self
+    peripheral.discoverServices([UART_SERVICE_UUID])
+    
+    // Update the last connection timestamp
+    lastConnectionTimestamp = Date()
+    print("Connected to peripheral: \(peripheral.name ?? "Unknown")")
     
     
-      // Emit connection event
-      let isLeft = peripheral == leftPeripheral
-      let eventBody: [String: Any] = [
-          "side": isLeft ? "left" : "right",
-          "name": peripheral.name ?? "Unknown",
-          "id": peripheral.identifier.uuidString
-      ]
-      RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
+    // Emit connection event
+    let isLeft = peripheral == leftPeripheral
+    let eventBody: [String: Any] = [
+      "side": isLeft ? "left" : "right",
+      "name": peripheral.name ?? "Unknown",
+      "id": peripheral.identifier.uuidString
+    ]
+    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
-//    if peripheral == leftPeripheral {
-//      g1Ready = true
-//    }
+    //    if peripheral == leftPeripheral {
+    //      g1Ready = true
+    //    }
   }
   
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
@@ -1414,26 +1426,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update peripheral(_:didDiscoverCharacteristicsFor:error:) to set services waiters
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-      guard let characteristics = service.characteristics else { return }
-      
-      if service.uuid.isEqual(UART_SERVICE_UUID) {
-          for characteristic in characteristics {
-              if characteristic.uuid == UART_TX_CHAR_UUID {
-                  sendInitCommand(to: peripheral, characteristic: characteristic)
-              } else if characteristic.uuid == UART_RX_CHAR_UUID {
-                  peripheral.setNotifyValue(true, for: characteristic)
-              }
-          }
-          
-          // Mark the services as ready
-          if peripheral == leftPeripheral {
-              leftServicesWaiter.setFalse()
-              print("Left glass services discovered and ready")
-          } else if peripheral == rightPeripheral {
-              rightServicesWaiter.setFalse()
-              print("Right glass services discovered and ready")
-          }
+    guard let characteristics = service.characteristics else { return }
+    
+    if service.uuid.isEqual(UART_SERVICE_UUID) {
+      for characteristic in characteristics {
+        if characteristic.uuid == UART_TX_CHAR_UUID {
+          sendInitCommand(to: peripheral, characteristic: characteristic)
+        } else if characteristic.uuid == UART_RX_CHAR_UUID {
+          peripheral.setNotifyValue(true, for: characteristic)
+        }
       }
+      
+      // Mark the services as ready
+      if peripheral == leftPeripheral {
+        leftServicesWaiter.setFalse()
+        print("Left glass services discovered and ready")
+      } else if peripheral == rightPeripheral {
+        rightServicesWaiter.setFalse()
+        print("Right glass services discovered and ready")
+      }
+    }
   }
   
   // called whenever bluetooth is initialized / turned on or off:
@@ -1443,23 +1455,23 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       g1Ready = false
       let devices = getConnectedDevices()
       for device in devices {
-          if let name = device.name {
-              if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
-                  leftPeripheral = device
-                  device.delegate = self
-                  device.discoverServices([UART_SERVICE_UUID])
-              } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
-                  rightPeripheral = device
-                  device.delegate = self
-                  device.discoverServices([UART_SERVICE_UUID])
-              }
+        if let name = device.name {
+          if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
+            leftPeripheral = device
+            device.delegate = self
+            device.discoverServices([UART_SERVICE_UUID])
+          } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
+            rightPeripheral = device
+            device.delegate = self
+            device.discoverServices([UART_SERVICE_UUID])
           }
+        }
       }
       // try to pair the missing arm if not found:
       if leftPeripheral == nil && rightPeripheral == nil {
-          RN_startScan()
+        RN_startScan()
       } else {
-          RN_connectGlasses()
+        RN_connectGlasses()
       }
     } else {
       print("Bluetooth is not available.")
@@ -1468,17 +1480,17 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update didUpdateValueFor to set waiters
   public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-      if let error = error {
-          print("Error updating value for characteristic: \(error.localizedDescription)")
-          return
-      }
-      
-      guard let data = characteristic.value else {
-          print("Characteristic value is nil.")
-          return
-      }
-      
-      // Process the notification data
-      handleNotification(from: peripheral, data: data)
+    if let error = error {
+      print("Error updating value for characteristic: \(error.localizedDescription)")
+      return
+    }
+    
+    guard let data = characteristic.value else {
+      print("Characteristic value is nil.")
+      return
+    }
+    
+    // Process the notification data
+    handleNotification(from: peripheral, data: data)
   }
 }

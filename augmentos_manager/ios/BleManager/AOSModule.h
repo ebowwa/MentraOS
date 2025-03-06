@@ -23,9 +23,12 @@
 - (void)setBrightness:(int)level :(BOOL)autoBrightness :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 - (void)setMicEnabled:(BOOL)enabled :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
-- (void)connectServer:(NSString *)token :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+- (void)connectServer:(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+- (void)setCoreToken:(NSString *)token :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
-- (void)sendCommandToCore:(NSString *)command :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+- (void)startCaptions:(NSString *)token :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+
+- (void)sendCommand:(NSString *)command :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
 // Add support for events
 - (NSArray<NSString *> *)supportedEvents;

@@ -83,6 +83,7 @@
 			<string>Montserrat-Regular.ttf</string>
   		<string>MaterialIcons.ttf</string>
   		<string>MaterialCommunityIcons.ttf</string>
+			<string>FontAwesome.ttf</string>
 		</array>
 		<key>CFBundleURLTypes</key>
 		<array>

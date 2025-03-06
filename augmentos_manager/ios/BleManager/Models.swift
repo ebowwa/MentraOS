@@ -8,23 +8,23 @@
 import Foundation
 
 struct AiResponseToG1Model {
-    var lines: [String]
-    var totalPages: UInt8
-    var newScreen: Bool
-    var currentPage: UInt8 {
-        didSet {
-            print("SET : currentPage :\(currentPage)")
-        }
+  var lines: [String]
+  var totalPages: UInt8
+  var newScreen: Bool
+  var currentPage: UInt8 {
+    didSet {
+      print("SET : currentPage :\(currentPage)")
     }
-    var maxPages: UInt8
-    var status: DisplayStatus
+  }
+  var maxPages: UInt8
+  var status: DisplayStatus
 }
 
 struct ThirdPartyCloudApp {
-    let packageName: String
-    let name: String
-    let description: String
-    let webhookURL: String
-    let logoURL: String
-    let isRunning: Bool
+  let packageName: String
+  let name: String
+  let description: String
+  let webhookURL: String
+  let logoURL: String
+  let isRunning: Bool
 }

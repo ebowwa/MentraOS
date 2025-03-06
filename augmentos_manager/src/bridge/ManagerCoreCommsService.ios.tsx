@@ -14,7 +14,8 @@ interface ManagerCoreCommsServiceInterface {
   
   const ManagerCoreCommsService: ManagerCoreCommsServiceInterface = {
     sendCommandToCore: (jsonString: string) => {
-      AOSModule.sendCommandToCore(jsonString);
+      console.log('sendCommandToCore: ' + jsonString);
+      AOSModule.sendCommand(jsonString);
     },
     addListener: (eventName: string) => {
       console.warn("ManagerCoreCommsService is not available on iOS");
