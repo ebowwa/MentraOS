@@ -6,6 +6,7 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
+  SafeAreaView,
 } from 'react-native';
 import NavigationBar from '../components/NavigationBar.tsx';
 import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
@@ -40,7 +41,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
   };
 
   return (
-    <View
+    <SafeAreaView
       style={[
         styles.container,
         isFullScreen ? styles.fullscreenContainer : (isDarkTheme ? styles.darkContainer : styles.lightContainer),
@@ -138,7 +139,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
       {!isFullScreen && (
         <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={() => {}} />
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -232,8 +233,6 @@ const styles = StyleSheet.create({
   titleContainer: {
     paddingVertical: 15,
     paddingHorizontal: 20,
-    marginHorizontal: -20,
-    marginTop: -20,
     marginBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',

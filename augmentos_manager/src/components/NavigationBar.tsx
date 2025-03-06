@@ -3,6 +3,7 @@ import {View, StyleSheet, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {NavigationProps} from '../components/types';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface NavigationBarProps {
   toggleTheme: () => void;
@@ -53,7 +54,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   const icons = iconSets[variant];
 
   return (
-    <View style={[styles.navBarContainer, {backgroundColor}]}>
+    <SafeAreaView style={[styles.navBarContainer, {backgroundColor}]}>
       {/* Home Icon */}
       <TouchableOpacity
         onPress={() => navigation.navigate('Home')}
@@ -98,7 +99,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           color={iconColor}
         />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -107,12 +108,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: 8,
     position: 'absolute',
     bottom: 0,
+    paddingBottom: 16,
     left: 0,
     right: 0,
-    height: 55,
+    height: 20,
     borderTopWidth: 0.5,
     borderTopColor: '#E5E5EA',
   },

@@ -19,3 +19,12 @@ struct AiResponseToG1Model {
     var maxPages: UInt8
     var status: DisplayStatus
 }
+
+struct ThirdPartyCloudApp {
+    let packageName: String
+    let name: String
+    let description: String
+    let webhookURL: String
+    let logoURL: String
+    let isRunning: Bool
+}

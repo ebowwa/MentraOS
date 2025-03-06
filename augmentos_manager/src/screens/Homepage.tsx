@@ -22,6 +22,7 @@ import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 const { ERG1Module, RNEventEmitter } = NativeModules;
 const ERG1EventEmitter = new NativeEventEmitter(RNEventEmitter);
 
@@ -188,7 +189,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const currentThemeStyles = isDarkTheme ? darkThemeStyles : lightThemeStyles;
 
   return (
-    <View style={currentThemeStyles.container}>
+    <SafeAreaView style={currentThemeStyles.container}>
       <ScrollView style={currentThemeStyles.contentContainer}>
         <AnimatedSection>
           <Header isDarkTheme={isDarkTheme} navigation={navigation} />
@@ -231,7 +232,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
         )}
       </ScrollView>
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
-    </View>
+    </SafeAreaView>
   );
 };
 

@@ -24,6 +24,7 @@ import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
 
 import HeadUpAngleComponent from "../components/HeadUpAngleComponent.tsx";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -225,7 +226,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 };
 
   return (
-    <View
+    <SafeAreaView
       style={[
         styles.container,
         isDarkTheme ? styles.darkBackground : styles.lightBackground,
@@ -439,7 +440,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
       {/* Your app’s bottom navigation bar */}
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
-    </View>
+    </SafeAreaView>
   );
 };
 

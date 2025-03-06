@@ -113,7 +113,6 @@ class BooleanWaiter {
   let UART_RX_CHAR_UUID = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
   
   var sendQueue: [Array<SendRequest>] = []
-  var cancellables = Set<AnyCancellable>()
   var isWorkerRunning = false
   let sendQueueLock = NSLock()
 
@@ -162,7 +161,6 @@ class BooleanWaiter {
   override init() {
       super.init()
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
-    handleIncomingVoiceData()
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -240,39 +238,6 @@ class BooleanWaiter {
   }
   
   // @@@ END REACT NATIVE FUNCTIONS
-  
-  private func handleIncomingVoiceData() {
-      self.$voiceData.sink { [weak self] data in
-          guard let self = self else { return }
-          
-          // Ensure we have enough data to process
-          guard data.count > 2 else {
-              print("Received invalid PCM data size: \(data.count)")
-              return
-          }
-          
-          // Skip the first 2 bytes which are command bytes
-          let effectiveData = data.subdata(in: 2..<data.count)
-          
-          // Ensure we have valid PCM data
-          guard effectiveData.count > 0 else {
-              print("No PCM data after removing command bytes")
-              return
-          }
-          
-          let pcmConverter = PcmConverter()
-          let pcmData = pcmConverter.decode(effectiveData)
-          
-          // Only log and process if we have valid PCM data
-          if pcmData.count > 0 {
-              print("Got PCM data of size: \(pcmData.count)")
-//              self.speechRecognizer.appendPCMData(pcmData as Data)
-          } else {
-              print("PCM conversion resulted in empty data")
-          }
-      }
-      .store(in: &cancellables)
-  }
   
   private func startAITriggerTimeoutTimer() {
       let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
@@ -374,7 +339,7 @@ class BooleanWaiter {
           }
       case .BLE_REQ_TRANSFER_MIC_DATA:
           self.voiceData = data
-          print("Got voice data: " + String(data.count))
+//          print("Got voice data: " + String(data.count))
           break
       case .BLE_REQ_DEVICE_ORDER:
           let order = data[1]

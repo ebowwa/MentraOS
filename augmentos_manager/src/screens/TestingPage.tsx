@@ -18,8 +18,8 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const { ERG1Module, RNEventEmitter } = NativeModules;
-const ERG1EventEmitter = new NativeEventEmitter(RNEventEmitter);
+const { AOSModule, RNEventEmitter } = NativeModules;
+const AOSEventEmitter = new NativeEventEmitter(RNEventEmitter);
 
 interface TestingPageProps {
   isDarkTheme: boolean;
@@ -31,7 +31,7 @@ interface AnimatedSectionProps extends PropsWithChildren {
 }
 
 // Listen for connection state changes
-const connectionStateListener = ERG1EventEmitter.addListener(
+const connectionStateListener = AOSEventEmitter.addListener(
   'onConnectionStateChanged',
   (event: any) => {
     console.log('Connection state changed:', event);
@@ -63,7 +63,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
   const slideAnim = useRef(new Animated.Value(-50)).current;
 
   const startScan = () => {
-    ERG1Module.startScan(
+    AOSModule.startScan(
       (result: any) => console.log('Scan result:', result),
       (error: any) => console.error('Scan error:', error)
     );
@@ -71,44 +71,40 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const connectGlasses = async () => {
     try {
-      await ERG1Module.connectGlasses();
+      await AOSModule.connectGlasses();
       console.log("Glasses are paired, connecting now...");
     } catch (error) {
       console.error('connectGlasses() error:', error);
     }
   };
 
-  const sendText = () => {
+  const sendText = async () => {
     let sampleText = "";
-    // generate random words from a list of 1000 words:
+    // generate random words from some lorem ipsum text:
     const words = "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua Ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur Excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum";
     const wordArray = words.split(" ");
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       sampleText += wordArray[Math.floor(Math.random() * wordArray.length)] + " ";
     }
     sampleText = sampleText.trim();
-    ERG1Module.sendText(
-      sampleText,
-      (result: any) => console.log('Send result:', result),
-      (error: any) => console.error('Send error:', error)
-    );
+    try {
+      await AOSModule.sendText(sampleText);
+    } catch (error) {
+      console.error('sendText() error:', error);
+    }
 
     if (clearScreenTimeoutRef.current) {
       clearTimeout(clearScreenTimeoutRef.current);
     }
 
-    clearScreenTimeoutRef.current = setTimeout(() => {
-      ERG1Module.sendText(
-        " ",
-        (result: any) => console.log('Send result:', result),
-        (error: any) => console.error('Send error:', error)
-      );
+    clearScreenTimeoutRef.current = setTimeout(async () => {
+      await AOSModule.sendText(" ");
     }, 3000);
   };
 
   const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
     try {
-      await ERG1Module.setBrightness(value, autoBrightness);
+      await AOSModule.setBrightness(value, autoBrightness);
       console.log(`Brightness set to: ${value}`);
     } catch (error) {
       console.error('setBrightness() error:', error);
@@ -117,7 +113,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const toggleMicEnabled = async (value: boolean) => {
     try {
-      await ERG1Module.setMicEnabled(value);
+      await AOSModule.setMicEnabled(value);
       setMicEnabled(value);
       console.log(`Mic state set to: ${value}`);
     } catch (error) {
