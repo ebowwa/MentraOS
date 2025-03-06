@@ -17,6 +17,8 @@ services:
 
   # Cloud service
   cloud:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -38,6 +40,8 @@ services:
 
   # Live Captions service
   live-captions:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -62,6 +66,8 @@ services:
 
   # Flash service
   flash:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -86,6 +92,8 @@ services:
 
   # Dashboard Manager service
   dashboard-manager:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -110,6 +118,8 @@ services:
 
   # Notifications service
   notify:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -136,6 +146,8 @@ services:
 
   # Mira AI service
   mira:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -158,6 +170,8 @@ services:
       - shared-packages
       - cloud
   live-translation:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -180,6 +194,8 @@ services:
       - shared-packages
       - cloud
   isaiah:
+    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
+    init: true  # Use an init process to handle signal forwarding
     build:
       context: .
       dockerfile: Dockerfile.dev
