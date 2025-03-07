@@ -109,7 +109,12 @@ export interface LocationUpdate extends BaseMessage {
 
 export interface CalendarEvent extends BaseMessage {
   type: GlassesToCloudMessageType.CALENDAR_EVENT | StreamType.CALENDAR_EVENT;
-  event: CalendarEvent;
+  eventId: string;
+  title: string;
+  dtStart: string;
+  dtEnd: string;
+  timezone: string;
+  timeStamp: string;
 }
 
 /**

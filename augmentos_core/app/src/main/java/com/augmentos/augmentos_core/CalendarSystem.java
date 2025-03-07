@@ -152,7 +152,7 @@ public class CalendarSystem {
     /**
      * Schedule periodic calendar updates
      */
-    public void scheduleCalendarUpdates() {
+    public final void scheduleCalendarUpdates() {
         calendarSendingRunnableCode = new Runnable() {
             @Override
             public void run() {

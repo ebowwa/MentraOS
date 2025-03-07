@@ -813,6 +813,8 @@ export class WebSocketService {
         case GlassesToCloudMessageType.CALENDAR_EVENT: {
           const calendarEvent = message as CalendarEvent;
           console.log('Calendar event:', calendarEvent);
+
+          this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
           break;
         }
 
