@@ -66,7 +66,7 @@ class LogService {
    * @param token Authentication token
    * @returns Promise<boolean> Success status
    */
-  public async sendErrorReport(description: string, token: string): Promise<boolean> {
+  public async sendErrorReport(coreToken: string, description: string): Promise<boolean> {
     try {
       // Get logs
       const logs = await this.getLogs();
@@ -82,23 +82,12 @@ class LogService {
         timestamp: new Date().toISOString()
       };
 
-      // Use your existing backend communications infrastructure
-      return new Promise((resolve, reject) => {
-        this.backendComms.restRequest(
-          '/error-report', 
-          reportData,
-          {
-            onSuccess: () => resolve(true),
-            onFailure: (errorCode) => {
-              console.error(`${this.TAG}: Failed to send error report, code: ${errorCode}`);
-              reject(new Error(`Failed to send error report, code: ${errorCode}`));
-            }
-          }
-        );
-      });
+      // Use the dedicated method in BackendServerComms
+      await this.backendComms.sendErrorReport(coreToken, reportData);
+      return true;
     } catch (error) {
       console.error(`${this.TAG}: Error sending report -`, error);
-      throw error;
+      return false;
     }
   }
 }
