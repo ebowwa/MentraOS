@@ -137,7 +137,14 @@ export class SessionService {
 
   addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment): void {
     if (userSession) {
+      // Add new segment
       userSession.transcript.segments.push(segment);
+      
+      // Prune old segments (older than 30 minutes)
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      userSession.transcript.segments = userSession.transcript.segments.filter(
+        seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
+      );
     }
   }
 
@@ -187,9 +194,31 @@ export class SessionService {
     if (session.lc3Service) {
       session.lc3Service.cleanup();
     }
+    
+    // Clean up subscription history for this session
+    const subscriptionService = require('./subscription.service').default;
+    if (subscriptionService && typeof subscriptionService.removeSessionSubscriptionHistory === 'function') {
+      subscriptionService.removeSessionSubscriptionHistory(sessionId);
+    }
+
+    // Clear transcript history
+    if (session.transcript && session.transcript.segments) {
+      session.transcript.segments = [];
+    }
+    
+    // Clean other data structures
+    if (session.bufferedAudio) {
+      session.bufferedAudio = [];
+    }
 
     this.activeSessions.delete(sessionId);
     console.log(`[Ended session] ${sessionId}`);
+    
+    // Suggest garbage collection if available
+    if (global.gc) {
+      console.log('🧹 Running garbage collection after ending session');
+      global.gc();
+    }
   }
 
   getAllSessions(): ExtendedUserSession[] {
