@@ -1,13 +1,21 @@
-// packages/utils/src/logger.ts
 import winston from 'winston';
 import { UserSession } from '@augmentos/sdk';
 
-// Create a format to include error stacks
-const errorStackFormat = winston.format((info) => {
+// Define the error structure
+interface FormattedError {
+  kind: string;
+  message: string;
+  stack: string;
+}
+
+// Add typing to the formatter
+const errorFormat = winston.format((info: any) => {
   if (info.error instanceof Error) {
-    info.stack = info.error.stack;
-    info.errorMessage = info.error.message;
-    delete info.error;
+    info.error = {
+      kind: info.error.name,
+      message: info.error.message,
+      stack: info.error.stack
+    } as FormattedError;
   }
   return info;
 });
@@ -17,7 +25,7 @@ export function createLogger(defaultMeta = {}) {
   return winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
     format: winston.format.combine(
-      errorStackFormat(),
+      errorFormat(),
       winston.format.timestamp(),
       winston.format.json()
     ),
@@ -29,12 +37,14 @@ export function createLogger(defaultMeta = {}) {
       new winston.transports.Console({
         format: winston.format.combine(
           winston.format.colorize(),
-          winston.format.printf(({ timestamp, level, message, userId, sessionId, service, stack, ...rest }) => {
-            const userInfo = userId ? `[${userId}]` : '';
-            const sessionInfo = sessionId ? `[${sessionId}]` : '';
-            const meta = Object.keys(rest).length ? ` ${JSON.stringify(rest)}` : '';
-            const errorStack = stack ? `\n${stack}` : '';
-            return `${timestamp} [${service}]${userInfo}${sessionInfo} ${level}: ${message}${meta}${errorStack}`;
+          winston.format.printf(({ timestamp, level, message, userId, sessionId, service, error, ...rest }: any) => {
+            const userInfo = userId ? `${userId}` : '';
+            const sessionInfo = sessionId ? `${sessionId}` : '';
+            const meta = Object.keys(rest).length ? `\n${JSON.stringify(rest)}` : '';
+            // Cast error to our interface
+            const typedError = error as FormattedError | undefined;
+            const errorStack = typedError ? `\n${typedError.stack}` : '';
+            return `[${level}, ${timestamp}, ${userInfo}]:\n${message}${meta}${errorStack}`;
           })
         )
       })
@@ -48,8 +58,5 @@ export const logger = systemLogger;
 
 // Add logger to UserSession
 export function createLoggerForUserSession(userId: string): winston.Logger {
-  // Since userId and sessionId are typically the same, just use one
-  const sessionLogger = createLogger({ userId,});
-
-  return sessionLogger;
+  return createLogger({ userId });
 }
