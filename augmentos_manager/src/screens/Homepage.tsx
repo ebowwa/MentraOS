@@ -23,8 +23,6 @@ import CloudConnection from '../components/CloudConnection.tsx';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const { ERG1Module, RNEventEmitter } = NativeModules;
-const ERG1EventEmitter = new NativeEventEmitter(RNEventEmitter);
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -34,24 +32,6 @@ interface HomepageProps {
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number;
 }
-
-// Listen for connection state changes
-const connectionStateListener = ERG1EventEmitter.addListener(
-  'onConnectionStateChanged',
-  (event: any) => {
-    console.log('Connection state changed:', event);
-    // Update UI based on connection state
-  }
-);
-
-// // Listen for disconnection events
-// const disconnectListener = ERG1EventEmitter.addListener(
-//   'onGlassesDisconnected',
-//   (event: any) => {
-//     console.log('Glasses disconnected:', event);
-//     // Show disconnected UI
-//   }
-// );
 
 const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();

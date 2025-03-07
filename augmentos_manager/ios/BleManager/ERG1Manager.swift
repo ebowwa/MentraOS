@@ -184,13 +184,30 @@ struct ViewState {
   }
   
   // this scans for new (un-paired) glasses to connect to:
-  @objc func RN_startScan() {
+  @objc func RN_startScan() -> Bool {
     guard centralManager.state == .poweredOn else {
       print("Bluetooth is not powered on.")
-      return
+      return false
     }
+    
+    // send our already connected devices to RN:
+    let devices = getConnectedDevices()
+    for device in devices {
+      if let name = device.name {
+        print("Connected to device: \(name)")
+        emitDiscoveredDevice(name);
+      }
+    }
+    
     centralManager.scanForPeripherals(withServices: nil, options: nil)
     print("Scanning for devices...")
+    return true
+  }
+  
+  @objc public func RN_pairById(_ id: String) -> Bool {
+    self.DEVICE_SEARCH_ID = id
+    RN_startScan();
+    return true
   }
   
   // connect to glasses we've already paired with:
@@ -286,10 +303,6 @@ struct ViewState {
       self.viewStates[stateIndex].text = layout["text"] as? String ?? " "
       break
     case "double_text_wall":
-      //        print("GOT double_text_wall")
-      //        print(event)
-      //        print(event["topText"])
-      //        print(event["bottomText"])
       self.viewStates[stateIndex].topText = layout["topText"] as? String ?? " "
       self.viewStates[stateIndex].bottomText = layout["bottomText"] as? String ?? " "
       break
@@ -1369,8 +1382,30 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     return false
   }
   
+  public func emitDiscoveredDevice(_ name: String) {
+    if name.contains("_L_") || name.contains("_R_") {
+      let res: [String: Any] = [
+        "model_name": name,
+        "device_name": name,
+      ]
+      let eventBody: [String: Any] = [
+        "compatible_glasses_search_result": res,
+      ]
+      do {
+        let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
+        if let jsonString = String(data: jsonData, encoding: .utf8) {
+          // Now you can send the JSON string
+          RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+        }
+      } catch {
+        print("Error converting to JSON: \(error)")
+      }
+    }
+  }
+  
   // On BT discovery, automatically connect to both arms if we have them:
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
+    
     if let name = peripheral.name {
       
       if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
@@ -1380,6 +1415,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         print("Found right arm: \(name)")
         rightPeripheral = peripheral
       }
+      
+      emitDiscoveredDevice(name);
       
       if leftPeripheral != nil && rightPeripheral != nil {
         central.stopScan()
@@ -1448,32 +1485,33 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // called whenever bluetooth is initialized / turned on or off:
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
-    if central.state == .poweredOn {
-      print("Bluetooth powered on")
-      g1Ready = false
-      let devices = getConnectedDevices()
-      for device in devices {
-        if let name = device.name {
-          if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
-            leftPeripheral = device
-            device.delegate = self
-            device.discoverServices([UART_SERVICE_UUID])
-          } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
-            rightPeripheral = device
-            device.delegate = self
-            device.discoverServices([UART_SERVICE_UUID])
-          }
-        }
-      }
-      // try to pair the missing arm if not found:
-      if leftPeripheral == nil || rightPeripheral == nil && !DEVICE_SEARCH_ID.isEmpty {
-        RN_startScan()
-      } else {
-        RN_connectGlasses()
-      }
-    } else {
-      print("Bluetooth is not available.")
-    }
+    // disable scanning on launch: TODO: ios re-enable after stopScan() is implemented
+    //    if central.state == .poweredOn {
+    //      print("Bluetooth powered on")
+    //      g1Ready = false
+    //      let devices = getConnectedDevices()
+    //      for device in devices {
+    //        if let name = device.name {
+    //          if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
+    //            leftPeripheral = device
+    //            device.delegate = self
+    //            device.discoverServices([UART_SERVICE_UUID])
+    //          } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
+    //            rightPeripheral = device
+    //            device.delegate = self
+    //            device.discoverServices([UART_SERVICE_UUID])
+    //          }
+    //        }
+    //      }
+    //      // try to pair the missing arm if not found:
+    //      if (leftPeripheral == nil || rightPeripheral == nil) && !DEVICE_SEARCH_ID.isEmpty {
+    //        RN_startScan()
+    //      } else {
+    //        RN_connectGlasses()
+    //      }
+    //    } else {
+    //      print("Bluetooth is not available.")
+    //    }
   }
   
   // Update didUpdateValueFor to set waiters

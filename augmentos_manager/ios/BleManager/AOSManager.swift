@@ -183,8 +183,13 @@ import React
     
     onConnectionStatusChange?(["status": statusString])
   }
-  
-  
+
+  func handleSearchForCompatibleDeviceNames(_ modelName: String) {
+    print("Searching for compatible device names for: \(modelName)")
+    // TODO: Implement search for compatible device names
+    // for now, just trigger a scan for devices on the g1Manager:
+    self.g1Manager.RN_startScan()
+  }
   
   @objc func handleCommand(_ command: String) {
     print("Received command: \(command)")
@@ -195,8 +200,14 @@ import React
       case requestStatus = "request_status"
       case connectWearable = "connect_wearable"
       case connectDefaultWearable = "connect_default_wearable"
+      case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
+      case enableContextualDashboard = "enable_contextual_dashboard"
+      case ping = "ping"
+      case forgetSmartGlasses = "forget_smart_glasses"
       case startApp = "start_app"
       case stopApp = "stop_app"
+      case updateGlassesHeadUpAngle = "update_glasses_headUp_angle"
+      case updateGlassesBrightness = "update_glasses_brightness"
       case unknown
     }
     
@@ -238,9 +249,24 @@ import React
             print("Invalid params for connect_wearable")
           }
           
-        case .connectDefaultWearable:
-          handleConnectDefaultWearable()
-          
+//        case .connectDefaultWearable:
+//          handleConnectDefaultWearable()
+
+       case .searchForCompatibleDeviceNames:
+         if let params = params, let modelName = params["model_name"] as? String {
+           print("Searching for compatible device names for: \(modelName)")
+           handleSearchForCompatibleDeviceNames(modelName)
+         } else {
+           print("Invalid params for search_for_compatible_device_names")
+         }
+
+        case .enableContextualDashboard:
+          if let params = params, let enabled = params["enabled"] as? Bool {
+//            handleEnableContextualDashboard(enabled: enabled)
+          } else {
+            print("Invalid params for enable_contextual_dashboard")
+          }
+
         case .startApp:
           if let params = params, let target = params["target"] as? String {
             print("Starting app: \(target)")
@@ -259,6 +285,16 @@ import React
           
         case .unknown:
           print("Unknown command type: \(commandString)")
+        case .connectDefaultWearable:
+          break
+        case .ping:
+          break
+        case .forgetSmartGlasses:
+          break
+        case .updateGlassesHeadUpAngle:
+          break
+        case .updateGlassesBrightness:
+          break
         }
       }
     } catch {

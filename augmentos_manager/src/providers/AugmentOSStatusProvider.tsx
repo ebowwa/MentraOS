@@ -74,7 +74,7 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
     // 3) Provide a helper function that sets isInitialized,
     //    calls bluetoothService.initialize(), etc.
     const startBluetoothAndCore = React.useCallback(() => {
-        bluetoothService.initialize();
+        // bluetoothService.initialize();
         setIsInitialized(true);
     }, [bluetoothService]);
 

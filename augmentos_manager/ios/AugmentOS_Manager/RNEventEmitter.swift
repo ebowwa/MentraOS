@@ -20,6 +20,6 @@ open class RNEventEmitter: RCTEventEmitter {
 
   open override func supportedEvents() -> [String] {
     // add more as needed
-    ["onReady", "onPending", "onFailure", "onConnectionStateChanged"]
+    ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent"]
   }
 }

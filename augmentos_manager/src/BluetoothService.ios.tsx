@@ -17,7 +17,8 @@ import {
 import { time } from 'console';
 import { checkNotificationAccessSpecialPermission } from './utils/NotificationServiceUtils';
 
-const eventEmitter = new NativeEventEmitter(ManagerCoreCommsService);
+const { RNEventEmitter } = NativeModules;
+const eventEmitter = new NativeEventEmitter(RNEventEmitter);
 
 const BleManagerModule = NativeModules.BleManager;
 const bleManagerEmitter = new NativeEventEmitter(BleManagerModule);
@@ -54,16 +55,19 @@ export class BluetoothService extends EventEmitter {
   }
 
   async initialize() {
-    if (MOCK_CONNECTION) return;
+    console.log('initialize');
+    // if (MOCK_CONNECTION) return;
 
     console.trace();
     console.log(console.trace());
 
-    if (!(await ManagerCoreCommsService.isServiceRunning())){
-      ManagerCoreCommsService.startService();
-    }
-    startExternalService();
     this.initializeCoreMessageIntentReader();
+    this.initializeBleManager();
+
+    // if (!(await ManagerCoreCommsService.isServiceRunning())){
+    //   ManagerCoreCommsService.startService();
+    // }
+    // startExternalService();
 
     let enablePhoneNotifications = await loadSetting(SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS, ENABLE_PHONE_NOTIFICATIONS_DEFAULT);
     if (enablePhoneNotifications && await checkNotificationAccessSpecialPermission() && !(await NotificationService.isNotificationListenerEnabled())) {
@@ -100,8 +104,9 @@ export class BluetoothService extends EventEmitter {
   }
 
   initializeCoreMessageIntentReader() {
+    console.log('initializeCoreMessageIntentReader');
     eventEmitter.addListener('CoreMessageIntentEvent', jsonString => {
-      if (INTENSE_LOGGING)
+      // if (INTENSE_LOGGING)
         console.log('Received message from core:', jsonString);
       try {
         let data = JSON.parse(jsonString);
@@ -139,10 +144,10 @@ export class BluetoothService extends EventEmitter {
       'BleManagerDisconnectPeripheral',
       this.handleDisconnectedPeripheral.bind(this),
     );
-    bleManagerEmitter.addListener(
-      'BleManagerBondedPeripheral',
-      this.handleBondedPeripheral.bind(this),
-    );
+    // bleManagerEmitter.addListener(
+    //   'BleManagerBondedPeripheral',
+    //   this.handleBondedPeripheral.bind(this),
+    // );
     bleManagerEmitter.addListener(
       'BleManagerDidUpdateValueForCharacteristic',
       this.handleCharacteristicUpdate.bind(this),
@@ -209,56 +214,61 @@ export class BluetoothService extends EventEmitter {
   }
 
   async scanForDevices() {
+    console.log('scanForDevices');
+    this.initializeCoreMessageIntentReader();
+    // this.initializeBleManager();
+    // await BleManager.start({ showAlert: false });
+    // await BleManager.scan([], 0, true);
+    
+    // if (!(await this.isBluetoothEnabled())) {
+    //   console.log('Bluetooth is not enabled');
+    //   return;
+    // }
 
-    if (!(await this.isBluetoothEnabled())) {
-      console.log('Bluetooth is not enabled');
-      return;
-    }
+    // if (!(await this.isLocationEnabled())) {
+    //   console.log('Location is not enabled');
+    //   return;
+    // }
 
-    if (!(await this.isLocationEnabled())) {
-      console.log('Location is not enabled');
-      return;
-    }
+    // console.log('checking if already scanning');
+    // if (this.isScanning) {
+    //   console.error('Already scanning for devices');
+    //   return;
+    // }
 
-    console.log('checking if already scanning');
-    if (this.isScanning) {
-      console.error('Already scanning for devices');
-      return;
-    }
+    // console.log('checking if already connecting to a device');
+    // if (this.isConnecting) {
+    //   console.log('Already in progress of connecting to a device');
+    //   return;
+    // }
 
-    console.log('checking if already connecting to a device');
-    if (this.isConnecting) {
-      console.log('Already in progress of connecting to a device');
-      return;
-    }
+    // console.log('starting scan');
 
-    console.log('starting scan');
+    // this.isScanning = true;
+    // this.devices = [];
+    // this.emit('scanStarted');
 
-    this.isScanning = true;
-    this.devices = [];
-    this.emit('scanStarted');
+    // const MAX_SCAN_SECONDS = 10;
+    // // Set a timeout to stop the scan regardless
+    // const scanTimeout = setTimeout(() => {
+    //   if (this.isScanning) {
+    //     //console.log('(scanForDevices) Stoping the scan');
+    //     //this.handleStopScan();
+    //   }
+    // }, MAX_SCAN_SECONDS * 1000);
 
-    const MAX_SCAN_SECONDS = 10;
-    // Set a timeout to stop the scan regardless
-    const scanTimeout = setTimeout(() => {
-      if (this.isScanning) {
-        //console.log('(scanForDevices) Stoping the scan');
-        //this.handleStopScan();
-      }
-    }, MAX_SCAN_SECONDS * 1000);
-
-    try {
-      console.log('Scanning for BLE devices...');
-      await BleManager.scan([this.SERVICE_UUID], 0, true);
-      console.log('BLE scan started');
-    } catch (error) {
-      console.error('Error during scanning:', error);
-      this.isScanning = false;
-      this.emit('scanStopped');
-    } finally {
-      console.log('Clear the scan timeout');
-      clearTimeout(scanTimeout); // Clear the timeout if scan finishes normally
-    }
+    // try {
+    //   console.log('Scanning for BLE devices...');
+    //   await BleManager.scan([this.SERVICE_UUID], 0, true);
+    //   console.log('BLE scan started');
+    // } catch (error) {
+    //   console.error('Error during scanning:', error);
+    //   this.isScanning = false;
+    //   this.emit('scanStopped');
+    // } finally {
+    //   console.log('Clear the scan timeout');
+    //   clearTimeout(scanTimeout); // Clear the timeout if scan finishes normally
+    // }
   }
 
   stopReconnectionScan() {
@@ -731,14 +741,14 @@ export class BluetoothService extends EventEmitter {
 
     console.log('Sending data to simulated AugmentOS... ', dataObj);
 
-    if (!this.connectedDevice) {
-      console.log('SendDataToSimulatedAugmentOs: No connected device to write to');
-    }
+    // if (!this.connectedDevice) {
+    //   console.log('SendDataToSimulatedAugmentOs: No connected device to write to');
+    // }
 
-    if (this.isLocked) {
-      console.log('SendDataToSimulatedAugmentOs: Action is locked. Ignoring button press.');
-      return;
-    }
+    // if (this.isLocked) {
+    //   console.log('SendDataToSimulatedAugmentOs: Action is locked. Ignoring button press.');
+    //   return;
+    // }
 
     try {
       ManagerCoreCommsService.sendCommandToCore(JSON.stringify(dataObj));
@@ -816,6 +826,8 @@ export class BluetoothService extends EventEmitter {
 
   async sendSearchForCompatibleDeviceNames(modelName: string) {
     console.log('sendSearchForCompatibleDeviceNames with modelName: ' + modelName);
+    this.initializeCoreMessageIntentReader();
+    this.initializeBleManager();
     return await this.sendDataToAugmentOs({
       command: 'search_for_compatible_device_names',
       params: {
