@@ -14,6 +14,8 @@ services:
               cd ../agents && bun run build"
     networks:
       - augmentos-network
+    environment:
+      - SERVICE_NAME=shared-packages
 
   # Cloud service
   cloud:
@@ -35,6 +37,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=cloud
     env_file:
       - .env
     volumes:
@@ -61,6 +64,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=live-captions
     env_file:
       - .env
     volumes:
@@ -89,6 +93,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=flash
     env_file:
       - .env
     volumes:
@@ -117,6 +122,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=dashboard-manager
     env_file:
       - .env
     volumes:
@@ -145,6 +151,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=notify
     env_file:
       - .env
     volumes:
@@ -173,6 +180,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=mira
     env_file:
       - .env
     volumes:
@@ -200,6 +208,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=live-translation
     env_file:
       - .env
     volumes:
@@ -227,6 +236,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
+      - SERVICE_NAME=isaiah
     env_file:
       - .env
     volumes:
@@ -258,6 +268,9 @@ services:
       - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
       - DD_APM_ENABLED=true
       - DD_PROCESS_AGENT_ENABLED=true
+      - DD_LOGS_CONFIG_PROCESSING_RULES=[{"type":"exclude_at_match","name":"exclude_debug_logs","pattern":"\\[debug\\]"}]
+      - DD_LOGS_CONFIG_OPEN_FILES_LIMIT=200
+      - DD_CONTAINER_EXCLUDE_LOGS=name:datadog-agent
     restart: unless-stopped
     networks:
       - augmentos-network
