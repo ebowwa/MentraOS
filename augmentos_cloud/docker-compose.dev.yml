@@ -19,14 +19,14 @@ services:
   cloud:
     stop_grace_period: 10s
     init: true
-    restart: unless-stopped  # Keep this for auto-restart
-    deploy:  # Add resource limits
+    restart: unless-stopped
+    deploy:
       resources:
         limits:
-          cpus: '0.5'  # Limit to 50% of a CPU core
-          memory: 512M  # Limit to 512MB of RAM
+          cpus: '0.5'
+          memory: 512M
         reservations:
-          memory: 128M  # Ensure at least 128MB is available
+          memory: 128M
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -45,6 +45,8 @@ services:
       - augmentos-network
     depends_on:
       - shared-packages
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
   # Live Captions service
   live-captions:
@@ -71,11 +73,13 @@ services:
     depends_on:
       - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
 
   # Flash service
   flash:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -97,11 +101,13 @@ services:
     depends_on:
       - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "flash", "service": "flash"}]'
 
   # Dashboard Manager service
   dashboard-manager:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -123,11 +129,13 @@ services:
     depends_on:
       - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "dashboard-manager", "service": "dashboard-manager"}]'
 
   # Notifications service
   notify:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -149,13 +157,13 @@ services:
     depends_on:
       - shared-packages
       - cloud
-
-  # Note Merge runs in a separate repo.
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "notify", "service": "notify"}]'
 
   # Mira AI service
   mira:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -177,9 +185,12 @@ services:
     depends_on:
       - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "mira", "service": "mira"}]'
+
   live-translation:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -201,9 +212,12 @@ services:
     depends_on:
       - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
+
   isaiah:
-    stop_grace_period: 10s  # Allow only 10 seconds for graceful shutdown
-    init: true  # Use an init process to handle signal forwarding
+    stop_grace_period: 10s
+    init: true
     build:
       context: .
       dockerfile: Dockerfile.dev
@@ -225,6 +239,28 @@ services:
     depends_on:
       - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "isaiah", "service": "isaiah"}]'
+
+  # Datadog agent
+  datadog:
+    image: datadog/agent:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+    env_file:
+      - .env
+    environment:
+      - DD_API_KEY=${DATADOG_API_KEY}
+      - DD_SITE=us5.datadoghq.com
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_APM_ENABLED=true
+      - DD_PROCESS_AGENT_ENABLED=true
+    restart: unless-stopped
+    networks:
+      - augmentos-network
 
 networks:
   augmentos-network:
