@@ -93,7 +93,7 @@ webSocketService.setupWebSocketServers(server);
 // Start the server
 server.listen(PORT, () => {
   console.log('\n😎 AugmentOS Cloud Server🚀\n');
-  console.log(`HTTP server: http://localhost:${PORT}`);
+  console.log(`HTTP server: http://cloud:${PORT}`);
   console.log('WebSocket endpoints:');
   console.log(`  - Glasses: ws://localhost:${PORT}/glasses-ws`);
   console.log(`  - TPA:     ws://localhost:${PORT}/tpa-ws\n`);
