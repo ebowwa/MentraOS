@@ -30,11 +30,9 @@ public class CalendarSystem {
 
     private final Handler calendarSendingLoopHandler = new Handler(Looper.getMainLooper());
     private Runnable calendarSendingRunnableCode;
-    private final long calendarSendTime = 1000 * 60 * 5; // 5 minutes
+    private final long calendarSendTime = 1000 * 60 * 10; // 5 minutes
 
-    // Add a flag and polling interval for first calendar fetch
-    private boolean firstCalendarFetchDone = false;
-    private final long firstFetchPollingInterval = 5000; // 5 seconds
+    private final long firstFetchPollingInterval = 10000; // 5 seconds
 
     private CalendarSystem(Context context) {
         this.context = context.getApplicationContext();
@@ -73,15 +71,13 @@ public class CalendarSystem {
             return;
         }
 
+        Log.d(TAG, "Requesting calendar update.");
+
         // Fetch the next calendar event
         CalendarItem nextEvent = getNextUpcomingEvent();
         if (nextEvent != null) {
             latestCalendarItem = nextEvent;
             sendCalendarEventToServer();
-
-            if (!firstCalendarFetchDone) {
-                firstCalendarFetchDone = true;
-            }
         }
     }
 
@@ -157,16 +153,9 @@ public class CalendarSystem {
             @Override
             public void run() {
                 requestCalendarUpdate(); // Request calendar update
-
-                if (!firstCalendarFetchDone) {
-                    // Poll more frequently until first fetch is done
-                    calendarSendingLoopHandler.postDelayed(this, firstFetchPollingInterval);
-                } else {
-                    // Once first fetch is done, revert to normal interval
-                    calendarSendingLoopHandler.postDelayed(this, calendarSendTime);
-                }
+                calendarSendingLoopHandler.postDelayed(this, calendarSendTime);
             }
         };
-        calendarSendingLoopHandler.post(calendarSendingRunnableCode);
+        calendarSendingLoopHandler.postDelayed(calendarSendingRunnableCode, firstFetchPollingInterval);
     }
 }
