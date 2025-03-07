@@ -54,10 +54,21 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   const icons = iconSets[variant];
 
   return (
-    <SafeAreaView style={[styles.navBarContainer, {backgroundColor}]}>
+    <View style={[styles.navBarContainer, {backgroundColor}]}>
       {/* Home Icon */}
       <TouchableOpacity
         onPress={() => navigation.navigate('Home')}
+        style={styles.iconWrapper}>
+        <MaterialCommunityIcons
+          name={icons.home}
+          size={iconSize}
+          color={iconColor}
+        />
+      </TouchableOpacity>
+
+      {/* iOS Testing Page */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Testing')}
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
           name={icons.home}
@@ -99,7 +110,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           color={iconColor}
         />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -108,12 +119,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    position: 'absolute',
-    bottom: 0,
-    paddingBottom: 16,
-    left: 0,
-    right: 0,
-    height: 20,
+    width: '100%',
+    padding: 0,
+    margin: 0,
+    height: 64,
     borderTopWidth: 0.5,
     borderTopColor: '#E5E5EA',
   },

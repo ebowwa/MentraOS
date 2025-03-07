@@ -272,7 +272,7 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
           },
         ]}
       >
-        <NavigationBar toggleTheme={() => {}} isDarkTheme={isDarkTheme} />
+        <NavigationBar toggleTheme={() => { }} isDarkTheme={isDarkTheme} />
       </View>
     </SafeAreaView>
   );

@@ -136,8 +136,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const connectServer = async () => {
     try {
-      await AOSModule.setCoreToken("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwiZW1haWwiOiJqb2VAbWFtYXMuaG91c2UiLCJpYXQiOjE3Mzk2NjY4MTB9.mJkSEyP7v_jHlzRjc-HzjhCjDopG12aIlOeYxo-kp0M");
-      await AOSModule.connectServer(" ");
+      await AOSModule.connectServer();
     } catch (error) {
       console.error('connectServer() error:', error);
     }
@@ -281,8 +280,8 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
             </>
           )}
         </ScrollView>
-        <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
       </View>
+      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </SafeAreaView>
   );
 };

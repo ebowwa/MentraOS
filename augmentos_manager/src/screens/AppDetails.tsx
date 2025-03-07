@@ -352,8 +352,8 @@ const AppDetails: React.FC<AppDetailsProps> = ({
             </View>
           </View>
         </ScrollView>
-        <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
       </View>
+      <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
     </SafeAreaView>
   );
 };

@@ -58,7 +58,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const { status, startBluetoothAndCore } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
-  
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
 
@@ -189,48 +189,50 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const currentThemeStyles = isDarkTheme ? darkThemeStyles : lightThemeStyles;
 
   return (
-    <SafeAreaView style={currentThemeStyles.container}>
-      <ScrollView style={currentThemeStyles.contentContainer}>
-        <AnimatedSection>
-          <Header isDarkTheme={isDarkTheme} navigation={navigation} />
-        </AnimatedSection>
-
-        {status.core_info.cloud_connection_status !== 'CONNECTED' &&
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={currentThemeStyles.container}>
+        <ScrollView style={currentThemeStyles.contentContainer}>
           <AnimatedSection>
-            <CloudConnection isDarkTheme={isDarkTheme} />
+            <Header isDarkTheme={isDarkTheme} navigation={navigation} />
           </AnimatedSection>
-        }
 
-        <AnimatedSection>
-          <ConnectedDeviceInfo isDarkTheme={isDarkTheme} />
-        </AnimatedSection>
+          {status.core_info.cloud_connection_status !== 'CONNECTED' &&
+            <AnimatedSection>
+              <CloudConnection isDarkTheme={isDarkTheme} />
+            </AnimatedSection>
+          }
 
-        {status.core_info.puck_connected && (
-          <>
-            {status.apps.length > 0 ? (
-              <>
+          <AnimatedSection>
+            <ConnectedDeviceInfo isDarkTheme={isDarkTheme} />
+          </AnimatedSection>
+
+          {status.core_info.puck_connected && (
+            <>
+              {status.apps.length > 0 ? (
+                <>
+                  <AnimatedSection>
+                    <RunningAppsList isDarkTheme={isDarkTheme} />
+                  </AnimatedSection>
+
+                  <AnimatedSection>
+                    <YourAppsList
+                      isDarkTheme={isDarkTheme}
+                      key={`apps-list-${status.apps.length}`}
+                    />
+                  </AnimatedSection>
+                </>
+              ) : (
                 <AnimatedSection>
-                  <RunningAppsList isDarkTheme={isDarkTheme} />
+                  <Text style={currentThemeStyles.noAppsText}>
+                    No apps found. Visit the AugmentOS App Store to explore and
+                    download apps for your device.
+                  </Text>
                 </AnimatedSection>
-
-                <AnimatedSection>
-                  <YourAppsList
-                    isDarkTheme={isDarkTheme}
-                    key={`apps-list-${status.apps.length}`}
-                  />
-                </AnimatedSection>
-              </>
-            ) : (
-              <AnimatedSection>
-                <Text style={currentThemeStyles.noAppsText}>
-                  No apps found. Visit the AugmentOS App Store to explore and
-                  download apps for your device.
-                </Text>
-              </AnimatedSection>
-            )}
-          </>
-        )}
-      </ScrollView>
+              )}
+            </>
+          )}
+        </ScrollView>
+      </View>
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </SafeAreaView>
   );

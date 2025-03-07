@@ -232,214 +232,216 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   return (
     <SafeAreaView
       style={[
-        styles.container,
+        { flex: 1 },
         isDarkTheme ? styles.darkBackground : styles.lightBackground,
       ]}
     >
-      {/* Title Section */}
-      <View
-        style={[
-          styles.titleContainer,
-          isDarkTheme ? styles.titleContainerDark : styles.titleContainerLight,
-        ]}
-      >
-        <Text
+      <View style={styles.container}>
+        {/* Title Section */}
+        <View
           style={[
-            styles.title,
-            isDarkTheme ? styles.lightText : styles.darkText,
+            styles.titleContainer,
+            isDarkTheme ? styles.titleContainerDark : styles.titleContainerLight,
           ]}
         >
-          Settings
-        </Text>
-      </View>
-
-      <ScrollView style={styles.scrollViewContainer}>
-        {/* Force Onboard Microphone */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-                // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                //   styles.disabledItem,
-              ]}
-            >
-              Force Phone Microphone
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                //   styles.disabledItem,
-              ]}
-            >
-              Force the use of the phone's microphone instead of the glasses' microphone (if applicable).
-            </Text>
-          </View>
-          <Switch
-            //disabled={!status.glasses_info?.model_name}
-            value={forceCoreOnboardMic}
-            onValueChange={toggleForceCoreOnboardMic}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
+          <Text
+            style={[
+              styles.title,
+              isDarkTheme ? styles.lightText : styles.darkText,
+            ]}
+          >
+            Settings
+          </Text>
         </View>
 
-        {/* Privacy Settings */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => {
-            navigation.navigate('PrivacySettingsScreen');
-          }}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Privacy Settings
-            </Text>
-          </View>
-          <Icon
-            name="angle-right"
-            size={20}
-            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
-          />
-        </TouchableOpacity>
-
-        {/* Contextual Dashboard */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Contextual Dashboard
-            </Text>
-            {status.glasses_info?.model_name && (
+        <ScrollView style={styles.scrollViewContainer}>
+          {/* Force Onboard Microphone */}
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  //   styles.disabledItem,
+                ]}
+              >
+                Force Phone Microphone
+              </Text>
               <Text
                 style={[
                   styles.value,
                   isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  //   styles.disabledItem,
                 ]}
               >
-                {`Show a summary of your phone notifications when you ${status.glasses_info?.model_name
+                Force the use of the phone's microphone instead of the glasses' microphone (if applicable).
+              </Text>
+            </View>
+            <Switch
+              //disabled={!status.glasses_info?.model_name}
+              value={forceCoreOnboardMic}
+              onValueChange={toggleForceCoreOnboardMic}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
+          </View>
+
+          {/* Privacy Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('PrivacySettingsScreen');
+            }}
+          >
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                Privacy Settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
+            />
+          </TouchableOpacity>
+
+          {/* Contextual Dashboard */}
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                Contextual Dashboard
+              </Text>
+              {status.glasses_info?.model_name && (
+                <Text
+                  style={[
+                    styles.value,
+                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  ]}
+                >
+                  {`Show a summary of your phone notifications when you ${status.glasses_info?.model_name
                     .toLowerCase()
                     .includes('even')
                     ? 'look up'
                     : 'tap your smart glasses'
-                  }.`}
-              </Text>
-            )}
-          </View>
-          <Switch
-            value={isContextualDashboardEnabled}
-            onValueChange={toggleContextualDashboard}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
-
-        {/* HEADUP ANGLE SETTING (Button that opens the modal) */}
-        <TouchableOpacity
-          style={[
-            styles.settingItem,
-            disableHeadUpAngle && styles.disabledItem,
-          ]}
-          disabled={disableHeadUpAngle}
-          onPress={() => setHeadUpAngleComponentVisible(true)}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              HeadUp Settings
-            </Text>
-          </View>
-          <Icon
-            name="angle-right"
-            size={20}
-            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
-          />
-        </TouchableOpacity>
-
-        {/* Brightness Slider */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                styles.disabledItem,
-              ]}
-            >
-              Brightness
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                styles.disabledItem,
-              ]}
-            >
-              Adjust the brightness level of your smart glasses.
-            </Text>
-            <Slider
-              {...sliderProps}
+                    }.`}
+                </Text>
+              )}
+            </View>
+            <Switch
+              value={isContextualDashboardEnabled}
+              onValueChange={toggleContextualDashboard}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
             />
           </View>
-        </View>
 
-        {/* Forget Glasses */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          disabled={!status.core_info.puck_connected || status.core_info.default_wearable === ''}
-          onPress={confirmForgetGlasses}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                styles.redText,
-                (!status.core_info.puck_connected || status.core_info.default_wearable === '') &&
-                styles.disabledItem,
-              ]}
-            >
-              Forget Glasses
-            </Text>
+          {/* HEADUP ANGLE SETTING (Button that opens the modal) */}
+          <TouchableOpacity
+            style={[
+              styles.settingItem,
+              disableHeadUpAngle && styles.disabledItem,
+            ]}
+            disabled={disableHeadUpAngle}
+            onPress={() => setHeadUpAngleComponentVisible(true)}
+          >
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                HeadUp Settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
+            />
+          </TouchableOpacity>
+
+          {/* Brightness Slider */}
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  styles.disabledItem,
+                ]}
+              >
+                Brightness
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  styles.disabledItem,
+                ]}
+              >
+                Adjust the brightness level of your smart glasses.
+              </Text>
+              <Slider
+                {...sliderProps}
+              />
+            </View>
           </View>
-        </TouchableOpacity>
 
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.settingItem} onPress={confirmSignOut}>
-          <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, styles.redText]}>Sign Out</Text>
-          </View>
-        </TouchableOpacity>
-      </ScrollView>
+          {/* Forget Glasses */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            disabled={!status.core_info.puck_connected || status.core_info.default_wearable === ''}
+            onPress={confirmForgetGlasses}
+          >
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  styles.redText,
+                  (!status.core_info.puck_connected || status.core_info.default_wearable === '') &&
+                  styles.disabledItem,
+                ]}
+              >
+                Forget Glasses
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-      {/* HEADUP ANGLE MODAL (the semicircle one) */}
-      {headUpAngle !== null && (
-        <HeadUpAngleComponent
-          visible={headUpAngleComponentVisible}
-          initialAngle={headUpAngle}
-          onCancel={onCancelHeadUpAngle}
-          onSave={onSaveHeadUpAngle}
-        />
-      )}
+          {/* Sign Out */}
+          <TouchableOpacity style={styles.settingItem} onPress={confirmSignOut}>
+            <View style={styles.settingTextContainer}>
+              <Text style={[styles.label, styles.redText]}>Sign Out</Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
+
+        {/* HEADUP ANGLE MODAL (the semicircle one) */}
+        {headUpAngle !== null && (
+          <HeadUpAngleComponent
+            visible={headUpAngleComponentVisible}
+            initialAngle={headUpAngle}
+            onCancel={onCancelHeadUpAngle}
+            onSave={onSaveHeadUpAngle}
+          />
+        )}
+      </View>
 
       {/* Your app’s bottom navigation bar */}
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
