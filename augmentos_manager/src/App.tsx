@@ -33,6 +33,7 @@ import ConnectingToPuckComponent from './components/ConnectingToPuckComponent.ts
 import VersionUpdateScreen from './screens/VersionUpdateScreen.tsx';
 import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
+import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -240,6 +241,11 @@ const App: React.FC = () => {
                     />
                   )}
                 </Stack.Screen>
+                <Stack.Screen 
+                  name="ErrorReportScreen" 
+                  component={ErrorReportScreen} 
+                  options={{ title: 'Report an Error' }} 
+                />
                 <Stack.Screen name="SelectGlassesModelScreen"
                   options={{ title: 'Select Glasses' }}
                 >

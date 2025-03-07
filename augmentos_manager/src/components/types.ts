@@ -29,6 +29,7 @@ export type RootStackParamList = {
   GlassesPairingGuideScreen: { glassesModelName: string };
   GlassesPairingGuidePreparationScreen: { glassesModelName: string };
   AppSettings: { packageName: string, appName: string };
+  ErrorReportScreen: undefined;
 };
 
 
