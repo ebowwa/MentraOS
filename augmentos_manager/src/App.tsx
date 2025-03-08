@@ -36,6 +36,7 @@ import VersionUpdateScreen from './screens/VersionUpdateScreen.tsx';
 import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
 import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
+import { saveSetting } from './logic/SettingsHelper';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -52,6 +53,12 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+
+  // Reset ignoreVersionCheck setting on app start
+  useEffect(() => {
+    saveSetting('ignoreVersionCheck', false);
+    console.log('Reset version check ignore flag on app start');
+  }, []);
 
   const toggleTheme = () => {
     setIsDarkTheme(prevTheme => !prevTheme);

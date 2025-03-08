@@ -14,6 +14,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Button from '../components/Button';
 import InstallApkModule from '../bridge/InstallApkModule.tsx';
+import { saveSetting } from '../logic/SettingsHelper';
 
 interface VersionUpdateScreenProps {
   route: {
@@ -221,6 +222,25 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
                     ? 'Retry Connection'
                     : 'Update AugmentOS'}
               </Button>
+              
+              <View style={styles.skipButtonContainer}>
+                <Button
+                  onPress={() => {
+                    // Save setting to ignore version checks until next app restart
+                    saveSetting('ignoreVersionCheck', true);
+                    console.log('Version check skipped until next app restart');
+                    // Skip directly to Home screen
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'Home' }],
+                    });
+                  }}
+                  isDarkTheme={isDarkTheme}
+                  iconName="skip-next"
+                  disabled={false}>
+                  Skip Update
+                </Button>
+              </View>
             </View>
           )}
         </View>
@@ -272,6 +292,16 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     marginTop: 16,
+  },
+  skipButtonContainer: {
+    marginTop: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  skipButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#666',
   },
   darkBackground: {
     backgroundColor: '#1c1c1c',
