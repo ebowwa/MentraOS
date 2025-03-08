@@ -98,6 +98,11 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
     public Handler connectHandler;
     String translationLanguage;
 
+    private Handler micDebounceHandler = new Handler();
+    private Runnable micTurnOffRunnable;
+    private static final long MIC_DEBOUNCE_DELAY_MS = 10000; // 10 seconds
+    private boolean pendingMicTurnOff = false;
+
     public SmartGlassesAndroidService(Class mainActivityClass, String myChannelId, int myNotificationId, String notificationAppName, String notificationDescription, int notificationDrawable){
         this.myNotificationId = myNotificationId;
         this.mainActivityClass = mainActivityClass;
