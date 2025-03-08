@@ -18,11 +18,12 @@ import {
 import tzlookup from 'tz-lookup';
 import { NewsAgent } from '@augmentos/agents';
 import { NotificationFilterAgent } from '@augmentos/agents'; // <-- added import
-import { CLOUD_PORT, systemApps } from '@augmentos/config';
+import { systemApps } from '@augmentos/config';
 import { WeatherModule } from './dashboard-modules/WeatherModule';
 
 const app = express();
-const PORT =  systemApps.dashboard.port;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
+const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002";
 const PACKAGE_NAME = systemApps.dashboard.packageName;
 const API_KEY = 'test_key'; // In production, store securely
 
@@ -70,7 +71,7 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
     console.log(`\n[Webhook] Session start for user ${userId}, session ${sessionId}\n`);
 
     // 1) Create a new WebSocket connection to the cloud
-    const ws = new WebSocket(`ws://localhost:${CLOUD_PORT}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
 
     // Create a new dashboard card
     const dashboardCard: DoubleTextWall = {
@@ -675,7 +676,7 @@ app.use(express.static(path.join(__dirname, './public')));
 // Listen
 // -----------------------------------
 app.listen(PORT, () => {
-  console.log(`Dashboard Manager TPA running at http://localhost:${PORT}`);
+  console.log(`Dashboard Manager TPA running`);
 });
 
 // -----------------------------------
