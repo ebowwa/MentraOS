@@ -4,30 +4,26 @@
     "packages/*"
   ],
   "scripts": {
-
-    "docker:dev": "ENV=development docker-compose -f docker-compose.dev.yml up -d",
-    "dev": "bun run docker:dev",
-    "stop": "docker-compose -f docker-compose.dev.yml down --timeout 5 || docker kill $(docker ps -q)",
     "build": "concurrently \"cd packages/sdk && bun run build\" \"cd packages/config && bun run build\" \"cd packages/utils && bun run build\" \"cd packages/agents && bun run build\"  \"cd packages/apps/dashboard-manager && bun run build\" \"cd packages/apps/flash && bun run build\" \"cd packages/apps/livecaptions && bun run build\" \"cd packages/apps/miraai && bun run build\" \"cd packages/apps/notify && bun run build\" \"cd packages/cloud && bun run build\"",
 
-    "docker:dev:detached": "ENV=development docker-compose -f docker-compose.dev.yml up -d",
-    "docker:dev:stop": "docker-compose -f docker-compose.dev.yml down",
+    "dev": "ENV=development docker-compose -f docker-compose.dev.yml up -d",
+    "dev:stop": "docker-compose -f docker-compose.dev.yml down --timeout 5 || docker kill $(docker ps -q)",
 
-    "docker:staging": "ENV=staging docker-compose -f docker-compose.yml up -d",
-    "docker:staging:stop": "ENV=staging docker-compose -f docker-compose.yml down",
+    "staging": "ENV=staging docker-compose -f docker-compose.staging.yml up -d",
+    "staging:stop": "ENV=staging docker-compose -f docker-compose.staging.yml down",
 
-    "docker:prod": "ENV=production docker-compose -f docker-compose.yml up -d",
-    "docker:prod:stop": "ENV=production docker-compose -f docker-compose.yml down",
+    "prod": "ENV=production docker-compose -f docker-compose.yml up -d",
+    "prod:stop": "ENV=production docker-compose -f docker-compose.yml down",
 
     "docker:logs": "docker-compose logs -f",
 
-    "docker:logs:dev": "docker-compose -f docker-compose.dev.yml logs -f",
-    "docker:logs:staging": "docker-compose -f docker-compose.yml logs -f",
-    "docker:logs:prod": "docker-compose -f docker-compose.yml logs -f",
+    "logs:dev": "docker-compose -f docker-compose.dev.yml logs -f",
+    "logs:staging": "docker-compose -f docker-compose.yml logs -f",
+    "logs:prod": "docker-compose -f docker-compose.yml logs -f",
 
-    "docker:logs:dev:cloud": "docker-compose -f docker-compose.dev.yml logs -f cloud",
-    "docker:logs:staging:cloud": "ENV=staging docker-compose -f docker-compose.yml logs -f cloud",
-    "docker:logs:prod:cloud": "ENV=production docker-compose -f docker-compose.yml logs -f cloud",
+    "logs:dev:cloud": "docker-compose -f docker-compose.dev.yml logs -f cloud",
+    "logs:staging:cloud": "ENV=staging docker-compose -f docker-compose.staging.yml logs -f cloud",
+    "logs:prod:cloud": "ENV=production docker-compose -f docker-compose.yml logs -f cloud",
 
     "docker:setup-links": "docker-compose -f docker-compose.dev.yml up --no-deps setup",
     "local:setup-links": "cd packages/utils && bun link && cd ../sdk && bun link && cd ../config && bun link && cd ../agents && bun link && cd ../cloud && bun link @augmentos/utils @augmentos/sdk @augmentos/config @augmentos/agents && for app in dashboard-manager flash isaiah live-captions live-translation miraai notify; do cd ../apps/$app && bun link @augmentos/utils @augmentos/sdk @augmentos/config @augmentos/agents; done"

@@ -2,7 +2,7 @@
 import express, { Request, Response } from 'express';
 import { logger } from '@augmentos/utils';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { PosthogService } from 'src/services/logging/posthog.service';
+import { PosthogService } from '../services/logging/posthog.service';
 
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
