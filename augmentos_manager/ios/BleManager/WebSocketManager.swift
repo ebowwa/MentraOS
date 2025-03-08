@@ -20,6 +20,8 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
   private var session: URLSession?
   private let statusSubject = PassthroughSubject<WebSocketStatus, Never>()
   private let messageSubject = PassthroughSubject<[String: Any], Never>()
+  private var coreToken: String?
+  private var previousStatus: WebSocketStatus = .disconnected
   
   var status: AnyPublisher<WebSocketStatus, Never> {
     return statusSubject.eraseToAnyPublisher()
@@ -29,17 +31,27 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     return messageSubject.eraseToAnyPublisher()
   }
   
+  // Only publish when value actually changes
+  private func updateStatus(_ newStatus: WebSocketStatus) {
+    if newStatus != previousStatus {
+      previousStatus = newStatus
+      statusSubject.send(newStatus)
+    }
+  }
+  
   override init() {
     super.init()
     self.session = URLSession(configuration: .default, delegate: self, delegateQueue: OperationQueue())
   }
   
   func connect(url: URL, coreToken: String) {
+    self.coreToken = coreToken
+    
     // Disconnect existing connection if any
     disconnect()
     
     // Update status to connecting
-    statusSubject.send(.connecting)
+    updateStatus(.connecting)
     
     // Create new WebSocket task
     webSocket = session?.webSocketTask(with: url)
@@ -57,7 +69,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
   func disconnect() {
     webSocket?.cancel(with: .normalClosure, reason: nil)
     webSocket = nil
-    statusSubject.send(.disconnected)
+    updateStatus(.disconnected)
   }
   
   func isConnected() -> Bool {
@@ -80,7 +92,6 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
   
   // Send binary data (for audio)
   func sendBinary(_ data: Data) {
-    print("sending binary data over websocket : \(data.count)")
     guard isConnected() else {
       print("Cannot send binary data: WebSocket not connected")
       return
@@ -136,14 +147,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
         
       case .failure(let error):
         print("WebSocket receive error: \(error)")
-        self.statusSubject.send(.error)
-        
-        // Try to reconnect after a delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-          if self.isConnected() {
-            self.receiveMessage()
-          }
-        }
+        updateStatus(.error)
       }
     }
   }
@@ -157,18 +161,18 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
   
   func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
     print("WebSocket connection established")
-    statusSubject.send(.connected)
+    updateStatus(.connected)
   }
   
   func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
     print("WebSocket connection closed with code: \(closeCode)")
-    statusSubject.send(.disconnected)
+    updateStatus(.disconnected)
   }
   
   func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
     if let error = error {
       print("WebSocket task completed with error: \(error)")
-      statusSubject.send(.error)
+      updateStatus(.error)
     }
   }
   

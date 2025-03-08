@@ -14,14 +14,10 @@ import React
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback {
   
+  
   @objc public let g1Manager: ERG1Manager
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
-  
-  // Callback properties for React Native bridge
-  @objc var onConnectionStatusChange: RCTDirectEventBlock?
-  @objc var onAppStateChange: RCTDirectEventBlock?
-  @objc var onDisplayEvent: RCTDirectEventBlock?
   
   override init() {
     self.g1Manager = ERG1Manager()
@@ -44,10 +40,6 @@ import React
     serverComms.setAuthCredentials("", coreToken)
   }
   
-  @objc func disconnectFromServer() {
-    serverComms.disconnectWebSocket()
-  }
-  
   @objc func startApp(_ packageName: String) {
     serverComms.startApp(packageName: packageName)
   }
@@ -56,9 +48,17 @@ import React
     serverComms.stopApp(packageName: packageName)
   }
   
-  @objc func sendCommandToCore(_ command: String) {
-    //
+  func onConnectionAck() {
+    handleRequestStatus()
   }
+  
+  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {}
+  
+  func onConnectionError(_ error: String) {
+    handleRequestStatus()
+  }
+  
+  func onAuthError() {}
   
   // MARK: - Voice Data Handling
   
@@ -80,8 +80,6 @@ import React
         print("No PCM data after removing command bytes")
         return
       }
-      
-
       
       // send LC3 data over the websocket:
       self.serverComms.sendAudioChunk(effectiveData)
@@ -111,35 +109,22 @@ import React
   
   // MARK: - ServerCommsCallback Implementation
   
-  func onConnectionAck() {
-    // React Native callback
-    onConnectionStatusChange?(["status": "connected"])
-  }
-  
-  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
-    // Convert apps to dictionaries for React Native
-    let appDicts = apps.map { app -> [String: Any] in
-      return [
-        "packageName": app.packageName,
-        "name": app.name,
-        "description": app.description,
-        "webhookURL": app.webhookURL,
-        "logoURL": app.logoURL,
-        "isRunning": app.isRunning
-      ]
-    }
-    
-    // React Native callback
-    onAppStateChange?(["apps": appDicts])
-  }
-  
-  func onConnectionError(_ error: String) {
-    onConnectionStatusChange?(["status": "error", "message": error])
-  }
-  
-  func onAuthError() {
-    onConnectionStatusChange?(["status": "authError"])
-  }
+//  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
+//    // Convert apps to dictionaries for React Native
+//    let appDicts = apps.map { app -> [String: Any] in
+//      return [
+//        "packageName": app.packageName,
+//        "name": app.name,
+//        "description": app.description,
+//        "webhookURL": app.webhookURL,
+//        "logoURL": app.logoURL,
+//        "isRunning": app.isRunning
+//      ]
+//    }
+//    
+//    // React Native callback
+//    onAppStateChange?(["apps": appDicts])
+//  }
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     // Handle microphone state change if needed
@@ -165,23 +150,6 @@ import React
     if dataType == "battery" {
       // Send battery status if needed
     }
-  }
-  
-  func onConnectionStatusChange(_ status: WebSocketStatus) {
-    var statusString = "unknown"
-    
-    switch status {
-    case .connected:
-      statusString = "connected"
-    case .connecting:
-      statusString = "connecting"
-    case .disconnected:
-      statusString = "disconnected"
-    case .error:
-      statusString = "error"
-    }
-    
-    onConnectionStatusChange?(["status": statusString])
   }
 
   func handleSearchForCompatibleDeviceNames(_ modelName: String) {
@@ -243,8 +211,13 @@ import React
           handleRequestStatus()
           
         case .connectWearable:
-          if let params = params, let target = params["target"] as? String {
-            handleConnectWearable(deviceId: target)
+          guard let params = params else {
+            print("connect_wearable invalid params")
+            break
+          }
+          
+          if let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
+            handleConnectWearable(modelName: modelName, deviceName: deviceName)
           } else {
             print("Invalid params for connect_wearable")
           }
@@ -306,18 +279,151 @@ import React
   private func handleSetAuthSecretKey(userId: String, authSecretKey: String) {
     print("Setting auth secret key for user: \(userId)")
     serverComms.setAuthCredentials(userId, authSecretKey)
+    print("Connecting to AugmentOS...")
+    serverComms.connectWebSocket()
   }
   
   private func handleRequestStatus() {
     print("Requesting status")
     // TODO: Implement status request logic
     // Example: let status = g1Manager.getStatus(); serverComms.sendStatusUpdate(status)
+    
+    // construct the status object:
+//    "status": {
+//      "puck_battery_life": 25,
+//      "charging_status": true,
+//      "connected_glasses": {
+//        "model_name": "Vuzix Z100",
+//        "battery_life": 10
+//      },
+//    },
+//    "apps": [
+//      {
+//        "name": "Language Learner",
+//        "description": "A real-time translation and vocabulary builder.",
+//        "is_running": true,
+//        "is_foreground": true,
+//        "package_name": "com.language.learner"
+//      },
+//      {
+//        "name": "Navigation Assistant",
+//        "description": "Provides step-by-step navigation instructions.",
+//        "is_running": true,
+//        "is_foreground": false,
+//        "package_name": "com.navigation.assistant"
+//      },
+    
+    let connectedGlasses: [String: Any] = [
+      "model_name": "Even Realities G1",
+      "battery_life": 100,
+    ]
+    
+    let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
+    let apps: [[String: Any]] = [
+        [
+            "host": "mira",
+            "packageName": "com.augmentos.miraai",
+            "name": "Mira AI",
+            "description": "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command."
+        ],
+        [
+            "host": "merge",
+            "packageName": "com.mentra.merge",
+            "name": "Merge",
+            "description": "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo."
+        ],
+        [
+            "host": "live-translation",
+            "packageName": "com.augmentos.live-translation",
+            "name": "Live Translation",
+            "description": "Live language translation."
+        ],
+        [
+            "host": "live-captions",
+            "packageName": "com.augmentos.livecaptions",
+            "name": "Live Captions",
+            "description": "Live closed captions."
+        ]
+    ]
+    let coreInfo: [String: Any] = [
+      "augmentos_core_version": "Unknown",
+      "cloud_connection_status": cloudConnectionStatus,
+      "default_wearable": "Even Realities G1",
+    ]
+    
+    let statusObj: [String: Any] = [
+      "connected_glasses": connectedGlasses,
+      "apps": apps,
+      "core_info": coreInfo,
+    ]
+    let wrapperObj: [String: Any] = ["status": statusObj]
+    print("wrapperStatusObj \(wrapperObj)")
+    // must convert to string before sending:
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+      }
+    } catch {
+      print("Error converting to JSON: \(error)")
+    }
   }
   
-  private func handleConnectWearable(deviceId: String) {
-    print("Connecting to wearable: \(deviceId)")
-    // TODO: Implement connection logic
-    // Example: g1Manager.connectToDevice(deviceId)
+  var readinessCheckTimer: Timer?
+  
+  private func handleConnectWearable(modelName: String, deviceName: String) {
+    print("Connecting to wearable: \(modelName) 22")
+    
+////    // every few seconds, if the g1Ready property is true, cancel the timer and send a status update:
+//    let readiness = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
+//      print("checking if g1 is ready...")
+//      if self.g1Manager.g1Ready {
+//        print("g1 is ready! Sending status update...")
+//        self.handleRequestStatus()
+//        timer.invalidate()
+//      }
+//    }
+//    
+//    // Create timer and store reference
+////    self.readinessCheckTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] timer in
+////        print("checking if g1 is ready...")
+////        guard let self = self else {
+////            print("self no longer exists, invalidating timer")
+////            timer.invalidate()
+////            return
+////        }
+////        
+////        if self.g1Manager.g1Ready {
+////            print("g1 is ready! Sending status update...")
+////            self.handleRequestStatus()
+////            timer.invalidate()
+////            self.readinessCheckTimer = nil
+////        }
+////    }
+//    
+//    let timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { timer in
+//        // Your code to execute every 5 seconds
+//        print("This will run every 5 seconds")
+//    }
+    
+    // just g1's for now:
+    Task {
+      print("starting pairing...")
+      self.g1Manager.RN_pairById(deviceName)
+    }
+    
+    Task {
+        while !Task.isCancelled {
+            print("checking if g1 is ready...")
+            if self.g1Manager.g1Ready {
+              print("g1 is ready!!!!")
+              self.handleRequestStatus()
+              break
+            }
+            
+            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+        }
+    }
   }
   
   private func handleConnectDefaultWearable() {
@@ -330,7 +436,6 @@ import React
   // MARK: - Cleanup
   
   @objc func cleanup() {
-    serverComms.cleanup()
     cancellables.removeAll()
   }
 }

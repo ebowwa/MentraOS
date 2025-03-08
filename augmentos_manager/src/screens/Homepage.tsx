@@ -222,7 +222,6 @@ const lightThemeStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingBottom: 55,
   },
   contentContainer: {
     flex: 1,
@@ -257,7 +256,6 @@ const darkThemeStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    paddingBottom: 55,
   },
   contentContainer: {
     flex: 1,

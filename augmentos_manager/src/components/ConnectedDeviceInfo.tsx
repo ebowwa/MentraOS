@@ -141,6 +141,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
                                     styles.connectButton;
   };
 
+  // TODO: ios hack:
   const overrideConnectingToPuck = true;
   if (status.core_info.puck_connected || overrideConnectingToPuck) {
     return (

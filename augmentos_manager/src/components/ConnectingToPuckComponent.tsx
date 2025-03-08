@@ -43,7 +43,6 @@ const ConnectingToPuckComponent = ({
         backend.exchangeToken(supabaseToken)
           .then((coreToken) => {
             let uid = user.email || user.id;
-            console.log("SETTING AUTH KEY FOR ", uid, coreToken);
             bluetoothService.setAuthenticationSecretKey(uid, coreToken);
 
             // const appStoreUrl: string = Config.AUGMENTOS_APPSTORE_URL || "";

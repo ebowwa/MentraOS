@@ -57,6 +57,7 @@ export class BluetoothService extends EventEmitter {
   }
 
   async initialize() {
+    console.log("initializing bluetooth service [og]");
     if (MOCK_CONNECTION) return;
 
     console.trace();
@@ -1000,7 +1001,6 @@ export class BluetoothService extends EventEmitter {
   }
 
   async setAuthenticationSecretKey(userId: string, authSecretKey: string) {
-    console.log('setAuthenticationSecretKey');
     return await this.sendDataToAugmentOs({
       command: 'set_auth_secret_key',
       params: {

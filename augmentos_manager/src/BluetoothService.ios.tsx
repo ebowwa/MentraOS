@@ -9,13 +9,7 @@ import { loadSetting, saveSetting } from './logic/SettingsHelper';
 import { isAugmentOsCoreInstalled, openCorePermissionsActivity, startExternalService } from './bridge/CoreServiceStarter';
 import ManagerCoreCommsService from './bridge/ManagerCoreCommsService';
 import GlobalEventEmitter from './logic/GlobalEventEmitter';
-import {
-  checkNotificationPermission,
-  NotificationEventEmitter,
-  NotificationService,
-} from './logic/NotificationServiceUtils';
 import { time } from 'console';
-import { checkNotificationAccessSpecialPermission } from './utils/NotificationServiceUtils';
 
 const { RNEventEmitter } = NativeModules;
 const eventEmitter = new NativeEventEmitter(RNEventEmitter);
@@ -55,8 +49,7 @@ export class BluetoothService extends EventEmitter {
   }
 
   async initialize() {
-    console.log('initialize');
-    // if (MOCK_CONNECTION) return;
+    if (MOCK_CONNECTION) return;
 
     console.trace();
     console.log(console.trace());
@@ -64,26 +57,16 @@ export class BluetoothService extends EventEmitter {
     this.initializeCoreMessageIntentReader();
     this.initializeBleManager();
 
+    // connect to most recent device:
+    // this.sendDataToAugmentOs({"command": ""});
+
+    // this gets the dashboard to update:
+    this.sendDataToAugmentOs({"command": "request_status"});
+
     // if (!(await ManagerCoreCommsService.isServiceRunning())){
     //   ManagerCoreCommsService.startService();
     // }
     // startExternalService();
-
-    let enablePhoneNotifications = await loadSetting(SETTINGS_KEYS.ENABLE_PHONE_NOTIFICATIONS, ENABLE_PHONE_NOTIFICATIONS_DEFAULT);
-    if (enablePhoneNotifications && await checkNotificationAccessSpecialPermission() && !(await NotificationService.isNotificationListenerEnabled())) {
-      await NotificationService.startNotificationListenerService();
-    }
-
-    this.unsubscribePhoneNotifications = NotificationEventEmitter.addListener('onNotificationPosted', (data) => {
-      console.log('Notification received in TS:', data);
-      try {
-        let json = JSON.parse(data);
-        this.sendPhoneNotification(json.appName, json.title, json.text, json.timestamp, json.id);
-      } catch (e) {
-        console.log("Error parsing phone notification", e);
-      }
-
-    });
 
     this.stopReconnectionScan();
 
@@ -103,11 +86,11 @@ export class BluetoothService extends EventEmitter {
     }
   }
 
-  initializeCoreMessageIntentReader() {
+  async initializeCoreMessageIntentReader() {
     console.log('initializeCoreMessageIntentReader');
     eventEmitter.addListener('CoreMessageIntentEvent', jsonString => {
-      // if (INTENSE_LOGGING)
-        console.log('Received message from core:', jsonString);
+      if (INTENSE_LOGGING)
+        console.log('Received message from core [ios]:', jsonString);
       try {
         let data = JSON.parse(jsonString);
         if (!this.connectedDevice) {
@@ -214,8 +197,9 @@ export class BluetoothService extends EventEmitter {
   }
 
   async scanForDevices() {
-    console.log('scanForDevices');
-    this.initializeCoreMessageIntentReader();
+    // this.initializeCoreMessageIntentReader();
+
+
     // this.initializeBleManager();
     // await BleManager.start({ showAlert: false });
     // await BleManager.scan([], 0, true);
@@ -601,7 +585,7 @@ export class BluetoothService extends EventEmitter {
         openCorePermissionsActivity();
       }
     } catch (e) {
-      console.log('Some error parsing data from AugmentOS_Core...');
+      console.log('[ios] Some error parsing data from AugmentOS_Core...', e);
       GlobalEventEmitter.emit('STATUS_PARSE_ERROR');
     }
   }
@@ -941,7 +925,7 @@ export class BluetoothService extends EventEmitter {
         repository: packageName,
       },
     });
-    await this.validateResponseFromCore();
+    // await this.validateResponseFromCore();
   }
 
   async stopAppByPackageName(packageName: string) {
@@ -967,7 +951,6 @@ export class BluetoothService extends EventEmitter {
   }
 
   async setAuthenticationSecretKey(userId: string, authSecretKey: string) {
-    console.log('setAuthenticationSecretKey');
     return await this.sendDataToAugmentOs({
       command: 'set_auth_secret_key',
       params: {
@@ -978,14 +961,12 @@ export class BluetoothService extends EventEmitter {
   }
 
   async verifyAuthenticationSecretKey() {
-    console.log('verifyAuthenticationSecretKey');
     return await this.sendDataToAugmentOs({
       command: 'verify_auth_secret_key',
     });
   }
 
   async deleteAuthenticationSecretKey() {
-    console.log('deleteAuthenticationSecretKey');
     return await this.sendDataToAugmentOs({
       command: 'delete_auth_secret_key',
     });

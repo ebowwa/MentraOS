@@ -16,7 +16,6 @@ protocol ServerCommsCallback {
   func onMicrophoneStateChange(_ isEnabled: Bool)
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
-  func onConnectionStatusChange(_ status: WebSocketStatus)
   
 }
 
@@ -35,6 +34,8 @@ class ServerComms {
   private var audioSenderThread: Thread?
   private var audioSenderRunning = false
   private var cancellables = Set<AnyCancellable>()
+  
+  private var reconnecting: Bool = false
   
   static func getInstance() -> ServerComms {
     if instance == nil {
@@ -84,11 +85,6 @@ class ServerComms {
     wsManager.connect(url: url, coreToken: self.coreToken)
   }
   
-  func disconnectWebSocket() {
-    wsManager.disconnect()
-    stopAudioSenderThread()
-  }
-  
   func isWebSocketConnected() -> Bool {
     return wsManager.isConnected()
   }
@@ -97,7 +93,6 @@ class ServerComms {
   
   func sendAudioChunk(_ audioData: Data) {
     // If the queue is full, remove the oldest entry before adding a new one
-    print("adding audio to queue: \(audioData.count)")
     audioBuffer.offer(audioData)
   }
   
@@ -224,7 +219,6 @@ class ServerComms {
       }
       
     case "auth_error":
-      disconnectWebSocket()
       if let callback = serverCommsCallback {
         callback.onAuthError()
       }
@@ -263,13 +257,40 @@ class ServerComms {
     }
   }
   
-  private func handleStatusChange(_ status: WebSocketStatus) {
-    if let callback = serverCommsCallback {
-      callback.onConnectionStatusChange(status)
+  private func attemptReconnect(_ override: Bool = false) {
+    if self.reconnecting && !override { return }
+    self.reconnecting = true
+    
+    self.connectWebSocket()
+    
+    // if after 3 seconds we're still not connected, run this function again:
+    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+      if self.wsManager.isConnected() {
+        self.reconnecting = false
+        return
+      }
+      self.attemptReconnect(true)
     }
+  }
+  
+  private func handleStatusChange(_ status: WebSocketStatus) {
+    print("handleStatusChange: \(status)")
     
     if status == .disconnected || status == .error {
       stopAudioSenderThread()
+      
+      attemptReconnect()
+      
+//      // Try to reconnect after a delay
+//      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+//        if self.isConnected(), let coreToken = self.coreToken {
+//          self.receiveMessage()
+//          // Wait a second before sending connection_init
+//          DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+//            self.sendConnectionInit(coreToken: coreToken)
+//          }
+//        }
+//      }
     }
   }
   
@@ -372,11 +393,6 @@ class ServerComms {
     }
     
     return appList
-  }
-  
-  func cleanup() {
-    wsManager.cleanup()
-    disconnectWebSocket()
   }
 }
 

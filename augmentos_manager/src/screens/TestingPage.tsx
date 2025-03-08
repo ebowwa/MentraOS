@@ -115,6 +115,33 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
     }
   };
 
+  const startMerge = async () => {
+    try {
+      await AOSModule.sendCommand(JSON.stringify({
+        command: "start_app",
+        params: {
+          target: "com.mentra.merge",
+        }
+      }));
+    } catch (error) {
+      console.error('startMerge() error:', error);
+    }
+  };
+
+  const startMira = async () => {
+    try {
+      await AOSModule.sendCommand(JSON.stringify({
+        command: "start_app",
+        params: {
+          target: "com.augmentos.miraai",
+        }
+      }));
+    } catch (error) {
+      console.error('startMira() error:', error);
+    }
+  };
+  
+
   const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
     try {
       await AOSModule.setBrightness(value, autoBrightness);
@@ -136,7 +163,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const connectServer = async () => {
     try {
-      await AOSModule.connectServer();
+      await AOSModule.connectServer(" ");
     } catch (error) {
       console.error('connectServer() error:', error);
     }
@@ -224,6 +251,8 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
               <Button title={`Toggle Mic ${micEnabled ? "Off" : "On"}`} onPress={() => toggleMicEnabled(!micEnabled)} />
               <Button title="Connect Server" onPress={connectServer} />
               <Button title="Start Live Captions" onPress={startLiveCaptions} />
+              <Button title="Start Merge" onPress={startMerge} />
+              <Button title="Start Mira" onPress={startMira} />
             </View>
 
             <View style={currentThemeStyles.brightnessContainer}>
@@ -290,7 +319,6 @@ const lightThemeStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#ffffff',
-    paddingBottom: 55,
   },
   contentContainer: {
     flex: 1,
@@ -325,7 +353,6 @@ const darkThemeStyles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000000',
-    paddingBottom: 55,
   },
   contentContainer: {
     flex: 1,

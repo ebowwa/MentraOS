@@ -195,6 +195,15 @@ struct ViewState {
     for device in devices {
       if let name = device.name {
         print("Connected to device: \(name)")
+        if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
+          leftPeripheral = device
+          device.delegate = self
+          device.discoverServices([UART_SERVICE_UUID])
+        } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
+          rightPeripheral = device
+          device.delegate = self
+          device.discoverServices([UART_SERVICE_UUID])
+        }
         emitDiscoveredDevice(name);
       }
     }
@@ -205,7 +214,7 @@ struct ViewState {
   }
   
   @objc public func RN_pairById(_ id: String) -> Bool {
-    self.DEVICE_SEARCH_ID = id
+    self.DEVICE_SEARCH_ID = id + "_"
     RN_startScan();
     return true
   }
@@ -421,9 +430,9 @@ struct ViewState {
   
   private func getConnectedDevices() -> [CBPeripheral] {
     let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
-    for peripheral in connectedPeripherals {
-      print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
-    }
+//    for peripheral in connectedPeripherals {
+//      print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
+//    }
     return connectedPeripherals
   }
   
@@ -674,7 +683,6 @@ extension ERG1Manager {
   }
   
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
-    print("Received init response from \(peripheral.name ?? "Unknown"): \(success)")
     if peripheral == leftPeripheral {
       leftInitialized = success
       print("Left arm initialized: \(success)")
@@ -1232,6 +1240,14 @@ extension ERG1Manager {
     return true
   }
   
+  // TODO: ios
+//  private byte[] constructBatteryLevelQuery() {
+//      ByteBuffer buffer = ByteBuffer.allocate(2);
+//      buffer.put((byte) 0x2C);  // Command
+//      buffer.put((byte) 0x01); // use 0x02 for iOS
+//      return buffer.array();
+//  }
+  
   public func setSilentMode(_ enabled: Bool) async -> Bool {
     let command: [UInt8] = [Commands.SILENT_MODE.rawValue, enabled ? 0x0C : 0x0A, 0x00]
     
@@ -1384,17 +1400,23 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   public func emitDiscoveredDevice(_ name: String) {
     if name.contains("_L_") || name.contains("_R_") {
+      // exampleName = "Even G1_74_L_57863C
+      // get first 2 characters after the first _:
+      let underscoreIndex = name.firstIndex(of: "_")!
+      let startIndex = name.index(after: underscoreIndex)
+      let endIndex = name.index(underscoreIndex, offsetBy: 3)
+      let parsedNum = name[startIndex..<endIndex]
       let res: [String: Any] = [
-        "model_name": name,
-        "device_name": name,
+        "model_name": "Even Realities G1",
+        "device_name": parsedNum,
       ]
       let eventBody: [String: Any] = [
         "compatible_glasses_search_result": res,
       ]
+      // must convert to string before sending:
       do {
         let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
         if let jsonString = String(data: jsonData, encoding: .utf8) {
-          // Now you can send the JSON string
           RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
         }
       } catch {
@@ -1407,6 +1429,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
     
     if let name = peripheral.name {
+      
+      print("found peripheral: \(name)")
       
       if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
         print("Found left arm: \(name)")
@@ -1442,7 +1466,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       "name": peripheral.name ?? "Unknown",
       "id": peripheral.identifier.uuidString
     ]
-    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
+    // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
+//    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
@@ -1485,33 +1510,14 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // called whenever bluetooth is initialized / turned on or off:
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
-    // disable scanning on launch: TODO: ios re-enable after stopScan() is implemented
-    //    if central.state == .poweredOn {
-    //      print("Bluetooth powered on")
-    //      g1Ready = false
-    //      let devices = getConnectedDevices()
-    //      for device in devices {
-    //        if let name = device.name {
-    //          if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
-    //            leftPeripheral = device
-    //            device.delegate = self
-    //            device.discoverServices([UART_SERVICE_UUID])
-    //          } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
-    //            rightPeripheral = device
-    //            device.delegate = self
-    //            device.discoverServices([UART_SERVICE_UUID])
-    //          }
-    //        }
-    //      }
-    //      // try to pair the missing arm if not found:
-    //      if (leftPeripheral == nil || rightPeripheral == nil) && !DEVICE_SEARCH_ID.isEmpty {
-    //        RN_startScan()
-    //      } else {
-    //        RN_connectGlasses()
-    //      }
-    //    } else {
-    //      print("Bluetooth is not available.")
-    //    }
+    if central.state == .poweredOn {
+      print("Bluetooth powered on")
+      g1Ready = false
+      // TODO: ios re-enable once stopScan is implemented
+      //          RN_startScan()
+    } else {
+      print("Bluetooth is not available.")
+    }
   }
   
   // Update didUpdateValueFor to set waiters
