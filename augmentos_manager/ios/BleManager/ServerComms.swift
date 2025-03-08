@@ -16,7 +16,6 @@ protocol ServerCommsCallback {
   func onMicrophoneStateChange(_ isEnabled: Bool)
   func onDisplayEvent(_ event: [String: Any])
   func onRequestSingle(_ dataType: String)
-  
 }
 
 class ServerComms {

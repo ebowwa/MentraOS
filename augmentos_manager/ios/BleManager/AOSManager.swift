@@ -18,9 +18,11 @@ import React
   @objc public let g1Manager: ERG1Manager
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
+  private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
   
   override init() {
     self.g1Manager = ERG1Manager()
+    self.cachedThirdPartyAppList = []
     super.init()
     
     // Set up the ServerComms callback
@@ -28,6 +30,13 @@ import React
     
     // Set up voice data handling
     setupVoiceDataHandling()
+    
+    // calback to handle actions when the connectionState changes
+    g1Manager.onConnectionStateChanged = { [weak self] in
+      guard let self = self else { return }
+      print("G1 glasses connection changed to: \(self.g1Manager.g1Ready ? "Connected" : "Disconnected")")
+      self.onGlassesConnectionChange()
+    }
   }
   
   // MARK: - Public Methods (for React Native)
@@ -52,13 +61,19 @@ import React
     handleRequestStatus()
   }
   
-  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {}
+  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
+    self.cachedThirdPartyAppList = apps
+  }
   
   func onConnectionError(_ error: String) {
     handleRequestStatus()
   }
   
   func onAuthError() {}
+  
+  func onGlassesConnectionChange() {
+    self.handleRequestStatus()
+  }
   
   // MARK: - Voice Data Handling
   
@@ -285,9 +300,6 @@ import React
   
   private func handleRequestStatus() {
     print("Requesting status")
-    // TODO: Implement status request logic
-    // Example: let status = g1Manager.getStatus(); serverComms.sendStatusUpdate(status)
-    
     // construct the status object:
 //    "status": {
 //      "puck_battery_life": 25,
@@ -313,43 +325,73 @@ import React
 //        "package_name": "com.navigation.assistant"
 //      },
     
-    let connectedGlasses: [String: Any] = [
-      "model_name": "Even Realities G1",
-      "battery_life": 100,
-    ]
+    let isGlassesConnected = self.g1Manager.g1Ready
+    var connectedGlasses: [String: Any] = [:];
+    var defaultWearable = "";
+    
+//    defaultWearable = self.g1Manager.DEVICE_SEARCH_ID;
+    
+    if isGlassesConnected {
+      connectedGlasses = [
+        "model_name": "Even Realities G1",
+        "battery_life": 100,
+      ]
+    }
+    
+    
+    
     
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
-    let apps: [[String: Any]] = [
-        [
-            "host": "mira",
-            "packageName": "com.augmentos.miraai",
-            "name": "Mira AI",
-            "description": "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command."
-        ],
-        [
-            "host": "merge",
-            "packageName": "com.mentra.merge",
-            "name": "Merge",
-            "description": "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo."
-        ],
-        [
-            "host": "live-translation",
-            "packageName": "com.augmentos.live-translation",
-            "name": "Live Translation",
-            "description": "Live language translation."
-        ],
-        [
-            "host": "live-captions",
-            "packageName": "com.augmentos.livecaptions",
-            "name": "Live Captions",
-            "description": "Live closed captions."
-        ]
-    ]
+    
     let coreInfo: [String: Any] = [
       "augmentos_core_version": "Unknown",
       "cloud_connection_status": cloudConnectionStatus,
       "default_wearable": "Even Realities G1",
+//      "default_wearable": defaultWearable
     ]
+    
+    
+    var apps: [[String: Any]] = [
+//        [
+//            "host": "mira",
+//            "packageName": "com.augmentos.miraai",
+//            "name": "Mira AI",
+//            "description": "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command."
+//        ],
+//        [
+//            "host": "merge",
+//            "packageName": "com.mentra.merge",
+//            "name": "Merge",
+//            "description": "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo."
+//        ],
+//        [
+//            "host": "live-translation",
+//            "packageName": "com.augmentos.live-translation",
+//            "name": "Live Translation",
+//            "description": "Live language translation."
+//        ],
+//        [
+//            "host": "live-captions",
+//            "packageName": "com.augmentos.livecaptions",
+//            "name": "Live Captions",
+//            "description": "Live closed captions."
+//        ]
+    ]
+    
+    for tpa in self.cachedThirdPartyAppList {
+        let tpaDict = [
+            "packageName": tpa.packageName,
+            "name": tpa.name,
+            "description": tpa.description,
+            "webhookURL": tpa.webhookURL,
+            "logoURL": tpa.logoURL,
+            "is_running": tpa.isRunning,
+            "is_foreground": false
+        ] as [String: Any]
+        
+        apps.append(tpaDict)
+    }
+
     
     let statusObj: [String: Any] = [
       "connected_glasses": connectedGlasses,
@@ -372,7 +414,7 @@ import React
   var readinessCheckTimer: Timer?
   
   private func handleConnectWearable(modelName: String, deviceName: String) {
-    print("Connecting to wearable: \(modelName) 22")
+    print("Connecting to wearable: \(modelName)")
     
 ////    // every few seconds, if the g1Ready property is true, cancel the timer and send a status update:
 //    let readiness = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
@@ -408,8 +450,15 @@ import React
     
     // just g1's for now:
     Task {
-      print("starting pairing...")
-      self.g1Manager.RN_pairById(deviceName)
+      print("start connecting...")
+      if (deviceName != "") {
+        self.g1Manager.RN_pairById(deviceName)
+      } else {
+        // TODO: ios this logic needs some cleaning + the searchID needs to be saved as our "remembered" device somewhere (sharedPreferences / ios equiv.)
+        // only connect to glasses we've paired with before:
+//        self.g1Manager.RN_setSearchId("_")
+        self.g1Manager.RN_startScan()
+      }
     }
     
     Task {

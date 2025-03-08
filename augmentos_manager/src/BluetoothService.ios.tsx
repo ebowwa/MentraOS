@@ -936,7 +936,7 @@ export class BluetoothService extends EventEmitter {
         target: packageName,
       },
     });
-    await this.validateResponseFromCore();
+    // await this.validateResponseFromCore();
   }
 
   async installAppByPackageName(packageName: string) {

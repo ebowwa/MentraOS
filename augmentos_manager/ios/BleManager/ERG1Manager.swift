@@ -104,8 +104,20 @@ struct ViewState {
   // todo: we probably don't need this
   @objc static func requiresMainQueueSetup() -> Bool { return true }
   
+  var onConnectionStateChanged: (() -> Void)?
+  private var _g1Ready: Bool = false
+  public var g1Ready: Bool {
+    get { return _g1Ready }
+    set {
+      let oldValue = _g1Ready
+      _g1Ready = newValue
+      if oldValue != newValue {
+        // Call the callback when state changes
+        onConnectionStateChanged?()
+      }
+    }
+  }
   
-  @Published public var g1Ready: Bool = false
   @Published public var voiceData: Data = Data()
   @Published public var aiListening: Bool = false
   
@@ -180,6 +192,7 @@ struct ViewState {
   // @@@ REACT NATIVE FUNCTIONS @@@
   
   @objc func RN_setSearchId(_ searchId: String) {
+    print("SETTING SEARCH_ID: \(searchId)")
     DEVICE_SEARCH_ID = searchId
   }
   
@@ -189,6 +202,9 @@ struct ViewState {
       print("Bluetooth is not powered on.")
       return false
     }
+    
+    print("startScan()")
+    print("search ID: \(DEVICE_SEARCH_ID)")
     
     // send our already connected devices to RN:
     let devices = getConnectedDevices()
@@ -544,8 +560,8 @@ struct ViewState {
             }
           }
         }
-      case .G1_IS_READY:
-        g1Ready = true
+//      case .G1_IS_READY:
+//        g1Ready = true
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
