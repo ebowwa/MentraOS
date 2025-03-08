@@ -20,6 +20,7 @@ import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
 import semver from 'semver';
 import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
+import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -60,6 +61,14 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
     setIsCheckingVersion(true);
 
     try {
+      // Check if version checks are being ignored this session
+      const ignoreCheck = await loadSetting('ignoreVersionCheck', false);
+      if (ignoreCheck) {
+        console.log('Version check skipped due to user preference');
+        setIsCheckingVersion(false);
+        return;
+      }
+
       const backendComms = BackendServerComms.getInstance();
       const localVer = getLocalVersion();
 
@@ -118,7 +127,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   // Check version once on mount
   useEffect(() => {
-    //checkCloudVersion();
+    checkCloudVersion();
   }, []);
 
   // Simple animated wrapper so we do not duplicate logic

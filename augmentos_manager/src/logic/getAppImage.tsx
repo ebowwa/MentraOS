@@ -7,6 +7,7 @@ export const getAppImage = (packageName: string) => {
             return require('../assets/app-icons/mentra-link.png');
         case 'com.mentra.adhdaid':
             return require('../assets/app-icons/ADHD-aid.png');
+        case 'com.augmentos.live-translation':
         case 'com.augmentos.livetranslation':
             return require('../assets/app-icons/translation.png');
         case 'com.example.placeholder':

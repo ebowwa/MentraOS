@@ -313,8 +313,10 @@ export class TranscriptionService {
   private updateTranscriptHistory(userSession: ExtendedUserSession, event: ConversationTranscriptionEventArgs, isFinal: boolean): void {
     const segments = userSession.transcript.segments;
     const hasInterimLast = segments.length > 0 && !segments[segments.length - 1].isFinal;
-    // Only save engligh transcriptions.
+    // Only save English transcriptions.
     if (event.result.language !== 'en-US') return;
+
+    const currentTime = new Date();
 
     if (isFinal) {
       if (hasInterimLast) {
@@ -324,7 +326,7 @@ export class TranscriptionService {
         resultId: event.result.resultId,
         speakerId: event.result.speakerId,
         text: event.result.text,
-        timestamp: new Date(),
+        timestamp: currentTime,
         isFinal: true
       });
     } else {
@@ -333,7 +335,7 @@ export class TranscriptionService {
           resultId: event.result.resultId,
           speakerId: event.result.speakerId,
           text: event.result.text,
-          timestamp: new Date(),
+          timestamp: currentTime,
           isFinal: false
         };
       } else {
@@ -341,11 +343,17 @@ export class TranscriptionService {
           resultId: event.result.resultId,
           speakerId: event.result.speakerId,
           text: event.result.text,
-          timestamp: new Date(),
+          timestamp: currentTime,
           isFinal: false
         });
       }
     }
+
+    // Prune old segments (older than 30 minutes)
+    const thirtyMinutesAgo = new Date(currentTime.getTime() - 30 * 60 * 1000);
+    userSession.transcript.segments = segments.filter(
+      seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
+    );
   }
 }
 

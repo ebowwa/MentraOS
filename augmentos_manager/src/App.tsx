@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusProvider } from './providers/AugmentOSStatusProvider.tsx';
 import Homepage from './screens/Homepage';
@@ -11,9 +11,11 @@ import ProfileSettingsPage from './screens/ProfileSettingsPage';
 import GlassesMirror from './screens/GlassesMirror';
 import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
+import AppStoreNative from './screens/AppStoreNative';
+import AppStoreWeb from './screens/AppStoreWebview';
 import AppDetails from './screens/AppDetails';
 import Reviews from './screens/ReviewSection.tsx';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { AppStoreItem, RootStackParamList } from './components/types'; // Update path as needed
 import MessageBanner from './components/MessageBanner.tsx';
 import SelectGlassesModelScreen from './screens/SelectGlassesModelScreen.tsx';
@@ -33,6 +35,8 @@ import ConnectingToPuckComponent from './components/ConnectingToPuckComponent.ts
 import VersionUpdateScreen from './screens/VersionUpdateScreen.tsx';
 import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
+import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
+import { saveSetting } from './logic/SettingsHelper';
 import TestingPage from './screens/TestingPage.tsx';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -41,7 +45,6 @@ const linking = {
   config: {
     screens: {
       VerifyEmailScreen: 'verify_email',
-      Home: 'Home',
       // Add other screens as needed
     },
   },
@@ -53,12 +56,16 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const App: React.FC = () => {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
 
+  // Reset ignoreVersionCheck setting on app start
+  useEffect(() => {
+    //TODO: SET THIS TO FALSE
+    saveSetting('ignoreVersionCheck', true);
+    console.log('Reset version check ignore flag on app start');
+  }, []);
+
   const toggleTheme = () => {
     setIsDarkTheme(prevTheme => !prevTheme);
   };
-
-  const navigationRef = useNavigationContainerRef();
-
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -166,6 +173,16 @@ const App: React.FC = () => {
                         {props => <AppStore {...props} isDarkTheme={isDarkTheme} />}
                       </Stack.Screen>
                       <Stack.Screen
+                        name="AppStoreNative"
+                        options={{ title: 'App Store (Native)', headerShown: false }}>
+                        {props => <AppStoreNative {...props} isDarkTheme={isDarkTheme} />}
+                      </Stack.Screen>
+                      <Stack.Screen
+                        name="AppStoreWeb"
+                        options={{ title: 'App Store', headerShown: false }}>
+                        {props => <AppStoreWeb {...props} isDarkTheme={isDarkTheme} />}
+                      </Stack.Screen>
+                      <Stack.Screen
                         name="Reviews"
                         options={({ route }) => ({
                           headerShown: false,
@@ -256,6 +273,11 @@ const App: React.FC = () => {
                           />
                         )}
                       </Stack.Screen>
+                      <Stack.Screen
+                        name="ErrorReportScreen"
+                        component={ErrorReportScreen}
+                        options={{ title: 'Report an Error' }}
+                      />
                       <Stack.Screen name="SelectGlassesModelScreen"
                         options={{ title: 'Select Glasses' }}
                       >
@@ -310,7 +332,7 @@ const App: React.FC = () => {
         </NotificationListener>
       </SafeAreaProvider>
     </GestureHandlerRootView>
-  )
+  );
 };
 
 const styles = StyleSheet.create({
