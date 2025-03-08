@@ -330,7 +330,7 @@ class ServerComms {
   
   private func getServerUrl() -> String {
     // TODO: ios get these from .env:
-    let host = "dev.augmentos.org"
+    let host = "cloud.augmentos.org"
     let port = "443"
     let secureServer = true
     return "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"

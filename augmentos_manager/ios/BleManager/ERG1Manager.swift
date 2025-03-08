@@ -115,11 +115,21 @@ struct ViewState {
         // Call the callback when state changes
         onConnectionStateChanged?()
       }
+      if (!newValue) {
+        // Reset battery levels when disconnected
+        batteryLevel = -1
+        leftBatteryLevel = -1
+        rightBatteryLevel = -1
+      }
     }
   }
   
   @Published public var voiceData: Data = Data()
   @Published public var aiListening: Bool = false
+  @Published public var batteryLevel: Int = -1
+  @Published public var caseBatteryLevel: Int = -1
+  @Published public var leftBatteryLevel: Int = -1
+  @Published public var rightBatteryLevel: Int = -1
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
@@ -389,6 +399,10 @@ struct ViewState {
       centralManager.cancelPeripheralConnection(rightPeripheral)
     }
     
+    leftPeripheral = nil
+    rightPeripheral = nil
+    self.g1Ready = false
+    
     print("Disconnected from glasses")
   }
   
@@ -446,9 +460,9 @@ struct ViewState {
   
   private func getConnectedDevices() -> [CBPeripheral] {
     let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
-//    for peripheral in connectedPeripherals {
-//      print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
-//    }
+    //    for peripheral in connectedPeripherals {
+    //      print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
+    //    }
     return connectedPeripherals
   }
   
@@ -560,8 +574,33 @@ struct ViewState {
             }
           }
         }
-//      case .G1_IS_READY:
-//        g1Ready = true
+        //      case .G1_IS_READY:
+        //        g1Ready = true
+      case .BATTERY_STATUS:
+        guard data.count >= 6 else {
+          break
+        }
+        // Response format: 2C 66 [battery%] [flags] [voltage_low] [voltage_high] ...
+        let batteryPercent = Int(data[2])
+        let flags = data[3]
+        let voltageLow = Int(data[4])
+        let voltageHigh = Int(data[5])
+        let voltage = (voltageHigh << 8) | voltageLow
+        
+        print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
+        
+        // grab battery level from both sides
+        if peripheral == leftPeripheral {
+          leftBatteryLevel = batteryPercent
+          print("Left glass battery: \(batteryPercent)%")
+        } else if peripheral == rightPeripheral {
+          rightBatteryLevel = batteryPercent
+          print("Right glass battery: \(batteryPercent)%")
+        }
+        
+        // use the lowest battery level of the two
+        batteryLevel = min(leftBatteryLevel, rightBatteryLevel)
+        
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
@@ -711,6 +750,9 @@ extension ERG1Manager {
     if leftInitialized && rightInitialized {
       print("Both arms initialized")
       g1Ready = true
+      Task {
+        await getBatteryStatus()
+      }
     }
   }
   
@@ -1257,12 +1299,35 @@ extension ERG1Manager {
   }
   
   // TODO: ios
-//  private byte[] constructBatteryLevelQuery() {
-//      ByteBuffer buffer = ByteBuffer.allocate(2);
-//      buffer.put((byte) 0x2C);  // Command
-//      buffer.put((byte) 0x01); // use 0x02 for iOS
-//      return buffer.array();
-//  }
+  //  private byte[] constructBatteryLevelQuery() {
+  //      ByteBuffer buffer = ByteBuffer.allocate(2);
+  //      buffer.put((byte) 0x2C);  // Command
+  //      buffer.put((byte) 0x01); // use 0x02 for iOS
+  //      return buffer.array();
+  //  }
+  
+  @objc public func RN_getBatteryStatus() {
+    Task {
+      await getBatteryStatus()
+    }
+  }
+  
+  public func getBatteryStatus() async {
+    // Build battery status command
+    let command: [UInt8] = [0x2C, 0x01]
+    
+    // Send to both glasses
+    if let rightGlass = rightPeripheral,
+       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+    }
+    
+    if let leftGlass = leftPeripheral,
+       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+    }
+  }
   
   public func setSilentMode(_ enabled: Bool) async -> Bool {
     let command: [UInt8] = [Commands.SILENT_MODE.rawValue, enabled ? 0x0C : 0x0A, 0x00]
@@ -1483,7 +1548,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       "id": peripheral.identifier.uuidString
     ]
     // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
-//    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
+    //    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {

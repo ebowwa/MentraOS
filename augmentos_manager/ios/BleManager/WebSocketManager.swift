@@ -97,6 +97,8 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
       return
     }
     
+    print("sending binary data... \(data.count) bytes")
+    
     webSocket?.send(.data(data)) { error in
       if let error = error {
         print("Error sending binary data: \(error)")

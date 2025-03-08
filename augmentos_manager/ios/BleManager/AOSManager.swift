@@ -19,6 +19,11 @@ import React
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
+  private var defaultWearable: String? = nil
+  private var useDeviceMic = false;
+  private var contextualDashboard = true;
+  private var headUpAngle = 30;
+  private var brightness = 50;
   
   override init() {
     self.g1Manager = ERG1Manager()
@@ -63,6 +68,7 @@ import React
   
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
     self.cachedThirdPartyAppList = apps
+    handleRequestStatus()
   }
   
   func onConnectionError(_ error: String) {
@@ -143,6 +149,9 @@ import React
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     // Handle microphone state change if needed
+    Task {
+      await self.g1Manager.setMicEnabled(enabled: isEnabled)
+    }
   }
   
   //  func onDashboardDisplayEvent(_ event: [String: Any]) {
@@ -165,6 +174,8 @@ import React
     if dataType == "battery" {
       // Send battery status if needed
     }
+    // TODO:
+    handleRequestStatus()
   }
 
   func handleSearchForCompatibleDeviceNames(_ modelName: String) {
@@ -183,6 +194,7 @@ import React
       case requestStatus = "request_status"
       case connectWearable = "connect_wearable"
       case connectDefaultWearable = "connect_default_wearable"
+      case disconnectWearable = "disconnect_wearable"
       case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
       case enableContextualDashboard = "enable_contextual_dashboard"
       case ping = "ping"
@@ -236,6 +248,16 @@ import React
           } else {
             print("Invalid params for connect_wearable")
           }
+        
+        case .disconnectWearable:
+          handleDisconnectWearable()
+          break
+          
+        case .forgetSmartGlasses:
+          handleDisconnectWearable()
+          self.defaultWearable = nil
+          handleRequestStatus()
+          break
           
 //        case .connectDefaultWearable:
 //          handleConnectDefaultWearable()
@@ -263,6 +285,8 @@ import React
             print("Invalid params for start_app")
           }
           
+          handleRequestStatus()
+          
         case .stopApp:
           if let params = params, let target = params["target"] as? String {
             print("Stopping app: \(target)")
@@ -274,10 +298,9 @@ import React
         case .unknown:
           print("Unknown command type: \(commandString)")
         case .connectDefaultWearable:
+          
           break
         case .ping:
-          break
-        case .forgetSmartGlasses:
           break
         case .updateGlassesHeadUpAngle:
           break
@@ -298,56 +321,32 @@ import React
     serverComms.connectWebSocket()
   }
   
+  private func handleDisconnectWearable() {
+    self.g1Manager.disconnect()
+    handleRequestStatus()
+  }
+  
   private func handleRequestStatus() {
     print("Requesting status")
     // construct the status object:
-//    "status": {
-//      "puck_battery_life": 25,
-//      "charging_status": true,
-//      "connected_glasses": {
-//        "model_name": "Vuzix Z100",
-//        "battery_life": 10
-//      },
-//    },
-//    "apps": [
-//      {
-//        "name": "Language Learner",
-//        "description": "A real-time translation and vocabulary builder.",
-//        "is_running": true,
-//        "is_foreground": true,
-//        "package_name": "com.language.learner"
-//      },
-//      {
-//        "name": "Navigation Assistant",
-//        "description": "Provides step-by-step navigation instructions.",
-//        "is_running": true,
-//        "is_foreground": false,
-//        "package_name": "com.navigation.assistant"
-//      },
     
     let isGlassesConnected = self.g1Manager.g1Ready
     var connectedGlasses: [String: Any] = [:];
-    var defaultWearable = "";
-    
-//    defaultWearable = self.g1Manager.DEVICE_SEARCH_ID;
     
     if isGlassesConnected {
       connectedGlasses = [
         "model_name": "Even Realities G1",
-        "battery_life": 100,
+        "battery_life": self.g1Manager.batteryLevel,
       ]
+      self.defaultWearable = "Even Realities G1"
     }
-    
-    
-    
     
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
     
     let coreInfo: [String: Any] = [
       "augmentos_core_version": "Unknown",
       "cloud_connection_status": cloudConnectionStatus,
-      "default_wearable": "Even Realities G1",
-//      "default_wearable": defaultWearable
+      "default_wearable": self.defaultWearable
     ]
     
     
@@ -399,7 +398,7 @@ import React
       "core_info": coreInfo,
     ]
     let wrapperObj: [String: Any] = ["status": statusObj]
-    print("wrapperStatusObj \(wrapperObj)")
+//    print("wrapperStatusObj \(wrapperObj)")
     // must convert to string before sending:
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
@@ -465,9 +464,12 @@ import React
         while !Task.isCancelled {
             print("checking if g1 is ready...")
             if self.g1Manager.g1Ready {
-              print("g1 is ready!!!!")
+              self.defaultWearable = "Even Realities G1"
               self.handleRequestStatus()
               break
+            } else {
+              // todo: not the cleanest solution here
+              self.g1Manager.RN_startScan()
             }
             
             try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
