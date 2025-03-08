@@ -83,7 +83,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
         <MaterialCommunityIcons
           name={icons.apps}
           size={iconSize}
-          color={iconColor}
+          color={disabledColor}
+          disabled={true}
         />
       </TouchableOpacity>
 

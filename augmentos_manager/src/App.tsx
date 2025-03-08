@@ -56,7 +56,8 @@ const App: React.FC = () => {
 
   // Reset ignoreVersionCheck setting on app start
   useEffect(() => {
-    saveSetting('ignoreVersionCheck', false);
+//TODO: SET THIS TO FALSE
+    saveSetting('ignoreVersionCheck', true);
     console.log('Reset version check ignore flag on app start');
   }, []);
 
