@@ -30,6 +30,8 @@
 
 - (void)sendCommand:(NSString *)command :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
+- (void)getBatteryStatus:(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+
 // Add support for events
 - (NSArray<NSString *> *)supportedEvents;
 

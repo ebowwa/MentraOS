@@ -140,6 +140,15 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
       console.error('startMira() error:', error);
     }
   };
+
+  const getBatteryStatus = async () => {
+    try {
+      const batteryStatus = await AOSModule.getBatteryStatus();
+      console.log('Battery Status:', batteryStatus);
+    } catch (error) {
+      console.error('getBatteryStatus() error:', error);
+    }
+  };
   
 
   const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
@@ -163,7 +172,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const connectServer = async () => {
     try {
-      await AOSModule.connectServer(" ");
+      await AOSModule.connectServer();
     } catch (error) {
       console.error('connectServer() error:', error);
     }
@@ -253,6 +262,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
               <Button title="Start Live Captions" onPress={startLiveCaptions} />
               <Button title="Start Merge" onPress={startMerge} />
               <Button title="Start Mira" onPress={startMira} />
+              <Button title="Get Battery Status" onPress={getBatteryStatus} />
             </View>
 
             <View style={currentThemeStyles.brightnessContainer}>

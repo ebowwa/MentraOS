@@ -577,19 +577,21 @@ struct ViewState {
         //      case .G1_IS_READY:
         //        g1Ready = true
       case .BATTERY_STATUS:
-        guard data.count >= 6 else {
+        guard data.count >= 6 && data[1] == 0x66 else {
           break
         }
+        
         // Response format: 2C 66 [battery%] [flags] [voltage_low] [voltage_high] ...
         let batteryPercent = Int(data[2])
         let flags = data[3]
         let voltageLow = Int(data[4])
         let voltageHigh = Int(data[5])
-        let voltage = (voltageHigh << 8) | voltageLow
+        let rawVoltage = (voltageHigh << 8) | voltageLow
+        let voltage = rawVoltage / 10  // Scale down by 10 to get actual millivolts
         
         print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
         
-        // grab battery level from both sides
+        // if left, update left battery level, if right, update right battery level
         if peripheral == leftPeripheral {
           leftBatteryLevel = batteryPercent
           print("Left glass battery: \(batteryPercent)%")
@@ -598,9 +600,9 @@ struct ViewState {
           print("Right glass battery: \(batteryPercent)%")
         }
         
-        // use the lowest battery level of the two
+        // update the main battery level as the lower of the two
         batteryLevel = min(leftBatteryLevel, rightBatteryLevel)
-        
+        break
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
@@ -1313,6 +1315,8 @@ extension ERG1Manager {
   }
   
   public func getBatteryStatus() async {
+    print("getBatteryStatus()")
+    
     // Build battery status command
     let command: [UInt8] = [0x2C, 0x01]
     

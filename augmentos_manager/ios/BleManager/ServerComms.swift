@@ -279,17 +279,6 @@ class ServerComms {
       stopAudioSenderThread()
       
       attemptReconnect()
-      
-//      // Try to reconnect after a delay
-//      DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-//        if self.isConnected(), let coreToken = self.coreToken {
-//          self.receiveMessage()
-//          // Wait a second before sending connection_init
-//          DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-//            self.sendConnectionInit(coreToken: coreToken)
-//          }
-//        }
-//      }
     }
   }
   

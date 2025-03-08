@@ -46,7 +46,7 @@ import React
   
   // MARK: - Public Methods (for React Native)
   
-  @objc func connectToServer() {
+  @objc func connectServer() {
     serverComms.connectWebSocket()
   }
   
@@ -149,9 +149,9 @@ import React
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     // Handle microphone state change if needed
-    Task {
-      await self.g1Manager.setMicEnabled(enabled: isEnabled)
-    }
+//    Task {
+//      await self.g1Manager.setMicEnabled(enabled: isEnabled)
+//    }
   }
   
   //  func onDashboardDisplayEvent(_ event: [String: Any]) {
@@ -327,7 +327,7 @@ import React
   }
   
   private func handleRequestStatus() {
-    print("Requesting status")
+//    print("Requesting status")
     // construct the status object:
     
     let isGlassesConnected = self.g1Manager.g1Ready

@@ -349,27 +349,40 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             />
           </View>
 
-        {/* Bug Report */}
-        <TouchableOpacity style={styles.settingItem} onPress={() => {
-            navigation.navigate('ErrorReportScreen');
-        }}>
-          <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, styles.redText]}>Report an Issue</Text>
-          </View>
-        </TouchableOpacity>
+          {/* HEADUP ANGLE SETTING (Button that opens the modal) */}
+          <TouchableOpacity
+            style={[
+              styles.settingItem,
+              disableHeadUpAngle && styles.disabledItem,
+            ]}
+            disabled={disableHeadUpAngle}
+            onPress={() => setHeadUpAngleComponentVisible(true)}
+          >
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                HeadUp Settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
+            />
+          </TouchableOpacity>
 
-        {/* Forget Glasses */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          disabled={!status.core_info.puck_connected || status.core_info.default_wearable === ''}
-          onPress={confirmForgetGlasses}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                styles.redText,
-                (!status.core_info.puck_connected || status.core_info.default_wearable === '') &&
+          {/* Brightness Slider */}
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
                   styles.disabledItem,
                 ]}
               >

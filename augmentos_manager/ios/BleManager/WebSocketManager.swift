@@ -61,7 +61,7 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     receiveMessage()
     
     // Wait a second before sending connection_init (similar to the Java code)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
       self.sendConnectionInit(coreToken: coreToken)
     }
   }
