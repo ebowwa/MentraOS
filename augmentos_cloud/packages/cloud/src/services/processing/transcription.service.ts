@@ -17,9 +17,11 @@ import {
   ExtendedStreamType,
   getLanguageInfo
 } from '@augmentos/sdk';
-import { AZURE_SPEECH_KEY, AZURE_SPEECH_REGION } from '@augmentos/config';
 import webSocketService from '../core/websocket.service';
 import subscriptionService from '../core/subscription.service';
+
+export const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || "";
+export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
 
 /**
  * Extend the UserSession type with our new property.
@@ -283,7 +285,7 @@ export class TranscriptionService {
   }
 
   feedAudioToTranscriptionStreams(userSession: ExtendedUserSession, audioData: Uint8Array) {
-    if (!userSession.transcriptionStreams) return;
+    if (!userSession.transcriptionStreams) return console.error('No transcription streams found for session');
     userSession.transcriptionStreams.forEach(instance => {
       (instance.pushStream as any).write(audioData);
     });
