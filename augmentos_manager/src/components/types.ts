@@ -7,6 +7,8 @@ export type RootStackParamList = {
   Login: undefined;
   SettingsPage: undefined;
   AppStore: undefined;
+  AppStoreNative: undefined;
+  AppStoreWeb: undefined;
   PairPuckScreen: undefined; // Add this line
   SplashScreen: undefined;
   VerifyEmailScreen: undefined;
@@ -14,8 +16,6 @@ export type RootStackParamList = {
   ProfileSettings: undefined;
   GlassesMirror: undefined;
   Reviews: { appId: string; appName: string }; // Add appName here
-  SimulatedPuckSettings: undefined;
-  SimulatedPuckOnboard: undefined;
   ConnectingToPuck: undefined;
   PhoneNotificationSettings: undefined;
   PrivacySettingsScreen: undefined;
@@ -31,6 +31,7 @@ export type RootStackParamList = {
   GlassesPairingGuideScreen: { glassesModelName: string };
   GlassesPairingGuidePreparationScreen: { glassesModelName: string };
   AppSettings: { packageName: string, appName: string };
+  ErrorReportScreen: undefined;
 };
 
 

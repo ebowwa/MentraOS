@@ -4,10 +4,11 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { AUGMENTOS_AUTH_JWT_SECRET, systemApps } from '@augmentos/config';
+import { systemApps } from '@augmentos/config';
 import { User } from '../models/user.model';
 
-console.log('systemApps', systemApps);
+export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+import appService from '../services/core/app.service';
 
 const router = express.Router();
 
@@ -44,14 +45,37 @@ router.get('/:tpaName', async (req, res) => {
     }
 
     // Read TPA configuration file.
-    const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json');
+    // const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json');
     let tpaConfig;
     try {
-      const rawData = fs.readFileSync(configFilePath, 'utf8');
-      tpaConfig = JSON.parse(rawData);
+      // const rawData = fs.readFileSync(configFilePath, 'utf8');
+      // tpaConfig = JSON.parse(rawData);
+      // find the app, then call it with it's port. i.e: http://localhost:8017/tpa_config.json
+      const _tpa = await appService.getApp(req.params.tpaName);
+      const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
+      
+      if (!host || !_tpa) {
+        throw new Error('Port / TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
+      }
+      const _tpaConfig = (await axios.get(`http://${host}/tpa_config.json`)).data; 
+      tpaConfig = _tpaConfig;
+
     } catch (err) {
-      console.error('Error reading TPA config file:', err);
-      return res.status(500).json({ error: 'Error reading TPA config file' });
+      const _tpa = await appService.getApp(req.params.tpaName);
+      if (_tpa) {
+        tpaConfig = {
+          name: _tpa.name || req.params.tpaName,
+          description: _tpa.description || '',
+          version: "1.0.0",
+          settings: []
+        }
+      } else {
+        console.error('Error reading TPA config file:', err);
+        return res.status(500).json({ error: 'Error reading TPA config file' });
+      }
+      // If the config file doesn't exist or is invalid, just return 
+      // console.error('Error reading TPA config file:', err);
+      // return res.status(500).json({ error: 'Error reading TPA config file' });
     }
 
     // Find or create the user.
@@ -73,12 +97,7 @@ router.get('/:tpaName', async (req, res) => {
         }));
       await user.updateAppSettings(tpaName, defaultSettings);
       storedSettings = defaultSettings;
-      console.log(`Default settings stored for app "${tpaName}" for user ${userId}: ${JSON.stringify(storedSettings)}`);
-    } else {
-      console.log(`Found existing settings for app "${tpaName}" for user ${userId}: ${JSON.stringify(storedSettings)}`);
     }
-
-    console.log('Stored settings:', storedSettings);
 
     // Merge config settings with stored values.
     const mergedSettings = tpaConfig.settings.map((setting: any) => {
@@ -90,7 +109,7 @@ router.get('/:tpaName', async (req, res) => {
       };
     });
 
-    console.log('Merged settings:', mergedSettings);
+    // console.log('Merged settings:', mergedSettings);
 
     return res.json({
       success: true,
@@ -200,8 +219,6 @@ router.post('/:tpaName', async (req, res) => {
       return res.status(400).json({ error: 'Invalid update payload format' });
     }
 
-    console.log('Payload:', JSON.stringify(updatedPayload));
-
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
@@ -209,19 +226,19 @@ router.post('/:tpaName', async (req, res) => {
     // We assume that the payload contains the complete set of settings (each with key and value).
     await user.updateAppSettings(tpaName, updatedPayload);
 
-    console.log(`Updated settings for app "${tpaName}" for user ${userId}: ${JSON.stringify(updatedPayload)}`);
+    console.log(`Updated settings for app "${tpaName}" for user ${userId}`);
 
     const matchingApp = Object.values(systemApps).find(app =>
       app.packageName.endsWith(tpaName)
     );
 
     if (matchingApp) {
-      const appEndpoint = `http://localhost:${matchingApp.port}/settings`;
+      const appEndpoint = `http://${matchingApp.host}/settings`;
       try {
         // Add userIdForSettings to the payload that the captions app expects
-        const response = await axios.post(appEndpoint, { 
-          userIdForSettings: userId, 
-          settings: updatedPayload 
+        const response = await axios.post(appEndpoint, {
+          userIdForSettings: userId,
+          settings: updatedPayload
         });
         console.log(`Called app endpoint at ${appEndpoint} with response:`, response.data);
       } catch (err) {

@@ -228,6 +228,8 @@ UserSchema.methods.updateAppSettings = async function(
   // Sanitize the appName since it's used as a Map key
   const sanitizedAppName = MongoSanitizer.sanitizeKey(appName);
 
+  console.log('App name:', sanitizedAppName);
+
   // Retrieve existing settings and convert subdocuments to plain objects.
   const existingSettings = this.appSettings.get(sanitizedAppName);
   let existingSettingsPlain: { key: string; value: any }[] = [];
@@ -261,7 +263,6 @@ UserSchema.methods.updateAppSettings = async function(
 };
 
 UserSchema.methods.getAppSettings = function (this: UserDocument, appName: string): AppSetting[] | undefined {
-  // Sanitize the appName when retrieving from the Map
   const sanitizedAppName = MongoSanitizer.sanitizeKey(appName);
   const settings = this.appSettings.get(sanitizedAppName);
   return settings;

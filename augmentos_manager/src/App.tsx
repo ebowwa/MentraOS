@@ -11,13 +11,13 @@ import ProfileSettingsPage from './screens/ProfileSettingsPage';
 import GlassesMirror from './screens/GlassesMirror';
 import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
+import AppStoreNative from './screens/AppStoreNative';
+import AppStoreWeb from './screens/AppStoreWebview';
 import AppDetails from './screens/AppDetails';
 import Reviews from './screens/ReviewSection.tsx';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppStoreItem, RootStackParamList } from './components/types'; // Update path as needed
 import MessageBanner from './components/MessageBanner.tsx';
-import SimulatedPuckSettings from './screens/SimulatedPuckSettings.tsx';
-import SimulatedPuckOnboard from './screens/SimulatedPuckOnboard.tsx';
 import SelectGlassesModelScreen from './screens/SelectGlassesModelScreen.tsx';
 import GlassesPairingGuideScreen from './screens/GlassesPairingGuideScreen.tsx';
 import SelectGlassesBluetoothScreen from './screens/SelectGlassesBluetoothScreen.tsx';
@@ -35,6 +35,8 @@ import ConnectingToPuckComponent from './components/ConnectingToPuckComponent.ts
 import VersionUpdateScreen from './screens/VersionUpdateScreen.tsx';
 import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
+import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
+import { saveSetting } from './logic/SettingsHelper';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -51,6 +53,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+
+  // Reset ignoreVersionCheck setting on app start
+  useEffect(() => {
+//TODO: SET THIS TO FALSE
+    saveSetting('ignoreVersionCheck', true);
+    console.log('Reset version check ignore flag on app start');
+  }, []);
 
   const toggleTheme = () => {
     setIsDarkTheme(prevTheme => !prevTheme);
@@ -152,6 +161,16 @@ const App: React.FC = () => {
                   {props => <AppStore {...props} isDarkTheme={isDarkTheme} />}
                 </Stack.Screen>
                 <Stack.Screen
+                  name="AppStoreNative"
+                  options={{ title: 'App Store (Native)', headerShown: false }}>
+                  {props => <AppStoreNative {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreWeb"
+                  options={{ title: 'App Store', headerShown: false }}>
+                  {props => <AppStoreWeb {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
                   name="Reviews"
                   options={({ route }) => ({
                     headerShown: false,
@@ -210,42 +229,9 @@ const App: React.FC = () => {
                   }}>
                   {() => <GlassesMirror isDarkTheme={isDarkTheme} />}
                 </Stack.Screen>
-                <Stack.Screen name="SimulatedPuckSettings"
-                  options={{
-                    title: 'Simulated Puck',
-                    headerStyle: {
-                      backgroundColor: isDarkTheme ? '#000000' : '#ffffff',
-                    },
-                    headerTintColor: isDarkTheme ? '#ffffff' : '#000000',
-                  }}>
-                  {props => (
-                    <SimulatedPuckSettings
-                      {...props}
-                      toggleTheme={toggleTheme}
-                      isDarkTheme={isDarkTheme}
-                    />
-                  )}
-                </Stack.Screen>
-                <Stack.Screen name="SimulatedPuckOnboard"
-                  options={{
-                    title: 'Simulated Puck',
-                    headerShown: false,
-                    headerStyle: {
-                      backgroundColor: isDarkTheme ? '#000000' : '#ffffff',
-                    },
-                    headerTintColor: isDarkTheme ? '#ffffff' : '#000000',
-                  }}>
-                  {props => (
-                    <SimulatedPuckOnboard
-                      {...props}
-                      toggleTheme={toggleTheme}
-                      isDarkTheme={isDarkTheme}
-                    />
-                  )}
-                </Stack.Screen>
                 <Stack.Screen name="AppSettings"
                   options={({ route }) => ({
-                    title: route.params?.appName + ' Settings',
+                    title: route.params?.appName,
                     headerStyle: {
                       backgroundColor: isDarkTheme ? '#000000' : '#ffffff',
                     },
@@ -275,6 +261,11 @@ const App: React.FC = () => {
                     />
                   )}
                 </Stack.Screen>
+                <Stack.Screen 
+                  name="ErrorReportScreen" 
+                  component={ErrorReportScreen} 
+                  options={{ title: 'Report an Error' }} 
+                />
                 <Stack.Screen name="SelectGlassesModelScreen"
                   options={{ title: 'Select Glasses' }}
                 >

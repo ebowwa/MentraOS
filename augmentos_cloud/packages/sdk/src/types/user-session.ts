@@ -9,7 +9,8 @@ import {
   ConversationTranscriber,
   PushAudioInputStream,
 } from 'microsoft-cognitiveservices-speech-sdk';
-import { StreamType } from './streams';
+import { ExtendedStreamType, StreamType } from './streams';
+import winston from 'winston';
 
 /**
  * Session for an application
@@ -75,11 +76,14 @@ export interface UserSession {
   startTime: Date;
   disconnectedAt: Date | null;
 
+  // Logger.
+  logger: winston.Logger;
+
   // App Sessions and App State
   installedApps: AppI[];
   activeAppSessions: string[];
-  loadingApps: string[];
-  appSubscriptions: Map<string, StreamType[]> | Object; // packageName -> subscriptions;
+  loadingApps: Set<string>;
+  appSubscriptions: Map<string, ExtendedStreamType[]> | Object; // packageName -> subscriptions;
   appConnections: Map<string, WebSocket>; // packageName -> websocket connection for the system app / TPA;
 
   displayManager: DisplayManagerI;
@@ -102,7 +106,7 @@ export interface UserSession {
   isAudioProcessing?: boolean;      // Flag to track audio processing state
 
   // TODO:
-  whatToStream: StreamType[];
+  whatToStream: ExtendedStreamType[];
 
   // OS Settings.
   OSSettings: any;

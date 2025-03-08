@@ -12,16 +12,16 @@ export default class BackendServerComms {
   private TAG = 'MXT2_BackendServerComms';
   private serverUrl;
 
-  private getServerUrl(): string {
+  public getServerUrl(): string {
     const secure = Config.AUGMENTOS_SECURE === 'true';
     const host = Config.AUGMENTOS_HOST;
     const port = Config.AUGMENTOS_PORT;
     const protocol = secure ? 'https' : 'http';
     const serverUrl = `${protocol}://${host}:${port}`;
-    console.log("\n\n\n\n Got a new server url: ");
+    console.log("Got a new server url: ");
     console.log(serverUrl);
-    console.log('React Native Config:', Config);
-    console.log("\n\n\n");
+    //console.log('React Native Config:', Config);
+    //console.log("\n\n\n");
     return serverUrl;
   }
 
@@ -67,6 +67,39 @@ export default class BackendServerComms {
     } catch (error: any) {
       console.log(`${this.TAG}: Network Error -`, error.message || error);
       callback.onFailure(-1);
+    }
+  }
+  
+  /**
+   * Send error report to backend server
+   * @param reportData The error report data
+   * @returns Promise resolving to the response data, or rejecting with an error
+   */
+  public async sendErrorReport(coreToken: string, reportData: any): Promise<any> {
+
+    const url = `${this.serverUrl}/app/error-report`;
+    console.log('Sending error report to:', url);
+
+    const config: AxiosRequestConfig = {
+      method: 'POST',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${coreToken}`,
+      },
+      data: reportData,
+    };
+
+    try {
+      const response = await axios(config);
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        throw new Error(`Error sending report: ${response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error(`${this.TAG}: Error sending report -`, error.message || error);
+      throw error;
     }
   }
 

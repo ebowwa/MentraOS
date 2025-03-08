@@ -15,7 +15,7 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { BluetoothService } from '../BluetoothService';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
-import { SETTINGS_KEYS, SIMULATED_PUCK_DEFAULT } from '../consts';
+import { SETTINGS_KEYS } from '../consts';
 import NavigationBar from '../components/NavigationBar';
 import { getGlassesImage } from '../logic/getGlassesImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
@@ -40,16 +40,13 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
         { modelName: 'Mentra Mach1', key: 'mentra_mach1' },
         { modelName: 'Even Realities G1', key: 'evenrealities_g1' },
         { modelName: 'Audio Wearable', key: 'Audio Wearable' },
+        { modelName: 'Virtual Wearable', key: 'Virtual Wearable' },
     ];
 
     React.useEffect(() => { }, [status]);
 
     const triggerGlassesPairingGuide = async (glassesModelName: string) => {
-        const simulatedPuck = await loadSetting(
-            SETTINGS_KEYS.SIMULATED_PUCK,
-            SIMULATED_PUCK_DEFAULT,
-        );
-        if (simulatedPuck && !(await bluetoothService.isBluetoothEnabled() && await bluetoothService.isLocationEnabled())) {
+        if (!(await bluetoothService.isBluetoothEnabled() && await bluetoothService.isLocationEnabled())) {
             GlobalEventEmitter.emit('SHOW_BANNER', { message: "Please enable Bluetooth and Location", type: "error" })
             return;
         }
