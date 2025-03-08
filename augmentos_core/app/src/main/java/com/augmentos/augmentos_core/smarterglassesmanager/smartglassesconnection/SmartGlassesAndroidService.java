@@ -617,8 +617,15 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
         }
     }
     public void applyMicrophoneState(boolean isMicrophoneEnabled) {
-        Log.d(TAG, "Want to changing microphone state to " + isMicrophoneEnabled);
+        Log.d(TAG, "Want to change microphone state to " + isMicrophoneEnabled);
         Log.d(TAG, "Force core onboard mic: " + getForceCoreOnboardMic(this.getApplicationContext()));
+
+        // Prevent NullPointerException
+        if (smartGlassesRepresentative == null || smartGlassesRepresentative.smartGlassesDevice == null) {
+            Log.e(TAG, "SmartGlassesRepresentative or its device is null, cannot apply microphone state");
+            return;
+        }
+
         if (smartGlassesRepresentative.smartGlassesDevice.getHasInMic() && !getForceCoreOnboardMic(this.getApplicationContext())) {
             // If we should be using the glasses microphone
             smartGlassesRepresentative.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(isMicrophoneEnabled);
@@ -632,9 +639,10 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
             smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
         }
 
-        //tell speech rec that we stopped
+        // Tell speech rec system that we stopped
         speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
     }
+
 
     public void sendHomeScreen(){
         EventBus.getDefault().post(new HomeScreenEvent());
