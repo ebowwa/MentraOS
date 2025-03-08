@@ -11,6 +11,8 @@ import ProfileSettingsPage from './screens/ProfileSettingsPage';
 import GlassesMirror from './screens/GlassesMirror';
 import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
+import AppStoreNative from './screens/AppStoreNative';
+import AppStoreWeb from './screens/AppStoreWebview';
 import AppDetails from './screens/AppDetails';
 import Reviews from './screens/ReviewSection.tsx';
 import { StyleSheet, Text, View } from 'react-native';
@@ -149,6 +151,16 @@ const App: React.FC = () => {
                   name="AppStore"
                   options={{ title: 'App Store', headerShown: false }}>
                   {props => <AppStore {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreNative"
+                  options={{ title: 'App Store (Native)', headerShown: false }}>
+                  {props => <AppStoreNative {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreWeb"
+                  options={{ title: 'App Store', headerShown: false }}>
+                  {props => <AppStoreWeb {...props} isDarkTheme={isDarkTheme} />}
                 </Stack.Screen>
                 <Stack.Screen
                   name="Reviews"

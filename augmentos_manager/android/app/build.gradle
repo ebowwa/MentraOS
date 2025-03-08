@@ -97,6 +97,7 @@ dependencies {
     implementation project(':react-native-safe-area-context')
     implementation project(':react-native-ble-manager')
     implementation project(':react-native-linear-gradient')
+    implementation project(':react-native-webview')
     implementation 'androidx.localbroadcastmanager:localbroadcastmanager:1.0.0'
     
     implementation(project(':react-native-camera')) {
