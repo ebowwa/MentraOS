@@ -228,14 +228,19 @@ export class TranscriptionService {
           speakerId: event.result.speakerId,
           transcribeLanguage: languageInfo.transcribeLanguage
         };
+
+        console.log('\n\n\n#### transcriptionData:', event.result.language, "\n\n\n");
+
+        if (languageInfo.transcribeLanguage === 'en-US') {
+          this.updateTranscriptHistory(userSession, event, false);
+        }
         this.broadcastTranscriptionResult(userSession, transcriptionData);
-        this.updateTranscriptHistory(userSession, event, false);
       };
 
       (instance.recognizer as ConversationTranscriber).transcribed = (_sender: any, event: ConversationTranscriptionEventArgs) => {
         if (!event.result.text) return;
         console.log(`✅ TRANSCRIPTION [Final][${userSession.userId}][${subscription}]: ${event.result.text}`);
-        const result: TranscriptionData = {
+        const transcriptionData: TranscriptionData = {
           type: StreamType.TRANSCRIPTION,
           isFinal: true,
           text: event.result.text,
@@ -245,8 +250,12 @@ export class TranscriptionService {
           duration: event.result.duration,
           transcribeLanguage: languageInfo.transcribeLanguage
         };
-        this.broadcastTranscriptionResult(userSession, result);
-        this.updateTranscriptHistory(userSession, event, true);
+        // console.log('\n\n\n#### result:', true, "\n\n\n");
+        // console.log('\n\n\n#### languageInfo.transcribeLanguage:', event.result.language, "\n\n\n");
+        if (languageInfo.transcribeLanguage === 'en-US') {
+          this.updateTranscriptHistory(userSession, event, true);
+        }
+        this.broadcastTranscriptionResult(userSession, transcriptionData);
       };
     }
 
@@ -313,8 +322,13 @@ export class TranscriptionService {
   private updateTranscriptHistory(userSession: ExtendedUserSession, event: ConversationTranscriptionEventArgs, isFinal: boolean): void {
     const segments = userSession.transcript.segments;
     const hasInterimLast = segments.length > 0 && !segments[segments.length - 1].isFinal;
+
+    console.log('\n\n\n########', event.result.language, "\n\n\n");
     // Only save English transcriptions.
-    if (event.result.language !== 'en-US') return;
+    // if (event.result.language !== 'en-US') {
+    //   console.log("🚫 Skipping non-English transcription");
+    //   return;
+    // }
 
     const currentTime = new Date();
 
@@ -329,7 +343,8 @@ export class TranscriptionService {
         timestamp: currentTime,
         isFinal: true
       });
-    } else {
+    } 
+    else {
       if (hasInterimLast) {
         segments[segments.length - 1] = {
           resultId: event.result.resultId,
@@ -348,6 +363,8 @@ export class TranscriptionService {
         });
       }
     }
+
+    console.log('\n\n\nsegments:', segments, "\n\n\n");
 
     // Prune old segments (older than 30 minutes)
     const thirtyMinutesAgo = new Date(currentTime.getTime() - 30 * 60 * 1000);
