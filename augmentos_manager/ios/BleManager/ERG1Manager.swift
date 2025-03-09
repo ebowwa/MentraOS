@@ -191,6 +191,7 @@ struct ViewState {
   private var leftInitialized: Bool = false
   private var rightInitialized: Bool = false
   private var isHeadUp = false
+  public var dashboardEnabled = true
   
   private var aiTriggerTimeoutTimer: Timer?
   
@@ -360,6 +361,10 @@ struct ViewState {
         currentViewState = self.viewStates[1]
       } else {
         currentViewState = self.viewStates[0]
+      }
+      
+      if (isDashboard && !dashboardEnabled) {
+        return
       }
       
       let layoutType = currentViewState.layoutType

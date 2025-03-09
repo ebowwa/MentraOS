@@ -318,10 +318,10 @@ class ServerComms {
   
   private func getServerUrl() -> String {
     // TODO: ios get these from .env:
-    let host = "staging.augmentos.org"
-    let port = "443"
-//    let host = "10.179.120.106"
-//    let port = 8002
+//    let host = "staging.augmentos.org"
+//    let port = "443"
+    let host = "10.179.120.106"
+    let port = 8002
     let secureServer = host.contains("augmentos.org")
     return "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
   }

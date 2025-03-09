@@ -281,6 +281,7 @@ import React
             break
           }
           self.contextualDashboard = enabled
+          self.g1Manager.dashboardEnabled = enabled
           saveSettings()
           break
         case .forceCoreOnboardMic:
@@ -492,13 +493,13 @@ import React
   private func handleDeviceReady() {
     self.defaultWearable = "Even Realities G1"
     self.handleRequestStatus()
-    
-    // send the animation:
-    //    self.g1Manager.RN_sendText("AugmentOS Connected!");
+    // load settings and send the animation:
     Task {
+      loadSettings()
+      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       playStartupSequence()
       // sleep for 1 second, then send a space to clear the message:
-      try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       self.g1Manager.RN_sendText(" ")
     }
   }
@@ -551,6 +552,7 @@ import React
     static let contextualDashboard = "contextualDashboard"
     static let headUpAngle = "headUpAngle"
     static let brightness = "brightness"
+    static let autoLight = "autoLight"
   }
   
   private func saveSettings() {
@@ -562,6 +564,7 @@ import React
     defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
     defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
     defaults.set(brightness, forKey: SettingsKeys.brightness)
+    defaults.set(autoLight, forKey: SettingsKeys.autoLight)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -577,6 +580,8 @@ import React
     defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)
     useOnboardMic = defaults.bool(forKey: SettingsKeys.useOnboardMic)
     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
+    autoLight = defaults.bool(forKey: SettingsKeys.autoLight)
+    
     
     // For numeric values, provide the default if the key doesn't exist
     if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
@@ -585,6 +590,13 @@ import React
     
     if defaults.object(forKey: SettingsKeys.brightness) != nil {
       brightness = defaults.integer(forKey: SettingsKeys.brightness)
+    }
+    
+    
+    if (self.g1Manager.g1Ready) {
+      self.g1Manager.dashboardEnabled = contextualDashboard
+      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+      self.g1Manager.RN_setBrightness(brightness, autoMode: autoLight)
     }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +
