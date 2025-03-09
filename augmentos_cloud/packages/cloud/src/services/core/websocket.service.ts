@@ -332,7 +332,10 @@ export class WebSocketService {
     const userSession = await this.sessionService.createSession(ws);
     ws.on('message', async (message: Buffer | string, isBinary: boolean) => {
       try {
-        if (isBinary && Buffer.isBuffer(message)) {
+        // console.log('####### message', message);
+        // console.log('####### isBinary', isBinary);
+
+        if (Buffer.isBuffer(message)) {
 
           // Convert Node.js Buffer to ArrayBuffer
           const arrayBuf: ArrayBufferLike = message.buffer.slice(
@@ -348,6 +351,8 @@ export class WebSocketService {
           
           return;
         }
+
+        // console.log('####### message', message);
 
         const parsedMessage = JSON.parse(message.toString()) as GlassesToCloudMessage;
         await this.handleGlassesMessage(userSession, ws, parsedMessage);

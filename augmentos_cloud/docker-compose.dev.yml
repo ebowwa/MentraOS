@@ -10,6 +10,7 @@ services:
     command: >
       bash -c "bun install && 
               cd packages/utils && bun run build &&
+              cd ../config && bun run build &&
               cd ../sdk && bun run build &&
               cd ../agents && bun run build"
     networks:
@@ -256,6 +257,8 @@ services:
 networks:
   augmentos-network-dev:
     driver: bridge
+    external: true
+    name: augmentos-network-dev
 
 volumes:
   node_modules:
