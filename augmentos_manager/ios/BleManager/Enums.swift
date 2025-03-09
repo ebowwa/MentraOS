@@ -22,7 +22,7 @@ enum Commands: UInt8 {
   case BLE_REQ_DEVICE_ORDER = 0xF5
   case BLE_REQ_MIC_ON = 0x0E
   case QUICK_NOTE_ADD = 0x1E
-  case BATTERY_STATUS = 0x2D
+//  case BATTERY_STATUS = 0x2C
   case BRIGHTNESS = 0x01
   case SILENT_MODE = 0x03
   case DASHBOARD_POSITION_COMMAND = 0x26
@@ -41,7 +41,6 @@ enum DeviceOrders: UInt8 {
   case ACTIVATED = 0x05
   case HEAD_UP2 = 0x02
   case HEAD_DOWN2 = 0x03
-  case BATTERY_STATUS = 0x2C
 }
 
 enum DisplayStatus: UInt8 {

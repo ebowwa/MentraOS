@@ -33,6 +33,9 @@ interface SettingsPageProps {
 }
 
 const parseBrightness = (brightnessStr: string | null | undefined): number => {
+  if (typeof brightnessStr === 'number') {
+    return brightnessStr;
+  }
   if (!brightnessStr || brightnessStr.includes('-')) {
     return 50;
   }
@@ -433,14 +436,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </ScrollView>
 
         {/* HEADUP ANGLE MODAL (the semicircle one) */}
-        {headUpAngle !== null && (
-          <HeadUpAngleComponent
-            visible={headUpAngleComponentVisible}
-            initialAngle={headUpAngle}
-            onCancel={onCancelHeadUpAngle}
-            onSave={onSaveHeadUpAngle}
-          />
-        )}
+        <HeadUpAngleComponent
+          visible={headUpAngleComponentVisible}
+          initialAngle={headUpAngle ?? 30}
+          onCancel={onCancelHeadUpAngle}
+          onSave={onSaveHeadUpAngle}
+        />
       </View>
 
       {/* Your app’s bottom navigation bar */}

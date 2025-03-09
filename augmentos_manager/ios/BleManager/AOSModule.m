@@ -47,7 +47,7 @@ RCT_EXPORT_METHOD(startScan:(RCTResponseSenderBlock)successCallback errorCallbac
 RCT_EXPORT_METHOD(stopScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback) {
     @try {
         // Call the Swift stopScan method
-        [self.aosManager.g1Manager stopScan];
+        [self.aosManager.g1Manager RN_stopScan];
         
         if (successCallback) {
             successCallback(@[@"Scanning stopped"]);

@@ -385,7 +385,7 @@ struct ViewState {
     }
   }
   
-  @objc func stopScan() {
+  @objc func RN_stopScan() {
     centralManager.stopScan()
     print("Stopped scanning for devices")
   }
@@ -510,28 +510,67 @@ struct ViewState {
       self.voiceData = data
       //          print("Got voice data: " + String(data.count))
       break
+    case .BLE_REQ_HEARTBEAT:
+      // battery info
+      guard data.count >= 6 && data[1] == 0x66 else {
+        break
+      }
+      
+      // Response format: 2C 66 [battery%] [flags] [voltage_low] [voltage_high] ...
+      let batteryPercent = Int(data[2])
+      let flags = data[3]
+      let voltageLow = Int(data[4])
+      let voltageHigh = Int(data[5])
+      let rawVoltage = (voltageHigh << 8) | voltageLow
+      let voltage = rawVoltage / 10  // Scale down by 10 to get actual millivolts
+      
+//      print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
+      
+      // if left, update left battery level, if right, update right battery level
+      if peripheral == leftPeripheral {
+        leftBatteryLevel = batteryPercent
+        print("Left glass battery: \(batteryPercent)%")
+      } else if peripheral == rightPeripheral {
+        rightBatteryLevel = batteryPercent
+        print("Right glass battery: \(batteryPercent)%")
+      }
+      
+      // update the main battery level as the lower of the two
+      batteryLevel = min(leftBatteryLevel, rightBatteryLevel)
+      break
+    case .BLE_REQ_EVENAI:
+      guard data.count > 1 else { break }
+      let acknowledge = CommandResponse(rawValue: data[1])
+      if acknowledge == .ACK {
+        if peripheral == self.rightPeripheral {
+          rightWaiter.setFalse()
+          self.displayingResponseAiRightAck = true
+        }
+        if peripheral == self.leftPeripheral {
+          leftWaiter.setFalse()
+          self.displayingResponseAiLeftAck = true
+        }
+        receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
+      }
+      
+      print("Received EvenAI response: \(data.hexEncodedString())")
     case .BLE_REQ_DEVICE_ORDER:
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
       case .HEAD_UP:
-        //        print("HEAD_UP")
+        isHeadUp = true
+        sendCurrentState(true)
+        break
+      case .HEAD_UP2:
         isHeadUp = true
         sendCurrentState(true)
         break
       case .HEAD_DOWN:
         isHeadUp = false
         sendCurrentState(false)
-        //        print("HEAD_DOWN")
-        break
-      case .HEAD_UP2:
-        isHeadUp = true
-        //        print("HEAD_UP2")
-        sendCurrentState(true)
         break
       case .HEAD_DOWN2:
         isHeadUp = false
-        //        print("HEAD_DOWN2")
-        //            RN_sendText(" ");
         sendCurrentState(false)
         break
       case .ACTIVATED:
@@ -576,53 +615,10 @@ struct ViewState {
         }
         //      case .G1_IS_READY:
         //        g1Ready = true
-      case .BATTERY_STATUS:
-        guard data.count >= 6 && data[1] == 0x66 else {
-          break
-        }
-        
-        // Response format: 2C 66 [battery%] [flags] [voltage_low] [voltage_high] ...
-        let batteryPercent = Int(data[2])
-        let flags = data[3]
-        let voltageLow = Int(data[4])
-        let voltageHigh = Int(data[5])
-        let rawVoltage = (voltageHigh << 8) | voltageLow
-        let voltage = rawVoltage / 10  // Scale down by 10 to get actual millivolts
-        
-        print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
-        
-        // if left, update left battery level, if right, update right battery level
-        if peripheral == leftPeripheral {
-          leftBatteryLevel = batteryPercent
-          print("Left glass battery: \(batteryPercent)%")
-        } else if peripheral == rightPeripheral {
-          rightBatteryLevel = batteryPercent
-          print("Right glass battery: \(batteryPercent)%")
-        }
-        
-        // update the main battery level as the lower of the two
-        batteryLevel = min(leftBatteryLevel, rightBatteryLevel)
-        break
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
       }
-    case .BLE_REQ_EVENAI:
-      if data.count > 1 {
-        let acknowledge = CommandResponse(rawValue: data[1])
-        if acknowledge == .ACK {
-          if peripheral == self.rightPeripheral {
-            rightWaiter.setFalse()
-            self.displayingResponseAiRightAck = true
-          }
-          if peripheral == self.leftPeripheral {
-            leftWaiter.setFalse()
-            self.displayingResponseAiLeftAck = true
-          }
-          receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
-        }
-      }
-      print("Received EvenAI response: \(data.hexEncodedString())")
     default:
       //          print("received from G1(not handled): \(data.hexEncodedString())")
       break
@@ -1598,8 +1594,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     if central.state == .poweredOn {
       print("Bluetooth powered on")
       g1Ready = false
-      // TODO: ios re-enable once stopScan is implemented
-      //          RN_startScan()
+      // TODO: ios re-enable once stopScan is implemented, because otherwise we discover peripherals too early before RN gets notified:
+      RN_startScan()
     } else {
       print("Bluetooth is not available.")
     }
