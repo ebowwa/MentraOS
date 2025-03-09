@@ -109,15 +109,15 @@ import React
       self.serverComms.sendAudioChunk(effectiveData)
       print("got audio data of size: \(effectiveData.count)")
       
-//      TODO: ios PCM / VAD
-//      let pcmConverter = PcmConverter()
-//      let pcmData = pcmConverter.decode(effectiveData)
+      //      TODO: ios PCM / VAD
+      //      let pcmConverter = PcmConverter()
+      //      let pcmData = pcmConverter.decode(effectiveData)
       
-//      if pcmData.count > 0 {
-//        print("Got PCM data of size: \(pcmData.count)")
-//      } else {
-//        print("PCM conversion resulted in empty data")
-//      }
+      //      if pcmData.count > 0 {
+      //        print("Got PCM data of size: \(pcmData.count)")
+      //      } else {
+      //        print("PCM conversion resulted in empty data")
+      //      }
     }
     .store(in: &cancellables)
     
@@ -133,22 +133,22 @@ import React
   
   // MARK: - ServerCommsCallback Implementation
   
-//  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
-//    // Convert apps to dictionaries for React Native
-//    let appDicts = apps.map { app -> [String: Any] in
-//      return [
-//        "packageName": app.packageName,
-//        "name": app.name,
-//        "description": app.description,
-//        "webhookURL": app.webhookURL,
-//        "logoURL": app.logoURL,
-//        "isRunning": app.isRunning
-//      ]
-//    }
-//    
-//    // React Native callback
-//    onAppStateChange?(["apps": appDicts])
-//  }
+  //  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
+  //    // Convert apps to dictionaries for React Native
+  //    let appDicts = apps.map { app -> [String: Any] in
+  //      return [
+  //        "packageName": app.packageName,
+  //        "name": app.name,
+  //        "description": app.description,
+  //        "webhookURL": app.webhookURL,
+  //        "logoURL": app.logoURL,
+  //        "isRunning": app.isRunning
+  //      ]
+  //    }
+  //
+  //    // React Native callback
+  //    onAppStateChange?(["apps": appDicts])
+  //  }
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     // Handle microphone state change if needed
@@ -180,7 +180,7 @@ import React
     // TODO:
     handleRequestStatus()
   }
-
+  
   func handleSearchForCompatibleDeviceNames(_ modelName: String) {
     print("Searching for compatible device names for: \(modelName)")
     // TODO: Implement search for compatible device names
@@ -252,7 +252,7 @@ import React
           } else {
             print("Invalid params for connect_wearable")
           }
-        
+          
         case .disconnectWearable:
           handleDisconnectWearable()
           break
@@ -264,17 +264,17 @@ import React
           handleRequestStatus()
           break
           
-//        case .connectDefaultWearable:
-//          handleConnectDefaultWearable()
-
-       case .searchForCompatibleDeviceNames:
-         if let params = params, let modelName = params["model_name"] as? String {
-           print("Searching for compatible device names for: \(modelName)")
-           handleSearchForCompatibleDeviceNames(modelName)
-         } else {
-           print("Invalid params for search_for_compatible_device_names")
-         }
-
+          //        case .connectDefaultWearable:
+          //          handleConnectDefaultWearable()
+          
+        case .searchForCompatibleDeviceNames:
+          if let params = params, let modelName = params["model_name"] as? String {
+            print("Searching for compatible device names for: \(modelName)")
+            handleSearchForCompatibleDeviceNames(modelName)
+          } else {
+            print("Invalid params for search_for_compatible_device_names")
+          }
+          
         case .enableContextualDashboard:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
             print("invalid_dashboard_enabled_params")
@@ -310,8 +310,8 @@ import React
           
         case .unknown:
           print("Unknown command type: \(commandString)")
-//        case .connectDefaultWearable:
-//          break
+          //        case .connectDefaultWearable:
+          //          break
         case .ping:
           break
         case .updateGlassesHeadUpAngle:
@@ -382,46 +382,46 @@ import React
     
     // hardcoded list of apps:
     var apps: [[String: Any]] = [
-//        [
-//            "host": "mira",
-//            "packageName": "com.augmentos.miraai",
-//            "name": "Mira AI",
-//            "description": "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command."
-//        ],
-//        [
-//            "host": "merge",
-//            "packageName": "com.mentra.merge",
-//            "name": "Merge",
-//            "description": "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo."
-//        ],
-//        [
-//            "host": "live-translation",
-//            "packageName": "com.augmentos.live-translation",
-//            "name": "Live Translation",
-//            "description": "Live language translation."
-//        ],
-//        [
-//            "host": "live-captions",
-//            "packageName": "com.augmentos.livecaptions",
-//            "name": "Live Captions",
-//            "description": "Live closed captions."
-//        ]
+      //        [
+      //            "host": "mira",
+      //            "packageName": "com.augmentos.miraai",
+      //            "name": "Mira AI",
+      //            "description": "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command."
+      //        ],
+      //        [
+      //            "host": "merge",
+      //            "packageName": "com.mentra.merge",
+      //            "name": "Merge",
+      //            "description": "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo."
+      //        ],
+      //        [
+      //            "host": "live-translation",
+      //            "packageName": "com.augmentos.live-translation",
+      //            "name": "Live Translation",
+      //            "description": "Live language translation."
+      //        ],
+      //        [
+      //            "host": "live-captions",
+      //            "packageName": "com.augmentos.livecaptions",
+      //            "name": "Live Captions",
+      //            "description": "Live closed captions."
+      //        ]
     ]
     
     for tpa in self.cachedThirdPartyAppList {
-        let tpaDict = [
-            "packageName": tpa.packageName,
-            "name": tpa.name,
-            "description": tpa.description,
-            "webhookURL": tpa.webhookURL,
-            "logoURL": tpa.logoURL,
-            "is_running": tpa.isRunning,
-            "is_foreground": false
-        ] as [String: Any]
-        
-        apps.append(tpaDict)
+      let tpaDict = [
+        "packageName": tpa.packageName,
+        "name": tpa.name,
+        "description": tpa.description,
+        "webhookURL": tpa.webhookURL,
+        "logoURL": tpa.logoURL,
+        "is_running": tpa.isRunning,
+        "is_foreground": false
+      ] as [String: Any]
+      
+      apps.append(tpaDict)
     }
-
+    
     
     let statusObj: [String: Any] = [
       "connected_glasses": connectedGlasses,
@@ -429,7 +429,7 @@ import React
       "core_info": coreInfo,
     ]
     let wrapperObj: [String: Any] = ["status": statusObj]
-//    print("wrapperStatusObj \(wrapperObj)")
+    //    print("wrapperStatusObj \(wrapperObj)")
     // must convert to string before sending:
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
@@ -442,42 +442,69 @@ import React
     saveSettings()
   }
   
-  var readinessCheckTimer: Timer?
+  private func playStartupSequence() {
+    // Arrow frames for the animation
+    let arrowFrames = ["↑", "↗", "↑", "↖"]
+    
+    let delay = 0.25 // Frame delay in seconds
+    let totalCycles = 4 // Number of animation cycles
+    
+    // Variables to track animation state
+    var frameIndex = 0
+    var cycles = 0
+    
+    // Create a dispatch queue for the animation
+    let animationQueue = DispatchQueue.global(qos: .userInteractive)
+    
+    // Function to display the current animation frame
+    func displayFrame() {
+      // Check if we've completed all cycles
+      if cycles >= totalCycles {
+        // End animation with final message
+        self.g1Manager.RN_sendText("                  /// AugmentOS Connected \\\\\\")
+        return
+      }
+      
+      // Display current animation frame
+      let frameText = "                    \(arrowFrames[frameIndex]) AugmentOS Booting \(arrowFrames[frameIndex])"
+      self.g1Manager.RN_sendText(frameText)
+      
+      // Move to next frame
+      frameIndex = (frameIndex + 1) % arrowFrames.count
+      
+      // Count completed cycles
+      if frameIndex == 0 {
+        cycles += 1
+      }
+      
+      // Schedule next frame
+      animationQueue.asyncAfter(deadline: .now() + delay) {
+        displayFrame()
+      }
+    }
+    
+    // Start the animation after a short initial delay
+    animationQueue.asyncAfter(deadline: .now() + 0.35) {
+      displayFrame()
+    }
+  }
+  
+  private func handleDeviceReady() {
+    self.defaultWearable = "Even Realities G1"
+    self.handleRequestStatus()
+    
+    // send the animation:
+    //    self.g1Manager.RN_sendText("AugmentOS Connected!");
+    Task {
+      playStartupSequence()
+      // sleep for 1 second, then send a space to clear the message:
+      try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+      self.g1Manager.RN_sendText(" ")
+    }
+  }
   
   private func handleConnectWearable(modelName: String, deviceName: String) {
     print("Connecting to wearable: \(modelName)")
-    
-////    // every few seconds, if the g1Ready property is true, cancel the timer and send a status update:
-//    let readiness = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
-//      print("checking if g1 is ready...")
-//      if self.g1Manager.g1Ready {
-//        print("g1 is ready! Sending status update...")
-//        self.handleRequestStatus()
-//        timer.invalidate()
-//      }
-//    }
-//    
-//    // Create timer and store reference
-////    self.readinessCheckTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] timer in
-////        print("checking if g1 is ready...")
-////        guard let self = self else {
-////            print("self no longer exists, invalidating timer")
-////            timer.invalidate()
-////            return
-////        }
-////        
-////        if self.g1Manager.g1Ready {
-////            print("g1 is ready! Sending status update...")
-////            self.handleRequestStatus()
-////            timer.invalidate()
-////            self.readinessCheckTimer = nil
-////        }
-////    }
-//    
-//    let timer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { timer in
-//        // Your code to execute every 5 seconds
-//        print("This will run every 5 seconds")
-//    }
     
     // just g1's for now:
     Task {
@@ -487,25 +514,25 @@ import React
       } else {
         // TODO: ios this logic needs some cleaning + the searchID needs to be saved as our "remembered" device somewhere (sharedPreferences / ios equiv.)
         // only connect to glasses we've paired with before:
-//        self.g1Manager.RN_setSearchId("_")
+        //        self.g1Manager.RN_setSearchId("_")
         self.g1Manager.RN_startScan()
       }
     }
     
+    // wait for the g1's to be fully ready:
     Task {
-        while !Task.isCancelled {
-            print("checking if g1 is ready...")
-            if self.g1Manager.g1Ready {
-              self.defaultWearable = "Even Realities G1"
-              self.handleRequestStatus()
-              break
-            } else {
-              // todo: not the cleanest solution here
-              self.g1Manager.RN_startScan()
-            }
-            
-            try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+      while !Task.isCancelled {
+        print("checking if g1 is ready...")
+        if self.g1Manager.g1Ready {
+          handleDeviceReady()
+          break
+        } else {
+          // todo: not the cleanest solution here
+          self.g1Manager.RN_startScan()
         }
+        
+        try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+      }
     }
   }
   
@@ -517,7 +544,7 @@ import React
   
   
   // MARK: - Settings Management
-
+  
   private enum SettingsKeys {
     static let defaultWearable = "defaultWearable"
     static let useOnboardMic = "useBoardMic"
@@ -525,7 +552,7 @@ import React
     static let headUpAngle = "headUpAngle"
     static let brightness = "brightness"
   }
-
+  
   private func saveSettings() {
     let defaults = UserDefaults.standard
     
@@ -542,7 +569,7 @@ import React
     print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
           "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
   }
-
+  
   private func loadSettings() {
     let defaults = UserDefaults.standard
     

@@ -67,7 +67,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
       </TouchableOpacity>
 
       {/* iOS Testing Page */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         onPress={() => navigation.navigate('Testing')}
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
@@ -75,7 +75,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
           size={iconSize}
           color={iconColor}
         />
-      </TouchableOpacity>
+      </TouchableOpacity> */}
 
       {/* Glasses Mirror Icon */}
       <TouchableOpacity
