@@ -463,6 +463,9 @@ import React
       if cycles >= totalCycles {
         // End animation with final message
         self.g1Manager.RN_sendText("                  /// AugmentOS Connected \\\\\\")
+        animationQueue.asyncAfter(deadline: .now() + 1.0) {
+            self.g1Manager.RN_sendText(" ")
+        }
         return
       }
       
@@ -498,9 +501,6 @@ import React
       loadSettings()
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       playStartupSequence()
-      // sleep for 1 second, then send a space to clear the message:
-      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-      self.g1Manager.RN_sendText(" ")
     }
   }
   
