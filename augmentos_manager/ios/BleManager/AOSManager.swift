@@ -59,7 +59,10 @@ import AVFoundation
     g1Manager.onConnectionStateChanged = { [weak self] in
       guard let self = self else { return }
       print("G1 glasses connection changed to: \(self.g1Manager.g1Ready ? "Connected" : "Disconnected")")
-      self.onGlassesConnectionChange()
+//      self.handleRequestStatus()
+      if (self.g1Manager.g1Ready) {
+        self.handleDeviceReady()
+      }
     }
   }
   
@@ -95,10 +98,6 @@ import AVFoundation
   }
   
   func onAuthError() {}
-  
-  func onGlassesConnectionChange() {
-    self.handleRequestStatus()
-  }
   
   // MARK: - Voice Data Handling
   
@@ -404,7 +403,12 @@ import AVFoundation
           }
           self.brightness = value
           self.autoBrightness = autoBrightness
-          self.g1Manager.RN_setBrightness(value, autoMode: autoBrightness)
+          Task {
+            self.g1Manager.RN_setBrightness(value, autoMode: autoBrightness)
+            self.g1Manager.RN_sendText("Set brightness to \(value)%")
+            try? await Task.sleep(nanoseconds: 5_000_000) // 0.5 seconds
+            self.g1Manager.RN_sendText(" ")// clear screen
+          }
           saveSettings()
           break
         case .enableSensing:
@@ -579,10 +583,13 @@ import AVFoundation
   }
   
   private func handleDeviceReady() {
+
     self.defaultWearable = "Even Realities G1"
     self.handleRequestStatus()
     // load settings and send the animation:
     Task {
+      // give the glasses some extra time to finish booting:
+      try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
       await loadSettings()
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       playStartupSequence()

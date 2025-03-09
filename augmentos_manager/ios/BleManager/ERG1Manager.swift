@@ -638,10 +638,11 @@ struct ViewState {
 extension ERG1Manager {
   
   // Handle whitelist functionality
-  func getWhitelistChunks() -> [Data] {
+  func getWhitelistChunks() -> [UInt8] {
     // Define the hardcoded whitelist JSON
     let apps = [
-      AppInfo(id: "com.augment.os", name: "AugmentOS")
+      AppInfo(id: "com.augment.os", name: "AugmentOS"),
+      AppInfo(id: "io.heckel.ntfy", name: "ntfy")
     ]
     let whitelistJson = createWhitelistJson(apps: apps)
     
@@ -689,7 +690,7 @@ extension ERG1Manager {
   }
   
   // Helper function to split JSON into chunks
-  private func createWhitelistChunks(json: String) -> [Data] {
+  private func createWhitelistChunks(json: String) -> [UInt8] {
     let MAX_CHUNK_SIZE = 180 - 4 // Reserve space for the header
     guard let jsonData = json.data(using: .utf8) else { return [] }
     
@@ -716,7 +717,8 @@ extension ERG1Manager {
       chunks.append(chunkData)
     }
     
-    return chunks
+    // Convert Data objects to [UInt8] array:
+    return chunks.flatMap { Array($0) }
   }
   
   func exitAllFunctions(to peripheral: CBPeripheral, characteristic: CBCharacteristic) {
@@ -806,8 +808,15 @@ extension ERG1Manager {
       rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
       try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
     }
-    
-    
+  }
+  
+  
+  func sendWhitelist() {
+    print("sending whitelist")
+    Task {
+      var data = getWhitelistChunks()
+      await sendCommand(data)
+    }
   }
   
   // Non-blocking function to add new send request
