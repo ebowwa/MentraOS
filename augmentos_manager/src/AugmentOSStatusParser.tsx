@@ -4,7 +4,8 @@ interface Glasses {
   model_name: string;
   battery_life: number;
   is_searching: boolean;
-  brightness: string | null; // 0-100
+  brightness: number | null; // 0-100
+  auto_brightness: boolean;
   headUp_angle: number | null; // 0-60
 }
 
@@ -103,6 +104,7 @@ export class AugmentOSParser {
       battery_life: 60,
       is_searching: false,
       brightness: "87%",
+      auto_brightness: false,
       headUp_angle: 20,
     },
     wifi: { is_connected: true, ssid: 'TP-LINK69', signal_strength: 100 },
@@ -231,6 +233,7 @@ export class AugmentOSParser {
             battery_life: glassesInfo.battery_life,
             is_searching: glassesInfo.is_searching ?? false,
             brightness: glassesInfo.brightness,
+            auto_brightness: glassesInfo.auto_brightness,
             headUp_angle: glassesInfo.headUp_angle,
           }
           : null,

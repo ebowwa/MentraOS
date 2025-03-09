@@ -317,13 +317,13 @@ class ServerComms {
   // MARK: - Helper methods
   
   private func getServerUrl() -> String {
-    // TODO: ios get these from .env:
-//    let host = "staging.augmentos.org"
-//    let port = "443"
-    let host = "10.179.120.106"
-    let port = 8002
-    let secureServer = host.contains("augmentos.org")
-    return "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
+    let host = RNCConfig.env(for: "AUGMENTOS_HOST")!;
+    let port = RNCConfig.env(for: "AUGMENTOS_PORT")!;
+    let secure = RNCConfig.env(for: "AUGMENTOS_SECURE")!
+    let secureServer = secure.contains("true")
+    let url = "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
+    print("getServerUrl(): \(url)")
+    return url
   }
   
   func parseAppList(msg: [String: Any]) -> [ThirdPartyCloudApp] {

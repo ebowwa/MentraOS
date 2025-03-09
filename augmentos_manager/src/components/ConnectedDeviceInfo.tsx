@@ -184,7 +184,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
                           <Text style={[styles.statusLabel, { color: themeStyles.statusLabelColor }]}>Brightness</Text>
                           <Text style={[styles.statusValue, { color: themeStyles.statusValueColor }]}>
                             {status.glasses_info
-                              ? `${status.glasses_info.brightness}`
+                              ? `${status.glasses_info.brightness}%`
                               : "-"}
                           </Text>
                         </>

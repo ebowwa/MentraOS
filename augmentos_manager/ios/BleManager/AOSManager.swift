@@ -10,12 +10,14 @@ import Combine
 import CoreBluetooth
 import UIKit
 import React
+import AVFoundation
 
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback {
   
   
   @objc public let g1Manager: ERG1Manager
+  public let micManager: OnboardMicrophoneManager
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
@@ -24,13 +26,24 @@ import React
   private var contextualDashboard = true;
   private var headUpAngle = 30;
   private var brightness = 50;
-  private var autoLight: Bool = false;
+  private var autoBrightness: Bool = false;
+  private var sensingEnabled: Bool = false;
   
   override init() {
     self.g1Manager = ERG1Manager()
+    self.micManager = OnboardMicrophoneManager()
     self.cachedThirdPartyAppList = []
     super.init()
-    loadSettings()
+    Task {
+      await loadSettings()
+    }
+    
+    micManager.voiceData
+      .sink { [weak self] audioData in
+        // Send the audio data to ServerComms
+        self?.serverComms.sendAudioChunk(audioData)
+      }
+      .store(in: &cancellables)
     
     
     // Set up the ServerComms callback
@@ -38,6 +51,9 @@ import React
     
     // Set up voice data handling
     setupVoiceDataHandling()
+    
+    // configure on board mic:
+    //    setupOnboardMicrophoneIfNeeded()
     
     // calback to handle actions when the connectionState changes
     g1Manager.onConnectionStateChanged = { [weak self] in
@@ -89,6 +105,17 @@ import React
   private func setupVoiceDataHandling() {
     self.g1Manager.$voiceData.sink { [weak self] data in
       guard let self = self else { return }
+      
+      //      guard self.useOnboardMic else {
+      //        // turn off the g1 Mic:
+      //        // If glasses connection changes, update microphone state
+      //        if self.g1Manager.g1Ready {
+      //          Task {
+      //            await self.g1Manager.setMicEnabled(enabled: false)
+      //          }
+      //        }
+      //        return
+      //      }
       
       // Ensure we have enough data to process
       guard data.count > 2 else {
@@ -151,9 +178,43 @@ import React
   //  }
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
+    
+    
+    
     // Handle microphone state change if needed
     Task {
-      await self.g1Manager.setMicEnabled(enabled: isEnabled)
+      let glassesMic = isEnabled && !self.useOnboardMic
+      print("user enabled microphone: \(isEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
+      //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
+      await self.g1Manager.setMicEnabled(enabled: glassesMic)
+      
+      if self.useOnboardMic {
+        setOnboardMicEnabled(isEnabled)
+      } else {
+        setOnboardMicEnabled(false)
+      }
+    }
+  }
+  
+  func setOnboardMicEnabled(_ isEnabled: Bool) {
+    Task {
+      if isEnabled {
+        if !micManager.checkPermissions() {
+          var gavePerm = await micManager.requestPermissions()
+          if !gavePerm {
+            // TODO: show an error
+            return
+          }
+        }
+        
+        if !micManager.isRecording {
+          micManager.startRecording()
+        }
+      } else {
+        if micManager.isRecording {
+          micManager.stopRecording()
+        }
+      }
     }
   }
   
@@ -170,6 +231,17 @@ import React
     //    print("displayEvent \(event)", event)
     
     self.g1Manager.handleDisplayEvent(event)
+    
+    // forward to the glasses mirror:
+    let wrapperObj: [String: Any] = ["glasses_display_event": event]
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+      }
+    } catch {
+      print("Error converting to JSON: \(error)")
+    }
   }
   
   func onRequestSingle(_ dataType: String) {
@@ -207,6 +279,7 @@ import React
       case stopApp = "stop_app"
       case updateGlassesHeadUpAngle = "update_glasses_headUp_angle"
       case updateGlassesBrightness = "update_glasses_brightness"
+      case enableSensing = "enable_sensing"
       case unknown
     }
     
@@ -235,7 +308,7 @@ import React
              let authSecretKey = params["authSecretKey"] as? String {
             handleSetAuthSecretKey(userId: userId, authSecretKey: authSecretKey)
           } else {
-            print("Invalid params for set_auth_secret_key")
+            print("set_auth_secret_key invalid params")
           }
           
         case .requestStatus:
@@ -250,7 +323,7 @@ import React
           if let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
             handleConnectWearable(modelName: modelName, deviceName: deviceName)
           } else {
-            print("Invalid params for connect_wearable")
+            print("connect_wearable invalid params")
           }
           
         case .disconnectWearable:
@@ -272,12 +345,12 @@ import React
             print("Searching for compatible device names for: \(modelName)")
             handleSearchForCompatibleDeviceNames(modelName)
           } else {
-            print("Invalid params for search_for_compatible_device_names")
+            print("search_for_compatible_device_names invalid params")
           }
           
         case .enableContextualDashboard:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
-            print("invalid_dashboard_enabled_params")
+            print("enable_contextual_dashboard invalid params")
             break
           }
           self.contextualDashboard = enabled
@@ -286,7 +359,7 @@ import React
           break
         case .forceCoreOnboardMic:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
-            print("invalid_onboard_mic_params")
+            print("force_core_onboard_mic invalid params")
             break
           }
           self.useOnboardMic = enabled
@@ -297,7 +370,7 @@ import React
             print("Starting app: \(target)")
             serverComms.startApp(packageName: target)
           } else {
-            print("Invalid params for start_app")
+            print("start_app invalid params")
           }
           
           handleRequestStatus()
@@ -306,7 +379,7 @@ import React
             print("Stopping app: \(target)")
             serverComms.stopApp(packageName: target)
           } else {
-            print("Invalid params for stop_app")
+            print("stop_app invalid params")
           }
           
         case .unknown:
@@ -317,7 +390,7 @@ import React
           break
         case .updateGlassesHeadUpAngle:
           guard let params = params, let value = params["headUpAngle"] as? Int else {
-            print("invalid_headup_angle_params")
+            print("update_glasses_headUp_angle invalid params")
             break
           }
           self.headUpAngle = value
@@ -325,14 +398,23 @@ import React
           saveSettings()
           break
         case .updateGlassesBrightness:
-          guard let params = params, let value = params["brightness"] as? Int, let autoLight = params["autoLight"] as? Bool else {
-            print("invalid_dashboard_enabled_params")
+          guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoLight"] as? Bool else {
+            print("update_glasses_brightness invalid params")
             break
           }
           self.brightness = value
-          self.autoLight = autoLight
-          self.g1Manager.RN_setBrightness(value, autoMode: autoLight)
+          self.autoBrightness = autoBrightness
+          self.g1Manager.RN_setBrightness(value, autoMode: autoBrightness)
           saveSettings()
+          break
+        case .enableSensing:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            print("enable_sensing invalid params")
+            break
+          }
+          self.sensingEnabled = enabled
+          saveSettings()
+          break
           break
         case .connectDefaultWearable:
           // TODO: ios
@@ -354,6 +436,7 @@ import React
   
   private func handleDisconnectWearable() {
     self.g1Manager.disconnect()
+    self.g1Manager.g1Ready = false// TODO: shouldn't be necessary
     handleRequestStatus()
   }
   
@@ -378,7 +461,9 @@ import React
     let coreInfo: [String: Any] = [
       "augmentos_core_version": "Unknown",
       "cloud_connection_status": cloudConnectionStatus,
-      "default_wearable": self.defaultWearable as Any
+      "default_wearable": self.defaultWearable as Any,
+      "force_core_onboard_mic": self.useOnboardMic,
+      "sensing_enabled": self.sensingEnabled
     ]
     
     // hardcoded list of apps:
@@ -430,7 +515,7 @@ import React
       "core_info": coreInfo,
     ]
     let wrapperObj: [String: Any] = ["status": statusObj]
-    //    print("wrapperStatusObj \(wrapperObj)")
+    // print("wrapperStatusObj \(wrapperObj)")
     // must convert to string before sending:
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
@@ -464,7 +549,7 @@ import React
         // End animation with final message
         self.g1Manager.RN_sendText("                  /// AugmentOS Connected \\\\\\")
         animationQueue.asyncAfter(deadline: .now() + 1.0) {
-            self.g1Manager.RN_sendText(" ")
+          self.g1Manager.RN_sendText(" ")
         }
         return
       }
@@ -498,7 +583,7 @@ import React
     self.handleRequestStatus()
     // load settings and send the animation:
     Task {
-      loadSettings()
+      await loadSettings()
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       playStartupSequence()
     }
@@ -552,7 +637,8 @@ import React
     static let contextualDashboard = "contextualDashboard"
     static let headUpAngle = "headUpAngle"
     static let brightness = "brightness"
-    static let autoLight = "autoLight"
+    static let autoBrightness = "autoBrightness"
+    static let sensingEnabled = "sensingEnabled"
   }
   
   private func saveSettings() {
@@ -564,7 +650,8 @@ import React
     defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
     defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
     defaults.set(brightness, forKey: SettingsKeys.brightness)
-    defaults.set(autoLight, forKey: SettingsKeys.autoLight)
+    defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
+    defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -573,15 +660,15 @@ import React
           "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
   }
   
-  private func loadSettings() {
+  private func loadSettings() async {
     let defaults = UserDefaults.standard
     
     // Load each setting with appropriate type handling
     defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)
     useOnboardMic = defaults.bool(forKey: SettingsKeys.useOnboardMic)
     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
-    autoLight = defaults.bool(forKey: SettingsKeys.autoLight)
-    
+    autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
+    sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
     
     // For numeric values, provide the default if the key doesn't exist
     if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
@@ -595,8 +682,10 @@ import React
     
     if (self.g1Manager.g1Ready) {
       self.g1Manager.dashboardEnabled = contextualDashboard
+      try? await Task.sleep(nanoseconds: 100_000_000)
       self.g1Manager.RN_setHeadUpAngle(headUpAngle)
-      self.g1Manager.RN_setBrightness(brightness, autoMode: autoLight)
+      try? await Task.sleep(nanoseconds: 100_000_000)
+      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
     }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +

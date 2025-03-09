@@ -533,11 +533,15 @@ struct ViewState {
       
       // if left, update left battery level, if right, update right battery level
       if peripheral == leftPeripheral {
-        leftBatteryLevel = batteryPercent
-        print("Left glass battery: \(batteryPercent)%")
+        if leftBatteryLevel != batteryPercent {
+          print("Left glass battery: \(batteryPercent)%")
+          leftBatteryLevel = batteryPercent
+        }
       } else if peripheral == rightPeripheral {
-        rightBatteryLevel = batteryPercent
-        print("Right glass battery: \(batteryPercent)%")
+        if rightBatteryLevel != batteryPercent {
+          print("Right glass battery: \(batteryPercent)%")
+          rightBatteryLevel = batteryPercent
+        }
       }
       
       // update the main battery level as the lower of the two
