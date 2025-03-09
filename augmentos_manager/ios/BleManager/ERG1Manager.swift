@@ -622,8 +622,6 @@ struct ViewState {
             }
           }
         }
-        //      case .G1_IS_READY:
-        //        g1Ready = true
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
@@ -1314,14 +1312,6 @@ extension ERG1Manager {
     return true
   }
   
-  // TODO: ios
-  //  private byte[] constructBatteryLevelQuery() {
-  //      ByteBuffer buffer = ByteBuffer.allocate(2);
-  //      buffer.put((byte) 0x2C);  // Command
-  //      buffer.put((byte) 0x01); // use 0x02 for iOS
-  //      return buffer.array();
-  //  }
-  
   @objc public func RN_getBatteryStatus() {
     Task {
       await getBatteryStatus()
@@ -1402,57 +1392,6 @@ extension ERG1Manager {
     }
     
     sendMicOn(to: rightGlass, isOn: enabled)
-    
-    //      let isContinuousListening = !enabled
-    //
-    //      if isContinuousListening {
-    //          // Create a repeating task for wake word detection
-    //          Task {
-    //              while isContinuousListening {
-    //                  // Send mic on command
-    //                  var micOnData = Data()
-    //                  micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-    //                  micOnData.append(0x01)
-    //                  rightGlass.writeValue(micOnData, for: rightTxChar, type: .withResponse)
-    //                  print("Starting wake word detection cycle")
-    //
-    //                  // Start wake word detection
-    ////                  speechRecognizer.startWakeWordDetection()
-    //
-    //                  // Wait for 30 seconds
-    //                  try? await Task.sleep(nanoseconds: 30 * 1_000_000_000)
-    //
-    //                  // Turn off mic if still in continuous mode
-    //                  if isContinuousListening {
-    //                      var micOffData = Data()
-    //                      micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-    //                      micOffData.append(0x00)
-    //                      rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
-    //                      print("Ending wake word detection cycle")
-    //
-    //                      // Stop wake word detection
-    ////                      speechRecognizer.stopWakeWordDetection()
-    //
-    //                      // Small delay before next cycle
-    //                      try? await Task.sleep(nanoseconds: 100 * 1_000_000)
-    //                  }
-    //              }
-    //          }
-    //      } else {
-    //          // Just turn off the mic without any additional actions
-    //          var micOffData = Data()
-    //          micOffData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-    //          micOffData.append(0x00)
-    //          rightGlass.writeValue(micOffData, for: rightTxChar, type: .withResponse)
-    //          print("Turning microphone off")
-    //
-    //          // Stop any ongoing recognition without triggering AI
-    ////          speechRecognizer.stopWakeWordDetection()
-    //
-    //          // Reset any ongoing states
-    //          aiMode = .AI_IDLE
-    //      }
-    
     return true
   }
   

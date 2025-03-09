@@ -419,7 +419,6 @@ import AVFoundation
           self.sensingEnabled = enabled
           saveSettings()
           break
-          break
         case .connectDefaultWearable:
           // TODO: ios
           break
@@ -589,10 +588,11 @@ import AVFoundation
     // load settings and send the animation:
     Task {
       // give the glasses some extra time to finish booting:
-      try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+      try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
       await loadSettings()
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       playStartupSequence()
+      self.handleRequestStatus()
     }
   }
   
@@ -693,6 +693,8 @@ import AVFoundation
       self.g1Manager.RN_setHeadUpAngle(headUpAngle)
       try? await Task.sleep(nanoseconds: 100_000_000)
       self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
+      try? await Task.sleep(nanoseconds: 100_000_000)
+      self.g1Manager.RN_getBatteryStatus()
     }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +
