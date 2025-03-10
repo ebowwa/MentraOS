@@ -4,8 +4,11 @@ import webSocketService from '../services/core/websocket.service';
 import sessionService from '../services/core/session.service';
 import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
-import { CLOUD_VERSION } from '@augmentos/config';
-import { get } from 'http';
+
+export const CLOUD_VERSION = process.env.CLOUD_VERSION;
+if (!CLOUD_VERSION) {
+  console.error('CLOUD_VERSION is not set');
+}
 
 const router = express.Router();
 
@@ -22,9 +25,9 @@ async function getAllApps(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error fetching apps:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Error fetching apps' 
+      message: 'Error fetching apps'
     });
   }
 }
@@ -41,9 +44,9 @@ async function getPublicApps(req: Request, res: Response) {
     });
   } catch (error) {
     console.error('Error fetching public apps:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: 'Error fetching public apps' 
+      message: 'Error fetching public apps'
     });
   }
 }
@@ -62,7 +65,7 @@ async function searchApps(req: Request, res: Response) {
     }
 
     const apps = await appService.getAllApps();
-    const searchResults = apps.filter(app => 
+    const searchResults = apps.filter(app =>
       app.name.toLowerCase().includes(query.toLowerCase()) ||
       (app.description && app.description.toLowerCase().includes(query.toLowerCase()))
     );
@@ -87,7 +90,7 @@ async function getAppByPackage(req: Request, res: Response) {
   try {
     const { packageName } = req.params;
     const app = await appService.getApp(packageName);
-    
+
     if (!app) {
       return res.status(404).json({
         success: false,
@@ -207,9 +210,9 @@ async function installApp(req: Request, res: Response) {
   try {
     // Find or create user
     const user = await User.findOrCreateUser(email);
-    
+
     // Get app details
-    const app = await appService.getApp(packageName);
+    const app = await appService.findFromAppStore(packageName);
     if (!app) {
       return res.status(404).json({
         success: false,
@@ -229,7 +232,7 @@ async function installApp(req: Request, res: Response) {
     if (!user.installedApps) {
       user.installedApps = [];
     }
-    
+
     user.installedApps.push({
       packageName,
       installedDate: new Date()
@@ -241,6 +244,15 @@ async function installApp(req: Request, res: Response) {
       success: true,
       message: `App ${packageName} installed successfully`
     });
+
+    // Trigger AppStateChange for session.
+    try {
+      sessionService.triggerAppStateChange(user.email);
+    }
+    catch (error) {
+      // Fails if the user has no active sessions, or if websocket is not connected.
+      console.error('Error triggering app state change:', error);
+    }
   } catch (error) {
     console.error('Error installing app:', error);
     res.status(500).json({
@@ -292,6 +304,14 @@ async function uninstallApp(req: Request, res: Response) {
       success: true,
       message: `App ${packageName} uninstalled successfully`
     });
+    // Trigger AppStateChange for session.
+    try {
+      sessionService.triggerAppStateChange(user.email);
+    }
+    catch (error) {
+      // Fails if the user has no active sessions, or if websocket is not connected.
+      console.error('Error triggering app state change:', error);
+    }
   } catch (error) {
     console.error('Error uninstalling app:', error);
     res.status(500).json({

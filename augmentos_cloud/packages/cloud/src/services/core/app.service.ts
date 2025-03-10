@@ -11,8 +11,9 @@ import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState } from '@a
 import axios, { AxiosError } from 'axios';
 import { systemApps } from '@augmentos/config';
 import App from '../../models/app.model';
+import { User } from '../../models/user.model';
 
-const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging';
+const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development';
 
 /**
  * System TPAs that are always available.
@@ -24,7 +25,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.captions.packageName,
     name: systemApps.captions.name,
     tpaType: TpaType.STANDARD,
-    webhookURL: `http://localhost:${systemApps.captions.port}/webhook`,
+    webhookURL: `http://${systemApps.captions.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
     description: systemApps.captions.description
   },
@@ -32,16 +33,15 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.notify.packageName,
     name: systemApps.notify.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.notify.port}/webhook`,
+    webhookURL: `http://${systemApps.notify.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
     description: systemApps.notify.description,
-
   },
   {
     packageName: systemApps.mira.packageName,
     name: systemApps.mira.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.mira.port}/webhook`,
+    webhookURL: `http://${systemApps.mira.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
     description: systemApps.mira.description,
   },
@@ -49,7 +49,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.merge.packageName,
     name: systemApps.merge.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.merge.port}/webhook`,
+    webhookURL: `http://${systemApps.merge.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
     description: systemApps.merge.description,
   },
@@ -57,7 +57,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.liveTranslation.packageName,
     name: systemApps.liveTranslation.name,
     tpaType: TpaType.STANDARD,
-    webhookURL: `http://localhost:${systemApps.liveTranslation.port}/webhook`,
+    webhookURL: `http://${systemApps.liveTranslation.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
     description: systemApps.liveTranslation.description,
   }
@@ -70,7 +70,7 @@ if (process.env.NODE_ENV !== 'production') {
     name: systemApps.flash.name,
     description: systemApps.flash.description,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.flash.port}/webhook`,
+    webhookURL: `http://${systemApps.flash.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
   });
 }
@@ -86,23 +86,10 @@ export const SYSTEM_TPAS: AppI[] = [
     name: systemApps.dashboard.name,
     tpaType: TpaType.BACKGROUND,
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    webhookURL: `http://localhost:${systemApps.dashboard.port}/webhook`,
+    webhookURL: `http:/${systemApps.dashboard.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
   },
 ];
-
-// Map systemApps to SYSTEM_TPAS.
-// export const SYSTEM_TPAS: AppI[] = Object.keys(systemApps).map((key) => {
-//   const app = systemApps[key as keyof typeof systemApps];
-
-//   return {
-//     packageName: systemApps[key as keyof typeof systemApps].packageName,
-//     name: key,
-//     description: key, // TODO(isaiah): Add descriptions
-//     webhookURL: `http://localhost:${app.port}/webhook`,
-//     logoURL: `https://cloud.augmentos.org/${app.packageName}.png`,
-//   }
-// });
 
 /**
  * Interface for webhook payloads sent to TPAs.
@@ -132,12 +119,32 @@ export class AppService {
    * Gets all available TPAs, both system and user-created.
    * @returns Promise resolving to array of all apps
    */
-  async getAllApps(): Promise<AppI[]> {
-    let appstoreApps: AppI[] = [];
-    if (APPSTORE_ENABLED) {
-      appstoreApps = await App.find() as AppI[];
+  async getAllApps(userId?: string): Promise<AppI[]> {
+    const usersApps: AppI[] = [];
+
+    if (APPSTORE_ENABLED && userId) {
+      // Find apps the developer made.
+      const _madeByUser = await App.find({ developerId: userId }) as AppI[];
+
+      // Find apps the user installed.
+      const user = await User.findOne({email: userId});
+      const _installedApps = user?.installedApps?.map((installedApp: { packageName: string; installedDate: Date; }) => {
+        return installedApp.packageName;
+      }) || [];
+
+      // Fetch the apps from the appstore.
+      const _appstoreApps = await App.find({ packageName: { $in: _installedApps } }) as AppI[];
+
+      // remove duplicates.
+      const _allApps = [..._madeByUser, ..._appstoreApps];
+      const _appMap = new Map<string, AppI>();
+      _allApps.forEach(app => {
+        _appMap.set(app.packageName, app);
+      }
+      );
+      usersApps.push(..._appMap.values());
     }
-    const allApps = [...LOCAL_APPS, ...appstoreApps];
+    const allApps = [...LOCAL_APPS, ...usersApps];
     return allApps;
   }
 
@@ -167,6 +174,13 @@ export class AppService {
       }
     }
 
+    return app;
+  }
+
+  async findFromAppStore(packageName: string): Promise<AppI | undefined> {
+    const app = await App.findOne({
+      packageName: packageName
+    }) as AppI;
     return app;
   }
 
