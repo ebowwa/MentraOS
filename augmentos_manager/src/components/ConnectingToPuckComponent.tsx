@@ -3,9 +3,9 @@ import {View, Text, ActivityIndicator, StyleSheet, Platform} from 'react-native'
 import {useStatus} from "../providers/AugmentOSStatusProvider.tsx";
 import {useNavigation} from "@react-navigation/native";
 import {NavigationProps} from "./types.ts";
-import { useAuth } from '../AuthContext.tsx';
-import BluetoothService from '../BluetoothService.tsx';
-import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
+import { useAuth } from '../AuthContext';
+import BluetoothService from '../BluetoothService';
+import BackendServerComms from '../backend_comms/BackendServerComms';
 import Config from 'react-native-config';
 
 

@@ -136,7 +136,6 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
       let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         sendText(jsonString)
-        print("Sent vad status message")
       }
     } catch {
       print("Error building connection_init JSON: \(error)")

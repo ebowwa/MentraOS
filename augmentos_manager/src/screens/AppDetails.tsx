@@ -13,7 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, AppStoreItem } from '../components/types';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import NavigationBar from '../components/NavigationBar';
-import BluetoothService from '../BluetoothService.tsx';
+import BluetoothService from '../BluetoothService';
 import semver from 'semver';
 import { NativeModules } from 'react-native';
 const { FetchConfigHelperModule, TpaHelpers } = NativeModules;
@@ -25,10 +25,10 @@ type AppDetailsProps = NativeStackScreenProps<
   isDarkTheme: boolean;
   toggleTheme: () => void;
 };
-import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
+import { useStatus } from '../providers/AugmentOSStatusProvider';
 import appStore from "./AppStore.tsx";
-import InstallApkModule from '../bridge/InstallApkModule.tsx';
-import { AUGMENTOS_MANAGER_PACKAGE_NAME, AUGMENTOS_CORE_PACKAGE_NAME } from '../consts.tsx';
+import InstallApkModule from '../bridge/InstallApkModule';
+import { AUGMENTOS_MANAGER_PACKAGE_NAME, AUGMENTOS_CORE_PACKAGE_NAME } from '../consts';
 
 const AppDetails: React.FC<AppDetailsProps> = ({
   route,

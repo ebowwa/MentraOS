@@ -103,7 +103,7 @@ export class AugmentOSParser {
       model_name: 'Even Realities G1',
       battery_life: 60,
       is_searching: false,
-      brightness: "87%",
+      brightness: 87,
       auto_brightness: false,
       headUp_angle: 20,
     },

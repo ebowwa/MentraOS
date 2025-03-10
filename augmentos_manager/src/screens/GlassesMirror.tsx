@@ -12,9 +12,9 @@ import {
   BackHandler,
 } from 'react-native';
 import { RNCamera } from 'react-native-camera';
-import NavigationBar from '../components/NavigationBar.tsx';
-import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
-import { useGlassesMirror } from '../providers/GlassesMirrorContext.tsx';
+import NavigationBar from '../components/NavigationBar';
+import { useStatus } from '../providers/AugmentOSStatusProvider';
+import { useGlassesMirror } from '../providers/GlassesMirrorContext';
 
 interface GlassesMirrorProps {
   isDarkTheme: boolean;

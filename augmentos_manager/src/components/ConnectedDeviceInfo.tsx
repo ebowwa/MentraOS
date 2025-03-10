@@ -7,8 +7,8 @@ import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { NavigationProps } from '../components/types';
 import { useNavigation } from '@react-navigation/native';
 import { getGlassesImage } from '../logic/getGlassesImage';
-import GlobalEventEmitter from '../logic/GlobalEventEmitter.tsx';
-import { getBatteryColor, getBatteryIcon } from '../logic/getBatteryIcon.tsx';
+import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { getBatteryColor, getBatteryIcon } from '../logic/getBatteryIcon';
 
 
 interface ConnectedDeviceInfoProps {

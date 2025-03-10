@@ -15,29 +15,35 @@ import AVFoundation
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback {
   
-  
+  private var coreToken: String = ""
   @objc public let g1Manager: ERG1Manager
   public let micManager: OnboardMicrophoneManager
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
   private var defaultWearable: String? = nil
-  private var useOnboardMic = false;
   private var contextualDashboard = true;
   private var headUpAngle = 30;
   private var brightness = 50;
   private var autoBrightness: Bool = false;
   private var sensingEnabled: Bool = false;
   
+  
+  // mic:
+  private var useOnboardMic = false;
+  private var micEnabled = false;
+  
+  // VAD:
   private var vad: VADStrategy?
   private var vadBuffer = [Data]();
+  private var isSpeaking = false;
   
   override init() {
     self.g1Manager = ERG1Manager()
     self.micManager = OnboardMicrophoneManager()
     self.cachedThirdPartyAppList = []
     self.vad = SileroVADStrategy()
-    self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 300, speechTriggerDurationMs: 50);
+    self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 2000, speechTriggerDurationMs: 50);
     
     super.init()
     Task {
@@ -100,6 +106,13 @@ import AVFoundation
   
   // MARK: - Voice Data Handling
   
+  private func checkSetVadStatus(speaking: Bool) {
+    if (speaking != self.isSpeaking) {
+      self.isSpeaking = speaking
+      serverComms.sendVadStatus(self.isSpeaking)
+    }
+  }
+  
   private func emptyVadBuffer() {
     // go through the buffer, popping from the first element in the array (FIFO):
     while !vadBuffer.isEmpty {
@@ -109,7 +122,7 @@ import AVFoundation
   }
   
   private func addToVadBuffer(_ chunk: Data) {
-    let MAX_BUFFER_SIZE = 256;
+    let MAX_BUFFER_SIZE = 20;
     vadBuffer.append(chunk)
     while(vadBuffer.count > MAX_BUFFER_SIZE) {
       // pop from the front of the array:
@@ -152,10 +165,12 @@ import AVFoundation
         
         let vadState = vad.currentState()
         if vadState == .speeching {
+          checkSetVadStatus(speaking: true)
           // first send out whatever's in the vadBuffer (if there is anything):
           emptyVadBuffer()
           self.serverComms.sendAudioChunk(lc3Data)
         } else {
+          checkSetVadStatus(speaking: false)
           // add to the vadBuffer:
           addToVadBuffer(lc3Data)
         }
@@ -210,10 +225,12 @@ import AVFoundation
       
       let vadState = vad.currentState()
       if vadState == .speeching {
+        checkSetVadStatus(speaking: true)
         // first send out whatever's in the vadBuffer (if there is anything):
         emptyVadBuffer()
         self.serverComms.sendAudioChunk(lc3Data)
       } else {
+        checkSetVadStatus(speaking: false)
         // add to the vadBuffer:
         addToVadBuffer(lc3Data)
       }
@@ -252,19 +269,16 @@ import AVFoundation
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     // in any case, clear the vadBuffer:
     self.vadBuffer.removeAll()
+    self.micEnabled = isEnabled
     
     // Handle microphone state change if needed
     Task {
-      let glassesMic = isEnabled && !self.useOnboardMic
+      let glassesMic = self.micEnabled && !self.useOnboardMic
       print("user enabled microphone: \(isEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
       //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
       await self.g1Manager.setMicEnabled(enabled: glassesMic)
       
-      if self.useOnboardMic {
-        setOnboardMicEnabled(isEnabled)
-      } else {
-        setOnboardMicEnabled(false)
-      }
+      setOnboardMicEnabled(self.useOnboardMic && self.micEnabled)
     }
   }
   
@@ -505,6 +519,7 @@ import AVFoundation
   
   // Handler methods for each command type
   private func handleSetAuthSecretKey(userId: String, authSecretKey: String) {
+    self.coreToken = authSecretKey
     print("Setting auth secret key for user: \(userId)")
     serverComms.setAuthCredentials(userId, authSecretKey)
     print("Connecting to AugmentOS...")
@@ -540,7 +555,8 @@ import AVFoundation
       "cloud_connection_status": cloudConnectionStatus,
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
-      "sensing_enabled": self.sensingEnabled
+      "sensing_enabled": self.sensingEnabled,
+      "core_token": self.coreToken,
     ]
     
     // hardcoded list of apps:

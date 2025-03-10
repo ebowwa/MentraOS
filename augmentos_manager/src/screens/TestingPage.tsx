@@ -13,7 +13,7 @@ import Header from '../components/Header';
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
 import NavigationBar from '../components/NavigationBar';
-import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
+import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { ScrollView } from 'react-native-gesture-handler';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';

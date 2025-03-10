@@ -14,12 +14,12 @@ import ConnectedDeviceInfo from '../components/ConnectedDeviceInfo';
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
 import NavigationBar from '../components/NavigationBar';
-import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
+import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { ScrollView } from 'react-native-gesture-handler';
-import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
+import BackendServerComms from '../backend_comms/BackendServerComms';
 import semver from 'semver';
 import { Config } from 'react-native-config';
-import CloudConnection from '../components/CloudConnection.tsx';
+import CloudConnection from '../components/CloudConnection';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
