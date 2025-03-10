@@ -86,7 +86,8 @@ const objectFormat = winston.format((info: any) => {
       mapSetFormat(),
       objectFormat(),
       winston.format.timestamp(),
-      // winston.format.json()
+      winston.format.splat(),
+      winston.format.json()
     ),
     transports: [
       new winston.transports.Console({
@@ -94,12 +95,18 @@ const objectFormat = winston.format((info: any) => {
           winston.format.colorize(),
           winston.format.splat(),
           winston.format.printf(({ level, message, timestamp, userId, data, service, error, ...rest }) => {
+            const splatSymbol = Symbol.for('splat');
+            const splat = rest[splatSymbol];
+
             // Format user ID
             const userInfo = userId ? `${userId}` : '';
             
             // Format data (converted Map/Set)
             const dataStr = data ? `\n${JSON.stringify(data)}` : '';
-            
+
+            // Format splat (additional arguments) individually
+            const splatStr = splat ? `\n${(splat as []).map((arg: any) => JSON.stringify(arg)).join('\n')}` : '';
+
             // Clean up rest object by removing numeric properties
             Object.keys(rest).forEach(key => {
               if (/^\d+$/.test(key)) {
@@ -117,8 +124,10 @@ const objectFormat = winston.format((info: any) => {
               ? `\n${(error as FormattedError).stack}` 
               : '';
             
+              // console.log("REST", rest);
+              // console.log("SPLAT", splat);
             // return `[${level}, ${timestamp}, ${userInfo}]:\n${message}${metaStr}${errorStr}\n`;
-            return `[${level}, ${timestamp}, ${userInfo}]:\n${message}${dataStr}${metaStr}${errorStr}\n`;
+            return `[${level}]: ${timestamp} ${userInfo}\n${message}${dataStr}${splatStr}${metaStr}${errorStr}\n`;
           })
         )
       })
