@@ -45,6 +45,8 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+#use_modular_headers!
+
 target 'AugmentOS_Manager' do
   config = use_native_modules!
 
@@ -58,6 +60,8 @@ target 'AugmentOS_Manager' do
     inherit! :complete
     # Pods for testing
   end
+  
+  pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
 
   post_install do |installer|
     # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202

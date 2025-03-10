@@ -29,21 +29,20 @@ import AVFoundation
   private var autoBrightness: Bool = false;
   private var sensingEnabled: Bool = false;
   
+  private var vad: VADStrategy?
+  private var vadBuffer = [Data]();
+  
   override init() {
     self.g1Manager = ERG1Manager()
     self.micManager = OnboardMicrophoneManager()
     self.cachedThirdPartyAppList = []
+    self.vad = SileroVADStrategy()
+    self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 300, speechTriggerDurationMs: 50);
+    
     super.init()
     Task {
       await loadSettings()
     }
-    
-    micManager.voiceData
-      .sink { [weak self] audioData in
-        // Send the audio data to ServerComms
-        self?.serverComms.sendAudioChunk(audioData)
-      }
-      .store(in: &cancellables)
     
     
     // Set up the ServerComms callback
@@ -59,7 +58,7 @@ import AVFoundation
     g1Manager.onConnectionStateChanged = { [weak self] in
       guard let self = self else { return }
       print("G1 glasses connection changed to: \(self.g1Manager.g1Ready ? "Connected" : "Disconnected")")
-//      self.handleRequestStatus()
+      //      self.handleRequestStatus()
       if (self.g1Manager.g1Ready) {
         self.handleDeviceReady()
       }
@@ -101,49 +100,124 @@ import AVFoundation
   
   // MARK: - Voice Data Handling
   
+  private func emptyVadBuffer() {
+    // go through the buffer, popping from the first element in the array (FIFO):
+    while !vadBuffer.isEmpty {
+      let chunk = vadBuffer.removeFirst()
+      serverComms.sendAudioChunk(chunk)
+    }
+  }
+  
+  private func addToVadBuffer(_ chunk: Data) {
+    let MAX_BUFFER_SIZE = 1024;
+    vadBuffer.append(chunk)
+    while(vadBuffer.count > MAX_BUFFER_SIZE) {
+      // pop from the front of the array:
+      vadBuffer.removeFirst()
+    }
+  }
+  
   private func setupVoiceDataHandling() {
-    self.g1Manager.$voiceData.sink { [weak self] data in
+    
+    // handle incoming PCM data from the microphone manager and feed to the VAD:
+    micManager.voiceData
+      .sink { [weak self] pcmData in
+        guard let self = self else { return }
+        
+        
+        // feed PCM to the VAD:
+        guard let vad = self.vad else {
+          print("VAD not initialized")
+          return
+        }
+        
+        // convert audioData to Int16 array:
+        let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+          Array(UnsafeBufferPointer(
+            start: pointer.bindMemory(to: Int16.self).baseAddress,
+            count: pointer.count / MemoryLayout<Int16>.stride
+          ))
+        }
+        
+        vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+          guard let self = self else { return }
+          //            self.handler?(state)
+          print("VAD State: \(state)")
+        }
+        
+        // encode the pcmData as LC3:
+        let pcmConverter = PcmConverter()
+        let lc3Data = pcmConverter.encode(pcmData) as Data
+        
+        
+        let vadState = vad.currentState()
+        if vadState == .speeching {
+          // first send out whatever's in the vadBuffer (if there is anything):
+          emptyVadBuffer()
+          self.serverComms.sendAudioChunk(lc3Data)
+        } else {
+          // add to the vadBuffer:
+          addToVadBuffer(lc3Data)
+        }
+      }
+      .store(in: &cancellables)
+    
+    // decode the g1 audio data to PCM and feed to the VAD:
+    self.g1Manager.$compressedVoiceData.sink { [weak self] rawLC3Data in
       guard let self = self else { return }
       
-      //      guard self.useOnboardMic else {
-      //        // turn off the g1 Mic:
-      //        // If glasses connection changes, update microphone state
-      //        if self.g1Manager.g1Ready {
-      //          Task {
-      //            await self.g1Manager.setMicEnabled(enabled: false)
-      //          }
-      //        }
-      //        return
-      //      }
-      
       // Ensure we have enough data to process
-      guard data.count > 2 else {
-        print("Received invalid PCM data size: \(data.count)")
+      guard rawLC3Data.count > 2 else {
+        print("Received invalid PCM data size: \(rawLC3Data.count)")
         return
       }
       
       // Skip the first 2 bytes which are command bytes
-      let effectiveData = data.subdata(in: 2..<data.count)
+      let lc3Data = rawLC3Data.subdata(in: 2..<rawLC3Data.count)
       
       // Ensure we have valid PCM data
-      guard effectiveData.count > 0 else {
+      guard lc3Data.count > 0 else {
         print("No PCM data after removing command bytes")
         return
       }
       
-      // send LC3 data over the websocket:
-      self.serverComms.sendAudioChunk(effectiveData)
-      print("got audio data of size: \(effectiveData.count)")
+      let pcmConverter = PcmConverter()
+      let pcmData = pcmConverter.decode(lc3Data) as Data
       
-      //      TODO: ios PCM / VAD
-      //      let pcmConverter = PcmConverter()
-      //      let pcmData = pcmConverter.decode(effectiveData)
+      guard pcmData.count > 0 else {
+        print("PCM conversion resulted in empty data")
+        return
+      }
       
-      //      if pcmData.count > 0 {
-      //        print("Got PCM data of size: \(pcmData.count)")
-      //      } else {
-      //        print("PCM conversion resulted in empty data")
-      //      }
+      // feed PCM to the VAD:
+      guard let vad = self.vad else {
+        print("VAD not initialized")
+        return
+      }
+      
+      // convert audioData to Int16 array:
+      let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
+        Array(UnsafeBufferPointer(
+          start: pointer.bindMemory(to: Int16.self).baseAddress,
+          count: pointer.count / MemoryLayout<Int16>.stride
+        ))
+      }
+      
+      vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
+        guard let self = self else { return }
+        //            self.handler?(state)
+        print("VAD State: \(state)")
+      }
+      
+      let vadState = vad.currentState()
+      if vadState == .speeching {
+        // first send out whatever's in the vadBuffer (if there is anything):
+        emptyVadBuffer()
+        self.serverComms.sendAudioChunk(lc3Data)
+      } else {
+        // add to the vadBuffer:
+        addToVadBuffer(lc3Data)
+      }
     }
     .store(in: &cancellables)
     
@@ -177,8 +251,8 @@ import AVFoundation
   //  }
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
-    
-    
+    // in any case, clear the vadBuffer:
+    self.vadBuffer.removeAll()
     
     // Handle microphone state change if needed
     Task {
@@ -471,32 +545,7 @@ import AVFoundation
     ]
     
     // hardcoded list of apps:
-    var apps: [[String: Any]] = [
-      //        [
-      //            "host": "mira",
-      //            "packageName": "com.augmentos.miraai",
-      //            "name": "Mira AI",
-      //            "description": "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command."
-      //        ],
-      //        [
-      //            "host": "merge",
-      //            "packageName": "com.mentra.merge",
-      //            "name": "Merge",
-      //            "description": "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo."
-      //        ],
-      //        [
-      //            "host": "live-translation",
-      //            "packageName": "com.augmentos.live-translation",
-      //            "name": "Live Translation",
-      //            "description": "Live language translation."
-      //        ],
-      //        [
-      //            "host": "live-captions",
-      //            "packageName": "com.augmentos.livecaptions",
-      //            "name": "Live Captions",
-      //            "description": "Live closed captions."
-      //        ]
-    ]
+    var apps: [[String: Any]] = []
     
     for tpa in self.cachedThirdPartyAppList {
       let tpaDict = [
@@ -508,7 +557,6 @@ import AVFoundation
         "is_running": tpa.isRunning,
         "is_foreground": false
       ] as [String: Any]
-      
       apps.append(tpaDict)
     }
     
@@ -537,7 +585,7 @@ import AVFoundation
     let arrowFrames = ["↑", "↗", "↑", "↖"]
     
     let delay = 0.25 // Frame delay in seconds
-    let totalCycles = 4 // Number of animation cycles
+    let totalCycles = 2 // Number of animation cycles
     
     // Variables to track animation state
     var frameIndex = 0
@@ -583,7 +631,7 @@ import AVFoundation
   }
   
   private func handleDeviceReady() {
-
+    
     self.defaultWearable = "Even Realities G1"
     self.handleRequestStatus()
     // load settings and send the animation:

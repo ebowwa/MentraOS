@@ -29,12 +29,11 @@ class OnboardMicrophoneManager {
   /// Recording state
   private(set) var isRecording = false
   
+  private var cancellables = Set<AnyCancellable>()
+  
   // MARK: - Initialization
   
-  init() {
-    // Default initialization
-    
-  }
+  init() {}
   
   // MARK: - Public Methods
   
@@ -129,45 +128,6 @@ class OnboardMicrophoneManager {
       return false
     }
     
-    //    inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, time in
-    //      guard let self = self else { return }
-    //
-    //      let frameCount = Int(buffer.frameLength)
-    //
-    //      // Create a 16-bit PCM data buffer
-    //      var pcmData: Data
-    //      // Convert to 16-bit PCM at 16kHz if needed
-    //      let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converter.outputFormat,
-    //                                             frameCapacity: AVAudioFrameCount(frameCount))!
-    //      var error: NSError? = nil
-    //      let status = converter.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
-    //        outStatus.pointee = .haveData
-    //        return buffer
-    //      })
-    //
-    //      if status == .haveData && error == nil {
-    //        // Use the converted int16 data
-    //        pcmData = self.extractInt16Data(from: convertedBuffer)
-    //        self.audioRecording.append(pcmData)
-    //      } else {
-    //        print("Conversion error: \(error?.localizedDescription ?? "unknown")")
-    //        return
-    //      }
-    //
-    ////      // Convert pcmData to lc3:
-    ////      let pcmConverter = PcmConverter()
-    ////      let lc3Data = pcmConverter.encode(pcmData)
-    ////
-    ////      if lc3Data.count > 0 {
-    ////        print("Got LC3 data of size: \(lc3Data.count) from PCM data of size: \(pcmData.count)")
-    ////      } else {
-    ////        print("LC3 conversion resulted in empty data")
-    ////      }
-    ////
-    ////      // Publish the audio data
-    ////      self.voiceDataSubject.send(lc3Data as Data)
-    //    }
-    
     inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, time in
       guard let self = self else { return }
       
@@ -186,29 +146,15 @@ class OnboardMicrophoneManager {
         return buffer
       })
       
-      var pcmData: Data;
-      
-      if status == .haveData && error == nil {
-        // Use the converted int16 data
-        pcmData = self.extractInt16Data(from: convertedBuffer)
-        self.audioRecording.append(pcmData)
-      } else {
-        print("Conversion error: \(error?.localizedDescription ?? "unknown")")
+      guard status == .haveData && error == nil else {
+        print("Error converting audio buffer: \(error?.localizedDescription ?? "unknown")")
         return
       }
       
-      // Convert pcmData to lc3:
-      let pcmConverter = PcmConverter()
-      let lc3Data = pcmConverter.encode(pcmData)
+      var pcmData = self.extractInt16Data(from: convertedBuffer)
       
-      if lc3Data.count > 0 {
-        print("Got LC3 data of size: \(lc3Data.count) from PCM data of size: \(pcmData.count)")
-      } else {
-        print("LC3 conversion resulted in empty data")
-      }
-      
-      // Publish the audio data
-      self.voiceDataSubject.send(lc3Data as Data)
+      // just publish the PCM data, we'll encode it in the AOSManager:
+      self.voiceDataSubject.send(pcmData)
     }
     
     // Start the audio engine

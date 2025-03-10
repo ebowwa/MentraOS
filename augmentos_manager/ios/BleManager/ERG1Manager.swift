@@ -124,7 +124,7 @@ struct ViewState {
     }
   }
   
-  @Published public var voiceData: Data = Data()
+  @Published public var compressedVoiceData: Data = Data()
   @Published public var aiListening: Bool = false
   @Published public var batteryLevel: Int = -1
   @Published public var caseBatteryLevel: Int = -1
@@ -512,8 +512,8 @@ struct ViewState {
         aiMode = .AI_IDLE
       }
     case .BLE_REQ_TRANSFER_MIC_DATA:
-      self.voiceData = data
-      //          print("Got voice data: " + String(data.count))
+      self.compressedVoiceData = data
+                print("Got voice data: " + String(data.count))
       break
     case .BLE_REQ_HEARTBEAT:
       // battery info
@@ -561,8 +561,7 @@ struct ViewState {
         }
         receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
       }
-      
-      print("Received EvenAI response: \(data.hexEncodedString())")
+//      print("Received EvenAI response: \(data.hexEncodedString())")
     case .BLE_REQ_DEVICE_ORDER:
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
@@ -1451,15 +1450,19 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       let eventBody: [String: Any] = [
         "compatible_glasses_search_result": res,
       ]
+      
+      print("eventBody \(eventBody)")
+      // TODO: ios fix this (crashes!)
+      
       // must convert to string before sending:
-      do {
-        let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-        if let jsonString = String(data: jsonData, encoding: .utf8) {
-          RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
-        }
-      } catch {
-        print("Error converting to JSON: \(error)")
-      }
+//      do {
+//        let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
+//        if let jsonString = String(data: jsonData, encoding: .utf8) {
+//          RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+//        }
+//      } catch {
+//        print("Error converting to JSON: \(error)")
+//      }
     }
   }
   

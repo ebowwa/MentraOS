@@ -8,3 +8,7 @@
 
 // environment variables:
 #import "RNCConfig.h"
+
+
+// onnx runtime:
+#import <onnxruntime.h>

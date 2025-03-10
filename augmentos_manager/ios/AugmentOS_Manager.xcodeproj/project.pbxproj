@@ -17,7 +17,19 @@
 		59E61647C0F7495D97C990AD /* Montserrat-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2217E0C51BEC4E8E87F34504 /* Montserrat-Regular.ttf */; };
 		7699B88040F8A987B510C191 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 19F6CBCC0A4E27FBF8BF4A61 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		C51385672D7E672400710042 /* VoiceDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385662D7E672400710042 /* VoiceDetector.swift */; };
+		C51385B92D7F6DFE00710042 /* VADType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385A22D7F6DFE00710042 /* VADType.swift */; };
+		C51385BA2D7F6DFE00710042 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AC2D7F6DFE00710042 /* Configuration.swift */; };
+		C51385BB2D7F6DFE00710042 /* VADStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385A12D7F6DFE00710042 /* VADStrategy.swift */; };
+		C51385BC2D7F6DFE00710042 /* SampleRate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385B12D7F6DFE00710042 /* SampleRate.swift */; };
+		C51385BD2D7F6DFE00710042 /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385B02D7F6DFE00710042 /* Result.swift */; };
+		C51385C02D7F6DFE00710042 /* VADQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = C513859F2D7F6DFE00710042 /* VADQuality.swift */; };
+		C51385C12D7F6DFE00710042 /* SileroVAD.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385B52D7F6DFE00710042 /* SileroVAD.swift */; };
+		C51385C32D7F6DFE00710042 /* Record.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AF2D7F6DFE00710042 /* Record.swift */; };
+		C51385C42D7F6DFE00710042 /* SileroVADStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385B62D7F6DFE00710042 /* SileroVADStrategy.swift */; };
+		C51385C72D7F6DFE00710042 /* VADState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385A02D7F6DFE00710042 /* VADState.swift */; };
+		C51385C82D7F6DFE00710042 /* ContentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AD2D7F6DFE00710042 /* ContentData.swift */; };
+		C51385CA2D7F6DFE00710042 /* FrameSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AE2D7F6DFE00710042 /* FrameSize.swift */; };
+		C51385CB2D7F6DFE00710042 /* silero_vad.onnx in Resources */ = {isa = PBXBuildFile; fileRef = C51385B32D7F6DFE00710042 /* silero_vad.onnx */; };
 		C56BE8642D78E51100407B70 /* makefile.mk in Resources */ = {isa = PBXBuildFile; fileRef = C56BE84F2D78E51100407B70 /* makefile.mk */; };
 		C56BE8652D78E51100407B70 /* meson.build in Resources */ = {isa = PBXBuildFile; fileRef = C56BE8532D78E51100407B70 /* meson.build */; };
 		C56BE8662D78E51100407B70 /* energy.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8452D78E51100407B70 /* energy.c */; };
@@ -76,7 +88,19 @@
 		7BFAFAC57807483494D4A11A /* Montserrat-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Bold.ttf"; path = "../src/assets/fonts/Montserrat-Bold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = AugmentOS_Manager/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		89C6BE57DB24E9ADA2F236DE /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; sourceTree = "<group>"; };
-		C51385662D7E672400710042 /* VoiceDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDetector.swift; sourceTree = "<group>"; };
+		C513859F2D7F6DFE00710042 /* VADQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADQuality.swift; sourceTree = "<group>"; };
+		C51385A02D7F6DFE00710042 /* VADState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADState.swift; sourceTree = "<group>"; };
+		C51385A12D7F6DFE00710042 /* VADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADStrategy.swift; sourceTree = "<group>"; };
+		C51385A22D7F6DFE00710042 /* VADType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADType.swift; sourceTree = "<group>"; };
+		C51385AC2D7F6DFE00710042 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
+		C51385AD2D7F6DFE00710042 /* ContentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentData.swift; sourceTree = "<group>"; };
+		C51385AE2D7F6DFE00710042 /* FrameSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSize.swift; sourceTree = "<group>"; };
+		C51385AF2D7F6DFE00710042 /* Record.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Record.swift; sourceTree = "<group>"; };
+		C51385B02D7F6DFE00710042 /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
+		C51385B12D7F6DFE00710042 /* SampleRate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleRate.swift; sourceTree = "<group>"; };
+		C51385B32D7F6DFE00710042 /* silero_vad.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = silero_vad.onnx; sourceTree = "<group>"; };
+		C51385B52D7F6DFE00710042 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
+		C51385B62D7F6DFE00710042 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
 		C56BE83A2D78E51100407B70 /* g1-sample-header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "g1-sample-header.h"; sourceTree = "<group>"; };
 		C56BE83C2D78E51100407B70 /* attdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = attdet.h; sourceTree = "<group>"; };
 		C56BE83D2D78E51100407B70 /* attdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = attdet.c; sourceTree = "<group>"; };
@@ -200,6 +224,7 @@
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				C51385B82D7F6DFE00710042 /* VAD */,
 				C56BE8612D78E51100407B70 /* CoreObjC */,
 			);
 			name = Libraries;
@@ -248,6 +273,67 @@
 				89C6BE57DB24E9ADA2F236DE /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		C51385A32D7F6DFE00710042 /* VAD */ = {
+			isa = PBXGroup;
+			children = (
+				C513859F2D7F6DFE00710042 /* VADQuality.swift */,
+				C51385A02D7F6DFE00710042 /* VADState.swift */,
+				C51385A12D7F6DFE00710042 /* VADStrategy.swift */,
+				C51385A22D7F6DFE00710042 /* VADType.swift */,
+			);
+			path = VAD;
+			sourceTree = "<group>";
+		};
+		C51385AB2D7F6DFE00710042 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				C51385A32D7F6DFE00710042 /* VAD */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		C51385B22D7F6DFE00710042 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				C51385AC2D7F6DFE00710042 /* Configuration.swift */,
+				C51385AD2D7F6DFE00710042 /* ContentData.swift */,
+				C51385AE2D7F6DFE00710042 /* FrameSize.swift */,
+				C51385AF2D7F6DFE00710042 /* Record.swift */,
+				C51385B02D7F6DFE00710042 /* Result.swift */,
+				C51385B12D7F6DFE00710042 /* SampleRate.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		C51385B42D7F6DFE00710042 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C51385B32D7F6DFE00710042 /* silero_vad.onnx */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		C51385B72D7F6DFE00710042 /* Silero */ = {
+			isa = PBXGroup;
+			children = (
+				C51385B42D7F6DFE00710042 /* Model */,
+				C51385B52D7F6DFE00710042 /* SileroVAD.swift */,
+				C51385B62D7F6DFE00710042 /* SileroVADStrategy.swift */,
+			);
+			path = Silero;
+			sourceTree = "<group>";
+		};
+		C51385B82D7F6DFE00710042 /* VAD */ = {
+			isa = PBXGroup;
+			children = (
+				C51385AB2D7F6DFE00710042 /* Common */,
+				C51385B22D7F6DFE00710042 /* Data */,
+				C51385B72D7F6DFE00710042 /* Silero */,
+			);
+			name = VAD;
+			path = Packages/VAD;
 			sourceTree = "<group>";
 		};
 		C56BE83B2D78E51100407B70 /* include */ = {
@@ -314,7 +400,6 @@
 		C5DC28DD2D70EC5100B3F8D3 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
-				C51385662D7E672400710042 /* VoiceDetector.swift */,
 				C56BE8C62D7D50E600407B70 /* MicrophoneManager.swift */,
 				C56BE8892D793E2E00407B70 /* G1Text.swift */,
 				C56BE87E2D79034C00407B70 /* WebSocketManager.swift */,
@@ -429,6 +514,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C51385CB2D7F6DFE00710042 /* silero_vad.onnx in Resources */,
 				C56BE8642D78E51100407B70 /* makefile.mk in Resources */,
 				C56BE8652D78E51100407B70 /* meson.build in Resources */,
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
@@ -590,7 +676,6 @@
 				C56BE87B2D79030800407B70 /* ServerComms.swift in Sources */,
 				C5DC28FB2D765C2500B3F8D3 /* ERG1Manager.swift in Sources */,
 				C56BE8662D78E51100407B70 /* energy.c in Sources */,
-				C51385672D7E672400710042 /* VoiceDetector.swift in Sources */,
 				C56BE8672D78E51100407B70 /* tables.c in Sources */,
 				C56BE8682D78E51100407B70 /* tns.c in Sources */,
 				C56BE8692D78E51100407B70 /* plc.c in Sources */,
@@ -604,6 +689,18 @@
 				C56BE8702D78E51100407B70 /* mdct.c in Sources */,
 				C56BE87F2D79035300407B70 /* WebSocketManager.swift in Sources */,
 				C56BE8712D78E51100407B70 /* bwdet.c in Sources */,
+				C51385B92D7F6DFE00710042 /* VADType.swift in Sources */,
+				C51385BA2D7F6DFE00710042 /* Configuration.swift in Sources */,
+				C51385BB2D7F6DFE00710042 /* VADStrategy.swift in Sources */,
+				C51385BC2D7F6DFE00710042 /* SampleRate.swift in Sources */,
+				C51385BD2D7F6DFE00710042 /* Result.swift in Sources */,
+				C51385C02D7F6DFE00710042 /* VADQuality.swift in Sources */,
+				C51385C12D7F6DFE00710042 /* SileroVAD.swift in Sources */,
+				C51385C32D7F6DFE00710042 /* Record.swift in Sources */,
+				C51385C42D7F6DFE00710042 /* SileroVADStrategy.swift in Sources */,
+				C51385C72D7F6DFE00710042 /* VADState.swift in Sources */,
+				C51385C82D7F6DFE00710042 /* ContentData.swift in Sources */,
+				C51385CA2D7F6DFE00710042 /* FrameSize.swift in Sources */,
 				C56BE88A2D793E2E00407B70 /* G1Text.swift in Sources */,
 				C56BE8722D78E51100407B70 /* spec.c in Sources */,
 				C5DC29092D765F5900B3F8D3 /* Models.swift in Sources */,
