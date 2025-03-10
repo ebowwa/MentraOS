@@ -3,22 +3,31 @@
   "workspaces": [
     "packages/*"
   ],
+
   "scripts": {
     "build": "concurrently \"cd packages/sdk && bun run build\" \"cd packages/config && bun run build\" \"cd packages/utils && bun run build\" \"cd packages/agents && bun run build\"  \"cd packages/apps/dashboard-manager && bun run build\" \"cd packages/apps/flash && bun run build\" \"cd packages/apps/livecaptions && bun run build\" \"cd packages/apps/miraai && bun run build\" \"cd packages/apps/notify && bun run build\" \"cd packages/cloud && bun run build\"",
 
-    "dev": "ENV=development docker-compose -f docker-compose.dev.yml up -d",
+    "appstore": "docker-compose -f docker-compose.appstore.yml up -d",
+
+    "dev": "docker-compose -f docker-compose.dev.yml up -d",
     "dev:stop": "docker-compose -f docker-compose.dev.yml down --timeout 5 || docker kill $(docker ps -q)",
+    "dev:setup-network": "docker network create augmentos-network-dev",
+    "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
+    "dev:ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud host.docker.internal:8002",
+    "dev:ngrok:appstore": "ngrok http --domain=appstore.augmentos.cloud host.docker.internal:8042",
 
     "staging": "ENV=staging docker-compose -f docker-compose.staging.yml up -d",
     "staging:stop": "ENV=staging docker-compose -f docker-compose.staging.yml down",
+    "staging:setup-network": "docker network create augmentos-network-staging",
 
     "prod": "ENV=production docker-compose -f docker-compose.yml up -d",
     "prod:stop": "ENV=production docker-compose -f docker-compose.yml down",
+    "prod:setup-network": "docker network create augmentos-network-prod",
 
-    "docker:logs": "docker-compose logs -f",
+    "logs": "docker-compose logs -f",
 
     "logs:dev": "docker-compose -f docker-compose.dev.yml logs -f",
-    "logs:staging": "docker-compose -f docker-compose.yml logs -f",
+    "logs:staging": "docker-compose -f docker-compose.staging.yml logs -f",
     "logs:prod": "docker-compose -f docker-compose.yml logs -f",
 
     "logs:dev:cloud": "docker-compose -f docker-compose.dev.yml logs -f cloud",
