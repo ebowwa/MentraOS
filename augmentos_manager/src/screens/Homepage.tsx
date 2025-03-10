@@ -180,11 +180,10 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={currentThemeStyles.container}>
+        <AnimatedSection>
+          <Header isDarkTheme={isDarkTheme} navigation={navigation} />
+        </AnimatedSection>
         <ScrollView style={currentThemeStyles.contentContainer}>
-          <AnimatedSection>
-            <Header isDarkTheme={isDarkTheme} navigation={navigation} />
-          </AnimatedSection>
-
           {status.core_info.cloud_connection_status !== 'CONNECTED' &&
             <AnimatedSection>
               <CloudConnection isDarkTheme={isDarkTheme} />
@@ -230,12 +229,10 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 const lightThemeStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 55,
   },
   noAppsText: {
     marginTop: 10,

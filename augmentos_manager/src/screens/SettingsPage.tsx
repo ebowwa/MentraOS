@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333333',
   },
   titleContainerLight: {
-    backgroundColor: '#ffffff',
+    // backgroundColor: '#ffffff',
   },
   title: {
     fontSize: 24,

@@ -293,7 +293,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
   },
   lightContainer: {
-    backgroundColor: '#f8f9fa',
+    // backgroundColor: '#f8f9fa',
   },
   fullscreenContainer: {
     flex: 1,
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#333333',
   },
   titleContainerLight: {
-    backgroundColor: '#ffffff',
+    // backgroundColor: '#ffffff',
   },
   title: {
     fontSize: 24,
