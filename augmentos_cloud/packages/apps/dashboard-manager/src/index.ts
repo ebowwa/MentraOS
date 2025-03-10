@@ -498,7 +498,7 @@ async function updateDashboard(sessionId?: string) {
         const session: SessionInfo = context.session;
         if (
           session.weatherCache &&
-          (Date.now() - session.weatherCache.timestamp) < 6 * 60 * 60 * 1000 // 6 hours
+          (Date.now() - session.weatherCache.timestamp) < 1 * 60 * 60 * 1000 // 1 hour
         ) {
           console.log(`[Session ${session.userId}][Weather] Returning cached weather data.`);
           return session.weatherCache.data;
@@ -506,7 +506,7 @@ async function updateDashboard(sessionId?: string) {
         // Otherwise, fetch new weather data.
         const weatherAgent = new WeatherModule();
         const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
-        const result = weather ? `${weather.condition}, ${weather.avg_temp_f}°F` : '-';
+        const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
         // Cache the result on the session.
         session.weatherCache = { timestamp: Date.now(), data: result };
         return result;
