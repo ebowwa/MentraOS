@@ -233,12 +233,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   return (
-    <SafeAreaView
-      style={[
-        { flex: 1 },
-        isDarkTheme ? styles.darkBackground : styles.lightBackground,
-      ]}
-    >
+    <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         {/* Title Section */}
         <View
@@ -443,8 +438,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           onSave={onSaveHeadUpAngle}
         />
       </View>
-
-      {/* Your app’s bottom navigation bar */}
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </SafeAreaView>
   );
