@@ -449,7 +449,7 @@ async function updateDashboard(sessionId?: string) {
       name: "calendar",
       async run(context: any) {
         const session: SessionInfo = context.session;
-        if (!session.calendarEvent) return '-';
+        if (!session.calendarEvent) return '';
         
         const event = session.calendarEvent;
         const eventDate = new Date(event.dtStart);
@@ -469,7 +469,7 @@ async function updateDashboard(sessionId?: string) {
           const title = event.title.length > 6 ? event.title.substring(0, 6).trim() + '...' : event.title;
           return `${title} tmr @ ${formattedTime}`;
         } else {
-          return "-";
+          return "";
         }
       }
     },
@@ -561,7 +561,7 @@ async function updateDashboard(sessionId?: string) {
     // Run right modules concurrently.
     const rightPromises = rightModules.map(module => module.run(context));
     const rightResults = await Promise.all(rightPromises);
-    let rightText = rightResults.filter(text => text.trim()).join('\n');
+    let rightText = rightResults.filter(text => text.trim() !== '').join('\n');
     rightText = wrapText(rightText, 30);
 
     // Create display event.
