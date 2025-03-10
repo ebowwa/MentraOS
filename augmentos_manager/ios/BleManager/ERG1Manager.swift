@@ -513,7 +513,7 @@ struct ViewState {
       }
     case .BLE_REQ_TRANSFER_MIC_DATA:
       self.compressedVoiceData = data
-                print("Got voice data: " + String(data.count))
+//                print("Got voice data: " + String(data.count))
       break
     case .BLE_REQ_HEARTBEAT:
       // battery info

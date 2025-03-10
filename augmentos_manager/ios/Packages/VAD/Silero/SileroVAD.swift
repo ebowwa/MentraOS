@@ -204,7 +204,7 @@ public class SileroVAD: NSObject {
 
     private func debugLog(_ content: String) {
         #if DEBUG
-        print("[Silero VAD]: " + content)
+//        print("[Silero VAD]: " + content)
         #endif
     }
 }

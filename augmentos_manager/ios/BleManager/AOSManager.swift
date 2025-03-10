@@ -109,7 +109,7 @@ import AVFoundation
   }
   
   private func addToVadBuffer(_ chunk: Data) {
-    let MAX_BUFFER_SIZE = 1024;
+    let MAX_BUFFER_SIZE = 256;
     vadBuffer.append(chunk)
     while(vadBuffer.count > MAX_BUFFER_SIZE) {
       // pop from the front of the array:
@@ -205,7 +205,6 @@ import AVFoundation
       
       vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
         guard let self = self else { return }
-        //            self.handler?(state)
         print("VAD State: \(state)")
       }
       
