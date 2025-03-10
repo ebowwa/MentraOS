@@ -2,7 +2,7 @@
 
 import { WebSocket } from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-import { StreamType, UserSession } from '@augmentos/sdk';
+import { AppStateChange, CloudToGlassesMessageType, ExtendedStreamType, StreamType, UserSession } from '@augmentos/sdk';
 import { TranscriptSegment } from '@augmentos/sdk';
 import { DisplayRequest } from '@augmentos/sdk';
 import appService, { SYSTEM_TPAS } from './app.service';
@@ -10,23 +10,24 @@ import transcriptionService from '../processing/transcription.service';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { LC3Service, createLoggerForUserSession, logger } from '@augmentos/utils';
 import { ASRStreamInstance } from '../processing/transcription.service';
+import { subscriptionService } from './subscription.service';
+import { AudioWriter } from "../debug/audio-writer";
+import { systemApps } from '@augmentos/config';
 
 const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds
 const LOG_AUDIO = false;
 const PROCESS_AUDIO = true;
+const DEBUG_AUDIO = false;
 
-interface TimestampedAudioChunk {
-  data: ArrayBuffer;
-  timestamp: number;
-}
 
 export interface ExtendedUserSession extends UserSession {
   lc3Service?: LC3Service;
+  audioWriter?: AudioWriter; // for debugging audio streams.
 }
 
 export class SessionService {
   private activeSessions = new Map<string, ExtendedUserSession>();
-  constructor() { }
+
   async createSession(ws: WebSocket, userId = 'anonymous'): Promise<ExtendedUserSession> {
     const sessionId = uuidv4();
     const userSession: ExtendedUserSession = {
@@ -68,6 +69,71 @@ export class SessionService {
 
   getSession(sessionId: string): ExtendedUserSession | null {
     return this.activeSessions.get(sessionId) || null;
+  }
+
+  async transformUserSessionForClient(userSession: ExtendedUserSession): Promise<Partial<UserSession>> {
+    // Get the list of active apps and update app state
+    const activeAppPackageNames = Array.from(new Set(userSession.activeAppSessions));
+
+    userSession.logger.info("🎤 Active app package names: ", activeAppPackageNames);
+    // Create a map of active apps and what stream types they are subscribed to
+    const appSubscriptions = new Map<string, ExtendedStreamType[]>(); // packageName -> streamTypes
+    const whatToStream: Set<ExtendedStreamType> = new Set(); // streamTypes to enable
+
+    for (const packageName of activeAppPackageNames) {
+      const subscriptions = subscriptionService.getAppSubscriptions(userSession.sessionId, packageName);
+      appSubscriptions.set(packageName, subscriptions);
+      for (const subscription of subscriptions) {
+        whatToStream.add(subscription);
+      }
+    }
+
+    userSession.logger.info("🎤 App subscriptions: ", appSubscriptions);
+    userSession.logger.info("🎤 What to stream: ", whatToStream);
+
+    // Dashboard subscriptions
+    const dashboardSubscriptions = subscriptionService.getAppSubscriptions(
+      userSession.sessionId,
+      systemApps.dashboard.packageName
+    );
+    appSubscriptions.set(systemApps.dashboard.packageName, dashboardSubscriptions);
+    for (const subscription of dashboardSubscriptions) {
+      whatToStream.add(subscription);
+    }
+
+    const partialUserSession = {
+      sessionId: userSession.sessionId,
+      userId: userSession.userId,
+      startTime: userSession.startTime,
+      installedApps: await appService.getAllApps(userSession.userId),
+      appSubscriptions: Object.fromEntries(appSubscriptions),
+      activeAppPackageNames,
+      whatToStream: Array.from(new Set(whatToStream)),
+    };
+
+    return partialUserSession;
+  }
+
+  async triggerAppStateChange(userId: string): Promise<void> {
+    const userSession = this.getSession(userId);
+    if (!userSession) {
+      logger.error(`❌[${userId}]: No userSession found for client app state change`);
+      return;
+    }
+
+    // check if websocket is still open.
+    if (userSession.websocket.readyState !== 1) {
+      logger.error(`❌[${userId}]: Websocket is not open for client app state change`);
+      return;
+    }
+
+    const clientResponse: AppStateChange = {
+      type: CloudToGlassesMessageType.APP_STATE_CHANGE,
+      sessionId: userSession.sessionId,
+      userSession: await sessionService.transformUserSessionForClient(userSession),
+      timestamp: new Date()
+    };
+    userSession.websocket.send(JSON.stringify(clientResponse));
   }
 
   handleReconnectUserSession(newSession: ExtendedUserSession, userId: string): void {
@@ -140,7 +206,7 @@ export class SessionService {
     if (userSession) {
       // Add new segment
       userSession.transcript.segments.push(segment);
-      
+
       // Prune old segments (older than 30 minutes)
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       userSession.transcript.segments = userSession.transcript.segments.filter(
@@ -149,23 +215,29 @@ export class SessionService {
     }
   }
 
-  async handleAudioData(
-    userSession: ExtendedUserSession,
-    audioData: ArrayBuffer | any,
-    isLC3 = true
-  ): Promise<ArrayBuffer | void> {
+  // Updated handleAudioData method
+  async handleAudioData(userSession: ExtendedUserSession, audioData: ArrayBuffer | any, isLC3 = true): Promise<ArrayBuffer | void> {
     // Update the last audio timestamp
     userSession.lastAudioTimestamp = Date.now();
-  
-    // If not transcribing, just ignore the audio // TODO(isaiah): uncomment this.
+
+    // If not transcribing, just ignore the audio
     // if (!userSession.isTranscribing) {
     //   if (LOG_AUDIO) console.log('🔇 Skipping audio while transcription is paused');
     //   return;
     // }
-  
+
+    // Lazy initialize the audio writer if it doesn't exist
+    if (DEBUG_AUDIO && !userSession.audioWriter) {
+      userSession.audioWriter = new AudioWriter(userSession.userId);
+    }
+
+    // Write the raw LC3 audio if applicable
+    if (DEBUG_AUDIO && isLC3 && audioData) {
+      await userSession.audioWriter?.writeLC3(audioData);
+    }
+
     // Process LC3 first if needed
     let processedAudioData = audioData;
-    // console.log(`🚀🚀🚀[session.service] Processing audio data for session ${userSession.sessionId}`);
     if (isLC3 && userSession.lc3Service) {
       try {
         processedAudioData = await userSession.lc3Service.decodeAudioChunk(audioData);
@@ -173,13 +245,22 @@ export class SessionService {
           if (LOG_AUDIO) userSession.logger.error(`❌ LC3 decode returned null for session ${userSession.sessionId}`);
           return; // Skip this chunk
         }
+
+        if (DEBUG_AUDIO) {
+          // Write the decoded PCM audio
+          await userSession.audioWriter?.writePCM(processedAudioData);
+        }
       } catch (error) {
         userSession.logger.error('❌ Error decoding LC3 audio:', error);
         processedAudioData = null;
       }
+    } else if (processedAudioData) {
+      if (DEBUG_AUDIO) {
+        // If it's not LC3 or doesn't need decoding, still write it as PCM
+        await userSession.audioWriter?.writePCM(processedAudioData);
+      }
     }
 
-    // console.log(`🔥🔥🔥[session.service] Processed audio data for session ${userSession.sessionId}`);
     transcriptionService.feedAudioToTranscriptionStreams(userSession, processedAudioData);
     return processedAudioData;
   }
@@ -196,18 +277,15 @@ export class SessionService {
     if (userSession.lc3Service) {
       userSession.lc3Service.cleanup();
     }
-    
+
     // Clean up subscription history for this session
-    const subscriptionService = require('./subscription.service').default;
-    if (subscriptionService && typeof subscriptionService.removeSessionSubscriptionHistory === 'function') {
-      subscriptionService.removeSessionSubscriptionHistory(sessionId);
-    }
+    subscriptionService.removeSessionSubscriptionHistory(sessionId);
 
     // Clear transcript history
     if (userSession.transcript && userSession.transcript.segments) {
       userSession.transcript.segments = [];
     }
-    
+
     // Clean other data structures
     if (userSession.bufferedAudio) {
       userSession.bufferedAudio = [];
@@ -215,7 +293,7 @@ export class SessionService {
 
     this.activeSessions.delete(sessionId);
     userSession.logger.info(`[Ended session] ${sessionId}`);
-    
+
     // Suggest garbage collection if available
     if (global.gc) {
       console.log('🧹 Running garbage collection after ending session');
