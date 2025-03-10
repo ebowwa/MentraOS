@@ -38,7 +38,7 @@ const server = new Server(app);
 // Middleware setup
 app.use(helmet());
 app.use(cors({
-  credentials: true, 
+  credentials: true,
   origin: [
     '*',
     'http://localhost:3000',
@@ -97,14 +97,11 @@ webSocketService.setupWebSocketServers(server);
 
 // Start the server
 server.listen(PORT, () => {
-  logger.info(`\n\n\n ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ `);
-  logger.info('\n😎 AugmentOS Cloud Server🚀\n');
-  logger.info(`HTTP server: http://cloud:${PORT}`);
-  logger.info('WebSocket endpoints:');
-  logger.info(`  - Glasses: ws://cloud/glasses-ws`);
-  logger.info(`  - TPA:     ws://cloud/tpa-ws\n`);
-  logger.info('\n🚀 Cloud Server ready\n');
-  logger.info(`\n\n\n ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
+  logger.info(`\n
+              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+              😎 AugmentOS Cloud Server🚀
+              🌐 Listening on port ${PORT}             🌐
+              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
 });
 
 export default server;
