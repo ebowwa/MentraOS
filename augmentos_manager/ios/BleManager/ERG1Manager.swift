@@ -784,7 +784,7 @@ extension ERG1Manager {
     
     // Convert to Data
     let commandData = Data(paddedCommand)
-    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+//    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     
     // Then send to left glass

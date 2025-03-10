@@ -14,6 +14,8 @@ class OnboardMicrophoneManager {
   
   /// Publisher for voice data
   private let voiceDataSubject = PassthroughSubject<Data, Never>()
+  private var audioRecording = [Data]();
+  private var audioPlayer: AVAudioPlayer?
   
   /// Public access to voice data stream
   var voiceData: AnyPublisher<Data, Never> {
@@ -55,28 +57,6 @@ class OnboardMicrophoneManager {
   
   // MARK: - Private Helpers
   
-  /// Convert AVAudioPCMBuffer to Data
-  private func convertBufferToData(_ buffer: AVAudioPCMBuffer) -> Data {
-    let channelCount = Int(buffer.format.channelCount)
-    let length = Int(buffer.frameLength)
-    let data = NSMutableData()
-    
-    if buffer.format.commonFormat == .pcmFormatInt16 {
-      // Already in Int16 format
-      let channels = UnsafeBufferPointer(start: buffer.int16ChannelData,
-                                         count: channelCount)
-      
-      for frame in 0..<length {
-        for channel in 0..<channelCount {
-          var value = channels[channel][frame]
-          data.append(&value, length: 2)
-        }
-      }
-    }
-    
-    return data as Data
-  }
-  
   /// Extract Int16 data from a converted buffer
   private func extractInt16Data(from buffer: AVAudioPCMBuffer) -> Data {
     let channelCount = Int(buffer.format.channelCount)
@@ -108,6 +88,8 @@ class OnboardMicrophoneManager {
     if isRecording {
       return true
     }
+    
+    audioRecording.removeAll()
     
     // Check permissions first
     guard checkPermissions() else {
@@ -147,28 +129,69 @@ class OnboardMicrophoneManager {
       return false
     }
     
-    // Install tap using native format for maximum compatibility
-    inputNode.installTap(onBus: 0, bufferSize: 512, format: inputFormat) { [weak self] buffer, time in
+    //    inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, time in
+    //      guard let self = self else { return }
+    //
+    //      let frameCount = Int(buffer.frameLength)
+    //
+    //      // Create a 16-bit PCM data buffer
+    //      var pcmData: Data
+    //      // Convert to 16-bit PCM at 16kHz if needed
+    //      let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converter.outputFormat,
+    //                                             frameCapacity: AVAudioFrameCount(frameCount))!
+    //      var error: NSError? = nil
+    //      let status = converter.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
+    //        outStatus.pointee = .haveData
+    //        return buffer
+    //      })
+    //
+    //      if status == .haveData && error == nil {
+    //        // Use the converted int16 data
+    //        pcmData = self.extractInt16Data(from: convertedBuffer)
+    //        self.audioRecording.append(pcmData)
+    //      } else {
+    //        print("Conversion error: \(error?.localizedDescription ?? "unknown")")
+    //        return
+    //      }
+    //
+    ////      // Convert pcmData to lc3:
+    ////      let pcmConverter = PcmConverter()
+    ////      let lc3Data = pcmConverter.encode(pcmData)
+    ////
+    ////      if lc3Data.count > 0 {
+    ////        print("Got LC3 data of size: \(lc3Data.count) from PCM data of size: \(pcmData.count)")
+    ////      } else {
+    ////        print("LC3 conversion resulted in empty data")
+    ////      }
+    ////
+    ////      // Publish the audio data
+    ////      self.voiceDataSubject.send(lc3Data as Data)
+    //    }
+    
+    inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, time in
       guard let self = self else { return }
       
-      // Get float samples directly as recommended in the StackOverflow answer
-      let samples = buffer.floatChannelData?[0]
       let frameCount = Int(buffer.frameLength)
       
-      // Create a 16-bit PCM data buffer
-      var pcmData: Data
-      // Convert to 16-bit PCM at 16kHz if needed
-      let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converter.outputFormat,
-                                             frameCapacity: AVAudioFrameCount(frameCount))!
+      // Calculate the correct output buffer capacity based on sample rate conversion
+      // For downsampling from inputFormat.sampleRate to 16000 Hz
+      let outputCapacity = AVAudioFrameCount(Double(frameCount) * (16000.0 / inputFormat.sampleRate))
+      
+      // Create a 16-bit PCM data buffer with adjusted capacity
+      let convertedBuffer = AVAudioPCMBuffer(pcmFormat: converter.outputFormat, frameCapacity: outputCapacity)!
+      
       var error: NSError? = nil
       let status = converter.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
         outStatus.pointee = .haveData
         return buffer
       })
       
+      var pcmData: Data;
+      
       if status == .haveData && error == nil {
         // Use the converted int16 data
         pcmData = self.extractInt16Data(from: convertedBuffer)
+        self.audioRecording.append(pcmData)
       } else {
         print("Conversion error: \(error?.localizedDescription ?? "unknown")")
         return
@@ -218,6 +241,87 @@ class OnboardMicrophoneManager {
     isRecording = false
     
     print("Onboard microphone stopped recording")
+    // play back the audio (for testing only):
+//    playbackRecordedAudio()
+  }
+  
+  
+  /// Play back the recorded audio data
+  private func playbackRecordedAudio() {
+    guard !audioRecording.isEmpty else {
+      print("No audio data to play back")
+      return
+    }
+    
+    // Combine all audio chunks into a single data object
+    let combinedData = audioRecording.reduce(Data()) { $0 + $1 }
+    
+    do {
+      // Reset audio session for playback
+      let playbackSession = AVAudioSession.sharedInstance()
+      try playbackSession.setCategory(.playback, mode: .default)
+      try playbackSession.setActive(true)
+      
+      // Create a temporary WAV file with proper headers
+      let tempDirectoryURL = FileManager.default.temporaryDirectory
+      let tempFileURL = tempDirectoryURL.appendingPathComponent("temp_recording.wav")
+      
+      // Create WAV file with appropriate headers
+      createWavFile(with: combinedData, at: tempFileURL)
+      
+      // Create audio player from the WAV file
+      audioPlayer = try AVAudioPlayer(contentsOf: tempFileURL)
+      audioPlayer?.prepareToPlay()
+      audioPlayer?.play()
+      
+      print("Playing back recorded audio, data size: \(combinedData.count) bytes")
+    } catch {
+      print("Audio playback error: \(error.localizedDescription)")
+    }
+  }
+  
+  /// Create a WAV file with the proper headers for the recorded PCM data
+  private func createWavFile(with pcmData: Data, at url: URL) {
+    // WAV header parameters
+    let sampleRate: UInt32 = 16000
+    let numChannels: UInt16 = 1
+    let bitsPerSample: UInt16 = 16
+    
+    // Create WAV header
+    var header = Data()
+    
+    // RIFF chunk descriptor
+    header.append("RIFF".data(using: .ascii)!)
+    let fileSize = UInt32(pcmData.count + 36) // File size minus 8 bytes for RIFF and fileSize
+    header.append(withUnsafeBytes(of: fileSize.littleEndian) { Data($0) })
+    header.append("WAVE".data(using: .ascii)!)
+    
+    // fmt sub-chunk
+    header.append("fmt ".data(using: .ascii)!)
+    var subchunk1Size: UInt32 = 16 // Size of the fmt sub-chunk
+    header.append(withUnsafeBytes(of: subchunk1Size.littleEndian) { Data($0) })
+    var audioFormat: UInt16 = 1 // PCM = 1
+    header.append(withUnsafeBytes(of: audioFormat.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: numChannels.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: sampleRate.littleEndian) { Data($0) })
+    
+    let byteRate = UInt32(sampleRate * UInt32(numChannels) * UInt32(bitsPerSample) / 8)
+    header.append(withUnsafeBytes(of: byteRate.littleEndian) { Data($0) })
+    
+    let blockAlign = UInt16(numChannels * bitsPerSample / 8)
+    header.append(withUnsafeBytes(of: blockAlign.littleEndian) { Data($0) })
+    header.append(withUnsafeBytes(of: bitsPerSample.littleEndian) { Data($0) })
+    
+    // data sub-chunk
+    header.append("data".data(using: .ascii)!)
+    let subchunk2Size = UInt32(pcmData.count)
+    header.append(withUnsafeBytes(of: subchunk2Size.littleEndian) { Data($0) })
+    
+    // Combine header with PCM data
+    let wavData = header + pcmData
+    
+    // Write WAV file
+    try? wavData.write(to: url)
   }
   
   // MARK: - Cleanup
