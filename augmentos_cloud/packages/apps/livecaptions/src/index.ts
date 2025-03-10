@@ -343,8 +343,8 @@ function showTranscriptsToUser(sessionId: string, ws: WebSocket, transcript: str
     },
     timestamp: new Date(),
     // Use a fixed duration for final transcripts; non-final ones omit the duration
-    durationMs: isFinal ? 20 * 1000 : undefined
-    // durationMs: 20 * 1000 // 20 seconds. If no other transcript is received it will be cleared after this time.
+    durationMs: 20 * 1000, // 20 seconds. If no other transcript is received it will be cleared after this time.
+    forceDisplay: isFinal
   };
 
   ws.send(JSON.stringify(displayRequest));

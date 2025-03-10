@@ -151,7 +151,7 @@ class DisplayManager implements DisplayManagerI {
 
   private showDisplay(activeDisplay: ActiveDisplay): boolean {
     // Check throttle
-    if (Date.now() - this.lastDisplayTime < this.THROTTLE_DELAY) {
+    if (Date.now() - this.lastDisplayTime < this.THROTTLE_DELAY && !activeDisplay.displayRequest.forceDisplay) {
       console.log(`[DisplayManager] - [${this.userSession?.userId}] ⏳ Throttled display request`);
       return false;
     }
