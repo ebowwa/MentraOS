@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}
+        published: ${CLOUD_PORT:-7002}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}10
+        published: ${LIVE_CAPTIONS_PORT:-7010}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -96,7 +96,7 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}11
+        published: ${FLASH_PORT:-7011}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -128,7 +128,7 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}12
+        published: ${DASHBOARD_MANAGER_PORT:-7012}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -160,7 +160,7 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}14
+        published: ${NOTIFY_PORT:-7014}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -192,7 +192,7 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}15
+        published: ${MIRA_PORT:-7015}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -223,7 +223,7 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${BASE_PORT:-7000}17
+        published: ${LIVE_TRANSLATION_PORT:-7017}
         protocol: tcp
     environment:
       - NODE_ENV=production
@@ -272,6 +272,7 @@ services:
 networks:
   augmentos-network:
     driver: bridge
+    external: true
 
 volumes:
   node_modules:
