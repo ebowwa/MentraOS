@@ -170,7 +170,7 @@ export class TpaSession {
    */
   subscribe(type: StreamType): void {
     this.subscriptions.add(type);
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
     }
   }
@@ -391,7 +391,7 @@ export class TpaSession {
    * @throws {Error} If WebSocket is not connected
    */
   private send(message: TpaToCloudMessage): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+    if (!this.ws || this.ws.readyState !== 1) {
       throw new Error('WebSocket not connected');
     }
     this.ws.send(JSON.stringify(message));

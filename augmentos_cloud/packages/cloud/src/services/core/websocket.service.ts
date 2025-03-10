@@ -267,7 +267,7 @@ export class WebSocketService {
     subscribedApps.forEach(packageName => {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
       const websocket = userSession.appConnections.get(packageName);
-      if (websocket && websocket.readyState === WebSocket.OPEN) {
+      if (websocket && websocket.readyState === 1) {
         // CloudDataStreamMessage
         const dataStream: DataStream = {
           type: CloudToTpaMessageType.DATA_STREAM,
@@ -290,7 +290,7 @@ export class WebSocketService {
     for (const packageName of subscribedApps) {
       const websocket = userSession.appConnections.get(packageName);
 
-      if (websocket && websocket.readyState === WebSocket.OPEN) {
+      if (websocket && websocket.readyState === 1) {
         websocket.send(arrayBuffer);
       } else {
         userSession.logger.error(`[websocket.service]: TPA ${packageName} not connected`);
