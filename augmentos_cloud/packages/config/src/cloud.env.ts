@@ -10,6 +10,7 @@ export interface SystemApp {
 }
 
 // export const BASE_PORT = 8000;
+const BASE_PORT = process.env.BASE_PORT ? parseInt(process.env.BASE_PORT) : 8000;
 
 export const systemApps = {
   captions: {
@@ -48,8 +49,7 @@ export const systemApps = {
     description: "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command.",
   },
   merge: {
-    // port: BASE_PORT + 16,
-    host: "merge",
+    host: `merge`,
     packageName: 'com.mentra.merge',
     name: 'Merge',
     description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
