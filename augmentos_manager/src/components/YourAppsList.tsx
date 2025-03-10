@@ -39,7 +39,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     };
 
     const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
-    const backgroundColor = isDarkTheme ? '#1E1E1E' : '#F5F5F5';
+    // const backgroundColor = isDarkTheme ? '#1E1E1E' : '#F5F5F5';
 
     // Optional: Filter out duplicate apps
     const uniqueApps = React.useMemo(() => {

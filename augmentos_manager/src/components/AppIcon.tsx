@@ -1,12 +1,13 @@
 // AppIcon.tsx
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AppInfo } from '../AugmentOSStatusParser';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import { getAppImage } from '../logic/getAppImage';
+import { FallbackImageBackground } from './FallbackImageBackground';
 // import BluetoothService from '../BluetoothService';
 
 interface AppIconProps {
@@ -54,8 +55,9 @@ const AppIcon: React.FC<AppIconProps> = ({
                         isDarkTheme ? styles.appIconWrapperDark : styles.appIconWrapperLight,
                     ]}
                 >
-                    <ImageBackground
-                        source={getAppImage(app.packageName)}
+                    <FallbackImageBackground
+                        source={getAppImage(app)}
+                        // source={{ uri: app.icon }}
                         style={styles.appIcon}
                         imageStyle={styles.appIconRounded}
                     />
@@ -97,9 +99,9 @@ const styles = StyleSheet.create({
         height: 65,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 23,
+        borderRadius: 0,
         overflow: 'hidden',
-        borderWidth: 1,
+        // borderWidth: 1,
     },
     appIconWrapperLight: {
         borderColor: '#E5E5EA',
