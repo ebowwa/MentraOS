@@ -125,6 +125,25 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     }
   }
   
+  public func sendVadStatus(_ isSpeaking: Bool) {
+    
+    do {
+      let initMsg: [String: Any] = [
+        "type": "VAD",
+        "status": isSpeaking
+      ]
+      
+      let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        sendText(jsonString)
+        print("Sent vad status message")
+      }
+    } catch {
+      print("Error building connection_init JSON: \(error)")
+    }
+    
+  }
+  
   private func receiveMessage() {
     webSocket?.receive { [weak self] result in
       guard let self = self else { return }

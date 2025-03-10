@@ -82,6 +82,8 @@ class ServerComms {
       return
     }
     wsManager.connect(url: url, coreToken: self.coreToken)
+    // TODO: ios this is a bit of hack:
+    wsManager.sendVadStatus(true)
   }
   
   func isWebSocketConnected() -> Bool {

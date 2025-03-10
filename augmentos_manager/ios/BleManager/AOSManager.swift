@@ -406,9 +406,10 @@ import AVFoundation
           Task {
             self.g1Manager.RN_setBrightness(value, autoMode: autoBrightness)
             self.g1Manager.RN_sendText("Set brightness to \(value)%")
-            try? await Task.sleep(nanoseconds: 5_000_000) // 0.5 seconds
+            try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
             self.g1Manager.RN_sendText(" ")// clear screen
           }
+          
           saveSettings()
           break
         case .enableSensing:
