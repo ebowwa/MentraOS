@@ -8,4 +8,7 @@ old/
 .env.local
 ./node_modules
 ./env
+.env.development
+.env.production
+.env.staging
 .ssh
