@@ -3,27 +3,38 @@
   "workspaces": [
     "packages/*"
   ],
+
   "scripts": {
     "build": "concurrently \"cd packages/sdk && bun run build\" \"cd packages/config && bun run build\" \"cd packages/utils && bun run build\" \"cd packages/agents && bun run build\"  \"cd packages/apps/dashboard-manager && bun run build\" \"cd packages/apps/flash && bun run build\" \"cd packages/apps/livecaptions && bun run build\" \"cd packages/apps/miraai && bun run build\" \"cd packages/apps/notify && bun run build\" \"cd packages/cloud && bun run build\"",
 
-    "dev": "ENV=development docker-compose -f docker-compose.dev.yml up -d",
-    "dev:stop": "docker-compose -f docker-compose.dev.yml down --timeout 5 || docker kill $(docker ps -q)",
+    "appstore": "docker-compose -f docker-compose.appstore.yml up -d",
 
-    "staging": "ENV=staging docker-compose -f docker-compose.staging.yml up -d",
-    "staging:stop": "ENV=staging docker-compose -f docker-compose.staging.yml down",
+    "dev": "docker-compose -f docker-compose.dev.yml -p dev up -d",
+    "dev:stop": "docker-compose -f docker-compose.dev.yml -p dev down --timeout 5 || docker kill $(docker ps -q)",
+    "dev:setup-network": "docker network create augmentos-network-dev",
 
-    "prod": "ENV=production docker-compose -f docker-compose.yml up -d",
-    "prod:stop": "ENV=production docker-compose -f docker-compose.yml down",
+    "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
+    "dev:ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud host.docker.internal:8002",
+    "dev:ngrok:appstore": "ngrok http --domain=appstore.augmentos.cloud host.docker.internal:8042",
 
-    "docker:logs": "docker-compose logs -f",
+    "staging": "docker-compose -f docker-compose.staging.yml -p staging up -d",
+    "staging:stop": "docker-compose -f docker-compose.staging.yml -p staging down",
+    "staging:setup-network": "docker network create augmentos-network-staging",
 
-    "logs:dev": "docker-compose -f docker-compose.dev.yml logs -f",
-    "logs:staging": "docker-compose -f docker-compose.yml logs -f",
-    "logs:prod": "docker-compose -f docker-compose.yml logs -f",
+    "prod": "docker-compose -f docker-compose.yml -p prod up -d",
+    "prod:stop": "docker-compose -f docker-compose.yml -p prod down",
+    "prod:deploy": "bun run prod:stop && bun run prod",
+    "prod:setup-network": "docker network create augmentos-network",
 
-    "logs:dev:cloud": "docker-compose -f docker-compose.dev.yml logs -f cloud",
-    "logs:staging:cloud": "ENV=staging docker-compose -f docker-compose.staging.yml logs -f cloud",
-    "logs:prod:cloud": "ENV=production docker-compose -f docker-compose.yml logs -f cloud",
+    "logs": "docker-compose logs -f",
+    "logs:dev": "docker-compose -f docker-compose.dev.yml -p dev logs -f",
+    "logs:dev:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud",
+
+    "logs:staging": "docker-compose -f docker-compose.staging.yml -p staging logs -f",
+    "logs:staging:cloud": "docker-compose -f docker-compose.staging.yml -p staging logs -f cloud",
+
+    "logs:prod": "docker-compose -f docker-compose.yml -p prod logs -f",
+    "logs:prod:cloud": "docker-compose -f docker-compose.yml -p prod logs -f cloud",
 
     "docker:setup-links": "docker-compose -f docker-compose.dev.yml up --no-deps setup",
     "local:setup-links": "cd packages/utils && bun link && cd ../sdk && bun link && cd ../config && bun link && cd ../agents && bun link && cd ../cloud && bun link @augmentos/utils @augmentos/sdk @augmentos/config @augmentos/agents && for app in dashboard-manager flash isaiah live-captions live-translation miraai notify; do cd ../apps/$app && bun link @augmentos/utils @augmentos/sdk @augmentos/config @augmentos/agents; done"

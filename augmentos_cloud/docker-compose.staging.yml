@@ -33,7 +33,9 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8002:80"
+      - target: 80
+        published: ${CLOUD_PORT:-9002}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -61,7 +63,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8010:80"
+      - target: 80
+        published: ${LIVE_CAPTIONS_PORT:-9010}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -91,7 +95,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8011:80"
+      - target: 80
+        published: ${FLASH_PORT:-9011}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -121,7 +127,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8012:80"
+      - target: 80
+        published: ${DASHBOARD_MANAGER_PORT:-9012}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -151,7 +159,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8014:80"
+      - target: 80
+        published: ${NOTIFY_PORT:-9014}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -181,7 +191,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8015:80"
+      - target: 80
+        published: ${MIRA_PORT:-9015}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -210,7 +222,9 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "8017:80"
+      - target: 80
+        published: ${LIVE_TRANSLATION_PORT:-9017}
+        protocol: tcp
     environment:
       - NODE_ENV=staging
       - HOST=0.0.0.0
@@ -258,6 +272,7 @@ services:
 networks:
   augmentos-network-staging:
     driver: bridge
+    external: true
 
 volumes:
   node_modules:

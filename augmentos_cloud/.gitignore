@@ -11,4 +11,7 @@ old/
 .env.staging
 ./node_modules
 ./env
+.env.development
+.env.production
+.env.staging
 .ssh

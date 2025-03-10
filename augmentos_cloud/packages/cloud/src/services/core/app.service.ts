@@ -11,8 +11,9 @@ import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState } from '@a
 import axios, { AxiosError } from 'axios';
 import { systemApps } from '@augmentos/config';
 import App from '../../models/app.model';
+import { User } from '../../models/user.model';
 
-const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging';
+const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development';
 
 /**
  * System TPAs that are always available.
@@ -35,7 +36,6 @@ export const LOCAL_APPS: AppI[] = [
     webhookURL: `http://${systemApps.notify.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
     description: systemApps.notify.description,
-
   },
   {
     packageName: systemApps.mira.packageName,
@@ -91,19 +91,6 @@ export const SYSTEM_TPAS: AppI[] = [
   },
 ];
 
-// Map systemApps to SYSTEM_TPAS.
-// export const SYSTEM_TPAS: AppI[] = Object.keys(systemApps).map((key) => {
-//   const app = systemApps[key as keyof typeof systemApps];
-
-//   return {
-//     packageName: systemApps[key as keyof typeof systemApps].packageName,
-//     name: key,
-//     description: key, // TODO(isaiah): Add descriptions
-//     webhookURL: `http://localhost:${app.port}/webhook`,
-//     logoURL: `https://cloud.augmentos.org/${app.packageName}.png`,
-//   }
-// });
-
 /**
  * Interface for webhook payloads sent to TPAs.
  */
@@ -132,12 +119,32 @@ export class AppService {
    * Gets all available TPAs, both system and user-created.
    * @returns Promise resolving to array of all apps
    */
-  async getAllApps(): Promise<AppI[]> {
-    let appstoreApps: AppI[] = [];
-    if (APPSTORE_ENABLED) {
-      appstoreApps = await App.find() as AppI[];
+  async getAllApps(userId?: string): Promise<AppI[]> {
+    const usersApps: AppI[] = [];
+
+    if (APPSTORE_ENABLED && userId) {
+      // Find apps the developer made.
+      const _madeByUser = await App.find({ developerId: userId }) as AppI[];
+
+      // Find apps the user installed.
+      const user = await User.findOne({email: userId});
+      const _installedApps = user?.installedApps?.map((installedApp: { packageName: string; installedDate: Date; }) => {
+        return installedApp.packageName;
+      }) || [];
+
+      // Fetch the apps from the appstore.
+      const _appstoreApps = await App.find({ packageName: { $in: _installedApps } }) as AppI[];
+
+      // remove duplicates.
+      const _allApps = [..._madeByUser, ..._appstoreApps];
+      const _appMap = new Map<string, AppI>();
+      _allApps.forEach(app => {
+        _appMap.set(app.packageName, app);
+      }
+      );
+      usersApps.push(..._appMap.values());
     }
-    const allApps = [...LOCAL_APPS, ...appstoreApps];
+    const allApps = [...LOCAL_APPS, ...usersApps];
     return allApps;
   }
 
@@ -167,6 +174,13 @@ export class AppService {
       }
     }
 
+    return app;
+  }
+
+  async findFromAppStore(packageName: string): Promise<AppI | undefined> {
+    const app = await App.findOne({
+      packageName: packageName
+    }) as AppI;
     return app;
   }
 

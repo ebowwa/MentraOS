@@ -83,7 +83,7 @@ export const useWebSocket = () => {
   }, []);
 
   const sendMessage = useCallback((message: any) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    if (wsRef.current?.readyState === 1) {
       wsRef.current.send(JSON.stringify(message));
     }
   }, []);
