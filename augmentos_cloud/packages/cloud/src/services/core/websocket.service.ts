@@ -248,7 +248,7 @@ export class WebSocketService {
     subscribedApps.forEach(packageName => {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
       const websocket = userSession.appConnections.get(packageName);
-      if (websocket && websocket.readyState === WebSocket.OPEN) {
+      if (websocket && websocket.readyState === 1) {
         // CloudDataStreamMessage
         const dataStream: DataStream = {
           type: CloudToTpaMessageType.DATA_STREAM,
@@ -272,7 +272,7 @@ export class WebSocketService {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
       const websocket = userSession.appConnections.get(packageName);
 
-      if (websocket && websocket.readyState === WebSocket.OPEN) {
+      if (websocket && websocket.readyState === 1) {
         // CloudDataStreamMessage
         // const streamMessage: DataStream = {
         //   type: CloudToTpaMessageType.DATA_STREAM,

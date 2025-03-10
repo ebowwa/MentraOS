@@ -119,7 +119,7 @@ async function fetchAndApplySettings(sessionId: string, userId: string) {
 // Function to update subscription based on current language settings
 function updateSubscriptionForSession(sessionId: string, userId: string) {
   const ws = activeSessions.get(sessionId);
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!ws || ws.readyState !== 1) return;
   
   const language = userLanguageSettings.get(userId) || 'en-US';
   const transcriptionStream = createTranscriptionStream(language);
@@ -367,7 +367,7 @@ function refreshUserSessions(userId: string, newUserTranscript: string) {
   // Refresh each session
   for (const sessionId of sessionIds) {
     const ws = activeSessions.get(sessionId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === 1) {
       console.log(`Refreshing session ${sessionId}`);
       
       // Update subscription for new language settings

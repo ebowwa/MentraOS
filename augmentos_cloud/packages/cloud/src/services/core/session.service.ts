@@ -103,7 +103,7 @@ export class SessionService {
       }
 
       // Close old websocket
-      if (oldUserSession.websocket.readyState === WebSocket.OPEN) {
+      if (oldUserSession.websocket.readyState === 1) {
         oldUserSession.websocket?.close();
       }
 
@@ -118,7 +118,7 @@ export class SessionService {
     this.activeSessions.set(newSession.sessionId, newSession);
     newSession.logger.info(`Reconnected session ${newSession.sessionId} for user ${userId}`);
 
-    if (newSession.websocket.readyState === WebSocket.OPEN) {
+    if (newSession.websocket.readyState === 1) {
       newSession.websocket.send(JSON.stringify({ type: 'reconnect' }));
     }
   }

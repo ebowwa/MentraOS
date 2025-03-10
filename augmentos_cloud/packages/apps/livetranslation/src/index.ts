@@ -133,7 +133,7 @@ async function fetchAndApplySettings(sessionId: string, userId: string) {
  */
 function updateSubscriptionForSession(sessionId: string, userId: string) {
   const ws = activeSessions.get(sessionId);
-  if (!ws || ws.readyState !== WebSocket.OPEN) return;
+  if (!ws || ws.readyState !== 1) return;
 
   const source = usertranscribeLanguageSettings.get(userId) || 'zh-CN';
   const target = userTranslateLanguageSettings.get(userId) || 'en-US';
@@ -261,7 +261,7 @@ function refreshUserSessions(userId: string, newUserTranscript: string): boolean
   console.log(`Refreshing ${sessionIds.size} sessions for user ${userId}`);
   for (const sessionId of sessionIds) {
     const ws = activeSessions.get(sessionId);
-    if (ws && ws.readyState === WebSocket.OPEN) {
+    if (ws && ws.readyState === 1) {
       updateSubscriptionForSession(sessionId, userId);
       const clearDisplayRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
