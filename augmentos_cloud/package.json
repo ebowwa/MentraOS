@@ -29,6 +29,7 @@
     "logs:dev": "docker-compose -f docker-compose.dev.yml logs -f",
     "logs:staging": "docker-compose -f docker-compose.staging.yml logs -f",
     "logs:prod": "docker-compose -f docker-compose.yml logs -f",
+    "logs:appstore": "docker-compose -f docker-compose.appstore.yml logs -f appstore",
 
     "logs:dev:cloud": "docker-compose -f docker-compose.dev.yml logs -f cloud",
     "logs:staging:cloud": "ENV=staging docker-compose -f docker-compose.staging.yml logs -f cloud",
