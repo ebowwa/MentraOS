@@ -29,7 +29,7 @@ export class WeatherModule {
 
       return {
         condition: data.current.weather[0].main,
-        temp_f: data.current.temp,
+        temp_f: Math.round(data.current.temp),
       };
     } catch (error) {
       console.error('Error fetching weather data:', error);
