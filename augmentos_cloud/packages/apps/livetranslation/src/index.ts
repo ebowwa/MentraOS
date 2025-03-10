@@ -226,7 +226,8 @@ function showTranscriptsToUser(sessionId: string, ws: WebSocket, transcript: str
       text: transcript
     },
     timestamp: new Date(),
-    durationMs: 20 * 1000
+    durationMs: 20 * 1000,
+    forceDisplay: isFinal
   };
 
   ws.send(JSON.stringify(displayRequest));
