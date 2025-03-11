@@ -344,7 +344,7 @@ export class WebSocketService {
         // console.log('####### message', message);
         // console.log('####### isBinary', isBinary);
 
-        if (Buffer.isBuffer(message) || isBinary) {
+        if (Buffer.isBuffer(message) && isBinary) {
           const _buffer = message as Buffer;
           // Convert Node.js Buffer to ArrayBuffer
           const arrayBuf: ArrayBufferLike = _buffer.buffer.slice(
@@ -570,6 +570,8 @@ export class WebSocketService {
             // message: message, // May contain sensitive data so let's not log it. just the event name cause i'm ethical like that 😇
           });
           userSession.logger.info(`Stopping app ${stopMessage.packageName}`);
+          const appConnection = userSession.appConnections.get(stopMessage.packageName);
+          console.log("111111fds", userSession.appConnections);
 
           try {
             const app = await appService.getApp(stopMessage.packageName);
@@ -601,6 +603,14 @@ export class WebSocketService {
             // }
 
             // Remove subscriptions and update state
+            const appConnection = userSession.appConnections.get(stopMessage.packageName);
+            console.log("fds", userSession.appConnections);
+            if (appConnection && appConnection.readyState === WebSocket.OPEN) {
+              userSession.logger.info(`[websocket.service]: Closing app connection for ${stopMessage.packageName}`);
+              appConnection.close(1000, 'App stopped by user');
+            }
+            userSession.appConnections.delete(stopMessage.packageName);       
+
             subscriptionService.removeSubscriptions(userSession, stopMessage.packageName);
 
             const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);

@@ -188,10 +188,10 @@ export class SubscriptionService {
    */
   removeSubscriptions(userSession: UserSession, packageName: string): void {
     const key = this.getKey(userSession.sessionId, packageName);
-    if (userSession.appConnections.has(packageName)) {
-      // TODO send message to user that we are destroying the connection.
-      userSession.appConnections.delete(packageName);
-    }
+    // if (userSession.appConnections.has(packageName)) {
+    //   // TODO send message to user that we are destroying the connection.
+    //   userSession.appConnections.delete(packageName);
+    // }
 
     if (this.subscriptions.has(key)) {
       const currentSubs = Array.from(this.subscriptions.get(key) || []);
