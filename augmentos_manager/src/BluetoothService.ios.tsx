@@ -1042,9 +1042,9 @@ export class BluetoothService extends EventEmitter {
       BluetoothService.bluetoothService.expectedChunks = {};
       BluetoothService.bluetoothService.isLocked = false;
 
-      if (await NotificationService.isNotificationListenerEnabled()) {
-        await NotificationService.stopNotificationListenerService();
-      }
+      // if (await NotificationService.isNotificationListenerEnabled()) {
+      //   await NotificationService.stopNotificationListenerService();
+      // }
       if (BluetoothService.bluetoothService.unsubscribePhoneNotifications) {
         BluetoothService.bluetoothService.unsubscribePhoneNotifications.remove();
       }
