@@ -61,7 +61,7 @@ export class BluetoothService extends EventEmitter {
     // this.sendDataToAugmentOs({"command": ""});
 
     // this gets the dashboard to update:
-    this.sendDataToAugmentOs({"command": "request_status"});
+    this.sendDataToAugmentOs({ "command": "request_status" });
 
     // if (!(await ManagerCoreCommsService.isServiceRunning())){
     //   ManagerCoreCommsService.startService();
@@ -197,13 +197,14 @@ export class BluetoothService extends EventEmitter {
   }
 
   async scanForDevices() {
+    this.sendDataToAugmentOs({ command: "connect_wearable" });
     // this.initializeCoreMessageIntentReader();
 
 
     // this.initializeBleManager();
     // await BleManager.start({ showAlert: false });
     // await BleManager.scan([], 0, true);
-    
+
     // if (!(await this.isBluetoothEnabled())) {
     //   console.log('Bluetooth is not enabled');
     //   return;

@@ -157,7 +157,7 @@ struct ViewState {
 //  let rightServicesWaiter = BooleanWaiter()
   
   // Constants
-  var DEVICE_SEARCH_ID = "74_"
+  var DEVICE_SEARCH_ID = "NOT_SET"
   let DELAY_BETWEEN_CHUNKS_SEND: UInt64 = 16_000_000 // 16ms
   let DELAY_BETWEEN_SENDS_MS: UInt64 = 8_000_000 // 8ms
   let INITIAL_CONNECTION_DELAY_MS: UInt64 = 350_000_000 // 350ms
@@ -241,7 +241,7 @@ struct ViewState {
   }
   
   @objc public func RN_pairById(_ id: String) -> Bool {
-    self.DEVICE_SEARCH_ID = id + "_"
+    self.DEVICE_SEARCH_ID = "_" + id + "_"
     RN_startScan();
     return true
   }
@@ -256,7 +256,7 @@ struct ViewState {
       centralManager.connect(rightPeripheral, options: nil)
     }
     // just return if we don't have both a left and right arm:
-    guard let leftPeripheral, let rightPeripheral else {
+    guard leftPeripheral != nil && rightPeripheral != nil else {
       return false;
     }
     print("Connected to both glasses, starting heartbeat timer and turning off silent mode...");
@@ -404,6 +404,8 @@ struct ViewState {
       centralManager.cancelPeripheralConnection(rightPeripheral)
     }
     
+    // TODO: ios doesn't actually disconnect but it does forget all references to the peripherals
+    
     leftPeripheral = nil
     rightPeripheral = nil
     self.g1Ready = false
@@ -545,7 +547,10 @@ struct ViewState {
       }
       
       // update the main battery level as the lower of the two
-      batteryLevel = min(leftBatteryLevel, rightBatteryLevel)
+      let newBatteryLevel = min(leftBatteryLevel, rightBatteryLevel)
+      if (self.batteryLevel != newBatteryLevel) {
+        self.batteryLevel = min(leftBatteryLevel, rightBatteryLevel)
+      }
       break
     case .BLE_REQ_EVENAI:
       guard data.count > 1 else { break }
@@ -633,7 +638,7 @@ struct ViewState {
 extension ERG1Manager {
   
   // Handle whitelist functionality
-  func getWhitelistChunks() -> [UInt8] {
+  func getWhitelistChunks() -> [[UInt8]] {
     // Define the hardcoded whitelist JSON
     let apps = [
       AppInfo(id: "com.augment.os", name: "AugmentOS"),
@@ -650,23 +655,23 @@ extension ERG1Manager {
   private func createWhitelistJson(apps: [AppInfo]) -> String {
     do {
       // Create app list array
-      var appListArray: [[String: Any]] = []
+      var appList: [[String: Any]] = []
       for app in apps {
         let appDict: [String: Any] = [
           "id": app.id,
           "name": app.name
         ]
-        appListArray.append(appDict)
+        appList.append(appDict)
       }
       
       // Create the whitelist dictionary
       let whitelistDict: [String: Any] = [
-        "calendar_enable": false,
-        "call_enable": false,
-        "msg_enable": false,
-        "ios_mail_enable": false,
+        "calendar_enable": true,
+        "call_enable": true,
+        "msg_enable": true,
+        "ios_mail_enable": true,
         "app": [
-          "list": appListArray,
+          "list": appList,
           "enable": true
         ]
       ]
@@ -685,12 +690,14 @@ extension ERG1Manager {
   }
   
   // Helper function to split JSON into chunks
-  private func createWhitelistChunks(json: String) -> [UInt8] {
+  private func createWhitelistChunks(json: String) -> [[UInt8]] {
     let MAX_CHUNK_SIZE = 180 - 4 // Reserve space for the header
     guard let jsonData = json.data(using: .utf8) else { return [] }
     
     let totalChunks = Int(ceil(Double(jsonData.count) / Double(MAX_CHUNK_SIZE)))
     var chunks: [Data] = []
+    
+    print("jsonData.count = \(jsonData.count), totalChunks = \(totalChunks)")
     
     for i in 0..<totalChunks {
       let start = i * MAX_CHUNK_SIZE
@@ -712,8 +719,12 @@ extension ERG1Manager {
       chunks.append(chunkData)
     }
     
-    // Convert Data objects to [UInt8] array:
-    return chunks.flatMap { Array($0) }
+    var uintChunks: [[UInt8]] = []
+    for chunk in chunks {
+      uintChunks.append(Array(chunk))
+    }
+    return uintChunks
+//    return chunks.flatMap { Array($0) }
   }
   
   func exitAllFunctions(to peripheral: CBPeripheral, characteristic: CBCharacteristic) {
@@ -806,11 +817,17 @@ extension ERG1Manager {
   }
   
   
-  func sendWhitelist() {
+  @objc func RN_sendWhitelist() {
     print("sending whitelist")
     Task {
-      var data = getWhitelistChunks()
-      await sendCommand(data)
+      let whitelistChunks = getWhitelistChunks()
+      for chunk in whitelistChunks {
+        print("sending chunk: \(chunk)")
+        await sendCommand(chunk)
+        // sleep for 100ms before sending the next chunk
+        try? await Task.sleep(nanoseconds: 100_000_000)
+      }
+//      await sendCommand(data)
     }
   }
   
@@ -1433,59 +1450,78 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     return false
   }
   
+  func extractIdNumber(_ string: String) -> Int? {
+      // Pattern to match "G1_" followed by digits, followed by "_"
+      let pattern = "G1_(\\d+)_"
+      
+      // Create a regular expression
+      guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
+          return nil
+      }
+      
+      // Look for matches in the input string
+      let range = NSRange(string.startIndex..<string.endIndex, in: string)
+      guard let match = regex.firstMatch(in: string, options: [], range: range) else {
+          return nil
+      }
+      
+      // Extract the captured group (the digits)
+      if let matchRange = Range(match.range(at: 1), in: string) {
+          let idString = String(string[matchRange])
+          return Int(idString)
+      }
+      
+      return nil
+  }
+  
   public func emitDiscoveredDevice(_ name: String) {
     if name.contains("_L_") || name.contains("_R_") {
-      // exampleName = "Even G1_74_L_57863C
-      // get first 2 characters after the first _:
-      let underscoreIndex = name.firstIndex(of: "_")!
-      let startIndex = name.index(after: underscoreIndex)
-      let endIndex = name.index(underscoreIndex, offsetBy: 3)
-      let parsedNum = name[startIndex..<endIndex]
+      // exampleName = "Even G1_74_L_57863C", "Even G1_3_L_57863C", "Even G1_100_L_57863C"
+      guard let extractedNum = extractIdNumber(name) else { return }
       let res: [String: Any] = [
         "model_name": "Even Realities G1",
-        "device_name": parsedNum,
+        "device_name": "\(extractedNum)",
       ]
       let eventBody: [String: Any] = [
         "compatible_glasses_search_result": res,
       ]
-      
-      print("eventBody \(eventBody)")
-      // TODO: ios fix this (crashes!)
+      // TODO: ios fix this (crashes sometimes!!)
       
       // must convert to string before sending:
-//      do {
-//        let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
-//        if let jsonString = String(data: jsonData, encoding: .utf8) {
-//          RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
-//        }
-//      } catch {
-//        print("Error converting to JSON: \(error)")
-//      }
+      do {
+        let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
+        if let jsonString = String(data: jsonData, encoding: .utf8) {
+          RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+        }
+      } catch {
+        print("Error converting to JSON: \(error)")
+      }
     }
   }
   
   // On BT discovery, automatically connect to both arms if we have them:
   public func centralManager(_ central: CBCentralManager, didDiscover peripheral: CBPeripheral, advertisementData: [String : Any], rssi RSSI: NSNumber) {
     
-    if let name = peripheral.name {
+    guard let name = peripheral.name else { return }
+    guard name.contains("Even G1") else { return }
       
-      print("found peripheral: \(name)")
-      
-      if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
-        print("Found left arm: \(name)")
-        leftPeripheral = peripheral
-      } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
-        print("Found right arm: \(name)")
-        rightPeripheral = peripheral
-      }
-      
-      emitDiscoveredDevice(name);
-      
-      if leftPeripheral != nil && rightPeripheral != nil {
-        central.stopScan()
-        RN_connectGlasses()
-      }
+    print("found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
+    
+    if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
+      print("Found left arm: \(name)")
+      leftPeripheral = peripheral
+    } else if name.contains("_R_") && name.contains(DEVICE_SEARCH_ID) {
+      print("Found right arm: \(name)")
+      rightPeripheral = peripheral
     }
+    
+    emitDiscoveredDevice(name);
+    
+    if leftPeripheral != nil && rightPeripheral != nil {
+      central.stopScan()
+      RN_connectGlasses()
+    }
+    
   }
   
   // Update didConnect to set timestamp
@@ -1550,8 +1586,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     if central.state == .poweredOn {
       print("Bluetooth powered on")
       g1Ready = false
-      // TODO: ios re-enable once stopScan is implemented, because otherwise we discover peripherals too early before RN gets notified:
-      RN_startScan()
+      // only automatically start scanning if we have a SEARCH_ID, otherwise wait for RN to call startScan() itself
+      if (DEVICE_SEARCH_ID != "NOT_SET") {
+        RN_startScan()
+      }
     } else {
       print("Bluetooth is not available.")
     }

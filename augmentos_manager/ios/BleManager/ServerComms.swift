@@ -10,7 +10,7 @@ import Combine
 
 protocol ServerCommsCallback {
   func onConnectionAck()
-  func onAppStateChange(_ apps: [ThirdPartyCloudApp])
+  func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/)
   func onConnectionError(_ error: String)
   func onAuthError()
   func onMicrophoneStateChange(_ isEnabled: Bool)
@@ -96,19 +96,48 @@ class ServerComms {
     audioBuffer.offer(audioData)
   }
   
-  func sendVadStatus(_ isSpeaking: Bool) {
+  private func sendConnectionInit(coreToken: String) {
     do {
+      let initMsg: [String: Any] = [
+        "type": "connection_init",
+        "coreToken": coreToken
+      ]
+      
+      let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+        print("Sent connection_init message")
+      }
+    } catch {
+      print("Error building connection_init JSON: \(error)")
+    }
+  }
+  
+  func sendVadStatus(_ isSpeaking: Bool) {
       let vadMsg: [String: Any] = [
         "type": "VAD",
         "status": isSpeaking
       ]
       
-      let jsonData = try JSONSerialization.data(withJSONObject: vadMsg)
+      let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
       }
-    } catch {
-      print("Error building VAD JSON: \(error)")
+  }
+  
+  
+  func sendBatteryStatus(level: Int, charging: Bool) {
+    let vadMsg: [String: Any] = [
+      "type": "glasses_battery_update",
+      "level": level,
+      "charging": charging,
+      "timestamp": Date().timeIntervalSince1970 * 1000,
+      // TODO: time remaining
+    ]
+    
+    let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
+    if let jsonString = String(data: jsonData, encoding: .utf8) {
+      wsManager.sendText(jsonString)
     }
   }
   
@@ -200,16 +229,15 @@ class ServerComms {
     
     switch type {
     case "connection_ack":
-      print("Received connection_ack")
       startAudioSenderThread()
       if let callback = serverCommsCallback {
-        callback.onAppStateChange(parseAppList(msg: msg))
+        callback.onAppStateChange(parseAppList(msg)/*, parseWhatToStream(msg)*/)
         callback.onConnectionAck()
       }
       
     case "app_state_change":
       if let callback = serverCommsCallback {
-        callback.onAppStateChange(parseAppList(msg: msg))
+        callback.onAppStateChange(parseAppList(msg)/*, parseWhatToStream(msg)*/)
       }
       
     case "connection_error":
@@ -282,6 +310,13 @@ class ServerComms {
       stopAudioSenderThread()
       attemptReconnect()
     }
+    
+    if status == .connected {
+      // Wait a second before sending connection_init (similar to the Java code)
+      DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+        self.sendConnectionInit(coreToken: self.coreToken)
+      }
+    }
   }
   
   // MARK: - Audio Queue Sender Thread
@@ -329,7 +364,16 @@ class ServerComms {
     return url
   }
   
-  func parseAppList(msg: [String: Any]) -> [ThirdPartyCloudApp] {
+  func parseWhatToStream(_ msg: [String: Any]) -> [String] {
+    if let userSession = msg["userSession"] as? [String: Any],
+       let whatToStream = userSession["whatToStream"] as? [String] {
+        return whatToStream
+    }
+    print("whatToStream was not found in server message!")
+    return []
+  }
+  
+  func parseAppList(_ msg: [String: Any]) -> [ThirdPartyCloudApp] {
     var installedApps: [[String: Any]]?
     var activeAppPackageNames: [String]?
     

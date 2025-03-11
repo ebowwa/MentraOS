@@ -149,7 +149,14 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
       console.error('getBatteryStatus() error:', error);
     }
   };
-  
+
+  const sendWhitelist = async () => {
+    try {
+      await AOSModule.sendWhitelist(" ");
+    } catch (error) {
+      console.error('sendWhitelist() error:', error);
+    }
+  };
 
   const sendBrightnessSetting = async (value: number, autoBrightness: boolean) => {
     try {
@@ -263,6 +270,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
               <Button title="Start Merge" onPress={startMerge} />
               <Button title="Start Mira" onPress={startMira} />
               <Button title="Get Battery Status" onPress={getBatteryStatus} />
+              <Button title="Send Whitelist" onPress={sendWhitelist} />
             </View>
 
             <View style={currentThemeStyles.brightnessContainer}>

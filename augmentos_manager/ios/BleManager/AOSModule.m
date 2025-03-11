@@ -181,6 +181,23 @@ RCT_EXPORT_METHOD(
   }
 }
 
+
+RCT_EXPORT_METHOD(
+  sendWhitelist:
+  (NSString *)command
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    [self.aosManager.g1Manager RN_sendWhitelist];
+    resolve(@[@"Whitelist sent!"]);
+  }
+  @catch(NSException *exception) {
+    reject(@"0", exception.description, nil);
+  }
+}
+
 RCT_EXPORT_METHOD(
   sendCommand:
   (NSString *)command

@@ -28,7 +28,11 @@
 
 - (void)startCaptions:(NSString *)token :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
+
+- (void)sendWhitelist:(NSString *)command :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+
 - (void)sendCommand:(NSString *)command :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+
 
 - (void)getBatteryStatus:(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 

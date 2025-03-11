@@ -52,7 +52,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
-  const [isBrightnessAutoEnabled, setBrightnessAutoEnabled] = useState(false);
   const [isSensingEnabled, setIsSensingEnabled] = useState(status.core_info.sensing_enabled);
   const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(
     status.core_info.force_core_onboard_mic
@@ -60,7 +59,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled
   );
-  
+
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
     status.glasses_info?.auto_brightness
   );
@@ -105,10 +104,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         setBrightness(parseBrightness(status.glasses_info.brightness));
       }
       if (status.glasses_info?.auto_brightness != null) {
-        setBrightnessAutoEnabled(status.glasses_info.auto_brightness);
+        setIsAutoBrightnessEnabled(status.glasses_info.auto_brightness);
       }
     }
-  }, [status.glasses_info?.headUp_angle, status.glasses_info?.brightness, status.glasses_info]);
+  }, [status.glasses_info?.headUp_angle, status.glasses_info?.brightness, status.glasses_info?.auto_brightness, status.glasses_info]);
 
   const changeBrightness = async (newBrightness: number) => {
     if (!status.glasses_info) {
@@ -228,7 +227,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const sliderProps = {
     disabled: !status.glasses_info?.model_name ||
       status.glasses_info?.brightness === -1 ||
-      !status.glasses_info.model_name.toLowerCase().includes('even'),
+      !status.glasses_info.model_name.toLowerCase().includes('even') ||
+      status.glasses_info?.auto_brightness,
     style: styles.slider,
     minimumValue: 0,
     maximumValue: 100,
@@ -388,7 +388,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </TouchableOpacity>
 
           {/* Brightness Slider */}
-          <View style={styles.settingItem}>
+          {!(status.glasses_info?.auto_brightness ?? false) && (<View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text
                 style={[
@@ -414,7 +414,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 {...sliderProps}
               />
             </View>
-          </View>
+          </View>)}
 
           <View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
@@ -438,7 +438,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               )}
             </View>
             <Switch
-              value={isContextualDashboardEnabled}
+              value={isAutoBrightnessEnabled}
               onValueChange={toggleAutoBrightness}
               trackColor={switchColors.trackColor}
               thumbColor={switchColors.thumbColor}

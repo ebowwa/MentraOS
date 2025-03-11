@@ -21,10 +21,13 @@ import AVFoundation
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
+//  private var cachedWhatToStream = [String]()
   private var defaultWearable: String? = nil
+  private var deviceName: String = ""
   private var contextualDashboard = true;
   private var headUpAngle = 30;
   private var brightness = 50;
+  private var batteryLevel = -1;
   private var autoBrightness: Bool = false;
   private var sensingEnabled: Bool = false;
   
@@ -60,7 +63,7 @@ import AVFoundation
     // configure on board mic:
     //    setupOnboardMicrophoneIfNeeded()
     
-    // calback to handle actions when the connectionState changes
+    // calback to handle actions when the connectionState changes (when g1 is ready)
     g1Manager.onConnectionStateChanged = { [weak self] in
       guard let self = self else { return }
       print("G1 glasses connection changed to: \(self.g1Manager.g1Ready ? "Connected" : "Disconnected")")
@@ -69,6 +72,14 @@ import AVFoundation
         self.handleDeviceReady()
       }
     }
+    
+    // listen to changes in battery level:
+    g1Manager.$batteryLevel.sink { [weak self] (level: Int) in
+      guard let self = self else { return }
+      guard level >= 0 else { return }
+      self.batteryLevel = level
+      self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+    }.store(in: &cancellables)
   }
   
   // MARK: - Public Methods (for React Native)
@@ -93,8 +104,26 @@ import AVFoundation
     handleRequestStatus()
   }
   
-  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
+//  func checkIfMicNeedsTobeEnabled() {
+//    print("checkIfMicNeedsTobeEnabled() micEnabled: \(self.micEnabled) g1Ready: \(self.g1Manager.g1Ready) whatToStreamCount: \(self.cachedWhatToStream.count)")
+//    // only bother checking if the mic isn't already enabled
+//    guard !self.micEnabled else { return }
+//    // check if device is ready, if not, return:
+//    guard self.g1Manager.g1Ready else { return }
+//    
+//    for what in self.cachedWhatToStream {
+//      if what.contains("transcription") {
+//        onMicrophoneStateChange(true)
+//        break
+//      }
+//    }
+//  }
+  
+  func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/) {
     self.cachedThirdPartyAppList = apps
+//    self.cachedWhatToStream = whatToStream
+    
+//    checkIfMicNeedsTobeEnabled()
     handleRequestStatus()
   }
   
@@ -236,35 +265,9 @@ import AVFoundation
       }
     }
     .store(in: &cancellables)
-    
-    //    // Set up speech recognition callback
-    //    serverComms.setSpeechRecCallback { [weak self] speechJson in
-    //      // Handle speech recognition results if needed
-    //      print("Received speech recognition result: \(speechJson)")
-    //
-    //      // Forward to React Native if needed
-    //      // self?.onSpeechResult?(["result": speechJson])
-    //    }
   }
   
   // MARK: - ServerCommsCallback Implementation
-  
-  //  func onAppStateChange(_ apps: [ThirdPartyCloudApp]) {
-  //    // Convert apps to dictionaries for React Native
-  //    let appDicts = apps.map { app -> [String: Any] in
-  //      return [
-  //        "packageName": app.packageName,
-  //        "name": app.name,
-  //        "description": app.description,
-  //        "webhookURL": app.webhookURL,
-  //        "logoURL": app.logoURL,
-  //        "isRunning": app.isRunning
-  //      ]
-  //    }
-  //
-  //    // React Native callback
-  //    onAppStateChange?(["apps": appDicts])
-  //  }
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     // in any case, clear the vadBuffer:
@@ -354,7 +357,6 @@ import AVFoundation
       case setAuthSecretKey = "set_auth_secret_key"
       case requestStatus = "request_status"
       case connectWearable = "connect_wearable"
-      case connectDefaultWearable = "connect_default_wearable"
       case disconnectWearable = "disconnect_wearable"
       case searchForCompatibleDeviceNames = "search_for_compatible_device_names"
       case enableContextualDashboard = "enable_contextual_dashboard"
@@ -409,7 +411,8 @@ import AVFoundation
           if let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
             handleConnectWearable(modelName: modelName, deviceName: deviceName)
           } else {
-            print("connect_wearable invalid params")
+            print("connect_wearable invalid params, connecting to default device")
+            handleConnectWearable(modelName: "", deviceName: "")
           }
           
         case .disconnectWearable:
@@ -420,12 +423,11 @@ import AVFoundation
         case .forgetSmartGlasses:
           handleDisconnectWearable()
           self.defaultWearable = nil
+          self.deviceName = ""
           self.g1Manager.DEVICE_SEARCH_ID = ""
+          saveSettings()
           handleRequestStatus()
           break
-          
-          //        case .connectDefaultWearable:
-          //          handleConnectDefaultWearable()
           
         case .searchForCompatibleDeviceNames:
           if let params = params, let modelName = params["model_name"] as? String {
@@ -473,8 +475,6 @@ import AVFoundation
           break
         case .unknown:
           print("Unknown command type: \(commandString)")
-          //        case .connectDefaultWearable:
-          //          break
         case .ping:
           break
         case .updateGlassesHeadUpAngle:
@@ -512,9 +512,6 @@ import AVFoundation
           saveSettings()
           handleRequestStatus()// to update the UI
           break
-        case .connectDefaultWearable:
-          // TODO: ios
-          break
         }
       }
     } catch {
@@ -546,7 +543,7 @@ import AVFoundation
     if isGlassesConnected {
       connectedGlasses = [
         "model_name": "Even Realities G1",
-        "battery_life": self.g1Manager.batteryLevel,
+        "battery_life": self.batteryLevel,
         "headUp_angle": self.headUpAngle,
         "brightness": self.brightness,
         "auto_brightness": self.autoBrightness,
@@ -602,6 +599,7 @@ import AVFoundation
   }
   
   private func playStartupSequence() {
+    print("playStartupSequence()")
     // Arrow frames for the animation
     let arrowFrames = ["↑", "↗", "↑", "↖"]
     
@@ -657,11 +655,17 @@ import AVFoundation
     self.handleRequestStatus()
     // load settings and send the animation:
     Task {
+      // send to the server our battery status:
+      self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+      
       // give the glasses some extra time to finish booting:
       try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
       await loadSettings()
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       playStartupSequence()
+      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+      // enable the mic if it was last on:
+      onMicrophoneStateChange(self.micEnabled)
       self.handleRequestStatus()
     }
   }
@@ -671,13 +675,14 @@ import AVFoundation
     
     // just g1's for now:
     Task {
-      print("start connecting...")
       if (deviceName != "") {
+        self.deviceName = deviceName
+        saveSettings()
         self.g1Manager.RN_pairById(deviceName)
+      } else if self.deviceName != "" {
+        self.g1Manager.RN_pairById(self.deviceName)
       } else {
-        // TODO: ios this logic needs some cleaning + the searchID needs to be saved as our "remembered" device somewhere (sharedPreferences / ios equiv.)
-        // only connect to glasses we've paired with before:
-        //        self.g1Manager.RN_setSearchId("_")
+        print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
         self.g1Manager.RN_startScan()
       }
     }
@@ -687,10 +692,10 @@ import AVFoundation
       while !Task.isCancelled {
         print("checking if g1 is ready...")
         if self.g1Manager.g1Ready {
-          handleDeviceReady()
+//          handleDeviceReady()
           break
         } else {
-          // todo: not the cleanest solution here
+          // todo: ios not the cleanest solution here
           self.g1Manager.RN_startScan()
         }
         
@@ -699,17 +704,12 @@ import AVFoundation
     }
   }
   
-  private func handleConnectDefaultWearable() {
-    print("Connecting to default wearable")
-    // TODO: Implement default connection logic
-    // Example: g1Manager.connectToDefaultDevice()
-  }
-  
   
   // MARK: - Settings Management
   
   private enum SettingsKeys {
     static let defaultWearable = "defaultWearable"
+    static let deviceName = "deviceName"
     static let useOnboardMic = "useBoardMic"
     static let contextualDashboard = "contextualDashboard"
     static let headUpAngle = "headUpAngle"
@@ -723,6 +723,7 @@ import AVFoundation
     
     // Save each setting with its corresponding key
     defaults.set(defaultWearable, forKey: SettingsKeys.defaultWearable)
+    defaults.set(deviceName, forKey: SettingsKeys.deviceName)
     defaults.set(useOnboardMic, forKey: SettingsKeys.useOnboardMic)
     defaults.set(contextualDashboard, forKey: SettingsKeys.contextualDashboard)
     defaults.set(headUpAngle, forKey: SettingsKeys.headUpAngle)
@@ -742,6 +743,7 @@ import AVFoundation
     
     // Load each setting with appropriate type handling
     defaultWearable = defaults.string(forKey: SettingsKeys.defaultWearable)
+    deviceName = defaults.string(forKey: SettingsKeys.deviceName) ?? ""
     useOnboardMic = defaults.bool(forKey: SettingsKeys.useOnboardMic)
     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
@@ -763,8 +765,8 @@ import AVFoundation
       self.g1Manager.RN_setHeadUpAngle(headUpAngle)
       try? await Task.sleep(nanoseconds: 100_000_000)
       self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
-      try? await Task.sleep(nanoseconds: 100_000_000)
-      self.g1Manager.RN_getBatteryStatus()
+//      try? await Task.sleep(nanoseconds: 100_000_000)
+//      self.g1Manager.RN_getBatteryStatus()
     }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +

@@ -128,8 +128,8 @@ class G1Text {
         lines1 = Array(lines1.prefix(G1Text.LINES_PER_SCREEN))
         lines2 = Array(lines2.prefix(G1Text.LINES_PER_SCREEN))
 
-        print("Lines1: \(lines1)")
-        print("Lines2: \(lines2)")
+//        print("Lines1: \(lines1)")
+//        print("Lines2: \(lines2)")
         
         // Get precise space width
         let spaceWidth = calculateTextWidth(" ")
@@ -251,7 +251,7 @@ class G1Text {
         // Split by newlines first
         let rawLines = processedText.components(separatedBy: "\n")
         
-        print("Splitting text into lines...\(rawLines)")
+//        print("Splitting text into lines...\(rawLines)")
         
         for rawLine in rawLines {
             // Add empty lines for newlines
@@ -270,8 +270,8 @@ class G1Text {
                 // Calculate width of the entire remaining text
                 let lineWidth = calculateSubstringWidth(rawLine, start: startIndex, end: endIndex)
                 
-                print("Line length: \(rawLine)")
-                print("Calculating line width: \(lineWidth)")
+//                print("Line length: \(rawLine)")
+//                print("Calculating line width: \(lineWidth)")
                 
                 // If entire line fits, add it and move to next line
                 if lineWidth <= maxDisplayWidth {

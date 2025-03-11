@@ -61,11 +61,6 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     
     // Start receiving messages
     receiveMessage()
-    
-    // Wait a second before sending connection_init (similar to the Java code)
-    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-      self.sendConnectionInit(coreToken: coreToken)
-    }
   }
   
   func disconnect() {
@@ -106,41 +101,6 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
         print("Error sending binary data: \(error)")
       }
     }
-  }
-  
-  private func sendConnectionInit(coreToken: String) {
-    do {
-      let initMsg: [String: Any] = [
-        "type": "connection_init",
-        "coreToken": coreToken
-      ]
-      
-      let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
-      if let jsonString = String(data: jsonData, encoding: .utf8) {
-        sendText(jsonString)
-        print("Sent connection_init message")
-      }
-    } catch {
-      print("Error building connection_init JSON: \(error)")
-    }
-  }
-  
-  public func sendVadStatus(_ isSpeaking: Bool) {
-    
-    do {
-      let initMsg: [String: Any] = [
-        "type": "VAD",
-        "status": isSpeaking
-      ]
-      
-      let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
-      if let jsonString = String(data: jsonData, encoding: .utf8) {
-        sendText(jsonString)
-      }
-    } catch {
-      print("Error building connection_init JSON: \(error)")
-    }
-    
   }
   
   private func receiveMessage() {
