@@ -60,6 +60,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled
   );
+  
+  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
+    status.glasses_info?.auto_brightness
+  );
+
   const [brightness, setBrightness] = useState<number | null>(null);
 
   // -- HEAD UP ANGLE STATES --
@@ -83,6 +88,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     const newVal = !isContextualDashboardEnabled;
     await BluetoothService.getInstance().sendToggleContextualDashboard(newVal);
     setIsContextualDashboardEnabled(newVal);
+  };
+
+  const toggleAutoBrightness = async () => {
+    const newVal = !isAutoBrightnessEnabled;
+    await BluetoothService.getInstance().setGlassesBrightnessMode(brightness, newVal);
+    setIsAutoBrightnessEnabled(newVal);
   };
 
   useEffect(() => {
@@ -210,13 +221,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   // Condition to disable HeadUp Angle setting
   const disableHeadUpAngle =
     !status.glasses_info?.model_name ||
-    status.glasses_info?.brightness === '-' ||
+    status.glasses_info?.brightness === -1 ||
     !status.glasses_info.model_name.toLowerCase().includes('even');
 
   // Fixed slider props to avoid warning
   const sliderProps = {
     disabled: !status.glasses_info?.model_name ||
-      status.glasses_info?.brightness === '-' ||
+      status.glasses_info?.brightness === -1 ||
       !status.glasses_info.model_name.toLowerCase().includes('even'),
     style: styles.slider,
     minimumValue: 0,
@@ -428,7 +439,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </View>
             <Switch
               value={isContextualDashboardEnabled}
-              onValueChange={toggleContextualDashboard}
+              onValueChange={toggleAutoBrightness}
               trackColor={switchColors.trackColor}
               thumbColor={switchColors.thumbColor}
               ios_backgroundColor={switchColors.ios_backgroundColor}

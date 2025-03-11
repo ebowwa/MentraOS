@@ -548,7 +548,8 @@ import AVFoundation
         "model_name": "Even Realities G1",
         "battery_life": self.g1Manager.batteryLevel,
         "headUp_angle": self.headUpAngle,
-        "brightness": self.brightness
+        "brightness": self.brightness,
+        "auto_brightness": self.autoBrightness,
       ]
       self.defaultWearable = "Even Realities G1"
     }

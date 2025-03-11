@@ -945,6 +945,12 @@ export class BluetoothService extends EventEmitter {
     });
   }
 
+  async sendToggleAutoBrightness(enabled: boolean) {
+    console.log('sendToggleAutoBrightness');
+    return await this.sendDataToAugmentOs({
+      command: 'enable_auto_brightness',
+      params: {
+        enabled: enabled,
   async setGlassesBrightnessMode(brightness: number, autoLight: boolean) {
     console.log('setGlassesBrightnessMode');
     return await this.sendDataToAugmentOs({
