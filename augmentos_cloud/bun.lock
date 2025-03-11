@@ -71,6 +71,7 @@
         "openai": "^4.28.0",
         "posthog-node": "^4.6.0",
         "uuid": "^11.0.5",
+        "ws": "^8.18.1",
       },
       "devDependencies": {
         "@types/bcrypt": "^5.0.0",
