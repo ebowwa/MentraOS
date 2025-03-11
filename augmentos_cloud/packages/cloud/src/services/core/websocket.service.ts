@@ -344,12 +344,12 @@ export class WebSocketService {
         // console.log('####### message', message);
         // console.log('####### isBinary', isBinary);
 
-        if (Buffer.isBuffer(message) && isBinary) {
-
+        if (Buffer.isBuffer(message) || isBinary) {
+          const _buffer = message as Buffer;
           // Convert Node.js Buffer to ArrayBuffer
-          const arrayBuf: ArrayBufferLike = message.buffer.slice(
-            message.byteOffset,
-            message.byteOffset + message.byteLength
+          const arrayBuf: ArrayBufferLike = _buffer.buffer.slice(
+            _buffer.byteOffset,
+            _buffer.byteOffset + _buffer.byteLength
           );
           // Pass the ArrayBuffer to Azure Speech or wherever you need it
           const _arrayBuffer = await sessionService.handleAudioData(userSession, arrayBuf);
