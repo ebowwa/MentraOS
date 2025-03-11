@@ -176,6 +176,57 @@ export class WebSocketService {
     }, delay);
   }
 
+ /**
+   * 📊 Generates the current app status for a user session
+   * @param userSession - User session to generate status for
+   * @returns Promise resolving to App State Change object ready to be sent to glasses or API
+   */
+ async generateAppStateStatus(userSession: UserSession): Promise<AppStateChange> {
+  // Get the list of active apps
+  const activeAppPackageNames = Array.from(new Set(userSession.activeAppSessions));
+
+  // Create a map of active apps and what stream types they are subscribed to
+  const appSubscriptions = new Map<string, ExtendedStreamType[]>(); // packageName -> streamTypes
+  const whatToStream: Set<ExtendedStreamType> = new Set(); // packageName -> streamTypes
+
+  for (const packageName of activeAppPackageNames) {
+    const subscriptions = subscriptionService.getAppSubscriptions(userSession.sessionId, packageName);
+    appSubscriptions.set(packageName, subscriptions);
+    for (const subscription of subscriptions) {
+      whatToStream.add(subscription);
+    }
+  }
+
+  // Dashboard subscriptions
+  const dashboardSubscriptions = subscriptionService.getAppSubscriptions(
+    userSession.sessionId, 
+    systemApps.dashboard.packageName
+  );
+  appSubscriptions.set(systemApps.dashboard.packageName, dashboardSubscriptions);
+  for (const subscription of dashboardSubscriptions) {
+    whatToStream.add(subscription);
+  }
+
+  const userSessionData = {
+    sessionId: userSession.sessionId,
+    userId: userSession.userId,
+    startTime: userSession.startTime,
+    installedApps: await appService.getAllApps(userSession.userId),
+    appSubscriptions: Object.fromEntries(appSubscriptions),
+    activeAppPackageNames,
+    whatToStream: Array.from(new Set(whatToStream)),
+  };
+
+  const appStateChange: AppStateChange = {
+    type: CloudToGlassesMessageType.APP_STATE_CHANGE,
+    sessionId: userSession.sessionId,
+    userSession: userSessionData,
+    timestamp: new Date()
+  };
+
+  return appStateChange;
+}
+
   /**
    * 🚀🪝 Initiates a new TPA session and triggers the TPA's webhook.
    * @param userSession - userSession object for the user initiating the TPA session
@@ -187,9 +238,9 @@ export class WebSocketService {
     // check if it's already loading or running, if so return the session id.
     if (userSession.loadingApps.has(packageName) || userSession.activeAppSessions.includes(packageName)) {
       userSession.logger.info(`[websocket.service]: 🚀🚀🚀 App ${packageName} already loading or running\n `);
-
       return userSession.sessionId + '-' + packageName;
     }
+    
     const app = await appService.getApp(packageName);
     if (!app) {
       userSession.logger.error(`[websocket.service]: 🚀🚀🚀 App ${packageName} not found\n `);
@@ -226,13 +277,118 @@ export class WebSocketService {
         }
       }, TPA_SESSION_TIMEOUT_MS);
 
+      // Add the app to active sessions after successfully starting it
+      if (!userSession.activeAppSessions.includes(packageName)) {
+        userSession.activeAppSessions.push(packageName);
+      }
+      
+      // Remove from loading apps after successfully starting
       userSession.loadingApps.delete(packageName);
       userSession.logger.info(`[websocket.service]: Successfully started app ${packageName}`);
+      
+      // Update database
+      try {
+        const user = await User.findByEmail(userSession.userId);
+        if (user) {
+          await user.addRunningApp(packageName);
+        }
+      } catch (error) {
+        userSession.logger.error(`Error updating user's running apps:`, error);
+      }
+
+      // Check if we need to update microphone state for media subscriptions
+      if (userSession.websocket) {
+        const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
+        if (mediaSubscriptions) {
+          userSession.logger.info('Media subscriptions detected after starting app, updating microphone state');
+          this.sendDebouncedMicrophoneStateChange(userSession.websocket, userSession, true);
+        }
+      }
+      
       return userSession.sessionId + '-' + packageName;
     } catch (error) {
-      // this.pendingTpaSessions.delete(tpaSessionId);
       userSession.logger.error(`[websocket.service]: Error starting app ${packageName}:`, error);
       userSession.loadingApps.delete(packageName);
+      throw error;
+    }
+  }
+
+   /**
+   * 🛑 Stops an app session and handles cleanup.
+   * @param userSession - userSession object for the user stopping the app
+   * @param packageName - Package name of the app to stop
+   * @returns Promise resolving to boolean indicating success
+   * @throws Error if app not found or stop fails
+   */
+   async stopAppSession(userSession: UserSession, packageName: string): Promise<boolean> {
+    userSession.logger.info(`\n[websocket.service]\n🛑 Stopping app ${packageName} for user ${userSession.userId}\n`);
+
+    const app = await appService.getApp(packageName);
+    if (!app) {
+      userSession.logger.error(`\n[websocket.service]\n🛑 App ${packageName} not found\n `);
+      throw new Error(`App ${packageName} not found`);
+    }
+
+    try {
+      // Remove subscriptions
+      subscriptionService.removeSubscriptions(userSession, packageName);
+
+      // Remove app from active list
+      userSession.activeAppSessions = userSession.activeAppSessions.filter(
+        (appName) => appName !== packageName
+      );
+
+      // Optional: Trigger stop webhook if needed
+      // Uncomment this if you want to implement stop webhook calls
+      /*
+      try {
+        const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+        await this.appService.triggerStopWebhook(
+          app.webhookURL,
+          {
+            type: 'stop_request',
+            sessionId: tpaSessionId,
+            userId: userSession.userId,
+            reason: 'user_disabled',
+            timestamp: new Date().toISOString()
+          }
+        );
+      } catch (error) {
+        userSession.logger.error(`Error calling stop webhook for ${packageName}:`, error);
+        // Continue with cleanup even if webhook fails
+      }
+      */
+
+      // Update user's running apps in database
+      try {
+        const user = await User.findByEmail(userSession.userId);
+        if (user) {
+          await user.removeRunningApp(packageName);
+        }
+      } catch (error) {
+        userSession.logger.error(`Error updating user's running apps:`, error);
+      }
+
+      // Update the display
+      userSession.displayManager.handleAppStop(packageName, userSession);
+
+      // Check if we need to update microphone state based on remaining apps
+      if (userSession.websocket) {
+        const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
+        if (!mediaSubscriptions) {
+          userSession.logger.info('No media subscriptions after stopping app, updating microphone state');
+          this.sendDebouncedMicrophoneStateChange(userSession.websocket, userSession, false);
+        }
+      }
+
+      userSession.logger.info(`Successfully stopped app ${packageName}`);
+      return true;
+    } catch (error) {
+      userSession.logger.error(`Error stopping app ${packageName}:`, error);
+      // Ensure app is removed from active sessions even if an error occurs
+      userSession.activeAppSessions = userSession.activeAppSessions.filter(
+        (appName) => appName !== packageName
+      );
       throw error;
     }
   }
@@ -519,137 +675,48 @@ export class WebSocketService {
         case 'start_app': {
           const startMessage = message as StartApp;
           userSession.logger.info(`🚀🚀🚀[START_APP]: Starting app ${startMessage.packageName}`);
-          userSession.logger.info(`🚀🚀🚀[START_APP]: ${JSON.stringify(message)}`);
-
-          await this.startAppSession(userSession, startMessage.packageName);
-
-          userSession.activeAppSessions.push(startMessage.packageName);
-
-          const clientResponse: AppStateChange = {
-            type: CloudToGlassesMessageType.APP_STATE_CHANGE,
-            sessionId: userSession.sessionId,
-            userSession: await sessionService.transformUserSessionForClient(userSession),
-            timestamp: new Date()
-          };
-          ws.send(JSON.stringify(clientResponse));
-
-          PosthogService.trackEvent(`start_app:${startMessage.packageName}`, userSession.userId, {
-            sessionId: userSession.sessionId,
-            eventType: message.type,
-            timestamp: new Date().toISOString()
-          });
-
-          // Update users running apps in the database.
+          
           try {
-            const user = await User.findByEmail(userSession.userId);
-            if (user) {
-              await user.addRunningApp(startMessage.packageName);
-            }
-          }
-          catch (error) {
-            userSession.logger.error(`[websocket.service] Error updating user running apps:`, error);
-          }
-
-          const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
-          userSession?.logger.info('Media subscriptions:', mediaSubscriptions);
-
-          if (mediaSubscriptions) {
-            userSession.logger.info('Media subscriptions, sending microphone state change message');
-            this.sendDebouncedMicrophoneStateChange(ws, userSession, true);
+            // Start the app using our service method
+            await this.startAppSession(userSession, startMessage.packageName);
+            
+            // Generate and send app state to the glasses
+            const appStateChange = await this.generateAppStateStatus(userSession);
+            ws.send(JSON.stringify(appStateChange));
+            
+            // Track event
+            PosthogService.trackEvent(`start_app:${startMessage.packageName}`, userSession.userId, {
+              sessionId: userSession.sessionId,
+              eventType: message.type,
+              timestamp: new Date().toISOString()
+            });
+          } catch (error) {
+            userSession.logger.error(`Error starting app ${startMessage.packageName}:`, error);
           }
           break;
         }
 
-        // In handleGlassesMessage method, update the 'stop_app' case:
         case 'stop_app': {
           const stopMessage = message as StopApp;
-          PosthogService.trackEvent(`stop_app:${stopMessage.packageName}`, userSession.userId, {
-            sessionId: userSession.sessionId,
-            eventType: message.type,
-            timestamp: new Date().toISOString()
-            // message: message, // May contain sensitive data so let's not log it. just the event name cause i'm ethical like that 😇
-          });
           userSession.logger.info(`Stopping app ${stopMessage.packageName}`);
-          const appConnection = userSession.appConnections.get(stopMessage.packageName);
-          console.log("111111fds", userSession.appConnections);
-
+          
           try {
-            const app = await appService.getApp(stopMessage.packageName);
-            if (!app) throw new Error(`App ${stopMessage.packageName} not found`);
-
-            // Call stop webhook 
-            // TODO(isaiah): Implement stop webhook in TPA typescript client lib.
-            // const tpaSessionId = `${userSession.sessionId}-${stopMessage.packageName}`;
-
-            // try {
-            //   await this.appService.triggerStopWebhook(
-            //     app.webhookURL,
-            //     {
-            //       type: 'stop_request',
-            //       sessionId: tpaSessionId,
-            //       userId: userSession.userId,
-            //       reason: 'user_disabled',
-            //       timestamp: new Date().toISOString()
-            //     }
-            //   );
-            // }
-            // catch (error: AxiosError | unknown) {
-            //   // console.error(`\n\n[stop_app]:\nError stopping app ${stopMessage.packageName}:\n${(error as any)?.message}\n\n`);
-            //   // Update state even if webhook fails
-            //   // TODO(isaiah): This is a temporary fix. We should handle this better. Also implement stop webhook in TPA typescript client lib.
-            //   userSession.activeAppSessions = userSession.activeAppSessions.filter(
-            //     (packageName) => packageName !== stopMessage.packageName
-            //   );
-            // }
-
-            // Remove subscriptions and update state
-            const appConnection = userSession.appConnections.get(stopMessage.packageName);
-            console.log("fds", userSession.appConnections);
-            if (appConnection && appConnection.readyState === WebSocket.OPEN) {
-              userSession.logger.info(`[websocket.service]: Closing app connection for ${stopMessage.packageName}`);
-              appConnection.close(1000, 'App stopped by user');
-            }
-            userSession.appConnections.delete(stopMessage.packageName);       
-
-            subscriptionService.removeSubscriptions(userSession, stopMessage.packageName);
-
-            const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
-            userSession.logger.info('Media subscriptions:', mediaSubscriptions);
-
-            if (!mediaSubscriptions) {
-              userSession.logger.info('No media subscriptions, sending microphone state change message');
-              this.sendDebouncedMicrophoneStateChange(ws, userSession, false);
-            }
-
-            // Remove app from active list
-            userSession.activeAppSessions = userSession.activeAppSessions.filter(
-              (packageName) => packageName !== stopMessage.packageName
-            );
-
-            const clientResponse: AppStateChange = {
-              type: CloudToGlassesMessageType.APP_STATE_CHANGE,
+            // Track event before stopping
+            PosthogService.trackEvent(`stop_app:${stopMessage.packageName}`, userSession.userId, {
               sessionId: userSession.sessionId,
-              userSession: await sessionService.transformUserSessionForClient(userSession),
-              timestamp: new Date()
-            };
-            ws.send(JSON.stringify(clientResponse));
+              eventType: message.type,
+              timestamp: new Date().toISOString()
+            });
+            
+            // Stop the app using our service method
+            await this.stopAppSession(userSession, stopMessage.packageName);
 
-            // Update users running apps in the database.
-            try {
-              const user = await User.findByEmail(userSession.userId);
-              if (user) {
-                await user.removeRunningApp(stopMessage.packageName);
-              }
-            }
-            catch (error) {
-              userSession.logger.error(`[websocket.service]: Error updating user running apps:`, error);
-            }
-
-            // Update the display
-            userSession.displayManager.handleAppStop(stopMessage.packageName, userSession);
+            // Generate and send updated app state to the glasses
+            const appStateChange = await this.generateAppStateStatus(userSession);
+            ws.send(JSON.stringify(appStateChange));
           } catch (error) {
             userSession.logger.error(`Error stopping app ${stopMessage.packageName}:`, error);
-            // Update state even if webhook fails
+            // Ensure app is removed from active sessions even if an error occurs
             userSession.activeAppSessions = userSession.activeAppSessions.filter(
               (packageName) => packageName !== stopMessage.packageName
             );
