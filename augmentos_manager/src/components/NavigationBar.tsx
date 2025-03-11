@@ -66,17 +66,6 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
         />
       </TouchableOpacity>
 
-      {/* iOS Testing Page */}
-      {/* <TouchableOpacity
-        onPress={() => navigation.navigate('Testing')}
-        style={styles.iconWrapper}>
-        <MaterialCommunityIcons
-          name={icons.home}
-          size={iconSize}
-          color={iconColor}
-        />
-      </TouchableOpacity> */}
-
       {/* Glasses Mirror Icon */}
       <TouchableOpacity
         onPress={() => navigation.navigate('GlassesMirror')}
@@ -103,6 +92,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
       {/* Settings Icon */}
       <TouchableOpacity
         onPress={() => navigation.navigate('SettingsPage')}
+        onLongPress={() => navigation.navigate('Testing')}// super secret testing page
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
           name={icons.settings}

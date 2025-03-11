@@ -151,10 +151,10 @@ struct ViewState {
   let sendQueueLock = NSLock()
   
   // Waiters for synchronization
-  let leftWaiter = BooleanWaiter()
-  let rightWaiter = BooleanWaiter()
-  let leftServicesWaiter = BooleanWaiter()
-  let rightServicesWaiter = BooleanWaiter()
+//  let leftWaiter = BooleanWaiter()
+//  let rightWaiter = BooleanWaiter()
+//  let leftServicesWaiter = BooleanWaiter()
+//  let rightServicesWaiter = BooleanWaiter()
   
   // Constants
   var DEVICE_SEARCH_ID = "74_"
@@ -482,16 +482,16 @@ struct ViewState {
       let command = data[0]
       let response = data.count > 1 ? data[1] : 0
       
-      // Check for ACK response in various commands
-      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
-        if peripheral == rightPeripheral {
-          rightWaiter.setFalse()
-          print("Right glass acknowledged")
-        } else if peripheral == leftPeripheral {
-          leftWaiter.setFalse()
-          print("Left glass acknowledged")
-        }
-      }
+//      // Check for ACK response in various commands
+//      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
+//        if peripheral == rightPeripheral {
+//          rightWaiter.setFalse()
+//          print("Right glass acknowledged")
+//        } else if peripheral == leftPeripheral {
+//          leftWaiter.setFalse()
+//          print("Left glass acknowledged")
+//        }
+//      }
     }
     
     switch Commands(rawValue: command) {
@@ -552,11 +552,9 @@ struct ViewState {
       let acknowledge = CommandResponse(rawValue: data[1])
       if acknowledge == .ACK {
         if peripheral == self.rightPeripheral {
-          rightWaiter.setFalse()
           self.displayingResponseAiRightAck = true
         }
         if peripheral == self.leftPeripheral {
-          leftWaiter.setFalse()
           self.displayingResponseAiLeftAck = true
         }
         receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
@@ -817,161 +815,161 @@ extension ERG1Manager {
   }
   
   // Non-blocking function to add new send request
-  func sendDataSequentially(_ data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
-    let requests = [SendRequest(data: data, onlyLeft: onlyLeft, onlyRight: onlyRight, waitTime: waitTime)]
-    
-    sendQueueLock.lock()
-    sendQueue.append(requests)
-    sendQueueLock.unlock()
-    
-    startWorkerIfNeeded()
-  }
+//  func sendDataSequentially(_ data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
+//    let requests = [SendRequest(data: data, onlyLeft: onlyLeft, onlyRight: onlyRight, waitTime: waitTime)]
+//    
+//    sendQueueLock.lock()
+//    sendQueue.append(requests)
+//    sendQueueLock.unlock()
+//    
+//    startWorkerIfNeeded()
+//  }
   
   // Non-blocking function to add multiple chunks
-  func sendDataSequentially(_ chunks: [Data], onlyLeft: Bool = false, onlyRight: Bool = false) {
-    let requests = chunks.map { SendRequest(data: $0, onlyLeft: onlyLeft, onlyRight: onlyRight) }
-    
-    sendQueueLock.lock()
-    sendQueue.append(requests)
-    sendQueueLock.unlock()
-    
-    startWorkerIfNeeded()
-  }
+//  func sendDataSequentially(_ chunks: [Data], onlyLeft: Bool = false, onlyRight: Bool = false) {
+//    let requests = chunks.map { SendRequest(data: $0, onlyLeft: onlyLeft, onlyRight: onlyRight) }
+//    
+//    sendQueueLock.lock()
+//    sendQueue.append(requests)
+//    sendQueueLock.unlock()
+//    
+//    startWorkerIfNeeded()
+//  }
   
   // Start the worker if it's not already running
-  func startWorkerIfNeeded() {
-    sendQueueLock.lock()
-    defer { sendQueueLock.unlock() }
-    
-    if !isWorkerRunning {
-      isWorkerRunning = true
-      Task {
-        await processQueue()
-      }
-    }
-  }
+//  func startWorkerIfNeeded() {
+//    sendQueueLock.lock()
+//    defer { sendQueueLock.unlock() }
+//    
+//    if !isWorkerRunning {
+//      isWorkerRunning = true
+//      Task {
+//        await processQueue()
+//      }
+//    }
+//  }
   
   // Process the queue in background
-  func processQueue() async {
-    print("Starting queue processing")
-    
-    // First wait until services are setup
-    print("Waiting for services to be ready")
-    let servicesReadyTimeout = DispatchTime.now() + .seconds(10)
-    
-    // Wait until both peripherals are ready to receive data
-    let leftReady = await withCheckedContinuation { continuation in
-      Task {
-        let result = leftServicesWaiter.waitWhileTrue(servicesReadyTimeout)
-        continuation.resume(returning: result)
-      }
-    }
-    
-    let rightReady = await withCheckedContinuation { continuation in
-      Task {
-        let result = rightServicesWaiter.waitWhileTrue(servicesReadyTimeout)
-        continuation.resume(returning: result)
-      }
-    }
-    
-    if !leftReady || !rightReady {
-      print("Timed out waiting for services to be ready")
-      isWorkerRunning = false
-      return
-    }
-    
-    print("Services are ready, processing queue")
-    
-    // Process each request in the queue
-    while true {
-      // Pop the next batch of requests
-      sendQueueLock.lock()
-      let requests = sendQueue.isEmpty ? nil : sendQueue.removeFirst()
-      sendQueueLock.unlock()
-      
-      guard let requests = requests, !requests.isEmpty else {
-        // No more requests, exit the worker
-        isWorkerRunning = false
-        print("No more requests, worker stopped")
-        return
-      }
-      
-      // Process each request in the batch
-      for request in requests {
-        // Force an initial delay after connection
-        let timeSinceConnection = Date().timeIntervalSince(lastConnectionTimestamp)
-        if timeSinceConnection < 0.35 { // 350ms
-          try? await Task.sleep(nanoseconds: INITIAL_CONNECTION_DELAY_MS - UInt64(timeSinceConnection * 1_000_000_000))
-        }
-        
-        var leftSuccess = true
-        var rightSuccess = true
-        
-        // Send to left glass if requested
-        if !request.onlyRight, let leftGlassGatt = leftPeripheral, let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlassGatt), g1Ready {
-          leftWaiter.setTrue()
-          print("sending to left");
-          
-          // Send the data and wait for completion
-          leftGlassGatt.writeValue(request.data, for: leftTxChar, type: .withResponse)
-          
-          // Wait for acknowledgment
-          let leftAckTimeout = DispatchTime.now() + .milliseconds(300)
-          leftSuccess = await withCheckedContinuation { continuation in
-            Task {
-              let result = leftWaiter.waitWhileTrue(leftAckTimeout)
-              continuation.resume(returning: result)
-            }
-          }
-          
-          if !leftSuccess {
-            print("Left glass write timed out")
-          }
-        }
-        
-        // Add small delay between sending to left and right
-        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_SENDS_MS)
-        
-        // Send to right glass if requested
-        if !request.onlyLeft, let rightGlassGatt = rightPeripheral, let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlassGatt), g1Ready {
-          rightWaiter.setTrue()
-          
-          print("sending to right");
-          
-          // Send the data and wait for completion
-          rightGlassGatt.writeValue(request.data, for: rightTxChar, type: .withResponse)
-          
-          // Wait for acknowledgment
-          let rightAckTimeout = DispatchTime.now() + .milliseconds(300)
-          rightSuccess = await withCheckedContinuation { continuation in
-            Task {
-              let result = rightWaiter.waitWhileTrue(rightAckTimeout)
-              continuation.resume(returning: result)
-            }
-          }
-          
-          if !rightSuccess {
-            print("Right glass write timed out")
-          }
-        }
-        
-        // Add delay between chunks
-        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_CHUNKS_SEND)
-        
-        // Add custom wait time if specified
-        if request.waitTime > 0 {
-          try? await Task.sleep(nanoseconds: UInt64(request.waitTime) * 1_000_000)
-        }
-        
-        // If both glasses failed, we might want to try again or exit
-        if !leftSuccess && !rightSuccess {
-          print("Both glasses failed to acknowledge")
-          // Consider reinserting the request or notifying failure
-        }
-      }
-    }
-  }
-  
+//  func processQueue() async {
+//    print("Starting queue processing")
+//    
+//    // First wait until services are setup
+//    print("Waiting for services to be ready")
+//    let servicesReadyTimeout = DispatchTime.now() + .seconds(10)
+//    
+//    // Wait until both peripherals are ready to receive data
+//    let leftReady = await withCheckedContinuation { continuation in
+//      Task {
+//        let result = leftServicesWaiter.waitWhileTrue(servicesReadyTimeout)
+//        continuation.resume(returning: result)
+//      }
+//    }
+//    
+//    let rightReady = await withCheckedContinuation { continuation in
+//      Task {
+//        let result = rightServicesWaiter.waitWhileTrue(servicesReadyTimeout)
+//        continuation.resume(returning: result)
+//      }
+//    }
+//    
+//    if !leftReady || !rightReady {
+//      print("Timed out waiting for services to be ready")
+//      isWorkerRunning = false
+//      return
+//    }
+//    
+//    print("Services are ready, processing queue")
+//    
+//    // Process each request in the queue
+//    while true {
+//      // Pop the next batch of requests
+//      sendQueueLock.lock()
+//      let requests = sendQueue.isEmpty ? nil : sendQueue.removeFirst()
+//      sendQueueLock.unlock()
+//      
+//      guard let requests = requests, !requests.isEmpty else {
+//        // No more requests, exit the worker
+//        isWorkerRunning = false
+//        print("No more requests, worker stopped")
+//        return
+//      }
+//      
+//      // Process each request in the batch
+//      for request in requests {
+//        // Force an initial delay after connection
+//        let timeSinceConnection = Date().timeIntervalSince(lastConnectionTimestamp)
+//        if timeSinceConnection < 0.35 { // 350ms
+//          try? await Task.sleep(nanoseconds: INITIAL_CONNECTION_DELAY_MS - UInt64(timeSinceConnection * 1_000_000_000))
+//        }
+//        
+//        var leftSuccess = true
+//        var rightSuccess = true
+//        
+//        // Send to left glass if requested
+//        if !request.onlyRight, let leftGlassGatt = leftPeripheral, let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlassGatt), g1Ready {
+//          leftWaiter.setTrue()
+//          print("sending to left");
+//          
+//          // Send the data and wait for completion
+//          leftGlassGatt.writeValue(request.data, for: leftTxChar, type: .withResponse)
+//          
+//          // Wait for acknowledgment
+//          let leftAckTimeout = DispatchTime.now() + .milliseconds(300)
+//          leftSuccess = await withCheckedContinuation { continuation in
+//            Task {
+//              let result = leftWaiter.waitWhileTrue(leftAckTimeout)
+//              continuation.resume(returning: result)
+//            }
+//          }
+//          
+//          if !leftSuccess {
+//            print("Left glass write timed out")
+//          }
+//        }
+//        
+//        // Add small delay between sending to left and right
+//        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_SENDS_MS)
+//        
+//        // Send to right glass if requested
+//        if !request.onlyLeft, let rightGlassGatt = rightPeripheral, let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlassGatt), g1Ready {
+//          rightWaiter.setTrue()
+//          
+//          print("sending to right");
+//          
+//          // Send the data and wait for completion
+//          rightGlassGatt.writeValue(request.data, for: rightTxChar, type: .withResponse)
+//          
+//          // Wait for acknowledgment
+//          let rightAckTimeout = DispatchTime.now() + .milliseconds(300)
+//          rightSuccess = await withCheckedContinuation { continuation in
+//            Task {
+//              let result = rightWaiter.waitWhileTrue(rightAckTimeout)
+//              continuation.resume(returning: result)
+//            }
+//          }
+//          
+//          if !rightSuccess {
+//            print("Right glass write timed out")
+//          }
+//        }
+//        
+//        // Add delay between chunks
+//        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_CHUNKS_SEND)
+//        
+//        // Add custom wait time if specified
+//        if request.waitTime > 0 {
+//          try? await Task.sleep(nanoseconds: UInt64(request.waitTime) * 1_000_000)
+//        }
+//        
+//        // If both glasses failed, we might want to try again or exit
+//        if !leftSuccess && !rightSuccess {
+//          print("Both glasses failed to acknowledge")
+//          // Consider reinserting the request or notifying failure
+//        }
+//      }
+//    }
+//  }
+//  
   public func sendText(text: String, newScreen: Bool = true, currentPage: UInt8 = 1, maxPages: UInt8 = 1, isCommand: Bool = false, status: DisplayStatus = .NORMAL_TEXT) async -> Bool {
     print("Starting sendText with: \(text)")
     print("Left peripheral connected: \(leftPeripheral != nil)")
@@ -1540,10 +1538,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       
       // Mark the services as ready
       if peripheral == leftPeripheral {
-        leftServicesWaiter.setFalse()
         print("Left glass services discovered and ready")
       } else if peripheral == rightPeripheral {
-        rightServicesWaiter.setFalse()
         print("Right glass services discovered and ready")
       }
     }

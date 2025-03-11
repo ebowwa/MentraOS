@@ -35,6 +35,7 @@ class ServerComms {
   private var cancellables = Set<AnyCancellable>()
   
   private var reconnecting: Bool = false
+  private var reconnectionAttempts: Int = 0
   
   static func getInstance() -> ServerComms {
     if instance == nil {
@@ -262,12 +263,14 @@ class ServerComms {
     
     self.connectWebSocket()
     
-    // if after 3 seconds we're still not connected, run this function again:
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+    // if after some time we're still not connected, run this function again:
+    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
       if self.wsManager.isConnected() {
+        self.reconnectionAttempts = 0
         self.reconnecting = false
         return
       }
+      self.reconnectionAttempts += 1
       self.attemptReconnect(true)
     }
   }

@@ -43,7 +43,7 @@ import AVFoundation
     self.micManager = OnboardMicrophoneManager()
     self.cachedThirdPartyAppList = []
     self.vad = SileroVADStrategy()
-    self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 2000, speechTriggerDurationMs: 50);
+    self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 4000, speechTriggerDurationMs: 50);
     
     super.init()
     Task {
@@ -414,6 +414,7 @@ import AVFoundation
           
         case .disconnectWearable:
           handleDisconnectWearable()
+          handleRequestStatus()
           break
           
         case .forgetSmartGlasses:
@@ -442,6 +443,7 @@ import AVFoundation
           self.contextualDashboard = enabled
           self.g1Manager.dashboardEnabled = enabled
           saveSettings()
+          handleRequestStatus()// to update the UI
           break
         case .forceCoreOnboardMic:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
@@ -450,6 +452,7 @@ import AVFoundation
           }
           self.useOnboardMic = enabled
           saveSettings()
+          handleRequestStatus()// to update the UI
           break
         case .startApp:
           if let params = params, let target = params["target"] as? String {
@@ -458,8 +461,8 @@ import AVFoundation
           } else {
             print("start_app invalid params")
           }
-          
           handleRequestStatus()
+          break
         case .stopApp:
           if let params = params, let target = params["target"] as? String {
             print("Stopping app: \(target)")
@@ -467,7 +470,7 @@ import AVFoundation
           } else {
             print("stop_app invalid params")
           }
-          
+          break
         case .unknown:
           print("Unknown command type: \(commandString)")
           //        case .connectDefaultWearable:
@@ -482,6 +485,7 @@ import AVFoundation
           self.headUpAngle = value
           self.g1Manager.RN_setHeadUpAngle(value)
           saveSettings()
+          handleRequestStatus()// to update the UI
           break
         case .updateGlassesBrightness:
           guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoLight"] as? Bool else {
@@ -496,8 +500,8 @@ import AVFoundation
             try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
             self.g1Manager.RN_sendText(" ")// clear screen
           }
-          
           saveSettings()
+          handleRequestStatus()// to update the UI
           break
         case .enableSensing:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
@@ -506,6 +510,7 @@ import AVFoundation
           }
           self.sensingEnabled = enabled
           saveSettings()
+          handleRequestStatus()// to update the UI
           break
         case .connectDefaultWearable:
           // TODO: ios
