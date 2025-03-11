@@ -32,7 +32,7 @@ interface SettingsPageProps {
   navigation: any;
 }
 
-const parseBrightness = (brightnessStr: string | null | undefined): number => {
+const parseBrightness = (brightnessStr: string | null | undefined | number): number => {
   if (typeof brightnessStr === 'number') {
     return brightnessStr;
   }
@@ -93,6 +93,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       if (status.glasses_info?.brightness != null) {
         setBrightness(parseBrightness(status.glasses_info.brightness));
       }
+      if (status.glasses_info?.auto_brightness != null) {
+        setBrightnessAutoEnabled(status.glasses_info.auto_brightness);
+      }
     }
   }, [status.glasses_info?.headUp_angle, status.glasses_info?.brightness, status.glasses_info]);
 
@@ -106,7 +109,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       return;
     }
 
-    if (status.glasses_info.brightness === '-') { return; } // or handle accordingly
+    if (status.glasses_info.brightness === -1) { return; } // or handle accordingly
     await BluetoothService.getInstance().setGlassesBrightnessMode(newBrightness, false);
     setBrightness(newBrightness);
   };
@@ -402,6 +405,36 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </View>
           </View>
 
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                Auto Brightness
+              </Text>
+              {status.glasses_info?.model_name && (
+                <Text
+                  style={[
+                    styles.value,
+                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  ]}
+                >
+                  Automatically adjust the brightness of your smart glasses based on the ambient light.
+                </Text>
+              )}
+            </View>
+            <Switch
+              value={isContextualDashboardEnabled}
+              onValueChange={toggleContextualDashboard}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
+          </View>
+
           {/* Forget Glasses */}
           <TouchableOpacity
             style={styles.settingItem}
@@ -437,9 +470,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           onCancel={onCancelHeadUpAngle}
           onSave={onSaveHeadUpAngle}
         />
-      </View>
+      </View >
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
-    </SafeAreaView>
+    </SafeAreaView >
   );
 };
 
@@ -447,7 +480,8 @@ export default SettingsPage;
 
 const styles = StyleSheet.create({
   scrollViewContainer: {
-    marginHorizontal: 30,
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   container: {
     flex: 1,
