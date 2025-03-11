@@ -10,6 +10,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isWebViewAuth: boolean;
   signOut: () => Promise<void>;
 }
 
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isWebViewAuth, setIsWebViewAuth] = useState(false);
 
   // Set up axios authorization with Supabase token
   const setupAxiosAuth = (token: string | null) => {
@@ -42,7 +44,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       setIsLoading(true);
       try {
-        // Get current session
+        // Check for WebView injected Supabase token first
+        const webViewToken = localStorage.getItem('supabase_token');
+        if (webViewToken) {
+          console.log('Using WebView injected Supabase token');
+          setupAxiosAuth(webViewToken);
+          // Create a minimal session object for our state
+          setSession({ access_token: webViewToken } as Session);
+          setUser({ id: 'webview-user' } as User);
+          setIsWebViewAuth(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Fall back to Supabase auth
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
         setUser(data.session?.user || null);
@@ -57,6 +72,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     initializeAuth();
+    
+    // Create global function for WebView token updates
+    window.setSupabaseToken = (token: string) => {
+      console.log('Token received from WebView');
+      setupAxiosAuth(token);
+      setSession({ access_token: token } as Session);
+      setUser({ id: 'webview-user' } as User);
+      setIsWebViewAuth(true);
+    };
 
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -89,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isAuthenticated,
+      isWebViewAuth,
       signOut
     }}>
       {children}

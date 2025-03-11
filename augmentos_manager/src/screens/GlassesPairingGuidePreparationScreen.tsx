@@ -18,8 +18,8 @@ import { SETTINGS_KEYS } from '../consts';
 import { NavigationProps } from '../components/types';
 import { getGlassesImage } from '../logic/getGlassesImage';
 import PairingDeviceInfo from '../components/PairingDeviceInfo';
-import { EvenRealitiesG1PairingGuide, MentraLivePairingGuide, VuzixZ100PairingGuide } from '../components/GlassesPairingGuides';
 import Button from '../components/Button';
+import { getPairingGuide } from '../logic/getPairingGuide';
 interface GlassesPairingGuidePreparationScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
@@ -46,18 +46,6 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
   React.useEffect(() => {
   }, [glassesModelName]);
 
-  const getPairingGuide = (glassesModelName: string) => {
-    switch (glassesModelName) {
-      case 'Even Realities G1':
-        return <EvenRealitiesG1PairingGuide isDarkTheme={isDarkTheme} />;
-      case 'Vuzix Z100':
-        return <VuzixZ100PairingGuide isDarkTheme={isDarkTheme} />;
-      case 'Mentra Live':
-        return <MentraLivePairingGuide isDarkTheme={isDarkTheme} />;
-      default:
-        return <View />;
-    }
-  };
 
   const advanceToPairing = () => {
     if (glassesModelName == null || glassesModelName == "") {
@@ -75,7 +63,7 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
       <ScrollView style={styles.scrollViewContainer}>
         <View style={styles.contentContainer}>
           <PairingDeviceInfo glassesModelName={glassesModelName} isDarkTheme={isDarkTheme} />
-          {getPairingGuide(glassesModelName)}
+          {getPairingGuide(glassesModelName, isDarkTheme)}
         </View>
       </ScrollView>
       <View style={styles.buttonContainer}>
