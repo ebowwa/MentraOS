@@ -42,7 +42,7 @@ class AppStoreTpaServer extends TpaServer {
       packageName: PACKAGE_NAME,
       apiKey: API_KEY,
       port: PORT,
-      augmentOSWebsocketUrl: SERVER_URL,
+      serverUrl: SERVER_URL,
       publicDir: './public',
     });
 

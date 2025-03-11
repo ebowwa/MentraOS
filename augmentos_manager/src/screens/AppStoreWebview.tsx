@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Config from 'react-native-config';
@@ -7,6 +7,7 @@ import NavigationBar from '../components/NavigationBar';
 import LoadingComponent from '../components/LoadingComponent';
 import InternetConnectionFallbackComponent from '../components/InternetConnectionFallbackComponent';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuth } from '../AuthContext';
 
 interface AppStoreWebProps {
   isDarkTheme: boolean;
@@ -17,6 +18,7 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme }) => {
   const coreToken = status.core_info.core_token;
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const { user, session, loading } = useAuth();
 
   // Theme colors
   const theme = {
@@ -31,19 +33,30 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme }) => {
   };
 
   // Get the app store URL from environment variable or use a fallback
-  const appStoreUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org';
+  const appStoreUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org/webview';
+  const webViewRef = useRef(null);
 
   // Handle WebView loading events
   const handleLoadStart = () => setIsLoading(true);
-  const handleLoadEnd = () => setIsLoading(false);
+  const handleLoadEnd = () => {
+    const supabaseToken = session?.access_token;
+      if (!supabaseToken) {
+        console.log('No Supabase token found');
+        return;
+      }
+
+    setIsLoading(false);
+    webViewRef.current.injectJavaScript(`
+      window.localStorage.setItem('supabase_token', '${supabaseToken}');
+      if (window.setSupabaseToken) {
+        window.setSupabaseToken('${supabaseToken}');
+      }
+      true;
+    `);
+  }
   const handleError = () => {
     setIsLoading(false);
     setHasError(true);
-  };
-
-  // Set up headers with the authentication token
-  const headers = {
-    'Authorization': `Bearer ${coreToken}`,
   };
 
   return (
@@ -54,9 +67,9 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme }) => {
       ) : (
         <View style={styles.webViewContainer}>
           <WebView
+            ref={webViewRef}
             source={{ 
-              uri: appStoreUrl,
-              headers: headers
+              uri: appStoreUrl
             }}
             style={styles.webView}
             onLoadStart={handleLoadStart}

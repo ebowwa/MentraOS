@@ -15,8 +15,8 @@ import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { BluetoothService } from '../BluetoothService';
 import { NavigationProps } from '../components/types';
 import PairingDeviceInfo from '../components/PairingDeviceInfo';
-import { EvenRealitiesG1PairingGuide, MentraLivePairingGuide, VuzixZ100PairingGuide } from '../components/GlassesPairingGuides';
 import GlassesTroubleshootingModal from '../components/GlassesTroubleshootingModal';
+import { getPairingGuide } from '../logic/getPairingGuide';
 
 interface GlassesPairingGuideScreenProps {
   isDarkTheme: boolean;
@@ -112,25 +112,13 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
       }
     }, [status]);
 
-    const getPairingGuide = (glassesModelName: string) => {
-      switch (glassesModelName) {
-        case 'Even Realities G1':
-          return <EvenRealitiesG1PairingGuide isDarkTheme={isDarkTheme}/>;
-        case 'Vuzix Z100':
-          return <VuzixZ100PairingGuide isDarkTheme={isDarkTheme}/>;
-        case 'Mentra Live':
-          return <MentraLivePairingGuide isDarkTheme={isDarkTheme}/>;
-        default:
-          return <View />;
-      }
-    };
 
     return (
       <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
         <ScrollView style={styles.scrollViewContainer}>
           <View style={styles.contentContainer}>
             <PairingDeviceInfo glassesModelName={glassesModelName} isDarkTheme={isDarkTheme} />
-            {getPairingGuide(glassesModelName)}
+            {getPairingGuide(glassesModelName, isDarkTheme)}
             
             <TouchableOpacity 
               style={[styles.helpButton, { backgroundColor: isDarkTheme ? '#3b82f6' : '#007BFF' }]}

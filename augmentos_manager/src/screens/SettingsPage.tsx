@@ -387,6 +387,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             />
           </TouchableOpacity>
 
+        {/* Bug Report */}
+        {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
+            navigation.navigate('ErrorReportScreen');
+        }}>
+          <View style={styles.settingTextContainer}>
+            <Text style={[styles.label, styles.redText]}>Report an Issue</Text>
+          </View>
+        </TouchableOpacity> */}
+
           {/* Brightness Slider */}
           {!(status.glasses_info?.auto_brightness ?? false) && (<View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>

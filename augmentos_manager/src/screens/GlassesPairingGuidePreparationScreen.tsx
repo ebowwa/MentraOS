@@ -18,8 +18,11 @@ import { SETTINGS_KEYS } from '../consts';
 import { NavigationProps } from '../components/types';
 import { getGlassesImage } from '../logic/getGlassesImage';
 import PairingDeviceInfo from '../components/PairingDeviceInfo';
-import { EvenRealitiesG1PairingGuide, MentraLivePairingGuide, VuzixZ100PairingGuide } from '../components/GlassesPairingGuides';
 import Button from '../components/Button';
+import { getPairingGuide } from '../logic/getPairingGuide';
+import { EvenRealitiesG1PairingGuide } from '../components/GlassesPairingGuides';
+import { VuzixZ100PairingGuide } from '../components/GlassesPairingGuides';
+import { MentraLivePairingGuide } from '../components/GlassesPairingGuides';
 interface GlassesPairingGuidePreparationScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
