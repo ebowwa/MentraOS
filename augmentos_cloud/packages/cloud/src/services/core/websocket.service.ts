@@ -707,7 +707,14 @@ export class WebSocketService {
               eventType: message.type,
               timestamp: new Date().toISOString()
             });
-            
+
+            const appConnection = userSession.appConnections.get(stopMessage.packageName);
+            // console.log("fds", userSession.appConnections);
+            if (appConnection && appConnection.readyState === WebSocket.OPEN) {
+              userSession.logger.info(`[websocket.service]: Closing app connection for ${stopMessage.packageName}`);
+              appConnection.close(1000, 'App stopped by user');
+            }
+            userSession.appConnections.delete(stopMessage.packageName);    
             // Stop the app using our service method
             await this.stopAppSession(userSession, stopMessage.packageName);
 
