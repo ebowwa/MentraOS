@@ -163,13 +163,40 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleAppleSignIn = async () => {
     try {
-      // Implement Apple sign in logic
-      console.log('Apple sign in');
-      // After successful sign in
-      navigation.replace('SplashScreen');
-    } catch (error) {
-      console.error('Apple sign in failed:', error);
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          // Match the deep link scheme/host/path in your AndroidManifest.xml
+          redirectTo: 'com.augmentos://auth/callback',
+        },
+      });
+  
+      // If there's an error, handle it
+      if (error) {
+        console.error('Supabase Apple sign-in error:', error);
+        Alert.alert('Authentication Error', error.message);
+        return;
+      }
+  
+      // If we get a `url` back, we must open it ourselves in React Native
+      if (data?.url) {
+        console.log("Opening browser with:", data.url);
+        await Linking.openURL(data.url);
+      }
+  
+      // After returning from the browser, check the session
+      const { data: sessionData } = await supabase.auth.getSession();
+      console.log('Current session after Apple sign-in:', sessionData.session);
+  
+      // Note: The actual navigation to SplashScreen will be handled by 
+      // the onAuthStateChange listener you already have in place
+  
+    } catch (err) {
+      console.error('Apple sign in failed:', err);
+      Alert.alert('Authentication Error', 'Apple sign in failed. Please try again.');
     }
+  
+    console.log('signInWithOAuth for Apple finished');
   };
 
   const handleEmailSignUp = async (email: string, password: string) => {
