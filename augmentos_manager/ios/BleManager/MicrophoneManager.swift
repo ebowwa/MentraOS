@@ -153,6 +153,8 @@ class OnboardMicrophoneManager {
       
       var pcmData = self.extractInt16Data(from: convertedBuffer)
       
+      print("sending onboard mic data");
+      
       // just publish the PCM data, we'll encode it in the AOSManager:
       self.voiceDataSubject.send(pcmData)
     }

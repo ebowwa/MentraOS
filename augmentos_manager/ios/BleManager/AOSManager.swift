@@ -286,6 +286,7 @@ import AVFoundation
     }
   }
   
+  // TODO: ios this name is a bit misleading:
   func setOnboardMicEnabled(_ isEnabled: Bool) {
     Task {
       if isEnabled {
@@ -450,6 +451,7 @@ import AVFoundation
             break
           }
           self.useOnboardMic = enabled
+          onMicrophoneStateChange(self.micEnabled)
           saveSettings()
           handleRequestStatus()// to update the UI
           break
