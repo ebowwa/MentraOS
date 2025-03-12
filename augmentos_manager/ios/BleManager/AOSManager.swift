@@ -403,12 +403,7 @@ import AVFoundation
           handleRequestStatus()
           
         case .connectWearable:
-          guard let params = params else {
-            print("connect_wearable invalid params")
-            break
-          }
-          
-          if let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
+          if let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
             handleConnectWearable(modelName: modelName, deviceName: deviceName)
           } else {
             print("connect_wearable invalid params, connecting to default device")

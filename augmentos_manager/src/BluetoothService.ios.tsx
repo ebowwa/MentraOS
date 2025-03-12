@@ -147,9 +147,9 @@ export class BluetoothService extends EventEmitter {
   handleAppStateChange(nextAppState: string) {
     if (nextAppState === 'active') {
       console.log('App became active. Checking connection...');
-      if (!this.connectedDevice) {
+      // if (!this.connectedDevice) {
         this.scanForDevices();
-      }
+      // }
     }
   }
 
