@@ -151,10 +151,10 @@ struct ViewState {
   let sendQueueLock = NSLock()
   
   // Waiters for synchronization
-//  let leftWaiter = BooleanWaiter()
-//  let rightWaiter = BooleanWaiter()
-//  let leftServicesWaiter = BooleanWaiter()
-//  let rightServicesWaiter = BooleanWaiter()
+  //  let leftWaiter = BooleanWaiter()
+  //  let rightWaiter = BooleanWaiter()
+  //  let leftServicesWaiter = BooleanWaiter()
+  //  let rightServicesWaiter = BooleanWaiter()
   
   // Constants
   var DEVICE_SEARCH_ID = "NOT_SET"
@@ -215,7 +215,7 @@ struct ViewState {
     }
     
     print("startScan()")
-    print("search ID: \(DEVICE_SEARCH_ID)")
+    //    print("search ID: \(DEVICE_SEARCH_ID)")
     
     // send our already connected devices to RN:
     let devices = getConnectedDevices()
@@ -236,7 +236,6 @@ struct ViewState {
     }
     
     centralManager.scanForPeripherals(withServices: nil, options: nil)
-    print("Scanning for devices...")
     return true
   }
   
@@ -246,24 +245,44 @@ struct ViewState {
     return true
   }
   
-  // connect to glasses we've already paired with:
+  // connect to glasses we've discovered:
   @objc public func RN_connectGlasses() -> Bool {
-    if let leftPeripheral = leftPeripheral {
-      centralManager.connect(leftPeripheral, options: nil)
+    
+    print("RN_connectGlasses()")
+    
+    if let side = leftPeripheral {
+      centralManager.connect(side, options: nil)
+//      if let char = findCharacteristic(uuid: UART_RX_CHAR_UUID, peripheral: side) {
+//        enableNotification(gatt: side, characteristic: char)
+//      } else {
+////      let char = getWriteCharacteristic(for: leftPeripheral)
+////      if let char = char {
+////        enableNotification(gatt: side, characteristic: char)
+////      } else {
+//        print("failed to get left side char")
+//      }
     }
     
-    if let rightPeripheral = rightPeripheral {
-      centralManager.connect(rightPeripheral, options: nil)
+    if let side = rightPeripheral {
+//      if let char = findCharacteristic(uuid: UART_RX_CHAR_UUID, peripheral: side) {
+//        enableNotification(gatt: side, characteristic: char)
+//      } else {
+//        print("failed to get right side char")
+//      }
+      centralManager.connect(side, options: nil)
     }
-    // just return if we don't have both a left and right arm:
-    guard leftPeripheral != nil && rightPeripheral != nil else {
-      return false;
-    }
-    print("Connected to both glasses, starting heartbeat timer and turning off silent mode...");
-    startHeartbeatTimer();
-    Task {
-      await setSilentMode(false);
-    }
+    
+//    // just return if we don't have both a left and right arm:
+//    guard leftPeripheral != nil && rightPeripheral != nil else {
+//      return false;
+//    }
+//    
+//    print("Connected to both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") starting heartbeat timer and turning off silent mode...");
+//    startHeartbeatTimer();
+//    RN_stopScan();
+//    Task {
+//      await setSilentMode(false);
+//    }
     return true
   }
   
@@ -455,8 +474,11 @@ struct ViewState {
   }
   
   private func findCharacteristic(uuid: CBUUID, peripheral: CBPeripheral) -> CBCharacteristic? {
+    print("looking for characteristic \(uuid)")
     for service in peripheral.services ?? [] {
+      print("service: \(service.description)")
       for characteristic in service.characteristics ?? [] {
+        print("\(peripheral.name) : \(service.description) : \(characteristic.uuid) \(characteristic.uuid)")
         if characteristic.uuid == uuid {
           return characteristic
         }
@@ -484,16 +506,16 @@ struct ViewState {
       let command = data[0]
       let response = data.count > 1 ? data[1] : 0
       
-//      // Check for ACK response in various commands
-//      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
-//        if peripheral == rightPeripheral {
-//          rightWaiter.setFalse()
-//          print("Right glass acknowledged")
-//        } else if peripheral == leftPeripheral {
-//          leftWaiter.setFalse()
-//          print("Left glass acknowledged")
-//        }
-//      }
+      //      // Check for ACK response in various commands
+      //      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
+      //        if peripheral == rightPeripheral {
+      //          rightWaiter.setFalse()
+      //          print("Right glass acknowledged")
+      //        } else if peripheral == leftPeripheral {
+      //          leftWaiter.setFalse()
+      //          print("Left glass acknowledged")
+      //        }
+      //      }
     }
     
     switch Commands(rawValue: command) {
@@ -515,7 +537,7 @@ struct ViewState {
       }
     case .BLE_REQ_TRANSFER_MIC_DATA:
       self.compressedVoiceData = data
-//                print("Got voice data: " + String(data.count))
+      //                print("Got voice data: " + String(data.count))
       break
     case .BLE_REQ_HEARTBEAT:
       // battery info
@@ -531,7 +553,7 @@ struct ViewState {
       let rawVoltage = (voltageHigh << 8) | voltageLow
       let voltage = rawVoltage / 10  // Scale down by 10 to get actual millivolts
       
-//      print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
+      //      print("Raw battery data - Battery: \(batteryPercent)%, Voltage: \(voltage)mV, Flags: 0x\(String(format: "%02X", flags))")
       
       // if left, update left battery level, if right, update right battery level
       if peripheral == leftPeripheral {
@@ -564,7 +586,7 @@ struct ViewState {
         }
         receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
       }
-//      print("Received EvenAI response: \(data.hexEncodedString())")
+      //      print("Received EvenAI response: \(data.hexEncodedString())")
     case .BLE_REQ_DEVICE_ORDER:
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
@@ -724,7 +746,7 @@ extension ERG1Manager {
       uintChunks.append(Array(chunk))
     }
     return uintChunks
-//    return chunks.flatMap { Array($0) }
+    //    return chunks.flatMap { Array($0) }
   }
   
   func exitAllFunctions(to peripheral: CBPeripheral, characteristic: CBCharacteristic) {
@@ -792,7 +814,7 @@ extension ERG1Manager {
     
     // Convert to Data
     let commandData = Data(paddedCommand)
-//    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+    //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     
     // Then send to left glass
@@ -827,166 +849,166 @@ extension ERG1Manager {
         // sleep for 100ms before sending the next chunk
         try? await Task.sleep(nanoseconds: 100_000_000)
       }
-//      await sendCommand(data)
+      //      await sendCommand(data)
     }
   }
   
   // Non-blocking function to add new send request
-//  func sendDataSequentially(_ data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
-//    let requests = [SendRequest(data: data, onlyLeft: onlyLeft, onlyRight: onlyRight, waitTime: waitTime)]
-//    
-//    sendQueueLock.lock()
-//    sendQueue.append(requests)
-//    sendQueueLock.unlock()
-//    
-//    startWorkerIfNeeded()
-//  }
+  //  func sendDataSequentially(_ data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
+  //    let requests = [SendRequest(data: data, onlyLeft: onlyLeft, onlyRight: onlyRight, waitTime: waitTime)]
+  //
+  //    sendQueueLock.lock()
+  //    sendQueue.append(requests)
+  //    sendQueueLock.unlock()
+  //
+  //    startWorkerIfNeeded()
+  //  }
   
   // Non-blocking function to add multiple chunks
-//  func sendDataSequentially(_ chunks: [Data], onlyLeft: Bool = false, onlyRight: Bool = false) {
-//    let requests = chunks.map { SendRequest(data: $0, onlyLeft: onlyLeft, onlyRight: onlyRight) }
-//    
-//    sendQueueLock.lock()
-//    sendQueue.append(requests)
-//    sendQueueLock.unlock()
-//    
-//    startWorkerIfNeeded()
-//  }
+  //  func sendDataSequentially(_ chunks: [Data], onlyLeft: Bool = false, onlyRight: Bool = false) {
+  //    let requests = chunks.map { SendRequest(data: $0, onlyLeft: onlyLeft, onlyRight: onlyRight) }
+  //
+  //    sendQueueLock.lock()
+  //    sendQueue.append(requests)
+  //    sendQueueLock.unlock()
+  //
+  //    startWorkerIfNeeded()
+  //  }
   
   // Start the worker if it's not already running
-//  func startWorkerIfNeeded() {
-//    sendQueueLock.lock()
-//    defer { sendQueueLock.unlock() }
-//    
-//    if !isWorkerRunning {
-//      isWorkerRunning = true
-//      Task {
-//        await processQueue()
-//      }
-//    }
-//  }
+  //  func startWorkerIfNeeded() {
+  //    sendQueueLock.lock()
+  //    defer { sendQueueLock.unlock() }
+  //
+  //    if !isWorkerRunning {
+  //      isWorkerRunning = true
+  //      Task {
+  //        await processQueue()
+  //      }
+  //    }
+  //  }
   
   // Process the queue in background
-//  func processQueue() async {
-//    print("Starting queue processing")
-//    
-//    // First wait until services are setup
-//    print("Waiting for services to be ready")
-//    let servicesReadyTimeout = DispatchTime.now() + .seconds(10)
-//    
-//    // Wait until both peripherals are ready to receive data
-//    let leftReady = await withCheckedContinuation { continuation in
-//      Task {
-//        let result = leftServicesWaiter.waitWhileTrue(servicesReadyTimeout)
-//        continuation.resume(returning: result)
-//      }
-//    }
-//    
-//    let rightReady = await withCheckedContinuation { continuation in
-//      Task {
-//        let result = rightServicesWaiter.waitWhileTrue(servicesReadyTimeout)
-//        continuation.resume(returning: result)
-//      }
-//    }
-//    
-//    if !leftReady || !rightReady {
-//      print("Timed out waiting for services to be ready")
-//      isWorkerRunning = false
-//      return
-//    }
-//    
-//    print("Services are ready, processing queue")
-//    
-//    // Process each request in the queue
-//    while true {
-//      // Pop the next batch of requests
-//      sendQueueLock.lock()
-//      let requests = sendQueue.isEmpty ? nil : sendQueue.removeFirst()
-//      sendQueueLock.unlock()
-//      
-//      guard let requests = requests, !requests.isEmpty else {
-//        // No more requests, exit the worker
-//        isWorkerRunning = false
-//        print("No more requests, worker stopped")
-//        return
-//      }
-//      
-//      // Process each request in the batch
-//      for request in requests {
-//        // Force an initial delay after connection
-//        let timeSinceConnection = Date().timeIntervalSince(lastConnectionTimestamp)
-//        if timeSinceConnection < 0.35 { // 350ms
-//          try? await Task.sleep(nanoseconds: INITIAL_CONNECTION_DELAY_MS - UInt64(timeSinceConnection * 1_000_000_000))
-//        }
-//        
-//        var leftSuccess = true
-//        var rightSuccess = true
-//        
-//        // Send to left glass if requested
-//        if !request.onlyRight, let leftGlassGatt = leftPeripheral, let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlassGatt), g1Ready {
-//          leftWaiter.setTrue()
-//          print("sending to left");
-//          
-//          // Send the data and wait for completion
-//          leftGlassGatt.writeValue(request.data, for: leftTxChar, type: .withResponse)
-//          
-//          // Wait for acknowledgment
-//          let leftAckTimeout = DispatchTime.now() + .milliseconds(300)
-//          leftSuccess = await withCheckedContinuation { continuation in
-//            Task {
-//              let result = leftWaiter.waitWhileTrue(leftAckTimeout)
-//              continuation.resume(returning: result)
-//            }
-//          }
-//          
-//          if !leftSuccess {
-//            print("Left glass write timed out")
-//          }
-//        }
-//        
-//        // Add small delay between sending to left and right
-//        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_SENDS_MS)
-//        
-//        // Send to right glass if requested
-//        if !request.onlyLeft, let rightGlassGatt = rightPeripheral, let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlassGatt), g1Ready {
-//          rightWaiter.setTrue()
-//          
-//          print("sending to right");
-//          
-//          // Send the data and wait for completion
-//          rightGlassGatt.writeValue(request.data, for: rightTxChar, type: .withResponse)
-//          
-//          // Wait for acknowledgment
-//          let rightAckTimeout = DispatchTime.now() + .milliseconds(300)
-//          rightSuccess = await withCheckedContinuation { continuation in
-//            Task {
-//              let result = rightWaiter.waitWhileTrue(rightAckTimeout)
-//              continuation.resume(returning: result)
-//            }
-//          }
-//          
-//          if !rightSuccess {
-//            print("Right glass write timed out")
-//          }
-//        }
-//        
-//        // Add delay between chunks
-//        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_CHUNKS_SEND)
-//        
-//        // Add custom wait time if specified
-//        if request.waitTime > 0 {
-//          try? await Task.sleep(nanoseconds: UInt64(request.waitTime) * 1_000_000)
-//        }
-//        
-//        // If both glasses failed, we might want to try again or exit
-//        if !leftSuccess && !rightSuccess {
-//          print("Both glasses failed to acknowledge")
-//          // Consider reinserting the request or notifying failure
-//        }
-//      }
-//    }
-//  }
-//  
+  //  func processQueue() async {
+  //    print("Starting queue processing")
+  //
+  //    // First wait until services are setup
+  //    print("Waiting for services to be ready")
+  //    let servicesReadyTimeout = DispatchTime.now() + .seconds(10)
+  //
+  //    // Wait until both peripherals are ready to receive data
+  //    let leftReady = await withCheckedContinuation { continuation in
+  //      Task {
+  //        let result = leftServicesWaiter.waitWhileTrue(servicesReadyTimeout)
+  //        continuation.resume(returning: result)
+  //      }
+  //    }
+  //
+  //    let rightReady = await withCheckedContinuation { continuation in
+  //      Task {
+  //        let result = rightServicesWaiter.waitWhileTrue(servicesReadyTimeout)
+  //        continuation.resume(returning: result)
+  //      }
+  //    }
+  //
+  //    if !leftReady || !rightReady {
+  //      print("Timed out waiting for services to be ready")
+  //      isWorkerRunning = false
+  //      return
+  //    }
+  //
+  //    print("Services are ready, processing queue")
+  //
+  //    // Process each request in the queue
+  //    while true {
+  //      // Pop the next batch of requests
+  //      sendQueueLock.lock()
+  //      let requests = sendQueue.isEmpty ? nil : sendQueue.removeFirst()
+  //      sendQueueLock.unlock()
+  //
+  //      guard let requests = requests, !requests.isEmpty else {
+  //        // No more requests, exit the worker
+  //        isWorkerRunning = false
+  //        print("No more requests, worker stopped")
+  //        return
+  //      }
+  //
+  //      // Process each request in the batch
+  //      for request in requests {
+  //        // Force an initial delay after connection
+  //        let timeSinceConnection = Date().timeIntervalSince(lastConnectionTimestamp)
+  //        if timeSinceConnection < 0.35 { // 350ms
+  //          try? await Task.sleep(nanoseconds: INITIAL_CONNECTION_DELAY_MS - UInt64(timeSinceConnection * 1_000_000_000))
+  //        }
+  //
+  //        var leftSuccess = true
+  //        var rightSuccess = true
+  //
+  //        // Send to left glass if requested
+  //        if !request.onlyRight, let leftGlassGatt = leftPeripheral, let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlassGatt), g1Ready {
+  //          leftWaiter.setTrue()
+  //          print("sending to left");
+  //
+  //          // Send the data and wait for completion
+  //          leftGlassGatt.writeValue(request.data, for: leftTxChar, type: .withResponse)
+  //
+  //          // Wait for acknowledgment
+  //          let leftAckTimeout = DispatchTime.now() + .milliseconds(300)
+  //          leftSuccess = await withCheckedContinuation { continuation in
+  //            Task {
+  //              let result = leftWaiter.waitWhileTrue(leftAckTimeout)
+  //              continuation.resume(returning: result)
+  //            }
+  //          }
+  //
+  //          if !leftSuccess {
+  //            print("Left glass write timed out")
+  //          }
+  //        }
+  //
+  //        // Add small delay between sending to left and right
+  //        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_SENDS_MS)
+  //
+  //        // Send to right glass if requested
+  //        if !request.onlyLeft, let rightGlassGatt = rightPeripheral, let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlassGatt), g1Ready {
+  //          rightWaiter.setTrue()
+  //
+  //          print("sending to right");
+  //
+  //          // Send the data and wait for completion
+  //          rightGlassGatt.writeValue(request.data, for: rightTxChar, type: .withResponse)
+  //
+  //          // Wait for acknowledgment
+  //          let rightAckTimeout = DispatchTime.now() + .milliseconds(300)
+  //          rightSuccess = await withCheckedContinuation { continuation in
+  //            Task {
+  //              let result = rightWaiter.waitWhileTrue(rightAckTimeout)
+  //              continuation.resume(returning: result)
+  //            }
+  //          }
+  //
+  //          if !rightSuccess {
+  //            print("Right glass write timed out")
+  //          }
+  //        }
+  //
+  //        // Add delay between chunks
+  //        try? await Task.sleep(nanoseconds: DELAY_BETWEEN_CHUNKS_SEND)
+  //
+  //        // Add custom wait time if specified
+  //        if request.waitTime > 0 {
+  //          try? await Task.sleep(nanoseconds: UInt64(request.waitTime) * 1_000_000)
+  //        }
+  //
+  //        // If both glasses failed, we might want to try again or exit
+  //        if !leftSuccess && !rightSuccess {
+  //          print("Both glasses failed to acknowledge")
+  //          // Consider reinserting the request or notifying failure
+  //        }
+  //      }
+  //    }
+  //  }
+  //
   public func sendText(text: String, newScreen: Bool = true, currentPage: UInt8 = 1, maxPages: UInt8 = 1, isCommand: Bool = false, status: DisplayStatus = .NORMAL_TEXT) async -> Bool {
     print("Starting sendText with: \(text)")
     print("Left peripheral connected: \(leftPeripheral != nil)")
@@ -1451,27 +1473,27 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   func extractIdNumber(_ string: String) -> Int? {
-      // Pattern to match "G1_" followed by digits, followed by "_"
-      let pattern = "G1_(\\d+)_"
-      
-      // Create a regular expression
-      guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
-          return nil
-      }
-      
-      // Look for matches in the input string
-      let range = NSRange(string.startIndex..<string.endIndex, in: string)
-      guard let match = regex.firstMatch(in: string, options: [], range: range) else {
-          return nil
-      }
-      
-      // Extract the captured group (the digits)
-      if let matchRange = Range(match.range(at: 1), in: string) {
-          let idString = String(string[matchRange])
-          return Int(idString)
-      }
-      
+    // Pattern to match "G1_" followed by digits, followed by "_"
+    let pattern = "G1_(\\d+)_"
+    
+    // Create a regular expression
+    guard let regex = try? NSRegularExpression(pattern: pattern, options: []) else {
       return nil
+    }
+    
+    // Look for matches in the input string
+    let range = NSRange(string.startIndex..<string.endIndex, in: string)
+    guard let match = regex.firstMatch(in: string, options: [], range: range) else {
+      return nil
+    }
+    
+    // Extract the captured group (the digits)
+    if let matchRange = Range(match.range(at: 1), in: string) {
+      let idString = String(string[matchRange])
+      return Int(idString)
+    }
+    
+    return nil
   }
   
   public func emitDiscoveredDevice(_ name: String) {
@@ -1504,7 +1526,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     
     guard let name = peripheral.name else { return }
     guard name.contains("Even G1") else { return }
-      
+    
     print("found peripheral: \(name) - SEARCH_ID: \(DEVICE_SEARCH_ID)")
     
     if name.contains("_L_") && name.contains(DEVICE_SEARCH_ID) {
@@ -1518,21 +1540,48 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     emitDiscoveredDevice(name);
     
     if leftPeripheral != nil && rightPeripheral != nil {
-      central.stopScan()
+//      central.stopScan()
       RN_connectGlasses()
     }
     
   }
   
+  private func enableNotification(gatt: CBPeripheral, characteristic: CBCharacteristic) {
+    print("PROC_QUEUE - Starting notification setup")
+    
+    // Enable notifications for the characteristic
+    print("PROC_QUEUE - setting characteristic notification on side")
+    let result = gatt.setNotifyValue(true, for: characteristic)
+    print("PROC_QUEUE - setNotifyValue result for: \(result)")
+    
+    Thread.sleep(forTimeInterval: 0.5) // 500ms delay
+    
+    // In iOS, we get the descriptor differently
+    print("PROC_QUEUE - get descriptor on side")
+    let CLIENT_CHARACTERISTIC_CONFIG_UUID = CBUUID(string: "00002902-0000-1000-8000-00805f9b34fb");
+    if let descriptor = characteristic.descriptors?.first(where: { $0.uuid == CLIENT_CHARACTERISTIC_CONFIG_UUID }) {
+      print("PROC_QUEUE - setting descriptor on side")
+      
+      // In iOS/CoreBluetooth we directly write to the descriptor
+      // without needing to set its value separately
+      let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
+      gatt.writeValue(value, for: descriptor)
+      print("PROC_QUEUE - set descriptor on side")
+    } else {
+      // Create and write to the descriptor if needed
+      print("PROC_QUEUE - descriptor not found")
+    }
+  }
+  
   // Update didConnect to set timestamp
   public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    print("CONNECTED_TO_PERIPHERAL")
     peripheral.delegate = self
     peripheral.discoverServices([UART_SERVICE_UUID])
     
     // Update the last connection timestamp
     lastConnectionTimestamp = Date()
     print("Connected to peripheral: \(peripheral.name ?? "Unknown")")
-    
     
     // Emit connection event
     let isLeft = peripheral == leftPeripheral
@@ -1541,17 +1590,21 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       "name": peripheral.name ?? "Unknown",
       "id": peripheral.identifier.uuidString
     ]
+    
     // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
     //    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
-    //    if peripheral == leftPeripheral {
-    //      g1Ready = true
-    //    }
+    print("PERIPHERAL_DISCONNECTED")
+    if peripheral == leftPeripheral || peripheral == rightPeripheral {
+      g1Ready = false
+      RN_startScan()// attempt reconnect
+    }
   }
   
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
+    print("PERIPHERAL_DISCOVERED_SERVICES")
     if let services = peripheral.services {
       for service in services where service.uuid == UART_SERVICE_UUID {
         peripheral.discoverCharacteristics([UART_TX_CHAR_UUID, UART_RX_CHAR_UUID], for: service)
@@ -1561,7 +1614,10 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update peripheral(_:didDiscoverCharacteristicsFor:error:) to set services waiters
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
+    print("PERIPHERAL_DISCOVERED_CHARACTERISTICS")
     guard let characteristics = service.characteristics else { return }
+    
+    print("peripheral(\(peripheral), didDiscoverCharacteristicsFor:error:)")
     
     if service.uuid.isEqual(UART_SERVICE_UUID) {
       for characteristic in characteristics {
@@ -1569,6 +1625,24 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
           sendInitCommand(to: peripheral, characteristic: characteristic)
         } else if characteristic.uuid == UART_RX_CHAR_UUID {
           peripheral.setNotifyValue(true, for: characteristic)
+          
+          Thread.sleep(forTimeInterval: 0.5) // 500ms delay
+          
+          // In iOS, we get the descriptor differently
+          print("PROC_QUEUE - get descriptor on side")
+          let CLIENT_CHARACTERISTIC_CONFIG_UUID = CBUUID(string: "00002902-0000-1000-8000-00805f9b34fb");
+          if let descriptor = characteristic.descriptors?.first(where: { $0.uuid == CLIENT_CHARACTERISTIC_CONFIG_UUID }) {
+            print("PROC_QUEUE - setting descriptor on side")
+            
+            // In iOS/CoreBluetooth we directly write to the descriptor
+            // without needing to set its value separately
+            let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
+            peripheral.writeValue(value, for: descriptor)
+            print("PROC_QUEUE - set descriptor on side")
+          } else {
+            // Create and write to the descriptor if needed
+            print("PROC_QUEUE - descriptor not found")
+          }
         }
       }
       
@@ -1587,7 +1661,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       print("Bluetooth powered on")
       g1Ready = false
       // only automatically start scanning if we have a SEARCH_ID, otherwise wait for RN to call startScan() itself
-      if (DEVICE_SEARCH_ID != "NOT_SET") {
+      if (DEVICE_SEARCH_ID != "NOT_SET" && !DEVICE_SEARCH_ID.isEmpty) {
         RN_startScan()
       }
     } else {
@@ -1597,6 +1671,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update didUpdateValueFor to set waiters
   public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
+    print("PERIPHERAL_DID_UPDATE_VALUE")
     if let error = error {
       print("Error updating value for characteristic: \(error.localizedDescription)")
       return

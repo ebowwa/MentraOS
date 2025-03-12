@@ -712,7 +712,7 @@ import AVFoundation
           self.g1Manager.RN_startScan()
         }
         
-        try? await Task.sleep(nanoseconds: 5_000_000_000) // 5 seconds
+        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
       }
     }
   }
