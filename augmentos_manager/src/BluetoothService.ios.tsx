@@ -63,6 +63,9 @@ export class BluetoothService extends EventEmitter {
     // this gets the dashboard to update:
     this.sendDataToAugmentOs({ "command": "request_status" });
 
+    this.sendDataToAugmentOs({ "command": "connect_wearable" });
+
+
     // if (!(await ManagerCoreCommsService.isServiceRunning())){
     //   ManagerCoreCommsService.startService();
     // }

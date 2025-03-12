@@ -30,6 +30,7 @@ import AVFoundation
   private var batteryLevel = -1;
   private var autoBrightness: Bool = false;
   private var sensingEnabled: Bool = false;
+  private var isSearching: Bool = false;
   
   
   // mic:
@@ -411,6 +412,7 @@ import AVFoundation
           }
           
         case .disconnectWearable:
+          self.g1Manager.RN_sendText(" ")// clear the screen
           handleDisconnectWearable()
           handleRequestStatus()
           break
@@ -535,6 +537,7 @@ import AVFoundation
     let isGlassesConnected = self.g1Manager.g1Ready
     var connectedGlasses: [String: Any] = [:];
     
+    // also referenced as glasses_info:
     if isGlassesConnected {
       connectedGlasses = [
         "model_name": "Even Realities G1",
@@ -542,6 +545,7 @@ import AVFoundation
         "headUp_angle": self.headUpAngle,
         "brightness": self.brightness,
         "auto_brightness": self.autoBrightness,
+        "is_searching": self.isSearching,
       ]
       self.defaultWearable = "Even Realities G1"
     }
@@ -645,7 +649,7 @@ import AVFoundation
   }
   
   private func handleDeviceReady() {
-    
+    self.isSearching = false
     self.defaultWearable = "Even Realities G1"
     self.handleRequestStatus()
     // load settings and send the animation:
@@ -667,6 +671,9 @@ import AVFoundation
   
   private func handleConnectWearable(modelName: String, deviceName: String) {
     print("Connecting to wearable: \(modelName)")
+    
+    self.isSearching = true
+    handleRequestStatus()// update the UI
     
     // just g1's for now:
     Task {

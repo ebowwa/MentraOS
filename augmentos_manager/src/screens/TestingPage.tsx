@@ -102,6 +102,35 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
     }, 3000);
   };
 
+  const sendFrames = async (frames: string[]) => {
+    for (const frame of frames) {
+      await AOSModule.sendText(frame);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+  };
+
+
+
+  const sendLoadingScreen = async () => {
+    try {
+      await sendFrames([
+        "               ____________\n               | 1               |\n               |_____________|",
+        "               ____________\n               | 12             |\n               |_____________|",
+        "               ____________\n               | 123           |\n               |_____________|",
+        "               ____________\n               | 1234         |\n               |_____________|",
+        "               ____________\n               | 12345       |\n               |_____________|",
+        "               ____________\n               | 123456     |\n               |_____________|",
+        "               ____________\n               | 1234567   |\n               |_____________|",
+        "               ____________\n               | 12345678 |\n               |_____________|",
+      ]);
+
+      await AOSModule.sendText(" ");
+
+    } catch (error) {
+      console.error('loading screen error:', error);
+    }
+  };
+
   const startLiveCaptions = async () => {
     try {
       await AOSModule.sendCommand(JSON.stringify({
@@ -271,6 +300,7 @@ const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
               <Button title="Start Mira" onPress={startMira} />
               <Button title="Get Battery Status" onPress={getBatteryStatus} />
               <Button title="Send Whitelist" onPress={sendWhitelist} />
+              <Button title="✨✨✨" onPress={sendLoadingScreen} />
             </View>
 
             <View style={currentThemeStyles.brightnessContainer}>
