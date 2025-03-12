@@ -160,7 +160,7 @@ class G1Text {
             pageText.append("\n")
         }
 
-        print("Page Text: \(pageText)")
+//        print("Page Text: \(pageText)")
         
         // Convert to bytes and chunk for transmission
         return chunkTextForTransmission(pageText)

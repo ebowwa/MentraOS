@@ -41,6 +41,9 @@ enum DeviceOrders: UInt8 {
   case ACTIVATED = 0x05
   case HEAD_UP2 = 0x02
   case HEAD_DOWN2 = 0x03
+  case CASE_OPEN = 0x08
+  case CASE_CLOSED = 0x0B
+  case CASE_CHARGING_STATUS = 0x0E
 }
 
 enum DisplayStatus: UInt8 {

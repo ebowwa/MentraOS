@@ -3,11 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
-  Image,
-  Platform,
-  GestureResponderEvent,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -20,9 +16,6 @@ import { getGlassesImage } from '../logic/getGlassesImage';
 import PairingDeviceInfo from '../components/PairingDeviceInfo';
 import Button from '../components/Button';
 import { getPairingGuide } from '../logic/getPairingGuide';
-import { EvenRealitiesG1PairingGuide } from '../components/GlassesPairingGuides';
-import { VuzixZ100PairingGuide } from '../components/GlassesPairingGuides';
-import { MentraLivePairingGuide } from '../components/GlassesPairingGuides';
 interface GlassesPairingGuidePreparationScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
@@ -49,19 +42,6 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
   React.useEffect(() => {
   }, [glassesModelName]);
 
-  const getPairingGuide = (glassesModelName: string) => {
-    switch (glassesModelName) {
-      case 'Even Realities G1':
-        return <EvenRealitiesG1PairingGuide isDarkTheme={isDarkTheme} />;
-      case 'Vuzix Z100':
-        return <VuzixZ100PairingGuide isDarkTheme={isDarkTheme} />;
-      case 'Mentra Live':
-        return <MentraLivePairingGuide isDarkTheme={isDarkTheme} />;        
-      default:
-        return <PairingDeviceInfo glassesModelName={glassesModelName} isDarkTheme={isDarkTheme} />;
-    }
-  };
-
   const advanceToPairing = () => {
     if (glassesModelName == null || glassesModelName == "") {
       console.log("SOME WEIRD ERROR HERE");
@@ -77,7 +57,7 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
     <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
       <ScrollView style={styles.scrollViewContainer}>
         <View style={styles.contentContainer}>
-          {getPairingGuide(glassesModelName)}
+          {getPairingGuide(glassesModelName, isDarkTheme)}
         </View>
       </ScrollView>
       <View style={styles.buttonContainer}>

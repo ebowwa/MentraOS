@@ -355,9 +355,16 @@ import AVFoundation
   
   func handleSearchForCompatibleDeviceNames(_ modelName: String) {
     print("Searching for compatible device names for: \(modelName)")
-    // TODO: Implement search for compatible device names
-    // for now, just trigger a scan for devices on the g1Manager:
-    self.g1Manager.RN_startScan()
+    if (modelName.contains("Virtual")) {
+      self.deviceName = "Virtual Wearable"
+      self.useOnboardMic = true;
+      self.micEnabled = true;
+      onMicrophoneStateChange(true)
+      saveSettings()
+      handleRequestStatus()
+    } else {
+      self.g1Manager.RN_startScan()
+    }
   }
   
   @objc func handleCommand(_ command: String) {
@@ -545,11 +552,24 @@ import AVFoundation
   private func handleRequestStatus() {
     // construct the status object:
     
+    let isVirtualWearable = self.deviceName == "Virtual Wearable"
+    
     let isGlassesConnected = self.g1Manager.g1Ready
-    var connectedGlasses: [String: Any] = [:];
     
     // also referenced as glasses_info:
-    if isGlassesConnected {
+    var connectedGlasses: [String: Any] = [:];
+    
+    
+    
+    if (isVirtualWearable) {
+      connectedGlasses = [
+        "model_name": self.deviceName,
+//        "battery_life": -1,
+        "auto_brightness": false,
+        "is_searching": self.isSearching,
+      ]
+      self.defaultWearable = self.deviceName
+    } else if isGlassesConnected {
       connectedGlasses = [
         "model_name": "Even Realities G1",
         "battery_life": self.batteryLevel,
@@ -683,6 +703,11 @@ import AVFoundation
   private func handleConnectWearable(modelName: String, deviceName: String) {
     print("Connecting to wearable: \(modelName)")
     
+    if (modelName.contains("Virtual") || deviceName.contains("Virtual") || self.deviceName.contains("Virtual")) {
+      // we don't need to search for a virtual device
+      return
+    }
+    
     self.isSearching = true
     handleRequestStatus()// update the UI
     
@@ -705,6 +730,7 @@ import AVFoundation
       while !Task.isCancelled {
         print("checking if g1 is ready...")
         if self.g1Manager.g1Ready {
+          // we actualy don't need this line:
 //          handleDeviceReady()
           break
         } else {
