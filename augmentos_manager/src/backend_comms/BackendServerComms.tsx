@@ -229,8 +229,6 @@ export default class BackendServerComms {
           'Authorization': `Bearer ${this.coreToken}`,
         },
       };
-      console.log('Starting app:', packageName);
-      console.log(config);
   
       try {
         const response = await axios(config);
