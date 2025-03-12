@@ -60,6 +60,14 @@ export const LOCAL_APPS: AppI[] = [
     webhookURL: `http://${systemApps.liveTranslation.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
     description: systemApps.liveTranslation.description,
+  },
+  {
+    packageName: systemApps.teleprompter.packageName,
+    name: systemApps.teleprompter.name,
+    tpaType: TpaType.STANDARD,
+    webhookURL: `http://${systemApps.teleprompter.host}/webhook`,
+    logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
+    description: systemApps.teleprompter.description,
   }
 ];
 
