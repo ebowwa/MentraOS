@@ -51,6 +51,10 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme }) => {
       if (window.setSupabaseToken) {
         window.setSupabaseToken('${supabaseToken}');
       }
+      window.localStorage.setItem('core_token', '${coreToken}');
+      if (window.setCoreToken) {
+        window.setCoreToken('${coreToken}');
+      }
       true;
     `);
   }
