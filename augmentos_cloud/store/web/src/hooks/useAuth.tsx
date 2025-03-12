@@ -82,6 +82,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsWebViewAuth(true);
     };
 
+    window.setCoreToken = (token: string) => {
+      console.log('CoreToken received from WebView');
+      setupAxiosAuth(token);
+      // setSession({ access_token: token } as Session);
+      // setUser({ id: 'webview-user' } as User);
+      setIsWebViewAuth(true);
+    };
+
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {

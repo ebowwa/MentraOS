@@ -1,6 +1,7 @@
 // backend_comms/BackendServerComms.ts
 import axios, { AxiosRequestConfig } from 'axios';
 import { Config } from 'react-native-config';
+import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -239,7 +240,8 @@ export default class BackendServerComms {
           throw new Error(`Bad response: ${response.statusText}`);
         }
       } catch (error: any) {
-        console.error('Error starting app:', error.message || error);
+        //console.error('Error starting app:', error.message || error);
+        GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Error starting app: ' + error.message || error, type: 'error' })
         throw error;
       }
     }

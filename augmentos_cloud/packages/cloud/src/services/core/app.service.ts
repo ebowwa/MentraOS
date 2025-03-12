@@ -13,7 +13,7 @@ import { systemApps } from '@augmentos/config';
 import App from '../../models/app.model';
 import { User } from '../../models/user.model';
 
-const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development';
+const APPSTORE_ENABLED = true;//process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development';
 
 /**
  * System TPAs that are always available.
