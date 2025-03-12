@@ -910,6 +910,16 @@ export class BluetoothService extends EventEmitter {
     });
   }
 
+  async setGlassesDashboardHeight(height: number) {
+    console.log('setGlassesDashboardHeight');
+    return await this.sendDataToAugmentOs({
+      command: 'update_glasses_dashboard_height',
+      params: {
+        height: height,
+      }
+    });
+  }
+
   async setGlassesHeadUpAngle(headUpAngle: number) {
     console.log('setGlassesHeadUpAngle');
     return await this.sendDataToAugmentOs({

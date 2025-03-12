@@ -21,7 +21,7 @@ import AVFoundation
   private let serverComms = ServerComms.getInstance()
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
-//  private var cachedWhatToStream = [String]()
+  //  private var cachedWhatToStream = [String]()
   private var defaultWearable: String? = nil
   private var deviceName: String = ""
   private var contextualDashboard = true;
@@ -29,6 +29,7 @@ import AVFoundation
   private var brightness = 50;
   private var batteryLevel = -1;
   private var autoBrightness: Bool = false;
+  private var dashboardHeight: Int = 4;
   private var sensingEnabled: Bool = false;
   private var isSearching: Bool = false;
   
@@ -114,26 +115,26 @@ import AVFoundation
     handleRequestStatus()
   }
   
-//  func checkIfMicNeedsTobeEnabled() {
-//    print("checkIfMicNeedsTobeEnabled() micEnabled: \(self.micEnabled) g1Ready: \(self.g1Manager.g1Ready) whatToStreamCount: \(self.cachedWhatToStream.count)")
-//    // only bother checking if the mic isn't already enabled
-//    guard !self.micEnabled else { return }
-//    // check if device is ready, if not, return:
-//    guard self.g1Manager.g1Ready else { return }
-//    
-//    for what in self.cachedWhatToStream {
-//      if what.contains("transcription") {
-//        onMicrophoneStateChange(true)
-//        break
-//      }
-//    }
-//  }
+  //  func checkIfMicNeedsTobeEnabled() {
+  //    print("checkIfMicNeedsTobeEnabled() micEnabled: \(self.micEnabled) g1Ready: \(self.g1Manager.g1Ready) whatToStreamCount: \(self.cachedWhatToStream.count)")
+  //    // only bother checking if the mic isn't already enabled
+  //    guard !self.micEnabled else { return }
+  //    // check if device is ready, if not, return:
+  //    guard self.g1Manager.g1Ready else { return }
+  //
+  //    for what in self.cachedWhatToStream {
+  //      if what.contains("transcription") {
+  //        onMicrophoneStateChange(true)
+  //        break
+  //      }
+  //    }
+  //  }
   
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/) {
     self.cachedThirdPartyAppList = apps
-//    self.cachedWhatToStream = whatToStream
+    //    self.cachedWhatToStream = whatToStream
     
-//    checkIfMicNeedsTobeEnabled()
+    //    checkIfMicNeedsTobeEnabled()
     handleRequestStatus()
   }
   
@@ -385,6 +386,7 @@ import AVFoundation
       case stopApp = "stop_app"
       case updateGlassesHeadUpAngle = "update_glasses_headUp_angle"
       case updateGlassesBrightness = "update_glasses_brightness"
+      case updateGlassesDashboardHeight = "update_glasses_dashboard_height"
       case enableSensing = "enable_sensing"
       case unknown
     }
@@ -518,6 +520,21 @@ import AVFoundation
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .updateGlassesDashboardHeight:
+          guard let params = params, let value = params["height"] as? Int else {
+            print("update_glasses_brightness invalid params")
+            break
+          }
+          self.dashboardHeight = value
+          Task {
+            self.g1Manager.RN_setDashboardPosition(value)
+            self.g1Manager.RN_sendText("Set dashboard position to \(value)%")
+            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            self.g1Manager.RN_sendText(" ")// clear screen
+          }
+          saveSettings()
+          handleRequestStatus()// to update the UI
+          break
         case .enableSensing:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
             print("enable_sensing invalid params")
@@ -564,7 +581,7 @@ import AVFoundation
     if (isVirtualWearable) {
       connectedGlasses = [
         "model_name": self.deviceName,
-//        "battery_life": -1,
+        //        "battery_life": -1,
         "auto_brightness": false,
         "is_searching": self.isSearching,
       ]
@@ -576,6 +593,7 @@ import AVFoundation
         "headUp_angle": self.headUpAngle,
         "brightness": self.brightness,
         "auto_brightness": self.autoBrightness,
+        "dashboard_height": self.dashboardHeight,
         "is_searching": self.isSearching,
       ]
       self.defaultWearable = "Even Realities G1"
@@ -731,7 +749,7 @@ import AVFoundation
         print("checking if g1 is ready...")
         if self.g1Manager.g1Ready {
           // we actualy don't need this line:
-//          handleDeviceReady()
+          //          handleDeviceReady()
           break
         } else {
           // todo: ios not the cleanest solution here
@@ -755,6 +773,7 @@ import AVFoundation
     static let brightness = "brightness"
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
+    static let dashboardHeight = "dashboardHeight"
   }
   
   private func saveSettings() {
@@ -769,6 +788,7 @@ import AVFoundation
     defaults.set(brightness, forKey: SettingsKeys.brightness)
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
+    defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -787,6 +807,7 @@ import AVFoundation
     contextualDashboard = defaults.bool(forKey: SettingsKeys.contextualDashboard)
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+    dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
     
     // For numeric values, provide the default if the key doesn't exist
     if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
@@ -804,8 +825,9 @@ import AVFoundation
       self.g1Manager.RN_setHeadUpAngle(headUpAngle)
       try? await Task.sleep(nanoseconds: 100_000_000)
       self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
-//      try? await Task.sleep(nanoseconds: 100_000_000)
-//      self.g1Manager.RN_getBatteryStatus()
+      try? await Task.sleep(nanoseconds: 100_000_000)
+      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
+      //      self.g1Manager.RN_getBatteryStatus()
     }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +

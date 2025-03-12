@@ -831,51 +831,6 @@ extension ERG1Manager {
     }
   }
   
-  
-  private func formatTextLines(text: String) -> [String] {
-    let paragraphs = text.split(separator: "\n", omittingEmptySubsequences: false).map { String($0) }
-    var lines = [String]()
-    
-    for paragraph in paragraphs {
-      if paragraph.isEmpty {
-        lines.append("") // Keep empty lines for spacing
-        continue
-      }
-      
-      var remainingText = paragraph
-      while remainingText.count > 40 {
-        // Try to find a space to break at
-        var endIndex = remainingText.index(remainingText.startIndex, offsetBy: 40)
-        
-        // Look backward for a space to break at
-        while endIndex > remainingText.startIndex && !remainingText[endIndex].isWhitespace {
-          endIndex = remainingText.index(before: endIndex)
-        }
-        
-        // If no space found, force break at character 40
-        if endIndex == remainingText.startIndex {
-          endIndex = remainingText.index(remainingText.startIndex, offsetBy: 40)
-        }
-        
-        let line = String(remainingText[..<endIndex])
-        lines.append(line)
-        
-        // Skip the space we broke at
-        if endIndex < remainingText.endIndex && remainingText[endIndex].isWhitespace {
-          endIndex = remainingText.index(after: endIndex)
-        }
-        
-        remainingText = String(remainingText[endIndex...])
-      }
-      
-      if !remainingText.isEmpty {
-        lines.append(remainingText)
-      }
-    }
-    
-    return lines
-  }
-  
   @objc public func RN_setBrightness(_ level: Int, autoMode: Bool = false) {
     // Convert from percentage (0-100) to the correct range (0-41)
     let mappedLevel = min(41, max(0, Int((Double(level) / 100.0) * 41.0)))
@@ -991,6 +946,12 @@ extension ERG1Manager {
       leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
     }
     return true
+  }
+  
+  @objc public func RN_setDashboardPosition(_ position: Int) {
+    Task {
+      await setDashboardPosition(DashboardPosition(rawValue: UInt8(position)) ?? DashboardPosition.position0)
+    }
   }
   
   public func setDashboardPosition(_ position: DashboardPosition) async -> Bool {

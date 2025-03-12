@@ -136,6 +136,22 @@ RCT_EXPORT_METHOD(
 }
 
 RCT_EXPORT_METHOD(
+  setDashboardPosition:
+  (NSInteger)position
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    [self.aosManager.g1Manager RN_setDashboardPosition:position];
+    resolve(@[@"Set mic enabled"]);
+  }
+  @catch(NSException *exception) {
+    reject(@"0", exception.description, nil);
+  }
+}
+
+RCT_EXPORT_METHOD(
   connectServer:
   (RCTPromiseResolveBlock)resolve
   rejecter:(RCTPromiseRejectBlock)reject

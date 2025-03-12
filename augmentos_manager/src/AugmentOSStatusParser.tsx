@@ -7,6 +7,9 @@ interface Glasses {
   brightness: number | null; // 0-100
   auto_brightness: boolean;
   headUp_angle: number | null; // 0-60
+  dashboard_height: number | null; // 0-8
+  dashboard_distance: number | null; // ???
+  dashboard_x_offset: number | null; // 0-1
 }
 
 interface WifiConnection {
@@ -235,6 +238,9 @@ export class AugmentOSParser {
             brightness: glassesInfo.brightness,
             auto_brightness: glassesInfo.auto_brightness,
             headUp_angle: glassesInfo.headUp_angle,
+            dashboard_height: glassesInfo.dashboard_height,
+            dashboard_distance: glassesInfo.dashboard_distance,
+            dashboard_x_offset: glassesInfo.dashboard_x_offset,
           }
           : null,
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,

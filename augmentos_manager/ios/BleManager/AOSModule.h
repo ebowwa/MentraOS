@@ -22,6 +22,7 @@
 - (void)sendText:(NSString *)text :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 - (void)setBrightness:(int)level :(BOOL)autoBrightness :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 - (void)setMicEnabled:(BOOL)enabled :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
+- (void)setDashboardPosition:(int)level :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 
 - (void)connectServer:(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
 - (void)setCoreToken:(NSString *)token :(RCTPromiseResolveBlock)resolve :(RCTPromiseRejectBlock)reject;
