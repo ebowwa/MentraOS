@@ -263,14 +263,14 @@ async function stopApp(req: Request, res: Response) {
  * Install app for user
  */
 async function installApp(req: Request, res: Response) {
-  console.log('installApp', req.params);
-  const { packageName, email } = req.params;
-  console.log('installApp', packageName, email);
+  const { packageName } = req.params;
+  const session = (req as any).userSession; // Get session from middleware
+  const email = session.userId;
 
   if (!email || !packageName) {
     return res.status(400).json({
       success: false,
-      message: 'Email and package name are required'
+      message: 'User session and package name are required'
     });
   }
 
@@ -312,13 +312,19 @@ async function installApp(req: Request, res: Response) {
       message: `App ${packageName} installed successfully`
     });
 
-    // Trigger AppStateChange for session.
-    try {
-      sessionService.triggerAppStateChange(user.email);
-    }
-    catch (error) {
-      // Fails if the user has no active sessions, or if websocket is not connected.
-      console.error('Error triggering app state change:', error);
+    // Generate app state change
+    const appStateChange = await webSocketService.generateAppStateStatus(session);
+    
+    // Send update to websocket if connected
+    if (session.websocket && session.websocket.readyState === 1) {
+      session.websocket.send(JSON.stringify(appStateChange));
+    } else {
+      // Fall back to session service if direct websocket not available
+      try {
+        sessionService.triggerAppStateChange(email);
+      } catch (error) {
+        console.error('Error triggering app state change:', error);
+      }
     }
   } catch (error) {
     console.error('Error installing app:', error);
@@ -333,13 +339,14 @@ async function installApp(req: Request, res: Response) {
  * Uninstall app for user
  */
 async function uninstallApp(req: Request, res: Response) {
-  const { packageName, email } = req.params;
-  console.log('installApp', packageName, email);
+  const { packageName } = req.params;
+  const session = (req as any).userSession; // Get session from middleware
+  const email = session.userId;
 
   if (!email || !packageName) {
     return res.status(400).json({
       success: false,
-      message: 'Email and package name are required'
+      message: 'User session and package name are required'
     });
   }
 
@@ -371,13 +378,20 @@ async function uninstallApp(req: Request, res: Response) {
       success: true,
       message: `App ${packageName} uninstalled successfully`
     });
-    // Trigger AppStateChange for session.
-    try {
-      sessionService.triggerAppStateChange(user.email);
-    }
-    catch (error) {
-      // Fails if the user has no active sessions, or if websocket is not connected.
-      console.error('Error triggering app state change:', error);
+
+    // Generate app state change
+    const appStateChange = await webSocketService.generateAppStateStatus(session);
+    
+    // Send update to websocket if connected
+    if (session.websocket && session.websocket.readyState === 1) {
+      session.websocket.send(JSON.stringify(appStateChange));
+    } else {
+      // Fall back to session service if direct websocket not available
+      try {
+        sessionService.triggerAppStateChange(email);
+      } catch (error) {
+        console.error('Error triggering app state change:', error);
+      }
     }
   } catch (error) {
     console.error('Error uninstalling app:', error);
@@ -443,6 +457,9 @@ router.get('/', getAllApps);
 router.get('/public', getPublicApps);
 router.get('/search', searchApps);
 router.get('/installed', getInstalledApps);
+router.post('/install/:packageName', sessionAuthMiddleware, installApp);
+router.post('/uninstall/:packageName', sessionAuthMiddleware, uninstallApp);
+// Keep backward compatibility for now (can be removed later)
 router.post('/install/:packageName/:email', installApp);
 router.post('/uninstall/:packageName/:email', uninstallApp);
 router.get('/install/:packageName/:email', installApp);

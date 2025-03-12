@@ -8,6 +8,7 @@ import App from './App'
 declare global {
   interface Window {
     setSupabaseToken: (token: string) => void;
+    setCoreToken: (token: string) => void;
   }
 }
 
