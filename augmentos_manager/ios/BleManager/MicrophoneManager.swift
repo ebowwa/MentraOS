@@ -151,7 +151,7 @@ class OnboardMicrophoneManager {
         return
       }
       
-      var pcmData = self.extractInt16Data(from: convertedBuffer)
+      let pcmData = self.extractInt16Data(from: convertedBuffer)
       
       // just publish the PCM data, we'll encode it in the AOSManager:
       self.voiceDataSubject.send(pcmData)
