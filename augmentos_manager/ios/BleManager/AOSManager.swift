@@ -81,6 +81,15 @@ import AVFoundation
       self.batteryLevel = level
       self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
     }.store(in: &cancellables)
+    
+    
+    // Subscribe to WebSocket status changes
+    serverComms.wsManager.status
+      .sink { [weak self] status in
+        guard let self = self else { return }
+        handleRequestStatus()
+      }
+      .store(in: &cancellables)
   }
   
   // MARK: - Public Methods (for React Native)

@@ -21,7 +21,7 @@ protocol ServerCommsCallback {
 class ServerComms {
   private static var instance: ServerComms?
   
-  private let wsManager = WebSocketManager()
+  public let wsManager = WebSocketManager()
   private var speechRecCallback: ((([String: Any]) -> Void))?
   private var serverCommsCallback: ServerCommsCallback?
   private var coreToken: String = ""
