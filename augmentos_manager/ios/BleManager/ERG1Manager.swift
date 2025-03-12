@@ -247,42 +247,24 @@ struct ViewState {
   
   // connect to glasses we've discovered:
   @objc public func RN_connectGlasses() -> Bool {
-    
     print("RN_connectGlasses()")
     
     if let side = leftPeripheral {
       centralManager.connect(side, options: nil)
-//      if let char = findCharacteristic(uuid: UART_RX_CHAR_UUID, peripheral: side) {
-//        enableNotification(gatt: side, characteristic: char)
-//      } else {
-////      let char = getWriteCharacteristic(for: leftPeripheral)
-////      if let char = char {
-////        enableNotification(gatt: side, characteristic: char)
-////      } else {
-//        print("failed to get left side char")
-//      }
     }
     
     if let side = rightPeripheral {
-//      if let char = findCharacteristic(uuid: UART_RX_CHAR_UUID, peripheral: side) {
-//        enableNotification(gatt: side, characteristic: char)
-//      } else {
-//        print("failed to get right side char")
-//      }
       centralManager.connect(side, options: nil)
     }
     
-//    // just return if we don't have both a left and right arm:
-//    guard leftPeripheral != nil && rightPeripheral != nil else {
-//      return false;
-//    }
-//    
-//    print("Connected to both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") starting heartbeat timer and turning off silent mode...");
-//    startHeartbeatTimer();
-//    RN_stopScan();
-//    Task {
-//      await setSilentMode(false);
-//    }
+    // just return if we don't have both a left and right arm:
+    guard leftPeripheral != nil && rightPeripheral != nil else {
+      return false;
+    }
+    
+    print("found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") starting heartbeat timer and stopping scan");
+    startHeartbeatTimer();
+    RN_stopScan();
     return true
   }
   
@@ -1546,36 +1528,8 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     
   }
   
-  private func enableNotification(gatt: CBPeripheral, characteristic: CBCharacteristic) {
-    print("PROC_QUEUE - Starting notification setup")
-    
-    // Enable notifications for the characteristic
-    print("PROC_QUEUE - setting characteristic notification on side")
-    let result = gatt.setNotifyValue(true, for: characteristic)
-    print("PROC_QUEUE - setNotifyValue result for: \(result)")
-    
-    Thread.sleep(forTimeInterval: 0.5) // 500ms delay
-    
-    // In iOS, we get the descriptor differently
-    print("PROC_QUEUE - get descriptor on side")
-    let CLIENT_CHARACTERISTIC_CONFIG_UUID = CBUUID(string: "00002902-0000-1000-8000-00805f9b34fb");
-    if let descriptor = characteristic.descriptors?.first(where: { $0.uuid == CLIENT_CHARACTERISTIC_CONFIG_UUID }) {
-      print("PROC_QUEUE - setting descriptor on side")
-      
-      // In iOS/CoreBluetooth we directly write to the descriptor
-      // without needing to set its value separately
-      let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
-      gatt.writeValue(value, for: descriptor)
-      print("PROC_QUEUE - set descriptor on side")
-    } else {
-      // Create and write to the descriptor if needed
-      print("PROC_QUEUE - descriptor not found")
-    }
-  }
-  
   // Update didConnect to set timestamp
   public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
-    print("CONNECTED_TO_PERIPHERAL")
     peripheral.delegate = self
     peripheral.discoverServices([UART_SERVICE_UUID])
     
@@ -1596,7 +1550,6 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
-    print("PERIPHERAL_DISCONNECTED")
     if peripheral == leftPeripheral || peripheral == rightPeripheral {
       g1Ready = false
       RN_startScan()// attempt reconnect
@@ -1604,7 +1557,6 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
-    print("PERIPHERAL_DISCOVERED_SERVICES")
     if let services = peripheral.services {
       for service in services where service.uuid == UART_SERVICE_UUID {
         peripheral.discoverCharacteristics([UART_TX_CHAR_UUID, UART_RX_CHAR_UUID], for: service)
@@ -1614,10 +1566,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update peripheral(_:didDiscoverCharacteristicsFor:error:) to set services waiters
   public func peripheral(_ peripheral: CBPeripheral, didDiscoverCharacteristicsFor service: CBService, error: Error?) {
-    print("PERIPHERAL_DISCOVERED_CHARACTERISTICS")
     guard let characteristics = service.characteristics else { return }
-    
-    print("peripheral(\(peripheral), didDiscoverCharacteristicsFor:error:)")
     
     if service.uuid.isEqual(UART_SERVICE_UUID) {
       for characteristic in characteristics {
@@ -1626,21 +1575,13 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
         } else if characteristic.uuid == UART_RX_CHAR_UUID {
           peripheral.setNotifyValue(true, for: characteristic)
           
+          // enable notification (needed for pairing from scracth!)
           Thread.sleep(forTimeInterval: 0.5) // 500ms delay
-          
-          // In iOS, we get the descriptor differently
-          print("PROC_QUEUE - get descriptor on side")
           let CLIENT_CHARACTERISTIC_CONFIG_UUID = CBUUID(string: "00002902-0000-1000-8000-00805f9b34fb");
           if let descriptor = characteristic.descriptors?.first(where: { $0.uuid == CLIENT_CHARACTERISTIC_CONFIG_UUID }) {
-            print("PROC_QUEUE - setting descriptor on side")
-            
-            // In iOS/CoreBluetooth we directly write to the descriptor
-            // without needing to set its value separately
             let value = Data([0x01, 0x00]) // ENABLE_NOTIFICATION_VALUE in iOS
             peripheral.writeValue(value, for: descriptor)
-            print("PROC_QUEUE - set descriptor on side")
           } else {
-            // Create and write to the descriptor if needed
             print("PROC_QUEUE - descriptor not found")
           }
         }
@@ -1671,7 +1612,6 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   
   // Update didUpdateValueFor to set waiters
   public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
-    print("PERIPHERAL_DID_UPDATE_VALUE")
     if let error = error {
       print("Error updating value for characteristic: \(error.localizedDescription)")
       return
