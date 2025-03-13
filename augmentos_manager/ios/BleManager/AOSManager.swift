@@ -528,7 +528,7 @@ import AVFoundation
           self.dashboardHeight = value
           Task {
             self.g1Manager.RN_setDashboardPosition(value)
-            self.g1Manager.RN_sendText("Set dashboard position to \(value)%")
+            self.g1Manager.RN_sendText("Set dashboard position to \(value)")
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             self.g1Manager.RN_sendText(" ")// clear screen
           }

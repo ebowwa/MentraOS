@@ -261,6 +261,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     thumbStyle: { height: 20, width: 20 }
   };
 
+  console.log('status.glasses_info?.dashboard_height', status.glasses_info?.dashboard_height);
+
   const dashboardHeightSliderProps = {
     disabled: !status.glasses_info?.model_name ||
       !status.glasses_info.model_name.toLowerCase().includes('even'),

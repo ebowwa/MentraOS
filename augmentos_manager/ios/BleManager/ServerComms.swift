@@ -106,10 +106,10 @@ class ServerComms {
       let jsonData = try JSONSerialization.data(withJSONObject: initMsg)
       if let jsonString = String(data: jsonData, encoding: .utf8) {
         wsManager.sendText(jsonString)
-        print("Sent connection_init message")
+        print("ServerComms: Sent connection_init message")
       }
     } catch {
-      print("Error building connection_init JSON: \(error)")
+      print("ServerComms: Error building connection_init JSON: \(error)")
     }
   }
   
@@ -214,7 +214,7 @@ class ServerComms {
         wsManager.sendText(jsonString)
       }
     } catch {
-      print("Error building button_press JSON: \(error)")
+      print("ServerComms: Error building button_press JSON: \(error)")
     }
   }
   
@@ -274,14 +274,14 @@ class ServerComms {
       if let callback = speechRecCallback {
         callback(msg)
       } else {
-        print("Received speech message but speechRecCallback is null!")
+        print("ServerComms: Received speech message but speechRecCallback is null!")
       }
       
     case "reconnect":
-      print("Server is requesting a reconnect.")
+      print("ServerComms: Server is requesting a reconnect.")
       
     default:
-      print("Unknown message type: \(type) / full: \(msg)")
+      print("ServerComms: Unknown message type: \(type) / full: \(msg)")
     }
   }
   
@@ -360,7 +360,7 @@ class ServerComms {
     let secure = RNCConfig.env(for: "AUGMENTOS_SECURE")!
     let secureServer = secure.contains("true")
     let url = "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
-    print("getServerUrl(): \(url)")
+    print("ServerComms: getServerUrl(): \(url)")
     return url
   }
   
@@ -369,7 +369,7 @@ class ServerComms {
        let whatToStream = userSession["whatToStream"] as? [String] {
         return whatToStream
     }
-    print("whatToStream was not found in server message!")
+    print("ServerComms: whatToStream was not found in server message!")
     return []
   }
   
