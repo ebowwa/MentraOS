@@ -16,6 +16,8 @@ import AVFoundation
 @objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback {
   
   private var coreToken: String = ""
+  private var coreTokenOwner: String = ""
+  
   @objc public let g1Manager: ERG1Manager
   public let micManager: OnboardMicrophoneManager
   private let serverComms = ServerComms.getInstance()
@@ -418,6 +420,7 @@ import AVFoundation
           } else {
             print("set_auth_secret_key invalid params")
           }
+          handleRequestStatus()
           
         case .requestStatus:
           handleRequestStatus()
@@ -554,6 +557,7 @@ import AVFoundation
   // Handler methods for each command type
   private func handleSetAuthSecretKey(userId: String, authSecretKey: String) {
     self.coreToken = authSecretKey
+    self.coreTokenOwner = userId
     print("Setting auth secret key for user: \(userId)")
     serverComms.setAuthCredentials(userId, authSecretKey)
     print("Connecting to AugmentOS...")
@@ -626,13 +630,19 @@ import AVFoundation
       apps.append(tpaDict)
     }
     
+    let authObj: [String: Any] = [
+      "core_token_owner": self.coreTokenOwner,
+//      "core_token_status":
+    ]
     
     let statusObj: [String: Any] = [
       "connected_glasses": connectedGlasses,
       "apps": apps,
       "core_info": coreInfo,
+      "auth": authObj
     ]
     let wrapperObj: [String: Any] = ["status": statusObj]
+    
     // print("wrapperStatusObj \(wrapperObj)")
     // must convert to string before sending:
     do {

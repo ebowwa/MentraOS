@@ -249,29 +249,20 @@ struct ViewState {
         0x01            // max pages
       ]
       command.append(contentsOf: Array(textData))
-      
-//      await sendCommand(command)
-      self.queueCommand(command)
+      self.queueChunks([command])
     }
   }
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
     let chunks = textHelper.createTextWallChunks(text)
-    //      sendChunks(chunks)
-    for chunk in chunks {
-      print("Sending chunk: \(chunk)")
-      queueCommand(chunk, sleepAfterMs: 50)
-    }
+    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
     Task {
-      // only
-      for chunk in chunks {
-        queueCommand(chunk, sleepAfterMs: 50)
-      }
+      queueChunks(chunks, sleepAfterMs: 50)
     }
   }
   
@@ -384,89 +375,89 @@ struct ViewState {
   // @@@ END REACT NATIVE FUNCTIONS
   
   
-//  private func setupCommandQueue() {
-//    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-//      guard let self = self else { return }
-//      
-//      while true {
-//        var commandToProcess: BufferedCommand?
-//        
-//        // Try to get a number from the queue
-//        self.queueLock.wait()
-//        if !self.commandQueue.isEmpty {
-//          commandToProcess = self.commandQueue.removeFirst()  // FIFO - remove from the front
-//        }
-//        self.queueLock.signal()
-//        
-//        // If no command, just poll again after a short delay
-//        guard let command = commandToProcess else {
-//          Thread.sleep(forTimeInterval: 0.1)  // Simple polling
-//          continue
-//        }
-//        
-//        let semaphore = DispatchSemaphore(value: 0)
-//        Task {
-//          await self.processCommand(command)
-//          semaphore.signal()
-//        }
-//        semaphore.wait()// waits until the command is done processing
-//      }
-//    }
-//    
-//  }
+  //  private func setupCommandQueue() {
+  //    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+  //      guard let self = self else { return }
+  //
+  //      while true {
+  //        var commandToProcess: BufferedCommand?
+  //
+  //        // Try to get a number from the queue
+  //        self.queueLock.wait()
+  //        if !self.commandQueue.isEmpty {
+  //          commandToProcess = self.commandQueue.removeFirst()  // FIFO - remove from the front
+  //        }
+  //        self.queueLock.signal()
+  //
+  //        // If no command, just poll again after a short delay
+  //        guard let command = commandToProcess else {
+  //          Thread.sleep(forTimeInterval: 0.1)  // Simple polling
+  //          continue
+  //        }
+  //
+  //        let semaphore = DispatchSemaphore(value: 0)
+  //        Task {
+  //          await self.processCommand(command)
+  //          semaphore.signal()
+  //        }
+  //        semaphore.wait()// waits until the command is done processing
+  //      }
+  //    }
+  //
+  //  }
   
   
   actor CommandQueue {
-      private var commands: [BufferedCommand] = []
-      
-      func enqueue(_ command: BufferedCommand) {
-          commands.append(command)
-      }
-      
-      func dequeue() -> BufferedCommand? {
-          guard !commands.isEmpty else { return nil }
-          return commands.removeFirst()
-      }
+    private var commands: [BufferedCommand] = []
+    
+    func enqueue(_ command: BufferedCommand) {
+      commands.append(command)
+    }
+    
+    func dequeue() -> BufferedCommand? {
+      guard !commands.isEmpty else { return nil }
+      return commands.removeFirst()
+    }
   }
-
+  
   private func setupCommandQueue() {
-      Task.detached { [weak self] in
-          guard let self = self else { return }
-          
-          while true {
-              let command = await self.getNextCommand()
-              await self.processCommand(command)
-          }
-      }
-  }
-
-  private func getNextCommand() async -> BufferedCommand {
+    Task.detached { [weak self] in
+      guard let self = self else { return }
+      
       while true {
-          if let command = await commandQueue.dequeue() {
-              return command
-          }
-          try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+        let command = await self.getNextCommand()
+        await self.processCommand(command)
       }
+    }
+  }
+  
+  private func getNextCommand() async -> BufferedCommand {
+    while true {
+      if let command = await commandQueue.dequeue() {
+        return command
+      }
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
+    }
   }
   
   func resetSemaphoreToZero(_ semaphore: DispatchSemaphore) {
-      // First, try to acquire the semaphore with a minimal timeout
-      let result = semaphore.wait(timeout: .now() + 0.001)
-      if result == .success {
-          // We acquired it, meaning it was at least 1
-          // Release it to get back to where we were (if it was 1) or to increment it by 1 (if it was >1)
-          semaphore.signal()
-          // Try to acquire it again to see if it's still available (meaning it was >1 before)
-          while semaphore.wait(timeout: .now() + 0.001) == .success {
-              // Keep signaling until we're sure we're at 1
-              semaphore.signal()
-              break
-          }
-      } else {
-          // Timeout occurred, meaning the semaphore was at 0 or less
-          // Signal once to try to bring it to 1
-          semaphore.signal()
+    // First, try to acquire the semaphore with a minimal timeout
+    let result = semaphore.wait(timeout: .now() + 0.001)
+    if result == .success {
+      // We acquired it, meaning it was at least 1
+      // Release it to get back to where we were (if it was 1) or to increment it by 1 (if it was >1)
+      semaphore.signal()
+      // Try to acquire it again to see if it's still available (meaning it was >1 before)
+      while semaphore.wait(timeout: .now() + 0.001) == .success {
+        // Keep signaling until we're sure we're at 1
+        semaphore.signal()
+        break
       }
+    } else {
+      // Timeout occurred, meaning the semaphore was at 0 or less
+      // Signal once to try to bring it to 1
+      semaphore.signal()
+    }
     // bring it down to 0:
     semaphore.wait(timeout: .now() + 0.001)
   }
@@ -474,11 +465,14 @@ struct ViewState {
   // Process a single number with timeouts
   private func processCommand(_ command: BufferedCommand) async {
     
-    print("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
+//    print("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
     
     var attempts = 0
-    var maxAttempts = 10
+    var maxAttempts = 3
     var result: Bool = false
+    var side = "left"
+    var semaphore = leftSemaphore
+    let chunks = command.chunks
     
     // TODO: this is a total hack but in theory ensure semaphores are at count 1:
     // in theory this shouldn't be necesarry but in practice this helps ensure weird
@@ -486,19 +480,32 @@ struct ViewState {
     resetSemaphoreToZero(leftSemaphore)
     resetSemaphoreToZero(rightSemaphore)
     
+    if chunks.isEmpty {
+      print("@@@ chunks was empty! @@@")
+      return
+    }
+    
     // first send to the left:
     if command.sendLeft {
-      // wait for the left to acknowledge:
       while attempts < maxAttempts && !result {
         if (attempts > 0) {
           print("trying again to send to left: \(attempts)")
         }
-        await sendCommandToSide(command.data, side: "left")
-        result = waitForSemaphore(semaphore: leftSemaphore, timeout: 0.1)
+        
+        for i in 0..<chunks.count-1 {
+          let chunk = chunks[i]
+          await sendCommandToSide(chunk, side: side)
+          try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
+        }
+        
+        let lastChunk = chunks.last!
+        await sendCommandToSide(lastChunk, side: side)
+        
+        result = waitForSemaphore(semaphore: semaphore, timeout: 0.1)
         
         attempts += 1
         if !result && (attempts >= maxAttempts) {
-          leftSemaphore.signal()// increment the count so we don't end up in th
+          semaphore.signal()// increment the count
           break
         }
       }
@@ -509,18 +516,29 @@ struct ViewState {
     // reset vars:
     attempts = 0
     result = false
+    side = "right"
+    semaphore = rightSemaphore
     
     if command.sendRight {
       while attempts < maxAttempts && !result {
         if (attempts > 0) {
           print("trying again to send to right: \(attempts)")
         }
-        await sendCommandToSide(command.data, side: "right")
-        result = waitForSemaphore(semaphore: rightSemaphore, timeout: 0.1)
+        
+        for i in 0..<chunks.count-1 {
+          let chunk = chunks[i]
+          await sendCommandToSide(chunk, side: side)
+          try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
+        }
+        
+        let lastChunk = chunks.last!
+        await sendCommandToSide(lastChunk, side: side)
+        
+        result = waitForSemaphore(semaphore: semaphore, timeout: 0.1)
         
         attempts += 1
         if !result && (attempts >= maxAttempts) {
-          rightSemaphore.signal()
+          semaphore.signal()// increment the count
           break
         }
       }
@@ -530,8 +548,8 @@ struct ViewState {
       // wait waitTime milliseconds before returning:
       try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
     } else {
-      // sleep for a min of 25ms:
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000)
+      // sleep for a min amount of time
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000)
     }
   }
   
@@ -961,8 +979,8 @@ extension ERG1Manager {
     }
   }
   
-  public func queueCommand(_ command: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 50) {
-    let bufferedCommand = BufferedCommand(data: command, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs, ignoreAck: ignoreAck);
+  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 50) {
+    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs);
     Task {
       await commandQueue.enqueue(bufferedCommand)
     }
@@ -971,10 +989,8 @@ extension ERG1Manager {
   
   @objc func RN_sendWhitelist() {
     print("RN_sendWhitelist()")
-      let whitelistChunks = getWhitelistChunks()
-      for chunk in whitelistChunks {
-        queueCommand(chunk, sendLeft: true, sendRight: true, sleepAfterMs: 100)
-      }
+    let whitelistChunks = getWhitelistChunks()
+    queueChunks(whitelistChunks, sendLeft: true, sendRight: true, sleepAfterMs: 100)
   }
   
   @objc public func RN_setBrightness(_ level: Int, autoMode: Bool = false) {
@@ -1003,19 +1019,19 @@ extension ERG1Manager {
     
     let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
     
-    queueCommand(command)
+    queueChunks([command])
     
-//    // Send to both glasses with proper timing
-//    if let rightGlass = rightPeripheral,
-//       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-//      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-//    }
-//    
-//    if let leftGlass = leftPeripheral,
-//       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-//      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-//    }
+    //    // Send to both glasses with proper timing
+    //    if let rightGlass = rightPeripheral,
+    //       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+    //      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+    //      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+    //    }
+    //
+    //    if let leftGlass = leftPeripheral,
+    //       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+    //      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+    //    }
     
     return true
   }
@@ -1040,7 +1056,7 @@ extension ERG1Manager {
   public func setHeadUpAngle(_ angle: UInt8) async -> Bool {
     print("setHeadUpAngle()")
     let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
-    queueCommand(command)
+    queueChunks([command])
     return true
   }
   
@@ -1053,12 +1069,12 @@ extension ERG1Manager {
   public func getBatteryStatus() async {
     print("getBatteryStatus()")
     let command: [UInt8] = [0x2C, 0x01]
-    queueCommand(command)
+    queueChunks([command])
   }
   
   public func setSilentMode(_ enabled: Bool) async -> Bool {
     let command: [UInt8] = [Commands.SILENT_MODE.rawValue, enabled ? 0x0C : 0x0A, 0x00]
-    queueCommand(command)
+    queueChunks([command])
     return true
   }
   
@@ -1088,12 +1104,12 @@ extension ERG1Manager {
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }
-    queueCommand(commandArray)
+    queueChunks([commandArray])
     
-//    // Send command to both glasses with proper timing
-//    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
-//    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-//    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+    //    // Send command to both glasses with proper timing
+    //    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
+    //    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+    //    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
     return true
   }
   

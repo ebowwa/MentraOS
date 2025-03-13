@@ -75,12 +75,6 @@ const ConnectingToPuckComponent = ({
         });
       }
     }
-
-    // TODO: ios hack:
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Home' }],
-    });
   }, [status, loading, user]);
 
   return (
