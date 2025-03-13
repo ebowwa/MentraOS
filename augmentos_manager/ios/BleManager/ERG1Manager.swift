@@ -29,30 +29,16 @@ extension Data {
   }
 }
 
-struct SendRequest {
-  let data: Data
-  let onlyLeft: Bool
-  let onlyRight: Bool
+struct BufferedCommand {
+  let data: [UInt8]
+  let sendLeft: Bool
+  let sendRight: Bool
   var waitTime: Int
   
-  init(data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
+  init(data: [UInt8], sendLeft: Bool = true, sendRight: Bool = true, waitTime: Int = -1) {
     self.data = data
-    self.onlyLeft = onlyLeft
-    self.onlyRight = onlyRight
-    self.waitTime = waitTime
-  }
-}
-
-struct SendRequest2 {
-  let data: Data
-  let onlyLeft: Bool
-  let onlyRight: Bool
-  var waitTime: Int
-  
-  init(data: Data, onlyLeft: Bool = false, onlyRight: Bool = false, waitTime: Int = -1) {
-    self.data = data
-    self.onlyLeft = onlyLeft
-    self.onlyRight = onlyRight
+    self.sendLeft = sendLeft
+    self.sendRight = sendRight
     self.waitTime = waitTime
   }
 }
@@ -65,31 +51,6 @@ struct AppInfo {
 
 enum GlassesError: Error {
   case missingGlasses(String)
-}
-
-
-class BooleanWaiter {
-  private var flag = true
-  private let semaphore = DispatchSemaphore(value: 0)
-  
-  func waitWhileTrue(_ timeout: DispatchTime) -> Bool {
-    guard flag else { return true }
-    let result = semaphore.wait(timeout: timeout)
-    return result == .success
-  }
-  
-  func setTrue() {
-    flag = true
-  }
-  
-  func setFalse() {
-    flag = false
-    semaphore.signal()
-  }
-  
-  var isTrue: Bool {
-    return flag
-  }
 }
 
 struct ViewState {
@@ -148,15 +109,13 @@ struct ViewState {
   let UART_TX_CHAR_UUID = CBUUID(string: "6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
   let UART_RX_CHAR_UUID = CBUUID(string: "6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
   
-  var sendQueue: [Array<SendRequest>] = []
-  var isWorkerRunning = false
-  let sendQueueLock = NSLock()
-  
-  // Waiters for synchronization
-  //  let leftWaiter = BooleanWaiter()
-  //  let rightWaiter = BooleanWaiter()
-  //  let leftServicesWaiter = BooleanWaiter()
-  //  let rightServicesWaiter = BooleanWaiter()
+  private var commandQueue: [BufferedCommand] = []
+  // Semaphores for synchronization
+  private let queueLock = DispatchSemaphore(value: 1)
+  private let leftSemaphore = DispatchSemaphore(value: 0)  // Start at 0 to block
+  private let rightSemaphore = DispatchSemaphore(value: 0)  // Start at 0 to block
+  private var leftAck = false
+  private var rightAck = false
   
   // Constants
   var DEVICE_SEARCH_ID = "NOT_SET"
@@ -180,7 +139,6 @@ struct ViewState {
   }
   
   private var responseModel:AiResponseToG1Model?
-  private var receivedAck = false
   private var displayingResponseAiRightAck: Bool = false
   private var displayingResponseAiLeftAck: Bool = false
   
@@ -200,6 +158,7 @@ struct ViewState {
   override init() {
     super.init()
     centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+    setupCommandQueue()
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -289,10 +248,8 @@ struct ViewState {
       ]
       command.append(contentsOf: Array(textData))
       
-      await sendCommand(command)
-      
-      //      let success = await sendText(text: text)
-      //      print("Send text operation completed with result: \(success)")
+//      await sendCommand(command)
+      self.queueCommand(command)
     }
   }
   
@@ -301,9 +258,7 @@ struct ViewState {
     //      sendChunks(chunks)
     for chunk in chunks {
       print("Sending chunk: \(chunk)")
-      Task {
-        await sendCommand(chunk)
-      }
+      queueCommand(chunk, sleepAfterMs: 50)
     }
   }
   
@@ -312,8 +267,9 @@ struct ViewState {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
     Task {
       for chunk in chunks {
-        usleep(50000)// sleep for 50ms// TODO: ios not sure if necessary
-        await sendCommand(chunk)
+//        usleep(50000)// sleep for 50ms// TODO: ios not sure if necessary
+//        await sendCommand(chunk)
+        queueCommand(chunk, sleepAfterMs: 50)
       }
     }
   }
@@ -417,6 +373,98 @@ struct ViewState {
   
   // @@@ END REACT NATIVE FUNCTIONS
   
+  
+  private func setupCommandQueue() {
+    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+      guard let self = self else { return }
+      
+      while true {
+        var commandToProcess: BufferedCommand?
+        
+        // Try to get a number from the queue
+        self.queueLock.wait()
+        if !self.commandQueue.isEmpty {
+          commandToProcess = self.commandQueue.removeFirst()  // FIFO - remove from the front
+        }
+        self.queueLock.signal()
+        
+        // If no command, just poll again after a short delay
+        if commandToProcess == nil {
+          Thread.sleep(forTimeInterval: 0.1)  // Simple polling
+          continue
+        }
+        
+        let command = commandToProcess!
+        
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+          await self.processCommand(command)
+          semaphore.signal()
+        }
+        semaphore.wait()// waits until the command is done processing
+      }
+    }
+    
+  }
+  
+  // Process a single number with timeouts
+  private func processCommand(_ command: BufferedCommand) async {
+    
+    var attempts = 0
+    var maxAttempts = 3
+    var result: Bool = false
+    
+    // first send to the left:
+    if command.sendLeft {
+      await sendCommandToSide(command.data, side: "left")
+      // wait for the left to acknowledge:
+      while attempts < maxAttempts && !result {
+        if (attempts > 0) {
+          print("trying again to send to left: \(attempts)")
+        }
+        await sendCommandToSide(command.data, side: "left")
+        attempts += 1
+        // wait for the left to acknowledge:
+        result = waitForLeft(timeout: 0.1)
+      }
+    }
+    
+    attempts = 0
+    
+    if command.sendRight {
+      await sendCommandToSide(command.data, side: "right")
+      while attempts < maxAttempts && !result {
+        if (attempts > 0) {
+          print("trying again to send to right: \(attempts)")
+        }
+        await sendCommandToSide(command.data, side: "right")
+        attempts += 1
+        // wait for the left to acknowledge:
+        result = waitForLeft(timeout: 0.1)
+      }
+    }
+    
+    if command.waitTime > 0 {
+      // wait waitTime milliseconds before returning:
+      try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
+    } else {
+      // sleep for a min of 25ms:
+      try? await Task.sleep(nanoseconds: UInt64(25) * 1_000_000)
+    }
+  }
+  
+  // Wait for A to be true with timeout
+  private func waitForLeft(timeout: TimeInterval) -> Bool {
+    let result = leftSemaphore.wait(timeout: .now() + timeout)
+    return result == .success
+  }
+  
+  // Wait for B to be true with timeout
+  private func waitForRight(timeout: TimeInterval) -> Bool {
+    let result = rightSemaphore.wait(timeout: .now() + timeout)
+    return result == .success
+  }
+  
   private func startAITriggerTimeoutTimer() {
     let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
     
@@ -481,22 +529,19 @@ struct ViewState {
     //      print("received from G1: \(data.hexEncodedString())")
     
     
-    // Clear the appropriate waiter when we get acknowledgment
-    if data.count > 1 {
-      let command = data[0]
-      let response = data.count > 1 ? data[1] : 0
-      
-      //      // Check for ACK response in various commands
-      //      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
-      //        if peripheral == rightPeripheral {
-      //          rightWaiter.setFalse()
-      //          print("Right glass acknowledged")
-      //        } else if peripheral == leftPeripheral {
-      //          leftWaiter.setFalse()
-      //          print("Left glass acknowledged")
-      //        }
-      //      }
-    }
+//    if data.count > 1 {
+//      let response = data.count > 1 ? data[1] : 0
+//      // Check for ACK response in various commands
+//      if command == Commands.BLE_REQ_EVENAI.rawValue && response == CommandResponse.ACK.rawValue {
+//        if peripheral == rightPeripheral {
+//          print("Right glass acknowledged")
+//          rightSemaphore.signal()
+//        } else if peripheral == leftPeripheral {
+//          print("Left glass acknowledged")
+//          leftSemaphore.signal()
+//        }
+//      }
+//    }
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -558,13 +603,12 @@ struct ViewState {
       guard data.count > 1 else { break }
       let acknowledge = CommandResponse(rawValue: data[1])
       if acknowledge == .ACK {
-        if peripheral == self.rightPeripheral {
-          self.displayingResponseAiRightAck = true
-        }
         if peripheral == self.leftPeripheral {
-          self.displayingResponseAiLeftAck = true
+          leftSemaphore.signal()
         }
-        receivedAck = self.displayingResponseAiRightAck && self.displayingResponseAiLeftAck
+        if peripheral == self.rightPeripheral {
+          rightSemaphore.signal()
+        }
       }
       //      print("Received EvenAI response: \(data.hexEncodedString())")
     case .BLE_REQ_DEVICE_ORDER:
@@ -616,6 +660,7 @@ struct ViewState {
         self.caseOpen = false
         print("CASE CLOSED");
       case .CASE_CHARGING_STATUS:
+        guard data.count >= 3 else { break }
         let status = data[2]
         if status == 0x01 {
           self.caseCharging = true
@@ -624,6 +669,11 @@ struct ViewState {
           self.caseCharging = false
           print("CASE NOT CHARGING")
         }
+      case .CASE_CHARGE_INFO:
+        print("CASE CHARGE INFO")
+        guard data.count >= 3 else { break }
+        caseBatteryLevel = Int(data[2])
+        print("Case battery level: \(caseBatteryLevel)%")
       case .DOUBLE_TAP:
         print("DOUBLE TAP")
       default:
@@ -784,6 +834,38 @@ extension ERG1Manager {
     }
   }
   
+  public func sendCommandToSide(_ command: [UInt8], side: String) async {
+    // Ensure command is exactly 20 bytes
+    var paddedCommand = command
+    while paddedCommand.count < 20 {
+      paddedCommand.append(0x00)
+    }
+    
+    // Convert to Data
+    let commandData = Data(paddedCommand)
+    //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
+    
+    if (side == "left") {
+      // send to left
+      if let leftPeripheral = leftPeripheral,
+         let characteristic = leftPeripheral.services?
+        .first(where: { $0.uuid == UART_SERVICE_UUID })?
+        .characteristics?
+        .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
+        leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+      }
+    } else {
+      // send to right
+      if let rightPeripheral = rightPeripheral,
+         let characteristic = rightPeripheral.services?
+        .first(where: { $0.uuid == UART_SERVICE_UUID })?
+        .characteristics?
+        .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
+        rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
+      }
+    }
+  }
+  
   
   public func sendCommand(_ command: [UInt8]) async {
     // Ensure command is exactly 20 bytes
@@ -797,7 +879,7 @@ extension ERG1Manager {
     //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     
-    // Then send to left glass
+    // send to left
     if let leftPeripheral = leftPeripheral,
        let characteristic = leftPeripheral.services?
       .first(where: { $0.uuid == UART_SERVICE_UUID })?
@@ -807,7 +889,7 @@ extension ERG1Manager {
       try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
     }
     
-    // Send to right glass first
+    // send to right
     if let rightPeripheral = rightPeripheral,
        let characteristic = rightPeripheral.services?
       .first(where: { $0.uuid == UART_SERVICE_UUID })?
@@ -818,19 +900,22 @@ extension ERG1Manager {
     }
   }
   
+  public func queueCommand(_ command: [UInt8], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 50) {
+    
+    let bufferedCommand = BufferedCommand(data: command, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs);
+    
+    queueLock.wait()
+    commandQueue.append(bufferedCommand)
+    queueLock.signal()
+  }
+  
   
   @objc func RN_sendWhitelist() {
     print("sending whitelist")
-    Task {
       let whitelistChunks = getWhitelistChunks()
       for chunk in whitelistChunks {
-        print("sending chunk: \(chunk)")
-        await sendCommand(chunk)
-        // sleep for 100ms before sending the next chunk
-        try? await Task.sleep(nanoseconds: 200_000_000)
+        queueCommand(chunk, sendLeft: true, sendRight: true, sleepAfterMs: 100)
       }
-      //      await sendCommand(data)
-    }
   }
   
   @objc public func RN_setBrightness(_ level: Int, autoMode: Bool = false) {
@@ -858,17 +943,19 @@ extension ERG1Manager {
     
     let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
     
-    // Send to both glasses with proper timing
-    if let rightGlass = rightPeripheral,
-       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    }
+    queueCommand(command)
     
-    if let leftGlass = leftPeripheral,
-       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-    }
+//    // Send to both glasses with proper timing
+//    if let rightGlass = rightPeripheral,
+//       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+//      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+//    }
+//    
+//    if let leftGlass = leftPeripheral,
+//       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+//      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+//    }
     
     return true
   }
@@ -894,17 +981,19 @@ extension ERG1Manager {
     
     let command: [UInt8] = [Commands.HEAD_UP_ANGLE.rawValue, angle, 0x01]
     
-    // Send to both glasses with proper timing
-    if let rightGlass = rightPeripheral,
-       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    }
+    queueCommand(command)
     
-    if let leftGlass = leftPeripheral,
-       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-    }
+//    // Send to both glasses with proper timing
+//    if let rightGlass = rightPeripheral,
+//       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+//      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+//    }
+//    
+//    if let leftGlass = leftPeripheral,
+//       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+//      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+//    }
     return true
   }
   
@@ -920,33 +1009,36 @@ extension ERG1Manager {
     // Build battery status command
     let command: [UInt8] = [0x2C, 0x01]
     
-    // Send to both glasses
-    if let rightGlass = rightPeripheral,
-       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    }
+    queueCommand(command)
     
-    if let leftGlass = leftPeripheral,
-       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-    }
+//    // Send to both glasses
+//    if let rightGlass = rightPeripheral,
+//       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+//      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+//    }
+//    
+//    if let leftGlass = leftPeripheral,
+//       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+//      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+//    }
   }
   
   public func setSilentMode(_ enabled: Bool) async -> Bool {
     let command: [UInt8] = [Commands.SILENT_MODE.rawValue, enabled ? 0x0C : 0x0A, 0x00]
+    queueCommand(command)
     
-    // Send to both glasses with proper timing
-    if let rightGlass = rightPeripheral,
-       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
-      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    }
-    
-    if let leftGlass = leftPeripheral,
-       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
-      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
-    }
+//    // Send to both glasses with proper timing
+//    if let rightGlass = rightPeripheral,
+//       let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) {
+//      rightGlass.writeValue(Data(command), for: rightTxChar, type: .withResponse)
+//      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+//    }
+//    
+//    if let leftGlass = leftPeripheral,
+//       let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) {
+//      leftGlass.writeValue(Data(command), for: leftTxChar, type: .withResponse)
+//    }
     return true
   }
   
@@ -974,10 +1066,14 @@ extension ERG1Manager {
     command.append(0x01) // State ON
     command.append(position.rawValue) // Position value
     
-    // Send command to both glasses with proper timing
-    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
-    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+    // convert command to array of UInt8
+    let commandArray = command.map { $0 }
+    queueCommand(commandArray)
+    
+//    // Send command to both glasses with proper timing
+//    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
+//    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+//    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
     return true
   }
   
@@ -1083,7 +1179,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     emitDiscoveredDevice(name);
     
     if leftPeripheral != nil && rightPeripheral != nil {
-//      central.stopScan()
+      //      central.stopScan()
       RN_connectGlasses()
     }
     

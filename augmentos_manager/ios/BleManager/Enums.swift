@@ -44,6 +44,7 @@ enum DeviceOrders: UInt8 {
   case CASE_OPEN = 0x08
   case CASE_CLOSED = 0x0B
   case CASE_CHARGING_STATUS = 0x0E
+  case CASE_CHARGE_INFO = 0x0F
   case DOUBLE_TAP = 0x20
 }
 
