@@ -32,10 +32,10 @@ export const getAppImage = (app: AppInfo): ImageSourcePropType => {
 
     // If an icon URL exists, return it with fallback handling
     if (app.icon) {
-        return { 
+        return {
             uri: app.icon,
             // Provide a default icon to use if the network image fails
-            cache: 'force-cache' // Optionally cache the image
+            cache: 'force-cache', // Optionally cache the image
         };
     }
 

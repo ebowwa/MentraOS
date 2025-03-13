@@ -465,14 +465,12 @@ router.post('/uninstall/:packageName/:email', uninstallApp);
 router.get('/install/:packageName/:email', installApp);
 router.get('/uninstall/:packageName/:email', uninstallApp);
 
-router.get('/:packageName', getAppByPackage);
-router.post('/:packageName/start', sessionAuthMiddleware, startApp);
-router.post('/:packageName/stop', sessionAuthMiddleware, stopApp);
-
-
-// TODO(isaiah): Add supabase auth middleare to routes that require it.
 router.get('/version', async (req, res) => {
   res.json({ version: CLOUD_VERSION });
 });
+
+router.get('/:packageName', getAppByPackage);
+router.post('/:packageName/start', sessionAuthMiddleware, startApp);
+router.post('/:packageName/stop', sessionAuthMiddleware, stopApp);
 
 export default router;
