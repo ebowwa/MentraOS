@@ -217,8 +217,6 @@ export class BluetoothService extends EventEmitter {
   }
 
   async scanForDevices() {
-    // TODO: ios hack:
-    this.simulatedPuck = false;
 
     if (this.simulatedPuck) {
       this.sendRequestStatus();

@@ -1183,7 +1183,6 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       let eventBody: [String: Any] = [
         "compatible_glasses_search_result": res,
       ]
-      // TODO: ios fix this (crashes sometimes!!)
       
       // must convert to string before sending:
       do {

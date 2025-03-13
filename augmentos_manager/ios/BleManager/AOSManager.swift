@@ -612,6 +612,7 @@ import AVFoundation
       "force_core_onboard_mic": self.useOnboardMic,
       "sensing_enabled": self.sensingEnabled,
       "core_token": self.coreToken,
+      "puck_connected": true,
     ]
     
     // hardcoded list of apps:

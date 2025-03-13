@@ -21,6 +21,6 @@ export const isAugmentOsCoreInstalled = async () => {
 
 export const areAllCorePermissionsGranted = async () => {
     // return ServiceStarter.areAllCorePermissionsGranted();
-    // TODO: ios
+    // TODO: ios (we check for permissions as they're used on iOS)
     return true;
 }
