@@ -624,6 +624,8 @@ struct ViewState {
           self.caseCharging = false
           print("CASE NOT CHARGING")
         }
+      case .DOUBLE_TAP:
+        print("DOUBLE TAP")
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
