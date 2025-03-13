@@ -290,9 +290,10 @@ struct ViewState {
     }
     
     let layout = event["layout"] as! [String: Any];
-    self.viewStates[stateIndex].layoutType = layout["layoutType"] as! String
+    let layoutType = layout["layoutType"] as! String
+    self.viewStates[stateIndex].layoutType = layoutType
     
-    switch self.viewStates[stateIndex].layoutType {
+    switch layoutType {
     case "text_wall":
       self.viewStates[stateIndex].text = layout["text"] as? String ?? " "
       break
@@ -300,7 +301,11 @@ struct ViewState {
       self.viewStates[stateIndex].topText = layout["topText"] as? String ?? " "
       self.viewStates[stateIndex].bottomText = layout["bottomText"] as? String ?? " "
       break
+    case "reference_card":
+      self.viewStates[stateIndex].topText = layout["text"] as? String ?? " "
+      self.viewStates[stateIndex].bottomText = layout["title"] as? String ?? " "
     default:
+      print("UNHANDLED LAYOUT_TYPE \(layoutType)")
       break
     }
     
@@ -341,7 +346,11 @@ struct ViewState {
         let bottomText = currentViewState.bottomText
         RN_sendDoubleTextWall(topText, bottomText);
         break
+      case "reference_card":
+        RN_sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
+        break
       default:
+        print("UNHANDLED LAYOUT_TYPE \(layoutType)")
         break
       }
       
@@ -411,7 +420,7 @@ struct ViewState {
   private func processCommand(_ command: BufferedCommand) async {
     
     var attempts = 0
-    var maxAttempts = 3
+    var maxAttempts = 10
     var result: Bool = false
     
     // first send to the left:
