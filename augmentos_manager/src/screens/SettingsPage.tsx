@@ -261,8 +261,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     thumbStyle: { height: 20, width: 20 }
   };
 
-  console.log('status.glasses_info?.dashboard_height', status.glasses_info?.dashboard_height);
-
   const dashboardHeightSliderProps = {
     disabled: !status.glasses_info?.model_name ||
       !status.glasses_info.model_name.toLowerCase().includes('even'),
@@ -424,8 +422,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             />
           </TouchableOpacity>
 
-        {/* Bug Report */}
-        {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
+          {/* Bug Report */}
+          {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
             navigation.navigate('ErrorReportScreen');
         }}>
           <View style={styles.settingTextContainer}>
@@ -434,7 +432,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </TouchableOpacity> */}
 
           {/* Dashboard Height */}
-          {!(status.glasses_info?.dashboard_height ?? false) && (<View style={styles.settingItem}>
+          <View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text
                 style={[
@@ -460,7 +458,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 {...dashboardHeightSliderProps}
               />
             </View>
-          </View>)}
+          </View>
 
           {/* Brightness Slider */}
           {!(status.glasses_info?.auto_brightness ?? false) && (<View style={styles.settingItem}>

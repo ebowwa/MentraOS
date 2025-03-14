@@ -362,10 +362,17 @@ import AVFoundation
       self.deviceName = "Virtual Wearable"
       self.useOnboardMic = true;
       self.micEnabled = true;
-      onMicrophoneStateChange(true)
+//      onMicrophoneStateChange(true)
       saveSettings()
       handleRequestStatus()
-    } else {
+    } else if (modelName.contains("Audio")) {
+      self.deviceName = "Audio Wearable"
+      self.useOnboardMic = true;
+      self.micEnabled = true;
+//      onMicrophoneStateChange(true)
+      saveSettings()
+      handleRequestStatus()
+    } else if (modelName.contains("G1")) {
       self.g1Manager.RN_startScan()
     }
   }
@@ -574,13 +581,12 @@ import AVFoundation
     // construct the status object:
     
     let isVirtualWearable = self.deviceName == "Virtual Wearable"
+    let isAudioWearable = self.deviceName == "Audio Wearable"
     
     let isGlassesConnected = self.g1Manager.g1Ready
     
     // also referenced as glasses_info:
     var connectedGlasses: [String: Any] = [:];
-    
-    
     
     if (isVirtualWearable) {
       connectedGlasses = [
@@ -590,6 +596,9 @@ import AVFoundation
         "is_searching": self.isSearching,
       ]
       self.defaultWearable = self.deviceName
+    } else if isAudioWearable {
+      
+      
     } else if isGlassesConnected {
       connectedGlasses = [
         "model_name": "Even Realities G1",
@@ -633,7 +642,7 @@ import AVFoundation
     
     let authObj: [String: Any] = [
       "core_token_owner": self.coreTokenOwner,
-//      "core_token_status":
+      //      "core_token_status":
     ]
     
     let statusObj: [String: Any] = [
