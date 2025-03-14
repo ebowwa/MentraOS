@@ -150,6 +150,7 @@ const App: React.FC = () => {
                           />
                         )}
                       </Stack.Screen>
+                      
                       <Stack.Screen name="SettingsPage" options={{ headerShown: false }}>
                         {props => (
                           <SettingsPage
