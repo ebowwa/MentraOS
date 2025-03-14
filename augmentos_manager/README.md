@@ -29,3 +29,5 @@ From the augmentos_cloud folder: `./run.sh`
 
 - Make sure `ios/.xcode.env.local` contains the correct path to your node install
    - if you're using brew, this file might look like: `export NODE_BINARY=/opt/homebrew/bin/node`
+- Try deleting the `ios/build`, `ios/Podfile.lock`, and `ios/Pods` folders and then re-running `pod install`
+- Try deleting XCode's derived data: `rm -rf ~/Library/Developer/Xcode/DerivedData`
