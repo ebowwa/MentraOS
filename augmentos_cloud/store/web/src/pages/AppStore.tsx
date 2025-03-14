@@ -266,13 +266,14 @@ const AppStore: React.FC = () => {
                 className="bg-white rounded-lg border border-gray-200 overflow-hidden "
               >
                 <div className="p-4">
-                  <div
+                  <div 
                     className="flex items-start cursor-pointer"
+                    onClick={() => navigate(`/package/${app.packageName}`)}
                   >
                     <img
                       src={app.logoURL}
                       alt={`${app.name} logo`}
-                      className="w-12 h-12 rounded-md object-cover"
+                      className="w-12 h-12 object-cover"
                       onError={(e) => {
                         // Fallback for broken images
                         (e.target as HTMLImageElement).src = "https://placehold.co/48x48/gray/white?text=App";
@@ -283,7 +284,12 @@ const AppStore: React.FC = () => {
                       <p className="text-xs text-gray-500">{app.developerName || 'Mentra Labs'}</p>
                     </div>
                   </div>
-                  <p className="mt-3 text-sm text-gray-600 line-clamp-3">{app.description || 'No description available.'}</p>
+                  <p 
+                    className="mt-3 text-sm text-gray-600 line-clamp-3 cursor-pointer" 
+                    onClick={() => navigate(`/package/${app.packageName}`)}
+                  >
+                    {app.description || 'No description available.'}
+                  </p>
                   <div className="mt-4">
                     {isAuthenticated ? (
                       app.isInstalled ? (

@@ -85,8 +85,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.setCoreToken = (token: string) => {
       console.log('CoreToken received from WebView');
       setupAxiosAuth(token);
-      // setSession({ access_token: token } as Session);
-      // setUser({ id: 'webview-user' } as User);
+      setSession({ access_token: token } as Session);
+      setUser({ id: 'webview-user' } as User);
       setIsWebViewAuth(true);
     };
 
@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Calculate authenticated state
-  const isAuthenticated = !!user && !!session;
+  const isAuthenticated = isWebViewAuth || (!!user && !!session);
 
   // Provide auth context to children components
   return (
