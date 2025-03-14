@@ -126,8 +126,6 @@ struct ViewState {
   let INITIAL_CONNECTION_DELAY_MS: UInt64 = 350_000_000 // 350ms
   public var textHelper = G1Text()
   
-  public let WHITELIST_CMD: UInt8 = 0x04 // Command ID for whitelist
-  
   public static let _bluetoothQueue = DispatchQueue(label: "BluetoothG1", qos: .userInitiated)
   
   private var aiMode: AiMode = .AI_IDLE {
@@ -140,11 +138,6 @@ struct ViewState {
     }
   }
   
-  private var responseModel:AiResponseToG1Model?
-  private var displayingResponseAiRightAck: Bool = false
-  private var displayingResponseAiLeftAck: Bool = false
-  
-  private var evenaiSeq: UInt8 = 0
   private var centralManager: CBCentralManager!
   private var leftPeripheral: CBPeripheral?
   private var rightPeripheral: CBPeripheral?
@@ -462,17 +455,40 @@ struct ViewState {
     semaphore.wait(timeout: .now() + 0.001)
   }
   
+  private func attemptSend(chunks: [[UInt8]], side: String) async {
+    var maxAttempts = 5
+    var attempts: Int = 0
+    var result: Bool = false
+    var semaphore = side == "left" ? leftSemaphore : rightSemaphore
+    
+    while attempts < maxAttempts && !result {
+      if (attempts > 0) {
+        print("trying again to send to left: \(attempts)")
+      }
+      
+      for i in 0..<chunks.count-1 {
+        let chunk = chunks[i]
+        await sendCommandToSide(chunk, side: side)
+        try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
+      }
+      
+      let lastChunk = chunks.last!
+      await sendCommandToSide(lastChunk, side: side)
+      
+      result = waitForSemaphore(semaphore: semaphore, timeout: 0.1)
+      
+      attempts += 1
+      if !result && (attempts >= maxAttempts) {
+        semaphore.signal()// increment the count
+        break
+      }
+    }
+  }
+  
   // Process a single number with timeouts
   private func processCommand(_ command: BufferedCommand) async {
     
-//    print("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
-    
-    var attempts = 0
-    var maxAttempts = 3
-    var result: Bool = false
-    var side = "left"
-    var semaphore = leftSemaphore
-    let chunks = command.chunks
+    //    print("@@@ processing command \(command.chunks[0][0]),\(command.chunks[0][1]) @@@")
     
     // TODO: this is a total hack but in theory ensure semaphores are at count 1:
     // in theory this shouldn't be necesarry but in practice this helps ensure weird
@@ -480,76 +496,28 @@ struct ViewState {
     resetSemaphoreToZero(leftSemaphore)
     resetSemaphoreToZero(rightSemaphore)
     
-    if chunks.isEmpty {
+    if command.chunks.isEmpty {
       print("@@@ chunks was empty! @@@")
       return
     }
     
     // first send to the left:
     if command.sendLeft {
-      while attempts < maxAttempts && !result {
-        if (attempts > 0) {
-          print("trying again to send to left: \(attempts)")
-        }
-        
-        for i in 0..<chunks.count-1 {
-          let chunk = chunks[i]
-          await sendCommandToSide(chunk, side: side)
-          try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
-        }
-        
-        let lastChunk = chunks.last!
-        await sendCommandToSide(lastChunk, side: side)
-        
-        result = waitForSemaphore(semaphore: semaphore, timeout: 0.1)
-        
-        attempts += 1
-        if !result && (attempts >= maxAttempts) {
-          semaphore.signal()// increment the count
-          break
-        }
-      }
+      await attemptSend(chunks: command.chunks, side: "left")
     }
     
-//    print("@@@ sent (or failed) to left, now trying right @@@")
-    
-    // reset vars:
-    attempts = 0
-    result = false
-    side = "right"
-    semaphore = rightSemaphore
+    //    print("@@@ sent (or failed) to left, now trying right @@@")
     
     if command.sendRight {
-      while attempts < maxAttempts && !result {
-        if (attempts > 0) {
-          print("trying again to send to right: \(attempts)")
-        }
-        
-        for i in 0..<chunks.count-1 {
-          let chunk = chunks[i]
-          await sendCommandToSide(chunk, side: side)
-          try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
-        }
-        
-        let lastChunk = chunks.last!
-        await sendCommandToSide(lastChunk, side: side)
-        
-        result = waitForSemaphore(semaphore: semaphore, timeout: 0.1)
-        
-        attempts += 1
-        if !result && (attempts >= maxAttempts) {
-          semaphore.signal()// increment the count
-          break
-        }
-      }
+      await attemptSend(chunks: command.chunks, side: "right")
     }
     
     if command.waitTime > 0 {
-      // wait waitTime milliseconds before returning:
+      // wait waitTime milliseconds before moving on to the next command:
       try? await Task.sleep(nanoseconds: UInt64(command.waitTime) * 1_000_000)
     } else {
-      // sleep for a min amount of time
-      try? await Task.sleep(nanoseconds: 100 * 1_000_000)
+      // sleep for a min amount of time unless otherwise specified
+      try? await Task.sleep(nanoseconds: 100 * 1_000_000)// Xms
     }
   }
   
@@ -558,27 +526,27 @@ struct ViewState {
     return result == .success
   }
   
-  private func startAITriggerTimeoutTimer() {
-    let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
-    
-    backgroundQueue.async { [weak self] in
-      self?.aiTriggerTimeoutTimer = Timer(timeInterval: 6.0, repeats: false) { [weak self] _ in
-        guard let self = self else { return }
-        guard let rightPeripheral = self.rightPeripheral else { return }
-        guard let leftPeripheral = self.leftPeripheral else { return }
-        sendMicOn(to: rightPeripheral, isOn: false)
-        
-        if let leftChar = getWriteCharacteristic(for: leftPeripheral),
-           let rightChar = getWriteCharacteristic(for: rightPeripheral) {
-          exitAllFunctions(to: leftPeripheral, characteristic: leftChar)
-          exitAllFunctions(to: rightPeripheral, characteristic: rightChar)
-        }
-      }
-      
-      RunLoop.current.add((self?.aiTriggerTimeoutTimer)!, forMode: .default)
-      RunLoop.current.run()
-    }
-  }
+  //  private func startAITriggerTimeoutTimer() {
+  //    let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
+  //
+  //    backgroundQueue.async { [weak self] in
+  //      self?.aiTriggerTimeoutTimer = Timer(timeInterval: 6.0, repeats: false) { [weak self] _ in
+  //        guard let self = self else { return }
+  //        guard let rightPeripheral = self.rightPeripheral else { return }
+  //        guard let leftPeripheral = self.leftPeripheral else { return }
+  //        sendMicOn(to: rightPeripheral, isOn: false)
+  //
+  //        if let leftChar = getWriteCharacteristic(for: leftPeripheral),
+  //           let rightChar = getWriteCharacteristic(for: rightPeripheral) {
+  //          exitAllFunctions(to: leftPeripheral, characteristic: leftChar)
+  //          exitAllFunctions(to: rightPeripheral, characteristic: rightChar)
+  //        }
+  //      }
+  //
+  //      RunLoop.current.add((self?.aiTriggerTimeoutTimer)!, forMode: .default)
+  //      RunLoop.current.run()
+  //    }
+  //  }
   
   func startHeartbeatTimer() {
     let backgroundQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
@@ -616,37 +584,52 @@ struct ViewState {
     return connectedPeripherals
   }
   
+  private func handleAck(from peripheral: CBPeripheral, success: Bool) {
+    if !success { return }
+    if peripheral == self.leftPeripheral {
+      leftSemaphore.signal()
+    }
+    if peripheral == self.rightPeripheral {
+      rightSemaphore.signal()
+    }
+  }
+  
   private func handleNotification(from peripheral: CBPeripheral, data: Data) {
     guard let command = data.first else { return }// ensure the data isn't empty
     
-    //      print("received from G1: \(data.hexEncodedString())")
+    let side = peripheral == leftPeripheral ? "left" : "right"
+//    print("received from G1 (\(side)): \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
       handleInitResponse(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
-      break
     case .BLE_REQ_MIC_ON:
-      let acknowledge = CommandResponse(rawValue: data[1])
-      if acknowledge == .ACK {
-        if aiMode == .AI_REQUESTED {
-          aiMode = .AI_MIC_ON
-          print("Microphone turned on successfully")
-        } else {
-          print("Microphone turned on in continuous listening mode")
-        }
-      } else {
-        print("Microphone activation failed")
-        aiMode = .AI_IDLE
-      }
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    case .BRIGHTNESS:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    case .WHITELIST:
+      // TODO: ios no idea why the glasses send 0xCB before sending ACK:
+      handleAck(from: peripheral, success: data[1] == 0xCB || data[1] == CommandResponse.ACK.rawValue)
+    case .DASHBOARD_POSITION_COMMAND:
+      // 0x06 seems arbitrary :/
+      handleAck(from: peripheral, success: data[1] == 0x06)
+    case .HEAD_UP_ANGLE:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    // head up angle ack
+    // position ack
     case .BLE_REQ_TRANSFER_MIC_DATA:
       self.compressedVoiceData = data
       //                print("Got voice data: " + String(data.count))
       break
     case .BLE_REQ_HEARTBEAT:
+      // TODO: ios handle semaphores correctly here
       // battery info
       guard data.count >= 6 && data[1] == 0x66 else {
         break
       }
+      
+      handleAck(from: peripheral, success: data[1] == 0x66)
       
       // Response format: 2C 66 [battery%] [flags] [voltage_low] [voltage_high] ...
       let batteryPercent = Int(data[2])
@@ -679,16 +662,7 @@ struct ViewState {
       break
     case .BLE_REQ_EVENAI:
       guard data.count > 1 else { break }
-      let acknowledge = CommandResponse(rawValue: data[1])
-      if acknowledge == .ACK {
-        if peripheral == self.leftPeripheral {
-          leftSemaphore.signal()
-        }
-        if peripheral == self.rightPeripheral {
-          rightSemaphore.signal()
-        }
-      }
-      //      print("Received EvenAI response: \(data.hexEncodedString())")
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BLE_REQ_DEVICE_ORDER:
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
@@ -710,27 +684,16 @@ struct ViewState {
         break
       case .ACTIVATED:
         print("ACTIVATED")
-        break
       case .SILENCED:
         print("SILENCED")
-        break
       case .DISPLAY_READY:
-        self.responseModel = nil
+        print("DISPLAY_READY")
       case .TRIGGER_FOR_AI:
-        if let rightPeripheral {
-          aiTriggerTimeoutTimer?.invalidate()
-          aiTriggerTimeoutTimer = nil
-          startAITriggerTimeoutTimer()
-          aiMode = .AI_REQUESTED
-          sendMicOn(to: rightPeripheral, isOn: true)
-        }
-        print("Trigger AI")
+        print("TRIGGER AI")
       case .TRIGGER_FOR_STOP_RECORDING:
-        aiTriggerTimeoutTimer?.invalidate()
-        aiTriggerTimeoutTimer = nil
-        aiMode = .AI_IDLE
+        print("STOP RECORDING")
       case .TRIGGER_CHANGE_PAGE:
-        guard var responseModel else { return }
+        print("TRIGGER_CHANGE_PAGE")
       case .CASE_OPEN:
         self.caseOpen = true
         print("CASE OPEN");
@@ -837,7 +800,7 @@ extension ERG1Manager {
       
       // Create the header: [WHITELIST_CMD, total_chunks, chunk_index]
       var headerData = Data()
-      headerData.append(WHITELIST_CMD)
+      headerData.append(Commands.WHITELIST.rawValue)
       headerData.append(UInt8(totalChunks))
       headerData.append(UInt8(i))
       
@@ -863,25 +826,19 @@ extension ERG1Manager {
     peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
   }
   
-  private func sendMicOn(to peripheral: CBPeripheral, isOn: Bool) {
-    var micOnData = Data()
-    micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
-    if isOn {
-      micOnData.append(0x01)
-    } else {
-      micOnData.append(0x00)
-    }
-    
-    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
-      peripheral.writeValue(micOnData, for: txChar, type: .withResponse)
-    }
-  }
-  
   private func sendInitCommand(to peripheral: CBPeripheral, characteristic: CBCharacteristic) {
     let initData = Data([Commands.BLE_REQ_INIT.rawValue, 0x01])
-    peripheral.writeValue(initData, for: characteristic, type: .withResponse)
+    let initDataArray = initData.map { UInt8($0) }
+    
+    if (leftPeripheral == peripheral) {
+      queueChunks([initDataArray], sendLeft: true, sendRight: false)
+    } else if (rightPeripheral == peripheral) {
+      queueChunks([initDataArray], sendLeft: false, sendRight: true)
+    }
+//    peripheral.writeValue(initData, for: characteristic, type: .withResponse)
   }
   
+  // don't call semaphore signals here as it's handled elswhere:
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
     if peripheral == leftPeripheral {
       leftInitialized = success
@@ -896,9 +853,10 @@ extension ERG1Manager {
       print("Both arms initialized")
       g1Ready = true
       // TODO: ios this should probably be moved somewhere else:
-      Task {
-        await getBatteryStatus()
-      }
+//      Task {
+//        await setSilentMode(false)
+//        await getBatteryStatus()
+//      }
     }
   }
   
@@ -979,7 +937,7 @@ extension ERG1Manager {
     }
   }
   
-  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 50) {
+  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0) {
     let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs);
     Task {
       await commandQueue.enqueue(bufferedCommand)
@@ -1126,7 +1084,21 @@ extension ERG1Manager {
       return false
     }
     
-    sendMicOn(to: rightGlass, isOn: enabled)
+    var micOnData = Data()
+    micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
+    if enabled {
+      micOnData.append(0x01)
+    } else {
+      micOnData.append(0x00)
+    }
+    
+    let micOnDataArray: [UInt8] = micOnData.map { UInt8($0) }
+    
+    queueChunks([micOnDataArray], sendLeft: false, sendRight: true)
+    
+    //    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
+    //      peripheral.writeValue(micOnData, for: txChar, type: .withResponse)
+    //    }
     return true
   }
   
@@ -1303,7 +1275,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     }
   }
   
-  // Update didUpdateValueFor to set waiters
+  // called when we get data from the glasses:
   public func peripheral(_ peripheral: CBPeripheral, didUpdateValueFor characteristic: CBCharacteristic, error: Error?) {
     if let error = error {
       print("Error updating value for characteristic: \(error.localizedDescription)")

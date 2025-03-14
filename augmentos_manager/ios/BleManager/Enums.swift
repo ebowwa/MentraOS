@@ -24,6 +24,7 @@ enum Commands: UInt8 {
   case QUICK_NOTE_ADD = 0x1E
 //  case BATTERY_STATUS = 0x2C
   case BRIGHTNESS = 0x01
+  case WHITELIST = 0x04
   case SILENT_MODE = 0x03
   case DASHBOARD_POSITION_COMMAND = 0x26
   case HEAD_UP_ANGLE = 0x0B

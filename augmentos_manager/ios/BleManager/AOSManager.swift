@@ -723,15 +723,35 @@ import AVFoundation
     self.handleRequestStatus()
     // load settings and send the animation:
     Task {
+      
+      // give the glasses some extra time to finish booting:
+      try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
+      await loadSettings()
+      self.g1Manager.RN_sendText("// BOOTING AUGMENTOS...")
+      
+//      // send loaded settings to glasses:
+//      self.g1Manager.RN_getBatteryStatus()
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.dashboardEnabled = contextualDashboard
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
+//      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+//      playStartupSequence()
+      self.g1Manager.RN_sendText("// FINISHED BOOTING AUGMENTOS")
+      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+      self.g1Manager.RN_sendText(" ")// clear screen
+      
+      
       // send to the server our battery status:
       self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
       
-      // give the glasses some extra time to finish booting:
-      try? await Task.sleep(nanoseconds: 3_000_000_000) // 3 seconds
-      await loadSettings()
-      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-      playStartupSequence()
-      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+      
       // enable the mic if it was last on:
       onMicrophoneStateChange(self.micEnabled)
       self.handleRequestStatus()
@@ -839,16 +859,17 @@ import AVFoundation
     }
     
     
-    if (self.g1Manager.g1Ready) {
-      self.g1Manager.dashboardEnabled = contextualDashboard
-      try? await Task.sleep(nanoseconds: 100_000_000)
-      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
-      try? await Task.sleep(nanoseconds: 100_000_000)
-      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
-      try? await Task.sleep(nanoseconds: 100_000_000)
-      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
-      //      self.g1Manager.RN_getBatteryStatus()
-    }
+//    if (self.g1Manager.g1Ready) {
+//      self.g1Manager.RN_getBatteryStatus()
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.dashboardEnabled = contextualDashboard
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
+//      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
+//    }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +
           "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
