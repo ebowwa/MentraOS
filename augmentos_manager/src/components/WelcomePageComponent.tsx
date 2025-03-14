@@ -30,10 +30,10 @@ const WelcomePageComponent: React.FC<WelcomePageComponentProps> = ({
   const handleSkip = () => {
     // Mark onboarding as completed when skipped
     saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
-    
+
     navigation.reset({
       index: 0,
-      routes: [{ name: 'Home' }],
+      routes: [{ name: 'ConnectingToPuck' }],
     });
   };
 
@@ -41,10 +41,10 @@ const WelcomePageComponent: React.FC<WelcomePageComponentProps> = ({
   const handleContinue = () => {
     // Mark that onboarding should be shown on Home screen
     saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
-    
+
     navigation.reset({
       index: 0,
-      routes: [{ name: 'Home' }],
+      routes: [{ name: 'ConnectingToPuck' }],
     });
   };
 

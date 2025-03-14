@@ -19,7 +19,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      
+
 
       /*
       The purpose of SplashScreen is to route the user wherever the user needs to be
@@ -47,12 +47,12 @@ const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
 
      // Check if the user has completed onboarding
      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
-     
+
      if (onboardingCompleted) {
        // If onboarding is completed, go directly to Home
        navigation.reset({
          index: 0,
-         routes: [{ name: 'Home' }],
+         routes: [{ name: 'ConnectingToPuck' }],
        });
      } else {
        // If onboarding is not completed, go to WelcomePage
