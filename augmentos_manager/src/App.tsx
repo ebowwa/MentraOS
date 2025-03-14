@@ -37,7 +37,8 @@ import { GlassesMirrorProvider } from './providers/GlassesMirrorContext';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen';
 import ErrorReportScreen from './screens/ErrorReportScreen';
 import { saveSetting } from './logic/SettingsHelper';
-import TestingPage from './screens/TestingPage';
+import WelcomePageComponent from './components/WelcomePageComponent.tsx';
+import TestingPage from './screens/TestingPage.tsx';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const linking = {
@@ -96,13 +97,18 @@ const App: React.FC = () => {
 
                       <Stack.Screen
                         name="VersionUpdateScreen"
-                        component={VersionUpdateScreen}
                         options={{
                           headerShown: false,
                           // Optional: prevent going back with hardware back button on Android
                           gestureEnabled: false,
                         }}
-                      />
+                      >
+                        {({ route }) => (
+                          <VersionUpdateScreen
+                            route={{ params: { ...route?.params, isDarkTheme } }}
+                          />
+                        )}
+                      </Stack.Screen>
 
                       <Stack.Screen name="Home" options={{ headerShown: false }}>
                         {() => (
@@ -113,11 +119,10 @@ const App: React.FC = () => {
                         )}
                       </Stack.Screen>
 
-                      <Stack.Screen name="Testing" options={{ headerShown: false }}>
-                        {() => (
-                          <TestingPage
-                            isDarkTheme={isDarkTheme}
-                            toggleTheme={toggleTheme}
+                      <Stack.Screen name="WelcomePage" options={{ headerShown: false }}>
+                        {({ route }) => (
+                          <WelcomePageComponent
+                            route={{ params: { isDarkTheme } }}
                           />
                         )}
                       </Stack.Screen>
@@ -136,6 +141,15 @@ const App: React.FC = () => {
                         component={RegisterScreen}
                         options={{ headerShown: false }}
                       />
+
+                      <Stack.Screen name="Testing" options={{ headerShown: false }}>
+                        {() => (
+                          <TestingPage
+                            isDarkTheme={isDarkTheme}
+                            toggleTheme={toggleTheme}
+                          />
+                        )}
+                      </Stack.Screen>
                       <Stack.Screen name="SettingsPage" options={{ headerShown: false }}>
                         {props => (
                           <SettingsPage
