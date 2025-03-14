@@ -22,7 +22,7 @@ From the augmentos_cloud folder: `./run.sh`
 
 1. Install dependencies: `npm install`
 2. Install pods: `cd ios && pod install && cd ..`
-3. Open the workspace: `open ios/AugmentOS.xcworkspace`
+3. Open the workspace: `open ios/AugmentOS_Manager.xcworkspace`
 4. Run the app: `Product -> Run`
 
 ### Debugging
