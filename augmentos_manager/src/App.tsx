@@ -37,6 +37,7 @@ import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
 import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
 import { saveSetting } from './logic/SettingsHelper';
+import WelcomePageComponent from './components/WelcomePageComponent.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -93,19 +94,32 @@ const App: React.FC = () => {
 
                 <Stack.Screen
                   name="VersionUpdateScreen"
-                  component={VersionUpdateScreen}
                   options={{
                     headerShown: false,
                     // Optional: prevent going back with hardware back button on Android
                     gestureEnabled: false,
                   }}
-                />
+                >
+                  {({ route }) => (
+                    <VersionUpdateScreen
+                      route={{ params: { ...route?.params, isDarkTheme } }}
+                    />
+                  )}
+                </Stack.Screen>
 
                 <Stack.Screen name="Home" options={{ headerShown: false }}>
                   {() => (
                     <Homepage
                       isDarkTheme={isDarkTheme}
                       toggleTheme={toggleTheme}
+                    />
+                  )}
+                </Stack.Screen>
+
+                <Stack.Screen name="WelcomePage" options={{ headerShown: false }}>
+                  {({ route }) => (
+                    <WelcomePageComponent
+                      route={{ params: { isDarkTheme } }}
                     />
                   )}
                 </Stack.Screen>
@@ -261,10 +275,10 @@ const App: React.FC = () => {
                     />
                   )}
                 </Stack.Screen>
-                <Stack.Screen 
-                  name="ErrorReportScreen" 
-                  component={ErrorReportScreen} 
-                  options={{ title: 'Report an Error' }} 
+                <Stack.Screen
+                  name="ErrorReportScreen"
+                  component={ErrorReportScreen}
+                  options={{ title: 'Report an Error' }}
                 />
                 <Stack.Screen name="SelectGlassesModelScreen"
                   options={{ title: 'Select Glasses' }}
