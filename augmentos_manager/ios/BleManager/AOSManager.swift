@@ -730,18 +730,18 @@ import AVFoundation
       self.g1Manager.RN_sendText("// BOOTING AUGMENTOS...")
       
 //      // send loaded settings to glasses:
-//      self.g1Manager.RN_getBatteryStatus()
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.dashboardEnabled = contextualDashboard
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
-//      try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
+      self.g1Manager.RN_getBatteryStatus()
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      self.g1Manager.dashboardEnabled = contextualDashboard
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
+      try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
 //      playStartupSequence()
       self.g1Manager.RN_sendText("// FINISHED BOOTING AUGMENTOS")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
