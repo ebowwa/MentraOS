@@ -26,13 +26,15 @@ export const getAppImage = (app: AppInfo): ImageSourcePropType => {
         case 'com.google.android.apps.maps':
         case 'com.augmentos.navigation':
             return require('../assets/app-icons/navigation.png');
+        case 'com.augmentos.teleprompter':
+            return require('../assets/app-icons/teleprompter.png');
         case 'com.augmentos.notify':
             return require('../assets/app-icons/phone-notifications.png');
     }
 
     // If an icon URL exists, return it with fallback handling
     if (app.icon) {
-        return { 
+        return {
             uri: app.icon,
             // Provide a default icon to use if the network image fails
             cache: 'force-cache' // Optionally cache the image
