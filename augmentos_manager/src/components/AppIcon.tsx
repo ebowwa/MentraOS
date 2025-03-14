@@ -8,6 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import { getAppImage } from '../logic/getAppImage';
 import { FallbackImageBackground } from './FallbackImageBackground';
+import { saveSetting } from '../logic/SettingsHelper';
+import { SETTINGS_KEYS } from '../consts';
 // import BluetoothService from '../BluetoothService';
 
 interface AppIconProps {
@@ -28,6 +30,14 @@ const AppIcon: React.FC<AppIconProps> = ({
   const navigation = useNavigation<NavigationProps>();
 
     const openAppSettings = async () => {
+        // Mark onboarding as completed when user long-presses an app icon
+        try {
+            await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
+            console.log('Onboarding marked as completed');
+        } catch (error) {
+            console.error('Failed to save onboarding completion status:', error);
+        }
+        
         navigation.navigate('AppSettings', {
             packageName: app.packageName,
             appName: app.name
@@ -38,6 +48,7 @@ const AppIcon: React.FC<AppIconProps> = ({
         <TouchableOpacity
             onPress={onClick}
             onLongPress={openAppSettings}
+            delayLongPress={500} // Make long press easier to trigger
             activeOpacity={0.7}
             style={[styles.appWrapper, style]}
             accessibilityLabel={`Launch ${app.name}`}

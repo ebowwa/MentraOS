@@ -197,26 +197,17 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
                 <AnimatedSection>
                   <RunningAppsList isDarkTheme={isDarkTheme} />
                 </AnimatedSection>
-
-                <AnimatedSection>
-                  <YourAppsList
-                    isDarkTheme={isDarkTheme}
-                    key={`apps-list-${status.apps.length}`}
-                  />
-                </AnimatedSection>
               </>
-            ) : (
-              <AnimatedSection>
-                <Text style={currentThemeStyles.noAppsText}>
-                  No apps found. Visit the AugmentOS App Store to explore and
-                  download apps for your device.
-                </Text>
-              </AnimatedSection>
-            )}
+            ) : null}
           </>
         )}
+
+        <AnimatedSection>
+          <YourAppsList isDarkTheme={isDarkTheme} />
+        </AnimatedSection>
       </ScrollView>
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
+
+      <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
     </View>
   );
 };
