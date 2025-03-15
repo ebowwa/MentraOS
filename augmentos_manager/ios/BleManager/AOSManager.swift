@@ -74,6 +74,8 @@ import AVFoundation
       //      self.handleRequestStatus()
       if (self.g1Manager.g1Ready) {
         self.handleDeviceReady()
+      } else {
+        handleRequestStatus()
       }
     }
     
