@@ -306,6 +306,11 @@ struct ViewState {
     }
   }
   
+  // send whatever was there before sending something else:
+  public func clearState() -> Void {
+    sendCurrentState(isHeadUp)
+  }
+  
   public func sendCurrentState(_ isDashboard: Bool) -> Void {
     Task {
       var currentViewState: ViewState!;
@@ -723,6 +728,11 @@ struct ViewState {
         print("Case battery level: \(caseBatteryLevel)%")
       case .DOUBLE_TAP:
         print("DOUBLE TAP")
+//        Task {
+//          RN_sendText("DOUBLE TAP DETECTED")
+//          try? await Task.sleep(nanoseconds: 1500 * 1_000_000) // 2s delay after sending
+//          clearState()
+//        }
       default:
         print("Received device order: \(data.subdata(in: 1..<data.count).hexEncodedString())")
         break
