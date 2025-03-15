@@ -143,6 +143,8 @@ struct ViewState {
   private var rightPeripheral: CBPeripheral?
   private var connectedDevices: [String: (CBPeripheral?, CBPeripheral?)] = [:]
   var lastConnectionTimestamp: Date = Date.distantPast
+  private var heartbeatTimer: Timer?
+  private var heartbeatQueue: DispatchQueue?
   private var leftInitialized: Bool = false
   private var rightInitialized: Bool = false
   private var isHeadUp = false
@@ -549,18 +551,25 @@ struct ViewState {
   //  }
   
   func startHeartbeatTimer() {
-    let backgroundQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
     
-    backgroundQueue.async { [weak self] in
-      let timer = Timer(timeInterval: 15.0, repeats: true) { [weak self] _ in
+    // Check if a timer is already running
+    if heartbeatTimer != nil && heartbeatTimer!.isValid {
+        print("Heartbeat timer already running")
+        return
+    }
+    
+    // Create a new queue if needed
+    if heartbeatQueue == nil {
+        heartbeatQueue = DispatchQueue(label: "com.sample.heartbeatTimerQueue", qos: .background)
+    }
+    
+    heartbeatQueue!.async { [weak self] in
+      self?.heartbeatTimer = Timer(timeInterval: 15.0, repeats: true) { [weak self] _ in
         guard let self = self else { return }
-        guard let leftPeripheral = self.leftPeripheral else { return }
-        self.sendHeartbeat(to: leftPeripheral)
-        guard let rightPeripheral = self.rightPeripheral else { return }
-        self.sendHeartbeat(to: rightPeripheral)
+        self.sendHeartbeat()
       }
       
-      RunLoop.current.add(timer, forMode: .default)
+      RunLoop.current.add(self!.heartbeatTimer!, forMode: .default)
       RunLoop.current.run()
     }
   }
@@ -578,9 +587,6 @@ struct ViewState {
   
   private func getConnectedDevices() -> [CBPeripheral] {
     let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
-    //    for peripheral in connectedPeripherals {
-    //      print("Connected device: \(peripheral.name ?? "Unknown") - UUID: \(peripheral.identifier.uuidString)")
-    //    }
     return connectedPeripherals
   }
   
@@ -860,15 +866,19 @@ extension ERG1Manager {
     }
   }
   
-  private func sendHeartbeat(to peripheral: CBPeripheral) {
+  private func sendHeartbeat() {
     var heartbeatData = Data()
     heartbeatData.append(Commands.BLE_REQ_HEARTBEAT.rawValue)
     heartbeatData.append(UInt8(0x02 & 0xFF))
     
-    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
-      let hexString = heartbeatData.map { String(format: "%02X", $0) }.joined()
-      peripheral.writeValue(heartbeatData, for: txChar, type: .withoutResponse)
-    }
+    var heartbeatArray = heartbeatData.map { UInt8($0) }
+    
+    queueChunks([heartbeatArray])
+    
+//    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
+//      let hexString = heartbeatData.map { String(format: "%02X", $0) }.joined()
+//      peripheral.writeValue(heartbeatData, for: txChar, type: .withoutResponse)
+//    }
   }
   
   public func sendCommandToSide(_ command: [UInt8], side: String) async {
