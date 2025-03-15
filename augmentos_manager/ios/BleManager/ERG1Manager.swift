@@ -95,6 +95,7 @@ struct ViewState {
   @Published public var rightBatteryLevel: Int = -1
   @Published public var caseCharging = false
   @Published public var caseOpen = false
+  public var isDisconnecting = false
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
@@ -167,6 +168,7 @@ struct ViewState {
   
   // this scans for new (un-paired) glasses to connect to:
   @objc func RN_startScan() -> Bool {
+    self.isDisconnecting = false// reset intentional disconnect flag
     guard centralManager.state == .poweredOn else {
       print("Bluetooth is not powered on.")
       return false
@@ -350,20 +352,18 @@ struct ViewState {
   }
   
   @objc func disconnect() {
-    if let leftPeripheral = leftPeripheral {
-      centralManager.cancelPeripheralConnection(leftPeripheral)
+    self.isDisconnecting = true
+    if let left = leftPeripheral {
+      centralManager.cancelPeripheralConnection(left)
     }
     
-    if let rightPeripheral = rightPeripheral {
-      centralManager.cancelPeripheralConnection(rightPeripheral)
+    if let right = rightPeripheral {
+      centralManager.cancelPeripheralConnection(right)
     }
-    
-    // TODO: ios doesn't actually disconnect but it does forget all references to the peripherals
     
     leftPeripheral = nil
     rightPeripheral = nil
     self.g1Ready = false
-    
     print("Disconnected from glasses")
   }
   
@@ -1225,7 +1225,18 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {
+    let side = peripheral == leftPeripheral ? "LEFT" : peripheral == rightPeripheral ? "RIGHT" : "unknown"
+    print("@@@@@ \(side) PERIPHERAL DISCONNECTED @@@@@")
+    
+    // only reconnect if we're not intentionally disconnecting:
+    if self.isDisconnecting {
+      return
+    }
+    
     if peripheral == leftPeripheral || peripheral == rightPeripheral {
+      // force reconnection to both before considering us ready again:
+      leftPeripheral = nil
+      rightPeripheral = nil
       g1Ready = false
       RN_startScan()// attempt reconnect
     }

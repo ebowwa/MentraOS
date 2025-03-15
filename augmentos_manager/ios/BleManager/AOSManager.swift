@@ -575,7 +575,6 @@ import AVFoundation
   
   private func handleDisconnectWearable() {
     self.g1Manager.disconnect()
-    self.g1Manager.g1Ready = false// TODO: shouldn't be necessary
     handleRequestStatus()
   }
   
@@ -729,7 +728,7 @@ import AVFoundation
       // give the glasses some extra time to finish booting:
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
       await loadSettings()
-      self.g1Manager.RN_sendText("// BOOTING AUGMENTOS...")
+      self.g1Manager.RN_sendText("// BOOTING AUGMENTOS")
       
 //      // send loaded settings to glasses:
       self.g1Manager.RN_getBatteryStatus()
@@ -745,7 +744,7 @@ import AVFoundation
       self.g1Manager.RN_setDashboardPosition(dashboardHeight)
       try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
 //      playStartupSequence()
-      self.g1Manager.RN_sendText("// FINISHED BOOTING AUGMENTOS")
+      self.g1Manager.RN_sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
       self.g1Manager.RN_sendText(" ")// clear screen
       
@@ -755,6 +754,7 @@ import AVFoundation
       
       
       // enable the mic if it was last on:
+      print("ENABLING MIC STATE: \(self.micEnabled)")
       onMicrophoneStateChange(self.micEnabled)
       self.handleRequestStatus()
     }
@@ -835,8 +835,9 @@ import AVFoundation
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
     
-    print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
-          "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
+//    print("settings saved")
+//    print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
+//          "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
   }
   
   private func loadSettings() async {
