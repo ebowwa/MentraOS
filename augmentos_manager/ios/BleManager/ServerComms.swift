@@ -36,6 +36,7 @@ class ServerComms {
   
   private var reconnecting: Bool = false
   private var reconnectionAttempts: Int = 0
+  private let calendarManager = CalendarManager()
   
   static func getInstance() -> ServerComms {
     if instance == nil {
@@ -60,6 +61,18 @@ class ServerComms {
       .store(in: &cancellables)
     
     startAudioSenderThread()
+    
+    // every hour send calendar events again:
+    let oneHour: TimeInterval = 1 * 60 * 60// 1hr
+    Timer.scheduledTimer(withTimeInterval: oneHour, repeats: true) { [weak self] _ in
+      print("Periodic calendar sync")
+      self?.sendCalendarEvents()
+    }
+    
+    // Setup calendar change notifications
+    calendarManager.setCalendarChangedCallback { [weak self] in
+      self?.sendCalendarEvents()
+    }
   }
   
   func setAuthCredentials(_ userid: String, _ coreToken: String) {
@@ -114,15 +127,15 @@ class ServerComms {
   }
   
   func sendVadStatus(_ isSpeaking: Bool) {
-      let vadMsg: [String: Any] = [
-        "type": "VAD",
-        "status": isSpeaking
-      ]
-      
-      let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
-      if let jsonString = String(data: jsonData, encoding: .utf8) {
-        wsManager.sendText(jsonString)
-      }
+    let vadMsg: [String: Any] = [
+      "type": "VAD",
+      "status": isSpeaking
+    ]
+    
+    let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
+    if let jsonString = String(data: jsonData, encoding: .utf8) {
+      wsManager.sendText(jsonString)
+    }
   }
   
   
@@ -138,6 +151,71 @@ class ServerComms {
     let jsonData = try! JSONSerialization.data(withJSONObject: vadMsg)
     if let jsonString = String(data: jsonData, encoding: .utf8) {
       wsManager.sendText(jsonString)
+    }
+  }
+  
+  func sendCalendarEvent(_ calendarItem: CalendarItem) {
+    guard wsManager.isConnected() else {
+      print("Cannot send calendar event: not connected.")
+      return
+    }
+    
+    do {
+      let event: [String: Any] = [
+        "type": "calendar_event",
+        "title": calendarItem.title,
+        "eventId": calendarItem.eventId,
+        "dtStart": calendarItem.dtStart,
+        "dtEnd": calendarItem.dtEnd,
+        "timeZone": calendarItem.timeZone,
+        "timestamp": Int(Date().timeIntervalSince1970)
+      ]
+      
+      let jsonData = try JSONSerialization.data(withJSONObject: event)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+      }
+    } catch {
+      print("Error building calendar_event JSON: \(error)")
+    }
+  }
+  
+  public func sendCalendarEvents() {
+    guard self.wsManager.isConnected() else { return }
+    let calendarManager = CalendarManager()
+    Task {
+      if let events = await calendarManager.fetchUpcomingEvents(days: 1) {
+        // TODO: once the server is smarter we should just send all calendar events:
+        //            for event in events {
+        //                let calendarItem = convertEKEventToCalendarItem(event)
+        //                print("CALENDAR EVENT \(calendarItem)")
+        //                self.sendCalendarEvent(calendarItem)
+        //            }
+        guard events.count > 0 else { return }
+        let event = events.first!
+        let calendarItem = convertEKEventToCalendarItem(event)
+        print("CALENDAR EVENT \(calendarItem)")
+        self.sendCalendarEvent(calendarItem)
+        
+        // TODO: ios
+//        // schedule to run this function again 5 minutes after the event ends:
+//        let eventEndTime = event.endDate!
+//        let fiveMinutesAfterEnd = Calendar.current.date(byAdding: .minute, value: 5, to: eventEndTime)!
+//        let timeUntilNextCheck = fiveMinutesAfterEnd.timeIntervalSinceNow
+//        
+//        // Store references needed in the closure
+//        let weakSelf = self
+//
+//        // Only schedule if the time is positive (event ends in the future)
+//        if timeUntilNextCheck > 0 {
+//            // Use a Timer instead of DispatchQueue for better capture semantics
+//            Timer.scheduledTimer(withTimeInterval: timeUntilNextCheck, repeats: false) { _ in
+//                print("Checking for next events after previous event ended")
+//                weakSelf.sendCalendarEvents()
+//            }
+//            print("Scheduled next calendar check for \(fiveMinutesAfterEnd)")
+//        }
+      }
     }
   }
   
@@ -315,6 +393,8 @@ class ServerComms {
       // Wait a second before sending connection_init (similar to the Java code)
       DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
         self.sendConnectionInit(coreToken: self.coreToken)
+        
+        self.sendCalendarEvents()
       }
     }
   }
@@ -367,7 +447,7 @@ class ServerComms {
   func parseWhatToStream(_ msg: [String: Any]) -> [String] {
     if let userSession = msg["userSession"] as? [String: Any],
        let whatToStream = userSession["whatToStream"] as? [String] {
-        return whatToStream
+      return whatToStream
     }
     print("ServerComms: whatToStream was not found in server message!")
     return []
