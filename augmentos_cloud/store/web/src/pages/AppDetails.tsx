@@ -85,7 +85,7 @@ const AppDetails: React.FC = () => {
     try {
       setInstallingApp(true);
 
-      const success = await api.app.installApp(app.packageName, user?.email || '');
+      const success = await api.app.installApp(app.packageName);
 
       if (success) {
         toast.success('App installed successfully');
@@ -108,7 +108,7 @@ const AppDetails: React.FC = () => {
     try {
       setInstallingApp(true);
 
-      const success = await api.app.uninstallApp(app.packageName, user?.email || '');
+      const success = await api.app.uninstallApp(app.packageName);
 
       if (success) {
         toast.success('App uninstalled successfully');
