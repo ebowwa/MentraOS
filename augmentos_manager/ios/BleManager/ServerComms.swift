@@ -37,6 +37,7 @@ class ServerComms {
   private var reconnecting: Bool = false
   private var reconnectionAttempts: Int = 0
   private let calendarManager = CalendarManager()
+  private let locationManager = LocationManager()
   
   static func getInstance() -> ServerComms {
     if instance == nil {
@@ -69,10 +70,24 @@ class ServerComms {
       self?.sendCalendarEvents()
     }
     
+    // send location updates every 15 minutes:
+    // TODO: ios (left out for now for battery savings)
+//    let fifteenMinutes: TimeInterval = 15 * 60
+//    Timer.scheduledTimer(withTimeInterval: fifteenMinutes, repeats: true) { [weak self] _ in
+//      print("Periodic location update")
+//      self?.sendLocationUpdates()
+//    }
+    
     // Setup calendar change notifications
     calendarManager.setCalendarChangedCallback { [weak self] in
       self?.sendCalendarEvents()
     }
+    
+    // setup location change notification:
+    locationManager.setLocationChangedCallback { [weak self] in
+      self?.sendLocationUpdates()
+    }
+    
   }
   
   func setAuthCredentials(_ userid: String, _ coreToken: String) {
@@ -216,6 +231,39 @@ class ServerComms {
 //            print("Scheduled next calendar check for \(fiveMinutesAfterEnd)")
 //        }
       }
+    }
+  }
+  
+  
+  func sendLocationUpdate(lat: Double, lng: Double) {
+    do {
+      let event: [String: Any] = [
+        "type": "location_update",
+        "lat": lat,
+        "lng": lng,
+        "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+      ]
+      
+      let jsonData = try JSONSerialization.data(withJSONObject: event)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+      }
+    } catch {
+      print("ServerComms: Error building location_update JSON: \(error)")
+    }
+  }
+  
+  public func sendLocationUpdates() {
+    guard self.wsManager.isConnected() else {
+      print("Cannot send location updates: WebSocket not connected")
+      return
+    }
+    
+    if let locationData = locationManager.getCurrentLocation() {
+      print("Sending location update: lat=\(locationData.latitude), lng=\(locationData.longitude)")
+      sendLocationUpdate(lat: locationData.latitude, lng: locationData.longitude)
+    } else {
+      print("Cannot send location update: No location data available")
     }
   }
   
@@ -370,7 +418,7 @@ class ServerComms {
     self.connectWebSocket()
     
     // if after some time we're still not connected, run this function again:
-    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
       if self.wsManager.isConnected() {
         self.reconnectionAttempts = 0
         self.reconnecting = false
@@ -395,6 +443,7 @@ class ServerComms {
         self.sendConnectionInit(coreToken: self.coreToken)
         
         self.sendCalendarEvents()
+        self.sendLocationUpdates()
       }
     }
   }

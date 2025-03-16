@@ -629,6 +629,7 @@ import AVFoundation
     var apps: [[String: Any]] = []
     
     for tpa in self.cachedThirdPartyAppList {
+      if tpa.name == "Notify" { continue }// TODO: ios notifications don't work so don't display the TPA
       let tpaDict = [
         "packageName": tpa.packageName,
         "name": tpa.name,

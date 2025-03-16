@@ -699,6 +699,7 @@ struct ViewState {
         print("SILENCED")
       case .DISPLAY_READY:
         print("DISPLAY_READY")
+//        sendInitCommand(to: peripheral)// experimental
       case .TRIGGER_FOR_AI:
         print("TRIGGER AI")
       case .TRIGGER_FOR_STOP_RECORDING:
@@ -727,10 +728,12 @@ struct ViewState {
         caseBatteryLevel = Int(data[2])
         print("Case battery level: \(caseBatteryLevel)%")
       case .DOUBLE_TAP:
-        print("DOUBLE TAP")
+        print("DOUBLE TAP / display turned off")
 //        Task {
-//          RN_sendText("DOUBLE TAP DETECTED")
+////          RN_sendText("DOUBLE TAP DETECTED")
+////          queueChunks([[UInt8(0x00), UInt8(0x01)]])
 //          try? await Task.sleep(nanoseconds: 1500 * 1_000_000) // 2s delay after sending
+//          sendInit()
 //          clearState()
 //        }
       default:
@@ -842,7 +845,7 @@ extension ERG1Manager {
     peripheral.writeValue(data, for: characteristic, type: .withoutResponse)
   }
   
-  private func sendInitCommand(to peripheral: CBPeripheral, characteristic: CBCharacteristic) {
+  private func sendInitCommand(to peripheral: CBPeripheral) {
     let initData = Data([Commands.BLE_REQ_INIT.rawValue, 0x01])
     let initDataArray = initData.map { UInt8($0) }
     
@@ -851,7 +854,12 @@ extension ERG1Manager {
     } else if (rightPeripheral == peripheral) {
       queueChunks([initDataArray], sendLeft: false, sendRight: true)
     }
-//    peripheral.writeValue(initData, for: characteristic, type: .withResponse)
+  }
+  
+  private func sendInit() {
+    let initData = Data([Commands.BLE_REQ_INIT.rawValue, 0x01])
+    let initDataArray = initData.map { UInt8($0) }
+    queueChunks([initDataArray])
   }
   
   // don't call semaphore signals here as it's handled elswhere:
@@ -1267,7 +1275,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     if service.uuid.isEqual(UART_SERVICE_UUID) {
       for characteristic in characteristics {
         if characteristic.uuid == UART_TX_CHAR_UUID {
-          sendInitCommand(to: peripheral, characteristic: characteristic)
+          sendInitCommand(to: peripheral)
         } else if characteristic.uuid == UART_RX_CHAR_UUID {
           peripheral.setNotifyValue(true, for: characteristic)
           
