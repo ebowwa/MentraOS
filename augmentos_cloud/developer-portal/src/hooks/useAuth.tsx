@@ -10,6 +10,8 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  supabaseToken: string | null;
+  coreToken: string | null;
   signOut: () => Promise<void>;
 }
 
@@ -21,8 +23,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [supabaseToken, setSupabaseToken] = useState<string | null>(null);
+  const [coreToken, setCoreToken] = useState<string | null>(null);
 
-  // Set up axios authorization with Supabase token
+  // Set up axios authorization with token
   const setupAxiosAuth = (token: string | null) => {
     if (token) {
       axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -35,6 +39,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const signOut = async () => {
     await supabase.auth.signOut();
     setupAxiosAuth(null);
+    setSupabaseToken(null);
+    setCoreToken(null);
+    localStorage.removeItem('core_token');
+  };
+
+  // Function to exchange Supabase token for Core token
+  const exchangeForCoreToken = async (supabaseToken: string) => {
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_API_URL || 'http://localhost:8002'}/api/auth/exchange-token`,
+        { supabaseToken },
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      
+      if (response.status === 200 && response.data.coreToken) {
+        console.log('Successfully exchanged token for Core token');
+        setupAxiosAuth(response.data.coreToken);
+        setCoreToken(response.data.coreToken);
+        localStorage.setItem('core_token', response.data.coreToken);
+        return response.data.coreToken;
+      } else {
+        throw new Error(`Failed to exchange token: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error('Failed to exchange token:', error);
+      // Fall back to using Supabase token if exchange fails
+      setupAxiosAuth(supabaseToken);
+      return null;
+    }
   };
 
   useEffect(() => {
@@ -42,13 +75,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initializeAuth = async () => {
       setIsLoading(true);
       try {
+        // Try to use existing core token first
+        const savedCoreToken = localStorage.getItem('core_token');
+        if (savedCoreToken) {
+          console.log('Using saved core token');
+          setupAxiosAuth(savedCoreToken);
+          setCoreToken(savedCoreToken);
+        }
+        
         // Get current session
         const { data } = await supabase.auth.getSession();
         setSession(data.session);
         setUser(data.session?.user || null);
         
-        // Set the Supabase token for API requests
-        setupAxiosAuth(data.session?.access_token || null);
+        if (data.session?.access_token) {
+          setSupabaseToken(data.session.access_token);
+          
+          // If no core token, try to exchange for one
+          if (!savedCoreToken) {
+            try {
+              await exchangeForCoreToken(data.session.access_token);
+            } catch (error) {
+              console.error('Could not exchange token, using Supabase token as fallback');
+              setupAxiosAuth(data.session.access_token);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
@@ -66,9 +118,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user || null);
 
         if (event === 'SIGNED_IN' && session?.access_token) {
-          setupAxiosAuth(session.access_token);
+          setSupabaseToken(session.access_token);
+          
+          // Exchange for Core token on sign in
+          try {
+            await exchangeForCoreToken(session.access_token);
+          } catch (error) {
+            console.error('Could not exchange token on sign-in, using Supabase token as fallback');
+            setupAxiosAuth(session.access_token);
+          }
         } else if (event === 'SIGNED_OUT') {
           setupAxiosAuth(null);
+          setSupabaseToken(null);
+          setCoreToken(null);
+          localStorage.removeItem('core_token');
         }
       }
     );
@@ -89,6 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       isAuthenticated,
+      supabaseToken,
+      coreToken,
       signOut
     }}>
       {children}

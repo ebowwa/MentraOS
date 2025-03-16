@@ -10,7 +10,7 @@ const LoginPage: React.FC = () => {
   const location = useLocation();
 
   // Get the redirect path from location state or default to home
-  const from = (location.state)?.from?.pathname || '/';
+  const from = (location.state)?.from?.pathname || (location.state)?.returnTo || '/';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

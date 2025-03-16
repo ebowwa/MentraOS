@@ -2,12 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, PlusIcon } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Plus, PlusIcon, Edit, Trash, Key, Share } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import api from '../services/api.service';
 import { useAuth } from '../hooks/useAuth';
 import { AppResponse } from '../services/api.service';
+
+// Import dialogs
+import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
+import SharingDialog from "../components/dialogs/SharingDialog";
+import DeleteDialog from "../components/dialogs/DeleteDialog";
 
 const DashboardHome: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +23,13 @@ const DashboardHome: React.FC = () => {
   const [tpas, setTpas] = useState<AppResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // States for dialogs
+  const [selectedTpa, setSelectedTpa] = useState<AppResponse | null>(null);
+  const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   // Fetch TPAs when component mounts
   useEffect(() => {
@@ -39,6 +53,14 @@ const DashboardHome: React.FC = () => {
       fetchTPAs();
     }
   }, [isAuthenticated, authLoading]);
+
+  // Filter TPAs based on search query
+  const filteredTpas = searchQuery
+    ? tpas.filter(tpa =>
+      tpa.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      tpa.packageName.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : tpas;
 
   const hasNoTpas = tpas.length === 0 && !isLoading && !error;
 
@@ -99,26 +121,11 @@ const DashboardHome: React.FC = () => {
         ) : (
           // Dashboard with TPAs
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            {/* Quick stats card */}
-            {/* <Card className="col-span-1">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg">Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <div className="text-xs font-medium text-gray-500 uppercase">Total TPAs</div>
-                    <div className="mt-1 text-2xl font-semibold">{tpas.length}</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card> */}
-
             {/* Documentation card */}
             <Card className="col-span-1 lg:col-span-3">
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Getting Started</CardTitle>
-                <CardDescription>Learn how to build TPAs for AugmentOS</CardDescription>
+                <CardDescription>Learn how to build apps for AugmentOS</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-gray-600">
@@ -155,62 +162,134 @@ const DashboardHome: React.FC = () => {
             <Card className="col-span-1 lg:col-span-3">
               <CardHeader className="pb-2 flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle className="text-lg">Your TPAs</CardTitle>
-                  <CardDescription>Manage your Third-Party Applications</CardDescription>
+                  <CardTitle className="text-lg">Your Apps</CardTitle>
+                  <CardDescription>Manage your apps</CardDescription>
                 </div>
-                <Button variant="outline" size="sm" asChild>
-                  <Link to="/tpas">
-                    View All
-                  </Link>
-                </Button>
+                <div className="flex items-center gap-4">
+                  <div className="w-64">
+                    <Input
+                      placeholder="Search your apps..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link to="/tpas">
+                      View All
+                    </Link>
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm text-left">
-                    <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                      <tr>
-                        <th scope="col" className="px-4 py-3 rounded-tl-lg">TPA Name</th>
-                        <th scope="col" className="px-4 py-3">Package Name</th>
-                        <th scope="col" className="px-4 py-3">Created</th>
-                        {/* <th scope="col" className="px-4 py-3">Status</th> */}
-                        <th scope="col" className="px-4 py-3 rounded-tr-lg">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tpas.slice(0, 3).map((tpa) => (
-                        <tr key={tpa.packageName} className="bg-white border-b">
-                          <td className="px-4 py-3 font-medium text-gray-900">{tpa.name}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-gray-500">{tpa.packageName}</td>
-                          <td className="px-4 py-3 text-gray-500">
-                            {new Date(tpa.createdAt).toLocaleDateString()}
-                          </td>
-                          {/* <td className="px-4 py-3">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${tpa.isPublic
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
-                              }`}>
-                              {tpa.isPublic ? 'Public' : 'Private'}
-                            </span>
-                          </td> */}
-                          <td className="px-4 py-3">
-                            <div className="flex gap-2">
-                              <Button variant="outline" size="sm" asChild>
-                                <Link to={`/tpas/${tpa.packageName}/edit`}>
-                                  Edit
-                                </Link>
-                              </Button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Display Name</TableHead>
+                        <TableHead>Package Name</TableHead>
+                        <TableHead>Created</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTpas.length > 0 ? (
+                        filteredTpas.slice(0, 3).map((tpa) => (
+                          <TableRow key={tpa.packageName}>
+                            <TableCell className="font-medium">{tpa.name}</TableCell>
+                            <TableCell className="font-mono text-xs text-gray-500">{tpa.packageName}</TableCell>
+                            <TableCell className="text-gray-500">
+                              {new Date(tpa.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => navigate(`/tpas/${tpa.packageName}/edit`)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedTpa(tpa);
+                                    setIsApiKeyDialogOpen(true);
+                                  }}
+                                >
+                                  <Key className="h-4 w-4" />
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedTpa(tpa);
+                                    setIsShareDialogOpen(true);
+                                  }}
+                                >
+                                  <Share className="h-4 w-4" />
+                                </Button>
+
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-red-600"
+                                  onClick={() => {
+                                    setSelectedTpa(tpa);
+                                    setIsDeleteDialogOpen(true);
+                                  }}
+                                >
+                                  <Trash className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                            {searchQuery ? 'No TPAs match your search criteria' : 'No TPAs to display'}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </CardContent>
             </Card>
           </div>
         )}
       </div>
+
+      {/* Dialogs */}
+      {selectedTpa && (
+        <>
+          <ApiKeyDialog
+            tpa={selectedTpa}
+            open={isApiKeyDialogOpen}
+            onOpenChange={setIsApiKeyDialogOpen}
+            apiKey={"********-****-****-****-************"}
+          />
+
+          <SharingDialog
+            tpa={selectedTpa}
+            open={isShareDialogOpen}
+            onOpenChange={setIsShareDialogOpen}
+          />
+
+          <DeleteDialog
+            tpa={selectedTpa}
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onConfirmDelete={(packageName) => {
+              // Update local state when TPA is deleted
+              setTpas(tpas.filter(tpa => tpa.packageName !== packageName));
+            }}
+          />
+        </>
+      )}
     </DashboardLayout>
   );
 };

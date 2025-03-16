@@ -66,23 +66,23 @@ const TPAList: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">My TPAs</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">My Apps</h1>
           <Button
             className="gap-2"
             onClick={() => navigate('/tpas/create')}
           >
             <Plus className="h-4 w-4" />
-            Create TPA
+            Create App
           </Button>
         </div>
 
         <Card className="mb-6">
           <div className="p-4 border-b">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-medium">All Third-Party Applications</h2>
+              <h2 className="text-lg font-medium">Your Apps</h2>
               <div className="w-64">
                 <Input
-                  placeholder="Search TPAs..."
+                  placeholder="Search your apps..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -94,7 +94,7 @@ const TPAList: React.FC = () => {
             {isLoading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin mx-auto h-8 w-8 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
-                <p className="mt-2 text-gray-500">Loading TPAs...</p>
+                <p className="mt-2 text-gray-500">Loading Apps...</p>
               </div>
             ) : error ? (
               <div className="p-8 text-center text-red-500">
@@ -203,7 +203,7 @@ const TPAList: React.FC = () => {
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" />
-                Create TPA
+                Create App
               </Button>
             </div>
           )}

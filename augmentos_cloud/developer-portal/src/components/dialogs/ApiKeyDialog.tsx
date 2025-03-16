@@ -169,7 +169,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ tpa, open, onOpenChange, ap
             <>
               <div className="space-y-2 mb-4">
                 <p className="text-sm text-gray-500">
-                  Your API key is used to authenticate your TPA with AugmentOS cloud services.
+                  Your API key is used to authenticate your app with AugmentOS cloud services.
                   Keep it secure and never share it publicly.
                 </p>
                 <div className="flex items-center gap-2">

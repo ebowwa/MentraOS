@@ -137,7 +137,7 @@ const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange }
               Installation Link
             </h3>
             <p className="text-sm text-gray-500">
-              Share this link with anyone to let them install your TPA:
+              Share this link with anyone to let them install your app:
             </p>
             <div className="flex items-center gap-2">
               <div className="flex-1 relative">

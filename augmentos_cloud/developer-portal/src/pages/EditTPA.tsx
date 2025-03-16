@@ -187,7 +187,7 @@ const EditTPA: React.FC = () => {
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    placeholder="Describe what your TPA does..." 
+                    placeholder="Describe what your app does..." 
                     rows={3}
                   />
                   <p className="text-xs text-gray-500">
@@ -205,7 +205,7 @@ const EditTPA: React.FC = () => {
                     placeholder="https://yourserver.com/webhook" 
                   />
                   <p className="text-xs text-gray-500">
-                    The endpoint where AugmentOS will send events when your TPA is activated.
+                    The endpoint where AugmentOS will send events when your app is activated.
                   </p>
                 </div>
                 
@@ -219,7 +219,7 @@ const EditTPA: React.FC = () => {
                     placeholder="https://yourserver.com/logo.png" 
                   />
                   <p className="text-xs text-gray-500">
-                    URL to an image that will be used as your TPA's icon (recommended: 512x512 PNG).
+                    URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
                   </p>
                 </div>
                 
@@ -233,7 +233,7 @@ const EditTPA: React.FC = () => {
                     placeholder="https://yourserver.com/webview" 
                   />
                   <p className="text-xs text-gray-500">
-                    If your TPA has a companion mobile interface, provide the URL here.
+                    If your app has a companion mobile interface, provide the URL here.
                   </p>
                 </div>
 

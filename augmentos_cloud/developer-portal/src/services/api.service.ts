@@ -4,7 +4,7 @@ import { TPA } from "@/types/tpa";
 import { AppI } from "@augmentos/sdk";
 
 // Set default config
-axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8042";
+axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8002";
 axios.defaults.withCredentials = true;
 console.log("API URL", axios.defaults.baseURL);
 

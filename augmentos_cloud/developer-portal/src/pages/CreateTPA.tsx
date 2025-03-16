@@ -153,7 +153,7 @@ const CreateTPA: React.FC = () => {
 
       const errorMessage = (error as AxiosError<{ error: string }>).response?.data?.error ||
         (error as Error).message ||
-        'Failed to create TPA. Please try again.';
+        'Failed to create app. Please try again.';
 
       if (errorMessage.includes('already exists')) {
         setErrors({
@@ -184,7 +184,7 @@ const CreateTPA: React.FC = () => {
         <div className="flex items-center mb-6">
           <Link to="/tpas" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
-            Back to TPAs
+            Back to Apps
           </Link>
         </div>
 
@@ -260,7 +260,7 @@ const CreateTPA: React.FC = () => {
                   name="description"
                   value={formData.description}
                   onChange={handleChange}
-                  placeholder="Describe what your TPA does..."
+                  placeholder="Describe what your app does..."
                   rows={3}
                   className={errors.description ? "border-red-500" : ""}
                 />
@@ -288,7 +288,7 @@ const CreateTPA: React.FC = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.webhookURL}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  The endpoint where AugmentOS will send events when your TPA is activated.
+                  The endpoint where AugmentOS will send events when your app is activated.
                 </p>
               </div>
 
@@ -308,7 +308,7 @@ const CreateTPA: React.FC = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.logoURL}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  URL to an image that will be used as your TPA's icon (recommended: 512x512 PNG).
+                  URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
                 </p>
               </div>
 
@@ -326,7 +326,7 @@ const CreateTPA: React.FC = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.webviewURL}</p>
                 )}
                 <p className="text-xs text-gray-500 pb-5">
-                  If your TPA has a companion mobile interface, provide the URL here.
+                  If your app has a companion mobile interface, provide the URL here.
                 </p>
               </div>
 
@@ -343,7 +343,7 @@ const CreateTPA: React.FC = () => {
                   />
                 </Label>
                 <p className="text-xs text-gray-500">
-                  Public TPAs are visible to all AugmentOS users in the app store.
+                  Public Apps are visible to all AugmentOS users in the app store.
                 </p>
               </div>
 
@@ -353,7 +353,7 @@ const CreateTPA: React.FC = () => {
                 Cancel
               </Button>
               <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Creating..." : "Create TPA"}
+                {isLoading ? "Creating..." : "Create App"}
               </Button>
             </CardFooter>
           </form>

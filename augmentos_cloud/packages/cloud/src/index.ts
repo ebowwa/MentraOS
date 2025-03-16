@@ -20,6 +20,7 @@ import authRoutes from './routes/auth.routes';
 import transcriptRoutes from './routes/transcripts.routes';
 import tpaSettingsRoutes from './routes/tpa-settings.routes';
 import errorReportRoutes from './routes/error-report.routes';
+import devRoutes from './routes/developer.routes';
 
 import path from 'path';
 
@@ -80,6 +81,7 @@ app.use('/api/auth', authRoutes);
 app.use('/apps', appRoutes);
 app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
+app.use('/api/dev', devRoutes);
 
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
