@@ -1,7 +1,8 @@
 // components/DashboardLayout.tsx
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { useAuth } from '../hooks/useAuth';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -9,7 +10,15 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const currentPath = location.pathname;
+  
+  // Handle sign out with navigation
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/signin');
+  };
 
   // Helper to check if a path is active (for styling)
   const isActivePath = (path: string): boolean => {
@@ -40,7 +49,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 Documentation
               </Button>
             </Link>
-            <Button variant="ghost" size="sm">Sign Out</Button>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>Sign Out</Button>
           </div>
         </div>
       </header>

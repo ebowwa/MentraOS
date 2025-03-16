@@ -8,6 +8,38 @@ axios.defaults.baseURL = import.meta.env.VITE_API_URL || "http://localhost:8002"
 axios.defaults.withCredentials = true;
 console.log("API URL", axios.defaults.baseURL);
 
+// Helper function to wait a specified time
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to retry a function with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>, 
+  retries = 3, 
+  initialDelay = 300,
+  maxDelay = 2000
+): Promise<T> {
+  let currentDelay = initialDelay;
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (i === retries - 1) throw error;
+      
+      // Check if this is an auth error, and if auth token might not be ready
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        console.log(`Auth error on attempt ${i+1}, retrying after ${currentDelay}ms...`);
+        await delay(currentDelay);
+        currentDelay = Math.min(currentDelay * 2, maxDelay);
+      } else {
+        throw error;
+      }
+    }
+  }
+  
+  throw new Error('Max retries reached');
+}
+
 // Extended TPA interface for API responses
 export interface AppResponse extends AppI {
   createdAt: string;
@@ -41,8 +73,10 @@ const api = {
   apps: {
     // Get all TPAs for the current developer
     getAll: async (): Promise<AppResponse[]> => {
-      const response = await axios.get("/api/dev/apps");
-      return response.data;
+      return retryWithBackoff(async () => {
+        const response = await axios.get("/api/dev/apps");
+        return response.data;
+      });
     },
 
     // Get a specific TPA by package name

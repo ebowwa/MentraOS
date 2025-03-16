@@ -350,7 +350,7 @@ const CreateTPA: React.FC = () => {
             </CardContent>
             <CardFooter className="flex justify-between border-t p-6">
               <Button variant="outline" type="button" onClick={() => navigate('/tpas')}>
-                Cancel
+                Back
               </Button>
               <Button type="submit" disabled={isLoading}>
                 {isLoading ? "Creating..." : "Create App"}

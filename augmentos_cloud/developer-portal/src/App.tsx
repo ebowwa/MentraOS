@@ -15,7 +15,16 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 
 // Protected route component
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user, session } = useAuth();
+
+  // Enhanced logging for debugging authentication problems
+  console.log('ProtectedRoute check:', { 
+    isAuthenticated, 
+    isLoading, 
+    hasUser: !!user, 
+    hasSession: !!session,
+    pathname: window.location.pathname 
+  });
 
   if (isLoading) {
     return (
@@ -26,9 +35,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to signin page');
     return <Navigate to="/signin" replace />;
   }
 
+  console.log('User is authenticated, rendering protected content');
   return <>{children}</>;
 }
 

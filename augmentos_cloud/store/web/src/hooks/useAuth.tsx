@@ -169,11 +169,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user || null);
 
         if (event === 'SIGNED_IN' && session?.access_token) {
+          console.log('SIGNED_IN event detected, setting up authentication...');
           setSupabaseTokenState(session.access_token);
           
           // Exchange for Core token on sign in
           try {
             await exchangeForCoreToken(session.access_token);
+            console.log('Auth completed, authenticated state:', !!session?.user);
+            
+            // Check if we're on the login page and need to redirect
+            const isLoginPage = window.location.pathname.includes('/login') || 
+                              window.location.pathname.includes('/signin');
+            
+            if (isLoginPage) {
+              // Get redirect path from URL or storage
+              const urlParams = new URLSearchParams(window.location.search);
+              const redirectTo = urlParams.get('redirectTo') || localStorage.getItem('auth_redirect') || '/';
+              
+              console.log('Redirecting to:', redirectTo);
+              // Clear storage
+              localStorage.removeItem('auth_redirect');
+              
+              // Only redirect if we're on login page
+              setTimeout(() => {
+                window.location.href = window.location.origin + redirectTo;
+              }, 300);
+            }
           } catch (error) {
             console.error('Could not exchange token on sign-in, using Supabase token as fallback');
             setupAxiosAuth(session.access_token);
@@ -196,6 +217,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Calculate authenticated state
   const isAuthenticated = isWebViewAuth || (!!user && !!session);
+  
+  // Log authentication state changes for debugging
+  useEffect(() => {
+    console.log('Authentication state updated:', { 
+      isAuthenticated, 
+      hasUser: !!user, 
+      hasSession: !!session,
+      isWebViewAuth
+    });
+  }, [isAuthenticated, user, session, isWebViewAuth]);
 
   // Provide auth context to children components
   return (
