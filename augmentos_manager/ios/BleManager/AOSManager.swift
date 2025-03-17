@@ -729,9 +729,11 @@ import AVFoundation
       // give the glasses some extra time to finish booting:
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
       await loadSettings()
+      await self.g1Manager.setSilentMode(false)// turn off silent mode
+      await self.g1Manager.getBatteryStatus()
       self.g1Manager.RN_sendText("// BOOTING AUGMENTOS")
       
-//      // send loaded settings to glasses:
+      // send loaded settings to glasses:
       self.g1Manager.RN_getBatteryStatus()
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager.RN_setHeadUpAngle(headUpAngle)

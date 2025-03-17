@@ -271,6 +271,8 @@ struct ViewState {
     }
     let isDashboard = view == "dashboard"
     
+//    print("got display_event isDashboard: \(isDashboard)")
+    
     var stateIndex = 0;
     if (isDashboard) {
       stateIndex = 1
@@ -678,18 +680,22 @@ struct ViewState {
       let order = data[1]
       switch DeviceOrders(rawValue: order) {
       case .HEAD_UP:
+        print("HEAD_UP")
         isHeadUp = true
         sendCurrentState(true)
         break
       case .HEAD_UP2:
+        print("HEAD_UP2")
         isHeadUp = true
         sendCurrentState(true)
         break
       case .HEAD_DOWN:
+        print("HEAD_DOWN")
         isHeadUp = false
         sendCurrentState(false)
         break
       case .HEAD_DOWN2:
+        print("HEAD_DOWN2")
         isHeadUp = false
         sendCurrentState(false)
         break
@@ -876,11 +882,6 @@ extension ERG1Manager {
     if leftInitialized && rightInitialized {
       print("Both arms initialized")
       g1Ready = true
-      // TODO: ios this should probably be moved somewhere else:
-//      Task {
-//        await setSilentMode(false)
-//        await getBatteryStatus()
-//      }
     }
   }
   
