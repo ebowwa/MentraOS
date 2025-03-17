@@ -243,7 +243,7 @@ const EditTPA: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-2xl">Edit App</CardTitle>
                 <CardDescription>
-                  Update your Third-Party Application for AugmentOS.
+                  Update your apps for AugmentOS.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pb-5">
@@ -495,10 +495,16 @@ const EditTPA: React.FC = () => {
             open={isPublishDialogOpen}
             onOpenChange={(open) => {
               setIsPublishDialogOpen(open);
-              if (!open) {
-                // Dialog was closed, check if we need to refresh
-                handlePublishComplete();
-              }
+            }}
+            onPublishComplete={(updatedTpa) => {
+              // Update the form data immediately with the new status
+              setFormData(prev => ({
+                ...prev,
+                appStoreStatus: updatedTpa.appStoreStatus
+              }));
+              
+              // Show success message that status has changed
+              toast.success(`App status updated to: ${updatedTpa.appStoreStatus === 'SUBMITTED' ? 'Submitted for Review' : updatedTpa.appStoreStatus}`);
             }}
           />
         </>

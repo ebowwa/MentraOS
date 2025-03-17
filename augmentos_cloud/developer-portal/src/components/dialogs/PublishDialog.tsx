@@ -17,20 +17,32 @@ interface PublishDialogProps {
   tpa: TPA | AppResponse;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onPublishComplete?: (updatedTpa: AppResponse) => void;
 }
 
 const PublishDialog: React.FC<PublishDialogProps> = ({
   tpa,
   open,
   onOpenChange,
+  onPublishComplete,
 }) => {
   const [isPublishing, setIsPublishing] = React.useState(false);
 
   const handlePublish = async () => {
     try {
       setIsPublishing(true);
-      await api.apps.publish(tpa.packageName);
+      const result = await api.apps.publish(tpa.packageName);
+      
+      // Get the updated app data
+      const updatedTpa = await api.apps.getByPackageName(tpa.packageName);
+      
       toast.success('App submitted for publication!');
+      
+      // Notify parent of the successful publish with updated data
+      if (onPublishComplete) {
+        onPublishComplete(updatedTpa);
+      }
+      
       onOpenChange(false);
     } catch (error) {
       console.error('Error publishing app:', error);

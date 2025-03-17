@@ -16,19 +16,37 @@ import NotFound from './pages/NotFound';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 
 // Protected route component
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) {
   const { isAuthenticated, isLoading, user, session } = useAuth();
+  const [isAdmin, setIsAdmin] = React.useState<boolean | null>(null);
+  const [isCheckingAdmin, setIsCheckingAdmin] = React.useState(false);
 
-  // Enhanced logging for debugging authentication problems
-  console.log('ProtectedRoute check:', { 
-    isAuthenticated, 
-    isLoading, 
-    hasUser: !!user, 
-    hasSession: !!session,
-    pathname: window.location.pathname 
-  });
+  // Check admin status if required
+  React.useEffect(() => {
+    async function checkAdminStatus() {
+      if (requireAdmin && isAuthenticated && !isLoading) {
+        setIsCheckingAdmin(true);
+        try {
+          const api = (await import('./services/api.service')).default;
+          const result = await api.admin.checkAdmin();
+          setIsAdmin(result && result.isAdmin);
+        } catch (error) {
+          setIsAdmin(false);
+        } finally {
+          setIsCheckingAdmin(false);
+        }
+      }
+    }
+    
+    checkAdminStatus();
+  }, [requireAdmin, isAuthenticated, isLoading]);
 
-  if (isLoading) {
+  // Only log authentication issues in development mode
+  if (process.env.NODE_ENV === 'development' && !isAuthenticated && !isLoading) {
+    console.log('Auth issue:', { isAuthenticated, isLoading, hasUser: !!user, hasSession: !!session });
+  }
+
+  if (isLoading || (requireAdmin && isCheckingAdmin)) {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -41,7 +59,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return <Navigate to="/signin" replace />;
   }
 
-  console.log('User is authenticated, rendering protected content');
+  if (requireAdmin && isAdmin === false) {
+    console.log('Not admin, redirecting to dashboard');
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Authentication (and admin check if required) successful
   return <>{children}</>;
 }
 
@@ -87,7 +110,7 @@ const App: React.FC = () => {
           } />
           
           <Route path="/admin" element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin={true}>
               <AdminPanel />
             </ProtectedRoute>
           } />

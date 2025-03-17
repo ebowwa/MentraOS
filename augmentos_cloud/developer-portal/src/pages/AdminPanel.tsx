@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useNavigate } from 'react-router-dom';
-import { Loader2, CheckCircle, XCircle, User, PlusCircle, Clock, Package } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock, Package } from 'lucide-react';
 import api from '../services/api.service';
 
 interface AdminStat {
@@ -23,13 +23,7 @@ interface AdminStat {
   recentSubmissions: any[];
 }
 
-interface AdminUser {
-  _id: string;
-  email: string;
-  role: string;
-  addedBy: string;
-  addedAt: string;
-}
+// Admin user interface removed
 
 interface AppDetail {
   _id: string;
@@ -61,14 +55,11 @@ const AdminPanel: React.FC = () => {
     recentSubmissions: []
   });
   const [submittedApps, setSubmittedApps] = useState<any[]>([]);
-  const [admins, setAdmins] = useState<AdminUser[]>([]);
+  /* Admin management removed */
   const [selectedApp, setSelectedApp] = useState<AppDetail | null>(null);
   const [reviewNotes, setReviewNotes] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [newAdminRole, setNewAdminRole] = useState('REVIEWER');
   
   const [openReviewDialog, setOpenReviewDialog] = useState(false);
-  const [openAdminDialog, setOpenAdminDialog] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   
   // Active tab state to replace the shadcn Tabs component
@@ -113,7 +104,6 @@ const AdminPanel: React.FC = () => {
       // Use a fallback to mock data if API requests fail
       let statsData = null;
       let appsData = [];
-      let adminsData = [];
       
       try {
         // Stats request
@@ -131,19 +121,12 @@ const AdminPanel: React.FC = () => {
         console.error('Error fetching submitted apps:', err);
       }
       
-      try {
-        // Admins request
-        adminsData = await api.admin.users.getAll();
-        console.log('Admins loaded:', adminsData.length);
-      } catch (err) {
-        console.error('Error fetching admins:', err);
-      }
+      // Admin management removed
       
       // ONLY update state with real API data, do not use mock data anymore
       console.log('Updating state with API data:', {
         hasStats: !!statsData,
-        submittedAppsCount: appsData?.length || 0,
-        adminsCount: adminsData?.length || 0
+        submittedAppsCount: appsData?.length || 0
       });
       
       // Always update with real data, even if empty
@@ -161,7 +144,7 @@ const AdminPanel: React.FC = () => {
               submitted: submittedCount,
               published: 0,
               rejected: 0,
-              admins: adminsData?.length || 0
+              admins: 0 // Admin count not needed
             },
             recentSubmissions: appsData.slice(0, 3) // Use up to 3 most recent submissions
           });
@@ -171,10 +154,6 @@ const AdminPanel: React.FC = () => {
       // Always update submitted apps with real data
       console.log('Setting real submitted apps data, count:', appsData?.length || 0);
       setSubmittedApps(appsData || []);
-      
-      // Always update admins with real data
-      console.log('Setting real admins data, count:', adminsData?.length || 0);
-      setAdmins(adminsData || []);
       
     } catch (error) {
       console.error('Error loading admin data:', error);
@@ -235,42 +214,8 @@ const AdminPanel: React.FC = () => {
     }
   };
   
-  const handleAddAdmin = async () => {
-    if (!newAdminEmail.trim()) return;
-    
-    setActionLoading(true);
-    try {
-      console.log('Adding admin:', newAdminEmail, 'with role:', newAdminRole);
-      
-      await api.admin.users.add(newAdminEmail, newAdminRole);
-      
-      // Refresh admin list
-      loadAdminData();
-      setNewAdminEmail('');
-      setOpenAdminDialog(false);
-      alert(`Admin ${newAdminEmail} added successfully!`);
-    } catch (error) {
-      console.error('Error adding admin:', error);
-      alert(`Error adding admin: ${error.message || 'Unknown error'}`);
-    } finally {
-      setActionLoading(false);
-    }
-  };
+  /* Admin management functions removed */
   
-  const handleRemoveAdmin = async (email: string) => {
-    try {
-      await api.admin.users.remove(email);
-      
-      // Update admin list
-      setAdmins(admins.filter(admin => admin.email !== email));
-      alert(`Admin ${email} removed successfully.`);
-      // Reload data to ensure we have the latest state
-      loadAdminData();
-    } catch (error) {
-      console.error('Error removing admin:', error);
-      alert(`Error removing admin: ${error.message || 'Unknown error'}`);
-    }
-  };
   
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -388,38 +333,6 @@ const AdminPanel: React.FC = () => {
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold">Admin Panel</h1>
-          
-          {/* Debug tools in development mode */}
-          {import.meta.env.DEV && (
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={checkApiConnection}>
-                Check API
-              </Button>
-              <Button variant="outline" size="sm" onClick={createTestSubmission}>
-                Create Test Submission
-              </Button>
-              <Button variant="outline" size="sm" onClick={loadAdminData}>
-                Reload Data
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  api.admin.fixAppStatuses()
-                    .then(data => {
-                      alert(`Fixed ${data.fixed || 0} app status issues`);
-                      loadAdminData();
-                    })
-                    .catch(err => {
-                      console.error('Error fixing app statuses:', err);
-                      alert('Error fixing app statuses: ' + err.message);
-                    });
-                }}
-              >
-                Fix Data Issues
-              </Button>
-            </div>
-          )}
         </div>
         
         {isLoading ? (
@@ -442,13 +355,6 @@ const AdminPanel: React.FC = () => {
                 onClick={() => setActiveTab("apps")}
               >
                 App Submissions
-              </Button>
-              <Button 
-                variant={activeTab === "admins" ? "default" : "ghost"} 
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary"
-                onClick={() => setActiveTab("admins")}
-              >
-                Admin Management
               </Button>
             </div>
             
@@ -552,7 +458,7 @@ const AdminPanel: React.FC = () => {
                         <div key={app._id} className="py-4 flex justify-between items-center">
                           <div className="flex items-center">
                             <img 
-                              src={app.logoURL} 
+                              src={app.logoURL || 'https://placehold.co/100x100?text=App'} 
                               alt={app.name} 
                               className="w-10 h-10 rounded-md mr-3"
                               onError={(e) => {
@@ -576,52 +482,7 @@ const AdminPanel: React.FC = () => {
               </Card>
             )}
             
-            {activeTab === "admins" && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle>Admin Users</CardTitle>
-                  <Button size="sm" onClick={() => setOpenAdminDialog(true)}>
-                    <PlusCircle className="h-4 w-4 mr-2" />
-                    Add Admin
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  <div className="divide-y">
-                    {admins.map((admin) => (
-                      <div key={admin._id} className="py-4 flex justify-between items-center">
-                        <div className="flex items-center">
-                          <User className="h-8 w-8 text-gray-400 mr-3" />
-                          <div>
-                            <div className="font-medium">{admin.email}</div>
-                            <div className="text-xs text-gray-500">
-                              Added by: {admin.addedBy} • {formatDate(admin.addedAt)}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                          <Badge variant={admin.role === 'ADMIN' ? 'default' : 'outline'}>
-                            {admin.role}
-                          </Badge>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => handleRemoveAdmin(admin.email)}
-                          >
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {admins.length === 0 && (
-                      <div className="py-6 text-center text-gray-500">
-                        No admin users found
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Admin management tab removed */}
           </div>
         )}
         
@@ -639,7 +500,7 @@ const AdminPanel: React.FC = () => {
               <div className="space-y-4 py-2">
                 <div className="flex items-center space-x-4">
                   <img 
-                    src={selectedApp.logoURL} 
+                    src={selectedApp.logoURL || 'https://placehold.co/100x100?text=App'} 
                     alt={selectedApp.name} 
                     className="w-16 h-16 rounded-md"
                     onError={(e) => {
@@ -712,62 +573,7 @@ const AdminPanel: React.FC = () => {
           </DialogContent>
         </Dialog>
         
-        {/* Add Admin Dialog */}
-        <Dialog open={openAdminDialog} onOpenChange={setOpenAdminDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Admin User</DialogTitle>
-              <DialogDescription>
-                Add a new admin user to manage app submissions.
-              </DialogDescription>
-            </DialogHeader>
-            
-            <div className="space-y-4 py-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Email</label>
-                <Input 
-                  value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  placeholder="admin@example.com"
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Role</label>
-                <div className="flex space-x-2">
-                  <Button
-                    variant={newAdminRole === 'REVIEWER' ? 'default' : 'outline'}
-                    onClick={() => setNewAdminRole('REVIEWER')}
-                    className="flex-1"
-                  >
-                    Reviewer
-                  </Button>
-                  <Button
-                    variant={newAdminRole === 'ADMIN' ? 'default' : 'outline'}
-                    onClick={() => setNewAdminRole('ADMIN')}
-                    className="flex-1"
-                  >
-                    Admin
-                  </Button>
-                </div>
-                <p className="text-xs text-gray-500">
-                  Reviewers can approve/reject apps. Admins can also manage other admins.
-                </p>
-              </div>
-            </div>
-            
-            <DialogFooter>
-              <Button
-                onClick={handleAddAdmin}
-                disabled={actionLoading || !newAdminEmail.trim()}
-                type="button"
-              >
-                {actionLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <PlusCircle className="h-4 w-4 mr-2" />}
-                Add Admin
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        {/* Admin management dialog removed */}
       </div>
     </DashboardLayout>
   );

@@ -99,12 +99,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         // Manual redirect to dashboard after successful sign up
         setTimeout(() => {
-          console.log('Redirecting to dashboard after successful sign up');
+          // Redirecting to dashboard after successful sign up;
           window.location.href = `${window.location.origin}/dashboard`;
         }, 500);
       } else if (!error) {
         // If no session but also no error, likely means email confirmation is required
-        console.log('Sign up successful, email confirmation may be required');
+        // Sign up successful, email confirmation may be required;
       }
       
       return { error };
@@ -116,7 +116,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle sign out
   const signOut = async () => {
-    console.log('Signing out user');
+    // Signing out user;
     try {
       await supabase.auth.signOut();
       setupAxiosAuth(null);
@@ -126,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       localStorage.removeItem('core_token');
       localStorage.removeItem('userEmail');
-      console.log('Sign out completed successfully');
+      // Sign out completed successfully;
     } catch (error) {
       console.error('Error during sign out:', error);
     }
@@ -144,7 +144,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       );
       
       if (response.status === 200 && response.data.coreToken) {
-        console.log('Successfully exchanged token for Core token');
+        // Successfully exchanged token for Core token;
         setupAxiosAuth(response.data.coreToken);
         setCoreToken(response.data.coreToken);
         localStorage.setItem('core_token', response.data.coreToken);
@@ -175,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Try to use existing core token first
         const savedCoreToken = localStorage.getItem('core_token');
         if (savedCoreToken) {
-          console.log('Using saved core token');
+          // Using saved core token;
           setupAxiosAuth(savedCoreToken);
           setCoreToken(savedCoreToken);
           // Small delay to ensure token is applied
@@ -218,7 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event);
+        // Auth state changed event;
         setSession(session);
         setUser(session?.user || null);
         
@@ -230,21 +230,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (event === 'SIGNED_IN' && session?.access_token) {
-          console.log('SIGNED_IN event detected, setting up authentication...');
+          // SIGNED_IN event detected;
           setTokenReady(false); // Token exchange in progress
           setSupabaseToken(session.access_token);
           
           // Exchange for Core token on sign in
           try {
             await exchangeForCoreToken(session.access_token);
-            console.log('Auth completed, authenticated state:', !!session?.user);
+            // Auth completed;
             
             // Handle redirection when auth is completed via JS flow
             // This helps cases where the Auth UI's redirectTo doesn't trigger
             if (window.location.pathname.includes('/signin') || 
                 window.location.pathname.includes('/login') ||
                 window.location.pathname.includes('/signup')) {
-              console.log('Redirecting to dashboard after authentication');
+              // Redirecting to dashboard;
               window.location.href = `${window.location.origin}/dashboard`;
             }
           } catch (error) {
@@ -274,13 +274,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Calculate authenticated state 
   const isAuthenticated = !!user && !!session;
   
-  // Log authentication state changes for debugging
+  // Only log significant auth state changes in development
   useEffect(() => {
-    console.log('Authentication state updated:', { 
-      isAuthenticated, 
-      hasUser: !!user, 
-      hasSession: !!session 
-    });
+    if (process.env.NODE_ENV === 'development' && isAuthenticated) {
+      // Only log once when fully authenticated
+      if (!!user && !!session) {
+        console.log('User authenticated');
+      }
+    }
   }, [isAuthenticated, user, session]);
 
   // Provide auth context to children components

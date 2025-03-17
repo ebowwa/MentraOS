@@ -69,13 +69,13 @@ const DashboardHome: React.FC = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-gray-600">
-                Welcome to the AugmentOS Developer Portal! Here, you can create and manage your Third-Party Applications (TPAs) for the AugmentOS smart glasses platform.
+                Welcome to the AugmentOS Developer Portal! Here, you can create and manage your apps for the AugmentOS smart glasses platform.
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="border rounded-md p-4">
                   <h3 className="font-medium mb-2">Quick Start Guide</h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    Learn how to build your first TPA in minutes.
+                    Learn how to build your first AugmentOS app in minutes.
                   </p>
                   <Button variant="outline" size="sm" asChild>
                     <a href="https://www.npmjs.com/package/@augmentos/sdk" target="_blank" rel="noopener noreferrer">

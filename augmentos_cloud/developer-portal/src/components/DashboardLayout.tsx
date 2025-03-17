@@ -23,38 +23,50 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         // First, check if we have a token
         const authToken = localStorage.getItem('core_token');
         if (!authToken) {
-          console.warn('No auth token found for admin check');
+          setIsAdmin(false);
           return;
         }
         
         // Try to use API service
         try {
           const result = await api.admin.checkAdmin();
-          console.log('Admin check response:', result);
-          setIsAdmin(true);
+          if (result && result.isAdmin) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+          }
         } catch (apiError) {
-          console.log('API error or not an admin:', apiError);
-          applyDevModeAdminCheck();
+          console.log('Not an admin:', apiError);
+          setIsAdmin(false);
+          
+          // Only apply dev mode check if API call fails
+          if (import.meta.env.DEV) {
+            applyDevModeAdminCheck();
+          }
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
-        applyDevModeAdminCheck();
+        setIsAdmin(false);
+        
+        // Only apply dev mode check if there's an error
+        if (import.meta.env.DEV) {
+          applyDevModeAdminCheck();
+        }
       }
     };
     
     // Helper function for dev mode fallback
     const applyDevModeAdminCheck = () => {
-      if (import.meta.env.DEV) {
-        const email = localStorage.getItem('userEmail');
-        if (email && (
-          email.includes('admin') || 
-          email.includes('test') || 
-          email === 'alexis@augmentos.org' ||
-          email === 'alex@augmentos.org'
-        )) {
-          console.log('DEV MODE: Setting admin status based on email pattern');
-          setIsAdmin(true);
-        }
+      const email = localStorage.getItem('userEmail');
+      if (email && (
+        email.includes('admin') || 
+        email.includes('test') || 
+        email === 'alexis@augmentos.org' ||
+        email === 'alex@augmentos.org' ||
+        email.endsWith('@mentra.glass')
+      )) {
+        console.log('DEV MODE: Setting admin status based on email pattern');
+        setIsAdmin(true);
       }
     };
     

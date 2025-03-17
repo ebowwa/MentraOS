@@ -2,6 +2,10 @@
  * @fileoverview AugmentOS Cloud Server entry point.
  * Initializes core services and sets up HTTP/WebSocket servers.
  */
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 // import "./instrument";
 import "./sentry";
 
@@ -36,9 +40,16 @@ mongoConnection.init()
     
     // Log admin emails from environment for debugging
     const adminEmails = process.env.ADMIN_EMAILS || '';
+    logger.info('ENVIRONMENT VARIABLES CHECK:');
+    logger.info(`- NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+    logger.info(`- ADMIN_EMAILS: "${adminEmails}"`);
+    
+    // Log additional environment details
+    logger.info(`- Current working directory: ${process.cwd()}`);
+    
     if (adminEmails) {
       const emails = adminEmails.split(',').map(e => e.trim());
-      logger.info(`Admin access configured for ${emails.length} email(s)`);
+      logger.info(`Admin access configured for ${emails.length} email(s): [${emails.join(', ')}]`);
     } else {
       logger.warn('No ADMIN_EMAILS environment variable found. Admin panel will be inaccessible.');
       

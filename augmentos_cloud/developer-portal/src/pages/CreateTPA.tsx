@@ -193,7 +193,7 @@ const CreateTPA: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Create New TPA</CardTitle>
               <CardDescription>
-                Fill out the form below to register your Third-Party Application for AugmentOS.
+                Fill out the form below to register your app for AugmentOS.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pb-5">
@@ -327,23 +327,6 @@ const CreateTPA: React.FC = () => {
                 )}
                 <p className="text-xs text-gray-500 pb-5">
                   If your app has a companion mobile interface, provide the URL here.
-                </p>
-              </div>
-
-              {/* Toggle switch for isPublic */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="isPublic" className="flex items-center">
-                  <span className="mr-2">Public TPA</span>
-                  <input
-                    id="isPublic"
-                    name="isPublic"
-                    type="checkbox"
-                    checked={formData.isPublic}
-                    onChange={e => setFormData(prev => ({ ...prev, isPublic: e.target.checked }))}
-                  />
-                </Label>
-                <p className="text-xs text-gray-500">
-                  Public Apps are visible to all AugmentOS users in the app store.
                 </p>
               </div>
 

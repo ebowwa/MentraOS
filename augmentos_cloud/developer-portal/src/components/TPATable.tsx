@@ -199,7 +199,7 @@ const TPATable: React.FC<TPATableProps> = ({
                 ) : (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-6 text-gray-500">
-                      {searchQuery ? 'No TPAs match your search criteria' : 'No TPAs to display'}
+                      {searchQuery ? 'No apps match your search criteria' : 'No apps to display'}
                     </TableCell>
                   </TableRow>
                 )}
@@ -210,7 +210,7 @@ const TPATable: React.FC<TPATableProps> = ({
 
         {hasNoTpas && !isLoading && !error && !searchQuery && (
           <div className="p-6 text-center">
-            <p className="text-gray-500 mb-4">Get started by creating your first Third-Party Application</p>
+            <p className="text-gray-500 mb-4">Get started by creating your first app</p>
             <Button
               onClick={() => navigate('/tpas/create')}
               className="gap-2"
@@ -242,6 +242,21 @@ const TPATable: React.FC<TPATableProps> = ({
             tpa={selectedTpa}
             open={isPublishDialogOpen}
             onOpenChange={setIsPublishDialogOpen}
+            onPublishComplete={(updatedTpa) => {
+              // Update the selected TPA with the new data
+              setSelectedTpa(updatedTpa);
+              
+              // Update the TPA in the list to reflect the new status
+              const updatedTpas = tpas.map(t => 
+                t.packageName === updatedTpa.packageName ? {...t, appStoreStatus: updatedTpa.appStoreStatus} : t
+              );
+              
+              // Force a re-render by triggering a parent component update
+              if (onTpaDeleted) {
+                // Using the same callback mechanism to notify parent to refresh data
+                onTpaDeleted(updatedTpa.packageName);
+              }
+            }}
           />
 
           <DeleteDialog

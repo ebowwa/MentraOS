@@ -48,10 +48,23 @@ export const validateAdminEmail = async (req: Request, res: Response, next: Next
     
     // Check if user's email is in the ADMIN_EMAILS environment variable
     const adminEmails = process.env.ADMIN_EMAILS || '';
-    const emailList = adminEmails.split(',').map(e => e.trim().toLowerCase());
     
-    if (!emailList.includes(email)) {
-      logger.warn(`Admin auth - User ${email} is not an admin`);
+    // Log environment variable for debugging
+    logger.info(`Admin auth - ADMIN_EMAILS environment variable: "${adminEmails}"`);
+    logger.info(`Admin auth - Current NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+    
+    const emailList = adminEmails.split(',').map(e => e.trim().toLowerCase());
+    logger.info(`Admin auth - Parsed admin emails: [${emailList.join(', ')}]`);
+    
+    // Check if user is in admin list or has @mentra.glass email
+    if (emailList.includes(email) || email.endsWith('@mentra.glass')) {
+      if (emailList.includes(email)) {
+        logger.info(`Admin auth - User ${email} found in admin list`);
+      } else {
+        logger.info(`Admin auth - Allowing user with @mentra.glass email: ${email}`);
+      }
+    } else {
+      logger.warn(`Admin auth - User ${email} is not authorized as admin`);
       return res.status(403).json({ error: 'Access denied. Admin privileges required.' });
     }
 
