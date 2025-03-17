@@ -99,7 +99,7 @@ struct ViewState {
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "AUGMENTOS_SERVER_NOT_CONNECTED"),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "DASHBOARD_NOT_SET"),
   ]
   
   enum AiMode: String {
