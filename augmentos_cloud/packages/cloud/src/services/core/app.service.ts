@@ -13,7 +13,7 @@ import { systemApps } from '@augmentos/config';
 import App from '../../models/app.model';
 import { User } from '../../models/user.model';
 
-const APPSTORE_ENABLED = true;//process.env.NODE_ENV === 'staging' || process.env.NODE_ENV === 'development';
+const APPSTORE_ENABLED = true;
 
 /**
  * System TPAs that are always available.
@@ -51,7 +51,7 @@ export const LOCAL_APPS: AppI[] = [
     tpaType: TpaType.BACKGROUND,
     webhookURL: `http://${systemApps.merge.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
-    description: systemApps.merge.description,
+    description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
   },
   {
     packageName: systemApps.liveTranslation.packageName,
@@ -63,7 +63,7 @@ export const LOCAL_APPS: AppI[] = [
   },
   {
     packageName: systemApps.teleprompter.packageName,
-    name: systemApps.teleprompter.name,
+    name: "Teleprompt",
     tpaType: TpaType.STANDARD,
     webhookURL: `http://${systemApps.teleprompter.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
@@ -75,7 +75,15 @@ export const LOCAL_APPS: AppI[] = [
 if (process.env.NODE_ENV !== 'production') {
   LOCAL_APPS.push({
     packageName: systemApps.flash.packageName,
-    name: systemApps.flash.name,
+    name: "Navigation",
+    description: systemApps.flash.description,
+    tpaType: TpaType.BACKGROUND,
+    webhookURL: `http://${systemApps.flash.host}/webhook`,
+    logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
+  });
+  LOCAL_APPS.push({
+    packageName: "com.augmentos.screenmirror",
+    name: "Screen Mirror",
     description: systemApps.flash.description,
     tpaType: TpaType.BACKGROUND,
     webhookURL: `http://${systemApps.flash.host}/webhook`,

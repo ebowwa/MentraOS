@@ -500,6 +500,8 @@ export class WebSocketService {
         // console.log('####### message', message);
         // console.log('####### isBinary', isBinary);
 
+        // if we do: Buffer.isBuffer(message) || isBinary should get it to work 
+        // for both prod, and dev environments. - Isaiah.
         if (Buffer.isBuffer(message) && isBinary) {
           const _buffer = message as Buffer;
           // Convert Node.js Buffer to ArrayBuffer

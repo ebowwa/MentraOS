@@ -20,8 +20,8 @@ router.get('/:tpaName', async (req, res) => {
   logger.info('Received request for TPA settings');
 
   // Extract TPA name from URL (use third segment if dot-separated).
-  const parts = req.params.tpaName.split('.');
-  const tpaName = parts.length > 2 ? parts[2] : req.params.tpaName;
+  // const parts = req.params.tpaName.split('.');
+  const tpaName = req.params.tpaName;
   if (!tpaName) {
     return res.status(400).json({ error: 'TPA name missing in request' });
   }
@@ -140,14 +140,16 @@ router.get('/user/:tpaName', async (req, res) => {
   const userId = authHeader.split(' ')[1]; // directly use the token as the userId
 
   logger.info('Received request for user-specific TPA settings 121223213' + JSON.stringify(userId));
-  const parts = req.params.tpaName.split('.');
-  const tpaName = parts.length > 2 ? parts[2] : req.params.tpaName;
+  // const parts = req.params.tpaName.split('.');
+  const tpaName = req.params.tpaName;
   try {
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
     // Retrieve stored settings for this TPA.
     let storedSettings = user.getAppSettings(tpaName);
+
+    console.log('storedSettings', storedSettings);
 
     if (!storedSettings) {
       // If settings are missing, load default settings from the TPA config file.
