@@ -30,6 +30,8 @@
 		C51385C82D7F6DFE00710042 /* ContentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AD2D7F6DFE00710042 /* ContentData.swift */; };
 		C51385CA2D7F6DFE00710042 /* FrameSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AE2D7F6DFE00710042 /* FrameSize.swift */; };
 		C51385CB2D7F6DFE00710042 /* silero_vad.onnx in Resources */ = {isa = PBXBuildFile; fileRef = C51385B32D7F6DFE00710042 /* silero_vad.onnx */; };
+		C520E1B22D852981009491C1 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C520E1B12D852981009491C1 /* CalendarManager.swift */; };
+		C520E1B42D874D7D009491C1 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C520E1B32D874D7D009491C1 /* LocationManager.swift */; };
 		C56BE8642D78E51100407B70 /* makefile.mk in Resources */ = {isa = PBXBuildFile; fileRef = C56BE84F2D78E51100407B70 /* makefile.mk */; };
 		C56BE8652D78E51100407B70 /* meson.build in Resources */ = {isa = PBXBuildFile; fileRef = C56BE8532D78E51100407B70 /* meson.build */; };
 		C56BE8662D78E51100407B70 /* energy.c in Sources */ = {isa = PBXBuildFile; fileRef = C56BE8452D78E51100407B70 /* energy.c */; };
@@ -101,6 +103,8 @@
 		C51385B32D7F6DFE00710042 /* silero_vad.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = silero_vad.onnx; sourceTree = "<group>"; };
 		C51385B52D7F6DFE00710042 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
 		C51385B62D7F6DFE00710042 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
+		C520E1B12D852981009491C1 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		C520E1B32D874D7D009491C1 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
 		C56BE83A2D78E51100407B70 /* g1-sample-header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "g1-sample-header.h"; sourceTree = "<group>"; };
 		C56BE83C2D78E51100407B70 /* attdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = attdet.h; sourceTree = "<group>"; };
 		C56BE83D2D78E51100407B70 /* attdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = attdet.c; sourceTree = "<group>"; };
@@ -400,6 +404,8 @@
 		C5DC28DD2D70EC5100B3F8D3 /* BleManager */ = {
 			isa = PBXGroup;
 			children = (
+				C520E1B32D874D7D009491C1 /* LocationManager.swift */,
+				C520E1B12D852981009491C1 /* CalendarManager.swift */,
 				C56BE8C62D7D50E600407B70 /* MicrophoneManager.swift */,
 				C56BE8892D793E2E00407B70 /* G1Text.swift */,
 				C56BE87E2D79034C00407B70 /* WebSocketManager.swift */,
@@ -683,6 +689,8 @@
 				C56BE86B2D78E51100407B70 /* attdet.c in Sources */,
 				C56BE8792D78F2E400407B70 /* AOSModule.m in Sources */,
 				C56BE86C2D78E51100407B70 /* bits.c in Sources */,
+				C520E1B42D874D7D009491C1 /* LocationManager.swift in Sources */,
+				C520E1B22D852981009491C1 /* CalendarManager.swift in Sources */,
 				C56BE86D2D78E51100407B70 /* PcmConverter.m in Sources */,
 				C56BE86E2D78E51100407B70 /* ltpf.c in Sources */,
 				C56BE86F2D78E51100407B70 /* sns.c in Sources */,
@@ -783,7 +791,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3HG9FZ7C8U;
+				DEVELOPMENT_TEAM = BZR8JDUBS8;
 				ENABLE_BITCODE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -884,7 +892,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.augmentos.augmentostest;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.augmentos.augmentostest2;
 				PRODUCT_NAME = AugmentOS_Manager;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AugmentOS_Manager-Bridging-Header.h";
@@ -903,7 +911,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3HG9FZ7C8U;
+				DEVELOPMENT_TEAM = BZR8JDUBS8;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"${PODS_ROOT}/Headers/Public\"",
@@ -1003,7 +1011,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.augmentos.augmentostest;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.augmentos.augmentostest2;
 				PRODUCT_NAME = AugmentOS_Manager;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AugmentOS_Manager-Bridging-Header.h";
