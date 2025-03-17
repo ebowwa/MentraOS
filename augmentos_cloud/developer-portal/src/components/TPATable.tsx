@@ -6,13 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Link } from "react-router-dom";
-import { Edit, Trash, Key, Share, Plus } from "lucide-react";
+import { Edit, Trash, Key, Share2, Plus, Upload, KeyRound } from "lucide-react";
 import { AppResponse } from '../services/api.service';
+import { toast } from 'sonner';
 
 // Import dialogs
 import ApiKeyDialog from "./dialogs/ApiKeyDialog";
 import SharingDialog from "./dialogs/SharingDialog";
 import DeleteDialog from "./dialogs/DeleteDialog";
+import PublishDialog from "./dialogs/PublishDialog";
+import api from '../services/api.service';
 
 interface TPATableProps {
   tpas: AppResponse[];
@@ -40,7 +43,9 @@ const TPATable: React.FC<TPATableProps> = ({
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [generatedApiKey, setGeneratedApiKey] = useState('');
 
   // Filter TPAs based on search query
   const filteredTpas = searchQuery
@@ -108,6 +113,7 @@ const TPATable: React.FC<TPATableProps> = ({
                   <TableHead>Display Name</TableHead>
                   <TableHead>Package Name</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -119,6 +125,17 @@ const TPATable: React.FC<TPATableProps> = ({
                       <TableCell className="font-mono text-xs text-gray-500">{tpa.packageName}</TableCell>
                       <TableCell className="text-gray-500">
                         {new Date(tpa.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          tpa.appStoreStatus === 'PUBLISHED' ? 'bg-green-100 text-green-800' : 
+                          tpa.appStoreStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {tpa.appStoreStatus === 'DEVELOPMENT' ? 'Development' : 
+                           tpa.appStoreStatus === 'SUBMITTED' ? 'Submitted' : 
+                           tpa.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -133,12 +150,13 @@ const TPATable: React.FC<TPATableProps> = ({
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
+                            onClick={async () => {
                               setSelectedTpa(tpa);
+                              setGeneratedApiKey('');
                               setIsApiKeyDialogOpen(true);
                             }}
                           >
-                            <Key className="h-4 w-4" />
+                            <KeyRound className="h-4 w-4" />
                           </Button>
 
                           <Button
@@ -149,7 +167,18 @@ const TPATable: React.FC<TPATableProps> = ({
                               setIsShareDialogOpen(true);
                             }}
                           >
-                            <Share className="h-4 w-4" />
+                            <Share2 className="h-4 w-4" />
+                          </Button>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedTpa(tpa);
+                              setIsPublishDialogOpen(true);
+                            }}
+                          >
+                            <Upload className="h-4 w-4" />
                           </Button>
 
                           <Button
@@ -169,7 +198,7 @@ const TPATable: React.FC<TPATableProps> = ({
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center py-6 text-gray-500">
+                    <TableCell colSpan={5} className="text-center py-6 text-gray-500">
                       {searchQuery ? 'No TPAs match your search criteria' : 'No TPAs to display'}
                     </TableCell>
                   </TableRow>
@@ -200,13 +229,19 @@ const TPATable: React.FC<TPATableProps> = ({
             tpa={selectedTpa}
             open={isApiKeyDialogOpen}
             onOpenChange={setIsApiKeyDialogOpen}
-            apiKey={"********-****-****-****-************"}
+            apiKey={generatedApiKey}
           />
 
           <SharingDialog
             tpa={selectedTpa}
             open={isShareDialogOpen}
             onOpenChange={setIsShareDialogOpen}
+          />
+
+          <PublishDialog
+            tpa={selectedTpa}
+            open={isPublishDialogOpen}
+            onOpenChange={setIsPublishDialogOpen}
           />
 
           <DeleteDialog

@@ -7,9 +7,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Copy, Share2, LinkIcon, CheckCircle, X, InfoIcon } from "lucide-react";
 import api from "@/services/api.service";
 import { AppI } from '@augmentos/sdk';
+import { TPA } from '@/types/tpa';
 
 interface SharingDialogProps {
-  tpa: AppI | null;
+  tpa: AppI | TPA | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -168,7 +169,7 @@ const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange }
           <div className="space-y-3">
             <h3 className="text-sm font-medium">Testers</h3>
             <p className="text-sm text-gray-500">
-              Keep track of who you've shared this TPA with:
+              Keep track of who you've shared this app with:
             </p>
             
             <div className="flex items-center gap-2">

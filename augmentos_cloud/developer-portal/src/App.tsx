@@ -10,6 +10,8 @@ import LoginOrSignup from './pages/AuthPage';
 import TPAList from './pages/TPAList';
 import CreateTPA from './pages/CreateTPA';
 import EditTPA from './pages/EditTPA';
+import Profile from './pages/Profile';
+import AdminPanel from './pages/AdminPanel';
 import NotFound from './pages/NotFound';
 import { AuthProvider, useAuth } from './hooks/useAuth';
 
@@ -75,6 +77,18 @@ const App: React.FC = () => {
           <Route path="/tpas/:packageName/edit" element={
             <ProtectedRoute>
               <EditTPA />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+          
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminPanel />
             </ProtectedRoute>
           } />
 

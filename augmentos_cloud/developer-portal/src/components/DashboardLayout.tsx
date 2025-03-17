@@ -1,8 +1,9 @@
 // components/DashboardLayout.tsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { useAuth } from '../hooks/useAuth';
+import api from '@/services/api.service';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -13,6 +14,52 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const { signOut } = useAuth();
   const currentPath = location.pathname;
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check if the user is an admin
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      try {
+        // First, check if we have a token
+        const authToken = localStorage.getItem('core_token');
+        if (!authToken) {
+          console.warn('No auth token found for admin check');
+          return;
+        }
+        
+        // Try to use API service
+        try {
+          const result = await api.admin.checkAdmin();
+          console.log('Admin check response:', result);
+          setIsAdmin(true);
+        } catch (apiError) {
+          console.log('API error or not an admin:', apiError);
+          applyDevModeAdminCheck();
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        applyDevModeAdminCheck();
+      }
+    };
+    
+    // Helper function for dev mode fallback
+    const applyDevModeAdminCheck = () => {
+      if (import.meta.env.DEV) {
+        const email = localStorage.getItem('userEmail');
+        if (email && (
+          email.includes('admin') || 
+          email.includes('test') || 
+          email === 'alexis@augmentos.org' ||
+          email === 'alex@augmentos.org'
+        )) {
+          console.log('DEV MODE: Setting admin status based on email pattern');
+          setIsAdmin(true);
+        }
+      }
+    };
+    
+    checkAdminStatus();
+  }, []);
   
   // Handle sign out with navigation
   const handleSignOut = async () => {
@@ -83,6 +130,34 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </svg>
               My Apps
             </Link>
+            <Link
+              to="/profile"
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/profile')
+                ? 'bg-gray-200 text-gray-900'
+                : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Developer Profile
+            </Link>
+            
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/admin')
+                  ? 'bg-gray-200 text-gray-900'
+                  : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                  }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+                Admin Panel
+              </Link>
+            )}
+            
             <Link
               to="https://www.npmjs.com/package/@augmentos/sdk"
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/docs')

@@ -67,6 +67,13 @@ const getAuthenticatedUser = async (req: Request, res: Response) => {
     res.json({
       id: user._id,
       email: user.email,
+      profile: user.profile || {
+        company: '',
+        website: '',
+        contactEmail: '',
+        description: '',
+        logo: ''
+      }
       //createdAt: user.createdAt
     });
   } catch (error) {
@@ -281,10 +288,79 @@ const trackSharing = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Publish app to the app store
+ */
+const publishApp = async (req: Request, res: Response) => {
+  try {
+    const email = (req as DevPortalRequest).developerEmail;
+    const { packageName } = req.params;
+    
+    // Call service to publish app
+    const updatedApp = await appService.publishApp(packageName, email);
+    
+    res.json(updatedApp);
+  } catch (error: any) {
+    console.error('Error publishing app:', error);
+    
+    // Check for specific error types
+    if (error.message.includes('not found')) {
+      return res.status(404).json({ error: error.message });
+    }
+    
+    if (error.message.includes('permission')) {
+      return res.status(403).json({ error: error.message });
+    }
+    
+    res.status(500).json({ error: 'Failed to publish app' });
+  }
+};
+
+/**
+ * Update developer profile
+ */
+const updateDeveloperProfile = async (req: Request, res: Response) => {
+  try {
+    const email = (req as DevPortalRequest).developerEmail;
+    const profileData = req.body;
+    
+    // Validate profile data
+    const validFields = ['company', 'website', 'contactEmail', 'description', 'logo'];
+    const sanitizedProfile: any = {};
+    
+    for (const field of validFields) {
+      if (profileData[field] !== undefined) {
+        sanitizedProfile[field] = profileData[field];
+      }
+    }
+    
+    // Update user profile
+    const user = await User.findOneAndUpdate(
+      { email },
+      { $set: { profile: sanitizedProfile } },
+      { new: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      id: user._id,
+      email: user.email,
+      profile: user.profile || {}
+    });
+  } catch (error) {
+    console.error('Error updating developer profile:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+};
+
 // ------------- ROUTES REGISTRATION -------------
 
 // Auth routes
 router.get('/auth/me', validateSupabaseToken, getAuthenticatedUser);
+router.put('/auth/profile', validateSupabaseToken, updateDeveloperProfile);
 
 // TEMPORARY DEBUG ROUTE - NO AUTH CHECK
 router.get('/debug/apps', (req, res) => {
@@ -309,5 +385,6 @@ router.delete('/apps/:packageName', validateSupabaseToken, deleteApp);
 router.post('/apps/:packageName/api-key', validateSupabaseToken, regenerateApiKey);
 router.get('/apps/:packageName/share', validateSupabaseToken, getShareableLink);
 router.post('/apps/:packageName/share', validateSupabaseToken, trackSharing);
+router.post('/apps/:packageName/publish', validateSupabaseToken, publishApp);
 
 export default router;

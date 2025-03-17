@@ -50,6 +50,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSupabaseToken(data.session.access_token);
         setSession(data.session);
         setUser(data.session.user);
+        
+        // Store email for admin checks
+        if (data.session.user?.email) {
+          localStorage.setItem('userEmail', data.session.user.email);
+        }
+        
         await exchangeForCoreToken(data.session.access_token);
         
         // Manual redirect to dashboard after successful sign in
@@ -83,6 +89,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSupabaseToken(data.session.access_token);
         setSession(data.session);
         setUser(data.session.user);
+        
+        // Store email for admin checks
+        if (data.session.user?.email) {
+          localStorage.setItem('userEmail', data.session.user.email);
+        }
+        
         await exchangeForCoreToken(data.session.access_token);
         
         // Manual redirect to dashboard after successful sign up
@@ -113,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(null);
       setSession(null);
       localStorage.removeItem('core_token');
+      localStorage.removeItem('userEmail');
       console.log('Sign out completed successfully');
     } catch (error) {
       console.error('Error during sign out:', error);
@@ -208,6 +221,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Auth state changed:', event);
         setSession(session);
         setUser(session?.user || null);
+        
+        // Store user email in localStorage for admin checks
+        if (session?.user?.email) {
+          localStorage.setItem('userEmail', session.user.email);
+        } else if (event === 'SIGNED_OUT') {
+          localStorage.removeItem('userEmail');
+        }
 
         if (event === 'SIGNED_IN' && session?.access_token) {
           console.log('SIGNED_IN event detected, setting up authentication...');

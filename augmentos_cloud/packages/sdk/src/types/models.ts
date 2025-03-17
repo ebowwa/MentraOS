@@ -4,6 +4,17 @@
 import { AppSettingType, AppState, Language, TpaType } from './enums';
 
 /**
+ * Developer profile information
+ */
+export interface DeveloperProfile {
+  company?: string;
+  website?: string;
+  contactEmail?: string;
+  description?: string;
+  logo?: string;
+}
+
+/**
  * Base interface for applications
  */
 export interface AppI {
@@ -12,8 +23,8 @@ export interface AppI {
   webhookURL: string;
   webviewURL?: string;            // URL for phone UI
   logoURL: string;
-  tpaType: TpaType;               // Type of TPA
-  appStoreId?: string;            // Which app store registered this TPA
+  tpaType: TpaType;               // Type of app
+  appStoreId?: string;            // Which app store registered this app
   developerId?: string;
   
   // Auth
@@ -26,6 +37,7 @@ export interface AppI {
   settings?: AppSettings;
 
   isPublic?: boolean;
+  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'PUBLISHED';
 }
 
 /**

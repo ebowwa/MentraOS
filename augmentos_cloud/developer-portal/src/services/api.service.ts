@@ -44,6 +44,7 @@ async function retryWithBackoff<T>(
 export interface AppResponse extends AppI {
   createdAt: string;
   updatedAt: string;
+  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'PUBLISHED';
 }
 
 // API key response
@@ -57,6 +58,13 @@ export interface DeveloperUser {
   id: string;
   email: string;
   name?: string;
+  profile?: {
+    company?: string;
+    website?: string;
+    contactEmail?: string;
+    description?: string;
+    logo?: string;
+  };
   createdAt: string;
 }
 
@@ -65,6 +73,12 @@ const api = {
   auth: {
     me: async (): Promise<DeveloperUser> => {
       const response = await axios.get("/api/dev/auth/me");
+      return response.data;
+    },
+    
+    // Update developer profile
+    updateProfile: async (profileData: any): Promise<DeveloperUser> => {
+      const response = await axios.put("/api/dev/auth/profile", profileData);
       return response.data;
     },
   },
@@ -103,6 +117,12 @@ const api = {
       await axios.delete(`/api/dev/apps/${packageName}`);
     },
 
+    // Publish an app to the app store
+    publish: async (packageName: string): Promise<AppResponse> => {
+      const response = await axios.post(`/api/dev/apps/${packageName}/publish`);
+      return response.data;
+    },
+
     // API key management
     apiKey: {
       // Generate a new API key for a TPA
@@ -126,6 +146,84 @@ const api = {
       await axios.post(`/api/dev/apps/${packageName}/share`, { emails });
     },
   },
+  
+  // Admin panel endpoints
+  admin: {
+    // Check if user is an admin
+    checkAdmin: async (): Promise<{ isAdmin: boolean, role: string, email: string }> => {
+      const response = await axios.get('/api/admin/check');
+      return response.data;
+    },
+    
+    // Get admin dashboard stats
+    getStats: async () => {
+      const response = await axios.get('/api/admin/apps/stats');
+      return response.data;
+    },
+    
+    // Get submitted apps
+    getSubmittedApps: async () => {
+      const response = await axios.get('/api/admin/apps/submitted');
+      return response.data;
+    },
+    
+    // Get app details
+    getAppDetail: async (packageName: string) => {
+      const response = await axios.get(`/api/admin/apps/${packageName}`);
+      return response.data;
+    },
+    
+    // Approve an app
+    approveApp: async (packageName: string, notes: string) => {
+      const response = await axios.post(`/api/admin/apps/${packageName}/approve`, { notes });
+      return response.data;
+    },
+    
+    // Reject an app
+    rejectApp: async (packageName: string, notes: string) => {
+      const response = await axios.post(`/api/admin/apps/${packageName}/reject`, { notes });
+      return response.data;
+    },
+    
+    // Admin user management
+    users: {
+      // Get all admin users
+      getAll: async () => {
+        const response = await axios.get('/api/admin/users');
+        return response.data;
+      },
+      
+      // Add a new admin user
+      add: async (email: string, role: string) => {
+        const response = await axios.post('/api/admin/users', { email, role });
+        return response.data;
+      },
+      
+      // Remove an admin user
+      remove: async (email: string) => {
+        const response = await axios.delete(`/api/admin/users/${email}`);
+        return response.data;
+      }
+    },
+    
+    // Debug route that doesn't require authentication
+    debug: async () => {
+      const response = await axios.get('/api/admin/debug');
+      return response.data;
+    },
+    
+    // Fix app status issues
+    fixAppStatuses: async () => {
+      const response = await axios.post('/api/admin/fix-app-statuses');
+      return response.data;
+    },
+    
+    // Create a test submission (development only)
+    createTestSubmission: async () => {
+      const response = await axios.post('/api/admin/create-test-submission');
+      return response.data;
+    }
+  }
 };
 
 export default api;

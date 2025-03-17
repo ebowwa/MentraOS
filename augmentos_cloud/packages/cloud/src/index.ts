@@ -21,6 +21,7 @@ import transcriptRoutes from './routes/transcripts.routes';
 import tpaSettingsRoutes from './routes/tpa-settings.routes';
 import errorReportRoutes from './routes/error-report.routes';
 import devRoutes from './routes/developer.routes';
+import adminRoutes from './routes/admin.routes';
 
 import path from 'path';
 
@@ -29,7 +30,27 @@ import * as mongoConnection from "./connections/mongodb.connection";
 import { logger } from "@augmentos/utils";
 
 // Initialize MongoDB connection
-mongoConnection.init();
+mongoConnection.init()
+  .then(() => {
+    logger.info('MongoDB connection initialized successfully');
+    
+    // Log admin emails from environment for debugging
+    const adminEmails = process.env.ADMIN_EMAILS || '';
+    if (adminEmails) {
+      const emails = adminEmails.split(',').map(e => e.trim());
+      logger.info(`Admin access configured for ${emails.length} email(s)`);
+    } else {
+      logger.warn('No ADMIN_EMAILS environment variable found. Admin panel will be inaccessible.');
+      
+      // For development, log a helpful message
+      if (process.env.NODE_ENV === 'development') {
+        logger.info('Development mode: set ADMIN_EMAILS environment variable to enable admin access');
+      }
+    }
+  })
+  .catch(error => {
+    logger.error('MongoDB connection failed:', error);
+  });
 
 // Initialize Express and HTTP server
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
@@ -82,6 +103,7 @@ app.use('/apps', appRoutes);
 app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);

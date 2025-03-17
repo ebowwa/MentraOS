@@ -326,10 +326,59 @@ export class AppService {
       throw new Error('You do not have permission to update this app');
     }
 
+    // If developerInfo is provided, ensure it's properly structured
+    if (appData.developerInfo) {
+      // Make sure only valid fields are included
+      const validFields = ['company', 'website', 'contactEmail', 'description'];
+      const sanitizedDeveloperInfo: any = {};
+      
+      for (const field of validFields) {
+        if (appData.developerInfo[field] !== undefined) {
+          sanitizedDeveloperInfo[field] = appData.developerInfo[field];
+        }
+      }
+      
+      // Replace with sanitized version
+      appData.developerInfo = sanitizedDeveloperInfo;
+    }
+
     // Update app
     const updatedApp = await App.findOneAndUpdate(
       { packageName },
       { $set: appData },
+      { new: true }
+    );
+
+    return updatedApp!;
+  }
+  
+  /**
+   * Publish an app to the app store
+   */
+  async publishApp(packageName: string, developerId: string): Promise<AppI> {
+    // Ensure developer owns the app
+    const app = await App.findOne({ packageName });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+
+    if (!developerId) {
+      throw new Error('Developer ID is required');
+    }
+
+    if (!app.developerId) {
+      throw new Error('Developer ID not found for this app');
+    }
+
+    if (app.developerId.toString() !== developerId) {
+      throw new Error('You do not have permission to publish this app');
+    }
+
+    // Update app status to SUBMITTED
+    const updatedApp = await App.findOneAndUpdate(
+      { packageName },
+      { $set: { appStoreStatus: 'SUBMITTED' } },
       { new: true }
     );
 
