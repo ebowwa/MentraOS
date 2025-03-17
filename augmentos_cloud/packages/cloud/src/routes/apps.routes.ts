@@ -171,9 +171,29 @@ async function getAppByPackage(req: Request, res: Response) {
       });
     }
 
+    // If the app has a developerId, try to get the developer profile information
+    let developerProfile = null;
+    if (app.developerId) {
+      try {
+        const developer = await User.findByEmail(app.developerId);
+        if (developer && developer.profile) {
+          developerProfile = developer.profile;
+        }
+      } catch (err) {
+        console.error('Error fetching developer profile:', err);
+        // Continue without developer profile
+      }
+    }
+
+    // Create response with developer profile if available
+    const appWithDeveloperInfo = {
+      ...app.toJSON ? app.toJSON() : app,
+      developerProfile
+    };
+
     res.json({
       success: true,
-      data: app
+      data: appWithDeveloperInfo
     });
   } catch (error) {
     console.error('Error fetching app:', error);
@@ -465,9 +485,29 @@ async function getInstalledApps(req: Request, res: Response) {
         });
       }
 
+      // If the app has a developerId, try to get the developer profile information
+      let developerProfile = null;
+      if (app.developerId) {
+        try {
+          const developer = await User.findByEmail(app.developerId);
+          if (developer && developer.profile) {
+            developerProfile = developer.profile;
+          }
+        } catch (err) {
+          console.error('Error fetching developer profile:', err);
+          // Continue without developer profile
+        }
+      }
+
+      // Create response with developer profile if available
+      const appWithDeveloperInfo = {
+        ...app,
+        developerProfile
+      };
+
       res.json({
         success: true,
-        data: app
+        data: appWithDeveloperInfo
       });
     } catch (error) {
       console.error('Error fetching app details:', error);

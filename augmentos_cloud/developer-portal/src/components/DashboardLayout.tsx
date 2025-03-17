@@ -18,55 +18,29 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   
   // Check if the user is an admin
   useEffect(() => {
+    // Start with admin set to false - don't show admin panel by default
+    setIsAdmin(false);
+    
     const checkAdminStatus = async () => {
       try {
         // First, check if we have a token
         const authToken = localStorage.getItem('core_token');
         if (!authToken) {
-          setIsAdmin(false);
           return;
         }
         
         // Try to use API service
         try {
           const result = await api.admin.checkAdmin();
-          if (result && result.isAdmin) {
+          // Only set admin to true if the API explicitly confirms admin status
+          if (result && result.isAdmin === true) {
             setIsAdmin(true);
-          } else {
-            setIsAdmin(false);
           }
         } catch (apiError) {
-          console.log('Not an admin:', apiError);
-          setIsAdmin(false);
-          
-          // Only apply dev mode check if API call fails
-          if (import.meta.env.DEV) {
-            applyDevModeAdminCheck();
-          }
+          // not an admin
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
-        setIsAdmin(false);
-        
-        // Only apply dev mode check if there's an error
-        if (import.meta.env.DEV) {
-          applyDevModeAdminCheck();
-        }
-      }
-    };
-    
-    // Helper function for dev mode fallback
-    const applyDevModeAdminCheck = () => {
-      const email = localStorage.getItem('userEmail');
-      if (email && (
-        email.includes('admin') || 
-        email.includes('test') || 
-        email === 'alexis@augmentos.org' ||
-        email === 'alex@augmentos.org' ||
-        email.endsWith('@mentra.glass')
-      )) {
-        console.log('DEV MODE: Setting admin status based on email pattern');
-        setIsAdmin(true);
       }
     };
     

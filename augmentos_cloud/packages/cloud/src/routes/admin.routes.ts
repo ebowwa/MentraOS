@@ -3,6 +3,7 @@ import { Router, Request, Response } from 'express';
 import { validateAdminEmail } from '../middleware/admin-auth.middleware';
 import App from '../models/app.model';
 import { logger } from '@augmentos/utils';
+import { Exception } from '@sentry/node';
 
 const router = Router();
 
@@ -123,7 +124,7 @@ router.get('/debug', async (req, res) => {
     logger.error('Error in debug route:', error);
     res.status(500).json({ 
       error: 'Error connecting to database', 
-      message: error.message 
+      message: (error as Error).message 
     });
   }
 });
@@ -158,7 +159,7 @@ router.post('/create-test-submission', async (req, res) => {
     logger.error('Error creating test submission:', error);
     res.status(500).json({ 
       error: 'Error creating test submission', 
-      message: error.message 
+      message: (error as Error).message 
     });
   }
 });
@@ -184,9 +185,6 @@ const approveApp = async (req: Request, res: Response) => {
     
     // Update app status
     app.appStoreStatus = 'PUBLISHED';
-    app.reviewNotes = notes || '';
-    app.reviewedBy = adminEmail;
-    app.reviewedAt = new Date();
     
     await app.save();
     
@@ -225,9 +223,6 @@ const rejectApp = async (req: Request, res: Response) => {
     
     // Update app status
     app.appStoreStatus = 'REJECTED';
-    app.reviewNotes = notes;
-    app.reviewedBy = adminEmail;
-    app.reviewedAt = new Date();
     
     await app.save();
     

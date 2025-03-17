@@ -38,7 +38,7 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
       }
     }
     
-    checkAdminStatus();
+    //checkAdminStatus();
   }, [requireAdmin, isAuthenticated, isLoading]);
 
   // Only log authentication issues in development mode
