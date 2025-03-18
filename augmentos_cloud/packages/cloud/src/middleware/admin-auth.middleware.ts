@@ -30,7 +30,8 @@ export const validateAdminEmail = async (req: Request, res: Response, next: Next
     let userData;
     try {
       userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
-    } catch (jwtError) {
+    } catch (error) {
+      const jwtError = error as Error; // Type assertion
       logger.error('Admin auth - JWT verification failed:', jwtError);
       return res.status(401).json({ 
         error: 'JWT verification failed', 
