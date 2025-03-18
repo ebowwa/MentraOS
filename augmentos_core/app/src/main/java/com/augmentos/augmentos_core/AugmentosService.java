@@ -862,7 +862,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         ServerComms.getInstance().setServerCommsCallback(new ServerCommsCallback() {
             @Override
             public void onConnectionAck() {
-                serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 15000);
+                serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
             }
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
