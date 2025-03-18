@@ -37,7 +37,6 @@ public class LocationSystem {
     private final Handler locationSendingLoopHandler = new Handler(Looper.getMainLooper());
     private Runnable locationSendingRunnableCode;
     private final long locationSendTime = 1000 * 60 * 30; // 30 minutes
-    private final String TAG = "LocationSystem";
 
     public LocationSystem(Context context) {
         this.context = context;
