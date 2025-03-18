@@ -78,7 +78,7 @@ const LandingPage: React.FC = () => {
                 <div className="border bg-white rounded-lg p-6 h-full">
                   <h3 className="text-xl font-medium mb-2">Create</h3>
                   <p className="text-gray-600">
-                    Define your TPA using our simple web interface
+                    Define your app using our simple web interface
                   </p>
                 </div>
               </div>

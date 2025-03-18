@@ -7,11 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, RefreshCw, Share2, LinkIcon, Upload } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from '@/services/api.service';
 import { TPA } from '@/types/tpa';
 import { toast } from 'sonner';
+import ApiKeyDialog from '../components/dialogs/ApiKeyDialog';
+import SharingDialog from '../components/dialogs/SharingDialog';
+import PublishDialog from '../components/dialogs/PublishDialog';
+import { TpaType } from '@augmentos/sdk';
 
 const EditTPA: React.FC = () => {
   const navigate = useNavigate();
@@ -26,12 +30,24 @@ const EditTPA: React.FC = () => {
     webhookURL: '',
     logoURL: '',
     isPublic: false,
+    appStoreStatus: 'DEVELOPMENT',
+    tpaType: 'standard' as TpaType, // Default value for TpaType with cast
+    createdAt: new Date().toISOString(), // Default value for AppResponse compatibility
+    updatedAt: new Date().toISOString(), // Default value for AppResponse compatibility
   });
   
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
+  const [isSharingDialogOpen, setIsSharingDialogOpen] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [shareLink, setShareLink] = useState('');
+  const [isRegeneratingKey, setIsRegeneratingKey] = useState(false);
+  const [isLoadingShareLink, setIsLoadingShareLink] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   
   // Fetch TPA data from API
   useEffect(() => {
@@ -54,6 +70,13 @@ const EditTPA: React.FC = () => {
           logoURL: tpaData.logoURL,
           webviewURL: tpaData.webviewURL,
           isPublic: tpaData.isPublic || false,
+          appStoreStatus: tpaData.appStoreStatus || 'DEVELOPMENT',
+          tpaType: tpaData.tpaType || ('standard' as TpaType),
+          createdAt: tpaData.createdAt,
+          updatedAt: tpaData.updatedAt,
+          reviewNotes: tpaData.reviewNotes,
+          reviewedBy: tpaData.reviewedBy,
+          reviewedAt: tpaData.reviewedAt,
         };
         
         setFormData(tpa);
@@ -98,7 +121,10 @@ const EditTPA: React.FC = () => {
       
       // Show success message
       setIsSaved(true);
-      toast.success('TPA updated successfully');
+      
+      // Create a specific timeout ID to identify this toast
+      const toastId = 'update-success-' + Date.now();
+      toast.success('App updated successfully', { id: toastId });
       
       // Reset saved status after 3 seconds
       setTimeout(() => {
@@ -106,10 +132,96 @@ const EditTPA: React.FC = () => {
       }, 3000);
     } catch (err) {
       console.error('Error updating TPA:', err);
-      setError('Failed to update TPA. Please try again.');
-      toast.error('Failed to update TPA');
+      setError('Failed to update App. Please try again.');
+      toast.error('Failed to update App');
     } finally {
       setIsSaving(false);
+    }
+  };
+  
+  // Handle API key regeneration
+  const handleRegenerateApiKey = async () => {
+    try {
+      setIsRegeneratingKey(true);
+      if (!packageName) throw new Error('Package name is missing');
+      
+      const response = await api.apps.apiKey.regenerate(packageName);
+      
+      // Set the API key with the actual value from the server
+      setApiKey(response.apiKey);
+      
+      // Dismiss any existing toasts first
+      toast.dismiss();
+      
+      // Open the dialog to show the key - dialog itself will show success message
+      setIsApiKeyDialogOpen(true);
+    } catch (err) {
+      console.error('Error regenerating API key:', err);
+      toast.error('Failed to regenerate API key');
+    } finally {
+      setIsRegeneratingKey(false);
+    }
+  };
+  
+  // Handle opening the API key dialog without regenerating
+  const handleViewApiKey = () => {
+    // We just open the dialog with the placeholder key
+    // For security reasons, we don't fetch the real key
+    setApiKey(""); // Use empty string to get placeholder
+    
+    // Clear any existing success messages
+    setIsSaved(false);
+    
+    // Dismiss ALL existing toasts
+    const allToasts = document.querySelectorAll('[role="status"]');
+    allToasts.forEach(toast => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    });
+    toast.dismiss();
+    
+    // Then open the dialog
+    setIsApiKeyDialogOpen(true);
+  };
+  
+  // Handle getting and copying share link
+  const handleGetShareLink = async () => {
+    if (!packageName) return;
+    
+    setIsLoadingShareLink(true);
+    try {
+      const link = await api.sharing.getInstallLink(packageName);
+      setShareLink(link);
+      
+      // Open the sharing dialog
+      setIsSharingDialogOpen(true);
+    } catch (err) {
+      console.error('Error getting share link:', err);
+      toast.error('Failed to get share link');
+    } finally {
+      setIsLoadingShareLink(false);
+    }
+  };
+  
+  // Handle opening publish dialog
+  const handleOpenPublishDialog = () => {
+    setIsPublishDialogOpen(true);
+  };
+  
+  // Handle successful publish (called after dialog completes)
+  const handlePublishComplete = async () => {
+    if (!packageName) return;
+    
+    try {
+      // Just refresh the TPA data to get updated status
+      const updatedTpa = await api.apps.getByPackageName(packageName);
+      setFormData(prev => ({
+        ...prev,
+        appStoreStatus: updatedTpa.appStoreStatus
+      }));
+    } catch (err) {
+      console.error('Error refreshing app data after publish:', err);
     }
   };
   
@@ -119,7 +231,7 @@ const EditTPA: React.FC = () => {
         <div className="flex items-center mb-6">
           <Link to="/tpas" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
-            Back to TPAs
+            Back to apps
           </Link>
         </div>
         
@@ -127,14 +239,14 @@ const EditTPA: React.FC = () => {
           {isLoading ? (
             <div className="p-8 text-center">
               <div className="animate-spin mx-auto h-8 w-8 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
-              <p className="mt-2 text-gray-500">Loading TPA data...</p>
+              <p className="mt-2 text-gray-500">Loading app data...</p>
             </div>
           ) : (
             <form onSubmit={handleSubmit}>
               <CardHeader>
-                <CardTitle className="text-2xl">Edit TPA</CardTitle>
+                <CardTitle className="text-2xl">Edit App</CardTitle>
                 <CardDescription>
-                  Update your Third-Party Application for AugmentOS.
+                  Update your apps for AugmentOS.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pb-5">
@@ -187,7 +299,7 @@ const EditTPA: React.FC = () => {
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    placeholder="Describe what your TPA does..." 
+                    placeholder="Describe what your app does..." 
                     rows={3}
                   />
                   <p className="text-xs text-gray-500">
@@ -205,7 +317,7 @@ const EditTPA: React.FC = () => {
                     placeholder="https://yourserver.com/webhook" 
                   />
                   <p className="text-xs text-gray-500">
-                    The endpoint where AugmentOS will send events when your TPA is activated.
+                    The endpoint where AugmentOS will send events when your app is activated.
                   </p>
                 </div>
                 
@@ -219,7 +331,7 @@ const EditTPA: React.FC = () => {
                     placeholder="https://yourserver.com/logo.png" 
                   />
                   <p className="text-xs text-gray-500">
-                    URL to an image that will be used as your TPA's icon (recommended: 512x512 PNG).
+                    URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
                   </p>
                 </div>
                 
@@ -233,30 +345,138 @@ const EditTPA: React.FC = () => {
                     placeholder="https://yourserver.com/webview" 
                   />
                   <p className="text-xs text-gray-500">
-                    If your TPA has a companion mobile interface, provide the URL here.
+                    If your app has a companion mobile interface, provide the URL here.
                   </p>
                 </div>
+                
 
-                {/* Toggle switch for isPublic */}
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="isPublic" className="flex items-center">
-                    <span className="mr-2">Public TPA</span>
-                    <input 
-                      id="isPublic" 
-                      name="isPublic"
-                      type="checkbox"
-                      checked={formData.isPublic}
-                      onChange={e => setFormData(prev => ({ ...prev, isPublic: e.target.checked }))}
-                    />
-                  </Label>
-                  <p className="text-xs text-gray-500">
-                    Public TPAs are visible to all AugmentOS users in the app store.
+                {/* API Key section */}
+                <div className="border rounded-md p-4 mt-6">
+                  <h3 className="text-lg font-medium mb-2 flex items-center">
+                    <KeyRound className="h-5 w-5 mr-2" />
+                    API Key
+                  </h3>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Your API key is used to authenticate your app with AugmentOS cloud services.
+                    Keep it secure and never share it publicly.
                   </p>
+                  
+                  <div className="flex items-center justify-end">
+                    <Button 
+                      onClick={handleViewApiKey}
+                      className="mr-2"
+                      variant="outline"
+                      type="button" /* Explicitly set type to button to prevent form submission */
+                    >
+                      View Key
+                    </Button>
+                    
+                    <Button 
+                      onClick={handleRegenerateApiKey}
+                      disabled={isRegeneratingKey}
+                      variant="secondary"
+                      type="button" /* Explicitly set type to button to prevent form submission */
+                    >
+                      {isRegeneratingKey ? (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                          Regenerating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Regenerate Key
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Share Section */}
+                <div className="border rounded-md p-4 mt-6">
+                  <h3 className="text-lg font-medium mb-2 flex items-center">
+                    <Share2 className="h-5 w-5 mr-2" />
+                    Share with Users
+                  </h3>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    Share your app with testers and keep track of who you've shared it with.
+                  </p>
+                  
+                  <div className="flex items-center justify-end">
+                    <Button 
+                      onClick={handleGetShareLink}
+                      className="gap-2"
+                      type="button"
+                      variant="outline"
+                      disabled={isLoadingShareLink}
+                    >
+                      {isLoadingShareLink ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        <>
+                          <LinkIcon className="h-4 w-4" />
+                          Share App
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Status information */}
+                <div className="border rounded-md p-4 mt-6">
+                  <h3 className="text-lg font-medium mb-2 flex items-center">
+                    <Upload className="h-5 w-5 mr-2" />
+                    App Status: {
+                    formData.appStoreStatus === 'DEVELOPMENT' ? 'Development' :
+                    formData.appStoreStatus === 'SUBMITTED' ? 'Submitted for Review' :
+                    formData.appStoreStatus === 'REJECTED' ? 'Rejected' :
+                    formData.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'
+                  }</h3>
+                  
+                  <p className="text-sm text-gray-600 mb-4">
+                    {formData.appStoreStatus === 'DEVELOPMENT' 
+                      ? 'Your app is currently in development. Publish it when ready to submit for review.'
+                      : formData.appStoreStatus === 'SUBMITTED' 
+                      ? 'Your app has been submitted for review. Once approved, it will be published to the App Store.'
+                      : formData.appStoreStatus === 'REJECTED' 
+                      ? 'Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting.'
+                      : 'Your app is published and available to all AugmentOS users in the App Store.'}
+                  </p>
+                  
+                  {formData.appStoreStatus === 'REJECTED' && formData.reviewNotes && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2 mb-4">
+                      <h4 className="text-sm font-medium text-red-800 mb-1">Rejection Reason:</h4>
+                      <p className="text-sm text-red-700">{formData.reviewNotes}</p>
+                      {formData.reviewedAt && (
+                        <p className="text-xs text-red-500 mt-2">
+                          Reviewed on {new Date(formData.reviewedAt).toLocaleDateString()} by {formData.reviewedBy?.split('@')[0] || 'Admin'}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  
+                  {(formData.appStoreStatus === 'DEVELOPMENT' || formData.appStoreStatus === 'REJECTED') && (
+                    <div className="flex items-center justify-end">
+                      <Button 
+                        onClick={handleOpenPublishDialog}
+                        className="gap-2"
+                        type="button"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {formData.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between border-t p-6">
                 <Button variant="outline" type="button" onClick={() => navigate('/tpas')}>
-                  Cancel
+                  Back
                 </Button>
                 <Button type="submit" disabled={isSaving}>
                   {isSaving ? (
@@ -271,6 +491,42 @@ const EditTPA: React.FC = () => {
           )}
         </Card>
       </div>
+      
+      {/* Dialogs */}
+      {packageName && (
+        <>
+          <ApiKeyDialog
+            tpa={formData}
+            open={isApiKeyDialogOpen}
+            onOpenChange={setIsApiKeyDialogOpen}
+            apiKey={apiKey}
+          />
+          
+          <SharingDialog
+            tpa={formData}
+            open={isSharingDialogOpen}
+            onOpenChange={setIsSharingDialogOpen}
+          />
+          
+          <PublishDialog
+            tpa={formData}
+            open={isPublishDialogOpen}
+            onOpenChange={(open) => {
+              setIsPublishDialogOpen(open);
+            }}
+            onPublishComplete={(updatedTpa) => {
+              // Update the form data immediately with the new status
+              setFormData(prev => ({
+                ...prev,
+                appStoreStatus: updatedTpa.appStoreStatus
+              }));
+              
+              // Show success message that status has changed
+              toast.success(`App status updated to: ${updatedTpa.appStoreStatus === 'SUBMITTED' ? 'Submitted for Review' : updatedTpa.appStoreStatus}`);
+            }}
+          />
+        </>
+      )}
     </DashboardLayout>
   );
 };
