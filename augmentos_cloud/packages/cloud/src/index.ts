@@ -102,6 +102,7 @@ app.use(cors({
     "https://augmentos-developer-portal.netlify.app",
 
     "https://appstore.augmentos.org",
+    "https://console.augmentos.org",
   ]
 }));
 
