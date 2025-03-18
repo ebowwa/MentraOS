@@ -254,9 +254,6 @@ function handleLocationUpdate(sessionId: string, locationData: any) {
     // No default timezone - just keep the previous one if it exists
   }
 
-  // Check if this is the first location update for the session.
-  const isFirstLocationUpdate = !sessionInfo.latestLocation;
-
   // Cache the location update in the session
   // If we couldn't determine a timezone, preserve the previous one if it exists
   sessionInfo.latestLocation = { 
@@ -366,6 +363,9 @@ function handleSettings(sessionId: string, settingsData: any) {
 // 7) Internal Dashboard Updater
 // -----------------------------------
 async function updateDashboard(sessionId?: string) {
+
+  console.log(`[Session ${sessionId}] Updating dashboard...`);
+
   // Utility function to wrap text to a maximum line length without breaking words.
   function wrapText(text: string, maxLength = 25): string {
     return text
@@ -408,12 +408,12 @@ async function updateDashboard(sessionId?: string) {
       async run(sessionInfo: SessionInfo) {
         // Check if we have a valid timezone from location
         if (!sessionInfo.latestLocation?.timezone) {
-          return "◌ -"; // No timezone available
+          return "◌ $no_datetime$"; // No timezone available
         }
-        
+
         const timezone = sessionInfo.latestLocation.timezone;
         console.log(`[Session ${sessionInfo.userId}] Using timezone: ${timezone}`);
-        
+
         try {
           const options = {
             timeZone: timezone,
@@ -425,10 +425,10 @@ async function updateDashboard(sessionId?: string) {
           };
           let formatted = new Date().toLocaleString("en-US", options);
           formatted = formatted.replace(/ [AP]M/, "");
-          return `◌ ${formatted}`;
+          return `◌ $no_datetime$`;
         } catch (error) {
           console.error(`[Session ${sessionInfo.userId}] Error formatting time with timezone ${timezone}:`, error);
-          return "◌ -"; // Error formatting time
+          return "◌ $no_datetime$"; // Error formatting time
         }
       }
     },
@@ -581,6 +581,8 @@ async function updateDashboard(sessionId?: string) {
       durationMs: 4000,
       timestamp: new Date(),
     };
+
+    console.log(`[Session ${sessionId}] Sending updated dashboard:`, JSON.stringify(displayRequest));
 
     // console.log(`[Session ${sessionId}] Sending updated dashboard:`, displayRequest);
     sessionInfo.ws.send(JSON.stringify(displayRequest));
