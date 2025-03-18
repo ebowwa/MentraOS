@@ -2,6 +2,7 @@ package com.augmentos.augmentos_core;
 
 import android.Manifest;
 import android.content.Context;
+import android.util.Log;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Handler;
@@ -17,6 +18,7 @@ import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 
 public class LocationSystem {
+    private static final String TAG = "LocationSystem";
     private Context context;
     public double lat = 0;
     public double lng = 0;

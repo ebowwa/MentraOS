@@ -30,6 +30,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.hardware.display.VirtualDisplay;
+import android.icu.util.TimeZone;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
 import android.os.Build;
@@ -693,7 +694,14 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                     case "double_text_wall":
                         String topText = layout.getString("topText");
                         String bottomText = layout.getString("bottomText");
-                        return () -> smartGlassesService.sendDoubleTextWall(topText, bottomText);
+
+                        if (topText.contains("$no_datetime$")) { // handle case for when the server doesn't return the datetime
+                            SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
+                            String formatted = sdf.format(new Date());
+                            topText = topText.replace("$no_datetime$", formatted);
+                        }
+                        String finalTopText = topText;
+                        return () -> smartGlassesService.sendDoubleTextWall(finalTopText, bottomText);
                     case "text_rows":
                         JSONArray rowsArray = layout.getJSONArray("text");
                         String[] stringsArray = new String[rowsArray.length()];

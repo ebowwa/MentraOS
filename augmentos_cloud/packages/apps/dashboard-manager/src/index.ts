@@ -425,7 +425,7 @@ async function updateDashboard(sessionId?: string) {
           };
           let formatted = new Date().toLocaleString("en-US", options);
           formatted = formatted.replace(/ [AP]M/, "");
-          return `◌ $no_datetime$`;
+          return `◌ ${formatted}`;
         } catch (error) {
           console.error(`[Session ${sessionInfo.userId}] Error formatting time with timezone ${timezone}:`, error);
           return "◌ $no_datetime$"; // Error formatting time
@@ -581,8 +581,6 @@ async function updateDashboard(sessionId?: string) {
       durationMs: 4000,
       timestamp: new Date(),
     };
-
-    console.log(`[Session ${sessionId}] Sending updated dashboard:`, JSON.stringify(displayRequest));
 
     // console.log(`[Session ${sessionId}] Sending updated dashboard:`, displayRequest);
     sessionInfo.ws.send(JSON.stringify(displayRequest));
