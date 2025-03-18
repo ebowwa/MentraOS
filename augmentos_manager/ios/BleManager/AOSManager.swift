@@ -18,11 +18,12 @@ import AVFoundation
   private var coreToken: String = ""
   private var coreTokenOwner: String = ""
   
-  @objc public let g1Manager: ERG1Manager
-  public let micManager: OnboardMicrophoneManager
-  private let serverComms = ServerComms.getInstance()
+  @objc var g1Manager: ERG1Manager?
+  var micManager: OnboardMicrophoneManager!
+  var serverComms: ServerComms!
+  
   private var cancellables = Set<AnyCancellable>()
-  private var cachedThirdPartyAppList: [ThirdPartyCloudApp]
+  private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
   //  private var cachedWhatToStream = [String]()
   private var defaultWearable: String? = nil
   private var deviceName: String = ""
@@ -41,22 +42,32 @@ import AVFoundation
   private var micEnabled = false;
   
   // VAD:
-  private var vad: VADStrategy?
+  private var vad: SileroVADStrategy?
   private var vadBuffer = [Data]();
   private var isSpeaking = false;
   
   override init() {
-    self.g1Manager = ERG1Manager()
-    self.micManager = OnboardMicrophoneManager()
-    self.cachedThirdPartyAppList = []
     self.vad = SileroVADStrategy()
     self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 4000, speechTriggerDurationMs: 50);
-    
+    self.serverComms = ServerComms.getInstance()
     super.init()
+
+  }
+  
+  // MARK: - Public Methods (for React Native)
+  
+  @objc public func setup() {
+    
+    self.g1Manager = ERG1Manager()
+    self.micManager = OnboardMicrophoneManager()
+    self.serverComms.locationManager.setup()
     Task {
       await loadSettings()
     }
     
+    guard g1Manager != nil else {
+      return
+    }
     
     // Set up the ServerComms callback
     serverComms.setServerCommsCallback(self)
@@ -68,11 +79,11 @@ import AVFoundation
     //    setupOnboardMicrophoneIfNeeded()
     
     // calback to handle actions when the connectionState changes (when g1 is ready)
-    g1Manager.onConnectionStateChanged = { [weak self] in
+    g1Manager!.onConnectionStateChanged = { [weak self] in
       guard let self = self else { return }
-      print("G1 glasses connection changed to: \(self.g1Manager.g1Ready ? "Connected" : "Disconnected")")
+      print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
       //      self.handleRequestStatus()
-      if (self.g1Manager.g1Ready) {
+      if (self.g1Manager!.g1Ready) {
         self.handleDeviceReady()
       } else {
         handleRequestStatus()
@@ -80,7 +91,7 @@ import AVFoundation
     }
     
     // listen to changes in battery level:
-    g1Manager.$batteryLevel.sink { [weak self] (level: Int) in
+    g1Manager!.$batteryLevel.sink { [weak self] (level: Int) in
       guard let self = self else { return }
       guard level >= 0 else { return }
       self.batteryLevel = level
@@ -96,8 +107,6 @@ import AVFoundation
       }
       .store(in: &cancellables)
   }
-  
-  // MARK: - Public Methods (for React Native)
   
   @objc func connectServer() {
     serverComms.connectWebSocket()
@@ -222,7 +231,7 @@ import AVFoundation
       .store(in: &cancellables)
     
     // decode the g1 audio data to PCM and feed to the VAD:
-    self.g1Manager.$compressedVoiceData.sink { [weak self] rawLC3Data in
+    self.g1Manager!.$compressedVoiceData.sink { [weak self] rawLC3Data in
       guard let self = self else { return }
       
       // Ensure we have enough data to process
@@ -294,7 +303,7 @@ import AVFoundation
       let glassesMic = self.micEnabled && !self.useOnboardMic
       print("user enabled microphone: \(isEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
       //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
-      await self.g1Manager.setMicEnabled(enabled: glassesMic)
+      await self.g1Manager?.setMicEnabled(enabled: glassesMic)
       
       setOnboardMicEnabled(self.useOnboardMic && self.micEnabled)
     }
@@ -335,7 +344,7 @@ import AVFoundation
   func onDisplayEvent(_ event: [String: Any]) {
     //    print("displayEvent \(event)", event)
     
-    self.g1Manager.handleDisplayEvent(event)
+    self.g1Manager?.handleDisplayEvent(event)
     
     // forward to the glasses mirror:
     let wrapperObj: [String: Any] = ["glasses_display_event": event]
@@ -375,7 +384,7 @@ import AVFoundation
       saveSettings()
       handleRequestStatus()
     } else if (modelName.contains("G1")) {
-      self.g1Manager.RN_startScan()
+      self.g1Manager?.RN_startScan()
     }
   }
   
@@ -443,7 +452,7 @@ import AVFoundation
           }
           
         case .disconnectWearable:
-          self.g1Manager.RN_sendText(" ")// clear the screen
+          self.g1Manager?.RN_sendText(" ")// clear the screen
           handleDisconnectWearable()
           handleRequestStatus()
           break
@@ -452,7 +461,7 @@ import AVFoundation
           handleDisconnectWearable()
           self.defaultWearable = nil
           self.deviceName = ""
-          self.g1Manager.DEVICE_SEARCH_ID = ""
+          self.g1Manager?.DEVICE_SEARCH_ID = ""
           saveSettings()
           handleRequestStatus()
           break
@@ -471,7 +480,7 @@ import AVFoundation
             break
           }
           self.contextualDashboard = enabled
-          self.g1Manager.dashboardEnabled = enabled
+          self.g1Manager?.dashboardEnabled = enabled
           saveSettings()
           handleRequestStatus()// to update the UI
           break
@@ -512,7 +521,7 @@ import AVFoundation
             break
           }
           self.headUpAngle = value
-          self.g1Manager.RN_setHeadUpAngle(value)
+          self.g1Manager?.RN_setHeadUpAngle(value)
           saveSettings()
           handleRequestStatus()// to update the UI
           break
@@ -524,10 +533,10 @@ import AVFoundation
           self.brightness = value
           self.autoBrightness = autoBrightness
           Task {
-            self.g1Manager.RN_setBrightness(value, autoMode: autoBrightness)
-            self.g1Manager.RN_sendText("Set brightness to \(value)%")
+            self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
+            self.g1Manager?.RN_sendText("Set brightness to \(value)%")
             try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
-            self.g1Manager.RN_sendText(" ")// clear screen
+            self.g1Manager?.RN_sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -539,10 +548,10 @@ import AVFoundation
           }
           self.dashboardHeight = value
           Task {
-            self.g1Manager.RN_setDashboardPosition(value)
-            self.g1Manager.RN_sendText("Set dashboard position to \(value)")
+            self.g1Manager?.RN_setDashboardPosition(value)
+            self.g1Manager?.RN_sendText("Set dashboard position to \(value)")
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            self.g1Manager.RN_sendText(" ")// clear screen
+            self.g1Manager?.RN_sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -565,6 +574,7 @@ import AVFoundation
   
   // Handler methods for each command type
   private func handleSetAuthSecretKey(userId: String, authSecretKey: String) {
+    self.setup()// finish init():
     self.coreToken = authSecretKey
     self.coreTokenOwner = userId
     print("Setting auth secret key for user: \(userId)")
@@ -574,7 +584,7 @@ import AVFoundation
   }
   
   private func handleDisconnectWearable() {
-    self.g1Manager.disconnect()
+    self.g1Manager?.disconnect()
     handleRequestStatus()
   }
   
@@ -584,7 +594,7 @@ import AVFoundation
     let isVirtualWearable = self.deviceName == "Virtual Wearable"
     let isAudioWearable = self.deviceName == "Audio Wearable"
     
-    let isGlassesConnected = self.g1Manager.g1Ready
+    let isGlassesConnected = self.g1Manager?.g1Ready ?? false
     
     // also referenced as glasses_info:
     var connectedGlasses: [String: Any] = [:];
@@ -688,16 +698,16 @@ import AVFoundation
       // Check if we've completed all cycles
       if cycles >= totalCycles {
         // End animation with final message
-        self.g1Manager.RN_sendText("                  /// AugmentOS Connected \\\\\\")
+        self.g1Manager?.RN_sendText("                  /// AugmentOS Connected \\\\\\")
         animationQueue.asyncAfter(deadline: .now() + 1.0) {
-          self.g1Manager.RN_sendText(" ")
+          self.g1Manager?.RN_sendText(" ")
         }
         return
       }
       
       // Display current animation frame
       let frameText = "                    \(arrowFrames[frameIndex]) AugmentOS Booting \(arrowFrames[frameIndex])"
-      self.g1Manager.RN_sendText(frameText)
+      self.g1Manager?.RN_sendText(frameText)
       
       // Move to next frame
       frameIndex = (frameIndex + 1) % arrowFrames.count
@@ -729,27 +739,27 @@ import AVFoundation
       // give the glasses some extra time to finish booting:
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
       await loadSettings()
-      await self.g1Manager.setSilentMode(false)// turn off silent mode
-      await self.g1Manager.getBatteryStatus()
-      self.g1Manager.RN_sendText("// BOOTING AUGMENTOS")
+      await self.g1Manager?.setSilentMode(false)// turn off silent mode
+      await self.g1Manager?.getBatteryStatus()
+      self.g1Manager?.RN_sendText("// BOOTING AUGMENTOS")
       
       // send loaded settings to glasses:
-      self.g1Manager.RN_getBatteryStatus()
+      self.g1Manager?.RN_getBatteryStatus()
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+      self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager.dashboardEnabled = contextualDashboard
+      self.g1Manager?.dashboardEnabled = contextualDashboard
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
+      self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
+      self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
+      self.g1Manager?.RN_setDashboardPosition(dashboardHeight)
       try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
 //      playStartupSequence()
-      self.g1Manager.RN_sendText("// AUGMENTOS CONNECTED")
+      self.g1Manager?.RN_sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-      self.g1Manager.RN_sendText(" ")// clear screen
+      self.g1Manager?.RN_sendText(" ")// clear screen
       
       
       // send to the server our battery status:
@@ -779,12 +789,12 @@ import AVFoundation
       if (deviceName != "") {
         self.deviceName = deviceName
         saveSettings()
-        self.g1Manager.RN_pairById(deviceName)
+        self.g1Manager?.RN_pairById(deviceName)
       } else if self.deviceName != "" {
-        self.g1Manager.RN_pairById(self.deviceName)
+        self.g1Manager?.RN_pairById(self.deviceName)
       } else {
         print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
-        self.g1Manager.RN_startScan()
+        self.g1Manager?.RN_startScan()
       }
     }
     
@@ -792,13 +802,13 @@ import AVFoundation
     Task {
       while !Task.isCancelled {
         print("checking if g1 is ready...")
-        if self.g1Manager.g1Ready {
+        if self.g1Manager?.g1Ready ?? false {
           // we actualy don't need this line:
           //          handleDeviceReady()
           break
         } else {
           // todo: ios not the cleanest solution here
-          self.g1Manager.RN_startScan()
+          self.g1Manager?.RN_startScan()
         }
         
         try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds

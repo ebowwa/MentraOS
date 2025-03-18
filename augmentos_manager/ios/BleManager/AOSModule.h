@@ -15,7 +15,8 @@
 
 @interface AOSModule : NSObject <RCTBridgeModule>
 
-// Scanning methods
+- (void)setup:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
+
 - (void)startScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 - (void)stopScan:(RCTResponseSenderBlock)successCallback errorCallback:(RCTResponseSenderBlock)errorCallback;
 

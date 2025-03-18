@@ -881,6 +881,7 @@
 					"$(SRCROOT)/../node_modules/react-native-config/ios",
 				);
 				INFOPLIST_FILE = AugmentOS_Manager/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -891,8 +892,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.augmentos.augmentostest;
+				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentostest;
 				PRODUCT_NAME = AugmentOS_Manager;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AugmentOS_Manager-Bridging-Header.h";
@@ -1000,6 +1000,7 @@
 					"$(SRCROOT)/../node_modules/react-native-config/ios",
 				);
 				INFOPLIST_FILE = AugmentOS_Manager/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -1010,8 +1011,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.augmentos.augmentostest;
+				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentostest;
 				PRODUCT_NAME = AugmentOS_Manager;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AugmentOS_Manager-Bridging-Header.h";

@@ -265,13 +265,13 @@ struct ViewState {
   
   public func handleDisplayEvent(_ event: [String: Any]) -> Void {
     
+    print("contextualDashboardEnabled: \(self.dashboardEnabled)")
+    
     guard let view = event["view"] as? String else {
       print("invalid view")
       return
     }
     let isDashboard = view == "dashboard"
-    
-//    print("got display_event isDashboard: \(isDashboard)")
     
     var stateIndex = 0;
     if (isDashboard) {

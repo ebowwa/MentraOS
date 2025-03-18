@@ -36,8 +36,8 @@ class ServerComms {
   
   private var reconnecting: Bool = false
   private var reconnectionAttempts: Int = 0
-  private let calendarManager = CalendarManager()
-  private let locationManager = LocationManager()
+  public let calendarManager = CalendarManager()
+  public let locationManager = LocationManager()
   
   static func getInstance() -> ServerComms {
     if instance == nil {

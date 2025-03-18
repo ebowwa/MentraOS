@@ -35,12 +35,14 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ }) => {
       }
 
       try {
-
         if (!(await doesHaveAllPermissions())) {
-          navigation.reset({
-            index: 0,
-            routes: [{ name: 'GrantPermissionsScreen' }],
-          });
+          console.log(navigation.getState().routes[0].name);
+          if (navigation.getState().routes[0].name !== 'GrantPermissionsScreen') {
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'GrantPermissionsScreen' }],
+            });
+          }
           return;
         }
       } catch (error) {
