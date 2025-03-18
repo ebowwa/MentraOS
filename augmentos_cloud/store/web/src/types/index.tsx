@@ -34,6 +34,15 @@ export interface AppI {
   isInstalled?: boolean;
   installedDate?: string;
   
+  // Developer profile information
+  developerProfile?: {
+    company?: string;
+    website?: string;
+    contactEmail?: string;
+    description?: string;
+    logo?: string;
+  };
+  
   // Timestamps
   createdAt?: string;
   updatedAt?: string;

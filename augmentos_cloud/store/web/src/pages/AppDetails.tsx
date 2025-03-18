@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package } from 'lucide-react';
+import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api';
 import { AppI } from '../types';
@@ -85,7 +85,7 @@ const AppDetails: React.FC = () => {
     try {
       setInstallingApp(true);
 
-      const success = await api.app.installApp(app.packageName, user?.email || '');
+      const success = await api.app.installApp(app.packageName);
 
       if (success) {
         toast.success('App installed successfully');
@@ -108,7 +108,7 @@ const AppDetails: React.FC = () => {
     try {
       setInstallingApp(true);
 
-      const success = await api.app.uninstallApp(app.packageName, user?.email || '');
+      const success = await api.app.uninstallApp(app.packageName);
 
       if (success) {
         toast.success('App uninstalled successfully');
@@ -259,7 +259,8 @@ const AppDetails: React.FC = () => {
 
               {/* Right side: additional details */}
               <div>
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                {/* App Details Section */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
                   <div className="p-6">
                     <h2 className="text-xl font-semibold mb-4">App Details</h2>
                     
@@ -309,6 +310,85 @@ const AppDetails: React.FC = () => {
                             <p className="text-sm font-medium text-gray-700">Published Date</p>
                             <p className="text-sm text-gray-500">{formatDate(app.createdAt)}</p>
                           </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Developer Info Section */}
+                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                  <div className="p-6">
+                    <h2 className="text-xl font-semibold mb-4">Developer Info</h2>
+                    
+                    <div className="space-y-4">
+                      {app.developerName && (
+                        <div className="flex items-start">
+                          <Building className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Developer</p>
+                            <p className="text-sm text-gray-500">{app.developerName}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Show profile info if available */}
+                      {app.developerProfile?.company && (
+                        <div className="flex items-start">
+                          <Building className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Company</p>
+                            <p className="text-sm text-gray-500">{app.developerProfile.company}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {app.developerProfile?.website && (
+                        <div className="flex items-start">
+                          <Globe className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Website</p>
+                            <a 
+                              href={app.developerProfile.website} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-500 hover:underline"
+                            >
+                              {app.developerProfile.website}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {app.developerProfile?.contactEmail && (
+                        <div className="flex items-start">
+                          <Mail className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">Contact</p>
+                            <a 
+                              href={`mailto:${app.developerProfile.contactEmail}`} 
+                              className="text-sm text-blue-500 hover:underline"
+                            >
+                              {app.developerProfile.contactEmail}
+                            </a>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {app.developerProfile?.description && (
+                        <div className="flex items-start">
+                          <FileText className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
+                          <div>
+                            <p className="text-sm font-medium text-gray-700">About</p>
+                            <p className="text-sm text-gray-500">{app.developerProfile.description}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Show default message if no developer info available */}
+                      {!app.developerName && !app.developerProfile && (
+                        <div className="text-sm text-gray-500">
+                          No developer information available.
                         </div>
                       )}
                     </div>
