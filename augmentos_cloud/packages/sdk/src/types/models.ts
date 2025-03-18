@@ -37,7 +37,7 @@ export interface AppI {
   settings?: AppSettings;
 
   isPublic?: boolean;
-  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'PUBLISHED';
+  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 }
 
 /**

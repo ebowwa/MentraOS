@@ -431,6 +431,7 @@ const EditTPA: React.FC = () => {
                     App Status: {
                     formData.appStoreStatus === 'DEVELOPMENT' ? 'Development' :
                     formData.appStoreStatus === 'SUBMITTED' ? 'Submitted for Review' :
+                    formData.appStoreStatus === 'REJECTED' ? 'Rejected' :
                     formData.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'
                   }</h3>
                   
@@ -439,10 +440,12 @@ const EditTPA: React.FC = () => {
                       ? 'Your app is currently in development. Publish it when ready to submit for review.'
                       : formData.appStoreStatus === 'SUBMITTED' 
                       ? 'Your app has been submitted for review. Once approved, it will be published to the App Store.'
+                      : formData.appStoreStatus === 'REJECTED' 
+                      ? 'Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting.'
                       : 'Your app is published and available to all AugmentOS users in the App Store.'}
                   </p>
                   
-                  {formData.appStoreStatus === 'DEVELOPMENT' && (
+                  {(formData.appStoreStatus === 'DEVELOPMENT' || formData.appStoreStatus === 'REJECTED') && (
                     <div className="flex items-center justify-end">
                       <Button 
                         onClick={handleOpenPublishDialog}
@@ -450,7 +453,7 @@ const EditTPA: React.FC = () => {
                         type="button"
                       >
                         <Upload className="h-4 w-4" />
-                        Publish to App Store
+                        {formData.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}
                       </Button>
                     </div>
                   )}

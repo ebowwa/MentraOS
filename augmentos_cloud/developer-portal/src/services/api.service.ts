@@ -44,7 +44,7 @@ async function retryWithBackoff<T>(
 export interface AppResponse extends AppI {
   createdAt: string;
   updatedAt: string;
-  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'PUBLISHED';
+  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 }
 
 // API key response

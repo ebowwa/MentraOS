@@ -273,58 +273,7 @@ const AdminPanel: React.FC = () => {
       }
     } catch (error) {
       console.error('API debug check failed:', error);
-      alert('Error connecting to API: ' + (error.message || 'Unknown error'));
-    }
-  };
-  
-  // Function to create a test app submission for development
-  const createTestSubmission = async () => {
-    try {
-      let newApp;
-      
-      // Try to create a test submission on the server
-      try {
-        const data = await api.admin.createTestSubmission();
-        console.log('Created test submission on server:', data);
-        newApp = data.app;
-        
-        // Reload data from server
-        await loadAdminData();
-        alert('Test submission created on server successfully!');
-        return;
-      } catch (apiError) {
-        console.error('API call failed, using client-side fallback:', apiError);
-      }
-      
-      // Fallback: Create a mock app submission with SUBMITTED status directly in state
-      newApp = {
-        _id: 'test-' + Date.now(),
-        packageName: `com.test.app${Math.floor(Math.random() * 1000)}`,
-        name: `Test App ${Math.floor(Math.random() * 100)}`,
-        description: 'This is a test app submission for development',
-        logoURL: 'https://placehold.co/100x100?text=Test',
-        appStoreStatus: 'SUBMITTED',
-        updatedAt: new Date().toISOString(),
-        developerId: localStorage.getItem('userEmail') || 'test@example.com'
-      };
-      
-      // Add it to the state
-      setSubmittedApps(prev => [newApp, ...prev]);
-      
-      // Add to recent submissions
-      setStats(prev => ({
-        ...prev,
-        recentSubmissions: [newApp, ...(prev.recentSubmissions || []).slice(0, 2)],
-        counts: {
-          ...prev.counts,
-          submitted: (prev.counts?.submitted || 0) + 1
-        }
-      }));
-      
-      alert('Test submission created (client-side only)');
-    } catch (error) {
-      console.error('Error creating test submission:', error);
-      alert('Error creating test submission: ' + error.message);
+      alert('Error connecting to API: ' + ((error as Error).message || 'Unknown error'));
     }
   };
 

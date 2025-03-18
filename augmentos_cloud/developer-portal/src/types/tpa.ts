@@ -9,7 +9,7 @@ export interface TPA {
   logoURL: string;
   webviewURL?: string;
   isPublic: boolean;
-  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'PUBLISHED';
+  appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
   tpaType: TpaType;
   createdAt?: string; // For compatibility with AppResponse
   updatedAt?: string; // For compatibility with AppResponse
