@@ -186,8 +186,10 @@ async function getAppByPackage(req: Request, res: Response) {
     }
 
     // Create response with developer profile if available
+    // Convert app to plain object using spread operator to avoid TypeScript errors
+    const appObj = { ...app };
     const appWithDeveloperInfo = {
-      ...app.toJSON ? app.toJSON() : app,
+      ...appObj,
       developerProfile
     };
 
@@ -500,8 +502,10 @@ async function getInstalledApps(req: Request, res: Response) {
       }
 
       // Create response with developer profile if available
+      // Convert app to plain object to avoid TypeScript errors
+      const appObj = { ...app };
       const appWithDeveloperInfo = {
-        ...app,
+        ...appObj,
         developerProfile
       };
 

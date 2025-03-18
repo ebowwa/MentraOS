@@ -78,7 +78,7 @@ export const validateAdminEmail = async (req: Request, res: Response, next: Next
     logger.error('Admin authentication error:', error);
     return res.status(401).json({ 
       error: 'Authentication failed', 
-      message: error.message || 'Unknown error' 
+      message: (error as Error).message || 'Unknown error' 
     });
   }
 };

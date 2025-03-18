@@ -110,6 +110,13 @@ const DashboardHome: React.FC = () => {
           onTpaDeleted={(packageName) => {
             setTpas(tpas.filter(tpa => tpa.packageName !== packageName));
           }}
+          onTpaUpdated={(updatedTpa) => {
+            setTpas(prevTpas => 
+              prevTpas.map(tpa => 
+                tpa.packageName === updatedTpa.packageName ? updatedTpa : tpa
+              )
+            );
+          }}
         />
       </div>
 

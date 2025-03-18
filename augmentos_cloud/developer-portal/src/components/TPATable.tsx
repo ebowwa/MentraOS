@@ -25,6 +25,7 @@ interface TPATableProps {
   showViewAll?: boolean;
   showSearch?: boolean;
   onTpaDeleted?: (packageName: string) => void;
+  onTpaUpdated?: (updatedTpa: AppResponse) => void;
 }
 
 const TPATable: React.FC<TPATableProps> = ({
@@ -34,7 +35,8 @@ const TPATable: React.FC<TPATableProps> = ({
   maxDisplayCount = Infinity,
   showViewAll = false,
   showSearch = true,
-  onTpaDeleted
+  onTpaDeleted,
+  onTpaUpdated
 }) => {
   const navigate = useNavigate();
   
@@ -127,17 +129,30 @@ const TPATable: React.FC<TPATableProps> = ({
                         {new Date(tpa.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          tpa.appStoreStatus === 'PUBLISHED' ? 'bg-green-100 text-green-800' : 
-                          tpa.appStoreStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' : 
-                          tpa.appStoreStatus === 'REJECTED' ? 'bg-red-100 text-red-800' : 
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {tpa.appStoreStatus === 'DEVELOPMENT' ? 'Development' : 
-                           tpa.appStoreStatus === 'SUBMITTED' ? 'Submitted' : 
-                           tpa.appStoreStatus === 'REJECTED' ? 'Rejected' : 
-                           tpa.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'}
-                        </span>
+                        <div>
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            tpa.appStoreStatus === 'PUBLISHED' ? 'bg-green-100 text-green-800' : 
+                            tpa.appStoreStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' : 
+                            tpa.appStoreStatus === 'REJECTED' ? 'bg-red-100 text-red-800' : 
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {tpa.appStoreStatus === 'DEVELOPMENT' ? 'Development' : 
+                             tpa.appStoreStatus === 'SUBMITTED' ? 'Submitted' : 
+                             tpa.appStoreStatus === 'REJECTED' ? 'Rejected' : 
+                             tpa.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'}
+                          </span>
+                          {tpa.appStoreStatus === 'REJECTED' && tpa.reviewNotes && (
+                            <div className="mt-1">
+                              <button 
+                                onClick={() => navigate(`/tpas/${tpa.packageName}/edit`)}
+                                className="text-xs text-red-600 hover:underline focus:outline-none"
+                                title={tpa.reviewNotes}
+                              >
+                                View Rejection Reason
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-1">
@@ -248,15 +263,9 @@ const TPATable: React.FC<TPATableProps> = ({
               // Update the selected TPA with the new data
               setSelectedTpa(updatedTpa);
               
-              // Update the TPA in the list to reflect the new status
-              const updatedTpas = tpas.map(t => 
-                t.packageName === updatedTpa.packageName ? {...t, appStoreStatus: updatedTpa.appStoreStatus} : t
-              );
-              
-              // Force a re-render by triggering a parent component update
-              if (onTpaDeleted) {
-                // Using the same callback mechanism to notify parent to refresh data
-                onTpaDeleted(updatedTpa.packageName);
+              // Notify parent component to update the app
+              if (onTpaUpdated) {
+                onTpaUpdated(updatedTpa);
               }
             }}
           />

@@ -49,6 +49,15 @@ const TPAList: React.FC = () => {
   const handleTpaDeleted = (packageName: string) => {
     setTpas(tpas.filter(tpa => tpa.packageName !== packageName));
   };
+  
+  // Handle TPA update
+  const handleTpaUpdated = (updatedTpa: AppResponse) => {
+    setTpas(prevTpas => 
+      prevTpas.map(tpa => 
+        tpa.packageName === updatedTpa.packageName ? updatedTpa : tpa
+      )
+    );
+  };
 
   return (
     <DashboardLayout>
@@ -71,6 +80,7 @@ const TPAList: React.FC = () => {
           showSearch={true}
           showViewAll={false}
           onTpaDeleted={handleTpaDeleted}
+          onTpaUpdated={handleTpaUpdated}
         />
       </div>
     </DashboardLayout>

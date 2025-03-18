@@ -74,6 +74,9 @@ const EditTPA: React.FC = () => {
           tpaType: tpaData.tpaType || ('standard' as TpaType),
           createdAt: tpaData.createdAt,
           updatedAt: tpaData.updatedAt,
+          reviewNotes: tpaData.reviewNotes,
+          reviewedBy: tpaData.reviewedBy,
+          reviewedAt: tpaData.reviewedAt,
         };
         
         setFormData(tpa);
@@ -444,6 +447,18 @@ const EditTPA: React.FC = () => {
                       ? 'Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting.'
                       : 'Your app is published and available to all AugmentOS users in the App Store.'}
                   </p>
+                  
+                  {formData.appStoreStatus === 'REJECTED' && formData.reviewNotes && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2 mb-4">
+                      <h4 className="text-sm font-medium text-red-800 mb-1">Rejection Reason:</h4>
+                      <p className="text-sm text-red-700">{formData.reviewNotes}</p>
+                      {formData.reviewedAt && (
+                        <p className="text-xs text-red-500 mt-2">
+                          Reviewed on {new Date(formData.reviewedAt).toLocaleDateString()} by {formData.reviewedBy?.split('@')[0] || 'Admin'}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   
                   {(formData.appStoreStatus === 'DEVELOPMENT' || formData.appStoreStatus === 'REJECTED') && (
                     <div className="flex items-center justify-end">

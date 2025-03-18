@@ -1,5 +1,5 @@
 // cloud/server/src/models/app.model.ts
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema, Document, Types } from 'mongoose';
 import { AppI as _AppI, TpaType } from '@augmentos/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
@@ -12,6 +12,9 @@ export interface AppI extends _AppI, Document {
   hashedApiKey: string;
   hashedEndpointSecret?: string;
   appStoreStatus: AppStoreStatus;
+  reviewNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: Date;
 }
 
 // Using existing schema with flexible access

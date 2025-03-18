@@ -13,4 +13,7 @@ export interface TPA {
   tpaType: TpaType;
   createdAt?: string; // For compatibility with AppResponse
   updatedAt?: string; // For compatibility with AppResponse
+  reviewNotes?: string; // Review notes from app review
+  reviewedBy?: string; // Admin who reviewed the app
+  reviewedAt?: string; // When the app was reviewed
 }

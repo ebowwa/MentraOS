@@ -45,6 +45,9 @@ export interface AppResponse extends AppI {
   createdAt: string;
   updatedAt: string;
   appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
+  reviewNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
 }
 
 // API key response

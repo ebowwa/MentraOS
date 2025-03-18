@@ -183,8 +183,11 @@ const approveApp = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'App is not in submitted state' });
     }
     
-    // Update app status
+    // Update app status and store approval notes
     app.appStoreStatus = 'PUBLISHED';
+    app.reviewNotes = notes || '';
+    app.reviewedBy = adminEmail;
+    app.reviewedAt = new Date();
     
     await app.save();
     
@@ -221,10 +224,22 @@ const rejectApp = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'App is not in submitted state' });
     }
     
-    // Update app status
+    // Update app status and store rejection notes
     app.appStoreStatus = 'REJECTED';
+    app.reviewNotes = notes;
+    app.reviewedBy = adminEmail;
+    app.reviewedAt = new Date();
     
     await app.save();
+    
+    // TODO: Send email notification to developer about the rejection
+    // This would typically use a notification service or email service
+    // For now, we'll just log it
+    if (app.developerId) {
+      logger.info(`App ${packageName} rejected. Notification should be sent to developer: ${app.developerId}`);
+      // In a real implementation, you would send an email here
+      // emailService.sendRejectionNotification(app.developerId, app.name, notes);
+    }
     
     res.json({ 
       message: 'App rejected',
