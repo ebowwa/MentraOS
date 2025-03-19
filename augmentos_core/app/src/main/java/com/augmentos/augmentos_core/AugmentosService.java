@@ -5,6 +5,7 @@ import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassescom
 import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService.getSmartGlassesDeviceFromModelName;
 import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService.savePreferredWearable;
 import static com.augmentos.augmentos_core.statushelpers.CoreVersionHelper.getCoreVersion;
+import static com.augmentos.augmentos_core.statushelpers.JsonHelper.processJSONPlaceholders;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AUGMENTOS_NOTIFICATION_ID;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSAsgClientPackageName;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSManagerPackageName;
@@ -93,10 +94,12 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 //SpeechRecIntermediateOutputEvent
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
 
@@ -161,7 +164,6 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     private HTTPServerComms httpServerComms;
 
     JSONObject cachedDashboardDisplayObject;
-    Runnable cachedDashboardDisplayRunnable;
     List<ThirdPartyCloudApp> cachedThirdPartyAppList;
     private WebSocketManager.IncomingMessageHandler.WebSocketStatus webSocketStatus = WebSocketManager.IncomingMessageHandler.WebSocketStatus.DISCONNECTED;
     private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
@@ -267,9 +269,11 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             return;
         }
 
-        if (cachedDashboardDisplayRunnable != null) {
+        if (cachedDashboardDisplayObject != null) {
             if (smartGlassesService != null) {
-                smartGlassesService.windowManager.showDashboard(cachedDashboardDisplayRunnable,
+                Runnable dashboardDisplayRunnable = parseDisplayEventMessage(cachedDashboardDisplayObject);
+
+                smartGlassesService.windowManager.showDashboard(dashboardDisplayRunnable,
                         -1
                 );
             }
@@ -676,8 +680,34 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         }
     }
 
-    public Runnable parseDisplayEventMessage(JSONObject msg) {
+    public Runnable parseDisplayEventMessage(JSONObject rawMsg) {
             try {
+                // Process all placeholders in the entire JSON structure in a single pass
+                SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
+                String formattedDate = sdf.format(new Date());
+
+                // 12-hour time format (with leading zeros for hours)
+                SimpleDateFormat time12Format = new SimpleDateFormat("hh:mm");
+                String time12 = time12Format.format(new Date());
+
+                // 24-hour time format
+                SimpleDateFormat time24Format = new SimpleDateFormat("HH:mm");
+                String time24 = time24Format.format(new Date());
+
+                // Current date with format MM/dd
+                SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd");
+                String currentDate = dateFormat.format(new Date());
+
+                Map<String, String> placeholders = new HashMap<>();
+                placeholders.put("$no_datetime$", formattedDate);
+                placeholders.put("$DATE$", currentDate);
+                placeholders.put("$TIME12$", time12);
+                placeholders.put("$TIME24$", time24);
+                placeholders.put("$GBATT$", (batteryLevel == null ? "" : batteryLevel + "%"));
+
+                JSONObject msg = processJSONPlaceholders(rawMsg, placeholders);
+
+
                 JSONObject layout = msg.getJSONObject("layout");
                 String layoutType = layout.getString("layoutType");
                 String title;
@@ -694,14 +724,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                     case "double_text_wall":
                         String topText = layout.getString("topText");
                         String bottomText = layout.getString("bottomText");
-
-                        if (topText.contains("$no_datetime$")) { // handle case for when the server doesn't return the datetime
-                            SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
-                            String formatted = sdf.format(new Date());
-                            topText = topText.replace("$no_datetime$", formatted);
-                        }
-                        String finalTopText = topText;
-                        return () -> smartGlassesService.sendDoubleTextWall(finalTopText, bottomText);
+                        return () -> smartGlassesService.sendDoubleTextWall(topText, bottomText);
                     case "text_rows":
                         JSONArray rowsArray = layout.getJSONArray("text");
                         String[] stringsArray = new String[rowsArray.length()];
@@ -890,7 +913,6 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             @Override
             public void onDashboardDisplayEvent(JSONObject dashboardDisplayData) {
                 cachedDashboardDisplayObject = dashboardDisplayData;
-                cachedDashboardDisplayRunnable = parseDisplayEventMessage(dashboardDisplayData);
             }
 
             @Override
