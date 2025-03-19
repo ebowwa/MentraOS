@@ -209,7 +209,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleThe
             <View style={styles.appIconContainer}>
               <View style={styles.iconWrapper}>
                 <ImageBackground
-                  source={getAppImage(packageName)}
+                  source={getAppImage(appInfo)}
                   style={styles.appIconLarge}
                   imageStyle={styles.appIconRounded}
                 />
