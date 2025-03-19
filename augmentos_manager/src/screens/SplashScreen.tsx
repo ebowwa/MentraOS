@@ -5,6 +5,8 @@ import { NavigationProps } from '../components/types';
 import { useAuth } from '../AuthContext';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { doesHaveAllPermissions } from '../logic/PermissionsUtils';
+import { loadSetting } from '../logic/SettingsHelper';
+import { SETTINGS_KEYS } from '../consts';
 
 interface SplashScreenProps {
   //navigation: any;
@@ -17,7 +19,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
 
   useEffect(() => {
     const initializeApp = async () => {
-      
+
 
       /*
       The purpose of SplashScreen is to route the user wherever the user needs to be
@@ -43,10 +45,22 @@ const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
 
      startBluetoothAndCore();
 
-     navigation.reset({
-      index: 0,
-      routes: [{ name: 'ConnectingToPuck' }],
-    });
+     // Check if the user has completed onboarding
+     const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
+
+     if (onboardingCompleted) {
+       // If onboarding is completed, go directly to Home
+       navigation.reset({
+         index: 0,
+         routes: [{ name: 'ConnectingToPuck' }],
+       });
+     } else {
+       // If onboarding is not completed, go to WelcomePage
+       navigation.reset({
+         index: 0,
+         routes: [{ name: 'WelcomePage' }],
+       });
+     }
     };
 
     if (!loading) {

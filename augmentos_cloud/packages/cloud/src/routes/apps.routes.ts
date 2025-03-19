@@ -4,6 +4,7 @@ import webSocketService from '../services/core/websocket.service';
 import sessionService from '../services/core/session.service';
 import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
+import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 
 export const CLOUD_VERSION = process.env.CLOUD_VERSION;
@@ -170,9 +171,31 @@ async function getAppByPackage(req: Request, res: Response) {
       });
     }
 
+    // If the app has a developerId, try to get the developer profile information
+    let developerProfile = null;
+    if (app.developerId) {
+      try {
+        const developer = await User.findByEmail(app.developerId);
+        if (developer && developer.profile) {
+          developerProfile = developer.profile;
+        }
+      } catch (err) {
+        console.error('Error fetching developer profile:', err);
+        // Continue without developer profile
+      }
+    }
+
+    // Create response with developer profile if available
+    // Convert app to plain object using spread operator to avoid TypeScript errors
+    const appObj = { ...app };
+    const appWithDeveloperInfo = {
+      ...appObj,
+      developerProfile
+    };
+
     res.json({
       success: true,
-      data: app
+      data: appWithDeveloperInfo
     });
   } catch (error) {
     console.error('Error fetching app:', error);
@@ -406,14 +429,8 @@ async function uninstallApp(req: Request, res: Response) {
  * Get installed apps for user
  */
 async function getInstalledApps(req: Request, res: Response) {
-  const email = req.query.email as string;
-
-  if (!email) {
-    return res.status(400).json({
-      success: false,
-      message: 'Email is required'
-    });
-  }
+  const session = (req as any).userSession; // Get session from middleware
+  const email = session.userId;
 
   try {
     const user = await User.findByEmail(email);
@@ -452,23 +469,95 @@ async function getInstalledApps(req: Request, res: Response) {
   }
 }
 
+  /**
+   * Get app details by package name
+   * Public endpoint - no authentication required
+   */
+  async function getAppDetails (req: Request, res: Response) {
+    try {
+      const { packageName } = req.params;
+
+      // Get app details
+      const app = await appService.getAppByPackageName(packageName);
+
+      if (!app) {
+        return res.status(404).json({
+          success: false,
+          message: `App with package name ${packageName} not found`
+        });
+      }
+
+      // If the app has a developerId, try to get the developer profile information
+      let developerProfile = null;
+      if (app.developerId) {
+        try {
+          const developer = await User.findByEmail(app.developerId);
+          if (developer && developer.profile) {
+            developerProfile = developer.profile;
+          }
+        } catch (err) {
+          console.error('Error fetching developer profile:', err);
+          // Continue without developer profile
+        }
+      }
+
+      // Create response with developer profile if available
+      // Convert app to plain object to avoid TypeScript errors
+      const appObj = { ...app };
+      const appWithDeveloperInfo = {
+        ...appObj,
+        developerProfile
+      };
+
+      res.json({
+        success: true,
+        data: appWithDeveloperInfo
+      });
+    } catch (error) {
+      console.error('Error fetching app details:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch app details'
+      });
+    }
+  };
+
+async function getAvailableApps (req: Request, res: Response) {
+  try {
+    const apps = await appService.getAvailableApps();
+
+    // Return the apps with success flag
+    res.json({
+      success: true,
+      data: apps
+    });
+  } catch (error) {
+    console.error('Error fetching available apps:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch available apps'
+    });
+  }
+};
+
 // Route Definitions
 router.get('/', getAllApps);
 router.get('/public', getPublicApps);
 router.get('/search', searchApps);
-router.get('/installed', getInstalledApps);
+router.get('/installed', sessionAuthMiddleware, getInstalledApps);
 router.post('/install/:packageName', sessionAuthMiddleware, installApp);
 router.post('/uninstall/:packageName', sessionAuthMiddleware, uninstallApp);
 // Keep backward compatibility for now (can be removed later)
-router.post('/install/:packageName/:email', installApp);
-router.post('/uninstall/:packageName/:email', uninstallApp);
-router.get('/install/:packageName/:email', installApp);
-router.get('/uninstall/:packageName/:email', uninstallApp);
+// router.post('/install/:packageName/:email', installApp);
+// router.post('/uninstall/:packageName/:email', uninstallApp);
+// router.get('/install/:packageName/:email', installApp);
+// router.get('/uninstall/:packageName/:email', uninstallApp);
 
 router.get('/version', async (req, res) => {
   res.json({ version: CLOUD_VERSION });
 });
 
+router.get('/available', getAvailableApps);
 router.get('/:packageName', getAppByPackage);
 router.post('/:packageName/start', sessionAuthMiddleware, startApp);
 router.post('/:packageName/stop', sessionAuthMiddleware, stopApp);

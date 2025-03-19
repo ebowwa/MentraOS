@@ -27,7 +27,7 @@
     "prod:setup-network": "docker network create augmentos-network",
 
     "logs": "docker-compose logs -f",
-    "logs:dev": "docker-compose -f docker-compose.dev.yml -p dev logs -f",
+    "logs:dev": "docker-compose -f docker-compose.dev.yml -p dev logs --no-color --tail=0 -f",
     "logs:dev:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud",
 
     "logs:staging": "docker-compose -f docker-compose.staging.yml -p staging logs -f",

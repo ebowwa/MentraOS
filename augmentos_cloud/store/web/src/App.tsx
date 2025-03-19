@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 
 // Pages
 import AppStore from './pages/AppStore';
+import AppDetails from './pages/AppDetails';
 import LoginPage from './pages/LoginPage';
 import NotFound from './pages/NotFound';
 
@@ -41,6 +42,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       <Route path="/" element={<AppStore />} />
+      <Route path="/package/:packageName" element={<AppDetails />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/webview" element={
         <ProtectedRoute>

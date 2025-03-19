@@ -26,6 +26,8 @@ export const getAppImage = (app: AppInfo): ImageSourcePropType => {
         case 'com.google.android.apps.maps':
         case 'com.augmentos.navigation':
             return require('../assets/app-icons/navigation.png');
+        case 'com.augmentos.teleprompter':
+            return require('../assets/app-icons/teleprompter.png');
         case 'com.augmentos.notify':
             return require('../assets/app-icons/phone-notifications.png');
     }
