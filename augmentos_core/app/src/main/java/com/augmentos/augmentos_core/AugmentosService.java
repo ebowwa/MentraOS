@@ -30,6 +30,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.hardware.display.VirtualDisplay;
+import android.icu.util.TimeZone;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
 import android.os.Build;
@@ -163,6 +164,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     Runnable cachedDashboardDisplayRunnable;
     List<ThirdPartyCloudApp> cachedThirdPartyAppList;
     private WebSocketManager.IncomingMessageHandler.WebSocketStatus webSocketStatus = WebSocketManager.IncomingMessageHandler.WebSocketStatus.DISCONNECTED;
+    private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
 
     private WebSocketLifecycleManager webSocketLifecycleManager;
 
@@ -692,7 +694,14 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                     case "double_text_wall":
                         String topText = layout.getString("topText");
                         String bottomText = layout.getString("bottomText");
-                        return () -> smartGlassesService.sendDoubleTextWall(topText, bottomText);
+
+                        if (topText.contains("$no_datetime$")) { // handle case for when the server doesn't return the datetime
+                            SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
+                            String formatted = sdf.format(new Date());
+                            topText = topText.replace("$no_datetime$", formatted);
+                        }
+                        String finalTopText = topText;
+                        return () -> smartGlassesService.sendDoubleTextWall(finalTopText, bottomText);
                     case "text_rows":
                         JSONArray rowsArray = layout.getJSONArray("text");
                         String[] stringsArray = new String[rowsArray.length()];
@@ -861,9 +870,8 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         ServerComms.getInstance().setServerCommsCallback(new ServerCommsCallback() {
             @Override
             public void onConnectionAck() {
-                locationSystem.sendLocationToServer();
+                serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
             }
-
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
                 cachedThirdPartyAppList = appList;
@@ -1006,6 +1014,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         sendStatusToAugmentOsManager();
     }
 
+    // TODO: Can remove this?
     @Override
     public void startApp(String packageName) {
         Log.d("AugmentOsService", "Starting app: " + packageName);
@@ -1017,6 +1026,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         }
     }
 
+    // TODO: Can remove this?
     @Override
     public void stopApp(String packageName) {
         Log.d("AugmentOsService", "Stopping app: " + packageName);
@@ -1058,12 +1068,14 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         editor.apply();
     }
 
+    // TODO: Can remove this?
     @Override
     public void installAppFromRepository(String repository, String packageName) throws JSONException {
         Log.d("AugmentOsService", "Installing app from repository: " + packageName);
         blePeripheral.sendNotifyManager("Not implemented", "error");
     }
 
+    // TODO: Can remove this?
     @Override
     public void uninstallApp(String uninstallPackageName) {
         Log.d(TAG, "uninstallApp not implemented");

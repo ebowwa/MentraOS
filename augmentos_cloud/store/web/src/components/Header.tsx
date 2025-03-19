@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Button } from './ui/button';
 
 const Header: React.FC = () => {
-  const { isAuthenticated, signOut, user } = useAuth();
+  const { isAuthenticated, signOut, user, isWebViewAuth } = useAuth();
   const navigate = useNavigate();
 
   // Handle sign out
@@ -32,17 +32,20 @@ const Header: React.FC = () => {
           <div className="flex items-center">
             {isAuthenticated ? (
               <div className="flex flex-col items-end">
-                <span className="text-sm text-gray-600 px-3">
-                  {user?.email}
-                </span>
-                <Button
-                  onClick={handleSignOut}
-                  variant="ghost"
-                  size={'sm'}
-                // className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm"
-                >
-                  Sign Out
-                </Button>
+                {!isWebViewAuth && user?.email && (
+                  <span className="text-sm text-gray-600 px-3">
+                    {user.email}
+                  </span>
+                )}
+                {!isWebViewAuth && (
+                  <Button
+                    onClick={handleSignOut}
+                    variant="ghost"
+                    size={'sm'}
+                  >
+                    Sign Out
+                  </Button>
+                )}
               </div>
             ) : (
               <Button

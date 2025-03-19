@@ -11,6 +11,8 @@ import ProfileSettingsPage from './screens/ProfileSettingsPage';
 import GlassesMirror from './screens/GlassesMirror';
 import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
+import AppStoreNative from './screens/AppStoreNative';
+import AppStoreWeb from './screens/AppStoreWebview';
 import AppDetails from './screens/AppDetails';
 import Reviews from './screens/ReviewSection.tsx';
 import { StyleSheet, Text, View } from 'react-native';
@@ -33,6 +35,9 @@ import ConnectingToPuckComponent from './components/ConnectingToPuckComponent.ts
 import VersionUpdateScreen from './screens/VersionUpdateScreen.tsx';
 import { GlassesMirrorProvider } from './providers/GlassesMirrorContext.tsx';
 import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuidePreparationScreen.tsx';
+import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
+import { saveSetting } from './logic/SettingsHelper';
+import WelcomePageComponent from './components/WelcomePageComponent.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -49,6 +54,13 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+
+  // Reset ignoreVersionCheck setting on app start
+  useEffect(() => {
+//TODO: SET THIS TO FALSE
+    saveSetting('ignoreVersionCheck', false);
+    console.log('Reset version check ignore flag on app start');
+  }, []);
 
   const toggleTheme = () => {
     setIsDarkTheme(prevTheme => !prevTheme);
@@ -82,19 +94,32 @@ const App: React.FC = () => {
 
                 <Stack.Screen
                   name="VersionUpdateScreen"
-                  component={VersionUpdateScreen}
                   options={{
                     headerShown: false,
                     // Optional: prevent going back with hardware back button on Android
                     gestureEnabled: false,
                   }}
-                />
+                >
+                  {({ route }) => (
+                    <VersionUpdateScreen
+                      route={{ params: { ...route?.params, isDarkTheme } }}
+                    />
+                  )}
+                </Stack.Screen>
 
                 <Stack.Screen name="Home" options={{ headerShown: false }}>
                   {() => (
                     <Homepage
                       isDarkTheme={isDarkTheme}
                       toggleTheme={toggleTheme}
+                    />
+                  )}
+                </Stack.Screen>
+
+                <Stack.Screen name="WelcomePage" options={{ headerShown: false }}>
+                  {({ route }) => (
+                    <WelcomePageComponent
+                      route={{ params: { isDarkTheme } }}
                     />
                   )}
                 </Stack.Screen>
@@ -148,6 +173,16 @@ const App: React.FC = () => {
                   name="AppStore"
                   options={{ title: 'App Store', headerShown: false }}>
                   {props => <AppStore {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreNative"
+                  options={{ title: 'App Store (Native)', headerShown: false }}>
+                  {props => <AppStoreNative {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreWeb"
+                  options={{ title: 'App Store', headerShown: false }}>
+                  {props => <AppStoreWeb {...props} isDarkTheme={isDarkTheme} />}
                 </Stack.Screen>
                 <Stack.Screen
                   name="Reviews"
@@ -240,6 +275,11 @@ const App: React.FC = () => {
                     />
                   )}
                 </Stack.Screen>
+                <Stack.Screen
+                  name="ErrorReportScreen"
+                  component={ErrorReportScreen}
+                  options={{ title: 'Report an Error' }}
+                />
                 <Stack.Screen name="SelectGlassesModelScreen"
                   options={{ title: 'Select Glasses' }}
                 >

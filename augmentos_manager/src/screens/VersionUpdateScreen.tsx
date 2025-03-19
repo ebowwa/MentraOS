@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
+  BackHandler,
+  Alert
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NavigationProp } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NavigationProp, CommonActions } from '@react-navigation/native';
 import { Config } from 'react-native-config';
 import semver from 'semver';
 import BackendServerComms from '../backend_comms/BackendServerComms';
@@ -14,6 +16,8 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Button from '../components/Button';
 import InstallApkModule from '../bridge/InstallApkModule.tsx';
+import { saveSetting } from '../logic/SettingsHelper';
+import { Linking } from 'react-native';
 
 interface VersionUpdateScreenProps {
   route: {
@@ -37,6 +41,24 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
   const [isVersionMismatch, setIsVersionMismatch] = useState(!!initialLocalVersion && !!initialCloudVersion);
   const [localVersion, setLocalVersion] = useState<string | null>(initialLocalVersion || null);
   const [cloudVersion, setCloudVersion] = useState<string | null>(initialCloudVersion || null);
+
+  // Prevent navigation using the hardware back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // If there's a version mismatch or connection error, block navigation
+        if (isVersionMismatch || connectionError) {
+          return true; // Prevents default back button behavior
+        }
+        return false; // Let the default back button behavior happen
+      };
+
+      // Add back button handler
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [isVersionMismatch, connectionError])
+  );
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -81,7 +103,8 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
           } else {
             console.log('Local version is up-to-date.');
             setIsVersionMismatch(false);
-            // Navigate back to home since no update is needed
+            // Only navigate back to home if no update is needed
+            // This allows the app to proceed normally when up-to-date
             setTimeout(() => {
               navigation.navigate('Home');
             }, 1000);
@@ -103,13 +126,35 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
 
   // Start the update process
   const handleUpdate = () => {
-    setIsUpdating(true);
-    InstallApkModule.downloadCoreApk()
-      .then(() => {
-      })
-      .finally(() => {
-          setIsUpdating(false);
-      });
+    // OLD LOGIC
+    // setIsUpdating(true);
+    // InstallApkModule.downloadCoreApk()
+    //   .then(() => {
+    //     // If the update is successful, we can allow navigation
+    //     // This would happen after the app restarts with the new version
+    //   })
+    //   .catch((error) => {
+    //     console.error('Error downloading update:', error);
+    //     Alert.alert(
+    //       "Update Failed",
+    //       "There was a problem downloading the update. Please try again.",
+    //       [{ text: "OK", onPress: () => {} }]
+    //     );
+    //   })
+    //   .finally(() => {
+    //     setIsUpdating(false);
+    //   });
+
+    // Just send them to latest augmentos.org
+    Linking.openURL('https://augmentos.org/install')
+    .catch((error) => {
+      console.error('Error opening installation website:', error);
+      Alert.alert(
+        "Browser Error",
+        "Could not open the installation website. Please visit https://augmentos.org/install manually.",
+        [{ text: "OK", onPress: () => {} }]
+      );
+    });
   };
 
   // Only check cloud version on mount if we don't have initial data
@@ -152,8 +197,8 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
         isDarkTheme ? styles.darkBackground : styles.lightBackground,
       ]}
     >
-      <ScrollView style={styles.scrollViewContainer}>
-        <View style={styles.contentContainer}>
+      <View style={styles.mainContainer}>
+        <View style={styles.infoContainer}>
           <View style={styles.iconContainer}>
             {connectionError ? (
               <Icon
@@ -195,36 +240,52 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
               isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
             ]}
           >
-            {/*{connectionError*/}
-            {/*  ? 'Could not connect to the server. Please check your connection and try again.'*/}
-            {/*  : isVersionMismatch*/}
-            {/*    ? `Your AugmentOS (${localVersion}) is outdated. The latest version is ${cloudVersion}. Please update to continue.`*/}
-            {/*    : 'Your AugmentOS is up to date. Returning to home...'}*/}
             {connectionError
               ? 'Could not connect to the server. Please check your connection and try again.'
               : isVersionMismatch
-                ? 'Your AugmentOS is outdated. Please update to continue.'
+                ? 'AugmentOS is outdated. An update is required to continue using the application.'
                 : 'Your AugmentOS is up to date. Returning to home...'}
           </Text>
-
-          {(connectionError || isVersionMismatch) && (
-            <View style={styles.setupContainer}>
-              <Button
-                onPress={connectionError ? checkCloudVersion : handleUpdate}
-                isDarkTheme={isDarkTheme}
-                disabled={isUpdating}
-                iconName={connectionError ? 'reload' : 'download'}
-              >
-                {isUpdating
-                  ? 'Updating...'
-                  : connectionError
-                    ? 'Retry Connection'
-                    : 'Update AugmentOS'}
-              </Button>
-            </View>
-          )}
         </View>
-      </ScrollView>
+
+        {(connectionError || isVersionMismatch) && (
+          <View style={styles.setupContainer}>
+            <Button
+              onPress={connectionError ? checkCloudVersion : handleUpdate}
+              isDarkTheme={isDarkTheme}
+              disabled={isUpdating}
+              iconName={connectionError ? 'reload' : 'download'}
+            >
+              {isUpdating
+                ? 'Updating...'
+                : connectionError
+                  ? 'Retry Connection'
+                  : 'Update AugmentOS'}
+            </Button>
+
+          {isVersionMismatch &&
+            <View style={styles.skipButtonContainer}>
+             <Button
+               onPress={() => {
+                 // Save setting to ignore version checks until next app restart
+                 saveSetting('ignoreVersionCheck', true);
+                 console.log('Version check skipped until next app restart');
+                 // Skip directly to Home screen
+                 navigation.reset({
+                   index: 0,
+                   routes: [{ name: 'Home' }],
+                 });
+               }}
+               isDarkTheme={isDarkTheme}
+               iconName="skip-next"
+               disabled={false}>
+               Skip Update
+             </Button>
+            </View>
+            }                                                
+          </View>    
+        )}
+      </View>
     </View>
   );
 };
@@ -241,15 +302,17 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
   },
-  scrollViewContainer: {
+  mainContainer: {
     flex: 1,
-  },
-  contentContainer: {
-    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
     padding: 24,
+  },
+  infoContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: '100%',
+    paddingTop: 60,
   },
   iconContainer: {
     marginBottom: 32,
@@ -271,7 +334,17 @@ const styles = StyleSheet.create({
   setupContainer: {
     width: '100%',
     alignItems: 'center',
+    paddingBottom: 40,
+  },
+  skipButtonContainer: {
     marginTop: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  skipButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#666',
   },
   darkBackground: {
     backgroundColor: '#1c1c1c',

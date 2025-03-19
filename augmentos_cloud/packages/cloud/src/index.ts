@@ -2,6 +2,10 @@
  * @fileoverview AugmentOS Cloud Server entry point.
  * Initializes core services and sets up HTTP/WebSocket servers.
  */
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 // import "./instrument";
 import "./sentry";
 
@@ -19,24 +23,55 @@ import appRoutes from './routes/apps.routes';
 import authRoutes from './routes/auth.routes';
 import transcriptRoutes from './routes/transcripts.routes';
 import tpaSettingsRoutes from './routes/tpa-settings.routes';
+import errorReportRoutes from './routes/error-report.routes';
+import devRoutes from './routes/developer.routes';
+import adminRoutes from './routes/admin.routes';
+
 import path from 'path';
 
 // Load configuration from environment
-import { CLOUD_PORT } from '@augmentos/config';
 import * as mongoConnection from "./connections/mongodb.connection";
+import { logger } from "@augmentos/utils";
 
 // Initialize MongoDB connection
-mongoConnection.init();
+mongoConnection.init()
+  .then(() => {
+    logger.info('MongoDB connection initialized successfully');
+    
+    // Log admin emails from environment for debugging
+    const adminEmails = process.env.ADMIN_EMAILS || '';
+    logger.info('ENVIRONMENT VARIABLES CHECK:');
+    logger.info(`- NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
+    logger.info(`- ADMIN_EMAILS: "${adminEmails}"`);
+    
+    // Log additional environment details
+    logger.info(`- Current working directory: ${process.cwd()}`);
+    
+    if (adminEmails) {
+      const emails = adminEmails.split(',').map(e => e.trim());
+      logger.info(`Admin access configured for ${emails.length} email(s): [${emails.join(', ')}]`);
+    } else {
+      logger.warn('No ADMIN_EMAILS environment variable found. Admin panel will be inaccessible.');
+      
+      // For development, log a helpful message
+      if (process.env.NODE_ENV === 'development') {
+        logger.info('Development mode: set ADMIN_EMAILS environment variable to enable admin access');
+      }
+    }
+  })
+  .catch(error => {
+    logger.error('MongoDB connection failed:', error);
+  });
 
 // Initialize Express and HTTP server
-const PORT = CLOUD_PORT;
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const app = express();
 const server = new Server(app);
 
 // Middleware setup
 app.use(helmet());
 app.use(cors({
-  credentials: true, 
+  credentials: true,
   origin: [
     '*',
     'http://localhost:3000',
@@ -65,6 +100,9 @@ app.use(cors({
     "https://prod.augmentos.dev",
 
     "https://augmentos-developer-portal.netlify.app",
+
+    "https://appstore.augmentos.org",
+    "https://console.augmentos.org",
   ]
 }));
 
@@ -78,6 +116,10 @@ app.use('/api/auth', authRoutes);
 app.use('/apps', appRoutes);
 app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
+app.use('/api/dev', devRoutes);
+app.use('/api/admin', adminRoutes);
+
+app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 
 // Health check endpoint
@@ -93,12 +135,11 @@ webSocketService.setupWebSocketServers(server);
 
 // Start the server
 server.listen(PORT, () => {
-  console.log('\n😎 AugmentOS Cloud Server🚀\n');
-  console.log(`HTTP server: http://localhost:${PORT}`);
-  console.log('WebSocket endpoints:');
-  console.log(`  - Glasses: ws://localhost:${PORT}/glasses-ws`);
-  console.log(`  - TPA:     ws://localhost:${PORT}/tpa-ws\n`);
-  console.log('\n🚀 Server ready\n');
+  logger.info(`\n
+              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+              😎 AugmentOS Cloud Server🚀
+              🌐 Listening on port ${PORT}             🌐
+              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
 });
 
 export default server;

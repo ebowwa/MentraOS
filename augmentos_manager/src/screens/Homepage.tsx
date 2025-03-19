@@ -5,7 +5,7 @@ import React, {
   useState,
   useEffect,
 } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated, Text, Platform } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -19,6 +19,7 @@ import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
 import semver from 'semver';
 import { Config } from 'react-native-config';
 import CloudConnection from '../components/CloudConnection.tsx';
+import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -56,6 +57,14 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
     setIsCheckingVersion(true);
 
     try {
+      // Check if version checks are being ignored this session
+      const ignoreCheck = await loadSetting('ignoreVersionCheck', false);
+      if (ignoreCheck) {
+        console.log('Version check skipped due to user preference');
+        setIsCheckingVersion(false);
+        return;
+      }
+
       const backendComms = BackendServerComms.getInstance();
       const localVer = getLocalVersion();
 
@@ -101,6 +110,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           setIsCheckingVersion(false);
         }
       });
+      // console.log('Version check completed');
     } catch (error) {
       console.error('Error checking cloud version:', error);
       // Navigate to update screen with connection error
@@ -114,7 +124,9 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   // Check version once on mount
   useEffect(() => {
-    //checkCloudVersion();
+    if (Platform.OS == 'android') {
+      checkCloudVersion();
+    }
   }, []);
 
   // Simple animated wrapper so we do not duplicate logic
@@ -188,26 +200,17 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
                 <AnimatedSection>
                   <RunningAppsList isDarkTheme={isDarkTheme} />
                 </AnimatedSection>
-
-                <AnimatedSection>
-                  <YourAppsList
-                    isDarkTheme={isDarkTheme}
-                    key={`apps-list-${status.apps.length}`}
-                  />
-                </AnimatedSection>
               </>
-            ) : (
-              <AnimatedSection>
-                <Text style={currentThemeStyles.noAppsText}>
-                  No apps found. Visit the AugmentOS App Store to explore and
-                  download apps for your device.
-                </Text>
-              </AnimatedSection>
-            )}
+            ) : null}
           </>
         )}
+
+        <AnimatedSection>
+          <YourAppsList isDarkTheme={isDarkTheme} />
+        </AnimatedSection>
       </ScrollView>
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
+
+      <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
     </View>
   );
 };

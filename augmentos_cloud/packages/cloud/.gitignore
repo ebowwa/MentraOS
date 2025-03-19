@@ -4,3 +4,5 @@ env.ts
 # Sentry Config File
 .sentryclirc
 dist/
+
+audio-logs/

@@ -11,8 +11,11 @@ import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState } from '@a
 import axios, { AxiosError } from 'axios';
 import { systemApps } from '@augmentos/config';
 import App from '../../models/app.model';
+import { User } from '../../models/user.model';
+import crypto from 'crypto';
 
-const APPSTORE_ENABLED = process.env.NODE_ENV === 'staging';
+
+const APPSTORE_ENABLED = true;
 
 /**
  * System TPAs that are always available.
@@ -24,7 +27,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.captions.packageName,
     name: systemApps.captions.name,
     tpaType: TpaType.STANDARD,
-    webhookURL: `http://localhost:${systemApps.captions.port}/webhook`,
+    webhookURL: `http://${systemApps.captions.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
     description: systemApps.captions.description
   },
@@ -32,16 +35,15 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.notify.packageName,
     name: systemApps.notify.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.notify.port}/webhook`,
+    webhookURL: `http://${systemApps.notify.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
     description: systemApps.notify.description,
-
   },
   {
     packageName: systemApps.mira.packageName,
     name: systemApps.mira.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.mira.port}/webhook`,
+    webhookURL: `http://${systemApps.mira.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
     description: systemApps.mira.description,
   },
@@ -49,28 +51,44 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.merge.packageName,
     name: systemApps.merge.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.merge.port}/webhook`,
+    webhookURL: `http://${systemApps.merge.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
-    description: systemApps.merge.description,
+    description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
   },
   {
     packageName: systemApps.liveTranslation.packageName,
     name: systemApps.liveTranslation.name,
     tpaType: TpaType.STANDARD,
-    webhookURL: `http://localhost:${systemApps.liveTranslation.port}/webhook`,
+    webhookURL: `http://${systemApps.liveTranslation.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
     description: systemApps.liveTranslation.description,
-  }
+  },
+  // {
+  //   packageName: systemApps.teleprompter.packageName,
+  //   name: "Teleprompt",
+  //   tpaType: TpaType.STANDARD,
+  //   webhookURL: `http://${systemApps.teleprompter.host}/webhook`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
+  //   description: systemApps.teleprompter.description,
+  // }
 ];
 
 // if we are not in production, add the dashboard to the app 
 if (process.env.NODE_ENV !== 'production') {
   LOCAL_APPS.push({
     packageName: systemApps.flash.packageName,
-    name: systemApps.flash.name,
+    name: "Navigation",
     description: systemApps.flash.description,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://localhost:${systemApps.flash.port}/webhook`,
+    webhookURL: `http://${systemApps.flash.host}/webhook`,
+    logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
+  });
+  LOCAL_APPS.push({
+    packageName: "com.augmentos.screenmirror",
+    name: "Screen Mirror",
+    description: systemApps.flash.description,
+    tpaType: TpaType.BACKGROUND,
+    webhookURL: `http://${systemApps.flash.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
   });
 }
@@ -86,23 +104,10 @@ export const SYSTEM_TPAS: AppI[] = [
     name: systemApps.dashboard.name,
     tpaType: TpaType.BACKGROUND,
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    webhookURL: `http://localhost:${systemApps.dashboard.port}/webhook`,
+    webhookURL: `http:/${systemApps.dashboard.host}/webhook`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
   },
 ];
-
-// Map systemApps to SYSTEM_TPAS.
-// export const SYSTEM_TPAS: AppI[] = Object.keys(systemApps).map((key) => {
-//   const app = systemApps[key as keyof typeof systemApps];
-
-//   return {
-//     packageName: systemApps[key as keyof typeof systemApps].packageName,
-//     name: key,
-//     description: key, // TODO(isaiah): Add descriptions
-//     webhookURL: `http://localhost:${app.port}/webhook`,
-//     logoURL: `https://cloud.augmentos.org/${app.packageName}.png`,
-//   }
-// });
 
 /**
  * Interface for webhook payloads sent to TPAs.
@@ -132,12 +137,32 @@ export class AppService {
    * Gets all available TPAs, both system and user-created.
    * @returns Promise resolving to array of all apps
    */
-  async getAllApps(): Promise<AppI[]> {
-    let appstoreApps: AppI[] = [];
-    if (APPSTORE_ENABLED) {
-      appstoreApps = await App.find() as AppI[];
+  async getAllApps(userId?: string): Promise<AppI[]> {
+    const usersApps: AppI[] = [];
+
+    if (APPSTORE_ENABLED && userId) {
+      // Find apps the developer made.
+      const _madeByUser = await App.find({ developerId: userId }) as AppI[];
+
+      // Find apps the user installed.
+      const user = await User.findOne({ email: userId });
+      const _installedApps = user?.installedApps?.map((installedApp: { packageName: string; installedDate: Date; }) => {
+        return installedApp.packageName;
+      }) || [];
+
+      // Fetch the apps from the appstore.
+      const _appstoreApps = await App.find({ packageName: { $in: _installedApps } }) as AppI[];
+
+      // remove duplicates.
+      const _allApps = [..._madeByUser, ..._appstoreApps];
+      const _appMap = new Map<string, AppI>();
+      _allApps.forEach(app => {
+        _appMap.set(app.packageName, app);
+      }
+      );
+      usersApps.push(..._appMap.values());
     }
-    const allApps = [...LOCAL_APPS, ...appstoreApps];
+    const allApps = [...LOCAL_APPS, ...usersApps];
     return allApps;
   }
 
@@ -167,6 +192,13 @@ export class AppService {
       }
     }
 
+    return app;
+  }
+
+  async findFromAppStore(packageName: string): Promise<AppI | undefined> {
+    const app = await App.findOne({
+      packageName: packageName
+    }) as AppI;
     return app;
   }
 
@@ -251,6 +283,230 @@ export class AppService {
     // Return existing state or default to not_installed
     return userStates.get(packageName) || AppState.NOT_INSTALLED;
   }
+
+  /**
+   * Create a new app
+   */
+  async createApp(appData: any, developerId: string): Promise<{ app: AppI, apiKey: string }> {
+    // Generate API key
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    const hashedApiKey = this.hashApiKey(apiKey);
+
+    // Create app
+    const app = await App.create({
+      ...appData,
+      developerId,
+      hashedApiKey
+    });
+
+    return { app, apiKey };
+  }
+
+
+  /**
+   * Update an app
+   */
+  async updateApp(packageName: string, appData: any, developerId: string): Promise<AppI> {
+    // Ensure developer owns the app
+    const app = await App.findOne({ packageName });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+
+    if (!developerId) {
+      throw new Error('Developer ID is required');
+    }
+
+    if (!app.developerId) {
+      throw new Error('Developer ID not found for this app');
+    }
+
+    if (app.developerId.toString() !== developerId) {
+      throw new Error('You do not have permission to update this app');
+    }
+
+    // If developerInfo is provided, ensure it's properly structured
+    if (appData.developerInfo) {
+      // Make sure only valid fields are included
+      const validFields = ['company', 'website', 'contactEmail', 'description'];
+      const sanitizedDeveloperInfo: any = {};
+      
+      for (const field of validFields) {
+        if (appData.developerInfo[field] !== undefined) {
+          sanitizedDeveloperInfo[field] = appData.developerInfo[field];
+        }
+      }
+      
+      // Replace with sanitized version
+      appData.developerInfo = sanitizedDeveloperInfo;
+    }
+
+    // Update app
+    const updatedApp = await App.findOneAndUpdate(
+      { packageName },
+      { $set: appData },
+      { new: true }
+    );
+
+    return updatedApp!;
+  }
+  
+  /**
+   * Publish an app to the app store
+   */
+  async publishApp(packageName: string, developerId: string): Promise<AppI> {
+    // Ensure developer owns the app
+    const app = await App.findOne({ packageName });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+
+    if (!developerId) {
+      throw new Error('Developer ID is required');
+    }
+
+    if (!app.developerId) {
+      throw new Error('Developer ID not found for this app');
+    }
+
+    if (app.developerId.toString() !== developerId) {
+      throw new Error('You do not have permission to publish this app');
+    }
+
+    // Update app status to SUBMITTED
+    const updatedApp = await App.findOneAndUpdate(
+      { packageName },
+      { $set: { appStoreStatus: 'SUBMITTED' } },
+      { new: true }
+    );
+
+    return updatedApp!;
+  }
+
+  /**
+   * Delete an app
+   */
+  async deleteApp(packageName: string, developerId: string): Promise<void> {
+    // Ensure developer owns the app
+    const app = await App.findOne({ packageName });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+
+    if (!developerId) {
+      throw new Error('Developer ID is required');
+    }
+
+    if (!app.developerId) {
+      throw new Error('Developer ID not found for this app');
+    }
+
+
+    if (app.developerId.toString() !== developerId) {
+      throw new Error('You do not have permission to delete this app');
+    }
+
+    await App.findOneAndDelete({ packageName });
+  }
+
+  /**
+   * Regenerate API key for an app
+   */
+  async regenerateApiKey(packageName: string, developerId: string): Promise<string> {
+    // Ensure developer owns the app
+    const app = await App.findOne({ packageName });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+
+    if (!developerId) {
+      throw new Error('Developer ID is required');
+    }
+
+    if (!app.developerId) {
+      throw new Error('Developer ID not found for this app');
+    }
+
+    if (app.developerId.toString() !== developerId) {
+      throw new Error('You do not have permission to update this app');
+    }
+
+    // Generate new API key
+    const apiKey = crypto.randomBytes(32).toString('hex');
+    const hashedApiKey = this.hashApiKey(apiKey);
+
+    // Update app with new hashed API key
+    await App.findOneAndUpdate(
+      { packageName },
+      { $set: { hashedApiKey } }
+    );
+
+    return apiKey;
+  }
+
+  /**
+   * Hash API key
+   */
+  hashApiKey(apiKey: string): string {
+    return crypto.createHash('sha256').update(apiKey).digest('hex');
+  }
+
+
+  /**
+   * Get apps by developer ID
+   */
+  async getAppsByDeveloperId(developerId: string): Promise<AppI[]> {
+    return App.find({ developerId }).lean();
+  }
+
+  /**
+   * Get app by package name
+   */
+  async getAppByPackageName(packageName: string, developerId?: string): Promise<AppI | null> {
+    const query: any = { packageName };
+
+    // If developerId is provided, ensure the app belongs to this developer
+    if (developerId) {
+      query.developerId = developerId;
+    }
+
+    return App.findOne(query).lean();
+  }
+
+  /**
+   * Get public apps
+   * TODO: DELETE THIS?
+   */
+  // export async function getPublicApps(developerEmail?: string): Promise<AppI[]> {
+  async getPublicApps(): Promise<AppI[]> {
+    // console.log('Getting public apps - developerEmail', developerEmail);
+    // if (developerEmail) {
+    //   const developer
+    //     = await User.findOne({ email: developerEmail }).lean();
+    //   if (!developer) {
+    //     return App.find({ isPublic: true }).lean();
+    //   }
+    //   else {
+    //     // Find all public apps, or apps by the developer.
+    //     return App.find({ $or: [{ isPublic: true }, { developerId: developer.email}] }).lean();
+    //   }
+    // }
+    return App.find({ isPublic: true }).lean();
+    // return App.find();
+  }
+
+  /**
+   * Get all available apps
+   */
+  async getAvailableApps(): Promise<AppI[]> {
+    return App.find();
+  }
+
+
 }
 
 // Create singleton instance

@@ -4,11 +4,12 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { AUGMENTOS_AUTH_JWT_SECRET, systemApps } from '@augmentos/config';
+import { systemApps } from '@augmentos/config';
 import { User } from '../models/user.model';
-import appService from '../services/core/app.service';
-console.log('systemApps', systemApps);
 
+export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+import appService from '../services/core/app.service';
+import { logger } from '@augmentos/utils';
 
 const router = express.Router();
 
@@ -16,11 +17,11 @@ const router = express.Router();
 // Returns the TPA config with each non-group setting having a "selected" property
 // that comes from the user's stored settings (or defaultValue if not present).
 router.get('/:tpaName', async (req, res) => {
-  console.log('Received request for TPA settings');
+  logger.info('Received request for TPA settings');
 
   // Extract TPA name from URL (use third segment if dot-separated).
-  const parts = req.params.tpaName.split('.');
-  const tpaName = parts.length > 2 ? parts[2] : req.params.tpaName;
+  // const parts = req.params.tpaName.split('.');
+  const tpaName = req.params.tpaName;
   if (!tpaName) {
     return res.status(400).json({ error: 'TPA name missing in request' });
   }
@@ -52,13 +53,12 @@ router.get('/:tpaName', async (req, res) => {
       // tpaConfig = JSON.parse(rawData);
       // find the app, then call it with it's port. i.e: http://localhost:8017/tpa_config.json
       const _tpa = await appService.getApp(req.params.tpaName);
-      const port = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.port;
+      const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
       
-      if (!port || !_tpa) {
+      if (!host || !_tpa) {
         throw new Error('Port / TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
       }
-      const _tpaConfig = (await axios.get(`http://localhost:${port}/tpa_config.json`)).data; 
-      console.log('TPA Config:', _tpaConfig);
+      const _tpaConfig = (await axios.get(`http://${host}/tpa_config.json`)).data; 
       tpaConfig = _tpaConfig;
 
     } catch (err) {
@@ -71,7 +71,7 @@ router.get('/:tpaName', async (req, res) => {
           settings: []
         }
       } else {
-        console.error('Error reading TPA config file:', err);
+        logger.error('Error reading TPA config file:', err);
         return res.status(500).json({ error: 'Error reading TPA config file' });
       }
       // If the config file doesn't exist or is invalid, just return 
@@ -82,7 +82,7 @@ router.get('/:tpaName', async (req, res) => {
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
-    // Retrieve stored settings for this TPA.
+    // Retrieve stored settings for this app.
     let storedSettings = user.getAppSettings(tpaName);
     if (!storedSettings) {
       // Build default settings from config (ignoring groups)
@@ -98,12 +98,7 @@ router.get('/:tpaName', async (req, res) => {
         }));
       await user.updateAppSettings(tpaName, defaultSettings);
       storedSettings = defaultSettings;
-      console.log(`Default settings stored for app "${tpaName}" for user ${userId}: ${JSON.stringify(storedSettings)}`);
-    } else {
-      console.log(`Found existing settings for app "${tpaName}" for user ${userId}: ${JSON.stringify(storedSettings)}`);
     }
-
-    // console.log('Stored settings:', storedSettings);
 
     // Merge config settings with stored values.
     const mergedSettings = tpaConfig.settings.map((setting: any) => {
@@ -126,121 +121,45 @@ router.get('/:tpaName', async (req, res) => {
       settings: mergedSettings,
     });
   } catch (error) {
-    console.error('Error processing TPA settings request:', error);
+    logger.error('Error processing TPA settings request:', error);
     return res.status(401).json({ error: 'Invalid core token or error processing request' });
   }
 });
 
-// POST /tpasettings/:tpaName
-// Receives an update payload containing all settings with new values and updates the database.
-// backend/src/routes/tpa-settings.ts
-router.post('/:tpaName', async (req, res) => {
-  console.log('Received update for TPA settings');
-
-  // Extract TPA name.
-  const parts = req.params.tpaName.split('.');
-  const tpaName = parts.length > 2 ? parts[2] : req.params.tpaName;
-  if (!tpaName) {
-    return res.status(400).json({ error: 'TPA name missing in request' });
-  }
-
-  // Validate Authorization header.
-  const authHeader = req.headers.authorization;
-  if (!authHeader) {
-    return res.status(401).json({ error: 'Authorization header missing' });
-  }
-  const authParts = authHeader.split(' ');
-  if (authParts.length !== 2 || authParts[0] !== 'Bearer') {
-    return res.status(401).json({ error: 'Invalid Authorization header format' });
-  }
-  const coreToken = authParts[1];
-
-  try {
-    // Verify token.
-    const decoded = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
-    const userId = decoded.email;
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID missing in token' });
-    }
-
-    const updatedPayload = req.body;
-    if (!Array.isArray(updatedPayload)) {
-      return res.status(400).json({ error: 'Invalid update payload format' });
-    }
-
-    console.log('Payload:', JSON.stringify(updatedPayload));
-
-    // Find or create the user.
-    const user = await User.findOrCreateUser(userId);
-
-    // Update the settings for this TPA from scratch.
-    // We assume that the payload contains the complete set of settings (each with key and value).
-    await user.updateAppSettings(tpaName, updatedPayload);
-
-    console.log(`Updated settings for app "${tpaName}" for user ${userId}: ${JSON.stringify(updatedPayload)}`);
-
-    const matchingApp = Object.values(systemApps).find(app =>
-      app.packageName.endsWith(tpaName)
-    );
-
-    if (matchingApp) {
-      const appEndpoint = `http://localhost:${matchingApp.port}/settings`;
-      try {
-        // Add userIdForSettings to the payload that the captions app expects
-        const response = await axios.post(appEndpoint, {
-          userIdForSettings: userId,
-          settings: updatedPayload
-        });
-        console.log(`Called app endpoint at ${appEndpoint} with response:`, response.data);
-      } catch (err) {
-        console.error(`Error calling app endpoint at ${appEndpoint}:`, err);
-      }
-    }
-
-    return res.json({ success: true, message: 'Settings updated successfully' });
-  } catch (error) {
-    console.error('Error processing update for TPA settings:', error);
-    return res.status(401).json({ error: 'Invalid core token or error processing update' });
-  }
-});
-
-
-// GET endpoint for the TPA to easily fetch its own settings
+// GET /tpasettings/user/:tpaName
 router.get('/user/:tpaName', async (req, res) => {
-  console.log('Received request for user-specific TPA settings' + JSON.stringify(req.params));
+  logger.info('Received request for user-specific TPA settings' + JSON.stringify(req.params));
 
   // Extract userId from the Authorization header (assumes header is "Bearer <userId>")
   const authHeader = req.headers.authorization;
-  console.log('Received request for user-specific TPA settings' + JSON.stringify(authHeader));
+  logger.info('Received request for user-specific TPA settings' + JSON.stringify(authHeader));
 
   if (!authHeader) {
     return res.status(400).json({ error: 'User ID missing in Authorization header' });
   }
   const userId = authHeader.split(' ')[1]; // directly use the token as the userId
-  // const userId = 'loriamistadi75@gmail.com';
 
-  console.log('Received request for user-specific TPA settings 121223213' + JSON.stringify(userId));
-  const parts = req.params.tpaName.split('.');
-  const tpaName = parts.length > 2 ? parts[2] : req.params.tpaName;
+  logger.info('Received request for user-specific TPA settings 121223213' + JSON.stringify(userId));
+  // const parts = req.params.tpaName.split('.');
+  const tpaName = req.params.tpaName;
   try {
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
-    console.log('User found:', user);
-
-    // Retrieve stored settings for this TPA.
+    // Retrieve stored settings for this app.
     let storedSettings = user.getAppSettings(tpaName);
 
-    // console.log('Stored settings:', storedSettings);
+    console.log('storedSettings', storedSettings);
+
     if (!storedSettings) {
       // If settings are missing, load default settings from the TPA config file.
-      const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json'); // TODO: this should be an endpoint
+      const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json');
       let tpaConfig;
       try {
         const rawData = fs.readFileSync(configFilePath, 'utf8');
         tpaConfig = JSON.parse(rawData);
       } catch (err) {
-        console.error('Error reading TPA config file:', err);
+        logger.error('Error reading TPA config file:', err);
         return res.status(500).json({ error: 'Error reading TPA config file' });
       }
 
@@ -261,8 +180,94 @@ router.get('/user/:tpaName', async (req, res) => {
 
     return res.json({ success: true, settings: storedSettings });
   } catch (error) {
-    console.error('Error processing user-specific TPA settings request:', error);
+    logger.error('Error processing user-specific TPA settings request:', error);
     return res.status(401).json({ error: 'Error processing request' });
+  }
+});
+
+// POST /tpasettings/:tpaName
+// Receives an update payload containing all settings with new values and updates the database.
+// backend/src/routes/tpa-settings.ts
+router.post('/:tpaName', async (req, res) => {
+  // logger.info('Received update for TPA settings');
+
+  // Extract TPA name.
+  // const parts = req.params.tpaName.split('.');
+  const tpaName = req.params.tpaName;
+  // console.log('tpaName', tpaName);
+  if (!tpaName) {
+    return res.status(400).json({ error: 'TPA name missing in request' });
+  }
+
+  // Validate Authorization header.
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    // console.log('authHeader', authHeader);
+    return res.status(401).json({ error: 'Authorization header missing' });
+  }
+  const authParts = authHeader.split(' ');
+  if (authParts.length !== 2 || authParts[0] !== 'Bearer') {
+    // console.log('authParts', authParts);
+    return res.status(401).json({ error: 'Invalid Authorization header format' });
+  }
+  const coreToken = authParts[1];
+
+  try {
+    // Verify token.
+    const decoded = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
+    const userId = decoded.email;
+    if (!userId) {
+      // console.log('@@@@@ userId', userId);
+      return res.status(400).json({ error: 'User ID missing in token' });
+    }
+
+    const updatedPayload = req.body;
+    let settingsArray;
+    
+    // Handle both array and single object formats
+    if (Array.isArray(updatedPayload)) {
+      settingsArray = updatedPayload;
+    } else if (updatedPayload && typeof updatedPayload === 'object' && 'key' in updatedPayload && 'value' in updatedPayload) {
+      // If it's a single setting object, wrap it in an array
+      settingsArray = [updatedPayload];
+      logger.info(`Converted single setting object to array for key: ${updatedPayload.key}`);
+    } else {
+      // console.log('@@@@@ updatedPayload', updatedPayload);
+      return res.status(400).json({ error: 'Invalid update payload format. Expected an array of settings or a single setting object.' });
+    }
+
+    // Find or create the user.
+    const user = await User.findOrCreateUser(userId);
+
+    // console.log('@@@@@ user', user);
+    // Update the settings for this app from scratch.
+    // We assume that the payload contains the complete set of settings (each with key and value).
+    await user.updateAppSettings(tpaName, settingsArray);
+
+    logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
+
+    const matchingApp = Object.values(systemApps).find(app =>
+      app.packageName.endsWith(tpaName)
+    );
+
+    if (matchingApp) {
+      const appEndpoint = `http://${matchingApp.host}/settings`;
+      try {
+        // Add userIdForSettings to the payload that the captions app expects
+        const response = await axios.post(appEndpoint, {
+          userIdForSettings: userId,
+          settings: settingsArray
+        });
+        logger.info(`Called app endpoint at ${appEndpoint} with response:`, response.data);
+      } catch (err) {
+        logger.error(`Error calling app endpoint at ${appEndpoint}:`, err);
+      }
+    }
+
+    return res.json({ success: true, message: 'Settings updated successfully' });
+  } catch (error) {
+    logger.error('Error processing update for TPA settings:', error);
+    return res.status(401).json({ error: 'Invalid core token or error processing update' });
   }
 });
 
