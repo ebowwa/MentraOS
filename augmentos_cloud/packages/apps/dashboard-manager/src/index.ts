@@ -438,7 +438,7 @@ async function updateDashboard(sessionId?: string) {
         // Only show the cached battery level if it exists; otherwise, show "-%".
         return (typeof sessionInfo.batteryLevel === 'number')
           ? `${sessionInfo.batteryLevel}%`
-          : "$GBATT%";
+          : "$GBATT$";
       } 
     },
   ];
