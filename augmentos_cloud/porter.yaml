@@ -15,13 +15,12 @@ predeploy:
     bun install &&
     cd packages/utils && bun run build &&
     cd ../sdk && bun run build &&
-    cd ../config && bun run build &&
     cd ../agents && bun run build
 
 services:
   - name: cloud
     type: web
-    run: bash -c "bun install && cd packages/cloud && bun run build && bun run start"
+    run: "cd packages/cloud && bun run build && bun run start"
     port: 80
     cpuCores: 2.0
     ramMegabytes: 2048
