@@ -408,7 +408,7 @@ async function updateDashboard(sessionId?: string) {
       async run(sessionInfo: SessionInfo) {
         // Check if we have a valid timezone from location
         if (!sessionInfo.latestLocation?.timezone) {
-          return "◌ $no_datetime$"; // No timezone available
+          return "◌ $DATE$, $TIME12$"
         }
 
         const timezone = sessionInfo.latestLocation.timezone;
@@ -428,7 +428,7 @@ async function updateDashboard(sessionId?: string) {
           return `◌ ${formatted}`;
         } catch (error) {
           console.error(`[Session ${sessionInfo.userId}] Error formatting time with timezone ${timezone}:`, error);
-          return "◌ $no_datetime$"; // Error formatting time
+          return "◌ $DATE$, $TIME12$"
         }
       }
     },
@@ -438,7 +438,7 @@ async function updateDashboard(sessionId?: string) {
         // Only show the cached battery level if it exists; otherwise, show "-%".
         return (typeof sessionInfo.batteryLevel === 'number')
           ? `${sessionInfo.batteryLevel}%`
-          : "-%";
+          : "$GBATT%";
       } 
     },
   ];
