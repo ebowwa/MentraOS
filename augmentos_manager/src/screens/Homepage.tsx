@@ -5,7 +5,7 @@ import React, {
   useState,
   useEffect,
 } from 'react';
-import { View, StyleSheet, Animated, Text } from 'react-native';
+import { View, StyleSheet, Animated, Text, Platform } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -124,7 +124,9 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   // Check version once on mount
   useEffect(() => {
-    checkCloudVersion();
+    if (Platform.OS == 'android') {
+      checkCloudVersion();
+    }
   }, []);
 
   // Simple animated wrapper so we do not duplicate logic
