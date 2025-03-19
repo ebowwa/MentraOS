@@ -1,7 +1,9 @@
 // components/DashboardLayout.tsx
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
+import { useAuth } from '../hooks/useAuth';
+import api from '@/services/api.service';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -9,7 +11,47 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const currentPath = location.pathname;
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check if the user is an admin
+  useEffect(() => {
+    // Start with admin set to false - don't show admin panel by default
+    setIsAdmin(false);
+    
+    const checkAdminStatus = async () => {
+      try {
+        // First, check if we have a token
+        const authToken = localStorage.getItem('core_token');
+        if (!authToken) {
+          return;
+        }
+        
+        // Try to use API service
+        try {
+          const result = await api.admin.checkAdmin();
+          // Only set admin to true if the API explicitly confirms admin status
+          if (result && result.isAdmin === true) {
+            setIsAdmin(true);
+          }
+        } catch (apiError) {
+          // not an admin
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+    
+    checkAdminStatus();
+  }, []);
+  
+  // Handle sign out with navigation
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/signin');
+  };
 
   // Helper to check if a path is active (for styling)
   const isActivePath = (path: string): boolean => {
@@ -40,7 +82,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
                 Documentation
               </Button>
             </Link>
-            <Button variant="ghost" size="sm">Sign Out</Button>
+            <Button variant="ghost" size="sm" onClick={handleSignOut}>Sign Out</Button>
           </div>
         </div>
       </header>
@@ -72,8 +114,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
-              My TPAs
+              My Apps
             </Link>
+            <Link
+              to="/profile"
+              className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/profile')
+                ? 'bg-gray-200 text-gray-900'
+                : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Developer Profile
+            </Link>
+            
             <Link
               to="https://www.npmjs.com/package/@augmentos/sdk"
               className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/docs')
@@ -86,6 +141,21 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               </svg>
               Documentation
             </Link>
+
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className={`flex items-center px-3 py-2 text-sm font-medium rounded-md ${isActivePath('/admin')
+                  ? 'bg-gray-200 text-gray-900'
+                  : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+                  }`}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                </svg>
+                Admin Panel
+              </Link>
+            )}
           </nav>
         </aside>
 

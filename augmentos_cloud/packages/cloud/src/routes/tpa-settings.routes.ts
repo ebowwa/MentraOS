@@ -82,7 +82,7 @@ router.get('/:tpaName', async (req, res) => {
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
-    // Retrieve stored settings for this TPA.
+    // Retrieve stored settings for this app.
     let storedSettings = user.getAppSettings(tpaName);
     if (!storedSettings) {
       // Build default settings from config (ignoring groups)
@@ -146,7 +146,7 @@ router.get('/user/:tpaName', async (req, res) => {
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
-    // Retrieve stored settings for this TPA.
+    // Retrieve stored settings for this app.
     let storedSettings = user.getAppSettings(tpaName);
 
     console.log('storedSettings', storedSettings);
@@ -240,7 +240,7 @@ router.post('/:tpaName', async (req, res) => {
     const user = await User.findOrCreateUser(userId);
 
     // console.log('@@@@@ user', user);
-    // Update the settings for this TPA from scratch.
+    // Update the settings for this app from scratch.
     // We assume that the payload contains the complete set of settings (each with key and value).
     await user.updateAppSettings(tpaName, settingsArray);
 

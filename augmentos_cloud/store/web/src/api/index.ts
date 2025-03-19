@@ -6,10 +6,8 @@ import axios from "axios";
 axios.defaults.withCredentials = true;
 
 // Get appropriate base URL based on endpoint type
-const getBaseUrl = (useCloud: boolean = false): string => {
-  return useCloud 
-    ? (import.meta.env.VITE_CLOUD_API_URL || "http://localhost:8002")
-    : (import.meta.env.VITE_API_URL || "http://localhost:8042");
+const getBaseUrl = (): string => {
+  return import.meta.env.VITE_CLOUD_API_URL || "http://localhost:8002";
 };
 
 // Response interfaces
@@ -19,11 +17,16 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+// Token exchange response
+export interface TokenExchangeResponse {
+  coreToken: string;
+}
+
 // User interface
 export interface User {
   id: string;
   email: string;
-  createdAt: string;
+  createdAt?: string;
 }
 
 // App service functions
@@ -96,10 +99,10 @@ const appService = {
    * Install an app (auth required)
    * Uses cloud backend
    */
-  installApp: async (packageName: string, email: string): Promise<boolean> => {
+  installApp: async (packageName: string): Promise<boolean> => {
     try {
       const response = await axios.post<ApiResponse<null>>(
-        `${getBaseUrl(true)}/api/apps/install/${packageName}/${email}`
+        `${getBaseUrl()}/api/apps/install/${packageName}`
       );
       return response.data.success;
     } catch (error) {
@@ -112,10 +115,10 @@ const appService = {
    * Uninstall an app (auth required)
    * Uses cloud backend
    */
-  uninstallApp: async (packageName: string, email: string): Promise<boolean> => {
+  uninstallApp: async (packageName: string): Promise<boolean> => {
     try {
       const response = await axios.post<ApiResponse<null>>(
-        `${getBaseUrl(true)}/api/apps/uninstall/${packageName}/${email}`
+        `${getBaseUrl()}/api/apps/uninstall/${packageName}`
       );
       return response.data.success;
     } catch (error) {
@@ -128,11 +131,10 @@ const appService = {
    * Start an app (auth required)
    * Uses cloud backend
    */
-  startApp: async (packageName: string, sessionId: string): Promise<boolean> => {
+  startApp: async (packageName: string): Promise<boolean> => {
     try {
       const response = await axios.post<ApiResponse<null>>(
-        `${getBaseUrl(true)}/api/apps/${packageName}/start`,
-        { sessionId }
+        `${getBaseUrl()}/api/apps/${packageName}/start`,
       );
       return response.data.success;
     } catch (error) {
@@ -145,11 +147,10 @@ const appService = {
    * Stop an app (auth required)
    * Uses cloud backend
    */
-  stopApp: async (packageName: string, sessionId: string): Promise<boolean> => {
+  stopApp: async (packageName: string): Promise<boolean> => {
     try {
       const response = await axios.post<ApiResponse<null>>(
-        `${getBaseUrl(true)}/api/apps/${packageName}/stop`,
-        { sessionId }
+        `${getBaseUrl()}/api/apps/${packageName}/stop`,
       );
       return response.data.success;
     } catch (error) {
@@ -194,6 +195,35 @@ const userService = {
   }
 };
 
+// Auth service functions
+const authService = {
+  /**
+   * Exchange a Supabase token for a Core token
+   * @param supabaseToken The Supabase JWT token
+   * @returns Promise with the Core token
+   */
+  exchangeToken: async (supabaseToken: string): Promise<string> => {
+    try {
+      const response = await axios.post<TokenExchangeResponse>(
+        `${getBaseUrl()}/api/auth/exchange-token`,
+        { supabaseToken },
+        {
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      
+      if (response.status === 200 && response.data.coreToken) {
+        return response.data.coreToken;
+      } else {
+        throw new Error(`Failed to exchange token: ${response.statusText}`);
+      }
+    } catch (error) {
+      console.error("Error exchanging token:", error);
+      throw error;
+    }
+  }
+};
+
 // Set up auth token interceptor
 export const setAuthToken = (token: string | null) => {
   if (token) {
@@ -207,5 +237,6 @@ export const setAuthToken = (token: string | null) => {
 export default {
   app: appService,
   user: userService,
+  auth: authService,
   setAuthToken
 };

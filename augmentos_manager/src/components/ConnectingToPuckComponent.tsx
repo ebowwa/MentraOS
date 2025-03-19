@@ -1,5 +1,12 @@
-import React ,{useEffect}from 'react';
-import {View, Text, ActivityIndicator, StyleSheet, Platform} from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import {
+  View, 
+  Text, 
+  ActivityIndicator, 
+  StyleSheet, 
+  Platform, 
+  TouchableOpacity
+} from 'react-native';
 import {useStatus} from "../providers/AugmentOSStatusProvider.tsx";
 import {useNavigation} from "@react-navigation/native";
 import {NavigationProps} from "./types.ts";
@@ -7,7 +14,8 @@ import { useAuth } from '../AuthContext';
 import BluetoothService from '../BluetoothService';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import Config from 'react-native-config';
-
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Button from './Button';
 
 interface ConnectingToPuckComponentProps {
   isDarkTheme?: boolean;
@@ -15,86 +23,236 @@ interface ConnectingToPuckComponentProps {
 }
 
 const ConnectingToPuckComponent = ({
-  isDarkTheme,
+  isDarkTheme = false,
   toggleTheme,
 }: ConnectingToPuckComponentProps) => {
   const { status } = useStatus();
   const navigation = useNavigation<NavigationProps>();
   const bluetoothService = BluetoothService.getInstance();
-  const { user, session, loading } = useAuth();
+  const { user, session, loading: authLoading } = useAuth();
+  const [connectionError, setConnectionError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('Connection to AugmentOS failed. Please check your connection and try again.');
+  const hasAttemptedConnection = useRef(false);
   
+  const handleTokenExchange = async () => {
+    if (isLoading) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const supabaseToken = session?.access_token;
+      if (!supabaseToken) {
+        setErrorMessage('Unable to authenticate. Please sign in again.');
+        setIsLoading(false);
+        return;
+      }
+      
+      // Exchange token with backend
+      const backend = BackendServerComms.getInstance();
+      const coreToken = await backend.exchangeToken(supabaseToken)
+        .catch(err => {
+          // Hide console.error output
+          // Log only if needed for debugging
+          // console.error('Token exchange failed:', err);
+          throw err;
+        });
+      
+      let uid = user.email || user.id;
+      bluetoothService.setAuthenticationSecretKey(uid, coreToken);
+      BackendServerComms.getInstance().setCoreToken(coreToken);
+      
+      // Navigate to Home on success
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    } catch (err) {
+      // Don't log the error to console
+      setErrorMessage('Connection to AugmentOS failed. Please check your connection and try again.');
+      setConnectionError(true);
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
+    // Don't show the error UI for initial load attempts and avoid repeating failed attempts
+    if (connectionError || hasAttemptedConnection.current) return;
+    
     // We only proceed once the core is connected, the user is loaded, etc.
-    if ((status.core_info.puck_connected || true) && !loading && user) {
+    if (status.core_info.puck_connected && !authLoading && user) {
+      // Track that we've attempted a connection
+      hasAttemptedConnection.current = true;
+      
       // 1) Get the Supabase token from your AuthContext
       const supabaseToken = session?.access_token;
       if (!supabaseToken) {
         console.log('No Supabase token found');
+        setErrorMessage('Unable to authenticate. Please sign in again.');
+        setConnectionError(true);
         return;
       }
       
       // 2) Check if we need to do the exchange
       if (!status.auth.core_token_owner || status.auth.core_token_owner !== user.email) {
         console.log("OWNER IS NULL CALLING VERIFY (TOKEN EXCHANGE)");
-
-        // 3) Exchange token with your backend
-        const backend = BackendServerComms.getInstance();
-        backend.exchangeToken(supabaseToken)
-          .then((coreToken) => {
-            let uid = user.email || user.id;
-            bluetoothService.setAuthenticationSecretKey(uid, coreToken);
-            BackendServerComms.getInstance().setCoreToken(coreToken);  
-              // // Token is now managed by BackendServerComms, navigate to Home
-              // navigation.reset({
-              //   index: 0,
-              //   routes: [{ name: 'Home' }],
-              // });
-
-            // const appStoreUrl: string = Config.AUGMENTOS_APPSTORE_URL || "";
-            // console.log("OUR APP STORE URL: ", appStoreUrl);
-            // CookieManager.set(appStoreUrl, {
-            //   name: 'coreToken',
-            //   value: coreToken,
-            //   domain: `.${Config.AUGMENTOS_DOMAIN || ""}`,  // Note the leading dot to include all subdomains
-            //   path: '/',
-            //   version: '1',
-            //   expires: new Date(Date.now() + (9999 * 24 * 60 * 60 * 1000)).toISOString() // 9999 days from now
-            // }, Platform.OS === 'ios' ? true : undefined);
-          })
-          .catch((err) => {
-            console.error('Token exchange failed:', err);
-            // handle error
-          });
+        
+        // Don't try automatic retry if we're already loading or had an error
+        if (!isLoading) {
+          handleTokenExchange();
+        }
       } else {
+        // If we already have a token, go straight to Home
         BackendServerComms.getInstance().setCoreToken(status.core_info.core_token);
-        // If we already have a token or the owner is set, go straight to Home
         navigation.reset({
           index: 0,
           routes: [{ name: 'Home' }],
         });
       }
     }
-  }, [status, loading, user]);
+  }, [status.core_info.puck_connected, authLoading, user]);
 
+  // Loading screen
+  if (!connectionError) {
+    return (
+      <View 
+        style={[
+          styles.container,
+          styles.loadingContainer,
+          isDarkTheme ? styles.darkBackground : styles.lightBackground
+        ]}
+      >
+        <ActivityIndicator 
+          size="large" 
+          color={isDarkTheme ? '#FFFFFF' : '#2196F3'}
+        />
+        <Text 
+          style={[
+            styles.loadingText,
+            isDarkTheme ? styles.lightText : styles.darkText
+          ]}
+        >
+          Connecting to AugmentOS...
+        </Text>
+      </View>
+    );
+  }
+
+  // Error screen (similar to VersionUpdateScreen)
   return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#0000ff" />
-      <Text style={styles.loadingText}>Loading AugmentOS...</Text>
+    <View
+      style={[
+        styles.container,
+        isDarkTheme ? styles.darkBackground : styles.lightBackground,
+      ]}
+    >
+      <View style={styles.mainContainer}>
+        <View style={styles.infoContainer}>
+          <View style={styles.iconContainer}>
+            <Icon
+              name="wifi-off"
+              size={80}
+              color={isDarkTheme ? '#ff6b6b' : '#ff0000'}
+            />
+          </View>
+
+          <Text
+            style={[
+              styles.title,
+              isDarkTheme ? styles.lightText : styles.darkText,
+            ]}
+          >
+            Connection Error
+          </Text>
+
+          <Text
+            style={[
+              styles.description,
+              isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+            ]}
+          >
+            {errorMessage}
+          </Text>
+        </View>
+
+        <View style={styles.setupContainer}>
+          <Button
+            onPress={handleTokenExchange}
+            isDarkTheme={isDarkTheme}
+            disabled={isLoading}
+            iconName="reload"
+          >
+            {isLoading ? "Connecting..." : "Retry Connection"}
+          </Button>
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1
+  },
   loadingContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 10,
+    marginTop: 16,
     fontSize: 16,
-    color: '#000',
+  },
+  mainContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    padding: 24,
+  },
+  infoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  iconContainer: {
+    marginBottom: 32,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    fontFamily: 'Montserrat-Bold',
+    textAlign: 'center',
+    marginBottom: 28,
+  },
+  description: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 24,
+    paddingHorizontal: 24,
+  },
+  setupContainer: {
+    width: '100%',
+    alignItems: 'center',
+    paddingBottom: 40,
+  },
+  darkBackground: {
+    backgroundColor: '#1c1c1c',
+  },
+  lightBackground: {
+    backgroundColor: '#f8f9fa',
+  },
+  darkText: {
+    color: '#1a1a1a',
+  },
+  lightText: {
+    color: '#FFFFFF',
+  },
+  darkSubtext: {
+    color: '#4a4a4a',
+  },
+  lightSubtext: {
+    color: '#e0e0e0',
   },
 });
 

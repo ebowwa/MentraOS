@@ -15,7 +15,7 @@ import {
   createTranslationStream,    // New helper for language-specific translation streams
   ExtendedStreamType
 } from '@augmentos/sdk';
-import { TranscriptProcessor, languageToLocale } from '@augmentos/utils';
+import { TranscriptProcessor, convertLineWidth, languageToLocale } from '@augmentos/utils';
 import { systemApps } from '@augmentos/config';
 
 // const PORT = systemApps.liveTranslation.port;
@@ -49,35 +49,6 @@ app.use(express.static(path.join(__dirname, './public')));
 
 // Track active sessions (WebSocket connections)
 const activeSessions = new Map<string, WebSocket>();
-
-/**
- * Converts a line-width descriptor (or number) to a numeric value.
- */
-function convertLineWidth(width: string | number, isHanzi: boolean = false): number {
-  if (typeof width === 'number') return width;
-
-  console.log('Line width:', isHanzi);
-
-  if (!isHanzi) {
-  switch (width.toLowerCase()) {
-      case 'very narrow': return 21;
-      case 'narrow': return 30;
-      case 'medium': return 38;
-      case 'wide': return 44;
-      case 'very wide': return 52;
-      default: return 45;
-    }
-  } else {
-    switch (width.toLowerCase()) {
-      case 'very narrow': return 7;
-      case 'narrow': return 10;
-      case 'medium': return 14;
-      case 'wide': return 18;
-      case 'very wide': return 21;
-      default: return 14;
-    }
-  }
-}
 
 /**
  * Fetches TPA settings for the user and applies them.

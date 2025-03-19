@@ -140,7 +140,7 @@ const AppStore: React.FC = () => {
     try {
       setInstallingApp(packageName);
 
-      const success = await api.app.installApp(packageName, user?.email || '');
+      const success = await api.app.installApp(packageName);
 
       if (success) {
         toast.success('App installed successfully');
@@ -165,35 +165,8 @@ const AppStore: React.FC = () => {
   };
 
   // Handle app uninstallation
-  const handleUninstall = async (packageName: string) => {
-    if (!isAuthenticated) return;
-
-    try {
-      setInstallingApp(packageName);
-
-      const success = await api.app.uninstallApp(packageName, user?.email || '');
-
-      if (success) {
-        toast.success('App uninstalled successfully');
-
-        // Update the app in the list to show as not installed
-        setApps(prevApps =>
-          prevApps.map(app =>
-            app.packageName === packageName
-              ? { ...app, isInstalled: false, installedDate: undefined }
-              : app
-          )
-        );
-      } else {
-        toast.error('Failed to uninstall app');
-      }
-    } catch (err) {
-      console.error('Error uninstalling app:', err);
-      toast.error('Failed to uninstall app');
-    } finally {
-      setInstallingApp(null);
-    }
-  };
+  // Note: We've removed uninstall functionality from the main app page
+  // This functionality should be available on the app details page instead
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -291,42 +264,11 @@ const AppStore: React.FC = () => {
                     {app.description || 'No description available.'}
                   </p>
                   <div className="mt-4">
-                    {isAuthenticated ? (
-                      app.isInstalled ? (
-                        <Button
-                          className="w-full"
-                          onClick={() => handleUninstall(app.packageName)}
-                          disabled={installingApp === app.packageName}
-                        >
-                          {installingApp === app.packageName ? (
-                            <div className="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full mr-2"></div>
-                          ) : null}
-                          Uninstall
-                        </Button>
-                      ) : (
-                        <Button
-                          className="w-full"
-                          variant={"outline"}
-                          onClick={() => handleInstall(app.packageName)}
-                          disabled={installingApp === app.packageName}
-                        >
-                          {installingApp === app.packageName ? (
-                            <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                          ) : (
-                            <Download className="h-4 w-4 mr-1" />
-                          )}
-                          Install
-                        </Button>
-                      )
-                    ) : (
-                      <button
-                        className="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-500 bg-gray-100 cursor-not-allowed"
-                        onClick={() => navigate('/login')}
-                      >
-                        <Lock className="h-4 w-4 mr-1" />
-                        Sign in to install
-                      </button>
-                    )}
+                    {isAuthenticated && app.isInstalled ? (
+                      <div className="text-center text-sm text-gray-500 py-2">
+                        ✓ Installed
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               </div>
