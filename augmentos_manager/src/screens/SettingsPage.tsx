@@ -57,8 +57,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled
   );
-  const [isAlwaysOnTimeAndBatteryEnabled, setIsAlwaysOnTimeAndBatteryEnabled] = useState(
-    status.core_info.always_on_time_and_battery_enabled
+  const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
+    status.core_info.always_on_status_bar_enabled
   );
   const [brightness, setBrightness] = useState<number|null>(null);
 
@@ -79,10 +79,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setForceCoreOnboardMic(newVal);
   };
 
-  const toggleAlwaysOnTimeAndBattery = async () => {
-    const newVal = !isAlwaysOnTimeAndBatteryEnabled;
-    await BluetoothService.getInstance().sendToggleAlwaysOnTimeAndBattery(newVal);
-    setIsAlwaysOnTimeAndBatteryEnabled(newVal);
+  const toggleAlwaysOnStatusBar = async () => {
+    const newVal = !isAlwaysOnStatusBarEnabled;
+    await BluetoothService.getInstance().sendToggleAlwaysOnStatusBar(newVal);
+    setIsAlwaysOnStatusBarEnabled(newVal);
   };
 
   const toggleContextualDashboard = async () => {
@@ -337,7 +337,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 isDarkTheme ? styles.lightText : styles.darkText,
               ]}
             >
-              Always on time, date and battery
+              Always On Status Bar
             </Text>
             <Text
               style={[
@@ -349,8 +349,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </Text>
           </View>
           <Switch
-            value={isAlwaysOnTimeAndBatteryEnabled}
-            onValueChange={toggleAlwaysOnTimeAndBattery}
+            value={isAlwaysOnStatusBarEnabled}
+            onValueChange={toggleAlwaysOnStatusBar}
             trackColor={switchColors.trackColor}
             thumbColor={switchColors.thumbColor}
             ios_backgroundColor={switchColors.ios_backgroundColor}

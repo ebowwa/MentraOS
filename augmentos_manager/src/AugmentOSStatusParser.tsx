@@ -49,7 +49,7 @@ export interface CoreInfo {
   sensing_enabled: boolean;
   force_core_onboard_mic: boolean;
   contextual_dashboard_enabled: boolean;
-  always_on_time_and_battery_enabled: boolean;
+  always_on_status_bar_enabled: boolean;
 }
 
 export interface AugmentOSMainStatus {
@@ -74,7 +74,7 @@ export class AugmentOSParser {
       force_core_onboard_mic: false,
       contextual_dashboard_enabled: false,
       default_wearable: null,
-      always_on_time_and_battery_enabled: false,
+      always_on_status_bar_enabled: false,
     },
     glasses_info: null,
     wifi: { is_connected: false, ssid: '', signal_strength: 0 },
@@ -99,7 +99,7 @@ export class AugmentOSParser {
       force_core_onboard_mic: false,
       contextual_dashboard_enabled: true,
       default_wearable: 'evenrealities_g1',
-      always_on_time_and_battery_enabled: false,
+      always_on_status_bar_enabled: false,
     },
     glasses_info: {
       model_name: 'Even Realities G1',
@@ -224,7 +224,7 @@ export class AugmentOSParser {
           force_core_onboard_mic: status.core_info.force_core_onboard_mic ?? false,
           contextual_dashboard_enabled: status.core_info.contextual_dashboard_enabled ?? true,
           default_wearable: status.core_info.default_wearable ?? null,
-          always_on_time_and_battery_enabled: status.core_info.always_on_time_and_battery_enabled ?? false,
+          always_on_status_bar_enabled: status.core_info.always_on_status_bar_enabled ?? false,
         },
         glasses_info: status.connected_glasses
           ? {

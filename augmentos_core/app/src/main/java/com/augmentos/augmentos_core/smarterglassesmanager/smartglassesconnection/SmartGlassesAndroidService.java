@@ -651,7 +651,7 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
     }
 
 
-    public void sendHomeScreen(){
+    public void sendHomeScreen() {
         EventBus.getDefault().post(new HomeScreenEvent());
     }
 

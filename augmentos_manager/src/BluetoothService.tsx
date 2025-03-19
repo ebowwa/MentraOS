@@ -910,10 +910,10 @@ export class BluetoothService extends EventEmitter {
     });
   }
 
-  async sendToggleAlwaysOnTimeAndBattery(enabled: boolean) {
-    console.log('sendToggleAlwaysOnTimeAndBattery');
+  async sendToggleAlwaysOnStatusBar(enabled: boolean) {
+    console.log('sendToggleAlwaysOnStatusBar');
     return await this.sendDataToAugmentOs({
-      command: 'enable_always_on_time_and_battery',
+      command: 'enable_always_on_status_bar',
       params: {
         enabled: enabled,
       },

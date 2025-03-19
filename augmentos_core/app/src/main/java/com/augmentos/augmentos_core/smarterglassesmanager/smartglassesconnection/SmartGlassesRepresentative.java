@@ -286,15 +286,25 @@ class SmartGlassesRepresentative {
         }, delayTime);
     }
 
-    public void homeScreen(){
+    public void homeScreen() {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.showHomeScreen();
         }
     }
 
+    public void homeScreen(String homeScreenText) {
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.showHomeScreen(homeScreenText);
+        }
+    }
+
     @Subscribe
-    public void onHomeScreenEvent(HomeScreenEvent receivedEvent){
-        homeScreen();
+    public void onHomeScreenEvent(HomeScreenEvent receivedEvent) {
+        if (receivedEvent.homeScreenText.isEmpty()) {
+            homeScreen();
+        } else {
+            homeScreen(receivedEvent.homeScreenText);
+        }
     }
 
     @Subscribe

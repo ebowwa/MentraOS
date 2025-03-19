@@ -714,7 +714,7 @@ public class AndroidSGC extends SmartGlassesCommunicator {
         }
     }
 
-    public void showHomeScreen(){
+    public void showHomeScreen() {
         try{
             //build json object to send command result
             JSONObject commandResponseObject = new JSONObject();
@@ -727,6 +727,8 @@ public class AndroidSGC extends SmartGlassesCommunicator {
             e.printStackTrace();
         }
     }
+
+    public void showHomeScreen(String homeScreenText) {}
 
     public void displayPromptView(String prompt, String [] options){
         //generate args list
