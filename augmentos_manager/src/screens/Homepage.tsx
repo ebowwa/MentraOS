@@ -58,12 +58,12 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
     try {
       // Check if version checks are being ignored this session
-      // const ignoreCheck = await loadSetting('ignoreVersionCheck', false);
-      // if (ignoreCheck) {
-      //   console.log('Version check skipped due to user preference');
-      //   setIsCheckingVersion(false);
-      //   return;
-      // }
+      const ignoreCheck = await loadSetting('ignoreVersionCheck', false);
+      if (ignoreCheck) {
+        console.log('Version check skipped due to user preference');
+        setIsCheckingVersion(false);
+        return;
+      }
 
       const backendComms = BackendServerComms.getInstance();
       const localVer = getLocalVersion();
