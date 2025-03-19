@@ -55,7 +55,7 @@ import {
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../logging/posthog.service';
-import { systemApps } from '@augmentos/config';
+import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
 

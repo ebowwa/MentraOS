@@ -9,7 +9,7 @@
 
 import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
-import { systemApps } from '@augmentos/config';
+import { systemApps } from './system-apps';
 import App from '../../models/app.model';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';

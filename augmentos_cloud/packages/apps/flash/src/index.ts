@@ -1,10 +1,9 @@
 import path from 'path';
 import { TpaServer, TpaSession } from '@augmentos/sdk';
-import { systemApps } from '@augmentos/config';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const CLOUD_URL = process.env.CLOUD_URL || "localhost:8002";
-const PACKAGE_NAME = systemApps.flash.packageName;
+const PACKAGE_NAME = "org.augmentos.flash";
 const API_KEY = 'test_key'; // In production, this would be securely stored
 
 class FlashServer extends TpaServer {

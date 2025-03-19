@@ -18,13 +18,12 @@ import {
 import tzlookup from 'tz-lookup';
 import { NewsAgent } from '@augmentos/agents';
 import { NotificationFilterAgent } from '@augmentos/agents'; // <-- added import
-import { systemApps } from '@augmentos/config';
 import { WeatherModule } from './dashboard-modules/WeatherModule';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002";
-const PACKAGE_NAME = systemApps.dashboard.packageName;
+const PACKAGE_NAME = "com.augmentos.dashboard";
 const API_KEY = 'test_key'; // In production, store securely
 
 // For demonstration, we'll keep session-based info in-memory.

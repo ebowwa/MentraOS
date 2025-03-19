@@ -16,13 +16,12 @@ import {
   ExtendedStreamType
 } from '@augmentos/sdk';
 import { TranscriptProcessor, convertLineWidth, languageToLocale } from '@augmentos/utils';
-import { systemApps } from '@augmentos/config';
 
 // const PORT = systemApps.liveTranslation.port;
 const app = express();
 const PORT =  process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002"; 
-const PACKAGE_NAME = systemApps.liveTranslation.packageName;
+const PACKAGE_NAME = "com.augmentos.live-translation";
 const API_KEY = 'test_key'; // In production, store this securely
 const MAX_FINAL_TRANSCRIPTS = 3; // Hardcoded to 3 final transcripts
 

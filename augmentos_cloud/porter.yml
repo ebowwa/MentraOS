@@ -1,0 +1,86 @@
+version: v2
+name: augmentos-cloud-app
+# Define the Kubernetes namespace here (or override via CLI when deploying, e.g., -n myapp-prod)
+namespace: prod
+
+build:
+  method: docker
+  context: ./
+  dockerfile: Dockerfile
+
+# Predeploy runs before the services start. We run the shared packages build here.
+predeploy:
+  run: |
+    echo "Building shared packages..."
+    bun install &&
+    cd packages/utils && bun run build &&
+    cd ../sdk && bun run build &&
+    cd ../config && bun run build &&
+    cd ../agents && bun run build
+
+services:
+  - name: cloud
+    type: web
+    run: bash -c "bun install && cd packages/cloud && bun run build && bun run start"
+    port: 80
+    cpuCores: 2.0
+    ramMegabytes: 2048
+    env:
+      NODE_ENV: "production"
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "cloud"
+
+  - name: live-captions
+    type: web
+    run: bash -c "bun install && cd packages/apps/livecaptions && bun run build && bun run start"
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: "production"
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "live-captions"
+
+  - name: dashboard-manager
+    type: web
+    run: bash -c "bun install && cd packages/apps/dashboard-manager && bun run build && bun run start"
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: "production"
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "dashboard-manager"
+
+  - name: notify
+    type: web
+    run: bash -c "bun install && cd packages/apps/notify && bun run build && bun run start"
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: "production"
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "notify"
+
+  - name: mira
+    type: web
+    run: bash -c "bun install && cd packages/apps/miraai && bun run build && bun run start"
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: "production"
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "mira"
+
+  - name: live-translation
+    type: web
+    run: bash -c "bun install && cd packages/apps/livetranslation && bun run build && bun run start"
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: "production"
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "live-translation"

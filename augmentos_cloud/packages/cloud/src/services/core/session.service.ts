@@ -12,7 +12,7 @@ import { LC3Service, createLoggerForUserSession, logger } from '@augmentos/utils
 import { ASRStreamInstance } from '../processing/transcription.service';
 import { subscriptionService } from './subscription.service';
 import { AudioWriter } from "../debug/audio-writer";
-import { systemApps } from '@augmentos/config';
+import { systemApps } from './system-apps';
 
 const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds
 const LOG_AUDIO = false;

@@ -13,7 +13,6 @@ import {
   LayoutType,
 } from '@augmentos/sdk';
 
-import { systemApps } from '@augmentos/config';
 import { MiraAgent } from '@augmentos/agents';
 import { wrapText } from '@augmentos/utils';
 
@@ -23,7 +22,7 @@ import { wrapText } from '@augmentos/utils';
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002"; 
-const PACKAGE_NAME = systemApps.mira.packageName;
+const PACKAGE_NAME = "com.augmentos.miraai";
 const API_KEY = 'test_key'; // In production, secure this key
 
 const explicitWakeWords = [
