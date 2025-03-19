@@ -20,7 +20,7 @@ predeploy:
 services:
   - name: cloud
     type: web
-    run: "cd packages/cloud && bun run build && bun run start"
+    run: bash -c "bun install && cd packages/cloud && bun run build && bun run start"
     port: 80
     cpuCores: 2.0
     ramMegabytes: 2048
