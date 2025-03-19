@@ -311,24 +311,24 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
                   : 'Update AugmentOS'}
             </Button>
 
-            {/*<View style={styles.skipButtonContainer}>*/}
-            {/*  <Button*/}
-            {/*    onPress={() => {*/}
-            {/*      // Save setting to ignore version checks until next app restart*/}
-            {/*      saveSetting('ignoreVersionCheck', true);*/}
-            {/*      console.log('Version check skipped until next app restart');*/}
-            {/*      // Skip directly to Home screen*/}
-            {/*      navigation.reset({*/}
-            {/*        index: 0,*/}
-            {/*        routes: [{ name: 'Home' }],*/}
-            {/*      });*/}
-            {/*    }}*/}
-            {/*    isDarkTheme={isDarkTheme}*/}
-            {/*    iconName="skip-next"*/}
-            {/*    disabled={false}>*/}
-            {/*    Skip Update*/}
-            {/*  </Button>*/}
-            {/*</View>*/}
+            <View style={styles.skipButtonContainer}>
+             <Button
+               onPress={() => {
+                 // Save setting to ignore version checks until next app restart
+                 saveSetting('ignoreVersionCheck', true);
+                 console.log('Version check skipped until next app restart');
+                 // Skip directly to Home screen
+                 navigation.reset({
+                   index: 0,
+                   routes: [{ name: 'Home' }],
+                 });
+               }}
+               isDarkTheme={isDarkTheme}
+               iconName="skip-next"
+               disabled={false}>
+               Skip Update
+             </Button>
+            </View>
           </View>
         )}
       </View>
