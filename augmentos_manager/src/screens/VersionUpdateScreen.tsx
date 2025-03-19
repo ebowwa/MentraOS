@@ -17,6 +17,7 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Button from '../components/Button';
 import InstallApkModule from '../bridge/InstallApkModule.tsx';
 import { saveSetting } from '../logic/SettingsHelper';
+import { Linking } from 'react-native';
 
 interface VersionUpdateScreenProps {
   route: {
@@ -47,12 +48,6 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
       const onBackPress = () => {
         // If there's a version mismatch or connection error, block navigation
         if (isVersionMismatch || connectionError) {
-          // Show a message to the user
-          Alert.alert(
-            "Update Required",
-            "You must update AugmentOS to continue. This action cannot be skipped.",
-            [{ text: "OK", onPress: () => {} }]
-          );
           return true; // Prevents default back button behavior
         }
         return false; // Let the default back button behavior happen
@@ -64,61 +59,6 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
       return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
     }, [isVersionMismatch, connectionError])
   );
-
-  // Prevent navigation via React Navigation
-  useEffect(() => {
-    // Intercept navigation attempts
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      // Only prevent navigation if there's a version mismatch or connection error
-      if ((isVersionMismatch || connectionError) && e.data.action.type !== 'GO_BACK') {
-        // Prevent default navigation behavior
-        e.preventDefault();
-
-        // Show message to user
-        Alert.alert(
-          "Update Required",
-          "You must update AugmentOS to continue. This action cannot be skipped.",
-          [{ text: "OK", onPress: () => {} }]
-        );
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, isVersionMismatch, connectionError]);
-
-  // Disable the navigation state reset that allows skipping to Home
-  useEffect(() => {
-    // Reset the navigation state manipulation option that was previously commented out
-    const resetToHome = () => {
-      // This has been disabled to prevent users from bypassing the update screen
-      console.log('Navigation to Home has been disabled until update is complete');
-      return false;
-    };
-
-    // Replace any navigation methods that might be used to bypass
-    const originalDispatch = navigation.dispatch;
-    navigation.dispatch = (action) => {
-      // Block reset actions that might be used to bypass this screen
-      if (action.type === 'RESET' || (typeof action === 'object' && action.type === CommonActions.RESET)) {
-        if (isVersionMismatch || connectionError) {
-          Alert.alert(
-            "Update Required",
-            "You must update AugmentOS to continue. This action cannot be skipped.",
-            [{ text: "OK", onPress: () => {} }]
-          );
-          return;
-        }
-      }
-
-      // Allow the action for non-restricted cases
-      originalDispatch(action);
-    };
-
-    return () => {
-      // Restore original dispatch when component unmounts
-      navigation.dispatch = originalDispatch;
-    };
-  }, [navigation, isVersionMismatch, connectionError]);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -186,23 +126,35 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
 
   // Start the update process
   const handleUpdate = () => {
-    setIsUpdating(true);
-    InstallApkModule.downloadCoreApk()
-      .then(() => {
-        // If the update is successful, we can allow navigation
-        // This would happen after the app restarts with the new version
-      })
-      .catch((error) => {
-        console.error('Error downloading update:', error);
-        Alert.alert(
-          "Update Failed",
-          "There was a problem downloading the update. Please try again.",
-          [{ text: "OK", onPress: () => {} }]
-        );
-      })
-      .finally(() => {
-        setIsUpdating(false);
-      });
+    // OLD LOGIC
+    // setIsUpdating(true);
+    // InstallApkModule.downloadCoreApk()
+    //   .then(() => {
+    //     // If the update is successful, we can allow navigation
+    //     // This would happen after the app restarts with the new version
+    //   })
+    //   .catch((error) => {
+    //     console.error('Error downloading update:', error);
+    //     Alert.alert(
+    //       "Update Failed",
+    //       "There was a problem downloading the update. Please try again.",
+    //       [{ text: "OK", onPress: () => {} }]
+    //     );
+    //   })
+    //   .finally(() => {
+    //     setIsUpdating(false);
+    //   });
+
+    // Just send them to latest augmentos.org
+    Linking.openURL('https://augmentos.org/install')
+    .catch((error) => {
+      console.error('Error opening installation website:', error);
+      Alert.alert(
+        "Browser Error",
+        "Could not open the installation website. Please visit https://augmentos.org/install manually.",
+        [{ text: "OK", onPress: () => {} }]
+      );
+    });
   };
 
   // Only check cloud version on mount if we don't have initial data
@@ -291,7 +243,7 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
             {connectionError
               ? 'Could not connect to the server. Please check your connection and try again.'
               : isVersionMismatch
-                ? 'Your AugmentOS is outdated. An update is required to continue using the application.'
+                ? 'AugmentOS is outdated. An update is required to continue using the application.'
                 : 'Your AugmentOS is up to date. Returning to home...'}
           </Text>
         </View>
@@ -311,6 +263,7 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
                   : 'Update AugmentOS'}
             </Button>
 
+          {isVersionMismatch &&
             <View style={styles.skipButtonContainer}>
              <Button
                onPress={() => {
@@ -329,7 +282,8 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
                Skip Update
              </Button>
             </View>
-          </View>
+            }                                                
+          </View>    
         )}
       </View>
     </View>
