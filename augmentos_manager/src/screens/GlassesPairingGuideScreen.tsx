@@ -68,7 +68,7 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
           `Having trouble pairing your ${glassesModelName}? Wanna see some tips?`,
           [
             {
-              text: "Nah, I'm Good",
+              text: "No, thanks.",
               style: "cancel",
               onPress: () => setShowHelpAlert(false)
             },
