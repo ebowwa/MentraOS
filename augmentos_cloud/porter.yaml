@@ -20,7 +20,7 @@ predeploy:
 services:
   - name: cloud
     type: web
-    run: bash -c "bun install && cd packages/cloud && bun run build && bun run start"
+    run: bun install && cd packages/cloud && bun run build && bun run start
     port: 80
     cpuCores: 2.0
     ramMegabytes: 2048
@@ -31,7 +31,7 @@ services:
 
   - name: live-captions
     type: web
-    run: bash -c "bun install && cd packages/apps/livecaptions && bun run build && bun run start"
+    run: bun install && cd packages/apps/livecaptions && bun run build && bun run start
     port: 80
     cpuCores: 0.5
     ramMegabytes: 512
@@ -42,7 +42,7 @@ services:
 
   - name: dashboard-manager
     type: web
-    run: bash -c "bun install && cd packages/apps/dashboard-manager && bun run build && bun run start"
+    run: bun install && cd packages/apps/dashboard-manager && bun run build && bun run start
     port: 80
     cpuCores: 0.5
     ramMegabytes: 512
@@ -53,7 +53,7 @@ services:
 
   - name: notify
     type: web
-    run: bash -c "bun install && cd packages/apps/notify && bun run build && bun run start"
+    run: bun install && cd packages/apps/notify && bun run build && bun run start
     port: 80
     cpuCores: 0.5
     ramMegabytes: 512
@@ -64,7 +64,7 @@ services:
 
   - name: mira
     type: web
-    run: bash -c "bun install && cd packages/apps/miraai && bun run build && bun run start"
+    run: bun install && cd packages/apps/miraai && bun run build && bun run start
     port: 80
     cpuCores: 0.5
     ramMegabytes: 512
@@ -75,7 +75,7 @@ services:
 
   - name: live-translation
     type: web
-    run: bash -c "bun install && cd packages/apps/livetranslation && bun run build && bun run start"
+    run: bun install && cd packages/apps/livetranslation && bun run build && bun run start
     port: 80
     cpuCores: 0.5
     ramMegabytes: 512
