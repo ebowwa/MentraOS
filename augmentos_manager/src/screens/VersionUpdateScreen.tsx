@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ActivityIndicator,
+  BackHandler,
+  Alert
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NavigationProp } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NavigationProp, CommonActions } from '@react-navigation/native';
 import { Config } from 'react-native-config';
 import semver from 'semver';
 import BackendServerComms from '../backend_comms/BackendServerComms';
@@ -38,6 +40,85 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
   const [isVersionMismatch, setIsVersionMismatch] = useState(!!initialLocalVersion && !!initialCloudVersion);
   const [localVersion, setLocalVersion] = useState<string | null>(initialLocalVersion || null);
   const [cloudVersion, setCloudVersion] = useState<string | null>(initialCloudVersion || null);
+
+  // Prevent navigation using the hardware back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // If there's a version mismatch or connection error, block navigation
+        if (isVersionMismatch || connectionError) {
+          // Show a message to the user
+          Alert.alert(
+            "Update Required",
+            "You must update AugmentOS to continue. This action cannot be skipped.",
+            [{ text: "OK", onPress: () => {} }]
+          );
+          return true; // Prevents default back button behavior
+        }
+        return false; // Let the default back button behavior happen
+      };
+
+      // Add back button handler
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => BackHandler.removeEventListener('hardwareBackPress', onBackPress);
+    }, [isVersionMismatch, connectionError])
+  );
+
+  // Prevent navigation via React Navigation
+  useEffect(() => {
+    // Intercept navigation attempts
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Only prevent navigation if there's a version mismatch or connection error
+      if ((isVersionMismatch || connectionError) && e.data.action.type !== 'GO_BACK') {
+        // Prevent default navigation behavior
+        e.preventDefault();
+
+        // Show message to user
+        Alert.alert(
+          "Update Required",
+          "You must update AugmentOS to continue. This action cannot be skipped.",
+          [{ text: "OK", onPress: () => {} }]
+        );
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isVersionMismatch, connectionError]);
+
+  // Disable the navigation state reset that allows skipping to Home
+  useEffect(() => {
+    // Reset the navigation state manipulation option that was previously commented out
+    const resetToHome = () => {
+      // This has been disabled to prevent users from bypassing the update screen
+      console.log('Navigation to Home has been disabled until update is complete');
+      return false;
+    };
+
+    // Replace any navigation methods that might be used to bypass
+    const originalDispatch = navigation.dispatch;
+    navigation.dispatch = (action) => {
+      // Block reset actions that might be used to bypass this screen
+      if (action.type === 'RESET' || (typeof action === 'object' && action.type === CommonActions.RESET)) {
+        if (isVersionMismatch || connectionError) {
+          Alert.alert(
+            "Update Required",
+            "You must update AugmentOS to continue. This action cannot be skipped.",
+            [{ text: "OK", onPress: () => {} }]
+          );
+          return;
+        }
+      }
+
+      // Allow the action for non-restricted cases
+      originalDispatch(action);
+    };
+
+    return () => {
+      // Restore original dispatch when component unmounts
+      navigation.dispatch = originalDispatch;
+    };
+  }, [navigation, isVersionMismatch, connectionError]);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -82,7 +163,8 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
           } else {
             console.log('Local version is up-to-date.');
             setIsVersionMismatch(false);
-            // Navigate back to home since no update is needed
+            // Only navigate back to home if no update is needed
+            // This allows the app to proceed normally when up-to-date
             setTimeout(() => {
               navigation.navigate('Home');
             }, 1000);
@@ -107,9 +189,19 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
     setIsUpdating(true);
     InstallApkModule.downloadCoreApk()
       .then(() => {
+        // If the update is successful, we can allow navigation
+        // This would happen after the app restarts with the new version
+      })
+      .catch((error) => {
+        console.error('Error downloading update:', error);
+        Alert.alert(
+          "Update Failed",
+          "There was a problem downloading the update. Please try again.",
+          [{ text: "OK", onPress: () => {} }]
+        );
       })
       .finally(() => {
-          setIsUpdating(false);
+        setIsUpdating(false);
       });
   };
 
@@ -199,7 +291,7 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
             {connectionError
               ? 'Could not connect to the server. Please check your connection and try again.'
               : isVersionMismatch
-                ? 'Your AugmentOS is outdated. Please update to continue.'
+                ? 'Your AugmentOS is outdated. An update is required to continue using the application.'
                 : 'Your AugmentOS is up to date. Returning to home...'}
           </Text>
         </View>
@@ -218,25 +310,25 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
                   ? 'Retry Connection'
                   : 'Update AugmentOS'}
             </Button>
-            
-            <View style={styles.skipButtonContainer}>
-              <Button
-                onPress={() => {
-                  // Save setting to ignore version checks until next app restart
-                  saveSetting('ignoreVersionCheck', true);
-                  console.log('Version check skipped until next app restart');
-                  // Skip directly to Home screen
-                  navigation.reset({
-                    index: 0,
-                    routes: [{ name: 'Home' }],
-                  });
-                }}
-                isDarkTheme={isDarkTheme}
-                iconName="skip-next"
-                disabled={false}>
-                Skip Update
-              </Button>
-            </View>
+
+            {/*<View style={styles.skipButtonContainer}>*/}
+            {/*  <Button*/}
+            {/*    onPress={() => {*/}
+            {/*      // Save setting to ignore version checks until next app restart*/}
+            {/*      saveSetting('ignoreVersionCheck', true);*/}
+            {/*      console.log('Version check skipped until next app restart');*/}
+            {/*      // Skip directly to Home screen*/}
+            {/*      navigation.reset({*/}
+            {/*        index: 0,*/}
+            {/*        routes: [{ name: 'Home' }],*/}
+            {/*      });*/}
+            {/*    }}*/}
+            {/*    isDarkTheme={isDarkTheme}*/}
+            {/*    iconName="skip-next"*/}
+            {/*    disabled={false}>*/}
+            {/*    Skip Update*/}
+            {/*  </Button>*/}
+            {/*</View>*/}
           </View>
         )}
       </View>
