@@ -82,6 +82,7 @@ import com.augmentos.augmentos_core.tpa.EdgeTPASystem;
 
 
 import com.augmentos.augmentoslib.events.GlassesTapOutputEvent;
+import com.augmentos.augmentoslib.events.HomeScreenEvent;
 import com.augmentos.augmentoslib.events.SmartRingButtonOutputEvent;
 
 import org.greenrobot.eventbus.EventBus;
@@ -591,6 +592,16 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                             () -> smartGlassesService.sendTextWall("                  /// AugmentOS Connected \\\\\\"),
                             6
                     );
+
+                    if (alwaysOnStatusBarEnabled) {
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> 
+                            smartGlassesService.windowManager.showAppLayer(
+                                    "main", 
+                                    () -> smartGlassesService.sendTextWall(cachedDashboardTopLine),
+                                    0
+                            ), 3000); // Delay of 1000 milliseconds (3 second)
+                    }
+
                     return; // Stop looping
                 }
 
@@ -1026,6 +1037,13 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             @Override
             public void onConnectionAck() {
                 serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
+                if (alwaysOnStatusBarEnabled) {
+                    smartGlassesService.windowManager.showAppLayer(
+                            "main",
+                            () -> smartGlassesService.sendTextWall(cachedDashboardTopLine),
+                            0
+                    );
+                }
             }
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
@@ -1218,6 +1236,17 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
 
     @Override
     public void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled) {
+        if (alwaysOnStatusBarEnabled) {
+            smartGlassesService.windowManager.showAppLayer(
+                    "main",
+                    () -> smartGlassesService.sendTextWall(cachedDashboardTopLine),
+                    0
+            );
+        }
+        else {
+            EventBus.getDefault().post(new HomeScreenEvent());
+        }
+
         saveAlwaysOnStatusBarEnabled(alwaysOnStatusBarEnabled);
         this.alwaysOnStatusBarEnabled = alwaysOnStatusBarEnabled;
     }

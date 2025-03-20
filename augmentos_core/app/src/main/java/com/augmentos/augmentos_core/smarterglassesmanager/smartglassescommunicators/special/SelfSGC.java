@@ -98,11 +98,6 @@ public class SelfSGC extends SmartGlassesCommunicator {
 
     }
 
-    @Override
-    public void showHomeScreen(String homeScreenText) {
-
-    }
-
     Context context;
     SmartGlassesDevice smartGlassesDevice;
 

@@ -73,9 +73,6 @@ public class VirtualSGC extends SmartGlassesCommunicator {
     public void showHomeScreen(){
     }
 
-    public void showHomeScreen(String homeScreenText){
-    }
-
     public void displayPromptView(String prompt, String [] options){
     }
 

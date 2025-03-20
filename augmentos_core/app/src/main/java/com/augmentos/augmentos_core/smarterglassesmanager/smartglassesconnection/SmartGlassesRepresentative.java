@@ -243,7 +243,7 @@ class SmartGlassesRepresentative {
     }
 
     //are our smart glasses currently connected?
-    public SmartGlassesConnectionState getConnectionState(){
+    public SmartGlassesConnectionState getConnectionState() {
         if (smartGlassesCommunicator == null){
             return SmartGlassesConnectionState.DISCONNECTED;
         } else {
@@ -292,19 +292,9 @@ class SmartGlassesRepresentative {
         }
     }
 
-    public void homeScreen(String homeScreenText) {
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.showHomeScreen(homeScreenText);
-        }
-    }
-
     @Subscribe
     public void onHomeScreenEvent(HomeScreenEvent receivedEvent) {
-        if (receivedEvent.homeScreenText.isEmpty()) {
-            homeScreen();
-        } else {
-            homeScreen(receivedEvent.homeScreenText);
-        }
+        homeScreen();
     }
 
     @Subscribe
@@ -330,7 +320,6 @@ class SmartGlassesRepresentative {
 //            homeUiAfterDelay(referenceCardDelayTime);
         }
     }
-
 
     @Subscribe
     public void onRowsCardViewEvent(RowsCardViewRequestEvent receivedEvent){

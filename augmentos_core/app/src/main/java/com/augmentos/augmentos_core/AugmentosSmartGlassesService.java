@@ -122,14 +122,6 @@ public class AugmentosSmartGlassesService extends SmartGlassesAndroidService {
 
     }
 
-    public void setAlwaysOnStatusBar(boolean alwaysOnStatusBar) {
-        windowManager.setStatusBarAlwaysOn(alwaysOnStatusBar);
-    }
-
-    public boolean getAlwaysOnStatusBar() {
-        return windowManager.isStatusBarAlwaysOn();
-    }
-
     public WindowManagerWithTimeouts getWindowManager() {
         return windowManager;
     }

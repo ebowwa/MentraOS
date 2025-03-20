@@ -455,10 +455,6 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
         screenIsClear = true;
     }
 
-    public void showHomeScreen(String homeScreenText) {
-        displayTextWall(homeScreenText);
-    }
-
     public void setupUltraliteCanvas(){
         Log.d(TAG, "Setting up ultralite canvas");
         if (ultraliteSdk != null) {

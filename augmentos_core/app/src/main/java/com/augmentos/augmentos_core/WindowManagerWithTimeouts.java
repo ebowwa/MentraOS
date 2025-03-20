@@ -98,13 +98,13 @@ public class WindowManagerWithTimeouts {
     private void checkTimeouts() {
         long now = System.currentTimeMillis();
 
-        // Check global timeout
-        if (!globalTimedOut && (now - lastGlobalUpdate) >= (globalTimeoutSeconds * 1000L)) {
-            // Global inactivity => call the provided global timeout action (e.g. clearScreen)
-            //globalTimeoutAction.run();
-            clearAll();
-            globalTimedOut = true;
-        }
+//        // Check global timeout
+//        if (!globalTimedOut && (now - lastGlobalUpdate) >= (globalTimeoutSeconds * 1000L)) {
+//            // Global inactivity => call the provided global timeout action (e.g. clearScreen)
+//            //globalTimeoutAction.run();
+//            clearAll();
+//            globalTimedOut = true;
+//        }
 
         // Use Iterator to safely remove elements while iterating
         Iterator<Layer> iterator = layers.iterator();

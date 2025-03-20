@@ -1756,15 +1756,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
     }
 
-    public void showHomeScreen(String homeScreenText) {
-        displayTextWall(homeScreenText);
-
-        if (lastThingDisplayedWasAnImage) {
-            //clearG1Screen();
-            lastThingDisplayedWasAnImage = false;
-        }
-    }
-
     public void clearG1Screen() {
         Log.d(TAG, "Clearing G1 screen");
         byte[] exitCommand = new byte[]{(byte) 0x18};

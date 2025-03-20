@@ -728,8 +728,6 @@ public class AndroidSGC extends SmartGlassesCommunicator {
         }
     }
 
-    public void showHomeScreen(String homeScreenText) {}
-
     public void displayPromptView(String prompt, String [] options){
         //generate args list
         if (options != null) {
