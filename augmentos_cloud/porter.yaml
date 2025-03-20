@@ -5,7 +5,7 @@ namespace: prod
 
 build:
   method: docker
-  context: ./
+  context: ./augmentos_cloud/.
   dockerfile: ./augmentos_cloud/Dockerfile
 
 # Predeploy runs before the services start. We run the shared packages build here.
