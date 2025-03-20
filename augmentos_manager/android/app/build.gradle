@@ -58,11 +58,15 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            debuggable true
+            profileable true
         }
         release {
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            debuggable true
+            profileable true
         }
     }
     packagingOptions {
@@ -137,7 +141,12 @@ project.ext.vectoricons = [
 ]
 
 project.ext.react = [
-    enableHermes: false  // Disable Hermes for troubleshooting
+    enableHermes: false,  // Disable Hermes for troubleshooting
+    bundleInDebug: true  // This is important for profiling
 ]
+
+//apply from: "../../node_modules/react-native/react.gradle"
+
+
 
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
