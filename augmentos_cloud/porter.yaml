@@ -1,6 +1,5 @@
 version: v2
 name: augmentos-cloud-app
-# Define the Kubernetes namespace here (or override via CLI when deploying, e.g., -n myapp-prod)
 namespace: prod
 
 build:
@@ -8,27 +7,10 @@ build:
   context: ./augmentos_cloud/.
   dockerfile: ./augmentos_cloud/Dockerfile
 
-# Predeploy runs before the services start. We run the shared packages build here.
-predeploy:
-  run: |
-    echo "Building shared packages..."
-    bun install &&
-    cd packages/utils && bun run build &&
-    cd ../sdk && bun run build &&
-    cd ../agents && bun run build &&
-    cd ../cloud && bun run build &&
-    cd ../apps && 
-    cd livecaptions && bun run build &&
-    cd ../dashboard-manager && bun run build &&
-    cd ../notify && bun run build &&
-    cd ../miraai && bun run build &&
-    cd ../livetranslation && bun run build
-
 services:
   - name: cloud
     type: web
     run: node packages/cloud/dist/index.js
-    # run: bun install && cd packages/cloud && bun run build && bun run start
     port: 80
     cpuCores: 2.0
     ramMegabytes: 2048
@@ -39,7 +21,6 @@ services:
 
   - name: live-captions
     type: web
-    # run: bun install && cd packages/apps/livecaptions && bun run build && bun run start
     run: node packages/apps/livecaptions/dist/index.js
     port: 80
     cpuCores: 0.5
@@ -51,7 +32,6 @@ services:
 
   - name: dashboard-manager
     type: web
-    # run: bun install && cd packages/apps/dashboard-manager && bun run build && bun run start
     run: node packages/apps/dashboard-manager/dist/index.js
     port: 80
     cpuCores: 0.5
@@ -63,7 +43,6 @@ services:
 
   - name: notify
     type: web
-    # run: bun install && cd packages/apps/notify && bun run build && bun run start
     run: node packages/apps/notify/dist/index.js
     port: 80
     cpuCores: 0.5
@@ -75,7 +54,6 @@ services:
 
   - name: mira
     type: web
-    # run: bun install && cd packages/apps/miraai && bun run build && bun run start
     run: node packages/apps/miraai/dist/index.js
     port: 80
     cpuCores: 0.5
@@ -87,7 +65,6 @@ services:
 
   - name: live-translation
     type: web
-    # run: bun install && cd packages/apps/livetranslation && bun run build && bun run start
     run: node packages/apps/livetranslation/dist/index.js
     port: 80
     cpuCores: 0.5
