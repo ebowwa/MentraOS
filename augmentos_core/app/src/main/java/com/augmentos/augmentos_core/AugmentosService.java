@@ -168,6 +168,18 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     private HTTPServerComms httpServerComms;
 
     JSONObject cachedDashboardDisplayObject;
+    private JSONObject cachedDisplayData;
+    {
+        cachedDisplayData = new JSONObject();
+        try {
+            JSONObject layout = new JSONObject();
+            layout.put("layoutType", "empty");
+            cachedDisplayData.put("layout", layout);
+        } catch (JSONException e) {
+            Log.e(TAG, "Failed to construct cachedDisplayData JSON", e);
+        }
+    }
+
     Runnable cachedDashboardDisplayRunnable;
     private String cachedDashboardTopLine;
  
@@ -596,7 +608,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                     if (alwaysOnStatusBarEnabled) {
                         new Handler(Looper.getMainLooper()).postDelayed(() -> 
                             smartGlassesService.windowManager.showAppLayer(
-                                    "main", 
+                                    "serverappid",
                                     () -> smartGlassesService.sendTextWall(cachedDashboardTopLine),
                                     0
                             ), 3000); // Delay of 1000 milliseconds (3 second)
@@ -725,12 +737,15 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
 
                 JSONObject msg = processJSONPlaceholders(rawMsg, placeholders);
 
+//                Log.d(TAG, "Parsed message: " + msg.toString());
 
                 JSONObject layout = msg.getJSONObject("layout");
                 String layoutType = layout.getString("layoutType");
                 String title;
                 String text;
                 switch (layoutType) {
+                    case "empty":
+                        return () -> smartGlassesService.sendTextWall(cachedDashboardTopLine);
                     case "reference_card":
                         title = layout.getString("title");
                         text = layout.getString("text");
@@ -1039,7 +1054,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                 serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
                 if (alwaysOnStatusBarEnabled) {
                     smartGlassesService.windowManager.showAppLayer(
-                            "main",
+                            "serverappid",
                             () -> smartGlassesService.sendTextWall(cachedDashboardTopLine),
                             0
                     );
@@ -1053,7 +1068,9 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
 
             @Override
             public void onDisplayEvent(JSONObject displayData) {
+                cachedDisplayData = displayData;
                 Runnable newRunnable = parseDisplayEventMessage(displayData);
+//                Log.d("AugmentosService", "Received display event: " + displayData.toString());
                 if (smartGlassesService != null)
                     smartGlassesService.windowManager.showAppLayer("serverappid", newRunnable, -1);
                 if (blePeripheral != null)
@@ -1065,6 +1082,11 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                 cachedDashboardDisplayObject = dashboardDisplayData;
                 // Parse the top line for logging/debugging
                 cachedDashboardTopLine = parseDashboardTopLine(dashboardDisplayData);
+
+                if (alwaysOnStatusBarEnabled) {
+                    onDisplayEvent(cachedDisplayData);
+//                    Log.d("AugmentosService", "Dashboard display event received: " + dashboardDisplayData.toString());
+                }
 
                 // Create the runnable as before
                 cachedDashboardDisplayRunnable = parseDisplayEventMessage(dashboardDisplayData);
@@ -1238,7 +1260,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     public void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled) {
         if (alwaysOnStatusBarEnabled) {
             smartGlassesService.windowManager.showAppLayer(
-                    "main",
+                    "serverappid",
                     () -> smartGlassesService.sendTextWall(cachedDashboardTopLine),
                     0
             );
