@@ -21,7 +21,7 @@ jobs:
 
       - name: Deploy stack to Dev
         timeout-minutes: 30
-        run: exec porter apply -n $PORTER_NAMESPACE -f ./augmentos_cloud/porter.yaml
+        run: exec porter apply -f ./augmentos_cloud/porter.yaml
         env:
           PORTER_APP_NAME: augmentos-cloud-dev
           PORTER_NAMESPACE: dev
