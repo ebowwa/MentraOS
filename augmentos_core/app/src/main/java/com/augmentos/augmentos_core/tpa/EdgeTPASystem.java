@@ -85,11 +85,11 @@ public class EdgeTPASystem {
     private static final int HEALTH_CHECK_INTERVAL_MS = 5000;  // 5 seconds
     private Handler healthCheckHandler;
     private Runnable healthCheckRunnable;
-    private AugmentosSmartGlassesService smartGlassesService;
+    private com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager smartGlassesManager;
 
-    public EdgeTPASystem(Context context, AugmentosSmartGlassesService smartGlassesService){
+    public EdgeTPASystem(Context context, com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager smartGlassesManager){
         mContext = context;
-        this.smartGlassesService = smartGlassesService;
+        this.smartGlassesManager = smartGlassesManager;
         augmentOsLibBroadcastSender = new AugmentOSLibBroadcastSender(mContext);
         augmentOsLibBroadcastReceiver = new AugmentOSLibBroadcastReceiver(mContext);
         runningApps = new HashSet<>();
@@ -237,8 +237,8 @@ public class EdgeTPASystem {
             ThirdPartyEdgeApp tpa = thirdPartyApps.get(packageName);
             if(augmentOsLibBroadcastSender.startThirdPartyApp(Objects.requireNonNull(tpa))) {
                 runningApps.add(packageName);
-                if(smartGlassesService != null)
-                    smartGlassesService.windowManager.showAppLayer("system", () -> smartGlassesService.sendReferenceCard("AugmentOS started app:", tpa.appName), 6);
+                if(smartGlassesManager != null)
+                    smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard("AugmentOS started app:", tpa.appName), 6);
                 return true;
             }
         } else {
@@ -252,8 +252,8 @@ public class EdgeTPASystem {
         if (thirdPartyApps.containsKey(packageName)) {
                 runningApps.remove(packageName);
                 augmentOsLibBroadcastSender.killThirdPartyApp(Objects.requireNonNull(thirdPartyApps.get(packageName)));
-                if (smartGlassesService != null)
-                    smartGlassesService.windowManager.hideAppLayer(packageName);
+                if (smartGlassesManager != null)
+                    smartGlassesManager.windowManager.hideAppLayer(packageName);
         }
     }
 
@@ -557,6 +557,10 @@ public class EdgeTPASystem {
             }
         }
         return false;
+    }
+
+    public void setSmartGlassesManager(com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager manager) {
+        this.smartGlassesManager = manager;
     }
 
     public void destroy(){
