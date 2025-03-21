@@ -810,6 +810,10 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             if ("double_text_wall".equals(layoutType) && layout.has("topText")) {
                 String topText = layout.getString("topText");
                 
+                if (topText.contains("$GBATT$")) {
+                    topText = topText.replace("$GBATT$", batteryLevel != null ? String.valueOf(batteryLevel) : "");
+                }
+
                 // Process special tokens in the top line if needed
                 if (topText.contains("$no_datetime$")) {
                     SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm", Locale.getDefault());
