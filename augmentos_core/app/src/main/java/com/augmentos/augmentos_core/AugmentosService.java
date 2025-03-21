@@ -45,6 +45,7 @@ import java.io.IOException;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.Lifecycle;
 import androidx.lifecycle.LifecycleOwner;
+import androidx.lifecycle.LifecycleService;
 import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.augmentos_backend.AuthHandler;
@@ -108,7 +109,7 @@ import okhttp3.Callback;
 import okhttp3.Response;
 
 
-public class AugmentosService extends Service implements AugmentOsActionsCallback {
+public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOS_AugmentOSService";
 
    private final IBinder binder = new LocalBinder();
@@ -550,8 +551,8 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     // Method to initialize the SmartGlassesManager
     public void startSmartGlassesManager() {
         if (smartGlassesManager == null) {
-            // Pass null for the LifecycleOwner since Service doesn't implement LifecycleOwner
-            smartGlassesManager = new com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager(this, null, smartGlassesEventHandler);
+            // Now we can pass 'this' as the LifecycleOwner since we extend LifecycleService
+            smartGlassesManager = new com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager(this, this, smartGlassesEventHandler);
             edgeTpaSystem.setSmartGlassesManager(smartGlassesManager);
             // Execute any pending actions
             for (Runnable action : smartGlassesReadyListeners) {

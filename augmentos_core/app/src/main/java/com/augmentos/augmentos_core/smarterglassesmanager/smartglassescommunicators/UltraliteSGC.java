@@ -164,8 +164,11 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
             ultraliteConnectedLive = ultraliteSdk.getConnected();
             ultraliteControlled = ultraliteSdk.getControlledByMe();
             batteryStatusObserver = ultraliteSdk.getBatteryStatus();
+            
             // Still send the initial battery level
             EventBus.getDefault().post(new BatteryLevelEvent(ultraliteSdk.getBatteryLevel()));
+            
+            // Note: We don't need polling anymore since we'll be using LifecycleService
         }
 
 //        if (ultraliteSdk.isAvailable()){
@@ -431,6 +434,7 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
             if (screenOffHandler != null) {
                 screenOffHandler.removeCallbacksAndMessages(null);
             }
+            // Removed battery polling handler cleanup as we're no longer using it
             if (killHandler != null) {
                 killHandler.removeCallbacksAndMessages(null);
             }
