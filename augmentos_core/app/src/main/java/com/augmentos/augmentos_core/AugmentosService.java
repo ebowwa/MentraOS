@@ -747,7 +747,11 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                     case "empty":
                         return () -> smartGlassesService.sendTextWall(cachedDashboardTopLine);
                     case "reference_card":
-                        title = layout.getString("title");
+                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null) {
+                            title = layout.getString("title") + " | " + cachedDashboardTopLine;
+                        } else {
+                            title = layout.getString("title");
+                        }
                         text = layout.getString("text");
                         return () -> smartGlassesService.sendReferenceCard(title, text);
                     case "text_wall":
