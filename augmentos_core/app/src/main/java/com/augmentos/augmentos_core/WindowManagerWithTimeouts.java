@@ -48,6 +48,8 @@ public class WindowManagerWithTimeouts {
             layer = new Layer(layerId);
             layers.add(layer);
         }
+//        Log.d(TAG, "Setting linger time: " + lingerTimeSecs);
+
         layer.setDisplayCommand(displayCommand);
         layer.setVisible(true);
         layer.setLastUpdated(System.currentTimeMillis());
@@ -110,6 +112,12 @@ public class WindowManagerWithTimeouts {
         Iterator<Layer> iterator = layers.iterator();
         while (iterator.hasNext()) {
             Layer layer = iterator.next();
+//            Log.d(TAG, "Checking layer: " + layer.getLingerTimeSeconds());
+            if (layer.getLingerTimeSeconds() ==  0) {
+//                Log.d(TAG, "No auto-hide");
+                continue; // No auto-hide
+            }
+
             if (layer.isVisible() && layer.getLingerTimeSeconds() > 0) {
                 long age = (now - layer.getLastUpdated()) / 1000L;
                 if (age >= layer.getLingerTimeSeconds()) {

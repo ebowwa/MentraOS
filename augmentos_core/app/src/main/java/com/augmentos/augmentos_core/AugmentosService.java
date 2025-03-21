@@ -747,7 +747,8 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
                     case "empty":
                         return () -> smartGlassesService.sendTextWall(cachedDashboardTopLine);
                     case "reference_card":
-                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null) {
+                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null
+                                && !layout.getString("title").contains("AugmentOS")) {
                             title = layout.getString("title") + " | " + cachedDashboardTopLine;
                         } else {
                             title = layout.getString("title");
@@ -1073,12 +1074,19 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             @Override
             public void onDisplayEvent(JSONObject displayData) {
                 cachedDisplayData = displayData;
+//                Log.d(TAG,"Received display data: " + displayData.toString());
                 Runnable newRunnable = parseDisplayEventMessage(displayData);
+//                Log.d(TAG, displayData.toString());
+//                Log.d(TAG, "Parsed display event message: " + displayData.has("durationMs"));
+                int durationMs = displayData.optInt("durationMs", -1);
+//                Log.d(TAG, "Received display event with duration: " + durationMs);
 //                Log.d("AugmentosService", "Received display event: " + displayData.toString());
-                if (smartGlassesService != null)
-                    smartGlassesService.windowManager.showAppLayer("serverappid", newRunnable, -1);
-                if (blePeripheral != null)
+                if (smartGlassesService != null) {
+                        smartGlassesService.windowManager.showAppLayer("serverappid", newRunnable, durationMs / 1000); // TODO: either only use seconds or milliseconds
+                }
+                if (blePeripheral != null) {
                     blePeripheral.sendGlassesDisplayEventToManager(displayData);  //THIS LINE RIGHT HERE ENDS UP TRIGGERING IT
+                }
             }
 
             @Override
