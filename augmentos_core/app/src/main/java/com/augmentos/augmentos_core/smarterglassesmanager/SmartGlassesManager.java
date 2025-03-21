@@ -9,6 +9,7 @@ import androidx.lifecycle.LifecycleOwner;
 
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
+import com.augmentos.augmentos_core.events.AugmentosSmartGlassesDisconnectedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionStateChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.TextToSpeechEvent;
@@ -28,6 +29,9 @@ import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.Vuzix
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.special.VirtualWearable;
 import com.augmentos.augmentos_core.smarterglassesmanager.texttospeech.TextToSpeechSystem;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
+import com.augmentos.augmentoslib.events.DiarizationOutputEvent;
+import com.augmentos.augmentoslib.events.SmartRingButtonOutputEvent;
+import com.augmentos.augmentoslib.events.SpeechRecOutputEvent;
 import com.augmentos.augmentoslib.events.BulletPointListViewRequestEvent;
 import com.augmentos.augmentoslib.events.CenteredTextViewRequestEvent;
 import com.augmentos.augmentoslib.events.DoubleTextWallViewRequestEvent;
@@ -62,7 +66,7 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
  * Converted from SmartGlassesAndroidService to work within AugmentosService
  */
 public class SmartGlassesManager {
-    private static final String TAG = "SGM_Manager";
+    private static final String TAG = "SGM_Manager"; // Equivalent to AugmentosSmartGlassesService "AugmentOS_AugmentOSService"
 
     // Context and lifecycle owner references
     private final Context context;
@@ -84,6 +88,13 @@ public class SmartGlassesManager {
     private Runnable micTurnOffRunnable;
     private boolean pendingMicTurnOff = false;
     
+    // Smart Ring and tap timing variables (from AugmentosSmartGlassesService)
+    private long currTime = 0;
+    private long lastPressed = 0;
+    private final long lastTapped = 0;
+    private final long doublePressTimeConst = 420;
+    private final long doubleTapTimeConst = 600;
+    
     // Event handler to notify outer service of state changes
     public interface SmartGlassesEventHandler {
         void onGlassesConnectionStateChanged(SmartGlassesDevice device, SmartGlassesConnectionState state);
@@ -104,6 +115,9 @@ public class SmartGlassesManager {
     public void initialize() {
         // Setup connection handler
         connectHandler = new Handler(Looper.getMainLooper());
+
+        // Apply settings before starting components (from AugmentosSmartGlassesService)
+        saveChosenAsrFramework(context, ASR_FRAMEWORKS.AUGMENTOS_ASR_FRAMEWORK);
 
         // Start speech recognition
         speechRecSwitchSystem = new SpeechRecSwitchSystem(context);
@@ -182,7 +196,8 @@ public class SmartGlassesManager {
             eventHandler.onGlassesConnectionStateChanged(null, SmartGlassesConnectionState.DISCONNECTED);
         }
         
-        // Post disconnected event
+        // Post disconnected events (from AugmentosSmartGlassesService)
+        EventBus.getDefault().post(new AugmentosSmartGlassesDisconnectedEvent());
         EventBus.getDefault().post(new SmartGlassesConnectionStateChangedEvent(null, SmartGlassesConnectionState.DISCONNECTED));
     }
 
@@ -249,6 +264,13 @@ public class SmartGlassesManager {
             // Save preferred wearable if connected
             if (connectionState == SmartGlassesConnectionState.CONNECTED) {
                 savePreferredWearable(context, smartGlassesRepresentative.smartGlassesDevice.deviceModelName);
+                
+                // From AugmentosSmartGlassesService: Set font size when connected
+                setFontSize(SmartGlassesFontSize.MEDIUM);
+                
+                // Post connection state event to EventBus
+                EventBus.getDefault().post(new SmartGlassesConnectionStateChangedEvent(
+                        smartGlassesRepresentative.smartGlassesDevice, connectionState));
             }
         } else {
             connectionState = SmartGlassesConnectionState.DISCONNECTED;
@@ -476,6 +498,42 @@ public class SmartGlassesManager {
         speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
     }
 
+    // Implement methods from AugmentosSmartGlassesService
+    
+    @Subscribe
+    public void onSmartRingButtonEvent(SmartRingButtonOutputEvent event) {
+        int buttonId = event.buttonId;
+        long time = event.timestamp;
+        boolean isDown = event.isDown;
+
+        if(!isDown || buttonId != 1) return;
+        Log.d(TAG, "DETECTED BUTTON PRESS W BUTTON ID: " + buttonId);
+        currTime = System.currentTimeMillis();
+
+        //Detect double presses
+        if(isDown && currTime - lastPressed < doublePressTimeConst) {
+            Log.d(TAG, "Double tap - CurrTime-lastPressed: "+ (currTime-lastPressed));
+        }
+
+        if(isDown) {
+            lastPressed = System.currentTimeMillis();
+        }
+    }
+
+    @Subscribe
+    public void onDiarizeData(DiarizationOutputEvent event) {
+        // Empty in original
+    }
+
+    @Subscribe
+    public void onTranscript(SpeechRecOutputEvent event) {
+        // Empty in original
+    }
+    
+    public void clearScreen() {
+        sendHomeScreen();
+    }
+    
     public static SmartGlassesDevice getSmartGlassesDeviceFromModelName(String modelName) {
         ArrayList<SmartGlassesDevice> allDevices = new ArrayList<>(
                 Arrays.asList(
