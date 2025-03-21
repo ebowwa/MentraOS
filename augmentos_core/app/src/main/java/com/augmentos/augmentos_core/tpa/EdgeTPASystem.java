@@ -1,7 +1,7 @@
 package com.augmentos.augmentos_core.tpa;
 
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSManagerPackageName;
-import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.INTENT_ACTION;
+import static com.augmentos.augmentoslib.SmartGlassesAndroidService.INTENT_ACTION;
 
 import android.app.ActivityManager;
 import android.content.BroadcastReceiver;

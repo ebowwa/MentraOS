@@ -43,6 +43,8 @@ import android.util.Log;
 import java.io.IOException;
 
 import androidx.core.app.NotificationCompat;
+import androidx.lifecycle.Lifecycle;
+import androidx.lifecycle.LifecycleOwner;
 import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.augmentos_backend.AuthHandler;
@@ -162,7 +164,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     private HTTPServerComms httpServerComms;
 
     JSONObject cachedDashboardDisplayObject;
-    List<ThirdPartyCloudApp> cachedThirdPartyAppList;
+    List<ThirdPartyCloudApp> cachedThirdPartyAppList = new ArrayList<>(); // Initialize here to avoid NPE
     private WebSocketManager.IncomingMessageHandler.WebSocketStatus webSocketStatus = WebSocketManager.IncomingMessageHandler.WebSocketStatus.DISCONNECTED;
     private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
 
@@ -389,7 +391,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             }
         }
 
-        cachedThirdPartyAppList = new ArrayList<ThirdPartyCloudApp>();
+        // cachedThirdPartyAppList is already initialized as a class member
 
         webSocketLifecycleManager = new WebSocketLifecycleManager(this, authHandler);
 
@@ -548,7 +550,8 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     // Method to initialize the SmartGlassesManager
     public void startSmartGlassesManager() {
         if (smartGlassesManager == null) {
-            smartGlassesManager = new com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager(this, this, smartGlassesEventHandler);
+            // Pass null for the LifecycleOwner since Service doesn't implement LifecycleOwner
+            smartGlassesManager = new com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager(this, null, smartGlassesEventHandler);
             edgeTpaSystem.setSmartGlassesManager(smartGlassesManager);
             // Execute any pending actions
             for (Runnable action : smartGlassesReadyListeners) {
@@ -905,10 +908,13 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
 //                apps.put(tpaObj);
 //            }
 
-            for (ThirdPartyCloudApp tpa : cachedThirdPartyAppList) {
-                JSONObject tpaObj = tpa.toJson(false);
-                tpaObj.put("is_foreground", false);//tpaSystem.checkIsThirdPartyAppRunningByPackageName(tpa.packageName));
-                apps.put(tpaObj);
+            // Check if cachedThirdPartyAppList is not null before iterating
+            if (cachedThirdPartyAppList != null) {
+                for (ThirdPartyCloudApp tpa : cachedThirdPartyAppList) {
+                    JSONObject tpaObj = tpa.toJson(false);
+                    tpaObj.put("is_foreground", false);//tpaSystem.checkIsThirdPartyAppRunningByPackageName(tpa.packageName));
+                    apps.put(tpaObj);
+                }
             }
 
             // Adding apps array to the status object
