@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Slider } from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
@@ -138,17 +139,52 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error(error);
-      // Handle sign-out error
-    } else {
-      console.log('Sign-out successful');
+    try {
+      // Try to sign out with Supabase - may fail in offline mode
+      await supabase.auth.signOut().catch(err => {
+        console.log('Supabase sign-out failed, continuing with local cleanup:', err);
+      });
+      
+      // Completely clear ALL Supabase Auth storage
+      // This is critical to ensure user is redirected to login screen even when offline
+      await AsyncStorage.removeItem('supabase.auth.token');
+      await AsyncStorage.removeItem('supabase.auth.refreshToken');
+      await AsyncStorage.removeItem('supabase.auth.session');
+      await AsyncStorage.removeItem('supabase.auth.expires_at');
+      await AsyncStorage.removeItem('supabase.auth.expires_in');
+      await AsyncStorage.removeItem('supabase.auth.provider_token');
+      await AsyncStorage.removeItem('supabase.auth.provider_refresh_token');
+      
+      // Clear any other user-related storage that might prevent proper logout
+      const allKeys = await AsyncStorage.getAllKeys();
+      const userKeys = allKeys.filter(key => 
+        key.startsWith('supabase.auth.') || 
+        key.includes('user') || 
+        key.includes('token')
+      );
+      
+      if (userKeys.length > 0) {
+        await AsyncStorage.multiRemove(userKeys);
+      }
+      
+      // Clean up other services
+      console.log('Cleaning up local sessions and services');
+      BluetoothService.getInstance().deleteAuthenticationSecretKey();
       ManagerCoreCommsService.stopService();
       BluetoothService.resetInstance();
+      
+      // Navigate to Login screen directly instead of SplashScreen
+      // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
         index: 0,
-        routes: [{ name: 'SplashScreen' }],
+        routes: [{ name: 'Login' }],
+      });
+    } catch (err) {
+      console.error('Error during sign-out:', err);
+      // Even if there's an error, still try to navigate away to login
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
       });
     }
   };
@@ -400,13 +436,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </View>
 
         {/* Bug Report */}
-        <TouchableOpacity style={styles.settingItem} onPress={() => {
+        {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
             navigation.navigate('ErrorReportScreen');
         }}>
           <View style={styles.settingTextContainer}>
             <Text style={[styles.label, styles.redText]}>Report an Issue</Text>
           </View>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
 
         {/* Forget Glasses */}
         <TouchableOpacity

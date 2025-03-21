@@ -5,6 +5,7 @@ import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassescom
 import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService.getSmartGlassesDeviceFromModelName;
 import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService.savePreferredWearable;
 import static com.augmentos.augmentos_core.statushelpers.CoreVersionHelper.getCoreVersion;
+import static com.augmentos.augmentos_core.statushelpers.JsonHelper.processJSONPlaceholders;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AUGMENTOS_NOTIFICATION_ID;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSAsgClientPackageName;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSManagerPackageName;
@@ -30,6 +31,7 @@ import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.hardware.display.VirtualDisplay;
+import android.icu.util.TimeZone;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
 import android.os.Build;
@@ -92,10 +94,12 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 //SpeechRecIntermediateOutputEvent
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
 
@@ -160,7 +164,6 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     private HTTPServerComms httpServerComms;
 
     JSONObject cachedDashboardDisplayObject;
-    Runnable cachedDashboardDisplayRunnable;
     List<ThirdPartyCloudApp> cachedThirdPartyAppList;
     private WebSocketManager.IncomingMessageHandler.WebSocketStatus webSocketStatus = WebSocketManager.IncomingMessageHandler.WebSocketStatus.DISCONNECTED;
     private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
@@ -266,9 +269,11 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             return;
         }
 
-        if (cachedDashboardDisplayRunnable != null) {
+        if (cachedDashboardDisplayObject != null) {
             if (smartGlassesService != null) {
-                smartGlassesService.windowManager.showDashboard(cachedDashboardDisplayRunnable,
+                Runnable dashboardDisplayRunnable = parseDisplayEventMessage(cachedDashboardDisplayObject);
+
+                smartGlassesService.windowManager.showDashboard(dashboardDisplayRunnable,
                         -1
                 );
             }
@@ -675,8 +680,34 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         }
     }
 
-    public Runnable parseDisplayEventMessage(JSONObject msg) {
+    public Runnable parseDisplayEventMessage(JSONObject rawMsg) {
             try {
+                // Process all placeholders in the entire JSON structure in a single pass
+                SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
+                String formattedDate = sdf.format(new Date());
+
+                // 12-hour time format (with leading zeros for hours)
+                SimpleDateFormat time12Format = new SimpleDateFormat("hh:mm");
+                String time12 = time12Format.format(new Date());
+
+                // 24-hour time format
+                SimpleDateFormat time24Format = new SimpleDateFormat("HH:mm");
+                String time24 = time24Format.format(new Date());
+
+                // Current date with format MM/dd
+                SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd");
+                String currentDate = dateFormat.format(new Date());
+
+                Map<String, String> placeholders = new HashMap<>();
+                placeholders.put("$no_datetime$", formattedDate);
+                placeholders.put("$DATE$", currentDate);
+                placeholders.put("$TIME12$", time12);
+                placeholders.put("$TIME24$", time24);
+                placeholders.put("$GBATT$", (batteryLevel == null ? "" : batteryLevel + "%"));
+
+                JSONObject msg = processJSONPlaceholders(rawMsg, placeholders);
+
+
                 JSONObject layout = msg.getJSONObject("layout");
                 String layoutType = layout.getString("layoutType");
                 String title;
@@ -862,7 +893,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         ServerComms.getInstance().setServerCommsCallback(new ServerCommsCallback() {
             @Override
             public void onConnectionAck() {
-                serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 15000);
+                serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
             }
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
@@ -882,7 +913,6 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             @Override
             public void onDashboardDisplayEvent(JSONObject dashboardDisplayData) {
                 cachedDashboardDisplayObject = dashboardDisplayData;
-                cachedDashboardDisplayRunnable = parseDisplayEventMessage(dashboardDisplayData);
             }
 
             @Override
@@ -1006,6 +1036,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         sendStatusToAugmentOsManager();
     }
 
+    // TODO: Can remove this?
     @Override
     public void startApp(String packageName) {
         Log.d("AugmentOsService", "Starting app: " + packageName);
@@ -1017,6 +1048,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         }
     }
 
+    // TODO: Can remove this?
     @Override
     public void stopApp(String packageName) {
         Log.d("AugmentOsService", "Stopping app: " + packageName);
@@ -1058,12 +1090,14 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
         editor.apply();
     }
 
+    // TODO: Can remove this?
     @Override
     public void installAppFromRepository(String repository, String packageName) throws JSONException {
         Log.d("AugmentOsService", "Installing app from repository: " + packageName);
         blePeripheral.sendNotifyManager("Not implemented", "error");
     }
 
+    // TODO: Can remove this?
     @Override
     public void uninstallApp(String uninstallPackageName) {
         Log.d(TAG, "uninstallApp not implemented");

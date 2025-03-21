@@ -74,6 +74,59 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({
   );
 };
 
+export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = ({
+  isDarkTheme,
+}) => {
+  const textColor = isDarkTheme ? 'white' : 'black';
+
+  return (
+    <View style={styles.guideContainer}>
+      <Text style={[styles.guideTitle, { color: textColor }]}>
+        Audio Wearable Pairing Instructions
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        1. Make sure your Audio Wearable is fully charged and turned on.
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        2. Enable Bluetooth pairing mode on your Audio Wearable.
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        3. Note: Audio Wearables don't have displays. All visual information will be converted to speech.
+      </Text>
+      <Text style={[styles.guideDescription, { color: textColor }]}>
+        Audio Wearables are smart glasses without displays. They use text-to-speech to provide information 
+        that would normally be shown visually. This makes them ideal for audio-only applications or for users
+        who prefer auditory feedback.
+      </Text>
+    </View>
+  );
+};
+
+export const VirtualWearablePairingGuide: React.FC<GlassesPairingGuideProps> = ({
+  isDarkTheme,
+}) => {
+  const textColor = isDarkTheme ? 'white' : 'black';
+
+  return (
+    <View style={styles.guideContainer}>
+      <Text style={[styles.guideTitle, { color: textColor }]}>
+        Virtual Wearable Pairing Instructions
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        1. No physical device is needed. The Virtual Wearable simulates a pair of smart glasses.
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        2. Continue to automatically connect to the virtual device.
+      </Text>
+      <Text style={[styles.guideDescription, { color: textColor }]}>
+        The Virtual Wearable allows you to test and develop with AugmentOS without physical smart glasses. 
+        It simulates a wearable device and works with all AugmentOS features. This is perfect for development, 
+        testing, or experiencing AugmentOS functionality before purchasing smart glasses.
+      </Text>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   guideContainer: {
     marginTop: 20,
@@ -87,6 +140,12 @@ const styles = StyleSheet.create({
   guideStep: {
     fontSize: 16,
     marginBottom: 8,
+  },
+  guideDescription: {
+    fontSize: 14,
+    marginTop: 12,
+    marginBottom: 8,
+    fontStyle: 'italic',
   },
   guideImage: {
     width: '100%',

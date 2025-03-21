@@ -9,13 +9,15 @@ export type RootStackParamList = {
   AppStore: undefined;
   AppStoreNative: undefined;
   AppStoreWeb: undefined;
-  PairPuckScreen: undefined; // Add this line
+  PairPuckScreen: undefined;
   SplashScreen: undefined;
   VerifyEmailScreen: undefined;
+  WelcomePage: undefined;
+  Onboarding: undefined;
   AppDetails: { app: AppStoreItem };
   ProfileSettings: undefined;
   GlassesMirror: undefined;
-  Reviews: { appId: string; appName: string }; // Add appName here
+  Reviews: { appId: string; appName: string };
   ConnectingToPuck: undefined;
   PhoneNotificationSettings: undefined;
   PrivacySettingsScreen: undefined;
@@ -49,10 +51,10 @@ export type AppStoreItem = {
   rating: number;
   downloads: number;
   requirements: string[];
-  screenshots?: string[]; // Add this line to include screenshots
+  screenshots?: string[];
   reviews?: {
       avatar: string; id: string; user: string; rating: number; comment: string
-}[]; // Add reviews field
+}[];
 
 
 };

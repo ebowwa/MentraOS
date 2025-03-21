@@ -54,6 +54,12 @@ export const systemApps = {
     name: 'Merge',
     description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
   },
+  teleprompter: {
+    host: `teleprompter`,
+    packageName: 'com.augmentos.teleprompter',
+    name: 'Teleprompter',
+    description: "Teleprompter for live presentations.",
+  },
   liveTranslation: {
     // port: BASE_PORT + 17,
     host: "live-translation",

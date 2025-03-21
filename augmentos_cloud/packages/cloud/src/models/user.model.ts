@@ -23,6 +23,13 @@ interface UserDocument extends Document {
     packageName: string;
     installedDate: Date;
   }>;
+  profile?: {
+    company?: string;
+    website?: string;
+    contactEmail?: string;
+    description?: string;
+    logo?: string;
+  };
 
   setLocation(location: Location): Promise<void>;
   addRunningApp(appName: string): Promise<void>;
@@ -96,6 +103,14 @@ const UserSchema = new Schema<UserDocument>({
       lat: { type: Number, required: true },
       lng: { type: Number, required: true }
     }
+  },
+  
+  profile: {
+    company: { type: String },
+    website: { type: String },
+    contactEmail: { type: String },
+    description: { type: String },
+    logo: { type: String }
   },
 
   runningApps: {
@@ -254,7 +269,8 @@ UserSchema.methods.updateAppSettings = async function(
     ([key, value]) => ({ key, value })
   );
 
-  this.appSettings.set(sanitizedAppName, settings);
+  // Use the merged settings array instead of just the new settings
+  this.appSettings.set(sanitizedAppName, updatedSettingsArray);
   await this.save();
 
   console.log('Updated settings:', JSON.stringify(updatedSettingsArray));

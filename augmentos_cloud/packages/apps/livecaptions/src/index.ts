@@ -16,7 +16,7 @@ import {
   createTranscriptionStream,
   ExtendedStreamType,
 } from '@augmentos/sdk';
-import { TranscriptProcessor, languageToLocale } from '@augmentos/utils';
+import { TranscriptProcessor, languageToLocale, convertLineWidth } from '@augmentos/utils';
 import { systemApps } from '@augmentos/config';
 import axios from 'axios';
 
@@ -48,30 +48,6 @@ app.use(express.static(path.join(__dirname, './public')));
 
 // Track active sessions
 const activeSessions = new Map<string, WebSocket>();
-
-function convertLineWidth(width: string | number, isHanzi: boolean): number {
-  if (typeof width === 'number') return width;
-
-  if (!isHanzi) {
-  switch (width.toLowerCase()) {
-      case 'very narrow': return 21;
-      case 'narrow': return 30;
-      case 'medium': return 38;
-      case 'wide': return 44;
-      case 'very wide': return 52;
-      default: return 45;
-    }
-  } else {
-    switch (width.toLowerCase()) {
-      case 'very narrow': return 7;
-      case 'narrow': return 10;
-      case 'medium': return 14;
-      case 'wide': return 18;
-      case 'very wide': return 21;
-      default: return 14;
-    }
-  }
-}
 
 async function fetchAndApplySettings(sessionId: string, userId: string) {
   try {

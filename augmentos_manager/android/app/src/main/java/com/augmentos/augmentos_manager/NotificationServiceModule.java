@@ -86,7 +86,7 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
     public void onNotificationPosted(String jsonString) {
         try {
             Log.d(TAG, "onNotificationPosted START - jsonString: " + jsonString);
-            sendNotificationToJS(jsonString);
+            //sendNotificationToJS(jsonString);
         } catch (Exception e) {
             Log.e(TAG, "Error in onNotificationPosted: ", e);
         }

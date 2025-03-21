@@ -1,12 +1,15 @@
 // AppIcon.tsx
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ImageBackground, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { AppInfo } from '../AugmentOSStatusParser';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import { getAppImage } from '../logic/getAppImage';
+import { FallbackImageBackground } from './FallbackImageBackground';
+import { saveSetting } from '../logic/SettingsHelper';
+import { SETTINGS_KEYS } from '../consts';
 // import BluetoothService from '../BluetoothService';
 
 interface AppIconProps {
@@ -27,6 +30,14 @@ const AppIcon: React.FC<AppIconProps> = ({
   const navigation = useNavigation<NavigationProps>();
 
     const openAppSettings = async () => {
+        // Mark onboarding as completed when user long-presses an app icon
+        try {
+            await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
+            console.log('Onboarding marked as completed');
+        } catch (error) {
+            console.error('Failed to save onboarding completion status:', error);
+        }
+        
         navigation.navigate('AppSettings', {
             packageName: app.packageName,
             appName: app.name
@@ -37,6 +48,7 @@ const AppIcon: React.FC<AppIconProps> = ({
         <TouchableOpacity
             onPress={onClick}
             onLongPress={openAppSettings}
+            delayLongPress={500} // Make long press easier to trigger
             activeOpacity={0.7}
             style={[styles.appWrapper, style]}
             accessibilityLabel={`Launch ${app.name}`}
@@ -54,8 +66,9 @@ const AppIcon: React.FC<AppIconProps> = ({
                         isDarkTheme ? styles.appIconWrapperDark : styles.appIconWrapperLight,
                     ]}
                 >
-                    <ImageBackground
-                        source={getAppImage(app.packageName)}
+                    <FallbackImageBackground
+                        source={getAppImage(app)}
+                        // source={{ uri: app.icon }}
                         style={styles.appIcon}
                         imageStyle={styles.appIconRounded}
                     />
@@ -97,9 +110,9 @@ const styles = StyleSheet.create({
         height: 65,
         alignItems: 'center',
         justifyContent: 'center',
-        borderRadius: 23,
+        borderRadius: 0,
         overflow: 'hidden',
-        borderWidth: 1,
+        // borderWidth: 1,
     },
     appIconWrapperLight: {
         borderColor: '#E5E5EA',
