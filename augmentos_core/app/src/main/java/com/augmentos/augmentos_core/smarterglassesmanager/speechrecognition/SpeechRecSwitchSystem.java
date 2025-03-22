@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PauseAsrEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
@@ -62,12 +63,18 @@ public class SpeechRecSwitchSystem {
 
     @Subscribe
     public void onLC3AudioChunkNewEvent(LC3AudioChunkNewEvent receivedEvent){
-        Log.d(TAG, "onLC3AudioChunkNewEvent");
+//        Log.d(TAG, "onLC3AudioChunkNewEvent");
 
         //redirect audio to the currently in use ASR framework, if it's not paused
         if (!speechRecFramework.pauseAsrFlag) {
             speechRecFramework.ingestLC3AudioChunk(receivedEvent.thisChunk);
         }
+    }
+
+    @Subscribe
+    public void onBypassVadForDebuggingEvent(BypassVadForDebuggingEvent receivedEvent){
+        //redirect audio to the currently in use ASR framework
+        speechRecFramework.changeBypassVadForDebuggingState(receivedEvent.bypassVadForDebugging);
     }
 
     @Subscribe
