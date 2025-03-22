@@ -210,6 +210,7 @@ class SmartGlassesRepresentative {
         });
     }
 
+    //data from the local microphone, convert to LC3, send
     private void receiveChunk(ByteBuffer chunk){
         byte[] audio_bytes = chunk.array();
 
