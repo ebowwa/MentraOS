@@ -9,6 +9,7 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 /**
  * Singleton class for managing communication with AugmentOS Core
@@ -86,17 +87,18 @@ public class AugmentOSCommunicator {
     // Send command to Core
     public void sendCommandToCore(String jsonString) {
         if (augmentOSLib != null) {
+            Log.d(TAG, "Sending command to core: " + jsonString);
             augmentOSLib.sendDataFromManagerToCore(jsonString);
         } else {
             Log.e(TAG, "Cannot send command - AugmentOSLib not initialized");
         }
     }
 
-    // Handle notification events
-    @Subscribe
+    // Handle notification events - using MAIN thread mode for immediate processing
+    @Subscribe(threadMode = ThreadMode.MAIN)
     public void onNewNotificationReceivedEvent(NewNotificationReceivedEvent event) {
         try {
-            Log.d(TAG, "Received notification: " + event.toString());
+            Log.d(TAG, "Received notification via EventBus: " + event.toString());
             // Create JSON object from notification event
             String notificationJson = String.format(
                 "{ \"command\": \"phone_notification\", \"params\": { \"app_name\": \"%s\", \"title\": \"%s\", \"text\": \"%s\" } }",
@@ -104,6 +106,7 @@ public class AugmentOSCommunicator {
             );
             
             sendCommandToCore(notificationJson);
+            Log.d(TAG, "Sent notification to core: " + notificationJson);
         } catch (Exception e) {
             Log.e(TAG, "Failed to process notification event", e);
         }

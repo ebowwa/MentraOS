@@ -89,7 +89,7 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
     public void onNotificationPosted(String jsonString) {
         try {
             Log.d(TAG, "onNotificationPosted START - jsonString: " + jsonString);
-            //sendNotificationToJS(jsonString);
+            sendNotificationToJS(jsonString); // Uncommented to send to JS
             
             // Post to EventBus for AugmentOSCommunicator to handle
             try {
@@ -100,6 +100,9 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
                 
                 NewNotificationReceivedEvent event = new NewNotificationReceivedEvent(appName, title, text);
                 EventBus.getDefault().post(event);
+                
+                // Log confirmation that event was posted
+                Log.d(TAG, "Posted notification to EventBus: " + event.toString());
             } catch (Exception e) {
                 Log.e(TAG, "Error parsing notification JSON", e);
             }
