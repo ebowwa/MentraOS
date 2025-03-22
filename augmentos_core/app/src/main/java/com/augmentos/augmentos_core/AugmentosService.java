@@ -18,7 +18,6 @@ import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.GROUP_SUMMARY_
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.SERVICE_CORE_NOTIFICATION_ID;
 import static com.augmentos.augmentoslib.SmartGlassesAndroidService.buildSharedForegroundNotification;
 
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -101,6 +100,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 //SpeechRecIntermediateOutputEvent
+
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
 
 import okhttp3.Call;
@@ -169,6 +170,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
     private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
 
     private WebSocketLifecycleManager webSocketLifecycleManager;
+    private boolean isMicEnabledForFrontend = false;
 
     public AugmentosService() {
     }
@@ -813,6 +815,7 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("force_core_onboard_mic", AugmentosSmartGlassesService.getForceCoreOnboardMic(this));
             coreInfo.put("default_wearable", AugmentosSmartGlassesService.getPreferredWearable(this));
+            coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + AugmentosSmartGlassesService.getPreferredWearable(this));
 
@@ -994,6 +997,12 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             smartGlassesService.findCompatibleDeviceNames(device);
             // blePeripheral.sendGlassesSearchResultsToManager(modelName, compatibleDeviceNames);
         });
+    }
+
+    @Subscribe
+    public void onMicStateForFrontendEvent(isMicEnabledForFrontendEvent event) {
+        Log.d("AugmentOsService", "Received mic state for frontend event: " + event.micState);
+        isMicEnabledForFrontend = event.micState;
     }
 
     @Override

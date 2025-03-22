@@ -38,6 +38,7 @@ import java.util.zip.CRC32;
 import java.nio.ByteBuffer;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
@@ -54,6 +55,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.R;
+
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -139,6 +141,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //mic enable Handler
     private Handler micEnableHandler = new Handler();
     private boolean micEnabledAlready = false;
+    private boolean isMicrophoneEnabled = false; // Track current microphone state
 
     //notification period sender
     private Handler notificationHandler = new Handler();
@@ -1817,9 +1820,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
 //                quickRestartG1();
 
+
                 heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS);
             }
         };
+
 
         heartbeatHandler.postDelayed(heartbeatRunnable, delay);
     }
@@ -2045,6 +2050,8 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //microphone stuff
     public void setMicEnabled(boolean enable, int delay) {
         Log.d(TAG, "Running set mic enabled: " + enable);
+        isMicrophoneEnabled = enable; // Update the state tracker
+        EventBus.getDefault().post(new isMicEnabledForFrontendEvent(enable));
         micEnableHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -2760,5 +2767,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             setMicEnabled(false, 10);
             stopMicBeat();
         }
+    }
+
+    /**
+     * Returns whether the microphone is currently enabled
+     * @return true if microphone is enabled, false otherwise
+     */
+    public boolean isMicrophoneEnabled() {
+        return isMicrophoneEnabled;
     }
 }
