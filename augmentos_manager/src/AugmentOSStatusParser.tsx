@@ -212,7 +212,7 @@ export class AugmentOSParser {
     if (data && 'status' in data) {
       let status = data.status;
 
-      console.log('status.core_info.is_mic_enabled_for_frontend', status.core_info.is_mic_enabled_for_frontend);
+      // console.log('status.core_info.is_mic_enabled_for_frontend', status.core_info.is_mic_enabled_for_frontend);
 
       return {
         core_info: {

@@ -198,6 +198,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //fonts in G1
     G1FontLoader fontLoader;
 
+    private static final long DEBOUNCE_DELAY_MS = 100; // Minimum time between chunk sends
+    private volatile long lastSendTimestamp = 0;
+
     public EvenRealitiesG1SGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
         this.context = context;
@@ -1447,6 +1450,16 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
                     }
 
+                    Log.d(TAG, "PROC_QUEUE - DEBOUNCE_DELAY_MS: " + DEBOUNCE_DELAY_MS);
+
+                    // Apply debouncing
+                    long currentTime = System.currentTimeMillis();
+                    long timeSinceLastSend = currentTime - lastSendTimestamp;
+                    if (timeSinceLastSend < DEBOUNCE_DELAY_MS) {
+                        Thread.sleep(DEBOUNCE_DELAY_MS - timeSinceLastSend);
+                    }
+
+                    Log.d(TAG, "PROC_QUEUE - timeSinceLastSend: " + timeSinceLastSend);
                     boolean leftSuccess = true;
                     boolean rightSuccess = true;
 
@@ -1455,6 +1468,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         leftWaiter.setTrue();
                         leftTxChar.setValue(request.data);
                         leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
+                        if (leftSuccess) {
+                            lastSendTimestamp = System.currentTimeMillis();
+                        }
                     }
 
                     if (leftSuccess) {
@@ -1472,6 +1488,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         rightWaiter.setTrue();
                         rightTxChar.setValue(request.data);
                         rightSuccess = rightGlassGatt.writeCharacteristic(rightTxChar);
+                        if (rightSuccess) {
+                            lastSendTimestamp = System.currentTimeMillis();
+                        }
                     }
 
                     //wait to make sure the right happens
@@ -1480,7 +1499,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         rightWaiter.waitWhileTrue();
                         //Log.d(TAG, "PROC_QUEUE - DONE WAIT ON RIGHT");
                     } else {
-                        //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
+                         //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
                     }
 
                     Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
