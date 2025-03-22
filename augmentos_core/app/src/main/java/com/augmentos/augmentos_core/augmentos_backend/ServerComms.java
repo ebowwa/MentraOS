@@ -623,6 +623,7 @@ public class ServerComms {
         if (host == null || port == null) {
             throw new IllegalStateException("AugmentOS Server Config Not Found");
         }
+
         // Could do "ws://" for dev or "wss://" for secure
         return String.format("%s://%s:%s/glasses-ws", secureServer ? "wss" : "ws", host, port);
     }
