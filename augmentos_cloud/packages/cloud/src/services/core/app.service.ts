@@ -375,6 +375,17 @@ export class AppService {
       throw new Error('You do not have permission to publish this app');
     }
 
+    // Verify that the developer has filled out the required profile information
+    const developer = await User.findOne({ email: developerId });
+    if (!developer) {
+      throw new Error('Developer not found');
+    }
+
+    // Check if developer profile has the required fields
+    if (!developer.profile?.company || !developer.profile?.contactEmail) {
+      throw new Error('PROFILE_INCOMPLETE: Developer profile is incomplete. Please fill out your company name and contact email before publishing an app.');
+    }
+
     // Update app status to SUBMITTED
     const updatedApp = await App.findOneAndUpdate(
       { packageName },

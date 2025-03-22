@@ -106,9 +106,9 @@ const UserSchema = new Schema<UserDocument>({
   },
   
   profile: {
-    company: { type: String },
+    company: { type: String, required: false }, // Not required in schema, but validated in app publish flow
     website: { type: String },
-    contactEmail: { type: String },
+    contactEmail: { type: String, required: false }, // Not required in schema, but validated in app publish flow
     description: { type: String },
     logo: { type: String }
   },

@@ -6,6 +6,12 @@ import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import { DeveloperProfile } from '@augmentos/sdk';
+
+// Extended app interface for API responses that include developer profile
+interface AppWithDeveloperProfile extends AppI {
+  developerProfile?: DeveloperProfile;
+}
 
 export const CLOUD_VERSION = process.env.CLOUD_VERSION;
 if (!CLOUD_VERSION) {
@@ -265,16 +271,15 @@ async function getAppByPackage(req: Request, res: Response) {
     }
 
     // Create response with developer profile if available
-    // Convert app to plain object using spread operator to avoid TypeScript errors
-    const appObj = { ...app };
-    const appWithDeveloperInfo = {
-      ...appObj,
-      developerProfile
-    };
+    // Use the AppWithDeveloperProfile interface for type safety
+    const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+    if (developerProfile) {
+      appObj.developerProfile = developerProfile;
+    }
 
     res.json({
       success: true,
-      data: appWithDeveloperInfo
+      data: appObj
     });
   } catch (error) {
     console.error('Error fetching app:', error);
@@ -599,16 +604,15 @@ async function getInstalledApps(req: Request, res: Response) {
       }
 
       // Create response with developer profile if available
-      // Convert app to plain object to avoid TypeScript errors
-      const appObj = { ...app };
-      const appWithDeveloperInfo = {
-        ...appObj,
-        developerProfile
-      };
+      // Use the AppWithDeveloperProfile interface for type safety
+      const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+      if (developerProfile) {
+        appObj.developerProfile = developerProfile;
+      }
 
       res.json({
         success: true,
-        data: appWithDeveloperInfo
+        data: appObj
       });
     } catch (error) {
       console.error('Error fetching app details:', error);
@@ -625,8 +629,8 @@ async function getAvailableApps (req: Request, res: Response) {
     
     // Enhance apps with developer profiles
     const enhancedApps = await Promise.all(apps.map(async (app) => {
-      // Convert app to plain object for modification
-      const appObj = { ...app };
+      // Convert app to plain object for modification and type as AppWithDeveloperProfile
+      const appObj = { ...app } as unknown as AppWithDeveloperProfile;
       
       // Add developer profile if the app has a developerId
       if (app.developerId) {
