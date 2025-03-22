@@ -8,7 +8,7 @@ import { DisplayRequest } from '@augmentos/sdk';
 import appService, { SYSTEM_TPAS } from './app.service';
 import transcriptionService from '../processing/transcription.service';
 import DisplayManager from '../layout/DisplayManager6.1';
-import { LC3Service, createLoggerForUserSession, logger } from '@augmentos/utils';
+import { createLC3Service, LC3Service, createLoggerForUserSession, logger } from '@augmentos/utils';
 import { ASRStreamInstance } from '../processing/transcription.service';
 import { subscriptionService } from './subscription.service';
 import { AudioWriter } from "../debug/audio-writer";
@@ -17,8 +17,8 @@ import { systemApps } from './system-apps';
 const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds
 const LOG_AUDIO = false;
 const PROCESS_AUDIO = true;
-const DEBUG_AUDIO = false;
-
+const DEBUG_AUDIO = true;
+const IS_LC3 = true; // Set to true if using LC3 codec. false if using PCM.
 
 export interface ExtendedUserSession extends UserSession {
   lc3Service?: LC3Service;
@@ -52,8 +52,9 @@ export class SessionService {
     } as UserSession & { disconnectedAt: Date | null };
     userSession.logger.info(`Session ${sessionId} created for user ${userId}`);
 
-    // Create and initialize a new LC3Service instance for this session.
-    const lc3ServiceInstance = new LC3Service();
+    // Create and initialize a new LC3Service instance for this session
+    // Use the new factory function to create a session-specific instance
+    const lc3ServiceInstance = createLC3Service(sessionId);
     try {
       await lc3ServiceInstance.initialize();
       userSession.logger.info(`✅ LC3 Service initialized for session ${sessionId}`);
@@ -136,8 +137,8 @@ export class SessionService {
     userSession.websocket.send(JSON.stringify(clientResponse));
   }
 
-  handleReconnectUserSession(newSession: ExtendedUserSession, userId: string): void {
-    const oldUserSession = this.getSession(userId);
+  async handleReconnectUserSession(newSession: ExtendedUserSession, userId: string): Promise<void> {
+  const oldUserSession = this.getSession(userId);
     if (oldUserSession) {
       newSession.activeAppSessions = oldUserSession.activeAppSessions;
       newSession.transcript = oldUserSession.transcript;
@@ -149,13 +150,16 @@ export class SessionService {
 
       // Transfer LC3Service instance to new session
       if (oldUserSession.lc3Service) {
+        // Use the existing LC3 service instance
         newSession.lc3Service = oldUserSession.lc3Service;
+        newSession.logger.info(`✅ Transferred existing LC3 Service from session ${oldUserSession.sessionId} to ${newSession.sessionId}`);
       } else {
-        newSession.logger.error(`❌[${userId}]: No LC3 service found for reconnected session`);
-        const lc3ServiceInstance = new LC3Service();
+        // Create a new one with the session ID if needed
+        newSession.logger.warn(`⚠️ No LC3 service found for reconnected session, creating a new one`);
+        const lc3ServiceInstance = createLC3Service(newSession.sessionId);
         try {
-          lc3ServiceInstance.initialize();
-          newSession.logger.info(`✅ LC3 Service initialized for reconnected session ${newSession.sessionId}`);
+          await lc3ServiceInstance.initialize();
+          newSession.logger.info(`✅ New LC3 Service initialized for reconnected session ${newSession.sessionId}`);
         }
         catch (error) {
           newSession.logger.error(`❌ Failed to initialize LC3 service for reconnected session ${newSession.sessionId}:`, error);
@@ -172,6 +176,8 @@ export class SessionService {
       if (oldUserSession.websocket.readyState === 1) {
         oldUserSession.websocket?.close();
       }
+
+      // Note: we don't clean up the LC3 service since we're transferring it
 
       this.activeSessions.delete(oldUserSession.sessionId);
       newSession.logger.info(`Transferred data from session ${oldUserSession.sessionId} to ${newSession.sessionId}`);
@@ -215,8 +221,8 @@ export class SessionService {
     }
   }
 
-  // Updated handleAudioData method
-  async handleAudioData(userSession: ExtendedUserSession, audioData: ArrayBuffer | any, isLC3 = true): Promise<ArrayBuffer | void> {
+  // Updated handleAudioData method with improved LC3 handling
+  async handleAudioData(userSession: ExtendedUserSession, audioData: ArrayBuffer | any, isLC3 = IS_LC3): Promise<ArrayBuffer | void> {
     // Update the last audio timestamp
     userSession.lastAudioTimestamp = Date.now();
 
@@ -240,9 +246,11 @@ export class SessionService {
     let processedAudioData = audioData;
     if (isLC3 && userSession.lc3Service) {
       try {
+        // The improved LC3Service handles null checks internally
         processedAudioData = await userSession.lc3Service.decodeAudioChunk(audioData);
+        
         if (!processedAudioData) {
-          if (LOG_AUDIO) userSession.logger.error(`❌ LC3 decode returned null for session ${userSession.sessionId}`);
+          if (LOG_AUDIO) userSession.logger.warn(`⚠️ LC3 decode returned null for session ${userSession.sessionId}`);
           return; // Skip this chunk
         }
 
@@ -251,8 +259,26 @@ export class SessionService {
           await userSession.audioWriter?.writePCM(processedAudioData);
         }
       } catch (error) {
-        userSession.logger.error('❌ Error decoding LC3 audio:', error);
-        processedAudioData = null;
+        userSession.logger.error(`❌ Error decoding LC3 audio for session ${userSession.sessionId}:`, error);
+        
+        // If there was an error with the LC3 service, try to reinitialize it
+        if (userSession.lc3Service) {
+          userSession.logger.warn(`⚠️ Attempting to reinitialize LC3 service for session ${userSession.sessionId}`);
+          try {
+            // Clean up existing service
+            userSession.lc3Service.cleanup();
+            
+            // Create a new service
+            const newLc3Service = createLC3Service(userSession.sessionId);
+            await newLc3Service.initialize();
+            userSession.lc3Service = newLc3Service;
+            userSession.logger.info(`✅ Successfully reinitialized LC3 service for session ${userSession.sessionId}`);
+          } catch (reinitError) {
+            userSession.logger.error(`❌ Failed to reinitialize LC3 service:`, reinitError);
+          }
+        }
+        
+        return; // Skip this chunk after an error
       }
     } else if (processedAudioData) {
       if (DEBUG_AUDIO) {
@@ -275,7 +301,9 @@ export class SessionService {
 
     // Clean up the LC3 instance for this session if it exists
     if (userSession.lc3Service) {
+      userSession.logger.info(`🧹 Cleaning up LC3 service for session ${sessionId}`);
       userSession.lc3Service.cleanup();
+      userSession.lc3Service = undefined;
     }
 
     // Clean up subscription history for this session
@@ -385,6 +413,15 @@ export class SessionService {
       return elapsed > RECONNECT_GRACE_PERIOD_MS;
     }
     return false;
+  }
+  
+  // Method to get audio service info for debugging
+  getAudioServiceInfo(sessionId: string): object | null {
+    const session = this.getSession(sessionId);
+    if (session && session.lc3Service) {
+      return session.lc3Service.getInfo();
+    }
+    return null;
   }
 }
 
