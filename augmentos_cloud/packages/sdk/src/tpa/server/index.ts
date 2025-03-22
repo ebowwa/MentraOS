@@ -257,12 +257,12 @@ export class TpaServer {
   private async handleSessionRequest(request: SessionWebhookRequest, res: express.Response): Promise<void> {
     const { sessionId, userId } = request;
     console.log(`\n\n🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`);
-
+    
     // Create new TPA session
     const session = new TpaSession({
       packageName: this.config.packageName,
       apiKey: this.config.apiKey,
-      augmentOSWebsocketUrl: this.config.augmentOSWebsocketUrl
+      augmentOSWebsocketUrl: request.augmentOSWebsocketUrl || this.config.augmentOSWebsocketUrl,
     });
 
     // Setup session event handlers

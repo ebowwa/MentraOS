@@ -7,7 +7,7 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -208,7 +208,7 @@ export class AppService {
    * @param payload - Data to send
    * @throws If webhook fails after retries
    */
-  async triggerWebhook(url: string, payload: WebhookPayload): Promise<void> {
+  async triggerWebhook(url: string, payload: SessionWebhookRequest): Promise<void> {
     const maxRetries = 2;
     const baseDelay = 1000; // 1 second
 
