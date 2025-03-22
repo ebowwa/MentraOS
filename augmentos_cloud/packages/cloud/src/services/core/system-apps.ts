@@ -1,4 +1,4 @@
-export const systemApps = {
+const systemApps = {
   captions: {
     host: "live-captions",
     packageName: "com.augmentos.livecaptions",
@@ -48,3 +48,13 @@ export const systemApps = {
     description: "Live language translation."
   },
 };
+
+// Check if deployed on porter. if so we need to modify the hosts with the porter env prefix.
+if (process.env.PORTER_APP_NAME) {
+  for (const app of Object.values(systemApps)) {
+    app.host = `${process.env.PORTER_APP_NAME}-${app.host}`;
+  }
+}
+
+export { systemApps };
+export default systemApps;

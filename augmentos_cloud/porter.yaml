@@ -16,6 +16,7 @@ services:
     ramMegabytes: 2048
     env:
       NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "cloud"
   - name: live-captions
@@ -26,6 +27,7 @@ services:
     ramMegabytes: 512
     env:
       NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "live-captions"
   - name: dashboard-manager
@@ -36,6 +38,7 @@ services:
     ramMegabytes: 512
     env:
       NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "dashboard-manager"
   - name: notify
@@ -46,6 +49,7 @@ services:
     ramMegabytes: 512
     env:
       NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "notify"
   - name: mira
@@ -56,6 +60,7 @@ services:
     ramMegabytes: 512
     env:
       NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "mira"
   - name: live-translation
