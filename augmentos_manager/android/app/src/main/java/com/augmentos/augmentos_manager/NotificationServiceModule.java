@@ -76,7 +76,8 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
     }
 
     // Send notifications to React Native
-    public void sendNotificationToJS(String jsonString) {
+    private void sendNotificationToJS(String jsonString) {
+        Log.d(TAG, "sendNotificationToJS - jsonString: " + jsonString);
         getReactApplicationContext()
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit("onNotificationPosted", jsonString);
@@ -86,7 +87,7 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
     public void onNotificationPosted(String jsonString) {
         try {
             Log.d(TAG, "onNotificationPosted START - jsonString: " + jsonString);
-            //sendNotificationToJS(jsonString);
+            sendNotificationToJS(jsonString);
         } catch (Exception e) {
             Log.e(TAG, "Error in onNotificationPosted: ", e);
         }
