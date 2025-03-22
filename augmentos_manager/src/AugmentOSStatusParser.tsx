@@ -50,6 +50,8 @@ export interface CoreInfo {
   force_core_onboard_mic: boolean;
   is_mic_enabled_for_frontend: boolean;
   contextual_dashboard_enabled: boolean;
+  bypass_vad_for_debugging: boolean;
+  bypass_audio_encoding_for_debugging: boolean;
 }
 
 export interface AugmentOSMainStatus {
@@ -74,6 +76,8 @@ export class AugmentOSParser {
       force_core_onboard_mic: false,
       is_mic_enabled_for_frontend: false,
       contextual_dashboard_enabled: false,
+      bypass_vad_for_debugging: false,
+      bypass_audio_encoding_for_debugging: false,
       default_wearable: null,
     },
     glasses_info: null,
@@ -99,6 +103,8 @@ export class AugmentOSParser {
       force_core_onboard_mic: false,
       is_mic_enabled_for_frontend: false,
       contextual_dashboard_enabled: true,
+      bypass_vad_for_debugging: false,
+      bypass_audio_encoding_for_debugging: false,
       default_wearable: 'evenrealities_g1',
     },
     glasses_info: {
@@ -225,6 +231,8 @@ export class AugmentOSParser {
           sensing_enabled: status.core_info.sensing_enabled ?? false,
           force_core_onboard_mic: status.core_info.force_core_onboard_mic ?? false,
           contextual_dashboard_enabled: status.core_info.contextual_dashboard_enabled ?? true,
+          bypass_vad_for_debugging: status.core_info.bypass_vad_for_debugging ?? false,
+          bypass_audio_encoding_for_debugging: status.core_info.bypass_audio_encoding_for_debugging ?? false,
           default_wearable: status.core_info.default_wearable ?? null,
           is_mic_enabled_for_frontend: status.core_info.is_mic_enabled_for_frontend ?? false,
         },
