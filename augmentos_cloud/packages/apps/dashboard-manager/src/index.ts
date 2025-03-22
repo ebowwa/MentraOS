@@ -22,7 +22,7 @@ import { WeatherModule } from './dashboard-modules/WeatherModule';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002";
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "cloud"; 
 const PACKAGE_NAME = "com.augmentos.dashboard";
 const API_KEY = 'test_key'; // In production, store securely
 
@@ -70,7 +70,7 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
     console.log(`\n[Webhook] Session start for user ${userId}, session ${sessionId}\n`);
 
     // 1) Create a new WebSocket connection to the cloud
-    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
 
     // Create a new dashboard card
     const dashboardCard: DoubleTextWall = {

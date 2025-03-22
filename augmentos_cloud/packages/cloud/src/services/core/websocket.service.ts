@@ -61,9 +61,12 @@ import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
 
 export const PUBLIC_HOST_NAME = process.env.PUBLIC_HOST_NAME || "dev.augmentos.cloud";
-export const LOCAL_HOST_NAME = process.env.PORTER_APP_NAME ? `${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80` : "cloud"
-
+export const LOCAL_HOST_NAME = process.env.CLOUD_HOST_NAME || process.env.PORTER_APP_NAME ? `${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80` : "cloud"
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+
+logger.info(`🔥🔥🔥 [websocket.service]: PUBLIC_HOST_NAME: ${PUBLIC_HOST_NAME}`);
+logger.info(`🔥🔥🔥 [websocket.service]: LOCAL_HOST_NAME: ${LOCAL_HOST_NAME}`);
+
 const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 
 // Constants
@@ -269,7 +272,8 @@ export class WebSocketService {
       if (app.isSystemApp) {
         augmentOSWebsocketUrl = `ws://${LOCAL_HOST_NAME}/tpa-ws`;
       }
-
+      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server Websocket URL: ${augmentOSWebsocketUrl}`);
+      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Start Session webhook URL: ${app.webhookURL}`);
       await appService.triggerWebhook(app.webhookURL, {
         // type: 'session_request',
         type: WebhookRequestType.SESSION_REQUEST,

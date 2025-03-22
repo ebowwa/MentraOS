@@ -2,7 +2,7 @@ import path from 'path';
 import { TpaServer, TpaSession } from '@augmentos/sdk';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "localhost:8002";
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "localhost:8002";
 const PACKAGE_NAME = "org.augmentos.flash";
 const API_KEY = 'test_key'; // In production, this would be securely stored
 
@@ -53,7 +53,7 @@ const server = new FlashServer({
   packageName: PACKAGE_NAME,
   apiKey: API_KEY,
   port: PORT,
-  augmentOSWebsocketUrl: `ws://${CLOUD_URL}/tpa-ws`,
+  augmentOSWebsocketUrl: `ws://${CLOUD_HOST_NAME}/tpa-ws`,
   webhookPath: '/webhook',
   publicDir: path.join(__dirname, './public')
 });
