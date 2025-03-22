@@ -118,6 +118,7 @@ class SmartGlassesRepresentative {
         if (SmartGlassesAndroidService.getSensingEnabled(context)) {
             // If the glasses don't support a microphone, handle local microphone
             if (!smartGlassesDevice.getHasInMic() || SmartGlassesAndroidService.getForceCoreOnboardMic(context)) {
+                
                 connectAndStreamLocalMicrophone(true);
             }
         }
@@ -209,6 +210,7 @@ class SmartGlassesRepresentative {
         });
     }
 
+    //data from the local microphone, convert to LC3, send
     private void receiveChunk(ByteBuffer chunk){
         byte[] audio_bytes = chunk.array();
 
