@@ -37,6 +37,10 @@ const DebuggingSettingsScreen: React.FC<DebuggingSettingsScreenProps> = ({
     loadInitialSettings();
   }, []);
 
+  React.useEffect(() => {
+    setIsBypassVADForDebuggingEnabled(status.core_info.bypass_vad_for_debugging);
+  }, [status.core_info.bypass_vad_for_debugging]);
+
   const toggleBypassVadForDebugging = async () => {
     let newSetting = !isBypassVADForDebuggingEnabled;
     await BluetoothService.getInstance().sendToggleBypassVadForDebugging(newSetting);

@@ -184,7 +184,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         // If currently speaking, send data live
 //        if (!vadEnabled || isSpeaking) {
         if (bypassVadForDebugging) {
-            Log.d(TAG, "Bypassing VAD for debugging.");
+//            Log.d(TAG, "Bypassing VAD for debugging.");
             ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
             return;
         }

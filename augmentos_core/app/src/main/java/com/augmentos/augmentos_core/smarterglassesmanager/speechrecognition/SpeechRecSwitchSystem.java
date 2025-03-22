@@ -63,7 +63,7 @@ public class SpeechRecSwitchSystem {
 
     @Subscribe
     public void onLC3AudioChunkNewEvent(LC3AudioChunkNewEvent receivedEvent){
-        Log.d(TAG, "onLC3AudioChunkNewEvent");
+//        Log.d(TAG, "onLC3AudioChunkNewEvent");
 
         //redirect audio to the currently in use ASR framework, if it's not paused
         if (!speechRecFramework.pauseAsrFlag) {
