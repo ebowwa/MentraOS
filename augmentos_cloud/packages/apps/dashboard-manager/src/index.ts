@@ -451,16 +451,22 @@ async function updateDashboard(sessionId?: string) {
         if (!session.calendarEvent || !session.latestLocation) return '';
         
         const event = session.calendarEvent;
-        const eventDate = new Date(event.dtStart);
-        const today = new Date();
-        const tomorrow = new Date();
+        // Get timezone from the session's location data, fall back to system timezone
+        const currTimezone = session.latestLocation.timezone;
+        // Create dates with the user's timezone
+        const eventDate = new Date(new Date(event.dtStart).toLocaleString("en-US", { timeZone: currTimezone }));
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: currTimezone }));
+        const tomorrow = new Date(new Date().toLocaleString("en-US", { timeZone: currTimezone }));
         tomorrow.setDate(today.getDate() + 1);
         
         // Format the time portion
         const timeOptions = { hour: "2-digit" as const, minute: "2-digit" as const, hour12: true };
-        // Get timezone from the session's location data, fall back to system timezone
-        const currTimezone = session.latestLocation.timezone;
-        const formattedTime = eventDate.toLocaleTimeString('en-US', { ...timeOptions, timeZone: currTimezone }).replace(" ", "");
+        const formattedTime = eventDate.toLocaleTimeString('en-US', { ...timeOptions }).replace(" ", "");
+
+        // console.log(`[Session ${session.userId}] Event date: ${eventDate}`);
+        // console.log(`[Session ${session.userId}] Today: ${today}`);
+        // console.log(`[Session ${session.userId}] Tomorrow: ${tomorrow}`);
+        // console.log(`[Session ${session.userId}] Formatted time: ${formattedTime}`);
         
         // Check if event is today or tomorrow
         if (eventDate.toDateString() === today.toDateString()) {
