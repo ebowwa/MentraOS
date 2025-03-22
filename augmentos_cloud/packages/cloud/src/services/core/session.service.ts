@@ -17,7 +17,7 @@ import { systemApps } from './system-apps';
 const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds
 const LOG_AUDIO = false;
 const PROCESS_AUDIO = true;
-const DEBUG_AUDIO = true;
+const DEBUG_AUDIO = false;
 const IS_LC3 = true; // Set to true if using LC3 codec. false if using PCM.
 
 export interface ExtendedUserSession extends UserSession {
