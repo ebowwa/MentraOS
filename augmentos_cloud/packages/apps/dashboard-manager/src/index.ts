@@ -449,7 +449,7 @@ async function updateDashboard(sessionId?: string) {
       name: "calendar",
       async run(context: any) {
         const session: SessionInfo = context.session;
-        if (!session.calendarEvent) return '';
+        if (!session.calendarEvent || !session.latestLocation) return '';
         
         const event = session.calendarEvent;
         const eventDate = new Date(event.dtStart);
@@ -459,7 +459,9 @@ async function updateDashboard(sessionId?: string) {
         
         // Format the time portion
         const timeOptions = { hour: "2-digit" as const, minute: "2-digit" as const, hour12: true };
-        const formattedTime = eventDate.toLocaleTimeString('en-US', timeOptions).replace(" ", "");
+        // Get timezone from the session's location data, fall back to system timezone
+        const currTimezone = session.latestLocation.timezone;
+        const formattedTime = eventDate.toLocaleTimeString('en-US', { ...timeOptions, timeZone: currTimezone }).replace(" ", "");
         
         // Check if event is today or tomorrow
         if (eventDate.toDateString() === today.toDateString()) {
