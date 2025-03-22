@@ -81,7 +81,7 @@ const DebuggingSettingsScreen: React.FC<DebuggingSettingsScreenProps> = ({
                 styles.value,
                 isDarkTheme ? styles.lightSubtext : styles.darkSubtext
               ]}>
-              Bypass Voice Activity Detection for debugging purposes.
+              Bypass Voice Activity Detection for in case transcription is not working for you.
             </Text>
           </View>
           <Switch
