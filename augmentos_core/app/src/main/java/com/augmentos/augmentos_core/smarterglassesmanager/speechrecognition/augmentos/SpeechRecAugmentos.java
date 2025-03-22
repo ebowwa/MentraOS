@@ -37,7 +37,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private static SpeechRecAugmentos instance;
 
     private final Context mContext;
-    private final BlockingQueue<byte[]> rollingBuffer;
     private final int bufferMaxSize;
 
     // VAD
@@ -64,7 +63,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
         // Rolling buffer to store ~220ms of audio for replay on VAD trigger
         this.bufferMaxSize = (int) ((16000 * 0.22 * 2) / 512);
-        this.rollingBuffer = new LinkedBlockingQueue<>(bufferMaxSize);
 
         bypassVadForDebugging = SmartGlassesAndroidService.getBypassVadForDebugging(context);
 
@@ -118,8 +116,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     private void sendBufferedAudio() {
         List<byte[]> bufferDump = new ArrayList<>();
-        rollingBuffer.drainTo(bufferDump);
-
         for (byte[] chunk : bufferDump) {
             // Now we send audio chunks through ServerComms (single WebSocket).
             ServerComms.getInstance().sendAudioChunk(chunk);
@@ -196,12 +192,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         if (isSpeaking) {
             ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
         }
-
-        // Maintain rolling buffer for "catch-up"
-        if (rollingBuffer.size() >= bufferMaxSize) {
-            rollingBuffer.poll();
-        }
-        rollingBuffer.offer(LC3audioChunk);
     }
 
 
