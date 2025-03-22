@@ -50,9 +50,17 @@ const systemApps = {
 };
 
 // Check if deployed on porter. if so we need to modify the hosts with the porter env prefix.
+// seems like we gotta do: augmentos-cloud-dev-live-captions.default.svc.cluster.local:80
+// aka <PORTER_APP_NAME>-<app.host>.default.svc.cluster.local:<app.port (default:80)>
+// this is because porter doesn't support the use of the default host names the same way docker-compose does.
+// The default host names are used for the system apps in the docker-compose file.
+// In cloud environments i.e production, development, staging: the system apps are deployed as services in the porter cluster.
+
 if (process.env.PORTER_APP_NAME) {
   for (const app of Object.values(systemApps)) {
-    app.host = `${process.env.PORTER_APP_NAME}-${app.host}`;
+    // app.host = `${process.env.PORTER_APP_NAME}-${app.host}`;
+    app.host = `${process.env.PORTER_APP_NAME}-${app.host}.default.svc.cluster.local:${process.env.PORTER_APP_PORT || 80}`;
+    console.log(`⚡️ System app ${app.name} host: ${app.host}`);
   }
 }
 
