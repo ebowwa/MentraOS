@@ -38,7 +38,7 @@ import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuideP
 import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
 import { saveSetting } from './logic/SettingsHelper';
 import WelcomePageComponent from './components/WelcomePageComponent.tsx';
-import DebuggingSettingsScreen from './screens/DebuggingSettingsScreen.tsx';
+import DeveloperSettingsScreen from './screens/DeveloperSettingsScreen.tsx';
 import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
 
 const linking = {
@@ -164,7 +164,7 @@ const App: React.FC = () => {
                   options={{ title: 'Developer Settings' }}
                 >
                   {props => (
-                    <DebuggingSettingsScreen
+                    <DeveloperSettingsScreen
                       {...props}
                       toggleTheme={toggleTheme}
                       isDarkTheme={isDarkTheme}

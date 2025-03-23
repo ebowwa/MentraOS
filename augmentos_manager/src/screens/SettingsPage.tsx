@@ -19,6 +19,7 @@ import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import { BluetoothService } from '../BluetoothService';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
 import ManagerCoreCommsService from '../bridge/ManagerCoreCommsService.tsx';
+import { stopExternalService } from '../bridge/CoreServiceStarter';
 import NavigationBar from '../components/NavigationBar';
 
 import { SETTINGS_KEYS } from '../consts';
@@ -141,20 +142,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       console.log('Cleaning up local sessions and services');
       BluetoothService.getInstance().deleteAuthenticationSecretKey();
       ManagerCoreCommsService.stopService();
+      // Stop the AugmentosService in the core
+      // stopExternalService();
       BluetoothService.resetInstance();
       
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Login' }],
+        routes: [{ name: 'SplashScreen' }],
       });
     } catch (err) {
       console.error('Error during sign-out:', err);
       // Even if there's an error, still try to navigate away to login
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Login' }],
+        routes: [{ name: 'SplashScreen' }],
       });
     }
   };

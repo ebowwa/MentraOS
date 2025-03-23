@@ -12,13 +12,13 @@ import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { BluetoothService } from '../BluetoothService';
 import NavigationBar from '../components/NavigationBar';
 
-interface DebuggingSettingsScreenProps {
+interface DeveloperSettingsScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
   navigation: any;
 }
 
-const DebuggingSettingsScreen: React.FC<DebuggingSettingsScreenProps> = ({
+const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
   isDarkTheme,
   toggleTheme,
   navigation,
@@ -183,4 +183,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DebuggingSettingsScreen; 
+export default DeveloperSettingsScreen; 
