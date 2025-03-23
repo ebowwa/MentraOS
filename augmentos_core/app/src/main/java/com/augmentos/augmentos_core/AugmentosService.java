@@ -811,7 +811,10 @@ public class AugmentosService extends Service implements AugmentOsActionsCallbac
             // Most dashboards use double_text_wall layout
             if ("double_text_wall".equals(layoutType) && layout.has("topText")) {
                 String topText = layout.getString("topText");
-                
+                if (topText.contains("\n")) {
+                    topText = topText.split("\n")[0];
+                }
+
                 if (topText.contains("$GBATT$")) {
                     topText = topText.replace("$GBATT$", batteryLevel != null ? String.valueOf(batteryLevel) : "");
                 }

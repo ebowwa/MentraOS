@@ -337,7 +337,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 isDarkTheme ? styles.lightText : styles.darkText,
               ]}
             >
-              Always On Status Bar
+              Always On Status Bar (Beta Feature)
             </Text>
             <Text
               style={[
