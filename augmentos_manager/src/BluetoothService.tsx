@@ -106,30 +106,45 @@ export class BluetoothService extends EventEmitter {
     }
   }
 
+  // Event listener subscription
+  private coreMessageEventSubscription: any = null;
+
   initializeCoreMessageIntentReader() {
-    eventEmitter.addListener('CoreMessageIntentEvent', jsonString => {
-      if (INTENSE_LOGGING)
-        console.log('Received message from core:', jsonString);
-      try {
-        let data = JSON.parse(jsonString);
-        if (!this.connectedDevice) {
-          this.connectedDevice = {
-            id: 'fake-device-id',
-            name: 'Fake Device',
-            rssi: -50,
-          };
+    // First, remove any existing subscription to avoid duplicates
+    if (this.coreMessageEventSubscription) {
+      this.coreMessageEventSubscription.remove();
+      this.coreMessageEventSubscription = null;
+    }
 
-          saveSetting(SETTINGS_KEYS.PREVIOUSLY_BONDED_PUCK, true)
-          .then()
-          .catch();
+    // Create a fresh subscription and store the reference
+    this.coreMessageEventSubscription = eventEmitter.addListener(
+      'CoreMessageIntentEvent', 
+      jsonString => {
+        if (INTENSE_LOGGING)
+          console.log('Received message from core:', jsonString);
+        try {
+          let data = JSON.parse(jsonString);
+          if (!this.connectedDevice) {
+            this.connectedDevice = {
+              id: 'fake-device-id',
+              name: 'Fake Device',
+              rssi: -50,
+            };
+
+            saveSetting(SETTINGS_KEYS.PREVIOUSLY_BONDED_PUCK, true)
+            .then()
+            .catch();
+          }
+
+          this.emit('dataReceived', data);
+          this.parseDataFromAugmentOsCore(data);
+        } catch (e) {
+          console.error('Failed to parse JSON from core message:', e);
         }
-
-        this.emit('dataReceived', data);
-        this.parseDataFromAugmentOsCore(data);
-      } catch (e) {
-        console.error('Failed to parse JSON from core message:', e);
       }
-    });
+    );
+    
+    console.log('Core message event listener initialized');
   }
 
   addListeners() {
@@ -1069,6 +1084,13 @@ export class BluetoothService extends EventEmitter {
       // Remove AppState listeners
       BluetoothService.bluetoothService.appStateSubscription?.remove();
 
+      // Remove core message event subscription
+      if (BluetoothService.bluetoothService.coreMessageEventSubscription) {
+        BluetoothService.bluetoothService.coreMessageEventSubscription.remove();
+        BluetoothService.bluetoothService.coreMessageEventSubscription = null;
+        console.log('Core message event subscription removed');
+      }
+
       // Reset instance variables
       BluetoothService.bluetoothService.devices = [];
       BluetoothService.bluetoothService.connectedDevice = null;
@@ -1083,6 +1105,15 @@ export class BluetoothService extends EventEmitter {
       }
       if (BluetoothService.bluetoothService.unsubscribePhoneNotifications) {
         BluetoothService.bluetoothService.unsubscribePhoneNotifications.remove();
+      }
+
+      // Force a release of all event emitter listeners
+      try {
+        // This is a more aggressive cleanup that tries to clear any stale listeners
+        eventEmitter.removeAllListeners('CoreMessageIntentEvent');
+        console.log('Forcibly removed all CoreMessageIntentEvent listeners');
+      } catch (e) {
+        console.error('Error clearing event emitter listeners:', e);
       }
 
       // Nullify the instance

@@ -63,6 +63,7 @@ public class AugmentOSCommunicator {
     public void cleanup() {
         if (augmentOSLib != null) {
             augmentOSLib.deinit();
+            augmentOSLib = null;
         }
         
         if (EventBus.getDefault().isRegistered(this)) {
@@ -70,7 +71,16 @@ public class AugmentOSCommunicator {
         }
         
         isInitialized = false;
-        Log.d(TAG, "AugmentOSCommunicator cleanup complete");
+        reactContext = null;
+        
+        // Reset the singleton instance itself
+        synchronized (AugmentOSCommunicator.class) {
+            if (instance == this) {
+                instance = null;
+            }
+        }
+        
+        Log.d(TAG, "AugmentOSCommunicator cleanup complete and instance resets");
     }
 
     // Process messages coming from Core

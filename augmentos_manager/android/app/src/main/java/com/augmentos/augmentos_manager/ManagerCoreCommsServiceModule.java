@@ -70,6 +70,13 @@ public class ManagerCoreCommsServiceModule extends ReactContextBaseJavaModule {
     public void stopService() {
         // Cleanup the communicator
         AugmentOSCommunicator.getInstance().cleanup();
+        
+        // Log that we're explicitly resetting the listener state
+        Log.d(TAG, "Event listeners will be recreated on next initialization");
+        
+        // We can't directly clear RCTDeviceEventEmitter listeners, but the cleanup()
+        // method above should reset everything properly
+        
         Log.d(TAG, "AugmentOSCommunicator cleaned up");
     }
 

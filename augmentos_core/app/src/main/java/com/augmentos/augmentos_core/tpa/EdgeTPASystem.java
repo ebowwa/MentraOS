@@ -568,12 +568,39 @@ public class EdgeTPASystem {
     }
 
     public void destroy(){
-        augmentOsLibBroadcastReceiver.unregister();
-        mContext.unregisterReceiver(packageInstallReceiver);
-        EventBus.getDefault().unregister(this);
+        // Safely unregister the AugmentOS lib broadcast receiver
+        if (augmentOsLibBroadcastReceiver != null) {
+            try {
+                augmentOsLibBroadcastReceiver.unregister();
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering augmentOsLibBroadcastReceiver: " + e.getMessage());
+            }
+        }
+        
+        // Safely unregister the package install receiver
+        if (packageInstallReceiver != null) {
+            try {
+                mContext.unregisterReceiver(packageInstallReceiver);
+            } catch (IllegalArgumentException e) {
+                // This is fine - receiver was not registered or already unregistered
+                Log.e(TAG, "Error unregistering packageInstallReceiver: " + e.getMessage());
+            }
+        }
+        
+        // Safely unregister from EventBus
+        try {
+            if (EventBus.getDefault().isRegistered(this)) {
+                EventBus.getDefault().unregister(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error unregistering from EventBus: " + e.getMessage());
+        }
+        
+        // Stop the health check handler
         if (healthCheckHandler != null) {
             healthCheckHandler.removeCallbacks(healthCheckRunnable);
         }
+        
         Log.d(TAG, "TPASystem destroyed.");
     }
 }

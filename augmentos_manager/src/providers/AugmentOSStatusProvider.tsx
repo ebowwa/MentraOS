@@ -4,6 +4,7 @@ import { BluetoothService } from '../BluetoothService.tsx';
 import { INTENSE_LOGGING, MOCK_CONNECTION } from '../consts.tsx';
 import GlobalEventEmitter from "../logic/GlobalEventEmitter.tsx";
 import BackendServerComms from '../backend_comms/BackendServerComms';
+import { useAuth } from '../AuthContext';
 
 interface AugmentOSStatusContextType {
     status: AugmentOSMainStatus;
@@ -35,8 +36,21 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         setStatus(parsedStatus);
     }, []);
 
+    // Add user as a dependency to trigger re-initialization after login
+    const { user } = useAuth();
+
     useEffect(() => {
+        // Force a complete reset of status during sign-out/sign-in transition
+        if (!user) {
+            console.log('User signed out, resetting status');
+            setStatus(AugmentOSParser.defaultStatus);
+            return;
+        }
+
         if (!isInitialized) return;
+
+        // Log the status provider re-initialization for debugging
+        console.log('STATUS PROVIDER: Initializing event listeners for user:', user?.email);
 
         const handleStatusUpdateReceived = (data: any) => {
             if (INTENSE_LOGGING)
@@ -54,12 +68,28 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         const handleConnectingStatusChanged = ({ isConnecting: connecting }: { isConnecting: boolean }) => setIsConnecting(connecting);
 
         if (!MOCK_CONNECTION) {
+            // First, ensure we're not double-registering by removing any existing listeners
+            bluetoothService.removeAllListeners('statusUpdateReceived');
+            bluetoothService.removeAllListeners('scanStarted');
+            bluetoothService.removeAllListeners('scanStopped');
+            bluetoothService.removeAllListeners('deviceDisconnected');
+            bluetoothService.removeAllListeners('connectingStatusChanged');
+            GlobalEventEmitter.removeAllListeners('PUCK_DISCONNECTED');
+            
+            // Register fresh listeners
             bluetoothService.on('statusUpdateReceived', handleStatusUpdateReceived);
             bluetoothService.on('scanStarted', handleScanStarted);
             bluetoothService.on('scanStopped', handleScanStopped);
             bluetoothService.on('deviceDisconnected', handleDeviceDisconnected);
             bluetoothService.on('connectingStatusChanged', handleConnectingStatusChanged);
             GlobalEventEmitter.on('PUCK_DISCONNECTED', handleDeviceDisconnected);
+            
+            console.log('STATUS PROVIDER: Event listeners registered successfully');
+            
+            // Force a status request to update UI immediately
+            setTimeout(() => {
+                bluetoothService.sendRequestStatus();
+            }, 1000);
         }
 
         return () => {
@@ -70,9 +100,10 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
                 bluetoothService.removeListener('deviceDisconnected', handleDeviceDisconnected);
                 bluetoothService.removeListener('connectingStatusChanged', handleConnectingStatusChanged);
                 GlobalEventEmitter.removeListener('PUCK_DISCONNECTED', handleDeviceDisconnected);
+                console.log('STATUS PROVIDER: Event listeners cleaned up');
             }
         };
-    }, [bluetoothService, refreshStatus, isInitialized]);
+    }, [bluetoothService, refreshStatus, isInitialized, user]); // Added user dependency
 
     // 3) Provide a helper function that sets isInitialized,
     //    calls bluetoothService.initialize(), etc.

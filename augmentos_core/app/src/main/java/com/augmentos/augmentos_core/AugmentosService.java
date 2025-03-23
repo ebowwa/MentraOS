@@ -404,19 +404,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         //    ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
         initializeServerCommsCallbacks();
 
-        httpServerComms.getApps(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                Log.e("HTTP", "GET /apps failed: " + e.getMessage());
-            }
-
-            @Override
-            public void onResponse(Call call, Response response) throws IOException {
-                if (response.isSuccessful()) {
-                    Log.d("HTTP", "Response: ");
-                }
-            }
-        });
+//        httpServerComms.getApps(new Callback() {
+//            @Override
+//            public void onFailure(Call call, IOException e) {
+//                Log.e("HTTP", "GET /apps failed: " + e.getMessage());
+//            }
+//
+//            @Override
+//            public void onResponse(Call call, Response response) throws IOException {
+//                if (response.isSuccessful()) {
+//                    Log.d("HTTP", "Response: ");
+//                }
+//            }
+//        });
 
         locationSystem = new LocationSystem(this);
     }
@@ -1288,7 +1288,20 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset cached app data
         cachedThirdPartyAppList = new ArrayList<>();
         cachedDashboardDisplayObject = null;
-        
+        // When auth key is deleted (sign out), reset state for the next user
+        if (smartGlassesManager != null) {
+           smartGlassesManager.resetState();
+        }
+
+        // Stop all running apps
+        if (edgeTpaSystem != null) {
+            edgeTpaSystem.stopAllThirdPartyApps();
+        }
+
+        // Reset cached app data
+        cachedThirdPartyAppList = new ArrayList<>();
+        cachedDashboardDisplayObject = null;
+
         // Disconnect from server
         ServerComms.getInstance().disconnectWebSocket();
         webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
@@ -1408,6 +1421,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public IBinder onBind(Intent intent) {
+        super.onBind(intent);
         Log.d(TAG, "Something bound");
         return binder;
     }
