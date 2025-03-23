@@ -14,8 +14,7 @@
     "link-pkg": "bun link"
   },
   "dependencies": {
-    "@augmentos/sdk": "workspace:*",
-    "@augmentos/config": "workspace:*"
+    "@augmentos/sdk": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

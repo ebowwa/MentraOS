@@ -16,13 +16,12 @@ import {
   ExtendedStreamType
 } from '@augmentos/sdk';
 import { TranscriptProcessor, convertLineWidth, languageToLocale } from '@augmentos/utils';
-import { systemApps } from '@augmentos/config';
 
 // const PORT = systemApps.liveTranslation.port;
 const app = express();
 const PORT =  process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002"; 
-const PACKAGE_NAME = systemApps.liveTranslation.packageName;
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "http://localhost:8002"; 
+const PACKAGE_NAME = "com.augmentos.live-translation";
 const API_KEY = 'test_key'; // In production, store this securely
 const MAX_FINAL_TRANSCRIPTS = 3; // Hardcoded to 3 final transcripts
 
@@ -57,7 +56,7 @@ const activeSessions = new Map<string, WebSocket>();
  */
 async function fetchAndApplySettings(sessionId: string, userId: string) {
   try {
-    const response = await axios.get(`http://${CLOUD_URL}/tpasettings/user/${PACKAGE_NAME}`, {
+    const response = await axios.get(`http://${CLOUD_HOST_NAME}/tpasettings/user/${PACKAGE_NAME}`, {
       headers: { Authorization: `Bearer ${userId}` }
     });
     const settings = response.data.settings;
@@ -266,7 +265,7 @@ app.post('/webhook', async (req, res) => {
     console.log(`Received session request for user ${userId}, session ${sessionId}`);
 
     // Connect to cloud WebSocket
-    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
 
     ws.on('open', async () => {
       console.log(`Session ${sessionId} connected to cloud`);

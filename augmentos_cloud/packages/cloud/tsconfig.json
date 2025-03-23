@@ -14,7 +14,6 @@
 
     "paths": {
       "@augmentos/sdk": ["../sdk/dist"],
-      "@augmentos/config": ["../config/dist"]
     },
 
     "sourceMap": true,

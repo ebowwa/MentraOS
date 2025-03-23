@@ -16,7 +16,7 @@
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
     "test": "echo \"Error: no test specified\" && exit 1",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org pierce-50 --project augmentos-cloud-dev ./dist && sentry-cli sourcemaps upload --org pierce-50 --project augmentos-cloud-dev ./dist",
-    "use-linked": "bun link @augmentos/utils @augmentos/sdk @augmentos/agents @augmentos/config"
+    "use-linked": "bun link @augmentos/utils @augmentos/sdk @augmentos/agents"
   },
   "author": "Isaiah Ballah",
   "devDependencies": {
@@ -42,7 +42,6 @@
     "typescript": "^4.3.5"
   },
   "dependencies": {
-    "@augmentos/config": "workspace:*",
     "@augmentos/sdk": "workspace:*",
     "@augmentos/utils": "workspace:*",
     "@sentry/bun": "^9.1.0",
