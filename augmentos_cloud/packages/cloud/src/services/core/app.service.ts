@@ -511,10 +511,11 @@ export class AppService {
   }
 
   /**
-   * Get all available apps
+   * Get all available apps for the app store
+   * Only returns apps with PUBLISHED status
    */
   async getAvailableApps(): Promise<AppI[]> {
-    return App.find();
+    return App.find({ appStoreStatus: 'PUBLISHED' });
   }
 
 
