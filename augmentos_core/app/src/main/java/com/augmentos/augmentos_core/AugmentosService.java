@@ -436,13 +436,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
+    // Flag to track if we should restart when killed
+    private boolean shouldRestartOnKill = true;
+    
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
 
         if (intent == null || intent.getAction() == null) {
             Log.e(TAG, "Received null intent or null action");
-            return Service.START_STICKY; // Or handle this scenario appropriately
+            // If we get null intent/action, maintain the sticky behavior for embedded systems
+            return shouldRestartOnKill ? Service.START_STICKY : Service.START_NOT_STICKY;
         }
 
         String action = intent.getAction();
@@ -454,11 +458,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 // start the service in the foreground
                 Log.d("TEST", "starting foreground");
                 createNotificationChannel(); // New method to ensure one-time channel creation
-                //startForeground(augmentOsMainServiceNotificationId, updateNotification());
                 startForeground(AUGMENTOS_NOTIFICATION_ID, this.buildSharedForegroundNotification(this));
+                
+                // Reset restart flag to true when service starts
+                shouldRestartOnKill = true;
 
                 // Send out the status once AugmentOS_Core is ready :)
-                // tpaSystem.stopThirdPartyAppByPackageName(AugmentOSManagerPackageName);
                 edgeTpaSystem.startThirdPartyAppByPackageName(AugmentOSManagerPackageName);
 
                 if (!NewPermissionUtils.areAllPermissionsGranted(this)) {
@@ -468,6 +473,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 break;
             case ACTION_STOP_CORE:
             case ACTION_STOP_FOREGROUND_SERVICE:
+                // Set flag to not restart - this is an explicit stop request
+                shouldRestartOnKill = false;
+                
+                // Clean up resources before stopping
+                Log.d(TAG, "Stopping service from ACTION_STOP");
+                cleanupAllResources();
                 stopForeground(true);
                 stopSelf();
                 break;
@@ -475,7 +486,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 Log.d(TAG, "Unknown action received in onStartCommand");
                 Log.d(TAG, action);
         }
-        return Service.START_STICKY;
+        
+        // Return START_STICKY by default for embedded hardware,
+        // but the shouldRestartOnKill flag will be checked in onTaskRemoved/onDestroy
+        return shouldRestartOnKill ? Service.START_STICKY : Service.START_NOT_STICKY;
     }
 
     private Notification updateNotification() {
@@ -1237,6 +1251,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void deleteAuthSecretKey() {
         Log.d("AugmentOsService", "Deleting auth secret key");
         authHandler.deleteAuthSecretKey();
+        
+        // When auth key is deleted (sign out), reset state for the next user
+        if (smartGlassesManager != null) {
+            smartGlassesManager.resetState();
+        }
+        
+        // Stop all running apps
+        if (edgeTpaSystem != null) {
+            edgeTpaSystem.stopAllThirdPartyApps();
+        }
+        
+        // Reset cached app data
+        cachedThirdPartyAppList = new ArrayList<>();
+        cachedDashboardDisplayObject = null;
+        
+        // Disconnect from server
+        ServerComms.getInstance().disconnectWebSocket();
+        webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
+        
         sendStatusToAugmentOsManager();
     }
 
@@ -1270,34 +1303,75 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
-    @Override
-    public void onDestroy(){
-        locationSystem.stopLocationUpdates();
-        screenCaptureHandler.removeCallbacks(screenCaptureRunnable);
-        if (virtualDisplay != null) virtualDisplay.release();
-        if (mediaProjection != null) mediaProjection.stop();
-        EventBus.getDefault().unregister(this);
-
-        if (blePeripheral != null) {
-            blePeripheral.destroy();
+    /**
+     * Helper method to clean up all resources, disconnect from devices, 
+     * and reset the service state completely
+     */
+    private void cleanupAllResources() {
+        Log.d(TAG, "Cleaning up all resources and connections");
+        
+        // Stop all running apps
+        if(edgeTpaSystem != null) {
+            edgeTpaSystem.stopAllThirdPartyApps();
         }
-
+        
+        // Stop location updates
+        if(locationSystem != null) {
+            locationSystem.stopLocationUpdates();
+        }
+        
+        // Clean up screen capture resources
+        if(screenCaptureRunnable != null) {
+            screenCaptureHandler.removeCallbacks(screenCaptureRunnable);
+        }
+        if (virtualDisplay != null) {
+            virtualDisplay.release();
+            virtualDisplay = null;
+        }
+        if (mediaProjection != null) {
+            mediaProjection.stop();
+            mediaProjection = null;
+        }
+        
+        // Reset glasses connection
         if (smartGlassesManager != null) {
+            smartGlassesManager.resetState();
             smartGlassesManager.cleanup();
             smartGlassesManager = null;
             edgeTpaSystem.setSmartGlassesManager(null);
-            webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
         }
-
+        
+        // Reset cached data
+        cachedThirdPartyAppList = new ArrayList<>();
+        cachedDashboardDisplayObject = null;
+        
+        // Disconnect websockets
+        if (webSocketLifecycleManager != null) {
+            webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
+            webSocketLifecycleManager.cleanup();
+        }
+        ServerComms.getInstance().disconnectWebSocket();
+        
+        // Clear BLE connections
+        if (blePeripheral != null) {
+            blePeripheral.destroy();
+        }
+        
         if(edgeTpaSystem != null) {
             edgeTpaSystem.destroy();
         }
+    }
 
-        if (webSocketLifecycleManager != null) {
-            webSocketLifecycleManager.cleanup();
+    @Override
+    public void onDestroy(){
+        Log.d(TAG, "Service being destroyed");
+        cleanupAllResources();
+        
+        // Unregister from EventBus last, as other cleanup methods might post events
+        if (EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().unregister(this);
         }
-
-        ServerComms.getInstance().disconnectWebSocket();
+        
         super.onDestroy();
     }
 
