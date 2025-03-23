@@ -52,6 +52,7 @@ export interface CoreInfo {
   contextual_dashboard_enabled: boolean;
   bypass_vad_for_debugging: boolean;
   bypass_audio_encoding_for_debugging: boolean;
+  always_on_status_bar_enabled: boolean;
 }
 
 export interface AugmentOSMainStatus {
@@ -79,6 +80,7 @@ export class AugmentOSParser {
       bypass_vad_for_debugging: false,
       bypass_audio_encoding_for_debugging: false,
       default_wearable: null,
+      always_on_status_bar_enabled: false,
     },
     glasses_info: null,
     wifi: { is_connected: false, ssid: '', signal_strength: 0 },
@@ -106,6 +108,7 @@ export class AugmentOSParser {
       bypass_vad_for_debugging: false,
       bypass_audio_encoding_for_debugging: false,
       default_wearable: 'evenrealities_g1',
+      always_on_status_bar_enabled: false,
     },
     glasses_info: {
       model_name: 'Even Realities G1',
@@ -235,6 +238,7 @@ export class AugmentOSParser {
           bypass_audio_encoding_for_debugging: status.core_info.bypass_audio_encoding_for_debugging ?? false,
           default_wearable: status.core_info.default_wearable ?? null,
           is_mic_enabled_for_frontend: status.core_info.is_mic_enabled_for_frontend ?? false,
+          always_on_status_bar_enabled: status.core_info.always_on_status_bar_enabled ?? false,
         },
         glasses_info: status.connected_glasses
           ? {
