@@ -1,13 +1,5 @@
 import path from 'path';
 import {
-  TpaConnectionInit,
-  TpaSubscriptionUpdate,
-  DataStream,
-  DisplayRequest,
-  TpaToCloudMessageType,
-  StreamType,
-  ViewType,
-  LayoutType,
   PhoneNotification,
   TpaSession,
   TpaServer,

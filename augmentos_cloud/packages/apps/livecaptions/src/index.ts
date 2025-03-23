@@ -386,6 +386,8 @@ app.post('/settings', (req, res) => {
     if (!userIdForSettings || !Array.isArray(settings)) {
       return res.status(400).json({ error: 'Missing userId or settings array in payload' });
     }
+
+    // console.log("settings: ", settings);
     
     const lineWidthSetting = settings.find((s: any) => s.key === 'line_width');
     const numberOfLinesSetting = settings.find((s: any) => s.key === 'number_of_lines');
@@ -395,6 +397,7 @@ app.post('/settings', (req, res) => {
     let lineWidth = 30; // default
     
     let numberOfLines = 3; // default
+    // console.log("numberOfLinesSetting: ", numberOfLinesSetting);
     if (numberOfLinesSetting) {
       numberOfLines = Number(numberOfLinesSetting.value);
       if (isNaN(numberOfLines) || numberOfLines < 1) numberOfLines = 3;
@@ -407,17 +410,18 @@ app.post('/settings', (req, res) => {
 
     if (lineWidthSetting) {
       const isChineseLanguage = language.startsWith('zh-') || language.startsWith('ja-');
-      lineWidth = typeof lineWidthSetting.value === 'string' ? 
-        convertLineWidth(lineWidthSetting.value, isChineseLanguage) : 
-        (typeof lineWidthSetting.value === 'number' ? lineWidthSetting.value : 30);
+      lineWidth = convertLineWidth(lineWidthSetting.value, isChineseLanguage);
     }
-
-    console.log(`Line width setting: ${lineWidth}`);
     
     if (languageChanged) {
       console.log(`Language changed for user ${userIdForSettings}: ${previousLanguage} -> ${language}`);
       userLanguageSettings.set(userIdForSettings, language);
     }
+
+    // console.log("Number of lines: ", numberOfLines);
+    // console.log("lineWidth: ", lineWidth);
+    // console.log("userLanguageSettings: ", language);
+    // console.log("MAX_FINAL_TRANSCRIPTS: ", MAX_FINAL_TRANSCRIPTS);
     
     // Create a new processor
     const newProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS);
@@ -426,12 +430,12 @@ app.post('/settings', (req, res) => {
     if (!languageChanged && userTranscriptProcessors.has(userIdForSettings)) {
       // Get the previous transcript history
       const previousTranscriptHistory = userTranscriptProcessors.get(userIdForSettings)?.getFinalTranscriptHistory() || [];
-      
+
       // Add each previous transcript to the new processor
       for (const transcript of previousTranscriptHistory) {
         newProcessor.processString(transcript, true);
       }
-      
+
       console.log(`Preserved ${previousTranscriptHistory.length} transcripts after settings change`);
     } else if (languageChanged) {
       console.log(`Cleared transcript history due to language change`);
