@@ -10,6 +10,8 @@ import androidx.lifecycle.LifecycleOwner;
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
 import com.augmentos.augmentos_core.events.AugmentosSmartGlassesDisconnectedEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionStateChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.TextToSpeechEvent;
@@ -334,6 +336,32 @@ public class SmartGlassesManager {
                 .putBoolean(context.getResources().getString(R.string.FORCE_CORE_ONBOARD_MIC), toForce)
                 .apply();
     }
+    
+    public static boolean getBypassVadForDebugging(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        Log.d("AugmentOSPrefs", "Getting bypass VAD for debugging: " + sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false));
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), false);
+    }
+    
+    public static void saveBypassVadForDebugging(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), enabled);
+        editor.apply();
+        EventBus.getDefault().post(new BypassVadForDebuggingEvent(enabled));
+    }
+    
+    public static boolean getBypassAudioEncodingForDebugging(Context context) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        return sharedPreferences.getBoolean(context.getResources().getString(R.string.BYPASS_AUDIO_ENCODING_FOR_DEBUGGING), false);
+    }
+
+    public static void saveBypassAudioEncodingForDebugging(Context context, boolean enabled) {
+        SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(context.getResources().getString(R.string.BYPASS_AUDIO_ENCODING_FOR_DEBUGGING), enabled);
+        editor.apply();
+    }
 
     public SmartGlassesConnectionState getSmartGlassesConnectState() {
         if (smartGlassesRepresentative != null) {
@@ -532,6 +560,12 @@ public class SmartGlassesManager {
     
     public void clearScreen() {
         sendHomeScreen();
+    }
+    
+    @Subscribe
+    public void handleNewAsrLanguagesEvent(NewAsrLanguagesEvent event) {
+        Log.d(TAG, "NewAsrLanguages: " + event.languages.toString());
+        speechRecSwitchSystem.updateConfig(event.languages);
     }
     
     public static SmartGlassesDevice getSmartGlassesDeviceFromModelName(String modelName) {

@@ -2,7 +2,6 @@ package com.augmentos.augmentos_core;
 
 import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.EvenRealitiesG1SGC.deleteEvenSharedPreferences;
 import static com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.EvenRealitiesG1SGC.savePreferredG1DeviceId;
-// No longer need imports from SmartGlassesAndroidService as we use SmartGlassesManager
 import static com.augmentos.augmentos_core.statushelpers.CoreVersionHelper.getCoreVersion;
 import static com.augmentos.augmentos_core.statushelpers.JsonHelper.processJSONPlaceholders;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AUGMENTOS_NOTIFICATION_ID;
@@ -62,13 +61,13 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
-// No longer need SmartGlassesAndroidService import
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionStateChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentoslib.ThirdPartyEdgeApp;
 import com.augmentos.augmentos_core.comms.AugmentOsActionsCallback;
 import com.augmentos.augmentos_core.comms.AugmentosBlePeripheral;
@@ -151,8 +150,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public AugmentosBlePeripheral blePeripheral;
 
-    // SmartGlassesManager instead of AugmentosSmartGlassesService
-    public com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager smartGlassesManager;
+    // SmartGlassesManager handles the functionality previously in AugmentosSmartGlassesService
+    public SmartGlassesManager smartGlassesManager;
     private final List<Runnable> smartGlassesReadyListeners = new ArrayList<>();
     private NotificationSystem notificationSystem;
     private CalendarSystem calendarSystem;
@@ -178,8 +177,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     // Smart glasses event handler
-    private final com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.SmartGlassesEventHandler smartGlassesEventHandler = 
-        new com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.SmartGlassesEventHandler() {
+    private final SmartGlassesManager.SmartGlassesEventHandler smartGlassesEventHandler = 
+        new SmartGlassesManager.SmartGlassesEventHandler() {
             @Override
             public void onGlassesConnectionStateChanged(SmartGlassesDevice device, SmartGlassesConnectionState connectionState) {
                 if (connectionState != previousSmartGlassesConnectionState) {
@@ -380,9 +379,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
 
         // Automatically connect to glasses on service start
-        String preferredWearable = com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getPreferredWearable(this);
+        String preferredWearable = SmartGlassesManager.getPreferredWearable(this);
         if(!preferredWearable.isEmpty()) {
-            SmartGlassesDevice preferredDevice = com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getSmartGlassesDeviceFromModelName(preferredWearable);
+            SmartGlassesDevice preferredDevice = SmartGlassesManager.getSmartGlassesDeviceFromModelName(preferredWearable);
             if (preferredDevice != null) {
                 // Initialize SmartGlassesManager
                 startSmartGlassesManager();
@@ -391,7 +390,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 sendStatusToAugmentOsManager();
             } else {
                 // We have some invalid device saved... delete from preferences
-                com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.savePreferredWearable(this, "");
+                SmartGlassesManager.savePreferredWearable(this, "");
             }
         }
 
@@ -569,7 +568,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void startSmartGlassesManager() {
         if (smartGlassesManager == null) {
             // Now we can pass 'this' as the LifecycleOwner since we extend LifecycleService
-            smartGlassesManager = new com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager(this, this, smartGlassesEventHandler);
+            smartGlassesManager = new SmartGlassesManager(this, this, smartGlassesEventHandler);
             edgeTpaSystem.setSmartGlassesManager(smartGlassesManager);
             // Execute any pending actions
             for (Runnable action : smartGlassesReadyListeners) {
@@ -868,15 +867,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("cloud_connection_status", webSocketStatus.name());
             coreInfo.put("puck_battery_life", batteryStatusHelper.getBatteryLevel());
             coreInfo.put("charging_status", batteryStatusHelper.isBatteryCharging());
-            coreInfo.put("sensing_enabled", com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getSensingEnabled(this));
-            coreInfo.put("bypass_vad_for_debugging", AugmentosSmartGlassesService.getBypassVadForDebugging(this));
-            coreInfo.put("bypass_audio_encoding_for_debugging", AugmentosSmartGlassesService.getBypassAudioEncodingForDebugging(this));
+            coreInfo.put("sensing_enabled", SmartGlassesManager.getSensingEnabled(this));
+            coreInfo.put("bypass_vad_for_debugging", SmartGlassesManager.getBypassVadForDebugging(this));
+            coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
-            coreInfo.put("force_core_onboard_mic", com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getForceCoreOnboardMic(this));
-            coreInfo.put("default_wearable", com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getPreferredWearable(this));
+            coreInfo.put("force_core_onboard_mic", SmartGlassesManager.getForceCoreOnboardMic(this));
+            coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             status.put("core_info", coreInfo);
-            //Log.d(TAG, "PREFER - Got default wearable: " + com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getPreferredWearable(this));
+            //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
 
             // Adding connected glasses object
             JSONObject connectedGlasses = new JSONObject();
@@ -998,7 +997,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
             @Override
             public void onMicrophoneStateChange(boolean microphoneEnabled) {
-                if (smartGlassesManager != null  && com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
+                if (smartGlassesManager != null && SmartGlassesManager.getSensingEnabled(getApplicationContext())) {
                     smartGlassesManager.changeMicrophoneState(microphoneEnabled);
                 }
             }
@@ -1049,7 +1048,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void searchForCompatibleDeviceNames(String modelName) {
         Log.d("AugmentOsService", "Searching for compatible device names for model: " + modelName);
-        SmartGlassesDevice device = com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
+        SmartGlassesDevice device = SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
         if (device == null) {
             blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
             return;
@@ -1071,7 +1070,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void connectToWearable(String modelName, String deviceName) {
         Log.d("AugmentOsService", "Connecting to wearable: " + modelName + ". DeviceName: " + deviceName + ".");
         
-        SmartGlassesDevice device = com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
+        SmartGlassesDevice device = SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
         if (device == null) {
             blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
             return;
@@ -1101,7 +1100,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void forgetSmartGlasses() {
         Log.d("AugmentOsService", "Forgetting wearable");
-        com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.savePreferredWearable(this, "");
+        SmartGlassesManager.savePreferredWearable(this, "");
         deleteEvenSharedPreferences(this);
         brightnessLevel = null;
         batteryLevel = null;
@@ -1135,7 +1134,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void setForceCoreOnboardMic(boolean toForceCoreOnboardMic) {
-        com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.saveForceCoreOnboardMic(this, toForceCoreOnboardMic);
+        SmartGlassesManager.saveForceCoreOnboardMic(this, toForceCoreOnboardMic);
         if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
             blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
@@ -1144,7 +1143,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void setSensingEnabled(boolean sensingEnabled) {
-        com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.saveSensingEnabled(this, sensingEnabled);
+        SmartGlassesManager.saveSensingEnabled(this, sensingEnabled);
         if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
             blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
@@ -1153,13 +1152,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void setBypassVadForDebugging(boolean bypassVadForDebugging) {
-        AugmentosSmartGlassesService.saveBypassVadForDebugging(this, bypassVadForDebugging);
+        SmartGlassesManager.saveBypassVadForDebugging(this, bypassVadForDebugging);
         sendStatusToBackend();
     }
 
     @Override
     public void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging) {
-        AugmentosSmartGlassesService.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
+        SmartGlassesManager.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
         sendStatusToBackend();
     }
 
