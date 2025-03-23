@@ -102,6 +102,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 //SpeechRecIntermediateOutputEvent
+
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
 
 import okhttp3.Call;
@@ -170,6 +172,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
 
     private WebSocketLifecycleManager webSocketLifecycleManager;
+    private boolean isMicEnabledForFrontend = false;
 
     public AugmentosService() {
     }
@@ -337,7 +340,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onCreate() {
         super.onCreate();
 
-        EnvHelper.init(this);
+//        EnvHelper.init(this);
 
         EventBus.getDefault().register(this);
 
@@ -866,9 +869,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("puck_battery_life", batteryStatusHelper.getBatteryLevel());
             coreInfo.put("charging_status", batteryStatusHelper.isBatteryCharging());
             coreInfo.put("sensing_enabled", com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getSensingEnabled(this));
+            coreInfo.put("bypass_vad_for_debugging", AugmentosSmartGlassesService.getBypassVadForDebugging(this));
+            coreInfo.put("bypass_audio_encoding_for_debugging", AugmentosSmartGlassesService.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("force_core_onboard_mic", com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getForceCoreOnboardMic(this));
             coreInfo.put("default_wearable", com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getPreferredWearable(this));
+            coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager.getPreferredWearable(this));
 
@@ -1055,6 +1061,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         });
     }
 
+    @Subscribe
+    public void onMicStateForFrontendEvent(isMicEnabledForFrontendEvent event) {
+        Log.d("AugmentOsService", "Received mic state for frontend event: " + event.micState);
+        isMicEnabledForFrontend = event.micState;
+    }
+
     @Override
     public void connectToWearable(String modelName, String deviceName) {
         Log.d("AugmentOsService", "Connecting to wearable: " + modelName + ". DeviceName: " + deviceName + ".");
@@ -1136,6 +1148,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
             blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
+        sendStatusToBackend();
+    }
+
+    @Override
+    public void setBypassVadForDebugging(boolean bypassVadForDebugging) {
+        AugmentosSmartGlassesService.saveBypassVadForDebugging(this, bypassVadForDebugging);
+        sendStatusToBackend();
+    }
+
+    @Override
+    public void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging) {
+        AugmentosSmartGlassesService.saveBypassAudioEncodingForDebugging(this, bypassAudioEncodingForDebugging);
         sendStatusToBackend();
     }
 
