@@ -276,6 +276,8 @@ UserSchema.methods.updateAppSettings = async function(
   console.log('Updated settings:', JSON.stringify(updatedSettingsArray));
   const afterUpdate = this.appSettings.get(sanitizedAppName);
   console.log('Settings retrieved after save:', JSON.stringify(afterUpdate));
+
+  return afterUpdate;
 };
 
 UserSchema.methods.getAppSettings = function (this: UserDocument, appName: string): AppSetting[] | undefined {
