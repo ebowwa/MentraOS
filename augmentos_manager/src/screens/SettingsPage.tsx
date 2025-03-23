@@ -381,30 +381,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           />
         </TouchableOpacity>
 
-        {/* Debugging Settings */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => {
-            navigation.navigate('DebuggingSettingsScreen');
-          }}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Debugging Settings
-            </Text>
-          </View>
-          <Icon
-            name="angle-right"
-            size={20}
-            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
-          />
-        </TouchableOpacity>
-
         {/* Contextual Dashboard */}
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
@@ -423,7 +399,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
                 ]}
               >
-                {`Show a summary of your phone notifications when you ${
+                {`Show the dashboard when you ${
                   status.glasses_info?.model_name
                     .toLowerCase()
                     .includes('even')
@@ -497,6 +473,30 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
         </View>
 
+        {/* Debugging Settings */}
+        <TouchableOpacity
+          style={styles.settingItem}
+          onPress={() => {
+            navigation.navigate('DebuggingSettingsScreen');
+          }}
+        >
+          <View style={styles.settingTextContainer}>
+            <Text
+              style={[
+                styles.label,
+                isDarkTheme ? styles.lightText : styles.darkText,
+              ]}
+            >
+              Debugging Settings
+            </Text>
+          </View>
+          <Icon
+            name="angle-right"
+            size={20}
+            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
+          />
+        </TouchableOpacity>
+
         {/* Bug Report */}
         {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
             navigation.navigate('ErrorReportScreen');
@@ -554,17 +554,20 @@ export default SettingsPage;
 
 const styles = StyleSheet.create({
   scrollViewContainer: {
-    marginBottom: 55,
+    marginBottom: 0,
   },
   container: {
     flex: 1,
-    padding: 20,
+    padding: -1,
+    margin: -1,
+    paddingLeft: 20,
+    paddingRight: 20,
   },
   titleContainer: {
     paddingVertical: 15,
     paddingHorizontal: 20,
     marginHorizontal: -20,
-    marginTop: -20,
+    marginTop: 0,
     marginBottom: 10,
   },
   titleContainerDark: {
