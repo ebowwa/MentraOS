@@ -30,6 +30,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.comms.MessageTypes;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.special.VirtualWearable;
 import com.augmentos.augmentoslib.events.BulletPointListViewRequestEvent;
 import com.augmentos.augmentoslib.events.CenteredTextViewRequestEvent;
+import com.augmentos.augmentoslib.events.DisconnectedFromCloudEvent;
 import com.augmentos.augmentoslib.events.DoubleTextWallViewRequestEvent;
 import com.augmentos.augmentoslib.events.FinalScrollingTextRequestEvent;
 import com.augmentos.augmentoslib.events.HomeScreenEvent;
@@ -675,12 +676,18 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
     }
 
 
-    public void sendHomeScreen(){
+    public void sendHomeScreen() {
         EventBus.getDefault().post(new HomeScreenEvent());
     }
 
     public void setFontSize(SmartGlassesFontSize fontSize) { EventBus.getDefault().post(new SetFontSizeEvent(fontSize)); }
 
+
+    @Subscribe
+    public void handleDisconnectedFromCloudEvent(DisconnectedFromCloudEvent event) {
+        Log.d(TAG, "Disconnected from cloud event received");
+        sendHomeScreen();
+    }
 
     @Subscribe
     public void handleNewAsrLanguagesEvent(NewAsrLanguagesEvent event) {

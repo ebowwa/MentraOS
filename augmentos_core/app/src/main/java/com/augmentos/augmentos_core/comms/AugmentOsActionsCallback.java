@@ -17,6 +17,7 @@ public interface AugmentOsActionsCallback {
     void setContextualDashboardEnabled(boolean contextualDashboardEnabled);
     void setBypassVadForDebugging(boolean bypassVadForDebugging);
     void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging);
+    void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled);
     void installAppFromRepository(String repository, String packageName) throws JSONException;
     void uninstallApp(String packageName);
     void handleNotificationData(JSONObject notificationData);
