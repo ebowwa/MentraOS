@@ -1,0 +1,75 @@
+version: v2
+# Omit a hard-coded name here. Use environment variables to supply dynamic values.
+namespace: ${PORTER_NAMESPACE}
+
+build:
+  method: docker
+  context: ./augmentos_cloud/.
+  dockerfile: ./augmentos_cloud/Dockerfile
+
+services:
+  - name: cloud
+    type: web
+    run: node packages/cloud/dist/index.js
+    port: 80
+    cpuCores: 2.0
+    ramMegabytes: 2048
+    env:
+      NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "cloud"
+  - name: live-captions
+    type: web
+    run: node packages/apps/livecaptions/dist/index.js
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "live-captions"
+  - name: dashboard-manager
+    type: web
+    run: node packages/apps/dashboard-manager/dist/index.js
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "dashboard-manager"
+  - name: notify
+    type: web
+    run: node packages/apps/notify/dist/index.js
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "notify"
+  - name: mira
+    type: web
+    run: node packages/apps/miraai/dist/index.js
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: ${NODE_ENV}
+      PORTER_APP_NAME: ${PORTER_APP_NAME}
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "mira"
+  - name: live-translation
+    type: web
+    run: node packages/apps/livetranslation/dist/index.js
+    port: 80
+    cpuCores: 0.5
+    ramMegabytes: 512
+    env:
+      NODE_ENV: ${NODE_ENV}
+      HOST: "0.0.0.0"
+      SERVICE_NAME: "live-translation"

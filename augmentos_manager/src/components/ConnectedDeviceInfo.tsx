@@ -23,6 +23,8 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
   const bluetoothService = BluetoothService.getInstance();
   const { status, isSearchingForPuck, isConnectingToPuck, refreshStatus } = useStatus();
   const navigation = useNavigation<NavigationProps>();
+  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend);
+
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false);
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false);
 
@@ -65,6 +67,10 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
       };
     }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim])
   );
+
+  useEffect(() => {
+    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend);
+  }, [status.core_info.is_mic_enabled_for_frontend]);
 
   const handleConnectToPuck = async () => {
     try {
@@ -142,6 +148,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
   return (
     <View style={[styles.deviceInfoContainer, { backgroundColor: themeStyles.backgroundColor }]}>
+      {microphoneActive && (
+        <View style={styles.microphoneContainer}>
+          <Icon name="microphone" size={20} color="#4CAF50" />
+        </View>
+      )}
       {status.core_info.puck_connected ? (
         <>
           {status.core_info.default_wearable ? (
@@ -430,6 +441,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     fontFamily: 'Montserrat-Regular',
+  },
+  microphoneContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
   },
 });
 

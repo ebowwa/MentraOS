@@ -74,6 +74,21 @@ public class AugmentOsManagerMessageParser {
                     callback.setContextualDashboardEnabled(dashboardEnabled);
                     break;
 
+                case "bypass_vad_for_debugging":
+                    boolean bypassVadForDebugging = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setBypassVadForDebugging(bypassVadForDebugging);
+                    break;
+
+                case "bypass_audio_encoding_for_debugging":
+                    boolean bypassAudioEncodingForDebugging = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setBypassAudioEncodingForDebugging(bypassAudioEncodingForDebugging);
+                    break;
+
+                case "enable_always_on_status_bar":
+                    boolean alwaysOnEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    callback.setAlwaysOnStatusBarEnabled(alwaysOnEnabled);
+                    break;
+
                 case "install_app_from_repository": // TODO: Implement repository handling
 //                    String repo = commandObject.getJSONObject("params").getString("repository");
                     String packageNameToInstall = commandObject.getJSONObject("params").getString("target");

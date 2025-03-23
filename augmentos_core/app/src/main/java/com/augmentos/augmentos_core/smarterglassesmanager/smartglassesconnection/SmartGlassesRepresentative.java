@@ -118,6 +118,7 @@ class SmartGlassesRepresentative {
         if (SmartGlassesAndroidService.getSensingEnabled(context)) {
             // If the glasses don't support a microphone, handle local microphone
             if (!smartGlassesDevice.getHasInMic() || SmartGlassesAndroidService.getForceCoreOnboardMic(context)) {
+                
                 connectAndStreamLocalMicrophone(true);
             }
         }
@@ -209,6 +210,7 @@ class SmartGlassesRepresentative {
         });
     }
 
+    //data from the local microphone, convert to LC3, send
     private void receiveChunk(ByteBuffer chunk){
         byte[] audio_bytes = chunk.array();
 
@@ -243,7 +245,7 @@ class SmartGlassesRepresentative {
     }
 
     //are our smart glasses currently connected?
-    public SmartGlassesConnectionState getConnectionState(){
+    public SmartGlassesConnectionState getConnectionState() {
         if (smartGlassesCommunicator == null){
             return SmartGlassesConnectionState.DISCONNECTED;
         } else {
@@ -286,14 +288,14 @@ class SmartGlassesRepresentative {
         }, delayTime);
     }
 
-    public void homeScreen(){
+    public void homeScreen() {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.showHomeScreen();
         }
     }
 
     @Subscribe
-    public void onHomeScreenEvent(HomeScreenEvent receivedEvent){
+    public void onHomeScreenEvent(HomeScreenEvent receivedEvent) {
         homeScreen();
     }
 
@@ -320,7 +322,6 @@ class SmartGlassesRepresentative {
 //            homeUiAfterDelay(referenceCardDelayTime);
         }
     }
-
 
     @Subscribe
     public void onRowsCardViewEvent(RowsCardViewRequestEvent receivedEvent){

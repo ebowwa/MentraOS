@@ -17,14 +17,13 @@ import {
   ExtendedStreamType,
 } from '@augmentos/sdk';
 import { TranscriptProcessor, languageToLocale, convertLineWidth } from '@augmentos/utils';
-import { systemApps } from '@augmentos/config';
 import axios from 'axios';
 
 const app = express();
 // const PORT = systemApps.captions.port;
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002"; 
-const PACKAGE_NAME = systemApps.captions.packageName;
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "cloud"; 
+const PACKAGE_NAME = "com.augmentos.livecaptions";
 const API_KEY = 'test_key'; // In production, this would be securely stored
 
 // No longer need userFinalTranscripts map as we store history in the TranscriptProcessor
@@ -51,7 +50,7 @@ const activeSessions = new Map<string, WebSocket>();
 
 async function fetchAndApplySettings(sessionId: string, userId: string) {
   try {
-    const response = await axios.get(`http://${CLOUD_URL}/tpasettings/user/${PACKAGE_NAME}`, {
+    const response = await axios.get(`http://${CLOUD_HOST_NAME}/tpasettings/user/${PACKAGE_NAME}`, {
       headers: { Authorization: `Bearer ${userId}` }
     });
     const settings = response.data.settings;
@@ -121,7 +120,7 @@ app.post('/webhook', async (req, res) => {
     console.log(`\n\n🗣️🗣️🗣️Received session request for user ${userId}, session ${sessionId}\n\n`);
 
     // Start WebSocket connection to cloud
-    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
 
     ws.on('open', async () => {
       console.log(`\n[Session ${sessionId}]\n connected to augmentos-cloud\n`);
@@ -386,6 +385,8 @@ app.post('/settings', (req, res) => {
     if (!userIdForSettings || !Array.isArray(settings)) {
       return res.status(400).json({ error: 'Missing userId or settings array in payload' });
     }
+
+    // console.log("settings: ", settings);
     
     const lineWidthSetting = settings.find((s: any) => s.key === 'line_width');
     const numberOfLinesSetting = settings.find((s: any) => s.key === 'number_of_lines');
@@ -395,6 +396,7 @@ app.post('/settings', (req, res) => {
     let lineWidth = 30; // default
     
     let numberOfLines = 3; // default
+    // console.log("numberOfLinesSetting: ", numberOfLinesSetting);
     if (numberOfLinesSetting) {
       numberOfLines = Number(numberOfLinesSetting.value);
       if (isNaN(numberOfLines) || numberOfLines < 1) numberOfLines = 3;
@@ -407,17 +409,18 @@ app.post('/settings', (req, res) => {
 
     if (lineWidthSetting) {
       const isChineseLanguage = language.startsWith('zh-') || language.startsWith('ja-');
-      lineWidth = typeof lineWidthSetting.value === 'string' ? 
-        convertLineWidth(lineWidthSetting.value, isChineseLanguage) : 
-        (typeof lineWidthSetting.value === 'number' ? lineWidthSetting.value : 30);
+      lineWidth = convertLineWidth(lineWidthSetting.value, isChineseLanguage);
     }
-
-    console.log(`Line width setting: ${lineWidth}`);
     
     if (languageChanged) {
       console.log(`Language changed for user ${userIdForSettings}: ${previousLanguage} -> ${language}`);
       userLanguageSettings.set(userIdForSettings, language);
     }
+
+    // console.log("Number of lines: ", numberOfLines);
+    // console.log("lineWidth: ", lineWidth);
+    // console.log("userLanguageSettings: ", language);
+    // console.log("MAX_FINAL_TRANSCRIPTS: ", MAX_FINAL_TRANSCRIPTS);
     
     // Create a new processor
     const newProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS);
@@ -426,12 +429,12 @@ app.post('/settings', (req, res) => {
     if (!languageChanged && userTranscriptProcessors.has(userIdForSettings)) {
       // Get the previous transcript history
       const previousTranscriptHistory = userTranscriptProcessors.get(userIdForSettings)?.getFinalTranscriptHistory() || [];
-      
+
       // Add each previous transcript to the new processor
       for (const transcript of previousTranscriptHistory) {
         newProcessor.processString(transcript, true);
       }
-      
+
       console.log(`Preserved ${previousTranscriptHistory.length} transcripts after settings change`);
     } else if (languageChanged) {
       console.log(`Cleared transcript history due to language change`);
