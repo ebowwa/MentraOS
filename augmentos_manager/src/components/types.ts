@@ -23,6 +23,8 @@ export type RootStackParamList = {
   PrivacySettingsScreen: undefined;
   GrantPermissionsScreen: undefined;
   SelectGlassesModelScreen: undefined;
+  DashboardSettingsScreen: { isDarkTheme: boolean; toggleTheme: () => void };
+  DebuggingSettingsScreen: undefined;
   VersionUpdateScreen: {
     isDarkTheme: boolean;
     connectionError?: boolean;

@@ -39,6 +39,7 @@ import ErrorReportScreen from './screens/ErrorReportScreen.tsx';
 import { saveSetting } from './logic/SettingsHelper';
 import WelcomePageComponent from './components/WelcomePageComponent.tsx';
 import DebuggingSettingsScreen from './screens/DebuggingSettingsScreen.tsx';
+import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -159,11 +160,22 @@ const App: React.FC = () => {
                     />
                   )}
                 </Stack.Screen>
-                <Stack.Screen name="DebuggingSettingsScreen"
-                  options={{ title: 'Debugging Settings' }}
+                <Stack.Screen name="DeveloperSettingsScreen"
+                  options={{ title: 'Developer Settings' }}
                 >
                   {props => (
                     <DebuggingSettingsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="DashboardSettingsScreen"
+                  options={{ title: 'Dashboard Settings' }}
+                >
+                  {props => (
+                    <DashboardSettingsScreen
                       {...props}
                       toggleTheme={toggleTheme}
                       isDarkTheme={isDarkTheme}

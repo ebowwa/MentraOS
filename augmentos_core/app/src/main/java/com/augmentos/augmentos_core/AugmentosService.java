@@ -115,8 +115,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
    private final IBinder binder = new LocalBinder();
 
-    private final String notificationAppName = "AugmentOS Core";
-    private final String notificationDescription = "Running in foreground";
+    private final String notificationAppName = "AugmentOS";
+    private final String notificationDescription = "";
     private final String myChannelId = "augmentos_core";
     public static final String ACTION_START_CORE = "ACTION_START_CORE";
     public static final String ACTION_STOP_CORE = "ACTION_STOP_CORE";
