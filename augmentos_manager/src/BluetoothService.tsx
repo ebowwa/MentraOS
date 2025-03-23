@@ -28,6 +28,10 @@ export interface Device {
   rssi: number;
 }
 
+/**
+ * @deprecated This class is deprecated and will be removed in a future version.
+ * Please use CoreCommunicator from './bridge/CoreCommunicator' instead.
+ */
 export class BluetoothService extends EventEmitter {
   devices: Device[] = [];
   private validationInProgress: Promise<boolean | void> | null = null;

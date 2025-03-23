@@ -88,7 +88,7 @@ public class AugmentOSCommunicator {
         if (reactContext != null && reactContext.hasActiveCatalystInstance()) {
             reactContext
                     .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit("CoreMessageIntentEvent", jsonString);
+                    .emit("CoreMessageEvent", jsonString);
         } else {
             Log.w(TAG, "Cannot emit message to JS - React context not available");
         }

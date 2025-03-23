@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
 import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import HeadUpAngleComponent from '../components/HeadUpAngleComponent.tsx';
 import NavigationBar from '../components/NavigationBar';
 
@@ -42,7 +42,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   // -- Handlers --
   const toggleContextualDashboard = async () => {
     const newVal = !isContextualDashboardEnabled;
-    await BluetoothService.getInstance().sendToggleContextualDashboard(newVal);
+    await coreCommunicator.sendToggleContextualDashboard(newVal);
     setIsContextualDashboardEnabled(newVal);
   };
 
@@ -56,7 +56,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     }
 
     setHeadUpAngleComponentVisible(false);
-    await BluetoothService.getInstance().setGlassesHeadUpAngle(newHeadUpAngle);
+    await coreCommunicator.setGlassesHeadUpAngle(newHeadUpAngle);
     setHeadUpAngle(newHeadUpAngle);
   };
 

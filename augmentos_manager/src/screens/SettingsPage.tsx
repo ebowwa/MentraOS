@@ -16,10 +16,11 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
 
 import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
+import { stopExternalService } from '../bridge/CoreServiceStarter';
+import CoreCommsService from '../bridge/CoreCommsService';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
 import ManagerCoreCommsService from '../bridge/ManagerCoreCommsService.tsx';
-import { stopExternalService } from '../bridge/CoreServiceStarter';
 import NavigationBar from '../components/NavigationBar';
 
 import { SETTINGS_KEYS } from '../consts';
@@ -58,13 +59,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled;
-    await BluetoothService.getInstance().sendToggleSensing(newSensing);
+    await coreCommunicator.sendToggleSensing(newSensing);
     setIsSensingEnabled(newSensing);
   };
 
   const toggleForceCoreOnboardMic = async () => {
     const newVal = !forceCoreOnboardMic;
-    await BluetoothService.getInstance().sendToggleForceCoreOnboardMic(newVal);
+    await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
     setForceCoreOnboardMic(newVal);
   };
 
@@ -88,13 +89,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     }
 
     if (status.glasses_info.brightness === '-') {return;} // or handle accordingly
-    await BluetoothService.getInstance().setGlassesBrightnessMode(newBrightness, false);
+    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
     setBrightness(newBrightness);
   };
 
 
   const forgetGlasses = async () => {
-    await BluetoothService.getInstance().sendForgetSmartGlasses();
+    await coreCommunicator.sendForgetSmartGlasses();
   };
 
   const confirmForgetGlasses = () => {
@@ -140,11 +141,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       
       // Clean up other services
       console.log('Cleaning up local sessions and services');
-      BluetoothService.getInstance().deleteAuthenticationSecretKey();
-      ManagerCoreCommsService.stopService();
-      // Stop the AugmentosService in the core
-      // stopExternalService();
-      BluetoothService.resetInstance();
+      
+      // Delete core auth key
+      await coreCommunicator.deleteAuthenticationSecretKey();
+      
+      // Stop the native services
+      CoreCommsService.stopService();
+      stopExternalService();
+      
+      // Clean up communicator resources
+      coreCommunicator.cleanup();
       
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
