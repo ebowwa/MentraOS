@@ -35,8 +35,9 @@ export enum WebhookRequestType {
    */
   export interface SessionWebhookRequest extends BaseWebhookRequest {
     type: WebhookRequestType.SESSION_REQUEST;
+    augmentOSWebsocketUrl?: string;
   }
-  
+
   /**
    * Stop request webhook
    * 

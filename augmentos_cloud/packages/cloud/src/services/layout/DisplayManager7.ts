@@ -1,4 +1,4 @@
-import { systemApps } from '@augmentos/config';
+import { systemApps } from '../core/system-apps';
 import { ActiveDisplay, Layout, DisplayRequest, DisplayManagerI, UserSession, TpaToCloudMessageType, ViewType, LayoutType } from '@augmentos/sdk';
 import { WebSocket } from 'ws';
 

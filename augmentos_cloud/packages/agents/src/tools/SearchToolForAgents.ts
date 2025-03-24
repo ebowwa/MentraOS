@@ -2,7 +2,6 @@
 
 import { Tool } from '@langchain/core/tools';
 import { SerpAPI } from '@langchain/community/tools/serpapi';
-// import { SERPAPI_API_KEY } from '@augmentos/config';
 
 export const SERPAPI_API_KEY = process.env.SERPAPI_API_KEY || "";
 

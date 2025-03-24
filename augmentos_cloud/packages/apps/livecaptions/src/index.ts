@@ -17,14 +17,13 @@ import {
   ExtendedStreamType,
 } from '@augmentos/sdk';
 import { TranscriptProcessor, languageToLocale, convertLineWidth } from '@augmentos/utils';
-import { systemApps } from '@augmentos/config';
 import axios from 'axios';
 
 const app = express();
 // const PORT = systemApps.captions.port;
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002"; 
-const PACKAGE_NAME = systemApps.captions.packageName;
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "cloud"; 
+const PACKAGE_NAME = "com.augmentos.livecaptions";
 const API_KEY = 'test_key'; // In production, this would be securely stored
 
 // No longer need userFinalTranscripts map as we store history in the TranscriptProcessor
@@ -51,7 +50,7 @@ const activeSessions = new Map<string, WebSocket>();
 
 async function fetchAndApplySettings(sessionId: string, userId: string) {
   try {
-    const response = await axios.get(`http://${CLOUD_URL}/tpasettings/user/${PACKAGE_NAME}`, {
+    const response = await axios.get(`http://${CLOUD_HOST_NAME}/tpasettings/user/${PACKAGE_NAME}`, {
       headers: { Authorization: `Bearer ${userId}` }
     });
     const settings = response.data.settings;
@@ -121,7 +120,7 @@ app.post('/webhook', async (req, res) => {
     console.log(`\n\n🗣️🗣️🗣️Received session request for user ${userId}, session ${sessionId}\n\n`);
 
     // Start WebSocket connection to cloud
-    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
 
     ws.on('open', async () => {
       console.log(`\n[Session ${sessionId}]\n connected to augmentos-cloud\n`);

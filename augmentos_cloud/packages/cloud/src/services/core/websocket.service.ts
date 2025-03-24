@@ -50,16 +50,23 @@ import {
   TpaSubscriptionUpdate,
   TpaToCloudMessage,
   UserSession,
-  Vad
+  Vad,
+  WebhookRequestType
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../logging/posthog.service';
-import { systemApps } from '@augmentos/config';
+import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
 
+export const PUBLIC_HOST_NAME = process.env.PUBLIC_HOST_NAME || "dev.augmentos.cloud";
+export const LOCAL_HOST_NAME = process.env.CLOUD_HOST_NAME || process.env.PORTER_APP_NAME ? `${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80` : "cloud"
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+
+logger.info(`🔥🔥🔥 [websocket.service]: PUBLIC_HOST_NAME: ${PUBLIC_HOST_NAME}`);
+logger.info(`🔥🔥🔥 [websocket.service]: LOCAL_HOST_NAME: ${LOCAL_HOST_NAME}`);
+
 const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 
 // Constants
@@ -256,11 +263,24 @@ export class WebSocketService {
     try {
       // Trigger TPA webhook
       userSession.logger.info("[websocket.service]: ⚡️Triggering webhook for app⚡️: ", app.webhookURL);
+
+      // Set up the websocket URL for the TPA connection.
+      let augmentOSWebsocketUrl = `wss://${PUBLIC_HOST_NAME}/tpa-ws`;
+
+      // If the app is a system app, use the local host name.
+      // this is because system apps run in the same docker cluster as the cloud server, and can take advantage of internal networking.
+      if (app.isSystemApp) {
+        augmentOSWebsocketUrl = `ws://${LOCAL_HOST_NAME}/tpa-ws`;
+      }
+      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server Websocket URL: ${augmentOSWebsocketUrl}`);
+      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Start Session webhook URL: ${app.webhookURL}`);
       await appService.triggerWebhook(app.webhookURL, {
-        type: 'session_request',
+        // type: 'session_request',
+        type: WebhookRequestType.SESSION_REQUEST,
         sessionId: userSession.sessionId + '-' + packageName,
         userId: userSession.userId,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        augmentOSWebsocketUrl,
       });
 
       // Trigger boot screen.
