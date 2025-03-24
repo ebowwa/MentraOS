@@ -1,5 +1,4 @@
 import jwt from 'jsonwebtoken';
-// import { AUGMENTOS_AUTH_JWT_SECRET } from '@augmentos/config';
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 if (!AUGMENTOS_AUTH_JWT_SECRET) {
     throw new Error("AUGMENTOS_AUTH_JWT_SECRET is not defined");

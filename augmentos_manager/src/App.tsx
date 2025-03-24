@@ -40,6 +40,8 @@ import { saveSetting } from './logic/SettingsHelper';
 import WelcomePageComponent from './components/WelcomePageComponent.tsx';
 import TestingPage from './screens/TestingPage.tsx';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import DeveloperSettingsScreen from './screens/DeveloperSettingsScreen.tsx';
+import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -59,8 +61,8 @@ const App: React.FC = () => {
 
   // Reset ignoreVersionCheck setting on app start
   useEffect(() => {
-    //TODO: SET THIS TO FALSE
-    saveSetting('ignoreVersionCheck', true);
+
+    saveSetting('ignoreVersionCheck', false);
     console.log('Reset version check ignore flag on app start');
   }, []);
 
@@ -136,12 +138,6 @@ const App: React.FC = () => {
                         )}
                       </Stack.Screen>
 
-                      <Stack.Screen
-                        name="Register"
-                        component={RegisterScreen}
-                        options={{ headerShown: false }}
-                      />
-
                       <Stack.Screen name="Testing" options={{ headerShown: false }}>
                         {() => (
                           <TestingPage
@@ -150,57 +146,83 @@ const App: React.FC = () => {
                           />
                         )}
                       </Stack.Screen>
-                      
-                      <Stack.Screen name="SettingsPage" options={{ headerShown: false }}>
-                        {props => (
-                          <SettingsPage
-                            {...props}
-                            isDarkTheme={isDarkTheme}
-                            toggleTheme={toggleTheme}
-                          />
-                        )}
-                      </Stack.Screen>
-                      <Stack.Screen name="PrivacySettingsScreen"
-                        options={{ title: 'Privacy Settings' }}
-                      >
-                        {props => (
-                          <PrivacySettingsScreen
-                            {...props}
-                            toggleTheme={toggleTheme}
-                            isDarkTheme={isDarkTheme}
-                          />
-                        )}
-                      </Stack.Screen>
-                      <Stack.Screen name="GrantPermissionsScreen"
-                        options={{ title: 'Grant Permissions' }}
-                      >
-                        {props => (
-                          <GrantPermissionsScreen
-                            {...props}
-                            toggleTheme={toggleTheme}
-                            isDarkTheme={isDarkTheme}
-                          />
-                        )}
-                      </Stack.Screen>
-                      <Stack.Screen
-                        name="AppStore"
-                        options={{ title: 'App Store', headerShown: false }}>
-                        {props => <AppStore {...props} isDarkTheme={isDarkTheme} />}
-                      </Stack.Screen>
-                      <Stack.Screen
-                        name="AppStoreNative"
-                        options={{ title: 'App Store (Native)', headerShown: false }}>
-                        {props => <AppStoreNative {...props} isDarkTheme={isDarkTheme} />}
-                      </Stack.Screen>
-                      <Stack.Screen
-                        name="AppStoreWeb"
-                        options={{ title: 'App Store', headerShown: false }}>
-                        {props => <AppStoreWeb {...props} isDarkTheme={isDarkTheme} />}
-                      </Stack.Screen>
-                      <Stack.Screen
-                        name="Reviews"
-                        options={({ route }) => ({
-                          headerShown: false,
+                <Stack.Screen
+                  name="Register"
+                  component={RegisterScreen}
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen name="SettingsPage" options={{ headerShown: false }}>
+                  {props => (
+                    <SettingsPage
+                      {...props}
+                      isDarkTheme={isDarkTheme}
+                      toggleTheme={toggleTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="PrivacySettingsScreen"
+                  options={{ title: 'Privacy Settings' }}
+                >
+                  {props => (
+                    <PrivacySettingsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="DeveloperSettingsScreen"
+                  options={{ title: 'Developer Settings' }}
+                >
+                  {props => (
+                    <DeveloperSettingsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="DashboardSettingsScreen"
+                  options={{ title: 'Dashboard Settings' }}
+                >
+                  {props => (
+                    <DashboardSettingsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="GrantPermissionsScreen"
+                  options={{ title: 'Grant Permissions' }}
+                >
+                  {props => (
+                    <GrantPermissionsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStore"
+                  options={{ title: 'App Store', headerShown: false }}>
+                  {props => <AppStore {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreNative"
+                  options={{ title: 'App Store (Native)', headerShown: false }}>
+                  {props => <AppStoreNative {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="AppStoreWeb"
+                  options={{ title: 'App Store', headerShown: false }}>
+                  {props => <AppStoreWeb {...props} isDarkTheme={isDarkTheme} />}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Reviews"
+                  options={({ route }) => ({
+                    headerShown: false,
 
                           title: route.params.appName
                             ? `Reviews for ${route.params.appName}`

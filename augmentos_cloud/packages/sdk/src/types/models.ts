@@ -21,6 +21,8 @@ export interface AppI {
   packageName: string;
   name: string;
   webhookURL: string;
+  isSystemApp?: boolean;         // Is this a system app?
+
   webviewURL?: string;            // URL for phone UI
   logoURL: string;
   tpaType: TpaType;               // Type of app

@@ -2,8 +2,10 @@ package com.augmentos.augmentos_manager;
 
 import android.content.ComponentName;
 import android.content.Intent;
+import android.location.LocationManager;
 import android.util.Log;
 import android.content.pm.PackageManager;
+import android.content.Context;
 
 
 import com.augmentos.augmentos_core.AugmentosService;
@@ -99,4 +101,17 @@ public class CoreServiceStarterModule extends ReactContextBaseJavaModule {
         return NewPermissionUtils.areAllPermissionsGranted(getReactApplicationContext());
     }
 
+    @ReactMethod(isBlockingSynchronousMethod = true)
+    public boolean isLocationEnabled() {
+        try {
+            LocationManager locationManager = (LocationManager) getReactApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+            boolean gpsEnabled = locationManager != null && locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            boolean networkEnabled = locationManager != null && locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            Log.d(TAG, "Location services: GPS=" + gpsEnabled + ", Network=" + networkEnabled);
+            return gpsEnabled || networkEnabled;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to check location status", e);
+            return false;
+        }
+    }
 }

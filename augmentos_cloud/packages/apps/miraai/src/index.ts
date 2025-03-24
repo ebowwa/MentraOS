@@ -13,7 +13,6 @@ import {
   LayoutType,
 } from '@augmentos/sdk';
 
-import { systemApps } from '@augmentos/config';
 import { MiraAgent } from '@augmentos/agents';
 import { wrapText } from '@augmentos/utils';
 
@@ -22,8 +21,8 @@ import { wrapText } from '@augmentos/utils';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002"; 
-const PACKAGE_NAME = systemApps.mira.packageName;
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "http://localhost:8002"; 
+const PACKAGE_NAME = "com.augmentos.miraai";
 const API_KEY = 'test_key'; // In production, secure this key
 
 const explicitWakeWords = [
@@ -72,7 +71,7 @@ app.post('/webhook', async (req, res) => {
     const { sessionId, userId, conversation_context } = req.body;
     console.log(`\n\n🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`);
 
-    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
     
     ws.on('open', () => {
       console.log(`\n[Session ${sessionId}]\n connected to augmentos-cloud`);
@@ -243,7 +242,7 @@ async function processTranscripts(sessionId: string, ws: WebSocket) {
   console.log(`Processing transcripts for session ${sessionId} after ${durationSeconds} seconds`);
 
   try {
-    const backendUrl = `http://${CLOUD_URL}/api/transcripts/${sessionId}?duration=${durationSeconds}`;
+    const backendUrl = `http://${CLOUD_HOST_NAME}/api/transcripts/${sessionId}?duration=${durationSeconds}`;
     const response = await fetch(backendUrl);
     const data = await response.json();
     console.log(`Retrieved transcripts: ${JSON.stringify(data)}`);

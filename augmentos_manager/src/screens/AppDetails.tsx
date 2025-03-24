@@ -13,7 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList, AppStoreItem } from '../components/types';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import NavigationBar from '../components/NavigationBar';
-import BluetoothService from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import semver from 'semver';
 import { NativeModules } from 'react-native';
 const { FetchConfigHelperModule, TpaHelpers } = NativeModules;
@@ -152,8 +152,6 @@ const AppDetails: React.FC<AppDetailsProps> = ({
     };
   }, []);
 
-  const bluetoothService = BluetoothService.getInstance();
-
   // Theme colors
   const theme = {
     backgroundColor: isDarkTheme ? '#1c1c1c' : '#f9f9f9',
@@ -172,7 +170,7 @@ const AppDetails: React.FC<AppDetailsProps> = ({
       setInstallState('Downloading...');
       console.log(`Installing app with package name: ${packageName}`);
 
-      bluetoothService.installAppByPackageName(packageName);
+      coreCommunicator.installAppByPackageName(packageName);
     } else if (installState === 'Start') {
       console.log(`Starting app with package name: ${packageName}`);
     }

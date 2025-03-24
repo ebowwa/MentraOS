@@ -106,9 +106,9 @@ const UserSchema = new Schema<UserDocument>({
   },
   
   profile: {
-    company: { type: String },
+    company: { type: String, required: false }, // Not required in schema, but validated in app publish flow
     website: { type: String },
-    contactEmail: { type: String },
+    contactEmail: { type: String, required: false }, // Not required in schema, but validated in app publish flow
     description: { type: String },
     logo: { type: String }
   },
@@ -269,12 +269,15 @@ UserSchema.methods.updateAppSettings = async function(
     ([key, value]) => ({ key, value })
   );
 
-  this.appSettings.set(sanitizedAppName, settings);
+  // Use the merged settings array instead of just the new settings
+  this.appSettings.set(sanitizedAppName, updatedSettingsArray);
   await this.save();
 
   console.log('Updated settings:', JSON.stringify(updatedSettingsArray));
   const afterUpdate = this.appSettings.get(sanitizedAppName);
   console.log('Settings retrieved after save:', JSON.stringify(afterUpdate));
+
+  return afterUpdate;
 };
 
 UserSchema.methods.getAppSettings = function (this: UserDocument, appName: string): AppSetting[] | undefined {

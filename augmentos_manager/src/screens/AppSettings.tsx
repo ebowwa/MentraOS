@@ -4,7 +4,7 @@ import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, ImageBackgroun
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../components/types';
 import NavigationBar from '../components/NavigationBar';
-import BluetoothService from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { MOCK_CONNECTION } from '../consts';
 import GroupTitle from '../components/settings/GroupTitle';
 import ToggleSetting from '../components/settings/ToggleSetting';
@@ -212,7 +212,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleThe
             <View style={styles.appIconContainer}>
               <View style={styles.iconWrapper}>
                 <ImageBackground
-                  source={getAppImage(packageName)}
+                  source={getAppImage(appInfo)}
                   style={styles.appIconLarge}
                   imageStyle={styles.appIconRounded}
                 />

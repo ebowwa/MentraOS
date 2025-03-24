@@ -246,30 +246,6 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
 
-  # Datadog agent
-  datadog:
-    image: datadog/agent:latest
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - /proc/:/host/proc/:ro
-      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
-    env_file:
-      - .env
-      - .env.production
-    environment:
-      - DD_API_KEY=${DATADOG_API_KEY}
-      - DD_SITE=us5.datadoghq.com
-      - DD_LOGS_ENABLED=true
-      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-      - DD_APM_ENABLED=true
-      - DD_PROCESS_AGENT_ENABLED=true
-      - DD_LOGS_CONFIG_PROCESSING_RULES=[{"type":"exclude_at_match","name":"exclude_debug_logs","pattern":"\\[debug\\]"}]
-      - DD_LOGS_CONFIG_OPEN_FILES_LIMIT=200
-      - DD_CONTAINER_EXCLUDE_LOGS=name:datadog-agent
-    restart: unless-stopped
-    networks:
-      - augmentos-network
-
 networks:
   augmentos-network:
     driver: bridge

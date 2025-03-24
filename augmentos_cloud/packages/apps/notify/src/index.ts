@@ -1,22 +1,13 @@
 import path from 'path';
 import {
-  TpaConnectionInit,
-  TpaSubscriptionUpdate,
-  DataStream,
-  DisplayRequest,
-  TpaToCloudMessageType,
-  StreamType,
-  ViewType,
-  LayoutType,
   PhoneNotification,
   TpaSession,
   TpaServer,
 } from '@augmentos/sdk'; // shared types for cloud TPA messages
-import { systemApps } from '@augmentos/config';
 import { wrapText } from '@augmentos/utils';
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002";
-const PACKAGE_NAME = systemApps.notify.packageName;
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "http://localhost:8002";
+const PACKAGE_NAME = "com.augmentos.notify";
 const API_KEY = 'test_key'; // In production, this would be securely stored
 
 // Duration (in ms) that each notification is displayed
@@ -251,7 +242,7 @@ const server = new NotifyServer({
   packageName: PACKAGE_NAME,
   apiKey: API_KEY,
   port: PORT,
-  augmentOSWebsocketUrl: `ws://${CLOUD_URL}/tpa-ws`,
+  augmentOSWebsocketUrl: `ws://${CLOUD_HOST_NAME}/tpa-ws`,
   webhookPath: '/webhook',
   publicDir: path.join(__dirname, './public')
 });

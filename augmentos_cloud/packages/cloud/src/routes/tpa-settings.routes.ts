@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
 import axios from 'axios';
-import { systemApps } from '@augmentos/config';
+import { systemApps } from '../services/core/system-apps';
 import { User } from '../models/user.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
@@ -242,7 +242,7 @@ router.post('/:tpaName', async (req, res) => {
     // console.log('@@@@@ user', user);
     // Update the settings for this app from scratch.
     // We assume that the payload contains the complete set of settings (each with key and value).
-    await user.updateAppSettings(tpaName, settingsArray);
+    const updatedSettings = await user.updateAppSettings(tpaName, settingsArray);
 
     logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
 
@@ -256,7 +256,7 @@ router.post('/:tpaName', async (req, res) => {
         // Add userIdForSettings to the payload that the captions app expects
         const response = await axios.post(appEndpoint, {
           userIdForSettings: userId,
-          settings: settingsArray
+          settings: updatedSettings
         });
         logger.info(`Called app endpoint at ${appEndpoint} with response:`, response.data);
       } catch (err) {

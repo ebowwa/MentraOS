@@ -52,7 +52,11 @@ export interface CoreInfo {
   default_wearable: string | null,
   sensing_enabled: boolean;
   force_core_onboard_mic: boolean;
+  is_mic_enabled_for_frontend: boolean;
   contextual_dashboard_enabled: boolean;
+  bypass_vad_for_debugging: boolean;
+  bypass_audio_encoding_for_debugging: boolean;
+  always_on_status_bar_enabled: boolean;
 }
 
 export interface AugmentOSMainStatus {
@@ -75,8 +79,12 @@ export class AugmentOSParser {
       puck_charging_status: false,
       sensing_enabled: false,
       force_core_onboard_mic: false,
+      is_mic_enabled_for_frontend: false,
       contextual_dashboard_enabled: false,
+      bypass_vad_for_debugging: false,
+      bypass_audio_encoding_for_debugging: false,
       default_wearable: null,
+      always_on_status_bar_enabled: false,
     },
     glasses_info: null,
     wifi: { is_connected: false, ssid: '', signal_strength: 0 },
@@ -99,8 +107,12 @@ export class AugmentOSParser {
       puck_charging_status: true,
       sensing_enabled: true,
       force_core_onboard_mic: false,
+      is_mic_enabled_for_frontend: false,
       contextual_dashboard_enabled: true,
+      bypass_vad_for_debugging: false,
+      bypass_audio_encoding_for_debugging: false,
       default_wearable: 'evenrealities_g1',
+      always_on_status_bar_enabled: false,
     },
     glasses_info: {
       model_name: 'Even Realities G1',
@@ -217,18 +229,30 @@ export class AugmentOSParser {
       let glassesInfo = status.connected_glasses ?? {};
       let authInfo = status.auth ?? {};
 
+      console.log(JSON.stringify(data));
+      
+      // First determine if we have connected glasses in the status
+      const hasConnectedGlasses = status.connected_glasses && status.connected_glasses.model_name;
+      
       return {
         core_info: {
           augmentos_core_version: coreInfo.augmentos_core_version ?? null,
           core_token: coreInfo.core_token ?? null,
           cloud_connection_status: coreInfo.cloud_connection_status ?? 'DISCONNECTED',
           puck_connected: true,
-          puck_battery_life: coreInfo.puck_battery_life ?? null,
-          puck_charging_status: coreInfo.charging_status ?? false,
-          sensing_enabled: coreInfo.sensing_enabled ?? false,
-          force_core_onboard_mic: coreInfo.force_core_onboard_mic ?? false,
-          contextual_dashboard_enabled: coreInfo.contextual_dashboard_enabled ?? true,
-          default_wearable: coreInfo.default_wearable ?? null,
+          puck_battery_life: status.core_info.puck_battery_life ?? null,
+          puck_charging_status: status.core_info.charging_status ?? false,
+          sensing_enabled: status.core_info.sensing_enabled ?? false,
+          force_core_onboard_mic: status.core_info.force_core_onboard_mic ?? false,
+          contextual_dashboard_enabled: status.core_info.contextual_dashboard_enabled ?? true,
+          bypass_vad_for_debugging: status.core_info.bypass_vad_for_debugging ?? false,
+          bypass_audio_encoding_for_debugging: status.core_info.bypass_audio_encoding_for_debugging ?? false,
+          // If we have connected glasses but default_wearable is missing, use the model_name
+          default_wearable: hasConnectedGlasses && !status.core_info.default_wearable 
+            ? status.connected_glasses.model_name 
+            : (status.core_info.default_wearable ?? null),
+          is_mic_enabled_for_frontend: status.core_info.is_mic_enabled_for_frontend ?? false,
+          always_on_status_bar_enabled: status.core_info.always_on_status_bar_enabled ?? false,
         },
         glasses_info: status.connected_glasses
           ? {

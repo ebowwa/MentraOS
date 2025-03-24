@@ -10,7 +10,6 @@ import { getAppImage } from '../logic/getAppImage';
 import { FallbackImageBackground } from './FallbackImageBackground';
 import { saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
-// import BluetoothService from '../BluetoothService';
 
 interface AppIconProps {
     app: AppInfo;

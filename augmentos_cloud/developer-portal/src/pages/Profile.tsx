@@ -35,15 +35,14 @@ const Profile: React.FC = () => {
         
         const userData = await api.auth.me();
         
-        if (userData.profile) {
-          setFormData({
-            company: userData.profile.company || '',
-            website: userData.profile.website || '',
-            contactEmail: userData.profile.contactEmail || '',
-            description: userData.profile.description || '',
-            logo: userData.profile.logo || ''
-          });
-        }
+        // Set up form data, defaulting contactEmail to user's email if not set
+        setFormData({
+          company: userData.profile?.company || '',
+          website: userData.profile?.website || '',
+          contactEmail: userData.profile?.contactEmail || userData.email || '',
+          description: userData.profile?.description || '',
+          logo: userData.profile?.logo || ''
+        });
       } catch (err) {
         console.error('Error fetching profile:', err);
         setError('Failed to load profile data. Please try again.');
@@ -64,12 +63,40 @@ const Profile: React.FC = () => {
     }));
   };
   
+  // Validate form
+  const validateForm = () => {
+    if (!formData.company || formData.company.trim() === '') {
+      setError('Company/Organization name is required');
+      return false;
+    }
+    
+    if (!formData.contactEmail || formData.contactEmail.trim() === '') {
+      setError('Contact email is required');
+      return false;
+    }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.contactEmail)) {
+      setError('Please enter a valid contact email address');
+      return false;
+    }
+    
+    return true;
+  };
+  
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
     setError(null);
     setIsSaved(false);
+    
+    // Validate form
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsSaving(true);
     
     try {
       // Update profile via API
@@ -130,7 +157,7 @@ const Profile: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="company" className="flex items-center gap-2">
                     <Building className="h-4 w-4" />
-                    Company/Organization
+                    Company/Organization <span className="text-red-500 ml-1">*</span>
                   </Label>
                   <Input 
                     id="company" 
@@ -138,9 +165,10 @@ const Profile: React.FC = () => {
                     value={formData.company}
                     onChange={handleChange}
                     placeholder="Your company or organization name" 
+                    required
                   />
                   <p className="text-xs text-gray-500">
-                    The name of your company or organization that will be displayed to users.
+                    The name of your company or organization that will be displayed to users. Required to publish apps.
                   </p>
                 </div>
                 
@@ -164,7 +192,7 @@ const Profile: React.FC = () => {
                 <div className="space-y-2">
                   <Label htmlFor="contactEmail" className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    Contact Email
+                    Contact Email <span className="text-red-500 ml-1">*</span>
                   </Label>
                   <Input 
                     id="contactEmail" 
@@ -172,9 +200,11 @@ const Profile: React.FC = () => {
                     value={formData.contactEmail}
                     onChange={handleChange}
                     placeholder="support@example.com" 
+                    required
+                    type="email"
                   />
                   <p className="text-xs text-gray-500">
-                    An email address where users can contact you for support or inquiries.
+                    An email address where users can contact you for support or inquiries. Required to publish apps.
                   </p>
                 </div>
                 

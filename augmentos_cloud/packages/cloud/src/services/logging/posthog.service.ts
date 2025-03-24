@@ -1,7 +1,6 @@
 // posthog.service.ts
 import { logger } from '@augmentos/utils';
 import { PostHog } from 'posthog-node';
-// import { POSTHOG_PROJECT_API_KEY, POSTHOG_HOST } from '@augmentos/config';
 
 export const POSTHOG_PROJECT_API_KEY = process.env.POSTHOG_PROJECT_API_KEY || "";
 export const POSTHOG_HOST = process.env.POSTHOG_HOST || "https://app.posthog.com";

@@ -13,6 +13,9 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 
+import org.greenrobot.eventbus.EventBus;
+import org.json.JSONObject;
+
 public class NotificationServiceModule extends ReactContextBaseJavaModule {
 
     private static final String TAG = "NotificationServiceUtils";
@@ -76,7 +79,8 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
     }
 
     // Send notifications to React Native
-    public void sendNotificationToJS(String jsonString) {
+    private void sendNotificationToJS(String jsonString) {
+        Log.d(TAG, "sendNotificationToJS - jsonString: " + jsonString);
         getReactApplicationContext()
                 .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
                 .emit("onNotificationPosted", jsonString);
@@ -86,7 +90,23 @@ public class NotificationServiceModule extends ReactContextBaseJavaModule {
     public void onNotificationPosted(String jsonString) {
         try {
             Log.d(TAG, "onNotificationPosted START - jsonString: " + jsonString);
-            //sendNotificationToJS(jsonString);
+            sendNotificationToJS(jsonString); // Uncommented to send to JS
+            
+            // Post to EventBus for AugmentOSCommunicator to handle
+            try {
+                JSONObject json = new JSONObject(jsonString);
+                String appName = json.getString("appName");
+                String title = json.getString("title");
+                String text = json.getString("text");
+                
+                NewNotificationReceivedEvent event = new NewNotificationReceivedEvent(appName, title, text);
+                EventBus.getDefault().post(event);
+                
+                // Log confirmation that event was posted
+                Log.d(TAG, "Posted notification to EventBus: " + event.toString());
+            } catch (Exception e) {
+                Log.e(TAG, "Error parsing notification JSON", e);
+            }
         } catch (Exception e) {
             Log.e(TAG, "Error in onNotificationPosted: ", e);
         }

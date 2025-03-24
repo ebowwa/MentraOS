@@ -1,6 +1,6 @@
 import { NativeModule, NativeModules } from 'react-native';
 
-interface ManagerCoreCommsServiceInterface extends NativeModule {
+interface CoreCommsServiceInterface extends NativeModule {
   startService: () => void;
   stopService: () => void;
   isServiceRunning: () => boolean;
@@ -9,6 +9,6 @@ interface ManagerCoreCommsServiceInterface extends NativeModule {
   sendCommandToCore: (jsonString: string) => void;
 }
 
-const { ManagerCoreCommsService } = NativeModules;
+const { CoreCommsService } = NativeModules;
 
-export default ManagerCoreCommsService as ManagerCoreCommsServiceInterface;
+export default CoreCommsService as CoreCommsServiceInterface;

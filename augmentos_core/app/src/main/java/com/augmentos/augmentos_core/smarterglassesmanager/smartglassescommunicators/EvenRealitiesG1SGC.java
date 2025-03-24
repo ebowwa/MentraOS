@@ -37,8 +37,9 @@ import java.util.List;
 import java.util.zip.CRC32;
 import java.nio.ByteBuffer;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.G1FontLoader;
@@ -54,6 +55,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.R;
+
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -139,6 +141,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //mic enable Handler
     private Handler micEnableHandler = new Handler();
     private boolean micEnabledAlready = false;
+    private boolean isMicrophoneEnabled = false; // Track current microphone state
 
     //notification period sender
     private Handler notificationHandler = new Handler();
@@ -195,6 +198,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //fonts in G1
     G1FontLoader fontLoader;
 
+    private static final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
+    private volatile long lastSendTimestamp = 0;
+
     public EvenRealitiesG1SGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
         this.context = context;
@@ -204,7 +210,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         preferredG1DeviceId = getPreferredG1DeviceId(context);
         brightnessValue = getSavedBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        this.shouldRunOnboardMic = SmartGlassesAndroidService.getSensingEnabled(context) && !SmartGlassesAndroidService.getForceCoreOnboardMic(context);
+        this.shouldRunOnboardMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
 
         //setup fonts
         fontLoader = new G1FontLoader(context);
@@ -468,7 +474,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                                 // Log.d(TAG, "Audio data received. Seq: " + seq + ", from: " + deviceName + ", length: " + pcmData.length);
                                 if (shouldRunOnboardMic) {
                                     EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
-                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
+//                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
                                 }
                             } else {
 //                                Log.d(TAG, "Lc3 Audio data received. Seq: " + seq + ", Data: " + Arrays.toString(lc3) + ", from: " + deviceName);
@@ -1444,6 +1450,16 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
                     }
 
+//                    Log.d(TAG, "PROC_QUEUE - DEBOUNCE_DELAY_MS: " + DEBOUNCE_DELAY_MS);
+
+                    // Apply debouncing
+//                    long currentTime = System.currentTimeMillis();
+//                    long timeSinceLastSend = currentTime - lastSendTimestamp;
+//                    if (timeSinceLastSend < DEBOUNCE_DELAY_MS) {
+//                        Thread.sleep(DEBOUNCE_DELAY_MS - timeSinceLastSend);
+//                    }
+
+//                    Log.d(TAG, "PROC_QUEUE - timeSinceLastSend: " + timeSinceLastSend);
                     boolean leftSuccess = true;
                     boolean rightSuccess = true;
 
@@ -1452,6 +1468,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         leftWaiter.setTrue();
                         leftTxChar.setValue(request.data);
                         leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
+                        if (leftSuccess) {
+                            lastSendTimestamp = System.currentTimeMillis();
+                        }
                     }
 
                     if (leftSuccess) {
@@ -1469,6 +1488,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         rightWaiter.setTrue();
                         rightTxChar.setValue(request.data);
                         rightSuccess = rightGlassGatt.writeCharacteristic(rightTxChar);
+                        if (rightSuccess) {
+                            lastSendTimestamp = System.currentTimeMillis();
+                        }
                     }
 
                     //wait to make sure the right happens
@@ -1477,7 +1499,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         rightWaiter.waitWhileTrue();
                         //Log.d(TAG, "PROC_QUEUE - DONE WAIT ON RIGHT");
                     } else {
-                        //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
+                         //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
                     }
 
                     Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
@@ -1605,7 +1627,17 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
 
         List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
-        sendChunks(chunks);
+        for (int i = 0; i < chunks.size(); i++) {
+            byte[] chunk = chunks.get(i);
+            boolean isLastChunk = (i == chunks.size() - 1);
+
+            if (isLastChunk) {
+                sendDataSequentially(chunk, false);
+            } else {
+                sendDataSequentially(chunk, false, 300);
+            }
+        }
+
         Log.d(TAG, "Send simple reference card");
     }
 
@@ -1817,9 +1849,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
 //                quickRestartG1();
 
+
                 heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS);
             }
         };
+
 
         heartbeatHandler.postDelayed(heartbeatRunnable, delay);
     }
@@ -2045,6 +2079,8 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //microphone stuff
     public void setMicEnabled(boolean enable, int delay) {
         Log.d(TAG, "Running set mic enabled: " + enable);
+        isMicrophoneEnabled = enable; // Update the state tracker
+        EventBus.getDefault().post(new isMicEnabledForFrontendEvent(enable));
         micEnableHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
@@ -2760,5 +2796,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             setMicEnabled(false, 10);
             stopMicBeat();
         }
+    }
+
+    /**
+     * Returns whether the microphone is currently enabled
+     * @return true if microphone is enabled, false otherwise
+     */
+    public boolean isMicrophoneEnabled() {
+        return isMicrophoneEnabled;
     }
 }

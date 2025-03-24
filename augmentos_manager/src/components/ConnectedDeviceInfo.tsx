@@ -2,7 +2,7 @@ import React, {useEffect, useRef, useState} from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { NavigationProps } from '../components/types';
 import { useNavigation } from '@react-navigation/native';
@@ -20,9 +20,10 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const [connectedGlasses, setConnectedGlasses] = useState('');
-  const bluetoothService = BluetoothService.getInstance();
-  const { status, isSearchingForPuck, isConnectingToPuck, refreshStatus } = useStatus();
+  const { status, refreshStatus } = useStatus();
   const navigation = useNavigation<NavigationProps>();
+  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend);
+
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false);
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false);
 
@@ -32,6 +33,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.8);
       slideAnim.setValue(-50);
+
+      // Update connectedGlasses state when default_wearable changes
+      if (status.core_info.default_wearable) {
+        setConnectedGlasses(status.core_info.default_wearable);
+      }
 
       // Start animations if device is connected
       if (status.core_info.puck_connected) {
@@ -66,22 +72,35 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
     }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim])
   );
 
-  const handleConnectToPuck = async () => {
+  useEffect(() => {
+    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend);
+  }, [status.core_info.is_mic_enabled_for_frontend]);
+
+  const handleConnectToCore = async () => {
     try {
-      await bluetoothService.scanForDevices();
+      // Request status to check connection instead of scanning
+      await coreCommunicator.sendRequestStatus();
     } catch (error) {
-      bluetoothService.emit('SHOW_BANNER', { message: 'Failed to start scanning for devices', type: 'error' });
+      GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Failed to connect to AugmentOS Core', type: 'error' });
     }
   };
 
   const connectGlasses = async () => {
-    if (!(await bluetoothService.isBluetoothEnabled() && await bluetoothService.isLocationEnabled())) {
-      GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Please enable Bluetooth and Location', type: 'error' });
+    if (status.core_info.default_wearable === undefined || status.core_info.default_wearable === '') {
+      navigation.navigate('SelectGlassesModelScreen');
       return;
     }
 
-    if (!status.core_info.default_wearable) {
-      navigation.navigate('SelectGlassesModelScreen');
+    // Check that Bluetooth and Location are enabled/granted
+    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
+    if (!requirementsCheck.isReady) {
+      // Show alert about missing requirements
+      console.log('Requirements not met, showing banner with message:', requirementsCheck.message);
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings', 
+        type: 'error' 
+      });
+      
       return;
     }
 
@@ -90,10 +109,15 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
     try {
       if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
-        await bluetoothService.sendConnectWearable(status.core_info.default_wearable);
+        await coreCommunicator.sendConnectWearable(status.core_info.default_wearable);
       }
     } catch (error) {
-      console.error('connect 2 glasses error:', error);
+      console.error('connect to glasses error:', error);
+      setConnectButtonDisabled(false);
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: 'Failed to connect to glasses', 
+        type: 'error' 
+      });
     }
   };
 
@@ -104,7 +128,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
     console.log('Disconnecting wearable');
 
     try {
-      await bluetoothService.sendDisconnectWearable();
+      await coreCommunicator.sendDisconnectWearable();
     } catch (error) { }
   };
 
@@ -142,6 +166,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
   return (
     <View style={[styles.deviceInfoContainer, { backgroundColor: themeStyles.backgroundColor }]}>
+      {microphoneActive && (
+        <View style={styles.microphoneContainer}>
+          <Icon name="microphone" size={20} color="#4CAF50" />
+        </View>
+      )}
       {status.core_info.puck_connected ? (
         <>
           {status.core_info.default_wearable ? (
@@ -152,7 +181,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
               />
               <Animated.View style={[styles.connectedStatus, { transform: [{ translateX: slideAnim }] }]}>
                 <Text style={[styles.connectedTextTitle, { color: themeStyles.textColor }]}>
-                  {formatGlassesTitle(connectedGlasses)} {status.core_info.default_wearable}
+                  {formatGlassesTitle(connectedGlasses)}
                 </Text>
               </Animated.View>
 
@@ -243,16 +272,12 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
       ) : (
         <View style={styles.disconnectedContent}>
           <Text style={[styles.connectText, { color: themeStyles.textColor }]}>
-            {isSearchingForPuck ? 'Searching for Puck...' : isConnectingToPuck ? 'Connecting to Puck...' : 'No device connected'}
+            {'Core service not connected'}
           </Text>
-          {isSearchingForPuck || isConnectingToPuck ? (
-            <ActivityIndicator size="small" color="#2196F3" />
-          ) : (
-            <TouchableOpacity style={styles.connectButton} onPress={handleConnectToPuck}>
-              <Icon name="wifi" size={16} color="white" style={styles.icon} />
-              <Text style={styles.buttonText}>Connect Glasses</Text>
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.connectButton} onPress={handleConnectToCore}>
+            <Icon name="wifi" size={16} color="white" style={styles.icon} />
+            <Text style={styles.buttonText}>Connect to Core</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -430,6 +455,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     fontFamily: 'Montserrat-Regular',
+  },
+  microphoneContainer: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 1,
   },
 });
 

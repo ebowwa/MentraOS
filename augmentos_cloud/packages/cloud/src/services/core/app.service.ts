@@ -7,9 +7,9 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
-import { systemApps } from '@augmentos/config';
+import { systemApps } from './system-apps';
 import App from '../../models/app.model';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
@@ -208,7 +208,7 @@ export class AppService {
    * @param payload - Data to send
    * @throws If webhook fails after retries
    */
-  async triggerWebhook(url: string, payload: WebhookPayload): Promise<void> {
+  async triggerWebhook(url: string, payload: SessionWebhookRequest): Promise<void> {
     const maxRetries = 2;
     const baseDelay = 1000; // 1 second
 
@@ -375,6 +375,17 @@ export class AppService {
       throw new Error('You do not have permission to publish this app');
     }
 
+    // Verify that the developer has filled out the required profile information
+    const developer = await User.findOne({ email: developerId });
+    if (!developer) {
+      throw new Error('Developer not found');
+    }
+
+    // Check if developer profile has the required fields
+    if (!developer.profile?.company || !developer.profile?.contactEmail) {
+      throw new Error('PROFILE_INCOMPLETE: Developer profile is incomplete. Please fill out your company name and contact email before publishing an app.');
+    }
+
     // Update app status to SUBMITTED
     const updatedApp = await App.findOneAndUpdate(
       { packageName },
@@ -500,10 +511,11 @@ export class AppService {
   }
 
   /**
-   * Get all available apps
+   * Get all available apps for the app store
+   * Only returns apps with PUBLISHED status
    */
   async getAvailableApps(): Promise<AppI[]> {
-    return App.find();
+    return App.find({ appStoreStatus: 'PUBLISHED' });
   }
 
 

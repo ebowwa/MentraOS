@@ -1,4 +1,4 @@
-import { systemApps } from '@augmentos/config';
+import { systemApps } from '../core/system-apps';
 import { ActiveDisplay, Layout, DisplayRequest, DisplayManagerI, UserSession, TpaToCloudMessageType, ViewType, LayoutType } from '@augmentos/sdk';
 import { logger } from '@augmentos/utils';
 import { WebSocket } from 'ws';
@@ -304,8 +304,10 @@ class DisplayManager implements DisplayManagerI {
         layoutType: LayoutType.TEXT_WALL,
         text: ''
       },
-      timestamp: new Date()
+      timestamp: new Date(),
+      durationMs: 0
     };
+//     console.log('####### clearDisplay', clearRequest);
     this.sendDisplay(clearRequest);
   }
 

@@ -8,7 +8,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import { NavigationProps } from '../components/types';
@@ -16,6 +16,7 @@ import { getGlassesImage } from '../logic/getGlassesImage';
 import PairingDeviceInfo from '../components/PairingDeviceInfo';
 import Button from '../components/Button';
 import { getPairingGuide } from '../logic/getPairingGuide';
+import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 interface GlassesPairingGuidePreparationScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
@@ -27,7 +28,6 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
 }) => {
   const { status } = useStatus();
   const route = useRoute();
-  const bluetoothService = BluetoothService.getInstance();
   const { glassesModelName } = route.params as { glassesModelName: string };
   const navigation = useNavigation<NavigationProps>();
 
@@ -42,9 +42,22 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
   React.useEffect(() => {
   }, [glassesModelName]);
 
-  const advanceToPairing = () => {
+
+  const advanceToPairing = async () => {
     if (glassesModelName == null || glassesModelName == "") {
       console.log("SOME WEIRD ERROR HERE");
+      return;
+    }
+
+    // Check that Bluetooth and Location are enabled/granted
+    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
+    if (!requirementsCheck.isReady) {
+      // Show alert about missing requirements
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
+        type: 'error'
+      });
+      
       return;
     }
 

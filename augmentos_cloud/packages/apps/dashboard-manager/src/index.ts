@@ -18,13 +18,12 @@ import {
 import tzlookup from 'tz-lookup';
 import { NewsAgent } from '@augmentos/agents';
 import { NotificationFilterAgent } from '@augmentos/agents'; // <-- added import
-import { systemApps } from '@augmentos/config';
 import { WeatherModule } from './dashboard-modules/WeatherModule';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_URL = process.env.CLOUD_URL || "http://localhost:8002";
-const PACKAGE_NAME = systemApps.dashboard.packageName;
+const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "cloud"; 
+const PACKAGE_NAME = "com.augmentos.dashboard";
 const API_KEY = 'test_key'; // In production, store securely
 
 // For demonstration, we'll keep session-based info in-memory.
@@ -71,7 +70,7 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
     console.log(`\n[Webhook] Session start for user ${userId}, session ${sessionId}\n`);
 
     // 1) Create a new WebSocket connection to the cloud
-    const ws = new WebSocket(`ws://${CLOUD_URL}/tpa-ws`);
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
 
     // Create a new dashboard card
     const dashboardCard: DoubleTextWall = {
@@ -408,7 +407,7 @@ async function updateDashboard(sessionId?: string) {
       async run(sessionInfo: SessionInfo) {
         // Check if we have a valid timezone from location
         if (!sessionInfo.latestLocation?.timezone) {
-          return "◌ $no_datetime$"; // No timezone available
+          return "◌ $DATE$, $TIME12$"
         }
 
         const timezone = sessionInfo.latestLocation.timezone;
@@ -428,7 +427,7 @@ async function updateDashboard(sessionId?: string) {
           return `◌ ${formatted}`;
         } catch (error) {
           console.error(`[Session ${sessionInfo.userId}] Error formatting time with timezone ${timezone}:`, error);
-          return "◌ $no_datetime$"; // Error formatting time
+          return "◌ $DATE$, $TIME12$"
         }
       }
     },
@@ -438,7 +437,7 @@ async function updateDashboard(sessionId?: string) {
         // Only show the cached battery level if it exists; otherwise, show "-%".
         return (typeof sessionInfo.batteryLevel === 'number')
           ? `${sessionInfo.batteryLevel}%`
-          : "-%";
+          : "$GBATT$";
       } 
     },
   ];
@@ -449,17 +448,25 @@ async function updateDashboard(sessionId?: string) {
       name: "calendar",
       async run(context: any) {
         const session: SessionInfo = context.session;
-        if (!session.calendarEvent) return '';
+        if (!session.calendarEvent || !session.latestLocation) return '';
         
         const event = session.calendarEvent;
-        const eventDate = new Date(event.dtStart);
-        const today = new Date();
-        const tomorrow = new Date();
+        // Get timezone from the session's location data, fall back to system timezone
+        const currTimezone = session.latestLocation.timezone;
+        // Create dates with the user's timezone
+        const eventDate = new Date(new Date(event.dtStart).toLocaleString("en-US", { timeZone: currTimezone }));
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: currTimezone }));
+        const tomorrow = new Date(new Date().toLocaleString("en-US", { timeZone: currTimezone }));
         tomorrow.setDate(today.getDate() + 1);
         
         // Format the time portion
         const timeOptions = { hour: "2-digit" as const, minute: "2-digit" as const, hour12: true };
-        const formattedTime = eventDate.toLocaleTimeString('en-US', timeOptions).replace(" ", "");
+        const formattedTime = eventDate.toLocaleTimeString('en-US', { ...timeOptions }).replace(" ", "");
+
+        // console.log(`[Session ${session.userId}] Event date: ${eventDate}`);
+        // console.log(`[Session ${session.userId}] Today: ${today}`);
+        // console.log(`[Session ${session.userId}] Tomorrow: ${tomorrow}`);
+        // console.log(`[Session ${session.userId}] Formatted time: ${formattedTime}`);
         
         // Check if event is today or tomorrow
         if (eventDate.toDateString() === today.toDateString()) {
