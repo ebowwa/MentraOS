@@ -1,8 +1,13 @@
-import { NativeEventEmitter, NativeModules } from 'react-native';
+import { NativeEventEmitter, NativeModules, Platform } from 'react-native';
 import { EventEmitter } from 'events';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 import { INTENSE_LOGGING } from '../consts';
-import { isAugmentOsCoreInstalled, startExternalService } from './CoreServiceStarter';
+import { isAugmentOsCoreInstalled, isLocationServicesEnabled as checkLocationServices, startExternalService } from './CoreServiceStarter';
+import { check, PERMISSIONS, RESULTS } from 'react-native-permissions';
+import BleManager from 'react-native-ble-manager';
+
+// For checking if location services are enabled
+const { ServiceStarter } = NativeModules;
 
 const { CoreCommsService } = NativeModules;
 const eventEmitter = new NativeEventEmitter(CoreCommsService);
@@ -13,6 +18,96 @@ export class CoreCommunicator extends EventEmitter {
   private validationInProgress: Promise<boolean | void> | null = null;
   private reconnectionTimer: NodeJS.Timeout | null = null;
   private isConnected: boolean = false;
+  
+  // Utility methods for checking permissions and device capabilities
+  async isBluetoothEnabled(): Promise<boolean> {
+    try {
+      console.log('Checking Bluetooth state...');
+      const state = await BleManager.checkState();
+      console.log('Bluetooth state:', state);
+      return state === 'on';
+    } catch (error) {
+      console.error('Error checking Bluetooth state:', error);
+      return false;
+    }
+  }
+
+  async isLocationPermissionGranted(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'android') {
+        const result = await check(PERMISSIONS.ANDROID.ACCESS_FINE_LOCATION);
+        return result === RESULTS.GRANTED;
+      } else if (Platform.OS === 'ios') {
+        // iOS doesn't require location permission for BLE scanning since iOS 13
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking location permission:', error);
+      return false;
+    }
+  }
+  
+  async isLocationServicesEnabled(): Promise<boolean> {
+    try {
+      if (Platform.OS === 'android') {
+        // Use our native module to check if location services are enabled
+        const locationServicesEnabled = await checkLocationServices();
+        console.log('Location services enabled (native check):', locationServicesEnabled);
+        return locationServicesEnabled;
+      } else if (Platform.OS === 'ios') {
+        // iOS doesn't require location for BLE scanning since iOS 13
+        return true;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error checking if location services are enabled:', error);
+      return false;
+    }
+  }
+
+  async checkConnectivityRequirements(): Promise<{isReady: boolean, message?: string}> {
+    console.log('Checking connectivity requirements');
+    
+    // Check Bluetooth
+    const isBtEnabled = await this.isBluetoothEnabled();
+    console.log('Is Bluetooth enabled:', isBtEnabled);
+    if (!isBtEnabled) {
+      console.log('Bluetooth is disabled, showing error');
+      return { 
+        isReady: false, 
+        message: 'Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.' 
+      };
+    }
+    
+    // Only check location on Android
+    if (Platform.OS === 'android') {
+      // First check if location permission is granted
+      const isLocationPermissionGranted = await this.isLocationPermissionGranted();
+      console.log('Is Location permission granted:', isLocationPermissionGranted);
+      if (!isLocationPermissionGranted) {
+        console.log('Location permission missing, showing error');
+        return {
+          isReady: false,
+          message: 'Location permission is required to scan for glasses on Android. Please grant location permission and try again.'
+        };
+      }
+      
+      // Then check if location services are enabled
+      const isLocationServicesEnabled = await this.isLocationServicesEnabled();
+      console.log('Are Location services enabled:', isLocationServicesEnabled);
+      if (!isLocationServicesEnabled) {
+        console.log('Location services disabled, showing error');
+        return {
+          isReady: false,
+          message: 'Location services are disabled. Please enable location services in your device settings and try again.'
+        };
+      }
+    }
+    
+    console.log('All requirements met');
+    return { isReady: true };
+  }
   
   // Private constructor to enforce singleton pattern
   private constructor() {
@@ -33,6 +128,13 @@ export class CoreCommunicator extends EventEmitter {
    * Initializes the communication channel with Core
    */
   async initialize() {
+    // Initialize BleManager for permission checks
+    try {
+      await BleManager.start({ showAlert: false });
+    } catch (error) {
+      console.warn('Failed to initialize BleManager:', error);
+    }
+    
     // Start the Core service if it's not already running
     if (!(await CoreCommsService.isServiceRunning())) {
       CoreCommsService.startService();

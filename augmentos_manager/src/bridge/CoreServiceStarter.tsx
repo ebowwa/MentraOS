@@ -21,3 +21,7 @@ export const isAugmentOsCoreInstalled = async () => {
 export const areAllCorePermissionsGranted = async () => {
     return ServiceStarter.areAllCorePermissionsGranted();
 }
+
+export const isLocationServicesEnabled = async () => {
+    return ServiceStarter.isLocationEnabled();
+}

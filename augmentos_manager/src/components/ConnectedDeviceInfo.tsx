@@ -86,9 +86,21 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
   };
 
   const connectGlasses = async () => {
-
     if (status.core_info.default_wearable === undefined || status.core_info.default_wearable === '') {
       navigation.navigate('SelectGlassesModelScreen');
+      return;
+    }
+
+    // Check that Bluetooth and Location are enabled/granted
+    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
+    if (!requirementsCheck.isReady) {
+      // Show alert about missing requirements
+      console.log('Requirements not met, showing banner with message:', requirementsCheck.message);
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings', 
+        type: 'error' 
+      });
+      
       return;
     }
 
@@ -101,6 +113,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
       }
     } catch (error) {
       console.error('connect to glasses error:', error);
+      setConnectButtonDisabled(false);
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: 'Failed to connect to glasses', 
+        type: 'error' 
+      });
     }
   };
 
