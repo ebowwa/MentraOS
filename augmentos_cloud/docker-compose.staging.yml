@@ -11,10 +11,9 @@ services:
       bash -c "bun install && 
               cd packages/utils && bun run build &&
               cd ../sdk && bun run build &&
-              cd ../config && bun run build &&
               cd ../agents && bun run build"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     environment:
       - SERVICE_NAME=shared-packages
 
@@ -35,21 +34,21 @@ services:
       dockerfile: Dockerfile
     ports:
       - target: 80
-        published: ${CLOUD_PORT:-7002}
+        published: ${CLOUD_PORT:-9002}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=cloud
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
     command: bash -c "bun install && cd packages/cloud && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
     labels:
@@ -65,22 +64,22 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${LIVE_CAPTIONS_PORT:-7010}
+        published: ${LIVE_CAPTIONS_PORT:-9010}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=live-captions
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
     command: bash -c "bun install && cd packages/apps/livecaptions && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
       - cloud
@@ -97,22 +96,22 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${FLASH_PORT:-7011}
+        published: ${FLASH_PORT:-9011}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=flash
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
     command: bash -c "bun install && cd packages/apps/flash && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
       - cloud
@@ -129,22 +128,22 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${DASHBOARD_MANAGER_PORT:-7012}
+        published: ${DASHBOARD_MANAGER_PORT:-9012}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=dashboard-manager
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
     command: bash -c "bun install && cd packages/apps/dashboard-manager && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
       - cloud
@@ -161,22 +160,22 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${NOTIFY_PORT:-7014}
+        published: ${NOTIFY_PORT:-9014}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=notify
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
     command: bash -c "bun install && cd packages/apps/notify && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
       - cloud
@@ -193,22 +192,22 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${MIRA_PORT:-7015}
+        published: ${MIRA_PORT:-9015}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=mira
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
     command: bash -c "bun install && cd packages/apps/miraai && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
       - cloud
@@ -224,30 +223,31 @@ services:
     restart: unless-stopped
     ports:
       - target: 80
-        published: ${LIVE_TRANSLATION_PORT:-7017}
+        published: ${LIVE_TRANSLATION_PORT:-9017}
         protocol: tcp
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=staging
       - HOST=0.0.0.0
       - SERVICE_NAME=live-translation
     env_file:
       - .env
-      - .env.production
+      - .env.staging
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
     command: bash -c "bun install && cd packages/apps/livetranslation && bun run build && bun run start"
     networks:
-      - augmentos-network
+      - augmentos-network-staging
     depends_on:
       - shared-packages
       - cloud
     labels:
       com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
 
+
 networks:
-  augmentos-network:
+  augmentos-network-staging:
     driver: bridge
     external: true
 
