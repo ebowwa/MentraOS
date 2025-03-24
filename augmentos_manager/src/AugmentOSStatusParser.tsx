@@ -218,8 +218,11 @@ export class AugmentOSParser {
     if (data && 'status' in data) {
       let status = data.status;
 
-      // console.log('status.core_info.is_mic_enabled_for_frontend', status.core_info.is_mic_enabled_for_frontend);
-
+      console.log(JSON.stringify(data));
+      
+      // First determine if we have connected glasses in the status
+      const hasConnectedGlasses = status.connected_glasses && status.connected_glasses.model_name;
+      
       return {
         core_info: {
           augmentos_core_version: status.core_info.augmentos_core_version ?? null,
@@ -233,7 +236,10 @@ export class AugmentOSParser {
           contextual_dashboard_enabled: status.core_info.contextual_dashboard_enabled ?? true,
           bypass_vad_for_debugging: status.core_info.bypass_vad_for_debugging ?? false,
           bypass_audio_encoding_for_debugging: status.core_info.bypass_audio_encoding_for_debugging ?? false,
-          default_wearable: status.core_info.default_wearable ?? null,
+          // If we have connected glasses but default_wearable is missing, use the model_name
+          default_wearable: hasConnectedGlasses && !status.core_info.default_wearable 
+            ? status.connected_glasses.model_name 
+            : (status.core_info.default_wearable ?? null),
           is_mic_enabled_for_frontend: status.core_info.is_mic_enabled_for_frontend ?? false,
         },
         glasses_info: status.connected_glasses

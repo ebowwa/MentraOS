@@ -7,10 +7,6 @@ import { isAugmentOsCoreInstalled, startExternalService } from './CoreServiceSta
 const { CoreCommsService } = NativeModules;
 const eventEmitter = new NativeEventEmitter(CoreCommsService);
 
-/**
- * CoreCommunicator - Simplified communication layer between Manager and Core
- * Replaces the legacy BluetoothService with a direct, efficient communication channel
- */
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null;
   private messageEventSubscription: any = null;
@@ -146,7 +142,7 @@ export class CoreCommunicator extends EventEmitter {
       this.sendRequestStatus();
       this.reconnectionTimer = setTimeout(
         pollStatus,
-        this.isConnected ? 5000 : 2000 // Poll more frequently when not connected
+        this.isConnected ? 999000 : 2000 // Poll more frequently when not connected
       );
     };
     

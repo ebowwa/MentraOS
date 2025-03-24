@@ -34,6 +34,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
       scaleAnim.setValue(0.8);
       slideAnim.setValue(-50);
 
+      // Update connectedGlasses state when default_wearable changes
+      if (status.core_info.default_wearable) {
+        setConnectedGlasses(status.core_info.default_wearable);
+      }
+
       // Start animations if device is connected
       if (status.core_info.puck_connected) {
         Animated.parallel([
@@ -159,7 +164,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
               />
               <Animated.View style={[styles.connectedStatus, { transform: [{ translateX: slideAnim }] }]}>
                 <Text style={[styles.connectedTextTitle, { color: themeStyles.textColor }]}>
-                  {formatGlassesTitle(connectedGlasses)} {status.core_info.default_wearable}
+                  {formatGlassesTitle(connectedGlasses)}
                 </Text>
               </Animated.View>
 
