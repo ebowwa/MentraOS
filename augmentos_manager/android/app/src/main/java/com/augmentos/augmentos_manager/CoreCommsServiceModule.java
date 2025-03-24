@@ -11,45 +11,48 @@ import com.facebook.react.modules.core.DeviceEventManagerModule;
 
 /**
  * React Native module for communicating with AugmentOS Core
- * This module serves as an interface to the AugmentOSCommunicator singleton
+ * Simplified replacement for ManagerCoreCommsServiceModule
  */
-public class ManagerCoreCommsServiceModule extends ReactContextBaseJavaModule {
-    private static final String TAG = "ManagerCoreCommsServiceModule";
+public class CoreCommsServiceModule extends ReactContextBaseJavaModule {
+    private static final String TAG = "CoreCommsServiceModule";
     private final ReactApplicationContext reactContext;
-    private static ManagerCoreCommsServiceModule moduleInstance;
+    private static CoreCommsServiceModule moduleInstance;
+    private boolean isInitialized = false;
 
-    public ManagerCoreCommsServiceModule(ReactApplicationContext reactContext) {
+    public CoreCommsServiceModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
         moduleInstance = this;
         
-        // Initialize the communicator right away
+        // Initialize communicator right away
         AugmentOSCommunicator.getInstance().initialize(reactContext);
+        isInitialized = true;
     }
 
     @Override
     public String getName() {
-        return "ManagerCoreCommsService";
+        return "CoreCommsService";
     }
 
-    public static ManagerCoreCommsServiceModule getInstance() {
+    public static CoreCommsServiceModule getInstance() {
         return moduleInstance;
     }
 
     @ReactMethod
     public void startService() {
         try {
-            // Initialize the communicator if not already initialized
-            if (!AugmentOSCommunicator.getInstance().isInitialized()) {
+            // Initialize the communicator if not already done
+            if (!isInitialized || !AugmentOSCommunicator.getInstance().isInitialized()) {
                 AugmentOSCommunicator.getInstance().initialize(reactContext);
+                isInitialized = true;
             }
             
-            // Start the core service
+            // Start Core service
             startAugmentosCoreService();
             
-            Log.d(TAG, "AugmentOSCommunicator initialized and core service started");
+            Log.d(TAG, "Core service started");
         } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize AugmentOSCommunicator", e);
+            Log.e(TAG, "Failed to start Core service", e);
         }
     }
 
@@ -62,56 +65,61 @@ public class ManagerCoreCommsServiceModule extends ReactContextBaseJavaModule {
                 getReactApplicationContext().startForegroundService(intent);
             }
         } catch (Exception e) {
-            Log.e(TAG, "Failed to start core service", e);
+            Log.e(TAG, "Failed to start Core service", e);
         }
     }
 
     @ReactMethod
     public void stopService() {
-        // Cleanup the communicator
-        AugmentOSCommunicator.getInstance().cleanup();
-        
-        // Log that we're explicitly resetting the listener state
-        Log.d(TAG, "Event listeners will be recreated on next initialization");
-        
-        // We can't directly clear RCTDeviceEventEmitter listeners, but the cleanup()
-        // method above should reset everything properly
-        
-        Log.d(TAG, "AugmentOSCommunicator cleaned up");
+        try {
+            // Stop Core service
+            Intent intent = new Intent(getReactApplicationContext(), AugmentosService.class);
+            intent.setAction("ACTION_STOP_CORE");
+            getReactApplicationContext().stopService(intent);
+            
+            // Cleanup communicator
+            AugmentOSCommunicator.getInstance().cleanup();
+            isInitialized = false;
+            
+            Log.d(TAG, "Core service stopped and communicator cleaned up");
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to stop Core service", e);
+        }
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
     public boolean isServiceRunning() {
-        return AugmentOSCommunicator.getInstance().isInitialized();
+        return isInitialized && AugmentOSCommunicator.getInstance().isInitialized();
     }
 
     @ReactMethod
     public void sendCommandToCore(String jsonString) {
-        if (!AugmentOSCommunicator.getInstance().isInitialized()) {
+        if (!isInitialized || !AugmentOSCommunicator.getInstance().isInitialized()) {
             startService();
         }
 
         AugmentOSCommunicator.getInstance().sendCommandToCore(jsonString);
     }
 
+    /**
+     * Emits a message to JavaScript
+     */
     public void emitMessageToJS(String eventName, String message) {
         if (reactContext.hasActiveCatalystInstance()) {
             reactContext
-                    .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit(eventName, message);
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                .emit(eventName, message);
         }
     }
 
-    // AddListener Implementation
+    // Event listener implementation
     @ReactMethod
     public void addListener(String eventName) {
-        Log.d(TAG, "addListener: Event listener added for " + eventName);
-        // No additional setup required for basic event listeners
+        Log.d(TAG, "Added listener for: " + eventName);
     }
 
     @ReactMethod
     public void removeListeners(int count) {
-        Log.d(TAG, "removeListeners: Removed " + count + " listeners");
-        // No additional teardown required for basic event listeners
+        Log.d(TAG, "Removed " + count + " listeners");
     }
 }

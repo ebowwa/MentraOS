@@ -6,6 +6,12 @@ import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
+import { DeveloperProfile } from '@augmentos/sdk';
+
+// Extended app interface for API responses that include developer profile
+interface AppWithDeveloperProfile extends AppI {
+  developerProfile?: DeveloperProfile;
+}
 
 export const CLOUD_VERSION = process.env.CLOUD_VERSION;
 if (!CLOUD_VERSION) {
@@ -25,7 +31,7 @@ async function getSessionFromToken(coreToken: string) {
     // Verify and decode the token
     const userData = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET);
     const userId = (userData as JwtPayload).email;
-
+    console.log("USERID: " + userId || '');
     if (!userId) {
       return null;
     }
@@ -47,20 +53,43 @@ async function getSessionFromToken(coreToken: string) {
 }
 
 /**
+ * Helper function to get the user ID from a token
+ * @param token JWT token from authentication
+ * @returns The user ID (email) or null if token is invalid
+ */
+async function getUserIdFromToken(token: string): Promise<string | null> {
+  try {
+    // Verify and decode the token
+    const userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
+    const userId = (userData as JwtPayload).email;
+    
+    if (!userId) {
+      return null;
+    }
+    
+    return userId;
+  } catch (error) {
+    console.error('Error verifying token:', error);
+    return null;
+  }
+}
+
+/**
  * Middleware to extract session from Authorization header
  * Falls back to sessionId in body if Authorization header is not present
  */
 async function sessionAuthMiddleware(req: Request, res: Response, next: NextFunction) {
   // Check for Authorization header
   const authHeader = req.headers.authorization;
-
+  
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
     const session = await getSessionFromToken(token);
-
+    
     if (session) {
       // Add session to request object for route handlers
       (req as any).userSession = session;
+      (req as any).authMode = 'full';
       next();
       return;
     }
@@ -71,6 +100,7 @@ async function sessionAuthMiddleware(req: Request, res: Response, next: NextFunc
     const session = sessionService.getSession(req.body.sessionId);
     if (session) {
       (req as any).userSession = session;
+      (req as any).authMode = 'full';
       next();
       return;
     }
@@ -80,6 +110,61 @@ async function sessionAuthMiddleware(req: Request, res: Response, next: NextFunc
   res.status(401).json({
     success: false,
     message: 'No valid session. Please provide valid Authorization Bearer token or sessionId.'
+  });
+}
+
+/**
+ * Dual mode auth middleware - works with or without active sessions
+ * If a valid token is present but no active session, creates a minimal user context
+ */
+async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Check for Authorization header
+  const authHeader = req.headers.authorization;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    
+    // Try to get full session first
+    const session = await getSessionFromToken(token);
+    
+    if (session) {
+      // Full session mode
+      (req as any).userSession = session;
+      (req as any).authMode = 'full';
+      next();
+      return;
+    }
+    
+    // If no session found, try to at least verify the token for user ID
+    const userId = await getUserIdFromToken(token);
+    
+    if (userId) {
+      // Minimal auth mode - no session but valid user
+      (req as any).userSession = { 
+        userId, 
+        minimal: true
+      };
+      (req as any).authMode = 'minimal';
+      next();
+      return;
+    }
+  }
+
+  // Fall back to sessionId in body (for full session only)
+  if (req.body && req.body.sessionId) {
+    const session = sessionService.getSession(req.body.sessionId);
+    if (session) {
+      (req as any).userSession = session;
+      (req as any).authMode = 'full';
+      next();
+      return;
+    }
+  }
+
+  // No valid authentication found
+  res.status(401).json({
+    success: false,
+    message: 'Authentication required. Please provide valid token or session ID.'
   });
 }
 
@@ -186,16 +271,15 @@ async function getAppByPackage(req: Request, res: Response) {
     }
 
     // Create response with developer profile if available
-    // Convert app to plain object using spread operator to avoid TypeScript errors
-    const appObj = { ...app };
-    const appWithDeveloperInfo = {
-      ...appObj,
-      developerProfile
-    };
+    // Use the AppWithDeveloperProfile interface for type safety
+    const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+    if (developerProfile) {
+      appObj.developerProfile = developerProfile;
+    }
 
     res.json({
       success: true,
-      data: appWithDeveloperInfo
+      data: appObj
     });
   } catch (error) {
     console.error('Error fetching app:', error);
@@ -288,6 +372,7 @@ async function stopApp(req: Request, res: Response) {
 async function installApp(req: Request, res: Response) {
   const { packageName } = req.params;
   const session = (req as any).userSession; // Get session from middleware
+  const authMode = (req as any).authMode || 'minimal';
   const email = session.userId;
 
   if (!email || !packageName) {
@@ -335,19 +420,25 @@ async function installApp(req: Request, res: Response) {
       message: `App ${packageName} installed successfully`
     });
 
-    // Generate app state change
-    const appStateChange = await webSocketService.generateAppStateStatus(session);
-    
-    // Send update to websocket if connected
-    if (session.websocket && session.websocket.readyState === 1) {
-      session.websocket.send(JSON.stringify(appStateChange));
-    } else {
-      // Fall back to session service if direct websocket not available
+    // Only attempt WebSocket notifications for full auth mode
+    if (authMode === 'full' && !session.minimal) {
       try {
-        sessionService.triggerAppStateChange(email);
+        // Generate app state change
+        const appStateChange = await webSocketService.generateAppStateStatus(session);
+        
+        // Send update to websocket if connected
+        if (session.websocket && session.websocket.readyState === 1) {
+          session.websocket.send(JSON.stringify(appStateChange));
+        } else {
+          // Fall back to session service if direct websocket not available
+          sessionService.triggerAppStateChange(email);
+        }
       } catch (error) {
-        console.error('Error triggering app state change:', error);
+        console.error('Error sending app state notification:', error);
+        // Non-critical error, installation succeeded
       }
+    } else {
+      console.log(`Skipping real-time notification for user ${email} in ${authMode} auth mode`);
     }
   } catch (error) {
     console.error('Error installing app:', error);
@@ -364,6 +455,7 @@ async function installApp(req: Request, res: Response) {
 async function uninstallApp(req: Request, res: Response) {
   const { packageName } = req.params;
   const session = (req as any).userSession; // Get session from middleware
+  const authMode = (req as any).authMode || 'minimal';
   const email = session.userId;
 
   if (!email || !packageName) {
@@ -402,19 +494,25 @@ async function uninstallApp(req: Request, res: Response) {
       message: `App ${packageName} uninstalled successfully`
     });
 
-    // Generate app state change
-    const appStateChange = await webSocketService.generateAppStateStatus(session);
-    
-    // Send update to websocket if connected
-    if (session.websocket && session.websocket.readyState === 1) {
-      session.websocket.send(JSON.stringify(appStateChange));
-    } else {
-      // Fall back to session service if direct websocket not available
+    // Only attempt WebSocket notifications for full auth mode
+    if (authMode === 'full' && !session.minimal) {
       try {
-        sessionService.triggerAppStateChange(email);
+        // Generate app state change
+        const appStateChange = await webSocketService.generateAppStateStatus(session);
+        
+        // Send update to websocket if connected
+        if (session.websocket && session.websocket.readyState === 1) {
+          session.websocket.send(JSON.stringify(appStateChange));
+        } else {
+          // Fall back to session service if direct websocket not available
+          sessionService.triggerAppStateChange(email);
+        }
       } catch (error) {
-        console.error('Error triggering app state change:', error);
+        console.error('Error sending app state notification:', error);
+        // Non-critical error, uninstallation succeeded
       }
+    } else {
+      console.log(`Skipping real-time notification for user ${email} in ${authMode} auth mode`);
     }
   } catch (error) {
     console.error('Error uninstalling app:', error);
@@ -430,9 +528,13 @@ async function uninstallApp(req: Request, res: Response) {
  */
 async function getInstalledApps(req: Request, res: Response) {
   const session = (req as any).userSession; // Get session from middleware
+  const authMode = (req as any).authMode || 'minimal';
   const email = session.userId;
 
   try {
+    // Log authentication mode for debugging
+    console.log(`Getting installed apps for user ${email} in ${authMode} mode`);
+    
     const user = await User.findByEmail(email);
     if (!user) {
       return res.status(404).json({
@@ -502,16 +604,15 @@ async function getInstalledApps(req: Request, res: Response) {
       }
 
       // Create response with developer profile if available
-      // Convert app to plain object to avoid TypeScript errors
-      const appObj = { ...app };
-      const appWithDeveloperInfo = {
-        ...appObj,
-        developerProfile
-      };
+      // Use the AppWithDeveloperProfile interface for type safety
+      const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+      if (developerProfile) {
+        appObj.developerProfile = developerProfile;
+      }
 
       res.json({
         success: true,
-        data: appWithDeveloperInfo
+        data: appObj
       });
     } catch (error) {
       console.error('Error fetching app details:', error);
@@ -525,11 +626,32 @@ async function getInstalledApps(req: Request, res: Response) {
 async function getAvailableApps (req: Request, res: Response) {
   try {
     const apps = await appService.getAvailableApps();
+    
+    // Enhance apps with developer profiles
+    const enhancedApps = await Promise.all(apps.map(async (app) => {
+      // Convert app to plain object for modification and type as AppWithDeveloperProfile
+      const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+      
+      // Add developer profile if the app has a developerId
+      if (app.developerId) {
+        try {
+          const developer = await User.findByEmail(app.developerId);
+          if (developer && developer.profile) {
+            appObj.developerProfile = developer.profile;
+          }
+        } catch (err) {
+          console.error(`Error fetching developer profile for app ${app.packageName}:`, err);
+          // Continue without developer profile
+        }
+      }
+      
+      return appObj;
+    }));
 
-    // Return the apps with success flag
+    // Return the enhanced apps with success flag
     res.json({
       success: true,
-      data: apps
+      data: enhancedApps
     });
   } catch (error) {
     console.error('Error fetching available apps:', error);
@@ -544,9 +666,12 @@ async function getAvailableApps (req: Request, res: Response) {
 router.get('/', getAllApps);
 router.get('/public', getPublicApps);
 router.get('/search', searchApps);
-router.get('/installed', sessionAuthMiddleware, getInstalledApps);
-router.post('/install/:packageName', sessionAuthMiddleware, installApp);
-router.post('/uninstall/:packageName', sessionAuthMiddleware, uninstallApp);
+
+// App store operations - use dual-mode auth (work with or without active sessions)
+router.get('/installed', dualModeAuthMiddleware, getInstalledApps);
+router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
+router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
+
 // Keep backward compatibility for now (can be removed later)
 // router.post('/install/:packageName/:email', installApp);
 // router.post('/uninstall/:packageName/:email', uninstallApp);
@@ -559,6 +684,8 @@ router.get('/version', async (req, res) => {
 
 router.get('/available', getAvailableApps);
 router.get('/:packageName', getAppByPackage);
+
+// Device-specific operations - require full sessions
 router.post('/:packageName/start', sessionAuthMiddleware, startApp);
 router.post('/:packageName/stop', sessionAuthMiddleware, stopApp);
 

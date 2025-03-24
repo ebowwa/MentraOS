@@ -46,7 +46,7 @@ class MainApplication : Application(), ReactApplication {
                 LinearGradientPackage(),
                 RNGestureHandlerPackage(),
                 RNPermissionsPackage(),
-                ManagerCoreCommsServicePackage(),
+                CoreCommsServicePackage(), // New Core Communications Package
                 CoreServiceStarterPackage(),
                 AsyncStoragePackage(),
                 SvgPackage(),

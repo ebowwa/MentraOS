@@ -3,7 +3,7 @@ import {View, Text, StyleSheet} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {useStatus} from '../providers/AugmentOSStatusProvider';
 import AppIcon from './AppIcon';
-import {BluetoothService} from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 
 interface RunningAppsListProps {
   isDarkTheme: boolean;
@@ -12,7 +12,6 @@ interface RunningAppsListProps {
 const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   const {status} = useStatus();
   const [_isLoading, setIsLoading] = useState(false);
-  const bluetoothService = BluetoothService.getInstance();
   const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
   const gradientColors = isDarkTheme
     ? ['#4a3cb5', '#7856FE', '#9a7dff']
@@ -22,7 +21,7 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
     console.log('STOP APP');
     setIsLoading(true);
     try {
-      await bluetoothService.stopAppByPackageName(packageName);
+      await coreCommunicator.stopAppByPackageName(packageName);
     } catch (error) {
       console.error('Stop app error:', error);
     } finally {

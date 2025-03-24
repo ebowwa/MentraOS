@@ -12,7 +12,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { NavigationProps } from '../components/types';
 import PairingDeviceInfo from '../components/PairingDeviceInfo';
 import GlassesTroubleshootingModal from '../components/GlassesTroubleshootingModal';
@@ -29,7 +29,6 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
 }) => {
     const { status } = useStatus();
     const route = useRoute();
-    const bluetoothService = BluetoothService.getInstance();
     const { glassesModelName } = route.params as { glassesModelName: string };
     const navigation = useNavigation<NavigationProps>();
     const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false);
@@ -88,8 +87,8 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
       const unsubscribe = navigation.addListener('beforeRemove', (e) => {
         const actionType = e.data?.action?.type;
         if (actionType === 'GO_BACK' || actionType === 'POP') {
-          bluetoothService.sendForgetSmartGlasses();
-          bluetoothService.sendDisconnectWearable();
+          coreCommunicator.sendForgetSmartGlasses();
+          coreCommunicator.sendDisconnectWearable();
           e.preventDefault();
           navigation.navigate('SelectGlassesModelScreen');
         } else {

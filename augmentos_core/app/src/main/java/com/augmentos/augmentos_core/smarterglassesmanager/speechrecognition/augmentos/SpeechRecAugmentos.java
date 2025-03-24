@@ -4,8 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService;
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecFramework;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.vad.VadGateSpeechPolicy;
@@ -16,7 +15,6 @@ import com.augmentos.augmentoslib.events.TranslateOutputEvent;
 //import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.vad.VadGateSpeechPolicy;
 
 import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
@@ -64,7 +62,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         // Rolling buffer to store ~220ms of audio for replay on VAD trigger
         this.bufferMaxSize = (int) ((16000 * 0.22 * 2) / 512);
 
-        bypassVadForDebugging = SmartGlassesAndroidService.getBypassVadForDebugging(context);
+        bypassVadForDebugging = SmartGlassesManager.getBypassVadForDebugging(context);
 
         // Initialize VAD asynchronously
         initVadAsync();

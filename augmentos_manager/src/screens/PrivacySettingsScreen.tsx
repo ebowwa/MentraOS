@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { Slider } from 'react-native-elements';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import NavigationBar from '../components/NavigationBar';
@@ -48,37 +48,37 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
 
   const toggleSensing = async () => {
     let newSensing = !isSensingEnabled;
-    await BluetoothService.getInstance().sendToggleSensing(newSensing);
+    await coreCommunicator.sendToggleSensing(newSensing);
     setIsSensingEnabled(newSensing);
   };
 
   const toggleForceCoreOnboardMic = async () => {
     let newForceCoreOnboardMic = !forceCoreOnboardMic;
-    await BluetoothService.getInstance().sendToggleForceCoreOnboardMic(newForceCoreOnboardMic);
+    await coreCommunicator.sendToggleForceCoreOnboardMic(newForceCoreOnboardMic);
     setForceCoreOnboardMic(newForceCoreOnboardMic);
   };
 
   const toggleContextualDashboard = async () => {
     let newContextualDashboardSetting = !isContextualDashboardEnabled;
-    await BluetoothService.getInstance().sendToggleContextualDashboard(newContextualDashboardSetting);
+    await coreCommunicator.sendToggleContextualDashboard(newContextualDashboardSetting);
     setIsContextualDashboardEnabled(newContextualDashboardSetting);
   };
 
   const toggleBypassVADForDebugging = async () => {
     let newSetting = !isBypassVADForDebuggingEnabled;
-    await BluetoothService.getInstance().sendToggleBypassVADForDebugging(newSetting);
+    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting);
     setIsBypassVADForDebuggingEnabled(newSetting);
   };
 
   const toggleBypassAudioEncodingForDebugging = async () => {
     let newSetting = !isBypassAudioEncodingForDebuggingEnabled;
-    await BluetoothService.getInstance().sendToggleBypassAudioEncodingForDebugging(newSetting);
+    await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting);
     setIsBypassAudioEncodingForDebuggingEnabled(newSetting);
   };
 
   const changeBrightness = async (newBrightness: number) => {
     if (status.glasses_info?.brightness === '-') {return;}
-    await BluetoothService.getInstance().setGlassesBrightnessMode(newBrightness, false);
+    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
 
     console.log(`Brightness set to: ${newBrightness}`);
   };

@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import AppIcon from './AppIcon';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
@@ -28,8 +28,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const [_isLoading, setIsLoading] = React.useState(false);
     const [showOnboardingTip, setShowOnboardingTip] = useState(false);
     const [onboardingCompleted, setOnboardingCompleted] = useState(true);
-    const bluetoothService = BluetoothService.getInstance();
-
+  
     const [containerWidth, setContainerWidth] = React.useState(0);
     const arrowAnimation = React.useRef(new Animated.Value(0)).current;
 

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Alert, PermissionsAndroid, Platform, Image } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { NavigationProps } from './types';
 import { useNavigation } from '@react-navigation/native';
@@ -19,8 +19,7 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({ isDarkTheme, glas
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
   const [connectedGlasses, setConnectedGlasses] = useState('');
-  const bluetoothService = BluetoothService.getInstance();
-  const { status, isSearchingForPuck, isConnectingToPuck, refreshStatus } = useStatus();
+  const { status, refreshStatus } = useStatus();
   const navigation = useNavigation<NavigationProps>();
 
   useFocusEffect(

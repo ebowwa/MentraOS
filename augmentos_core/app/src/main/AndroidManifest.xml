@@ -128,19 +128,6 @@
           <action android:name="ACTION_STOP_CORE" />  <!-- Must match the action used in the Manager -->
         </intent-filter>
     </service>
-    <service android:name="com.augmentos.augmentos_core.AugmentosSmartGlassesService"
-        android:foregroundServiceType="microphone"
-        android:exported="true"
-        android:label="AugmentOS SGM"
-        android:theme="@style/AppTheme">
-      <intent-filter>
-        <action android:name="AUGMENTOS_INTENT" />
-      </intent-filter>
-<!--      <intent-filter>-->
-<!--        <action android:name="com.augmentos_manager.ACTION_SEND_JSON" />  &lt;!&ndash; Must match the action used in the Manager &ndash;&gt;-->
-<!--        <category android:name="android.intent.category.DEFAULT" />-->
-<!--      </intent-filter>-->
-    </service>
 
     <receiver
         android:name="com.augmentos.augmentos_core.tpa.AugmentOSLibBroadcastReceiver"
