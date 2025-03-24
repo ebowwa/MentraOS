@@ -13,10 +13,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import BluetoothService from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { ENABLE_PHONE_NOTIFICATIONS_DEFAULT, SETTINGS_KEYS } from '../consts';
-import ManagerCoreCommsService from '../bridge/ManagerCoreCommsService';
 import { openCorePermissionsActivity, stopExternalService } from '../bridge/CoreServiceStarter';
 import { ScrollView } from 'react-native-gesture-handler';
 import { NotificationService } from '../logic/NotificationServiceUtils';
@@ -37,7 +36,6 @@ const PhoneNotificationSettings: React.FC<PhoneNotificationSettingsProps> = ({
   const [isEnablePhoneNotification, setIsEnablePhoneNotification] = React.useState(false);
   const { status } = useStatus();
   let n = navigation;
-  const bluetoothService = BluetoothService.getInstance();
 
   const switchColors = {
     trackColor: {

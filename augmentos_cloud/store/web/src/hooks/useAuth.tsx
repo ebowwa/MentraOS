@@ -3,6 +3,7 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../utils/supabase';
 import axios from 'axios';
+import { setAuthToken } from '../api';
 
 // Define global window interface extensions
 declare global {
@@ -174,7 +175,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Exchange for Core token on sign in
           try {
-            await exchangeForCoreToken(session.access_token);
+            let newCoreToken = await exchangeForCoreToken(session.access_token);
+            setAuthToken(newCoreToken);
             console.log('Auth completed, authenticated state:', !!session?.user);
             
             // Check if we're on the login page and need to redirect

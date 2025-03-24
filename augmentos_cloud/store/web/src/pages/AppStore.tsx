@@ -22,7 +22,7 @@ const AppStore: React.FC = () => {
   useEffect(() => {
     fetchApps();
   }, [isAuthenticated]); // Re-fetch when authentication state changes
-
+  
   // Fetch available apps and installed status
   const fetchApps = async () => {
     try {
@@ -254,7 +254,9 @@ const AppStore: React.FC = () => {
                     />
                     <div className="ml-3 flex-1">
                       <h3 className="font-medium text-gray-900">{app.name}</h3>
-                      <p className="text-xs text-gray-500">{app.developerName || 'Mentra Labs'}</p>
+                      <p className="text-xs text-gray-500">
+                        {app.developerProfile?.company || app.developerId || ''}
+                      </p>
                     </div>
                   </div>
                   <p 

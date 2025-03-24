@@ -277,7 +277,7 @@ public class MicrophoneLocalAndBluetooth {
         }
 
         try {
-            recorder = new AudioRecord(MediaRecorder.AudioSource.UNPROCESSED,
+            recorder = new AudioRecord(MediaRecorder.AudioSource.CAMCORDER,
                     SAMPLING_RATE_IN_HZ, CHANNEL_CONFIG, AUDIO_FORMAT, bufferSize * 2);
 
             if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {

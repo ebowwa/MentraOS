@@ -312,6 +312,10 @@ const publishApp = async (req: Request, res: Response) => {
       return res.status(403).json({ error: error.message });
     }
     
+    if (error.message.includes('PROFILE_INCOMPLETE')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
     res.status(500).json({ error: 'Failed to publish app' });
   }
 };

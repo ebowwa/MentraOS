@@ -15,7 +15,7 @@ interface SplashScreenProps {
 const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
   const navigation = useNavigation<NavigationProps>();
   const { user, loading } = useAuth();
-  const { status, startBluetoothAndCore } = useStatus();
+  const { status, initializeCoreConnection } = useStatus();
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -43,7 +43,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
       return;
      }
 
-     startBluetoothAndCore();
+     initializeCoreConnection();
 
      // Check if the user has completed onboarding
      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
@@ -66,7 +66,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({}) => {
     if (!loading) {
       initializeApp();
     }
-  }, [navigation, user, loading, status, startBluetoothAndCore]);
+  }, [navigation, user, loading, status, initializeCoreConnection]);
 
   return (
     <View style={styles.container}>

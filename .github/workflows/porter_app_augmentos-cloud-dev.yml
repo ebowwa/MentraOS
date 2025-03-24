@@ -3,7 +3,7 @@ name: Porter augmentos-cloud-dev
 on:
   push:
     branches:
-      - porter
+      - dev
 
 jobs:
   porter-deploy:
