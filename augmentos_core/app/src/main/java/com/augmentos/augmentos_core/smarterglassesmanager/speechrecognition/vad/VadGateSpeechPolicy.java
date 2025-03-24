@@ -24,7 +24,7 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
     private boolean bypassVadForDebugging;
 
     // Total required silence duration of 12 seconds.
-    private static final long REQUIRED_SILENCE_DURATION_MS = 1500;
+    private static final long REQUIRED_SILENCE_DURATION_MS = 8000;
     // Dynamic VAD check intervals
     private static final long INITIAL_SILENCE_VAD_INTERVAL_MS = 50;    // Check frequently at first
     private static final long MEDIUM_SILENCE_VAD_INTERVAL_MS = 100;    // Medium frequency after some time
