@@ -153,7 +153,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public AugmentosBlePeripheral blePeripheral;
 
-    // SmartGlassesManager handles the functionality previously in AugmentosSmartGlassesService
     public SmartGlassesManager smartGlassesManager;
     private final List<Runnable> smartGlassesReadyListeners = new ArrayList<>();
     private NotificationSystem notificationSystem;

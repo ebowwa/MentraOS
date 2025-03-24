@@ -46,7 +46,6 @@ import com.augmentos.augmentoslib.events.StopAsrStreamRequestEvent;
 import com.augmentos.augmentoslib.events.TextLineViewRequestEvent;
 import com.augmentos.augmentoslib.events.TextWallViewRequestEvent;
 import com.augmentos.augmentoslib.events.TranslateOutputEvent;
-// No longer need AugmentosSmartGlassesService import
 import com.augmentos.augmentos_core.events.TriggerSendStatusToAugmentOsManagerEvent;
 import com.augmentos.augmentos_core.tpa.eventbusmessages.TPARequestEvent;
 
@@ -115,14 +114,6 @@ public class EdgeTPASystem {
         // TODO: Complete the healthCheck system..
         // healthCheckHandler.post(healthCheckRunnable);
     }
-
-    // This method is no longer needed as we use setSmartGlassesManager instead
-    // Keeping commented out for reference during transition
-    /*
-    public void setSmartGlassesService(AugmentosSmartGlassesService smartGlassesService) {
-        this.smartGlassesService = smartGlassesService;
-    }
-    */
 
     private void setupPackageInstallReceiver() {
         packageInstallReceiver = new BroadcastReceiver() {

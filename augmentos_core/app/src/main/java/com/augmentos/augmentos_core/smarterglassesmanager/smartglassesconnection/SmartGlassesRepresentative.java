@@ -12,6 +12,7 @@ import android.util.Log;
 //custom, our code
 import androidx.lifecycle.LifecycleOwner;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisableBleScoAudioEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.VirtualSGC;
@@ -27,7 +28,6 @@ import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicat
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.EvenRealitiesG1SGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.UltraliteSGC;
 import com.augmentos.augmentoslib.events.BulletPointListViewRequestEvent;
-import com.augmentos.augmentoslib.events.CenteredTextViewRequestEvent;
 import com.augmentos.augmentoslib.events.FinalScrollingTextRequestEvent;
 import com.augmentos.augmentoslib.events.IntermediateScrollingTextRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardImageViewRequestEvent;
@@ -41,7 +41,6 @@ import com.augmentos.augmentos_core.smarterglassesmanager.hci.MicrophoneLocalAnd
 //import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.ActiveLookSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
-import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentoslib.events.TextLineViewRequestEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -115,9 +114,9 @@ public class SmartGlassesRepresentative {
             Log.d(TAG, "SmartGlassesCommunicator is NULL, something truly awful must have transpired");
         }
 
-        if (SmartGlassesAndroidService.getSensingEnabled(context)) {
+        if (SmartGlassesManager.getSensingEnabled(context)) {
             // If the glasses don't support a microphone, handle local microphone
-            if (!smartGlassesDevice.getHasInMic() || SmartGlassesAndroidService.getForceCoreOnboardMic(context)) {
+            if (!smartGlassesDevice.getHasInMic() || SmartGlassesManager.getForceCoreOnboardMic(context)) {
                 
                 connectAndStreamLocalMicrophone(true);
             }
