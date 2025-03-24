@@ -20,7 +20,6 @@ import coreCommunicator from '../bridge/CoreCommunicator';
 import { stopExternalService } from '../bridge/CoreServiceStarter';
 import CoreCommsService from '../bridge/CoreCommsService';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
-import ManagerCoreCommsService from '../bridge/ManagerCoreCommsService.tsx';
 import NavigationBar from '../components/NavigationBar';
 
 import { SETTINGS_KEYS } from '../consts';
