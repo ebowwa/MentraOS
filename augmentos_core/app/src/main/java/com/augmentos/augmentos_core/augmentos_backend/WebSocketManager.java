@@ -153,9 +153,11 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
             // Clean up any existing connection first
             cleanupSafe();
 
+            // BATTERY OPTIMIZATION: Increased ping interval from 10 to 30 seconds
+            // This reduces frequent pings that wake up the CPU and cause battery drain
             client = new OkHttpClient.Builder()
-                    .readTimeout(12, TimeUnit.SECONDS)
-                    .pingInterval(10, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS) // Increased from 12 to 30 seconds
+                    .pingInterval(30, TimeUnit.SECONDS) // Increased from 10 to 30 seconds
                     .build();
 
             Request request = new Request.Builder().url(serverUrl).build();

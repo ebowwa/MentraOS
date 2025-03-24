@@ -6,6 +6,7 @@ import android.util.Log;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.PauseAsrEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
 
@@ -15,7 +16,7 @@ import org.greenrobot.eventbus.Subscribe;
 import java.util.List;
 
 //send audio to one of the built in ASR frameworks.
-public class SpeechRecSwitchSystem {
+public class SpeechRecSwitchSystem implements AudioProcessingCallback {
     private final String TAG = "WearableAi_SpeechRecSwitchSystem";
     private ASR_FRAMEWORKS asrFramework;
     private SpeechRecFramework speechRecFramework;
@@ -53,23 +54,8 @@ public class SpeechRecSwitchSystem {
         EventBus.getDefault().register(this);
     }
 
-    @Subscribe
-    public void onAudioChunkNewEvent(AudioChunkNewEvent receivedEvent){
-        //redirect audio to the currently in use ASR framework, if it's not paused
-        if (!speechRecFramework.pauseAsrFlag) {
-            speechRecFramework.ingestAudioChunk(receivedEvent.thisChunk);
-        }
-    }
-
-    @Subscribe
-    public void onLC3AudioChunkNewEvent(LC3AudioChunkNewEvent receivedEvent){
-//        Log.d(TAG, "onLC3AudioChunkNewEvent");
-
-        //redirect audio to the currently in use ASR framework, if it's not paused
-        if (!speechRecFramework.pauseAsrFlag) {
-            speechRecFramework.ingestLC3AudioChunk(receivedEvent.thisChunk);
-        }
-    }
+    // Removed EventBus subscribers for AudioChunkNewEvent and LC3AudioChunkNewEvent
+    // Now using direct callbacks for better performance and battery efficiency
 
     @Subscribe
     public void onBypassVadForDebuggingEvent(BypassVadForDebuggingEvent receivedEvent){
@@ -93,6 +79,20 @@ public class SpeechRecSwitchSystem {
     public void updateConfig(List<AsrStreamKey> languages){
         speechRecFramework.updateConfig(languages);
     }
-
+    
+    // Direct callback implementations - much more efficient than EventBus
+    @Override
+    public void onAudioDataAvailable(byte[] audioData) {
+        if (speechRecFramework != null && !speechRecFramework.pauseAsrFlag) {
+            speechRecFramework.ingestAudioChunk(audioData);
+        }
+    }
+    
+    @Override
+    public void onLC3AudioDataAvailable(byte[] lc3Data) {
+        if (speechRecFramework != null && !speechRecFramework.pauseAsrFlag) {
+            speechRecFramework.ingestLC3AudioChunk(lc3Data);
+        }
+    }
 }
 

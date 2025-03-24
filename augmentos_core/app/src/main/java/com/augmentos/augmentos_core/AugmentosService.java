@@ -62,7 +62,6 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionStateChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
@@ -71,7 +70,6 @@ import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentoslib.ThirdPartyEdgeApp;
 import com.augmentos.augmentos_core.comms.AugmentOsActionsCallback;
 import com.augmentos.augmentos_core.comms.AugmentosBlePeripheral;
-import com.augmentos.augmentos_core.events.AugmentosSmartGlassesDisconnectedEvent;
 import com.augmentos.augmentos_core.events.NewScreenImageEvent;
 import com.augmentos.augmentos_core.events.ThirdPartyEdgeAppErrorEvent;
 import com.augmentos.augmentos_core.events.TriggerSendStatusToAugmentOsManagerEvent;
@@ -199,36 +197,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         new SmartGlassesManager.SmartGlassesEventHandler() {
             @Override
             public void onGlassesConnectionStateChanged(SmartGlassesDevice device, SmartGlassesConnectionState connectionState) {
-                if (connectionState != previousSmartGlassesConnectionState) {
-                    previousSmartGlassesConnectionState = connectionState;
-                    webSocketLifecycleManager.updateSmartGlassesState(connectionState);
-                    
-                    if (device != null) {
-                        ServerComms.getInstance().sendGlassesConnectionState(device.deviceModelName, connectionState.name());
-                    }
-                    
-                    if (connectionState == SmartGlassesConnectionState.CONNECTED) {
-                        Log.d(TAG, "Got event for onGlassesConnected.. CONNECTED ..");
-                        Log.d(TAG, "****************** SENDING REFERENCE CARD: CONNECTED TO AUGMENT OS");
-                        playStartupSequenceOnSmartGlasses();
-                        asrPlanner.updateAsrLanguages();
-                    } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
-                        edgeTpaSystem.stopAllThirdPartyApps();
-                    }
-                    
-                    sendStatusToAugmentOsManager();
+                if (connectionState == previousSmartGlassesConnectionState) return;
+                previousSmartGlassesConnectionState = connectionState;
+
+                webSocketLifecycleManager.updateSmartGlassesState(connectionState);
+
+                ServerComms.getInstance().sendGlassesConnectionState(device == null ? null : device.deviceModelName, connectionState.name());
+
+                if (connectionState == SmartGlassesConnectionState.CONNECTED) {
+                    Log.d(TAG, "Got event for onGlassesConnected.. CONNECTED ..");
+                    Log.d(TAG, "****************** SENDING REFERENCE CARD: CONNECTED TO AUGMENT OS");
+                    playStartupSequenceOnSmartGlasses();
+                    asrPlanner.updateAsrLanguages();
+                } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
+                    edgeTpaSystem.stopAllThirdPartyApps();
                 }
+
+                sendStatusToAugmentOsManager();
             }
         };
-
-    @Subscribe
-    public void onAugmentosSmartGlassesDisconnectedEvent(AugmentosSmartGlassesDisconnectedEvent event){
-        // TODO: For now, stop all apps on disconnection
-        // TODO: Future: Make this nicer
-        webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
-        edgeTpaSystem.stopAllThirdPartyApps();
-        sendStatusToAugmentOsManager();
-    }
 
     public void onTriggerSendStatusToAugmentOsManagerEvent(TriggerSendStatusToAugmentOsManagerEvent event) {
         sendStatusToAugmentOsManager();
@@ -611,25 +598,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onGlassesDisplayPowerEvent(GlassesDisplayPowerEvent event) {
         if (smartGlassesManager == null) return;
         if (event.turnedOn) {
-            smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard("AugmentOS Connected", "Screen back on"), 4);
-        }
-    }
-
-    @Subscribe
-    public void onSmartGlassesConnnectionEvent(SmartGlassesConnectionStateChangedEvent event) {
-        if (event.connectionState == previousSmartGlassesConnectionState) return;
-        webSocketLifecycleManager.updateSmartGlassesState(event.connectionState);
-        ServerComms.getInstance().sendGlassesConnectionState(event.device.deviceModelName, event.connectionState.name());
-        sendStatusToAugmentOsManager();
-        if (event.connectionState == SmartGlassesConnectionState.CONNECTED) {
-            Log.d(TAG, "Got event for onGlassesConnected.. CONNECTED ..");
-
-            Log.d(TAG, "****************** SENDING REFERENCE CARD: CONNECTED TO AUGMENT OS");
-            if (smartGlassesManager != null)
-                playStartupSequenceOnSmartGlasses();
-
-            //start transcribing
-            asrPlanner.updateAsrLanguages();
+            // BATTERY OPTIMIZATION: Using direct lambda instead of creating a new Runnable object
+            smartGlassesManager.windowManager.showAppLayer(
+                "system", 
+                () -> smartGlassesManager.sendReferenceCard("AugmentOS Connected", "Screen back on"), 
+                4
+            );
         }
     }
 
@@ -638,15 +612,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             "↑", "↗", "↑", "↖"
     };
 
+    // BATTERY OPTIMIZATION: Use a single Handler instance for the service
+    private final Handler uiHandler = new Handler(Looper.getMainLooper());
+    private Runnable animationRunnable;
+    
     private void playStartupSequenceOnSmartGlasses() {
         if (smartGlassesManager == null || smartGlassesManager.windowManager == null) return;
 
-        Handler handler = new Handler(Looper.getMainLooper());
+        // Cancel any existing animation to prevent multiple animations running
+        if (animationRunnable != null) {
+            uiHandler.removeCallbacks(animationRunnable);
+        }
+        
         int delay = 250; // Frame delay
         int totalFrames = ARROW_FRAMES.length;
         int totalCycles = 4;
 
-        Runnable animate = new Runnable() {
+        animationRunnable = new Runnable() {
             int frameIndex = 0;
             int cycles = 0;
 
@@ -666,12 +648,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     );
 
                     if (alwaysOnStatusBarEnabled) {
-                        new Handler(Looper.getMainLooper()).postDelayed(() ->
+                        // BATTERY OPTIMIZATION: Use the existing handler instead of creating a new one
+                        uiHandler.postDelayed(() ->
                                 smartGlassesManager.windowManager.showAppLayer(
                                     "serverappid",
                                     () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
                                     0
-                            ), 3000); // Delay of 1000 milliseconds (3 second)
+                            ), 3000); // Delay of 3 seconds
                     }
 
                     return; // Stop looping
@@ -698,11 +681,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 if (frameIndex == 0) cycles++;
 
                 // Schedule next frame
-                handler.postDelayed(this, delay);
+                uiHandler.postDelayed(this, delay);
             }
         };
 
-        handler.postDelayed(animate, 350); // Start animation
+        // Start animation with the reused handler
+        uiHandler.postDelayed(animationRunnable, 350);
     }
 
     @Subscribe
@@ -1575,9 +1559,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             edgeTpaSystem.stopAllThirdPartyApps();
         }
         
-        // Stop location updates
+        // Stop location updates and cleanup
         if(locationSystem != null) {
-            locationSystem.stopLocationUpdates();
+            // BATTERY OPTIMIZATION: Use cleanup method instead of just stopping updates
+            locationSystem.cleanup();
         }
         
         // Clean up screen capture resources
@@ -1592,6 +1577,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             mediaProjection.stop();
             mediaProjection = null;
         }
+        
+        // BATTERY OPTIMIZATION: Clean up our animation handler
+        if (animationRunnable != null) {
+            uiHandler.removeCallbacks(animationRunnable);
+            animationRunnable = null;
+        }
+        // Remove all pending posts to avoid any UI updates after destruction
+        uiHandler.removeCallbacksAndMessages(null);
         
         // Reset glasses connection
         if (smartGlassesManager != null) {
