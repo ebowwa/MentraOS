@@ -3,7 +3,7 @@ name: Porter augmentos-cloud-staging
 on:
   push:
     branches:
-      - porter
+      - staging
 
 jobs:
   porter-deploy:
