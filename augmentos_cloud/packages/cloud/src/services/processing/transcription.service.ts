@@ -143,19 +143,29 @@ export class TranscriptionService {
 
   private stopIndividualTranscriptionStream(streamInstance: ASRStreamInstance, subscription: string): void {
     if (streamInstance.recognizer) {
-      if (subscription.includes(StreamType.TRANSLATION)) {
-        (streamInstance.recognizer as azureSpeechSDK.TranslationRecognizer).stopContinuousRecognitionAsync(
-          () => { console.log(`✅ Stopped translation stream for ${subscription}`); },
-          (error: any) => { console.error(`❌ Error stopping translation stream for ${subscription}:`, error); }
-        );
-      } else {
-        (streamInstance.recognizer as ConversationTranscriber).stopTranscribingAsync(
-          () => { console.log(`✅ Stopped transcription stream for ${subscription}`); },
-          (error: any) => { console.error(`❌ Error stopping transcription stream for ${subscription}:`, error); }
-        );
+      try {
+        if (subscription.includes(StreamType.TRANSLATION)) {
+          (streamInstance.recognizer as azureSpeechSDK.TranslationRecognizer).stopContinuousRecognitionAsync(
+            () => { console.log(`✅ Stopped translation stream for ${subscription}`); },
+            (error: any) => { console.error(`❌ Error stopping translation stream for ${subscription}:`, error); }
+          );
+        } else {
+          (streamInstance.recognizer as ConversationTranscriber).stopTranscribingAsync(
+            () => { console.log(`✅ Stopped transcription stream for ${subscription}`); },
+            (error: any) => { console.error(`❌ Error stopping transcription stream for ${subscription}:`, error); }
+          );
+        }
+
+        try {
+          streamInstance.recognizer.close();
+        } catch (error) {
+          console.warn(`⚠️ Error closing recognizer for ${subscription}:`, error);
+        }
+      } catch (error) {
+        console.error(`❌ Error in stopIndividualTranscriptionStream for ${subscription}:`, error);
       }
-      streamInstance.recognizer.close();
     }
+
     if (streamInstance.pushStream) {
       try {
         streamInstance.pushStream.close();
@@ -343,7 +353,7 @@ export class TranscriptionService {
         timestamp: currentTime,
         isFinal: true
       });
-    } 
+    }
     else {
       if (hasInterimLast) {
         segments[segments.length - 1] = {

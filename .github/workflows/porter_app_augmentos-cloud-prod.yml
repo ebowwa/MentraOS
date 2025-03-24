@@ -3,7 +3,7 @@ name: Porter augmentos-cloud-prod
 on:
   push:
     branches:
-      - porter
+      - main
 
 jobs:
   porter-deploy:
