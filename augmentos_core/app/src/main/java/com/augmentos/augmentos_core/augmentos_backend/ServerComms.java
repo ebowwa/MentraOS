@@ -52,7 +52,7 @@ public class ServerComms {
     // Live queue for immediate sending (small buffer)
     private final BlockingQueue<byte[]> liveAudioQueue = new ArrayBlockingQueue<>(100); // ~1 second buffer
     // Sliding buffer to store recent audio in case of disconnection
-    private final BlockingQueue<byte[]> slidingBuffer = new ArrayBlockingQueue<>((int) (10 / 0.01 / 10)); // 10 seconds sliding buffer
+    private final BlockingQueue<byte[]> slidingBuffer = new ArrayBlockingQueue<>((int) (3 / 0.01 / 10)); // 3 seconds sliding buffer
     private Thread audioSenderThread;
     private volatile boolean audioSenderRunning = false;
     private volatile boolean isReconnecting = false;

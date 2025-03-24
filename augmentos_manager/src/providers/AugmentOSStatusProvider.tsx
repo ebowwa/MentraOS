@@ -1,15 +1,14 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { AugmentOSParser, AugmentOSMainStatus } from '../AugmentOSStatusParser.tsx';
-import { BluetoothService } from '../BluetoothService.tsx';
 import { INTENSE_LOGGING, MOCK_CONNECTION } from '../consts.tsx';
 import GlobalEventEmitter from "../logic/GlobalEventEmitter.tsx";
 import BackendServerComms from '../backend_comms/BackendServerComms';
+import { useAuth } from '../AuthContext';
+import coreCommunicator from '../bridge/CoreCommunicator';
 
 interface AugmentOSStatusContextType {
     status: AugmentOSMainStatus;
-    isSearchingForPuck: boolean;
-    isConnectingToPuck: boolean;
-    startBluetoothAndCore: () => void;
+    initializeCoreConnection: () => void;
     refreshStatus: (data: any) => void;
     screenMirrorItems: { id: string; name: string }[]
     getCoreToken: () => string | null;
@@ -19,11 +18,8 @@ const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefi
 
 export const StatusProvider = ({ children }: { children: ReactNode }) => {
     const [status, setStatus] = useState(AugmentOSParser.parseStatus({}));
-    const [isInitialized, setIsInitialized] = useState(false)
-    const [isSearchingForPuck, setIsSearching] = useState(false);
-    const [isConnectingToPuck, setIsConnecting] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
     const [screenMirrorItems, setScreenMirrorItems] = useState<{ id: string; name: string }[]>([]);
-    const bluetoothService = BluetoothService.getInstance(false); // do not initialize yet
 
     const refreshStatus = useCallback((data: any) => {
         if (!(data && 'status' in data)) {return;}
@@ -35,8 +31,21 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         setStatus(parsedStatus);
     }, []);
 
+    // Add user as a dependency to trigger re-initialization after login
+    const { user } = useAuth();
+
     useEffect(() => {
+        // Force a complete reset of status during sign-out/sign-in transition
+        if (!user) {
+            console.log('User signed out, resetting status');
+            setStatus(AugmentOSParser.defaultStatus);
+            return;
+        }
+
         if (!isInitialized) return;
+
+        // Log the status provider re-initialization for debugging
+        console.log('STATUS PROVIDER: Initializing event listeners for user:', user?.email);
 
         const handleStatusUpdateReceived = (data: any) => {
             if (INTENSE_LOGGING)
@@ -45,42 +54,43 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const handleDeviceDisconnected = () => {
-            console.log('Device disconnected');
+            console.log('Core disconnected');
             setStatus(AugmentOSParser.defaultStatus);
         };
 
-        const handleScanStarted = () => setIsSearching(true);
-        const handleScanStopped = () => setIsSearching(false);
-        const handleConnectingStatusChanged = ({ isConnecting: connecting }: { isConnecting: boolean }) => setIsConnecting(connecting);
-
         if (!MOCK_CONNECTION) {
-            bluetoothService.on('statusUpdateReceived', handleStatusUpdateReceived);
-            bluetoothService.on('scanStarted', handleScanStarted);
-            bluetoothService.on('scanStopped', handleScanStopped);
-            bluetoothService.on('deviceDisconnected', handleDeviceDisconnected);
-            bluetoothService.on('connectingStatusChanged', handleConnectingStatusChanged);
-            GlobalEventEmitter.on('PUCK_DISCONNECTED', handleDeviceDisconnected);
+            // First, ensure we're not double-registering by removing any existing listeners
+            coreCommunicator.removeAllListeners('statusUpdateReceived');
+            coreCommunicator.removeAllListeners('dataReceived');
+            GlobalEventEmitter.removeAllListeners('STATUS_PARSE_ERROR');
+            
+            // Register fresh listeners
+            coreCommunicator.on('statusUpdateReceived', handleStatusUpdateReceived);
+            GlobalEventEmitter.on('STATUS_PARSE_ERROR', handleDeviceDisconnected);
+            
+            console.log('STATUS PROVIDER: Event listeners registered successfully');
+            
+            // Force a status request to update UI immediately
+            setTimeout(() => {
+                coreCommunicator.sendRequestStatus();
+            }, 1000);
         }
 
         return () => {
             if (!MOCK_CONNECTION) {
-                bluetoothService.removeListener('statusUpdateReceived', handleStatusUpdateReceived);
-                bluetoothService.removeListener('scanStarted', handleScanStarted);
-                bluetoothService.removeListener('scanStopped', handleScanStopped);
-                bluetoothService.removeListener('deviceDisconnected', handleDeviceDisconnected);
-                bluetoothService.removeListener('connectingStatusChanged', handleConnectingStatusChanged);
-                GlobalEventEmitter.removeListener('PUCK_DISCONNECTED', handleDeviceDisconnected);
+                coreCommunicator.removeListener('statusUpdateReceived', handleStatusUpdateReceived);
+                GlobalEventEmitter.removeListener('STATUS_PARSE_ERROR', handleDeviceDisconnected);
+                console.log('STATUS PROVIDER: Event listeners cleaned up');
             }
         };
-    }, [bluetoothService, refreshStatus, isInitialized]);
+    }, [refreshStatus, isInitialized, user]); // Added user dependency
 
-    // 3) Provide a helper function that sets isInitialized,
-    //    calls bluetoothService.initialize(), etc.
-    const startBluetoothAndCore = React.useCallback(() => {
-        console.log("\n\n\nWE CALLED STARTBTANDCORE\n\n\n");
-        bluetoothService.initialize();
+    // Initialize the Core communication
+    const initializeCoreConnection = React.useCallback(() => {
+        console.log("Initializing Core communication");
+        coreCommunicator.initialize();
         setIsInitialized(true);
-    }, [bluetoothService]);
+    }, []);
     
     // Helper to get coreToken (directly returns from BackendServerComms)
     const getCoreToken = useCallback(() => {
@@ -89,11 +99,9 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
 
     return (
         <AugmentOSStatusContext.Provider value={{ 
-            startBluetoothAndCore, 
-            isConnectingToPuck, 
+            initializeCoreConnection,
             screenMirrorItems, 
             status, 
-            isSearchingForPuck, 
             refreshStatus,
             getCoreToken
         }}>

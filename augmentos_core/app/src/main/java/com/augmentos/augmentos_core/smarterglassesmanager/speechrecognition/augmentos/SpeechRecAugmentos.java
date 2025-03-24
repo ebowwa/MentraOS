@@ -4,19 +4,14 @@ import android.content.Context;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService;
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecFramework;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.vad.VadGateSpeechPolicy;
 import com.augmentos.augmentoslib.events.SpeechRecOutputEvent;
 import com.augmentos.augmentoslib.events.TranslateOutputEvent;
-//import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
-//import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecFramework;
-//import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.vad.VadGateSpeechPolicy;
 
 import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import java.lang.reflect.Field;
@@ -42,7 +37,6 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     // VAD
     private VadGateSpeechPolicy vadPolicy;
     private volatile boolean isSpeaking = false; // Track VAD state
-//    private boolean vadEnabled = true;
 
     // VAD buffer for chunking
     private final BlockingQueue<Short> vadBuffer = new LinkedBlockingQueue<>();
@@ -50,10 +44,12 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     private volatile boolean vadRunning = true;
     private boolean bypassVadForDebugging = false;
 
+    // LC3 audio rolling buffer
+    private final ArrayList<byte[]> lc3RollingBuffer = new ArrayList<>();
+    private final int LC3_BUFFER_MAX_SIZE = 22; // ~220ms of audio at 10ms per LC3 frame
+
     private SpeechRecAugmentos(Context context) {
         this.mContext = context;
-
-//        vadEnabled = !SmartGlassesAndroidService.getBypassVadEnabled(context);
 
         // 1) Create or fetch your single ServerComms (the new consolidated manager).
         //    For example, we create a new instance here:
@@ -64,7 +60,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
         // Rolling buffer to store ~220ms of audio for replay on VAD trigger
         this.bufferMaxSize = (int) ((16000 * 0.22 * 2) / 512);
 
-        bypassVadForDebugging = SmartGlassesAndroidService.getBypassVadForDebugging(context);
+        bypassVadForDebugging = SmartGlassesManager.getBypassVadForDebugging(context);
 
         // Initialize VAD asynchronously
         initVadAsync();
@@ -91,12 +87,12 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
                 boolean newVadIsSpeakingState = vadPolicy.shouldPassAudioToRecognizer();
 
                 if (newVadIsSpeakingState && !isSpeaking) {
-                    // VAD opened
+                    // VAD on
                     sendVadStatus(true);
                     sendBufferedAudio();
                     isSpeaking = true;
                 } else if (!newVadIsSpeakingState && isSpeaking) {
-                    // VAD closed
+                    // VAD off
                     sendVadStatus(false);
                     isSpeaking = false;
                 }
@@ -112,14 +108,26 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     }
 
     /**
-     * Drains the rolling buffer (last ~150ms) and sends it immediately when VAD opens.
+     * Drains the rolling buffer (last ~220ms) and sends it immediately when VAD opens.
      */
     private void sendBufferedAudio() {
-        List<byte[]> bufferDump = new ArrayList<>();
-        for (byte[] chunk : bufferDump) {
+        List<byte[]> bufferToSend;
+
+        synchronized (lc3RollingBuffer) {
+            bufferToSend = new ArrayList<>(lc3RollingBuffer);
+        }
+
+        if (bufferToSend.isEmpty()) {
+            Log.d(TAG, "No buffered LC3 chunks to send.");
+            return;
+        }
+
+        for (byte[] chunk : bufferToSend) {
             // Now we send audio chunks through ServerComms (single WebSocket).
             ServerComms.getInstance().sendAudioChunk(chunk);
         }
+
+        Log.d(TAG, "Sent " + bufferToSend.size() + " buffered LC3 chunks to server.");
     }
 
     /**
@@ -176,15 +184,24 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             vadBuffer.offer(sample);
         }
 
-        //SENDING STUFF
-        // If currently speaking, send data live
-        if (bypassVadForDebugging) {
-            //Log.d(TAG, "Bypassing VAD for debugging.");
-            ServerComms.getInstance().sendAudioChunk(audioChunk);
-            return;
+
+        //BUFFER STUFF
+        // Add to rolling buffer regardless of VAD state
+        synchronized (lc3RollingBuffer) {
+            // Clone the data to ensure we have our own copy
+            byte[] copy = new byte[audioChunk.length];
+            System.arraycopy(audioChunk, 0, copy, 0, audioChunk.length);
+
+            lc3RollingBuffer.add(copy);
+            while (lc3RollingBuffer.size() > LC3_BUFFER_MAX_SIZE) {
+                lc3RollingBuffer.remove(0); // Remove oldest chunks to maintain rolling window
+            }
         }
 
-        if (isSpeaking) {
+
+        //SENDING STUFF
+        // If bypassing VAD for debugging or currently speaking, send data live
+        if (bypassVadForDebugging || isSpeaking) {
             ServerComms.getInstance().sendAudioChunk(audioChunk);
         }
     }
@@ -194,18 +211,8 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
-//        // If currently speaking, send data live
-//        if (bypassVadForDebugging) {
-//            //Log.d(TAG, "Bypassing VAD for debugging.");
-//            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
-//            return;
-//        }
-//
-//        if (isSpeaking) {
-//            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
-//        }
+        //skip for now as not using LC3
     }
-
 
     /**
      * Converts short[] -> byte[] (little-endian)
@@ -317,6 +324,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
 
     public void changeBypassVadForDebuggingState(boolean bypassVadForDebugging) {
         Log.d(TAG, "setBypassVadForDebugging: " + bypassVadForDebugging);
+        vadPolicy.changeBypassVadForDebugging(bypassVadForDebugging);
         this.bypassVadForDebugging = bypassVadForDebugging;
     }
 }

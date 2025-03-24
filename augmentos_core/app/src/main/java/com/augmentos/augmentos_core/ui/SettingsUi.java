@@ -18,7 +18,7 @@ import androidx.navigation.Navigation;
 
 import com.augmentos.augmentos_core.MainActivity;
 import com.augmentos.augmentos_core.R;
-import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesAndroidService;
+import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.AudioWearable;
 
 public class SettingsUi extends Fragment {
@@ -70,17 +70,17 @@ public class SettingsUi extends Fragment {
 
         final Switch glassesAudioToggle = view.findViewById(R.id.glasses_audio_toggle);
 
-        glassesAudioToggle.setChecked(SmartGlassesAndroidService.getPreferredWearable(getContext()).equals(new AudioWearable().deviceModelName)); // off by default
+        glassesAudioToggle.setChecked(SmartGlassesManager.getPreferredWearable(getContext()).equals(new AudioWearable().deviceModelName)); // off by default
         glassesAudioToggle.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
             public void onCheckedChanged(CompoundButton compoundButton, boolean isChecked) {
                 if (isChecked){
-                    SmartGlassesAndroidService.savePreferredWearable(getContext(), new AudioWearable().deviceModelName);
+                    SmartGlassesManager.savePreferredWearable(getContext(), new AudioWearable().deviceModelName);
                     ((MainActivity)getActivity()).mService.disconnectWearable("");
                     ((MainActivity)getActivity()).mService.connectToWearable("","");
                 }
                 else {
-                    SmartGlassesAndroidService.savePreferredWearable(getContext(), "");
+                    SmartGlassesManager.savePreferredWearable(getContext(), "");
                     ((MainActivity)getActivity()).mService.disconnectWearable("");
                     ((MainActivity)getActivity()).mService.connectToWearable("","");
                 }

@@ -11,7 +11,7 @@ import {useStatus} from "../providers/AugmentOSStatusProvider.tsx";
 import {useNavigation} from "@react-navigation/native";
 import {NavigationProps} from "./types.ts";
 import { useAuth } from '../AuthContext.tsx';
-import BluetoothService from '../BluetoothService.tsx';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
 import Config from 'react-native-config';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -28,7 +28,6 @@ const ConnectingToPuckComponent = ({
 }: ConnectingToPuckComponentProps) => {
   const { status } = useStatus();
   const navigation = useNavigation<NavigationProps>();
-  const bluetoothService = BluetoothService.getInstance();
   const { user, session, loading: authLoading } = useAuth();
   const [connectionError, setConnectionError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +58,7 @@ const ConnectingToPuckComponent = ({
         });
       
       let uid = user.email || user.id;
-      bluetoothService.setAuthenticationSecretKey(uid, coreToken);
+      coreCommunicator.setAuthenticationSecretKey(uid, coreToken);
       BackendServerComms.getInstance().setCoreToken(coreToken);
       
       // Navigate to Home on success

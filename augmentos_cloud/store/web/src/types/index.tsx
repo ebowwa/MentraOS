@@ -30,7 +30,7 @@ export interface AppI {
   settings?: AppSettings;
   
   // Frontend-specific properties
-  developerName?: string;
+  developerId?: string; // Developer's email address
   isInstalled?: boolean;
   installedDate?: string;
   

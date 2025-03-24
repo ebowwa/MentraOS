@@ -9,16 +9,16 @@ import {
   ScrollView,
 } from 'react-native';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import NavigationBar from '../components/NavigationBar';
 
-interface DebuggingSettingsScreenProps {
+interface DeveloperSettingsScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
   navigation: any;
 }
 
-const DebuggingSettingsScreen: React.FC<DebuggingSettingsScreenProps> = ({
+const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
   isDarkTheme,
   toggleTheme,
   navigation,
@@ -43,13 +43,13 @@ const DebuggingSettingsScreen: React.FC<DebuggingSettingsScreenProps> = ({
 
   const toggleBypassVadForDebugging = async () => {
     let newSetting = !isBypassVADForDebuggingEnabled;
-    await BluetoothService.getInstance().sendToggleBypassVadForDebugging(newSetting);
+    await coreCommunicator.sendToggleBypassVadForDebugging(newSetting);
     setIsBypassVADForDebuggingEnabled(newSetting);
   };
 
   const toggleBypassAudioEncodingForDebugging = async () => {
     let newSetting = !isBypassAudioEncodingForDebuggingEnabled;
-    await BluetoothService.getInstance().sendToggleBypassAudioEncodingForDebugging(newSetting);
+    await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting);
     setIsBypassAudioEncodingForDebuggingEnabled(newSetting);
   };
 
@@ -183,4 +183,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DebuggingSettingsScreen; 
+export default DeveloperSettingsScreen; 

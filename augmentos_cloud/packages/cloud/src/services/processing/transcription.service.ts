@@ -323,7 +323,7 @@ export class TranscriptionService {
     const segments = userSession.transcript.segments;
     const hasInterimLast = segments.length > 0 && !segments[segments.length - 1].isFinal;
 
-    console.log('\n\n\n########', event.result.language, "\n\n\n");
+    // console.log('\n\n\n########', event.result.language, "\n\n\n");
     // Only save English transcriptions.
     // if (event.result.language !== 'en-US') {
     //   console.log("🚫 Skipping non-English transcription");

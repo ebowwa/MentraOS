@@ -24,7 +24,7 @@ const AppDetails: React.FC = () => {
       fetchAppDetails(packageName);
     }
   }, [packageName, isAuthenticated]);
-
+  
   // Fetch app details and install status
   const fetchAppDetails = async (pkgName: string) => {
     try {
@@ -33,6 +33,7 @@ const AppDetails: React.FC = () => {
 
       // Get app details
       const appDetails = await api.app.getAppByPackageName(pkgName);
+      console.log('Raw app details from API:', appDetails);
 
       if (!appDetails) {
         setError('App not found');
@@ -190,7 +191,15 @@ const AppDetails: React.FC = () => {
                   {/* App info */}
                   <div className="md:ml-6 mt-4 md:mt-0 flex-1">
                     <h1 className="text-2xl font-bold text-gray-900">{app.name}</h1>
-                    <p className="text-sm text-gray-500">{app.developerName || 'Mentra Labs'}</p>
+                    <p className="text-sm text-gray-500">
+                      {app.developerProfile?.company || app.developerId || ''}
+                    </p>
+                    {/* Debug details - Remove 'hidden' class to view in browser */}
+                    <div className="text-xs text-gray-400 mt-1 hidden">
+                      DeveloperID: {JSON.stringify(app.developerId)}<br/>
+                      Profile Company: {JSON.stringify(app.developerProfile?.company)}<br/>
+                      Full Profile: {JSON.stringify(app.developerProfile)}
+                    </div>
                     
                     <div className="mt-4 flex flex-col gap-2">
                       {isAuthenticated ? (
@@ -322,15 +331,6 @@ const AppDetails: React.FC = () => {
                     <h2 className="text-xl font-semibold mb-4">Developer Info</h2>
                     
                     <div className="space-y-4">
-                      {app.developerName && (
-                        <div className="flex items-start">
-                          <Building className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Developer</p>
-                            <p className="text-sm text-gray-500">{app.developerName}</p>
-                          </div>
-                        </div>
-                      )}
                       
                       {/* Show profile info if available */}
                       {app.developerProfile?.company && (
@@ -386,7 +386,7 @@ const AppDetails: React.FC = () => {
                       )}
                       
                       {/* Show default message if no developer info available */}
-                      {!app.developerName && !app.developerProfile && (
+                      {!app.developerProfile && (
                         <div className="text-sm text-gray-500">
                           No developer information available.
                         </div>

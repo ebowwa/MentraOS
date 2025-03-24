@@ -14,7 +14,7 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native'; // <<--- import useRoute
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { MOCK_CONNECTION, SETTINGS_KEYS } from '../consts';
 import { NavigationProps } from '../components/types';
@@ -36,7 +36,6 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
 }) => {
   const { status } = useStatus();
   const route = useRoute();
-  const bluetoothService = BluetoothService.getInstance();
   const { glassesModelName } = route.params as { glassesModelName: string };
   const navigation = useNavigation<NavigationProps>();
   const { searchResults, setSearchResults } = useSearchResults();
@@ -53,8 +52,8 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
     const unsubscribe = navigation.addListener('beforeRemove', (e) => {
       const actionType = e.data?.action?.type;
       if (actionType === 'GO_BACK' || actionType === 'POP') {
-        bluetoothService.sendForgetSmartGlasses();
-        bluetoothService.sendDisconnectWearable();
+        coreCommunicator.sendForgetSmartGlasses();
+        coreCommunicator.sendDisconnectWearable();
       } else {
         console.log('Navigation triggered by', actionType, 'so skipping disconnect logic.');
       }
@@ -103,7 +102,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
             {
               text: "Yes",
               onPress: () =>
-                BluetoothService.getInstance().sendSearchForCompatibleDeviceNames(glassesModelName), // Retry search
+                coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName), // Retry search
             },
           ],
           { cancelable: false } // Prevent closing the alert by tapping outside
@@ -129,7 +128,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
   React.useEffect(() => {
     console.log('Searching for compatible devices for: ', glassesModelName);
     setSearchResults([]);
-    BluetoothService.getInstance().sendSearchForCompatibleDeviceNames(glassesModelName);
+    coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName);
   }, [glassesModelName]);
 
   React.useEffect(() => {
@@ -147,7 +146,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
   }, [status]);
 
   const triggerGlassesPairingGuide = (glassesModelName: string, deviceName: string) => {
-    BluetoothService.getInstance().sendConnectWearable(glassesModelName, deviceName);
+    coreCommunicator.sendConnectWearable(glassesModelName, deviceName);
     navigation.navigate('GlassesPairingGuideScreen', {
       glassesModelName: glassesModelName,
     });

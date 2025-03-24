@@ -16,15 +16,14 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
 
 import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
+import { stopExternalService } from '../bridge/CoreServiceStarter';
+import CoreCommsService from '../bridge/CoreCommsService';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
-import ManagerCoreCommsService from '../bridge/ManagerCoreCommsService.tsx';
 import NavigationBar from '../components/NavigationBar';
 
 import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
-
-import HeadUpAngleComponent from "../components/HeadUpAngleComponent.tsx";
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -54,53 +53,37 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(
     status.core_info.force_core_onboard_mic
   );
-  const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
-    status.core_info.contextual_dashboard_enabled
-  );
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled
   );
   const [brightness, setBrightness] = useState<number|null>(null);
 
-  // -- HEAD UP ANGLE STATES --
-  const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false);
-  const [headUpAngle, setHeadUpAngle] = useState<number|null>(null); // default or loaded
-
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled;
-    await BluetoothService.getInstance().sendToggleSensing(newSensing);
+    await coreCommunicator.sendToggleSensing(newSensing);
     setIsSensingEnabled(newSensing);
   };
 
   const toggleForceCoreOnboardMic = async () => {
     const newVal = !forceCoreOnboardMic;
-    await BluetoothService.getInstance().sendToggleForceCoreOnboardMic(newVal);
+    await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
     setForceCoreOnboardMic(newVal);
   };
 
   const toggleAlwaysOnStatusBar = async () => {
     const newVal = !isAlwaysOnStatusBarEnabled;
-    await BluetoothService.getInstance().sendToggleAlwaysOnStatusBar(newVal);
+    await coreCommunicator.sendToggleAlwaysOnStatusBar(newVal);
     setIsAlwaysOnStatusBarEnabled(newVal);
-  };
-
-  const toggleContextualDashboard = async () => {
-    const newVal = !isContextualDashboardEnabled;
-    await BluetoothService.getInstance().sendToggleContextualDashboard(newVal);
-    setIsContextualDashboardEnabled(newVal);
   };
 
   useEffect(() => {
     if (status.glasses_info) {
-      if (status.glasses_info?.headUp_angle != null) {
-        setHeadUpAngle(status.glasses_info.headUp_angle);
-      }
       if (status.glasses_info?.brightness != null) {
         setBrightness(parseBrightness(status.glasses_info.brightness));
       }
     }
-  }, [status.glasses_info?.headUp_angle, status.glasses_info?.brightness, status.glasses_info]);
+  }, [status.glasses_info?.brightness, status.glasses_info]);
 
   const changeBrightness = async (newBrightness: number) => {
     if (!status.glasses_info) {
@@ -113,26 +96,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     }
 
     if (status.glasses_info.brightness === '-') {return;} // or handle accordingly
-    await BluetoothService.getInstance().setGlassesBrightnessMode(newBrightness, false);
+    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
     setBrightness(newBrightness);
   };
 
-  const onSaveHeadUpAngle = async (newHeadUpAngle: number) => {
-    if (!status.glasses_info) {
-      Alert.alert('Glasses not connected', 'Please connect your smart glasses first.');
-      return;
-    }
-    if (newHeadUpAngle == null) {
-        return;
-    }
-
-    setHeadUpAngleComponentVisible(false);
-    await BluetoothService.getInstance().setGlassesHeadUpAngle(newHeadUpAngle);
-    setHeadUpAngle(newHeadUpAngle);
-  };
 
   const forgetGlasses = async () => {
-    await BluetoothService.getInstance().sendForgetSmartGlasses();
+    await coreCommunicator.sendForgetSmartGlasses();
   };
 
   const confirmForgetGlasses = () => {
@@ -178,22 +148,29 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
       // Clean up other services
       console.log('Cleaning up local sessions and services');
-      BluetoothService.getInstance().deleteAuthenticationSecretKey();
-      ManagerCoreCommsService.stopService();
-      BluetoothService.resetInstance();
-
+      
+      // Delete core auth key
+      await coreCommunicator.deleteAuthenticationSecretKey();
+      
+      // Stop the native services
+      CoreCommsService.stopService();
+      stopExternalService();
+      
+      // Clean up communicator resources
+      coreCommunicator.cleanup();
+      
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Login' }],
+        routes: [{ name: 'SplashScreen' }],
       });
     } catch (err) {
       console.error('Error during sign-out:', err);
       // Even if there's an error, still try to navigate away to login
       navigation.reset({
         index: 0,
-        routes: [{ name: 'Login' }],
+        routes: [{ name: 'SplashScreen' }],
       });
     }
   };
@@ -210,10 +187,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     );
   };
 
-  // -- HEADUP ANGLE MODAL CALLBACKS --
-  const onCancelHeadUpAngle = () => {
-    setHeadUpAngleComponentVisible(false);
-  };
 
   // Switch track colors
   const switchColors = {
@@ -241,11 +214,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     selectedChipText: isDarkTheme ? '#FFFFFF' : '#FFFFFF',
   };
 
-  // Condition to disable HeadUp Angle setting
-  const disableHeadUpAngle =
-    !status.glasses_info?.model_name ||
-    status.glasses_info?.brightness === '-' ||
-    !status.glasses_info.model_name.toLowerCase().includes('even');
 
  // Fixed slider props to avoid warning
  const sliderProps = {
@@ -381,51 +349,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           />
         </TouchableOpacity>
 
-        {/* Contextual Dashboard */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Contextual Dashboard
-            </Text>
-            {status.glasses_info?.model_name && (
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                ]}
-              >
-                {`Show the dashboard when you ${
-                  status.glasses_info?.model_name
-                    .toLowerCase()
-                    .includes('even')
-                    ? 'look up'
-                    : 'tap your smart glasses'
-                }.`}
-              </Text>
-            )}
-          </View>
-          <Switch
-            value={isContextualDashboardEnabled}
-            onValueChange={toggleContextualDashboard}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
-
-        {/* HEADUP ANGLE SETTING (Button that opens the modal) */}
+        {/* Dashboard Settings */}
         <TouchableOpacity
-          style={[
-            styles.settingItem,
-            disableHeadUpAngle && styles.disabledItem,
-          ]}
-          disabled={disableHeadUpAngle}
-          onPress={() => setHeadUpAngleComponentVisible(true)}
+          style={styles.settingItem}
+          onPress={() => {
+            navigation.navigate('DashboardSettingsScreen', {
+              isDarkTheme,
+              toggleTheme,
+            });
+          }}
         >
           <View style={styles.settingTextContainer}>
             <Text
@@ -434,7 +366,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 isDarkTheme ? styles.lightText : styles.darkText,
               ]}
             >
-              HeadUp Settings
+              Dashboard Settings
+            </Text>
+            <Text
+              style={[
+                styles.value,
+                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+              ]}
+            >
+              Configure the contextual dashboard and HeadUp settings
             </Text>
           </View>
           <Icon
@@ -473,11 +413,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
         </View>
 
-        {/* Debugging Settings */}
+        {/* Developer Settings */}
         <TouchableOpacity
           style={styles.settingItem}
           onPress={() => {
-            navigation.navigate('DebuggingSettingsScreen');
+            navigation.navigate('DeveloperSettingsScreen');
           }}
         >
           <View style={styles.settingTextContainer}>
@@ -487,7 +427,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 isDarkTheme ? styles.lightText : styles.darkText,
               ]}
             >
-              Debugging Settings
+              Developer Settings
             </Text>
           </View>
           <Icon
@@ -534,15 +474,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </TouchableOpacity>
       </ScrollView>
 
-      {/* HEADUP ANGLE MODAL (the semicircle one) */}
-      {headUpAngle !== null && (
-        <HeadUpAngleComponent
-          visible={headUpAngleComponentVisible}
-          initialAngle={headUpAngle}
-          onCancel={onCancelHeadUpAngle}
-          onSave={onSaveHeadUpAngle}
-        />
-      )}
 
       {/* Your app's bottom navigation bar */}
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
