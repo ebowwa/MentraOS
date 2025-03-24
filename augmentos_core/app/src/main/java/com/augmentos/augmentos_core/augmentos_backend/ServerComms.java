@@ -52,7 +52,7 @@ public class ServerComms {
     // Live queue for immediate sending (small buffer)
     private final BlockingQueue<byte[]> liveAudioQueue = new ArrayBlockingQueue<>(100); // ~1 second buffer
     // Sliding buffer to store recent audio in case of disconnection
-    private final BlockingQueue<byte[]> slidingBuffer = new ArrayBlockingQueue<>((int) (10 / 0.01 / 10)); // 10 seconds sliding buffer
+    private final BlockingQueue<byte[]> slidingBuffer = new ArrayBlockingQueue<>((int) (3 / 0.01 / 10)); // 3 seconds sliding buffer
     private Thread audioSenderThread;
     private volatile boolean audioSenderRunning = false;
     private volatile boolean isReconnecting = false;
@@ -215,14 +215,14 @@ public class ServerComms {
         isProcessingBuffer = true;
 
         // Drain the sliding buffer to a list to preserve order
-        slidingBuffer.drainTo(bufferContents);
+//        slidingBuffer.drainTo(bufferContents);
 
         // Send all buffer contents in order
         for (byte[] chunk : bufferContents) {
             if (wsManager.isConnected()) {
                 wsManager.sendBinary(chunk);
                 // Debug - Write to PCM file as we send
-                // writeToPcmFile(chunk);
+                 writeToPcmFile(chunk);
             } else {
                 // If connection drops during playback, stop sending
                 break;

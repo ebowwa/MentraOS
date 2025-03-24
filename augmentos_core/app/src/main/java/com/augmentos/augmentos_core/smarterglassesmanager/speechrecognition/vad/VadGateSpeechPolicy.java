@@ -21,11 +21,18 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
     private Context mContext;
     private VadSilero vad;
     private boolean isCurrentlySpeech;
+    private boolean bypassVadForDebugging;
 
     // Total required silence duration of 12 seconds.
-    private static final long REQUIRED_SILENCE_DURATION_MS = 12000;
-    // Throttle VAD checks during silence to once every 300ms.
-    private static final long SILENCE_VAD_INTERVAL_MS = 333;
+    private static final long REQUIRED_SILENCE_DURATION_MS = 1500;
+    // Dynamic VAD check intervals
+    private static final long INITIAL_SILENCE_VAD_INTERVAL_MS = 50;    // Check frequently at first
+    private static final long MEDIUM_SILENCE_VAD_INTERVAL_MS = 100;    // Medium frequency after some time
+    private static final long LONG_SILENCE_VAD_INTERVAL_MS = 200;      // Less frequent after extended silence
+    
+    // Thresholds for switching intervals
+    private static final long MEDIUM_SILENCE_THRESHOLD_MS = 20000;       // Switch to medium interval after 10s
+    private static final long LONG_SILENCE_THRESHOLD_MS = 60000;        // Switch to long interval after 20s
 
     // Timestamp of the last detected speech.
     private long lastSpeechDetectedTime = 0;
@@ -53,7 +60,7 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
 
     @Override
     public boolean shouldPassAudioToRecognizer() {
-        return isCurrentlySpeech;
+        return bypassVadForDebugging || isCurrentlySpeech;
     }
 
     @Override
@@ -79,8 +86,21 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
             return;
         }
 
-        // During silence, throttle VAD checks to once every 300ms.
-        if (!isCurrentlySpeech && (now - lastVadCheckTime < SILENCE_VAD_INTERVAL_MS)) {
+        // Calculate silence duration
+        long silenceDuration = now - lastSpeechDetectedTime;
+        
+        // Determine which VAD interval to use based on silence duration
+        long currentVadInterval;
+        if (silenceDuration < MEDIUM_SILENCE_THRESHOLD_MS) {
+            currentVadInterval = INITIAL_SILENCE_VAD_INTERVAL_MS;
+        } else if (silenceDuration < LONG_SILENCE_THRESHOLD_MS) {
+            currentVadInterval = MEDIUM_SILENCE_VAD_INTERVAL_MS;
+        } else {
+            currentVadInterval = LONG_SILENCE_VAD_INTERVAL_MS;
+        }
+
+        // During silence, throttle VAD checks based on the dynamic interval
+        if (!isCurrentlySpeech && (now - lastVadCheckTime < currentVadInterval)) {
             return;
         }
         lastVadCheckTime = now;
@@ -124,6 +144,10 @@ public class VadGateSpeechPolicy implements SpeechDetectionPolicy {
     @Override
     public void stop() {
         vad.close();
+    }
+
+    public void changeBypassVadForDebugging(boolean bypassVadForDebugging) {
+        this.bypassVadForDebugging = bypassVadForDebugging;
     }
 
     public void microphoneStateChanged(boolean state) {

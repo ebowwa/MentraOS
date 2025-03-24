@@ -198,7 +198,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     //fonts in G1
     G1FontLoader fontLoader;
 
-    private static final long DEBOUNCE_DELAY_MS = 100; // Minimum time between chunk sends
+    private static final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
 
     public EvenRealitiesG1SGC(Context context, SmartGlassesDevice smartGlassesDevice) {
@@ -1450,7 +1450,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
                     }
 
-                    Log.d(TAG, "PROC_QUEUE - DEBOUNCE_DELAY_MS: " + DEBOUNCE_DELAY_MS);
+//                    Log.d(TAG, "PROC_QUEUE - DEBOUNCE_DELAY_MS: " + DEBOUNCE_DELAY_MS);
 
                     // Apply debouncing
                     long currentTime = System.currentTimeMillis();
@@ -1459,7 +1459,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         Thread.sleep(DEBOUNCE_DELAY_MS - timeSinceLastSend);
                     }
 
-                    Log.d(TAG, "PROC_QUEUE - timeSinceLastSend: " + timeSinceLastSend);
+//                    Log.d(TAG, "PROC_QUEUE - timeSinceLastSend: " + timeSinceLastSend);
                     boolean leftSuccess = true;
                     boolean rightSuccess = true;
 
@@ -1627,7 +1627,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
 
         List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
-        sendChunks(chunks);
+        for (byte[] chunk : chunks) {
+            sendDataSequentially(chunk, false, 140);
+        }
         Log.d(TAG, "Send simple reference card");
     }
 
