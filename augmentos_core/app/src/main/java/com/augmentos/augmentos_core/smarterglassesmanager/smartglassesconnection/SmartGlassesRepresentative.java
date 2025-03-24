@@ -220,7 +220,7 @@ class SmartGlassesRepresentative {
 
         //throw off new audio chunk event
         EventBus.getDefault().post(new AudioChunkNewEvent(audio_bytes));
-        EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3Data));
+//        EventBus.getDefault().post(new LC3AudioChunkNewEvent(audio_bytes));
     }
 
     public void destroy(){

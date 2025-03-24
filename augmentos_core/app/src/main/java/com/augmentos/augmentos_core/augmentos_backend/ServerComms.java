@@ -215,14 +215,14 @@ public class ServerComms {
         isProcessingBuffer = true;
 
         // Drain the sliding buffer to a list to preserve order
-        slidingBuffer.drainTo(bufferContents);
+//        slidingBuffer.drainTo(bufferContents);
 
         // Send all buffer contents in order
         for (byte[] chunk : bufferContents) {
             if (wsManager.isConnected()) {
                 wsManager.sendBinary(chunk);
                 // Debug - Write to PCM file as we send
-                // writeToPcmFile(chunk);
+//                 writeToPcmFile(chunk);
             } else {
                 // If connection drops during playback, stop sending
                 break;

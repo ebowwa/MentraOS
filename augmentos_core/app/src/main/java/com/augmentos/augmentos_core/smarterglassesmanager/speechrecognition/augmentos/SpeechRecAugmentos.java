@@ -159,6 +159,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestAudioChunk(byte[] audioChunk) {
+        //VAD STUFF
         if (vadPolicy == null) {
             Log.e(TAG, "VAD not initialized yet. Skipping audio.");
             return;
@@ -174,6 +175,18 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             }
             vadBuffer.offer(sample);
         }
+
+        //SENDING STUFF
+        // If currently speaking, send data live
+        if (bypassVadForDebugging) {
+            //Log.d(TAG, "Bypassing VAD for debugging.");
+            ServerComms.getInstance().sendAudioChunk(audioChunk);
+            return;
+        }
+
+        if (isSpeaking) {
+            ServerComms.getInstance().sendAudioChunk(audioChunk);
+        }
     }
 
     /**
@@ -181,17 +194,16 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
-        // If currently speaking, send data live
-//        if (!vadEnabled || isSpeaking) {
-        if (bypassVadForDebugging) {
-//            Log.d(TAG, "Bypassing VAD for debugging.");
-            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
-            return;
-        }
-
-        if (isSpeaking) {
-            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
-        }
+//        // If currently speaking, send data live
+//        if (bypassVadForDebugging) {
+//            //Log.d(TAG, "Bypassing VAD for debugging.");
+//            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
+//            return;
+//        }
+//
+//        if (isSpeaking) {
+//            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
+//        }
     }
 
 
