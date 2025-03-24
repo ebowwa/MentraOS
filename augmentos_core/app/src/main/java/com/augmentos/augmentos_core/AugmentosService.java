@@ -1437,11 +1437,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void handleNotificationData(JSONObject notificationData){
         try {
             if (notificationData != null) {
-                String appName = notificationData.getString("appName");
+                String appName = notificationData.optString("app_name");
                 String title = notificationData.getString("title");
                 String text = notificationData.getString("text");
-                long timestamp = notificationData.getLong("timestamp");
-                String uuid = notificationData.getString("uuid");
+//                long timestamp = notificationData.getLong("timestamp");
+                String uuid = java.util.UUID.randomUUID().toString();
 
                 ServerComms.getInstance().sendPhoneNotification(uuid, appName, title, text, "high");
 
