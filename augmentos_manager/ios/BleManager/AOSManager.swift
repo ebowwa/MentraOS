@@ -37,6 +37,9 @@ import AVFoundation
   private var isSearching: Bool = false;
   private var alwaysOnStatusBar: Bool = false;
   
+  private var settingsLoaded = false
+  private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
+  
   
   // mic:
   private var useOnboardMic = false;
@@ -49,10 +52,16 @@ import AVFoundation
   
   override init() {
     self.vad = SileroVADStrategy()
-    self.vad?.setup(sampleRate: .rate_16k, frameSize: .size_1024, quality: .normal, silenceTriggerDurationMs: 4000, speechTriggerDurationMs: 50);
     self.serverComms = ServerComms.getInstance()
     super.init()
-
+    Task {
+        await loadSettings()
+        self.vad?.setup(sampleRate: .rate_16k,
+                       frameSize: .size_1024,
+                       quality: .normal,
+                       silenceTriggerDurationMs: 4000,
+                       speechTriggerDurationMs: 50)
+    }
   }
   
   // MARK: - Public Methods (for React Native)
@@ -62,9 +71,6 @@ import AVFoundation
     self.g1Manager = ERG1Manager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
-    Task {
-      await loadSettings()
-    }
     
     guard g1Manager != nil else {
       return
@@ -391,6 +397,16 @@ import AVFoundation
   
   @objc func handleCommand(_ command: String) {
     print("Received command: \(command)")
+    
+    if !settingsLoaded {
+        // Wait for settings to load with a timeout
+        let timeout = DispatchTime.now() + .seconds(5) // 5 second timeout
+        let result = settingsLoadedSemaphore.wait(timeout: timeout)
+        
+        if result == .timedOut {
+            print("Warning: Settings load timed out, proceeding with default values")
+        }
+    }
     
     // Define command types enum
     enum CommandType: String {
@@ -751,7 +767,6 @@ import AVFoundation
       
       // give the glasses some extra time to finish booting:
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
-      await loadSettings()
       await self.g1Manager?.setSilentMode(false)// turn off silent mode
       await self.g1Manager?.getBatteryStatus()
       self.g1Manager?.RN_sendText("// BOOTING AUGMENTOS")
@@ -797,8 +812,12 @@ import AVFoundation
     self.isSearching = true
     handleRequestStatus()// update the UI
     
+    print("deviceName: \(deviceName) selfDeviceName: \(self.deviceName)")
+    
     // just g1's for now:
     Task {
+      self.g1Manager?.disconnect()
+      
       if (deviceName != "") {
         self.deviceName = deviceName
         saveSettings()
@@ -811,14 +830,15 @@ import AVFoundation
       }
     }
     
-    // wait for the g1's to be fully ready:
+//    // wait for the g1's to be fully ready:
     Task {
       while !Task.isCancelled {
-        print("checking if g1 is ready...")
+        print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
+        print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
         if self.g1Manager?.g1Ready ?? false {
           // we actualy don't need this line:
           //          handleDeviceReady()
-          handleRequestStatus()// update the ui
+          handleRequestStatus()
           break
         } else {
           // todo: ios not the cleanest solution here
@@ -847,6 +867,18 @@ import AVFoundation
   }
   
   private func saveSettings() {
+    
+    print("about to save settings, waiting for loaded settings first: \(settingsLoaded)")
+    if !settingsLoaded {
+        // Wait for settings to load with a timeout
+        let timeout = DispatchTime.now() + .seconds(5) // 5 second timeout
+        let result = settingsLoadedSemaphore.wait(timeout: timeout)
+        
+        if result == .timedOut {
+            print("Warning: Settings load timed out, proceeding with default values")
+        }
+    }
+    
     let defaults = UserDefaults.standard
     
     // Save each setting with its corresponding key
@@ -890,6 +922,11 @@ import AVFoundation
     if defaults.object(forKey: SettingsKeys.brightness) != nil {
       brightness = defaults.integer(forKey: SettingsKeys.brightness)
     }
+    
+    // Mark settings as loaded and signal completion
+    self.settingsLoaded = true
+    self.settingsLoadedSemaphore.signal()
+    print("Settings Loaded!")
     
     
 //    if (self.g1Manager.g1Ready) {

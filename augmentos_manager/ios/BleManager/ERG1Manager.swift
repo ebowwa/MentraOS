@@ -87,8 +87,8 @@ struct ViewState {
     }
   }
   
-  private var leftReady: Bool = false
-  private var rightReady: Bool = false
+  public var leftReady: Bool = false
+  public var rightReady: Bool = false
   
   @Published public var compressedVoiceData: Data = Data()
   @Published public var aiListening: Bool = false
@@ -309,12 +309,13 @@ struct ViewState {
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {
-    if let left = left {
-      leftReady = left
+    if left != nil {
+      leftReady = left!
     }
-    if let right = right {
-      rightReady = right
+    if right != nil {
+      rightReady = right!
     }
+    print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
     g1Ready = leftReady && rightReady
   }
   
@@ -667,7 +668,7 @@ struct ViewState {
     if !success { return }
     if peripheral == self.leftPeripheral {
       leftSemaphore.signal()
-      setReadiness(left: true, right: false)
+      setReadiness(left: true, right: nil)
     }
     if peripheral == self.rightPeripheral {
       rightSemaphore.signal()
@@ -1326,7 +1327,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       // force reconnection to both before considering us ready again:
       leftPeripheral = nil
       rightPeripheral = nil
-      g1Ready = false
+      setReadiness(left: false, right: false)
       RN_startScan()// attempt reconnect
     }
   }
