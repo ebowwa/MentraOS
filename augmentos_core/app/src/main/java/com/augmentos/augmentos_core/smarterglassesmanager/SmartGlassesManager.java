@@ -240,18 +240,26 @@ public class SmartGlassesManager {
         Log.d(TAG, "CONNECTING TO SMART GLASSES");
         smartGlassesRepresentative.connectToSmartGlasses();
         
-        // BATTERY OPTIMIZATION: If the device is an AudioWearable (uses the AndroidSGC communicator),
-        // register the speech recognition system for direct audio callbacks
-        if (device instanceof AudioWearable && speechRecSwitchSystem != null) {
-            // After connection is established, register for direct audio processing
-            // This implements the direct callback pattern we set up, replacing EventBus
-            if (smartGlassesRepresentative != null && 
-                smartGlassesRepresentative.smartGlassesCommunicator != null &&
-                smartGlassesRepresentative.smartGlassesCommunicator instanceof AndroidSGC) {
-                ((AndroidSGC)
-                  smartGlassesRepresentative.smartGlassesCommunicator).registerSpeechRecSystem(speechRecSwitchSystem);
-                
-                Log.d(TAG, "BATTERY OPTIMIZATION: Registered speech recognition system for direct audio callbacks");
+        // BATTERY OPTIMIZATION: Explicitly register callback with the communicator
+        // This ensures it's immediately available when audio events start coming in
+        if (smartGlassesRepresentative != null && 
+            smartGlassesRepresentative.smartGlassesCommunicator != null && 
+            speechRecSwitchSystem != null) {
+            
+            // Force-setting the callback directly to bypass any potential registration issues
+            smartGlassesRepresentative.smartGlassesCommunicator.audioProcessingCallback = speechRecSwitchSystem;
+            
+            // Also use the standard registration method
+            smartGlassesRepresentative.smartGlassesCommunicator.registerAudioProcessingCallback(speechRecSwitchSystem);
+            
+            Log.d(TAG, "BATTERY OPTIMIZATION: Explicitly registered and set audio processing callback for " + 
+                device.getGlassesOs().name() + " - Callback is: " + (speechRecSwitchSystem != null ? "NOT NULL" : "NULL"));
+            
+            // Special additional setup for AndroidSGC
+            if (smartGlassesRepresentative.smartGlassesCommunicator instanceof AndroidSGC) {
+                ((AndroidSGC) smartGlassesRepresentative.smartGlassesCommunicator)
+                    .registerSpeechRecSystem(speechRecSwitchSystem);
+                Log.d(TAG, "BATTERY OPTIMIZATION: Also registered special AndroidSGC callback");
             }
         }
     }

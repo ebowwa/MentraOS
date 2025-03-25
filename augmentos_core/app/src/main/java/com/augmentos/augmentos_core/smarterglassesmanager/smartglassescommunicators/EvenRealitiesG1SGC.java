@@ -41,6 +41,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.G1FontLoader;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -473,8 +474,15 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                             if (deviceName.contains("R_")) {
                                 // Log.d(TAG, "Audio data received. Seq: " + seq + ", from: " + deviceName + ", length: " + pcmData.length);
                                 if (shouldRunOnboardMic) {
-                                    EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
-//                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
+                                    // BATTERY OPTIMIZATION: Use direct callback instead of EventBus posts
+                                    if (audioProcessingCallback != null) {
+                                        // Log.d(TAG, "Using direct audio callback");
+                                        audioProcessingCallback.onAudioDataAvailable(pcmData);
+                                        //audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+                                    } else {
+                                        // If we get here, it means the callback wasn't properly registered
+                                        Log.e(TAG, "Audio processing callback is null - callback registration failed!");
+                                    }
                                 }
                             } else {
 //                                Log.d(TAG, "Lc3 Audio data received. Seq: " + seq + ", Data: " + Arrays.toString(lc3) + ", from: " + deviceName);

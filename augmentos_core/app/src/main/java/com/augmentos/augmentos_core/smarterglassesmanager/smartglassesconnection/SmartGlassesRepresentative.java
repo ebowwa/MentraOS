@@ -136,31 +136,47 @@ public class SmartGlassesRepresentative {
         switch (smartGlassesDevice.getGlassesOs()) {
             case ANDROID_OS_GLASSES:
                 communicator = new AndroidSGC(context, smartGlassesDevice, dataObservable);
-                // BATTERY OPTIMIZATION: Register for direct audio callbacks immediately
-                if (audioProcessingCallback != null && communicator instanceof AndroidSGC) {
-                    ((AndroidSGC) communicator).registerSpeechRecSystem(audioProcessingCallback);
-                    Log.d(TAG, "BATTERY OPTIMIZATION: Registered audio processing callback during communicator creation");
-                }
-                return communicator;
+                break;
                 
             case AUDIO_WEARABLE_GLASSES:
-                return new AudioWearableSGC(context, smartGlassesDevice);
+                communicator = new AudioWearableSGC(context, smartGlassesDevice);
+                break;
                 
             case VIRTUAL_WEARABLE:
-                return new VirtualSGC(context, smartGlassesDevice);
+                communicator = new VirtualSGC(context, smartGlassesDevice);
+                break;
                 
             case ULTRALITE_MCU_OS_GLASSES:
-                return new UltraliteSGC(context, smartGlassesDevice, lifecycleOwner);
+                communicator = new UltraliteSGC(context, smartGlassesDevice, lifecycleOwner);
+                break;
                 
             case EVEN_REALITIES_G1_MCU_OS_GLASSES:
-                return new EvenRealitiesG1SGC(context, smartGlassesDevice);
+                communicator = new EvenRealitiesG1SGC(context, smartGlassesDevice);
+                break;
                 
             case SELF_OS_GLASSES:
-                return new SelfSGC(context, smartGlassesDevice);
+                communicator = new SelfSGC(context, smartGlassesDevice);
+                break;
                 
             default:
                 return null;  // or throw an exception
         }
+        
+        // BATTERY OPTIMIZATION: Register audio processing callback with the base communicator
+        if (communicator != null && audioProcessingCallback != null) {
+            // Standard registration for all communicators via base class
+            communicator.registerAudioProcessingCallback(audioProcessingCallback);
+            Log.d(TAG, "BATTERY OPTIMIZATION: Registered audio processing callback for " + 
+                  smartGlassesDevice.getGlassesOs().name());
+                
+            // Special case for AndroidSGC which has additional AudioSystem registration
+            if (communicator instanceof AndroidSGC) {
+                ((AndroidSGC) communicator).registerSpeechRecSystem(audioProcessingCallback);
+                Log.d(TAG, "BATTERY OPTIMIZATION: Registered additional AudioSystem callback for AndroidSGC");
+            }
+        }
+        
+        return communicator;
     }
 
     /**

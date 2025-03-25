@@ -292,14 +292,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
 
         if (cachedDashboardDisplayObject != null) {
-            if (smartGlassesManager != null) {
+            if(smartGlassesManager != null) {
                 Runnable dashboardDisplayRunnable = parseDisplayEventMessage(cachedDashboardDisplayObject);
 
                 smartGlassesManager.windowManager.showDashboard(dashboardDisplayRunnable,
                         -1
                 );
             }
-            if(cachedDashboardDisplayObject != null && blePeripheral != null) {
+
+            if(blePeripheral != null) {
                 blePeripheral.sendGlassesDisplayEventToManager(cachedDashboardDisplayObject);
             }
             return;
