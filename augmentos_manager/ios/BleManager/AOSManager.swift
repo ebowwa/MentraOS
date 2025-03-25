@@ -35,6 +35,7 @@ import AVFoundation
   private var dashboardHeight: Int = 4;
   private var sensingEnabled: Bool = false;
   private var isSearching: Bool = false;
+  private var alwaysOnStatusBar: Bool = false;
   
   
   // mic:
@@ -408,6 +409,7 @@ import AVFoundation
       case updateGlassesBrightness = "update_glasses_brightness"
       case updateGlassesDashboardHeight = "update_glasses_dashboard_height"
       case enableSensing = "enable_sensing"
+      case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case unknown
     }
     
@@ -566,6 +568,15 @@ import AVFoundation
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .enableAlwaysOnStatusBar:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            print("enable_always_on_status_bar invalid params")
+            break
+          }
+          self.alwaysOnStatusBar = enabled
+          saveSettings()
+          handleRequestStatus()// to update the UI
+          break
         }
       }
     } catch {
@@ -632,6 +643,7 @@ import AVFoundation
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
       "sensing_enabled": self.sensingEnabled,
+      "always_on_status_bar": self.alwaysOnStatusBar,
       "core_token": self.coreToken,
       "puck_connected": true,
     ]
@@ -830,6 +842,7 @@ import AVFoundation
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
     static let dashboardHeight = "dashboardHeight"
+    static let alwaysOnStatusBar = "alwaysOnStatusBar"
   }
   
   private func saveSettings() {
@@ -845,6 +858,7 @@ import AVFoundation
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
+    defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -865,6 +879,7 @@ import AVFoundation
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
+    alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
     
     // For numeric values, provide the default if the key doesn't exist
     if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
