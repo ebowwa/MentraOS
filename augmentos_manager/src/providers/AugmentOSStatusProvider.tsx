@@ -22,7 +22,6 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
     const [screenMirrorItems, setScreenMirrorItems] = useState<{ id: string; name: string }[]>([]);
 
     const refreshStatus = useCallback((data: any) => {
-        console.log('refreshStatus', data);
         if (!(data && 'status' in data)) {return;}
 
         const parsedStatus = AugmentOSParser.parseStatus(data);

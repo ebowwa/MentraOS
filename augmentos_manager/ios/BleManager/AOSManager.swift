@@ -818,6 +818,7 @@ import AVFoundation
         if self.g1Manager?.g1Ready ?? false {
           // we actualy don't need this line:
           //          handleDeviceReady()
+          handleRequestStatus()// update the ui
           break
         } else {
           // todo: ios not the cleanest solution here

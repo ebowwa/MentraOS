@@ -87,6 +87,9 @@ struct ViewState {
     }
   }
   
+  private var leftReady: Bool = false
+  private var rightReady: Bool = false
+  
   @Published public var compressedVoiceData: Data = Data()
   @Published public var aiListening: Bool = false
   @Published public var batteryLevel: Int = -1
@@ -305,6 +308,16 @@ struct ViewState {
       return result
   }
   
+  public func setReadiness(left: Bool?, right: Bool?) {
+    if let left = left {
+      leftReady = left
+    }
+    if let right = right {
+      rightReady = right
+    }
+    g1Ready = leftReady && rightReady
+  }
+  
   public func handleDisplayEvent(_ event: [String: Any]) -> Void {
     
     print("contextualDashboardEnabled: \(self.dashboardEnabled)")
@@ -423,7 +436,7 @@ struct ViewState {
     
     leftPeripheral = nil
     rightPeripheral = nil
-    self.g1Ready = false
+    setReadiness(left: false, right: false)
     print("Disconnected from glasses")
   }
   
@@ -654,9 +667,11 @@ struct ViewState {
     if !success { return }
     if peripheral == self.leftPeripheral {
       leftSemaphore.signal()
+      setReadiness(left: true, right: false)
     }
     if peripheral == self.rightPeripheral {
       rightSemaphore.signal()
+      setReadiness(left: nil, right: true)
     }
   }
   
@@ -926,15 +941,17 @@ extension ERG1Manager {
     if peripheral == leftPeripheral {
       leftInitialized = success
       print("Left arm initialized: \(success)")
+      setReadiness(left: true, right: nil)
     } else if peripheral == rightPeripheral {
       rightInitialized = success
       print("Right arm initialized: \(success)")
+      setReadiness(left: nil, right: true)
     }
     
     // Only proceed if both glasses are initialized
     if leftInitialized && rightInitialized {
       print("Both arms initialized")
-      g1Ready = true
+      setReadiness(left: true, right: true)
     }
   }
   
@@ -1358,7 +1375,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   public func centralManagerDidUpdateState(_ central: CBCentralManager) {
     if central.state == .poweredOn {
       print("Bluetooth powered on")
-      g1Ready = false
+      setReadiness(left: false, right: false)
       // only automatically start scanning if we have a SEARCH_ID, otherwise wait for RN to call startScan() itself
       if (DEVICE_SEARCH_ID != "NOT_SET" && !DEVICE_SEARCH_ID.isEmpty) {
         RN_startScan()

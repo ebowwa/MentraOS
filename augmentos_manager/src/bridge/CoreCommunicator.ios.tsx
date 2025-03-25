@@ -132,10 +132,12 @@ export class CoreCommunicator extends EventEmitter {
       console.warn('Failed to initialize BleManager:', error);
     }
 
-    AOSModule.sendCommand({ "command": "request_status" });
+    AOSModule.sendCommand(JSON.stringify({ "command": "request_status" }));
+    AOSModule.sendCommand(JSON.stringify({ "command": "connect_wearable" }));
+
     
     // Start the Core service if it's not already running
-    // TODO: ios
+    // TODO: ios (this isn't actually needed I don't think)
     // if (!(await CoreCommsService.isServiceRunning())) {
     //   CoreCommsService.startService();
     // }
