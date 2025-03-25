@@ -15,6 +15,17 @@
     "dev:ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud host.docker.internal:8002",
     "dev:ngrok:appstore": "ngrok http --domain=appstore.augmentos.cloud host.docker.internal:8042",
 
+    "staging": "docker-compose -f docker-compose.staging.yml -p staging up -d",
+    "staging:stop": "docker-compose -f docker-compose.staging.yml -p staging down",
+    "staging:deploy": "bun run staging:stop && bun run staging",
+    "staging:setup-network": "docker network create augmentos-network-staging",
+
+    "prod": "docker-compose -f docker-compose.yml -p prod up -d",
+    "prod:stop": "docker-compose -f docker-compose.yml -p prod down",
+    "prod:deploy": "bun run prod:stop && bun run prod",
+    "prod:setup-network": "docker network create augmentos-network",
+
+
     "logs": "docker-compose -f docker-compose.dev.yml -p dev logs -f --tail=0",
     "logs:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud --tail=0"
 },

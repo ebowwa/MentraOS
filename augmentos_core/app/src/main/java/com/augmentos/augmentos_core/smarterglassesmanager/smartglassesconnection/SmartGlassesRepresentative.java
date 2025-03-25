@@ -249,7 +249,7 @@ public class SmartGlassesRepresentative {
         // causing unnecessary CPU wakeups and battery drain
         if (audioProcessingCallback != null) {
             audioProcessingCallback.onAudioDataAvailable(audio_bytes);
-            audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
+            //audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
         }
     }
 

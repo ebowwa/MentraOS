@@ -222,7 +222,7 @@ public class ServerComms {
             if (wsManager.isConnected()) {
                 wsManager.sendBinary(chunk);
                 // Debug - Write to PCM file as we send
-                 writeToPcmFile(chunk);
+//                 writeToPcmFile(chunk);
             } else {
                 // If connection drops during playback, stop sending
                 break;

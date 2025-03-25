@@ -167,6 +167,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
      */
     @Override
     public void ingestAudioChunk(byte[] audioChunk) {
+        //VAD STUFF
         if (vadPolicy == null) {
             Log.e(TAG, "VAD not initialized yet. Skipping audio.");
             return;
@@ -182,18 +183,14 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             }
             vadBuffer.offer(sample);
         }
-    }
 
-    /**
-     * Called by external code to feed raw LC3 chunks
-     */
-    @Override
-    public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
+
+        //BUFFER STUFF
         // Add to rolling buffer regardless of VAD state
         synchronized (lc3RollingBuffer) {
             // Clone the data to ensure we have our own copy
-            byte[] copy = new byte[LC3audioChunk.length];
-            System.arraycopy(LC3audioChunk, 0, copy, 0, LC3audioChunk.length);
+            byte[] copy = new byte[audioChunk.length];
+            System.arraycopy(audioChunk, 0, copy, 0, audioChunk.length);
 
             lc3RollingBuffer.add(copy);
             while (lc3RollingBuffer.size() > LC3_BUFFER_MAX_SIZE) {
@@ -201,10 +198,20 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
             }
         }
 
+
+        //SENDING STUFF
         // If bypassing VAD for debugging or currently speaking, send data live
         if (bypassVadForDebugging || isSpeaking) {
-            ServerComms.getInstance().sendAudioChunk(LC3audioChunk);
+            ServerComms.getInstance().sendAudioChunk(audioChunk);
         }
+    }
+
+    /**
+     * Called by external code to feed raw LC3 chunks
+     */
+    @Override
+    public void ingestLC3AudioChunk(byte[] LC3audioChunk) {
+        //skip for now as not using LC3
     }
 
     /**

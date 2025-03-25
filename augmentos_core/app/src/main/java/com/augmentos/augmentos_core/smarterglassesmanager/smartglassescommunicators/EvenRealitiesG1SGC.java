@@ -474,7 +474,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                                 // Log.d(TAG, "Audio data received. Seq: " + seq + ", from: " + deviceName + ", length: " + pcmData.length);
                                 if (shouldRunOnboardMic) {
                                     EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
-                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
+//                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
                                 }
                             } else {
 //                                Log.d(TAG, "Lc3 Audio data received. Seq: " + seq + ", Data: " + Arrays.toString(lc3) + ", from: " + deviceName);
@@ -1453,11 +1453,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 //                    Log.d(TAG, "PROC_QUEUE - DEBOUNCE_DELAY_MS: " + DEBOUNCE_DELAY_MS);
 
                     // Apply debouncing
-                    long currentTime = System.currentTimeMillis();
-                    long timeSinceLastSend = currentTime - lastSendTimestamp;
-                    if (timeSinceLastSend < DEBOUNCE_DELAY_MS) {
-                        Thread.sleep(DEBOUNCE_DELAY_MS - timeSinceLastSend);
-                    }
+//                    long currentTime = System.currentTimeMillis();
+//                    long timeSinceLastSend = currentTime - lastSendTimestamp;
+//                    if (timeSinceLastSend < DEBOUNCE_DELAY_MS) {
+//                        Thread.sleep(DEBOUNCE_DELAY_MS - timeSinceLastSend);
+//                    }
 
 //                    Log.d(TAG, "PROC_QUEUE - timeSinceLastSend: " + timeSinceLastSend);
                     boolean leftSuccess = true;
@@ -1627,9 +1627,17 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
 
         List<byte[]> chunks = createTextWallChunks(title + "\n\n" + body);
-        for (byte[] chunk : chunks) {
-            sendDataSequentially(chunk, false, 140);
+        for (int i = 0; i < chunks.size(); i++) {
+            byte[] chunk = chunks.get(i);
+            boolean isLastChunk = (i == chunks.size() - 1);
+
+            if (isLastChunk) {
+                sendDataSequentially(chunk, false);
+            } else {
+                sendDataSequentially(chunk, false, 300);
+            }
         }
+
         Log.d(TAG, "Send simple reference card");
     }
 
