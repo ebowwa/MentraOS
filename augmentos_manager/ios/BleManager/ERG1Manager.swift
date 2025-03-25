@@ -263,6 +263,48 @@ struct ViewState {
     }
   }
   
+  // TODO: move this to the AOSModule level
+  
+  public func parsePlaceholders(_ text: String) -> String {
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "M/dd, h:mm"
+      let formattedDate = dateFormatter.string(from: Date())
+      
+      // 12-hour time format (with leading zeros for hours)
+      let time12Format = DateFormatter()
+      time12Format.dateFormat = "hh:mm"
+      let time12 = time12Format.string(from: Date())
+      
+      // 24-hour time format
+      let time24Format = DateFormatter()
+      time24Format.dateFormat = "HH:mm"
+      let time24 = time24Format.string(from: Date())
+      
+      // Current date with format MM/dd
+      let dateFormat = DateFormatter()
+      dateFormat.dateFormat = "MM/dd"
+      let currentDate = dateFormat.string(from: Date())
+      
+      var placeholders: [String: String] = [:]
+      placeholders["$no_datetime$"] = formattedDate
+      placeholders["$DATE$"] = currentDate
+      placeholders["$TIME12$"] = time12
+      placeholders["$TIME24$"] = time24
+    
+      if batteryLevel == -1 {
+        placeholders["$GBATT$"] = ""
+      } else {
+        placeholders["$GBATT$"] = "\(batteryLevel)%"
+      }
+      
+      var result = text
+      for (key, value) in placeholders {
+          result = result.replacingOccurrences(of: key, with: value)
+      }
+      
+      return result
+  }
+  
   public func handleDisplayEvent(_ event: [String: Any]) -> Void {
     
     print("contextualDashboardEnabled: \(self.dashboardEnabled)")
@@ -284,17 +326,28 @@ struct ViewState {
     let layoutType = layout["layoutType"] as! String
     self.viewStates[stateIndex].layoutType = layoutType
     
+    
+    var text = layout["text"] as? String ?? " "
+    var topText = layout["topText"] as? String ?? " "
+    var bottomText = layout["bottomText"] as? String ?? " "
+    var title = layout["title"] as? String ?? " "
+    
+    text = parsePlaceholders(text)
+    topText = parsePlaceholders(topText)
+    bottomText = parsePlaceholders(bottomText)
+    title = parsePlaceholders(title)
+    
     switch layoutType {
     case "text_wall":
-      self.viewStates[stateIndex].text = layout["text"] as? String ?? " "
+      self.viewStates[stateIndex].text = text
       break
     case "double_text_wall":
-      self.viewStates[stateIndex].topText = layout["topText"] as? String ?? " "
-      self.viewStates[stateIndex].bottomText = layout["bottomText"] as? String ?? " "
+      self.viewStates[stateIndex].topText = topText
+      self.viewStates[stateIndex].bottomText = bottomText
       break
     case "reference_card":
-      self.viewStates[stateIndex].topText = layout["text"] as? String ?? " "
-      self.viewStates[stateIndex].bottomText = layout["title"] as? String ?? " "
+      self.viewStates[stateIndex].topText = text
+      self.viewStates[stateIndex].bottomText = title
     default:
       print("UNHANDLED LAYOUT_TYPE \(layoutType)")
       break
