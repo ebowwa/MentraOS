@@ -260,15 +260,51 @@ export class AppService {
    * Validates a TPA's API key.
    * @param packageName - TPA identifier
    * @param apiKey - API key to validate
+   * @param clientIp - Optional IP address of the client for system app validation
    * @returns Promise resolving to validation result
    */
-  async validateApiKey(packageName: string, apiKey: string): Promise<boolean> {
+  async validateApiKey(packageName: string, apiKey: string, clientIp?: string): Promise<boolean> {
     const app = await this.getApp(packageName);
     if (!app) return false;
-
-    // TODO: Implement proper API key validation
-    // For now, accept all keys for development
-    return true;
+    
+    // Additional verification for system apps
+    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(sysApp => sysApp.packageName === packageName);
+    if (isSystemApp) {
+      // If a system app, verify it's coming from the internal cluster network
+      if (clientIp) {
+        // Check if IP is from the internal network
+        // Docker networks typically use 172.x.x.x, 10.x.x.x, or 192.168.x.x
+        // Kubernetes pod IPs depend on your cluster configuration
+        // Handle IPv6-mapped IPv4 addresses (::ffff:a.b.c.d)
+        const ipv4 = clientIp.startsWith('::ffff:') ? clientIp.substring(7) : clientIp;
+        
+        const isInternalIp = ipv4.startsWith('10.') || 
+                             ipv4.startsWith('172.') || 
+                             ipv4.startsWith('192.168.') ||
+                             // For Kubernetes cluster IPs (adjust based on your actual cluster IP range)
+                             ipv4.includes('.svc.cluster.local') || 
+                             clientIp === '::ffff:127.0.0.1' || 
+                             ipv4 === '127.0.0.1' || 
+                             ipv4 === 'localhost';
+        
+        console.log(`System app ${packageName} connection IP check: ${clientIp} (IPv4: ${ipv4}), isInternal: ${isInternalIp}`);
+        
+        if (!isInternalIp) {
+          console.error(`System app ${packageName} connection rejected - not from internal network. IP: ${clientIp}`);
+          return false;
+        }
+      }
+      return true;
+    }
+    
+    // For regular apps, validate API key as normal
+    // Get the MongoDB app document to access hashedApiKey
+    const appDoc = await App.findOne({ packageName });
+    if (!appDoc?.hashedApiKey) return false;
+    
+    // Hash the provided API key and compare with stored hash
+    const hashedKey = this.hashApiKey(apiKey);
+    return hashedKey === appDoc.hashedApiKey;
   }
 
   /**
