@@ -301,7 +301,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
 
             if(blePeripheral != null) {
-                blePeripheral.sendGlassesDisplayEventToManager(cachedDashboardDisplayObject);
+                JSONObject newMsg = generateTemplatedJsonFromServer(cachedDashboardDisplayObject);
+                blePeripheral.sendGlassesDisplayEventToManager(newMsg);
             }
             return;
         }
@@ -728,6 +729,40 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
+    private JSONObject generateTemplatedJsonFromServer(JSONObject rawMsg) {
+        // Process all placeholders in the entire JSON structure in a single pass
+        SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
+        String formattedDate = sdf.format(new Date());
+
+        // 12-hour time format (with leading zeros for hours)
+        SimpleDateFormat time12Format = new SimpleDateFormat("hh:mm");
+        String time12 = time12Format.format(new Date());
+
+        // 24-hour time format
+        SimpleDateFormat time24Format = new SimpleDateFormat("HH:mm");
+        String time24 = time24Format.format(new Date());
+
+        // Current date with format MM/dd
+        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd");
+        String currentDate = dateFormat.format(new Date());
+
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("$no_datetime$", formattedDate);
+        placeholders.put("$DATE$", currentDate);
+        placeholders.put("$TIME12$", time12);
+        placeholders.put("$TIME24$", time24);
+        placeholders.put("$GBATT$", (batteryLevel == null ? "" : batteryLevel + "%"));
+
+        try {
+            JSONObject msg = processJSONPlaceholders(rawMsg, placeholders);
+            return msg;
+        } catch (JSONException e) {
+            //throw new RuntimeException(e);
+            Log.d(TAG, "Error processing JSON placeholders: " + e.getMessage());
+            return rawMsg;
+        }
+    }
+
     private void parseAugmentosResults(JSONObject jsonResponse) throws JSONException {
         JSONArray notificationArray = jsonResponse.getJSONArray(notificationFilterKey);
         JSONArray newsSummaryArray = jsonResponse.getJSONArray(newsSummaryKey);
@@ -772,30 +807,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     public Runnable parseDisplayEventMessage(JSONObject rawMsg) {
             try {
-                // Process all placeholders in the entire JSON structure in a single pass
-                SimpleDateFormat sdf = new SimpleDateFormat("M/dd, h:mm");
-                String formattedDate = sdf.format(new Date());
-
-                // 12-hour time format (with leading zeros for hours)
-                SimpleDateFormat time12Format = new SimpleDateFormat("hh:mm");
-                String time12 = time12Format.format(new Date());
-
-                // 24-hour time format
-                SimpleDateFormat time24Format = new SimpleDateFormat("HH:mm");
-                String time24 = time24Format.format(new Date());
-
-                // Current date with format MM/dd
-                SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd");
-                String currentDate = dateFormat.format(new Date());
-
-                Map<String, String> placeholders = new HashMap<>();
-                placeholders.put("$no_datetime$", formattedDate);
-                placeholders.put("$DATE$", currentDate);
-                placeholders.put("$TIME12$", time12);
-                placeholders.put("$TIME24$", time24);
-                placeholders.put("$GBATT$", (batteryLevel == null ? "" : batteryLevel + "%"));
-
-                JSONObject msg = processJSONPlaceholders(rawMsg, placeholders);
+                JSONObject msg = generateTemplatedJsonFromServer(rawMsg);
 
 //                Log.d(TAG, "Parsed message: " + msg.toString());
 
@@ -1155,7 +1167,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         smartGlassesManager.windowManager.showAppLayer("serverappid", newRunnable, durationMs / 1000); // TODO: either only use seconds or milliseconds
                 }
                 if (blePeripheral != null) {
-                    blePeripheral.sendGlassesDisplayEventToManager(displayData);  //THIS LINE RIGHT HERE ENDS UP TRIGGERING IT
+                    JSONObject newMsg = generateTemplatedJsonFromServer(displayData);
+                    blePeripheral.sendGlassesDisplayEventToManager(newMsg);  //THIS LINE RIGHT HERE ENDS UP TRIGGERING IT
                 }
             }
 
