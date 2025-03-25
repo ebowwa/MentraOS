@@ -13,7 +13,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import { BluetoothService } from '../BluetoothService';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import NavigationBar from '../components/NavigationBar';
@@ -33,8 +33,7 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
 }) => {
     const { status } = useStatus();
     const [glassesModelNameToPair, setGlassesModelNameToPair] = useState<string | null>(null);
-    const bluetoothService = BluetoothService.getInstance();
-
+  
     const glassesOptions = [
         // { modelName: 'Vuzix Z100', key: 'vuzix-z100' },
         // { modelName: 'Mentra Mach1', key: 'mentra_mach1' },
@@ -46,10 +45,7 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
     React.useEffect(() => { }, [status]);
 
     const triggerGlassesPairingGuide = async (glassesModelName: string) => {
-        if (!(await bluetoothService.isBluetoothEnabled() && await bluetoothService.isLocationEnabled())) {
-            GlobalEventEmitter.emit('SHOW_BANNER', { message: "Please enable Bluetooth and Location", type: "error" })
-            return;
-        }
+        // No need for Bluetooth permissions anymore as we're using direct communication
 
         setGlassesModelNameToPair(glassesModelName);
         console.log("TRIGGERING SEARCH SCREEN FOR: " + glassesModelName);

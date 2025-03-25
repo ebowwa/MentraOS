@@ -4,7 +4,7 @@ interface Glasses {
   model_name: string;
   battery_life: number;
   is_searching: boolean;
-  brightness: number | null; // 0-100
+  brightness: string;
   auto_brightness: boolean;
   headUp_angle: number | null; // 0-60
   dashboard_height: number | null; // 0-8

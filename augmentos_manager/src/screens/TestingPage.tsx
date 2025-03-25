@@ -18,8 +18,8 @@ import { ScrollView } from 'react-native-gesture-handler';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-const { AOSModule, RNEventEmitter } = NativeModules;
-const AOSEventEmitter = new NativeEventEmitter(RNEventEmitter);
+const { AOSModule, CoreCommsService } = NativeModules;
+const AOSEventEmitter = new NativeEventEmitter(CoreCommsService);
 
 interface TestingPageProps {
   isDarkTheme: boolean;
@@ -50,7 +50,7 @@ const connectionStateListener = AOSEventEmitter.addListener(
 
 const Homepage: React.FC<TestingPageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();
-  const { status, startBluetoothAndCore } = useStatus();
+  const { status } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
   const [brightness, setBrightness] = useState(50);

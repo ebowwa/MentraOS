@@ -351,7 +351,7 @@ import AVFoundation
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
       }
     } catch {
       print("Error converting to JSON: \(error)")
@@ -513,6 +513,7 @@ import AVFoundation
           break
         case .unknown:
           print("Unknown command type: \(commandString)")
+          handleRequestStatus()
         case .ping:
           break
         case .updateGlassesHeadUpAngle:
@@ -670,7 +671,7 @@ import AVFoundation
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
       }
     } catch {
       print("Error converting to JSON: \(error)")

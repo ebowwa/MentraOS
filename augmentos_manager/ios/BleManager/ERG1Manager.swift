@@ -1189,7 +1189,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       do {
         let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
         if let jsonString = String(data: jsonData, encoding: .utf8) {
-          RNEventEmitter.emitter.sendEvent(withName: "CoreMessageIntentEvent", body: jsonString)
+          CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
         }
       } catch {
         print("Error converting to JSON: \(error)")
@@ -1240,7 +1240,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
     ]
     
     // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
-    //    RNEventEmitter.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
+    //    CoreCommsService.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
   }
   
   public func centralManager(_ central: CBCentralManager, didDisconnectPeripheral peripheral: CBPeripheral, error: (any Error)?) {

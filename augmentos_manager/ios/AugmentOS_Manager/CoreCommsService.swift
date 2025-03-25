@@ -1,5 +1,5 @@
 //
-//  RNEventEmitter.swift
+//  CoreCommsService.swift
 //  AugmentOS_Manager
 //
 //  Created by Matthew Fosse on 3/4/25.
@@ -8,18 +8,18 @@
 import Foundation
 import React
 
-@objc(RNEventEmitter)
-open class RNEventEmitter: RCTEventEmitter {
+@objc(CoreCommsService)
+open class CoreCommsService: RCTEventEmitter {
 
   public static var emitter: RCTEventEmitter!
 
   override init() {
     super.init()
-    RNEventEmitter.emitter = self
+    CoreCommsService.emitter = self
   }
 
   open override func supportedEvents() -> [String] {
     // add more as needed
-    ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent"]
+    ["onReady", "onPending", "onFailure", "onConnectionStateChanged", "CoreMessageIntentEvent", "CoreMessageEvent"]
   }
 }
