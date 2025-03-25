@@ -131,19 +131,33 @@ public class SmartGlassesRepresentative {
      * Helper to create the appropriate communicator once.
      */
     private SmartGlassesCommunicator createCommunicator() {
+        SmartGlassesCommunicator communicator;
+        
         switch (smartGlassesDevice.getGlassesOs()) {
             case ANDROID_OS_GLASSES:
-                return new AndroidSGC(context, smartGlassesDevice, dataObservable);
+                communicator = new AndroidSGC(context, smartGlassesDevice, dataObservable);
+                // BATTERY OPTIMIZATION: Register for direct audio callbacks immediately
+                if (audioProcessingCallback != null && communicator instanceof AndroidSGC) {
+                    ((AndroidSGC) communicator).registerSpeechRecSystem(audioProcessingCallback);
+                    Log.d(TAG, "BATTERY OPTIMIZATION: Registered audio processing callback during communicator creation");
+                }
+                return communicator;
+                
             case AUDIO_WEARABLE_GLASSES:
                 return new AudioWearableSGC(context, smartGlassesDevice);
+                
             case VIRTUAL_WEARABLE:
                 return new VirtualSGC(context, smartGlassesDevice);
+                
             case ULTRALITE_MCU_OS_GLASSES:
                 return new UltraliteSGC(context, smartGlassesDevice, lifecycleOwner);
+                
             case EVEN_REALITIES_G1_MCU_OS_GLASSES:
                 return new EvenRealitiesG1SGC(context, smartGlassesDevice);
+                
             case SELF_OS_GLASSES:
                 return new SelfSGC(context, smartGlassesDevice);
+                
             default:
                 return null;  // or throw an exception
         }
@@ -214,13 +228,21 @@ public class SmartGlassesRepresentative {
         });
     }
 
+    /**
+     * BATTERY OPTIMIZATION: Direct method to control audio encoding bypass
+     * (Implementation removed as requested)
+     */
+    public void setBypassAudioEncoding(boolean bypass) {
+        // Method kept for API compatibility but bypass functionality removed
+        Log.d(TAG, "Audio encoding bypass setting ignored - feature disabled");
+    }
+    
     //data from the local microphone, convert to LC3, send
     private void receiveChunk(ByteBuffer chunk){
         byte[] audio_bytes = chunk.array();
 
         //encode as LC3
         byte[] lc3Data = L3cCpp.encodeLC3(chunk.array());
-        // Log.d(TAG, "LC3 Data encoded: " + lc3Data.toString());
 
         // BATTERY OPTIMIZATION: Use direct callback instead of EventBus posts
         // This eliminates thousands of EventBus posts per minute that were
@@ -234,10 +256,22 @@ public class SmartGlassesRepresentative {
     public void destroy(){
         Log.d(TAG, "SG rep destroying");
 
-        EventBus.getDefault().unregister(this);
+        // BATTERY OPTIMIZATION: Safe EventBus unregistration
+        try {
+            if (EventBus.getDefault().isRegistered(this)) {
+                EventBus.getDefault().unregister(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error unregistering from EventBus", e);
+        }
 
         if (bluetoothAudio != null) {
-            bluetoothAudio.destroy();
+            try {
+                bluetoothAudio.destroy();
+                bluetoothAudio = null; // BATTERY OPTIMIZATION: Prevent memory leaks
+            } catch (Exception e) {
+                Log.e(TAG, "Error destroying bluetoothAudio", e);
+            }
         }
 
         if (smartGlassesCommunicator != null){
@@ -249,6 +283,12 @@ public class SmartGlassesRepresentative {
             handler.removeCallbacksAndMessages(null);
             handler = null;
         }
+        
+        // BATTERY OPTIMIZATION: Clear references to prevent memory leaks
+        context = null;
+        lifecycleOwner = null;
+        audioProcessingCallback = null;
+        dataObservable = null;
         
         // Clear the callback reference
         audioProcessingCallback = null;

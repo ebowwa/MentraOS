@@ -57,23 +57,49 @@ public class SpeechRecSwitchSystem implements AudioProcessingCallback {
     // Removed EventBus subscribers for AudioChunkNewEvent and LC3AudioChunkNewEvent
     // Now using direct callbacks for better performance and battery efficiency
 
+    // BATTERY OPTIMIZATION: Added direct method call to avoid EventBus overhead
+    public void setBypassVad(boolean bypass) {
+        if (speechRecFramework != null) {
+            speechRecFramework.changeBypassVadForDebuggingState(bypass);
+        }
+    }
+    
     @Subscribe
     public void onBypassVadForDebuggingEvent(BypassVadForDebuggingEvent receivedEvent){
         //redirect audio to the currently in use ASR framework
-        speechRecFramework.changeBypassVadForDebuggingState(receivedEvent.bypassVadForDebugging);
+        setBypassVad(receivedEvent.bypassVadForDebugging);
     }
 
+    // BATTERY OPTIMIZATION: Added direct method call to avoid EventBus overhead
+    public void pauseAsr(boolean pause) {
+        if (speechRecFramework != null) {
+            speechRecFramework.pauseAsr(pause);
+        }
+    }
+    
     @Subscribe
     public void onPauseAsrEvent(PauseAsrEvent receivedEvent){
         //redirect audio to the currently in use ASR framework
-        speechRecFramework.pauseAsr(receivedEvent.pauseAsr);
+        pauseAsr(receivedEvent.pauseAsr);
     }
 
     public void destroy(){
         if (speechRecFramework != null){
             speechRecFramework.destroy();
+            speechRecFramework = null; // BATTERY OPTIMIZATION: Prevent memory leaks
         }
-        EventBus.getDefault().unregister(this);
+        
+        // BATTERY OPTIMIZATION: Safe EventBus unregistration
+        try {
+            if (EventBus.getDefault().isRegistered(this)) {
+                EventBus.getDefault().unregister(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error unregistering from EventBus", e);
+        }
+        
+        // BATTERY OPTIMIZATION: Clear context reference
+        mContext = null;
     }
 
     public void updateConfig(List<AsrStreamKey> languages){

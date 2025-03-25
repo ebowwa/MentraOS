@@ -7,11 +7,13 @@ import android.util.Log;
 
 import androidx.lifecycle.LifecycleOwner;
 
+import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.augmentos_core.R;
 import com.augmentos.augmentos_core.WindowManagerWithTimeouts;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BypassVadForDebuggingEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.NewAsrLanguagesEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesConnectionEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.AndroidSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesFontSize;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesRepresentative;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.ASR_FRAMEWORKS;
@@ -68,8 +70,8 @@ public class SmartGlassesManager {
     private static final String TAG = "SGM_Manager"; // Equivalent to AugmentosSmartGlassesService "AugmentOS_AugmentOSService"
 
     // Context and lifecycle owner references
-    private final Context context;
-    private final LifecycleOwner lifecycleOwner;
+    private Context context;
+    private LifecycleOwner lifecycleOwner;
 
     // Components from original service
     private TextToSpeechSystem textToSpeechSystem;
@@ -150,11 +152,20 @@ public class SmartGlassesManager {
      * Cleanup all resources - replaces onDestroy from service
      */
     public void cleanup() {
-        EventBus.getDefault().unregister(this);
+        // BATTERY OPTIMIZATION: Try-catch for EventBus unregister to prevent crashes
+        // Also ensures we don't attempt to unregister if not registered
+        try {
+            if (EventBus.getDefault().isRegistered(this)) {
+                EventBus.getDefault().unregister(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error unregistering from EventBus", e);
+        }
 
         // Kill speech rec
         if (speechRecSwitchSystem != null) {
             speechRecSwitchSystem.destroy();
+            speechRecSwitchSystem = null; // BATTERY OPTIMIZATION: Set to null to avoid memory leaks
         }
 
         // Kill smart glasses connection
@@ -166,11 +177,13 @@ public class SmartGlassesManager {
         // Kill data transmitters
         if (dataObservable != null) {
             dataObservable.onComplete();
+            dataObservable = null; // BATTERY OPTIMIZATION: Set to null to avoid memory leaks
         }
 
         // Kill textToSpeech
         if (textToSpeechSystem != null) {
             textToSpeechSystem.destroy();
+            textToSpeechSystem = null; // BATTERY OPTIMIZATION: Set to null to avoid memory leaks
         }
 
         // Clean up micDebounceHandler
@@ -182,7 +195,13 @@ public class SmartGlassesManager {
         // Clear window manager
         if (windowManager != null) {
             windowManager.shutdown();
+            windowManager = null; // BATTERY OPTIMIZATION: Set to null to avoid memory leaks
         }
+        
+        // BATTERY OPTIMIZATION: Explicitly remove any references to context
+        context = null;
+        lifecycleOwner = null;
+        eventHandler = null;
     }
 
     /**
@@ -220,6 +239,21 @@ public class SmartGlassesManager {
         // Connect directly instead of using a handler
         Log.d(TAG, "CONNECTING TO SMART GLASSES");
         smartGlassesRepresentative.connectToSmartGlasses();
+        
+        // BATTERY OPTIMIZATION: If the device is an AudioWearable (uses the AndroidSGC communicator),
+        // register the speech recognition system for direct audio callbacks
+        if (device instanceof AudioWearable && speechRecSwitchSystem != null) {
+            // After connection is established, register for direct audio processing
+            // This implements the direct callback pattern we set up, replacing EventBus
+            if (smartGlassesRepresentative != null && 
+                smartGlassesRepresentative.smartGlassesCommunicator != null &&
+                smartGlassesRepresentative.smartGlassesCommunicator instanceof AndroidSGC) {
+                ((AndroidSGC)
+                  smartGlassesRepresentative.smartGlassesCommunicator).registerSpeechRecSystem(speechRecSwitchSystem);
+                
+                Log.d(TAG, "BATTERY OPTIMIZATION: Registered speech recognition system for direct audio callbacks");
+            }
+        }
     }
 
     public void findCompatibleDeviceNames(SmartGlassesDevice device) {
@@ -338,7 +372,18 @@ public class SmartGlassesManager {
         editor.putBoolean(context.getResources().getString(R.string.BYPASS_VAD_FOR_DEBUGGING), enabled);
         editor.apply();
 
-        EventBus.getDefault().post(new BypassVadForDebuggingEvent(enabled));
+        // BATTERY OPTIMIZATION: Direct callback instead of EventBus
+        // We'll use the callback pattern in the SpeechRecSwitchSystem
+        if (context instanceof AugmentosService) {
+            AugmentosService service = (AugmentosService) context;
+            if (service.smartGlassesManager != null && 
+                service.smartGlassesManager.speechRecSwitchSystem != null) {
+                service.smartGlassesManager.speechRecSwitchSystem.setBypassVad(enabled);
+            }
+        } else {
+            // Fallback to EventBus when we don't have direct access to the service
+            EventBus.getDefault().post(new BypassVadForDebuggingEvent(enabled));
+        }
     }
     
     public static boolean getBypassAudioEncodingForDebugging(Context context) {
@@ -539,26 +584,6 @@ public class SmartGlassesManager {
 
         // Tell speech rec system that we stopped
         speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
-    }
-
-    @Subscribe
-    public void onSmartRingButtonEvent(SmartRingButtonOutputEvent event) {
-        int buttonId = event.buttonId;
-        long time = event.timestamp;
-        boolean isDown = event.isDown;
-
-        if(!isDown || buttonId != 1) return;
-        Log.d(TAG, "DETECTED BUTTON PRESS W BUTTON ID: " + buttonId);
-        currTime = System.currentTimeMillis();
-
-        //Detect double presses
-        if(isDown && currTime - lastPressed < doublePressTimeConst) {
-            Log.d(TAG, "Double tap - CurrTime-lastPressed: "+ (currTime-lastPressed));
-        }
-
-        if(isDown) {
-            lastPressed = System.currentTimeMillis();
-        }
     }
 
     public void clearScreen() {

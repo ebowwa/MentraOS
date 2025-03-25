@@ -108,6 +108,17 @@ public class AndroidSGC extends SmartGlassesCommunicator {
         //state information
         mConnectState = SmartGlassesConnectionState.DISCONNECTED;
     }
+    
+    /**
+     * BATTERY OPTIMIZATION: Register a speech recognition system to process audio
+     * This allows direct callbacks instead of EventBus for better performance
+     * @param speechRecSystem The speech recognition system to register
+     */
+    public void registerSpeechRecSystem(com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback speechRecSystem) {
+        if (audioSystem != null && speechRecSystem != null) {
+            audioSystem.registerAudioProcessingCallback(speechRecSystem);
+        }
+    }
 
     //not used/valid yet
     @Override
@@ -524,6 +535,7 @@ public class AndroidSGC extends SmartGlassesCommunicator {
 
         // Destroy the audio system
         if (audioSystem != null) {
+            // BATTERY OPTIMIZATION: Make sure all callbacks are properly unregistered
             audioSystem.destroy();
             audioSystem = null;
         }
@@ -563,25 +575,33 @@ public class AndroidSGC extends SmartGlassesCommunicator {
 
         //kill this socket
         try {
-            Log.i(TAG, "SOCKETTHREAD TRYNA JOIN");
-            if (SocketThread != null) {
-                SocketThread.join();
+            // Join all threads with proper timeouts to prevent blocking
+            if (SocketThread != null && SocketThread.isAlive()) {
+                SocketThread.join(1000); // 1 second timeout
+                Log.i(TAG, "SOCKETTHREAD JOINED");
             }
-            Log.i(TAG, "SOCKETTHREAD JOINED");
-            Log.i(TAG, "SENDTTHREAD TRYNA JOIN");
-            if (SendThread != null) {
-                SendThread.join();
+            
+            if (SendThread != null && SendThread.isAlive()) {
+                SendThread.join(1000);
+                Log.i(TAG, "SENDTTHREAD JOINED");
             }
-            Log.i(TAG, "SENDTTHREAD JOINED");
-            Log.i(TAG, "RECEIVE THREAD TRYNA JOIN");
-            if (ReceiveThread != null) {
-                ReceiveThread.join();
+            
+            if (ReceiveThread != null && ReceiveThread.isAlive()) {
+                ReceiveThread.join(1000);
+                Log.i(TAG, "RECEIVE THREAD JOINED");
             }
-            Log.i(TAG, "RECEIVE THREAD JOINED");
         } catch (InterruptedException e){
             e.printStackTrace();
-            Log.d(TAG, "Error waiting for threads to joing");
+            Log.d(TAG, "Error waiting for threads to join");
         }
+        
+        // Clear all references
+        serverSocket = null;
+        socket = null;
+        input = null;
+        output = null;
+        context = null;
+        smartGlassesDevice = null;
     }
 
     public void displayReferenceCardSimple(String title, String body){

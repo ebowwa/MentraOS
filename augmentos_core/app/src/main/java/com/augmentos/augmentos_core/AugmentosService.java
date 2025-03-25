@@ -224,7 +224,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Subscribe
     public void onGlassesHeadUpEvent(GlassesHeadUpEvent event){
         ServerComms.getInstance().sendHeadPosition("up");
-        EventBus.getDefault().post(new DisplayGlassesDashboardEvent());
+        // BATTERY OPTIMIZATION: Directly call method instead of posting additional event
+        if (contextualDashboardEnabled && smartGlassesManager != null) {
+            try {
+                displayGlassesDashboardEvent();
+            } catch (JSONException e) {
+                Log.e(TAG, "Error displaying dashboard", e);
+            }
+        }
     }
 
     @Subscribe
@@ -241,13 +248,21 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         long time = event.timestamp;
 
         Log.d(TAG, "GLASSES TAPPED X TIMES: " + numTaps + " SIDEOFGLASSES: " + sideOfGlasses);
+        
         if (smartGlassesManager == null) return;
         if (numTaps == 2 || numTaps == 3) {
             if (smartGlassesManager.windowManager.isDashboardShowing()) {
                 smartGlassesManager.windowManager.hideDashboard();
             } else {
-                Log.d(TAG, "GOT A DOUBLE+ TAP");
-                EventBus.getDefault().post(new DisplayGlassesDashboardEvent());
+                // BATTERY OPTIMIZATION: Directly call method instead of posting additional event
+                if (contextualDashboardEnabled) {
+                    try {
+                        Log.d(TAG, "GOT A DOUBLE+ TAP");
+                        displayGlassesDashboardEvent();
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error displaying dashboard", e);
+                    }
+                }
             }
         }
     }
@@ -271,7 +286,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public JSONArray latestNewsArray = new JSONArray();
     private int latestNewsIndex = 0;
     @Subscribe
-    public void onDisplayGlassesDashboardEvent(DisplayGlassesDashboardEvent event) throws JSONException {
+    public void displayGlassesDashboardEvent() throws JSONException {
         if (!contextualDashboardEnabled) {
             return;
         }
@@ -1618,11 +1633,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void onDestroy(){
         Log.d(TAG, "Service being destroyed");
+        
+        // BATTERY OPTIMIZATION: Cleanup resources first, then unregister from EventBus
+        // This prevents unhandled EventBus events during cleanup
         cleanupAllResources();
         
-        // Unregister from EventBus last, as other cleanup methods might post events
-        if (EventBus.getDefault().isRegistered(this)) {
-            EventBus.getDefault().unregister(this);
+        // Unregister from EventBus with proper error handling
+        try {
+            if (EventBus.getDefault().isRegistered(this)) {
+                EventBus.getDefault().unregister(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error unregistering from EventBus", e);
         }
         
         super.onDestroy();
