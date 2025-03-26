@@ -245,7 +245,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                             isRightConnected = true;
                             rightReconnectAttempts = 0;
                         }
-                        Log.d(TAG, "Discover serviecs calling...");
+
+                        if (isLeftConnected && isRightConnected) {
+                            stopScan();
+                            Log.d(TAG, "Both glasses connected. Stopping BLE scan.");
+                        }
+
+                        Log.d(TAG, "Discover services calling...");
                         gatt.discoverServices();
                     } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                         Log.d(TAG, side + " glass disconnected, stopping heartbeats");
