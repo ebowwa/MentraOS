@@ -303,10 +303,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
 
           {/* Always on time, date and battery */}
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
+          {Platform.OS === 'android' && (
+            <View style={styles.settingItem}>
+              <View style={styles.settingTextContainer}>
+                <Text
+                  style={[
                   styles.label,
                   isDarkTheme ? styles.lightText : styles.darkText,
                 ]}>
@@ -326,9 +327,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               onValueChange={toggleAlwaysOnStatusBar}
               trackColor={switchColors.trackColor}
               thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
-            />
-          </View>
+                ios_backgroundColor={switchColors.ios_backgroundColor}
+              />
+            </View>
+          )}
 
           {/* Privacy Settings */}
           <TouchableOpacity
