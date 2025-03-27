@@ -12,8 +12,10 @@ WORKDIR /app
 # Copy your application code
 COPY . .
 
-# Install dependencies and build shared packages and services
-RUN bun install && \
+# Install dependencies and build shared packages and services in the correct order
+# Added proper error handling and explicit build steps
+RUN echo "🚀 Starting build process..." && \
+    bun install && \
     cd packages/utils && bun run build && \
     cd ../sdk && bun run build && \
     cd ../agents && bun run build && \
@@ -22,13 +24,18 @@ RUN bun install && \
     cd ../dashboard-manager && bun run build && \
     cd ../notify && bun run build && \
     cd ../miraai && bun run build && \
-    cd ../livetranslation && bun run build
+    cd ../livetranslation && bun run build && \
+    echo "✅ All packages built successfully!"
 
 # Stage 2: Production Image
 FROM node:18-slim
 WORKDIR /app
 COPY --from=builder /app /app
 ENV NODE_ENV=production
+
+# Install tini for proper process management
+RUN apt-get update && apt-get install -y tini && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Use tini as the init process
 ENTRYPOINT ["/usr/bin/tini", "--"]

@@ -206,28 +206,36 @@ export class EventManager {
         handlersArray.forEach(handler => {
           try {
             (handler as Handler<EventData<T>>)(data);
-          } catch (handlerError) {
+          } catch (handlerError: unknown) {
             // Log the error but don't let it propagate
             console.error(`Error in handler for event '${String(event)}':`, handlerError);
             
             // Emit an error event for tracking purposes
             if (event !== 'error') { // Prevent infinite recursion
+              const errorMessage = handlerError instanceof Error 
+                ? handlerError.message 
+                : String(handlerError);
+              
               this.emitter.emit('error', new Error(
-                `Handler error for event '${String(event)}': ${handlerError.message}`
+                `Handler error for event '${String(event)}': ${errorMessage}`
               ));
             }
           }
         });
       }
-    } catch (emitError) {
+    } catch (emitError: unknown) {
       // Catch any errors in the emission process itself
       console.error(`Fatal error emitting event '${String(event)}':`, emitError);
       
       // Try to emit an error event if we're not already handling an error
       if (event !== 'error') {
         try {
+          const errorMessage = emitError instanceof Error 
+            ? emitError.message 
+            : String(emitError);
+            
           this.emitter.emit('error', new Error(
-            `Event emission error for '${String(event)}': ${emitError.message}`
+            `Event emission error for '${String(event)}': ${errorMessage}`
           ));
         } catch (nestedError) {
           // If even this fails, just log it - nothing more we can do

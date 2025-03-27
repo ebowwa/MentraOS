@@ -267,9 +267,10 @@ export class TpaSession {
         this.ws.on('open', () => {
           try {
             this.sendConnectionInit();
-          } catch (error) {
+          } catch (error: unknown) {
             console.error('Error during connection initialization:', error);
-            this.events.emit('error', new Error(`Connection initialization failed: ${error.message}`));
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            this.events.emit('error', new Error(`Connection initialization failed: ${errorMessage}`));
             reject(error);
           }
         });
@@ -301,9 +302,10 @@ export class TpaSession {
 
                 this.handleMessage(audioChunk);
                 return;
-              } catch (binaryError) {
+              } catch (binaryError: unknown) {
                 console.error('Error processing binary message:', binaryError);
-                this.events.emit('error', new Error(`Failed to process binary message: ${binaryError.message}`));
+                const errorMessage = binaryError instanceof Error ? binaryError.message : String(binaryError);
+                this.events.emit('error', new Error(`Failed to process binary message: ${errorMessage}`));
                 return;
               }
             }
@@ -342,14 +344,16 @@ export class TpaSession {
               
               // Process the validated message
               this.handleMessage(message);
-            } catch (jsonError) {
+            } catch (jsonError: unknown) {
               console.error('JSON parsing error:', jsonError);
-              this.events.emit('error', new Error(`Failed to parse JSON message: ${jsonError.message}`));
+              const errorMessage = jsonError instanceof Error ? jsonError.message : String(jsonError);
+              this.events.emit('error', new Error(`Failed to parse JSON message: ${errorMessage}`));
             }
-          } catch (messageError) {
+          } catch (messageError: unknown) {
             // Final catch - should never reach here if individual handlers work correctly
             console.error('Unhandled message processing error:', messageError);
-            this.events.emit('error', new Error(`Unhandled message error: ${messageError.message}`));
+            const errorMessage = messageError instanceof Error ? messageError.message : String(messageError);
+            this.events.emit('error', new Error(`Unhandled message error: ${errorMessage}`));
           }
         };
         
@@ -436,9 +440,10 @@ export class TpaSession {
         // Track event handler removal
         this.resources.track(timeoutCleanup);
 
-      } catch (connectionError) {
+      } catch (connectionError: unknown) {
         console.error('Connection setup error:', connectionError);
-        reject(new Error(`Failed to setup connection: ${connectionError.message}`));
+        const errorMessage = connectionError instanceof Error ? connectionError.message : String(connectionError);
+        reject(new Error(`Failed to setup connection: ${errorMessage}`));
       }
     });
   }
@@ -482,7 +487,7 @@ export class TpaSession {
       try {
         if (isTpaConnectionAck(message)) {
           // Validate settings object exists with required fields
-          const settings = message.settings || {};
+          const settings = message.settings || [];
           this.events.emit('connected', settings);
           this.updateSubscriptions();
         }
@@ -505,7 +510,7 @@ export class TpaSession {
         }
         else if (isSettingsUpdate(message)) {
           // Validate settings object exists
-          const settings = message.settings || {};
+          const settings = message.settings || [];
           this.events.emit('settings_update', settings);
         }
         else if (isAppStopped(message)) {
@@ -517,15 +522,17 @@ export class TpaSession {
         else {
           this.events.emit('error', new Error(`Unrecognized message type: ${(message as any).type}`));
         }
-      } catch (processingError) {
+      } catch (processingError: unknown) {
         // Catch any errors during message processing to prevent TPA crashes
         console.error('Error processing message:', processingError);
-        this.events.emit('error', new Error(`Error processing message: ${processingError.message}`));
+        const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
+        this.events.emit('error', new Error(`Error processing message: ${errorMessage}`));
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Final safety net to ensure the TPA doesn't crash on any unexpected errors
       console.error('Unexpected error in message handler:', error);
-      this.events.emit('error', new Error(`Unexpected error in message handler: ${error.message}`));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.events.emit('error', new Error(`Unexpected error in message handler: ${errorMessage}`));
     }
   }
   
@@ -581,9 +588,10 @@ export class TpaSession {
 
       // Emit to subscribers
       this.events.emit(StreamType.AUDIO_CHUNK, audioChunk);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error processing binary message:', error);
-      this.events.emit('error', new Error(`Error processing binary message: ${error.message}`));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.events.emit('error', new Error(`Error processing binary message: ${errorMessage}`));
     }
   }
   
@@ -593,7 +601,7 @@ export class TpaSession {
    * @param data - The potentially unsafe data to sanitize
    * @returns Sanitized data safe for processing
    */
-  private sanitizeEventData(streamType: StreamType, data: unknown): unknown {
+  private sanitizeEventData(streamType: StreamType, data: unknown): any {
     try {
       // If data is null or undefined, return an empty object to prevent crashes
       if (data === null || data === undefined) {
@@ -616,23 +624,24 @@ export class TpaSession {
           
         case StreamType.HEAD_POSITION:
           // Ensure position data has required numeric fields
-          const pos = data as HeadPosition;
-          if (typeof pos.x !== 'number' || typeof pos.y !== 'number' || typeof pos.z !== 'number') {
-            return { x: 0, y: 0, z: 0, timestamp: new Date() };
+          // Handle HeadPosition - Note the property position instead of x,y,z
+          const pos = data as any;
+          if (typeof pos?.position !== 'string') {
+            return { position: 'up', timestamp: new Date() };
           }
           break;
           
         case StreamType.BUTTON_PRESS:
           // Ensure button type is valid
-          const btn = data as ButtonPress;
-          if (!btn.buttonType) {
-            return { buttonType: 'UNKNOWN', timestamp: new Date() };
+          const btn = data as any;
+          if (!btn.buttonId || !btn.pressType) {
+            return { buttonId: 'unknown', pressType: 'short', timestamp: new Date() };
           }
           break;
       }
       
       return data;
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Error sanitizing ${streamType} data:`, error);
       // Return a safe empty object if something goes wrong
       return {};
@@ -733,13 +742,20 @@ export class TpaSession {
       try {
         const serializedMessage = JSON.stringify(message);
         this.ws.send(serializedMessage);
-      } catch (sendError) {
-        throw new Error(`Failed to send message: ${sendError.message}`);
+      } catch (sendError: unknown) {
+        const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+        throw new Error(`Failed to send message: ${errorMessage}`);
       }
-    } catch (error) {
+    } catch (error: unknown) {
       // Log the error and emit an event so TPA developers are aware
       console.error('Message send error:', error);
-      this.events.emit('error', error);
+      
+      // Ensure we always emit an Error object
+      if (error instanceof Error) {
+        this.events.emit('error', error);
+      } else {
+        this.events.emit('error', new Error(String(error)));
+      }
       
       // Re-throw to maintain the original function behavior
       throw error;
