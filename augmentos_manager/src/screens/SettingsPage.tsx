@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,18 +11,18 @@ import {
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {Slider} from 'react-native-elements';
+import { Slider } from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import {useNavigation} from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 
-import {useStatus} from '../providers/AugmentOSStatusProvider';
+import { useStatus } from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
-import {stopExternalService} from '../bridge/CoreServiceStarter';
-import {loadSetting, saveSetting} from '../logic/SettingsHelper.tsx';
+import { stopExternalService } from '../bridge/CoreServiceStarter';
+import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
 import NavigationBar from '../components/NavigationBar';
-import {SafeAreaView} from 'react-native-safe-area-context';
-import {SETTINGS_KEYS} from '../consts';
-import {supabase} from '../supabaseClient';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { SETTINGS_KEYS } from '../consts';
+import { supabase } from '../supabaseClient';
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -46,7 +46,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   toggleTheme,
   navigation,
 }) => {
-  const {status} = useStatus();
+  const { status } = useStatus();
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -60,7 +60,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled,
   );
+
   const [brightness, setBrightness] = useState<number | null>(null);
+
+  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
+    status.glasses_info?.auto_brightness
+  );
 
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
@@ -79,6 +84,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     const newVal = !isAlwaysOnStatusBarEnabled;
     await coreCommunicator.sendToggleAlwaysOnStatusBar(newVal);
     setIsAlwaysOnStatusBarEnabled(newVal);
+  };
+
+  const toggleAutoBrightness = async () => {
+    const newVal = !isAutoBrightnessEnabled;
+    await coreCommunicator.sendToggleAutoBrightness(newVal);
+    setIsAutoBrightnessEnabled(newVal);
   };
 
   useEffect(() => {
@@ -118,10 +129,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       'Forget Glasses',
       'Are you sure you want to forget your glasses?',
       [
-        {text: 'Cancel', style: 'cancel'},
-        {text: 'Yes', onPress: forgetGlasses},
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Yes', onPress: forgetGlasses },
       ],
-      {cancelable: false},
+      { cancelable: false },
     );
   };
 
@@ -175,14 +186,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
         index: 0,
-        routes: [{name: 'SplashScreen'}],
+        routes: [{ name: 'SplashScreen' }],
       });
     } catch (err) {
       console.error('Error during sign-out:', err);
       // Even if there's an error, still try to navigate away to login
       navigation.reset({
         index: 0,
-        routes: [{name: 'SplashScreen'}],
+        routes: [{ name: 'SplashScreen' }],
       });
     }
   };
@@ -192,10 +203,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       'Sign Out',
       'Are you sure you want to sign out?',
       [
-        {text: 'Cancel', style: 'cancel'},
-        {text: 'Yes', onPress: handleSignOut},
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Yes', onPress: handleSignOut },
       ],
-      {cancelable: false},
+      { cancelable: false },
     );
   };
 
@@ -243,13 +254,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       : styles.maximumTrackTintColorLight.color,
     thumbTintColor: styles.thumbTintColor.color,
     // Using inline objects instead of defaultProps
-    thumbTouchSize: {width: 40, height: 40},
-    trackStyle: {height: 5},
-    thumbStyle: {height: 20, width: 20},
+    thumbTouchSize: { width: 40, height: 40 },
+    trackStyle: { height: 5 },
+    thumbStyle: { height: 20, width: 20 },
   };
 
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
         {/* Title Section */}
         <View
@@ -308,25 +319,25 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               <View style={styles.settingTextContainer}>
                 <Text
                   style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}>
-                Always On Status Bar (Beta Feature)
-              </Text>
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                ]}>
-                Always show the time, date and battery level on your smart
-                glasses.
-              </Text>
-            </View>
-            <Switch
-              value={isAlwaysOnStatusBarEnabled}
-              onValueChange={toggleAlwaysOnStatusBar}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
+                    styles.label,
+                    isDarkTheme ? styles.lightText : styles.darkText,
+                  ]}>
+                  Always On Status Bar (Beta Feature)
+                </Text>
+                <Text
+                  style={[
+                    styles.value,
+                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  ]}>
+                  Always show the time, date and battery level on your smart
+                  glasses.
+                </Text>
+              </View>
+              <Switch
+                value={isAlwaysOnStatusBarEnabled}
+                onValueChange={toggleAlwaysOnStatusBar}
+                trackColor={switchColors.trackColor}
+                thumbColor={switchColors.thumbColor}
                 ios_backgroundColor={switchColors.ios_backgroundColor}
               />
             </View>
@@ -399,7 +410,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   isDarkTheme ? styles.lightText : styles.darkText,
                   (!status.core_info.puck_connected ||
                     !status.glasses_info?.model_name) &&
-                    styles.disabledItem,
+                  styles.disabledItem,
                 ]}>
                 Brightness
               </Text>
@@ -409,7 +420,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
                   (!status.core_info.puck_connected ||
                     !status.glasses_info?.model_name) &&
-                    styles.disabledItem,
+                  styles.disabledItem,
                 ]}>
                 Adjust the brightness level of your smart glasses.
               </Text>
@@ -450,6 +461,37 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
         </TouchableOpacity> */}
 
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                Auto Brightness
+              </Text>
+              {status.glasses_info?.model_name && (
+                <Text
+                  style={[
+                    styles.value,
+                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  ]}
+                >
+                  Automatically adjust the brightness of your smart glasses based on the ambient light.
+                </Text>
+              )}
+            </View>
+            <Switch
+              value={isAutoBrightnessEnabled}
+              onValueChange={toggleAutoBrightness}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
+          </View>
+
           {/* Forget Glasses */}
           <TouchableOpacity
             style={styles.settingItem}
@@ -465,7 +507,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   styles.redText,
                   (!status.core_info.puck_connected ||
                     status.core_info.default_wearable === '') &&
-                    styles.disabledItem,
+                  styles.disabledItem,
                 ]}>
                 Forget Glasses
               </Text>

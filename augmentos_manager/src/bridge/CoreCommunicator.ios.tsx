@@ -133,8 +133,12 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // AOSModule.sendCommand(JSON.stringify({ "command": "request_status" }));
-    // setTimeout(() => {
+    setTimeout(() => {
       AOSModule.sendCommand(JSON.stringify({ "command": "connect_wearable" }));
+    }, 2000);
+
+    // setTimeout(() => {
+    //   AOSModule.sendCommand(JSON.stringify({ "command": "connect_wearable" }));
     // }, 10000);
 
     
@@ -473,6 +477,13 @@ export class CoreCommunicator extends EventEmitter {
       params: {
         headUpAngle: headUpAngle,
       },
+    });
+  }
+
+  async setGlassesDashboardHeight(dashboardHeight: number) {
+    return await this.sendData({
+      command: 'update_glasses_dashboard_height',
+      params: { height: dashboardHeight },
     });
   }
 

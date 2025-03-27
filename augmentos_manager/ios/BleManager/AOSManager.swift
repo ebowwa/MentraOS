@@ -36,7 +36,8 @@ import AVFoundation
   private var sensingEnabled: Bool = false;
   private var isSearching: Bool = false;
   private var alwaysOnStatusBar: Bool = false;
-  
+  private var bypassVad: Bool = false;
+  private var bypassAudioEncoding: Bool = false;
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
   
@@ -426,6 +427,8 @@ import AVFoundation
       case updateGlassesDashboardHeight = "update_glasses_dashboard_height"
       case enableSensing = "enable_sensing"
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
+      case bypassVad = "bypass_vad_for_debugging"
+      case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
       case unknown
     }
     
@@ -593,6 +596,21 @@ import AVFoundation
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .bypassVad:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            print("bypass_vad invalid params")
+            break
+          }
+          self.bypassVad = enabled
+          saveSettings()
+          handleRequestStatus()// to update the UI
+          break
+        case .bypassAudioEncoding:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            print("bypass_audio_encoding invalid params")
+            break
+          }
+          self.bypassAudioEncoding = enabled
         }
       }
     } catch {
@@ -660,6 +678,8 @@ import AVFoundation
       "force_core_onboard_mic": self.useOnboardMic,
       "sensing_enabled": self.sensingEnabled,
       "always_on_status_bar": self.alwaysOnStatusBar,
+      "bypass_vad_for_debugging": self.bypassVad,
+      "bypass_audio_encoding_for_debugging": self.bypassAudioEncoding,
       "core_token": self.coreToken,
       "puck_connected": true,
     ]
@@ -864,6 +884,8 @@ import AVFoundation
     static let sensingEnabled = "sensingEnabled"
     static let dashboardHeight = "dashboardHeight"
     static let alwaysOnStatusBar = "alwaysOnStatusBar"
+    static let bypassVad = "bypassVad"
+    static let bypassAudioEncoding = "bypassAudioEncoding"
   }
   
   private func saveSettings() {
@@ -892,6 +914,8 @@ import AVFoundation
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
+    defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
+    defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -913,6 +937,8 @@ import AVFoundation
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
+    bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
+    bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
     
     // For numeric values, provide the default if the key doesn't exist
     if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
