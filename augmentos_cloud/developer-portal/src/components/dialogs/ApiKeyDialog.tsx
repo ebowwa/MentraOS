@@ -30,8 +30,8 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ tpa, open, onOpenChange, ap
   const formatApiKey = (key: string): string => {
     if (!key) return "";
     
-    // Check if it's a placeholder key
-    if (key.includes("api_key_augmentos")) {
+    // If there's no key or invalid key, show a masked placeholder
+    if (!key || key.length < 10) {
       return "********-****-****-****-************";
     }
     
@@ -94,10 +94,9 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ tpa, open, onOpenChange, ap
   // Reset dialog state when opened
   useEffect(() => {
     if (open && tpa) {
-      // Only set placeholder if we don't have a real key
-      if (!_apiKey || _apiKey.length < 10 || _apiKey.includes("********")) {
-        // For security, we only show a placeholder unless a key was just regenerated
-        setApiKey("api_key_augmentos_12345abcdefghijklmnopqrstuvwxyz"); // Placeholder value
+      // Use the apiKey provided by props if available
+      if (apiKey && apiKey.length > 10) {
+        setApiKey(apiKey);
       }
       
       // Always reset these states when dialog opens
@@ -108,7 +107,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ tpa, open, onOpenChange, ap
       setShowConfirmation(false);
       setIsCopied(false);
     }
-  }, [open, tpa, _apiKey, apiKey]);
+  }, [open, tpa, apiKey]);
 
   // When dialog closes, reset states
   const handleOpenChange = (newOpen: boolean) => {

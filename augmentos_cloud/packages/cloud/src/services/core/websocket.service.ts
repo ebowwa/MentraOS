@@ -1051,6 +1051,23 @@ export class WebSocketService {
       return;
     }
 
+    // Get client IP address for system app validation
+    const clientIp = (ws as any)._socket?.remoteAddress || '';
+    userSession.logger.info(`[websocket.service] TPA connection from IP: ${clientIp}`);
+    
+    // Validate API key with IP check for system apps
+    const isValidKey = await appService.validateApiKey(
+      initMessage.packageName,
+      initMessage.apiKey,
+      clientIp
+    );
+    
+    if (!isValidKey) {
+      userSession.logger.error(`[websocket.service] Invalid API key for package: ${initMessage.packageName}`);
+      ws.close(1008, 'Invalid API key');
+      return;
+    }
+    
     // TODO: Why doesn't this not work?
     // if (!userSession?.loadingApps.includes(initMessage.packageName) || initMessage.packageName !== systemApps.dashboard.packageName) {
     //   console.error('\n\n[websocket.service.ts]🙅‍♀️TPA session not found\nYou shall not pass! 🧙‍♂️\n:', initMessage.sessionId,
@@ -1060,11 +1077,6 @@ export class WebSocketService {
     //   ws.close(1008, 'Invalid session ID');
     //   return;
     // }
-
-    // TODO(isaiah): 🔐 Authenticate TPA with API key !important 😳.
-    // We should insure that the TPA is who they say they are. the session id is legit and they own the package name.
-    // For now because all the TPAs are internal we can just trust them.
-    // This is a good place to add a check for the TPA's API key for when we have external TPAs.
 
     // this.pendingTpaSessions.delete(initMessage.appSessionId);
     // userSession.loadingApps = userSession.loadingApps.filter(
