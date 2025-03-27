@@ -12,6 +12,13 @@ import UIKit
 import React
 import AVFoundation
 
+struct ViewState {
+  var topText: String
+  var bottomText: String
+  var layoutType: String
+  var text: String
+}
+
 // This class handles logic for managing devices and connections to AugmentOS servers
 @objc(AOSManager) class AOSManager: NSObject, ServerCommsCallback {
   
@@ -40,6 +47,11 @@ import AVFoundation
   private var bypassAudioEncoding: Bool = false;
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
+  
+  var viewStates: [ViewState] = [
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "DASHBOARD_NOT_SET"),
+  ]
   
   
   // mic:
@@ -104,6 +116,12 @@ import AVFoundation
       guard level >= 0 else { return }
       self.batteryLevel = level
       self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+    }.store(in: &cancellables)
+    
+    // listen to headUp events:
+    g1Manager!.$isHeadUp.sink { [weak self] (value: Bool) in
+        guard let self = self else { return }
+        self.sendCurrentState(value)
     }.store(in: &cancellables)
     
     
@@ -370,10 +388,150 @@ import AVFoundation
   ////    }
   //  }
   
+  // send whatever was there before sending something else:
+  public func clearState() -> Void {
+    sendCurrentState(self.g1Manager?.isHeadUp ?? false)
+  }
+  
+  public func sendCurrentState(_ isDashboard: Bool) -> Void {
+    Task {
+      var currentViewState: ViewState!;
+      if (isDashboard) {
+        currentViewState = self.viewStates[1]
+      } else {
+        currentViewState = self.viewStates[0]
+      }
+      
+      if (isDashboard && !contextualDashboard) {
+        return
+      }
+      
+      let layoutType = currentViewState.layoutType
+      switch layoutType {
+      case "text_wall":
+        let text = currentViewState.text
+        //        let chunks = textHelper.createTextWallChunks(text)
+        //        for chunk in chunks {
+        //          print("Sending chunk: \(chunk)")
+        //          await sendCommand(chunk)
+        //        }
+        self.g1Manager?.RN_sendText(text);
+        break
+      case "double_text_wall":
+        let topText = currentViewState.topText
+        let bottomText = currentViewState.bottomText
+        self.g1Manager?.RN_sendDoubleTextWall(topText, bottomText);
+        break
+      case "reference_card":
+        self.g1Manager?.RN_sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
+        break
+      default:
+        print("UNHANDLED LAYOUT_TYPE \(layoutType)")
+        break
+      }
+      
+    }
+  }
+  
+  public func parsePlaceholders(_ text: String) -> String {
+      let dateFormatter = DateFormatter()
+      dateFormatter.dateFormat = "M/dd, h:mm"
+      let formattedDate = dateFormatter.string(from: Date())
+      
+      // 12-hour time format (with leading zeros for hours)
+      let time12Format = DateFormatter()
+      time12Format.dateFormat = "hh:mm"
+      let time12 = time12Format.string(from: Date())
+      
+      // 24-hour time format
+      let time24Format = DateFormatter()
+      time24Format.dateFormat = "HH:mm"
+      let time24 = time24Format.string(from: Date())
+      
+      // Current date with format MM/dd
+      let dateFormat = DateFormatter()
+      dateFormat.dateFormat = "MM/dd"
+      let currentDate = dateFormat.string(from: Date())
+      
+      var placeholders: [String: String] = [:]
+      placeholders["$no_datetime$"] = formattedDate
+      placeholders["$DATE$"] = currentDate
+      placeholders["$TIME12$"] = time12
+      placeholders["$TIME24$"] = time24
+    
+      if batteryLevel == -1 {
+        placeholders["$GBATT$"] = ""
+      } else {
+        placeholders["$GBATT$"] = "\(batteryLevel)%"
+      }
+      
+      var result = text
+      for (key, value) in placeholders {
+          result = result.replacingOccurrences(of: key, with: value)
+      }
+      
+      return result
+  }
+  
+  public func handleDisplayEvent(_ event: [String: Any]) -> Void {
+    
+    guard let view = event["view"] as? String else {
+      print("invalid view")
+      return
+    }
+    let isDashboard = view == "dashboard"
+    
+    var stateIndex = 0;
+    if (isDashboard) {
+      stateIndex = 1
+    } else {
+      stateIndex = 0
+    }
+    
+    let layout = event["layout"] as! [String: Any];
+    let layoutType = layout["layoutType"] as! String
+    self.viewStates[stateIndex].layoutType = layoutType
+    
+    
+    var text = layout["text"] as? String ?? " "
+    var topText = layout["topText"] as? String ?? " "
+    var bottomText = layout["bottomText"] as? String ?? " "
+    var title = layout["title"] as? String ?? " "
+    
+    text = parsePlaceholders(text)
+    topText = parsePlaceholders(topText)
+    bottomText = parsePlaceholders(bottomText)
+    title = parsePlaceholders(title)
+    
+    switch layoutType {
+    case "text_wall":
+      self.viewStates[stateIndex].text = text
+      break
+    case "double_text_wall":
+      self.viewStates[stateIndex].topText = topText
+      self.viewStates[stateIndex].bottomText = bottomText
+      break
+    case "reference_card":
+      self.viewStates[stateIndex].topText = text
+      self.viewStates[stateIndex].bottomText = title
+    default:
+      print("UNHANDLED LAYOUT_TYPE \(layoutType)")
+      break
+    }
+    
+    let headUp = self.g1Manager?.isHeadUp ?? false
+    // send the state we just received if the user is currently in that state:
+    if (stateIndex == 0 && !headUp) {
+      sendCurrentState(false)
+    } else if (stateIndex == 1 && headUp) {
+      sendCurrentState(true)
+    }
+  }
+  
   func onDisplayEvent(_ event: [String: Any]) {
     //    print("displayEvent \(event)", event)
     
-    self.g1Manager?.handleDisplayEvent(event)
+    handleDisplayEvent(event)
     
     // forward to the glasses mirror:
     let wrapperObj: [String: Any] = ["glasses_display_event": event]
@@ -522,7 +680,6 @@ import AVFoundation
             break
           }
           self.contextualDashboard = enabled
-          self.g1Manager?.dashboardEnabled = enabled
           saveSettings()
           handleRequestStatus()// to update the UI
           break
@@ -816,8 +973,6 @@ import AVFoundation
       self.g1Manager?.RN_getBatteryStatus()
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
-      try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager?.dashboardEnabled = contextualDashboard
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setHeadUpAngle(headUpAngle)
       try? await Task.sleep(nanoseconds: 400_000_000)
