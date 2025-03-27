@@ -18,7 +18,7 @@ const RECONNECT_GRACE_PERIOD_MS = 30000; // 30 seconds
 const LOG_AUDIO = false;
 const PROCESS_AUDIO = true;
 const DEBUG_AUDIO = false;
-const IS_LC3 = false; // Set to true if using LC3 codec. false if using PCM.
+const IS_LC3 = true; // Set to true if using LC3 codec. false if using PCM.
 
 export interface ExtendedUserSession extends UserSession {
   lc3Service?: LC3Service;
@@ -27,17 +27,21 @@ export interface ExtendedUserSession extends UserSession {
 
 export class SessionService {
   private activeSessions = new Map<string, ExtendedUserSession>();
+  private sessionsByUser = new Map<string, ExtendedUserSession>();
 
   async createSession(ws: WebSocket, userId = 'anonymous'): Promise<ExtendedUserSession> {
+    // Check for existing sessions for this user that might need to be preserved
+    const existingSession = this.sessionsByUser.get(userId);
+    
     const sessionId = uuidv4();
     const userSession: ExtendedUserSession = {
       logger: createLoggerForUserSession(userId),
       sessionId,
       userId,
       startTime: new Date(),
-      activeAppSessions: [],
+      activeAppSessions: existingSession?.activeAppSessions || [],
       installedApps: await appService.getAllApps(),
-      whatToStream: new Array<StreamType>(),
+      whatToStream: existingSession?.whatToStream || new Array<StreamType>(),
       appSubscriptions: new Map<string, StreamType[]>(),
       transcriptionStreams: new Map<string, ASRStreamInstance>(),
       loadingApps: new Set<string>(),
@@ -65,6 +69,12 @@ export class SessionService {
 
     this.activeSessions.set(sessionId, userSession);
     userSession.logger.info(`[session.service] Created new session ${sessionId} for user ${userId}`);
+    
+    // Always keep the latest session for each user in the user lookup map
+    if (userId !== 'anonymous') {
+      this.sessionsByUser.set(userId, userSession);
+    }
+    
     return userSession;
   }
 

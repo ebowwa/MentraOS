@@ -188,18 +188,52 @@ export class EventManager {
   }
 
   /**
-   * 📡 Emit an event to all registered handlers
+   * 📡 Emit an event to all registered handlers with error isolation
    */
   emit<T extends EventType>(event: T, data: EventData<T>): void {
-    // Emit to EventEmitter handlers (system events)
-    this.emitter.emit(event, data);
+    try {
+      // Emit to EventEmitter handlers (system events)
+      this.emitter.emit(event, data);
 
-    // Emit to stream handlers if applicable
-    const handlers = this.handlers.get(event);
-    if (handlers) {
-      handlers.forEach(handler => {
-        (handler as Handler<EventData<T>>)(data);
-      });
+      // Emit to stream handlers if applicable
+      const handlers = this.handlers.get(event);
+      if (handlers) {
+        // Create array of handlers to prevent modification during iteration
+        const handlersArray = Array.from(handlers);
+        
+        // Execute each handler in isolated try/catch to prevent one handler
+        // from crashing the entire TPA
+        handlersArray.forEach(handler => {
+          try {
+            (handler as Handler<EventData<T>>)(data);
+          } catch (handlerError) {
+            // Log the error but don't let it propagate
+            console.error(`Error in handler for event '${String(event)}':`, handlerError);
+            
+            // Emit an error event for tracking purposes
+            if (event !== 'error') { // Prevent infinite recursion
+              this.emitter.emit('error', new Error(
+                `Handler error for event '${String(event)}': ${handlerError.message}`
+              ));
+            }
+          }
+        });
+      }
+    } catch (emitError) {
+      // Catch any errors in the emission process itself
+      console.error(`Fatal error emitting event '${String(event)}':`, emitError);
+      
+      // Try to emit an error event if we're not already handling an error
+      if (event !== 'error') {
+        try {
+          this.emitter.emit('error', new Error(
+            `Event emission error for '${String(event)}': ${emitError.message}`
+          ));
+        } catch (nestedError) {
+          // If even this fails, just log it - nothing more we can do
+          console.error('Failed to emit error event:', nestedError);
+        }
+      }
     }
   }
 }

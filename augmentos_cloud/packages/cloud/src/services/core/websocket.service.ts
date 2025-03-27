@@ -59,9 +59,11 @@ import { PosthogService } from '../logging/posthog.service';
 import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
+import tpaRegistrationService from './tpa-registration.service';
+import healthMonitorService from './health-monitor.service';
 
 export const PUBLIC_HOST_NAME = process.env.PUBLIC_HOST_NAME || "dev.augmentos.cloud";
-export const LOCAL_HOST_NAME = process.env.CLOUD_HOST_NAME || process.env.PORTER_APP_NAME ? `${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80` : "cloud"
+export let LOCAL_HOST_NAME = process.env.CLOUD_HOST_NAME || process.env.PORTER_APP_NAME ? `${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80` : "cloud"
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
 logger.info(`🔥🔥🔥 [websocket.service]: PUBLIC_HOST_NAME: ${PUBLIC_HOST_NAME}`);
@@ -264,18 +266,39 @@ export class WebSocketService {
       // Trigger TPA webhook
       userSession.logger.info("[websocket.service]: ⚡️Triggering webhook for app⚡️: ", app.webhookURL);
 
-      // Set up the websocket URL for the TPA connection.
-      let augmentOSWebsocketUrl = `wss://${PUBLIC_HOST_NAME}/tpa-ws`;
-
-      // If the app is a system app, use the local host name.
-      // this is because system apps run in the same docker cluster as the cloud server, and can take advantage of internal networking.
+      // Set up the websocket URL for the TPA connection
+      let augmentOSWebsocketUrl = '';
+      
+      // Determine the appropriate WebSocket URL based on the environment and app type
       if (app.isSystemApp) {
-        augmentOSWebsocketUrl = `ws://${LOCAL_HOST_NAME}/tpa-ws`;
+        // For system apps in container environments, use internal service name
+        if (process.env.CONTAINER_ENVIRONMENT === 'true' || 
+            process.env.CLOUD_HOST_NAME === 'cloud' ||
+            process.env.PORTER_APP_NAME) {
+          
+          // Porter environment (Kubernetes)
+          if (process.env.PORTER_APP_NAME) {
+            augmentOSWebsocketUrl = `ws://${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80/tpa-ws`;
+            userSession.logger.info(`Using Porter internal URL for system app ${packageName}`);
+          } else {
+            // Docker Compose environment
+            augmentOSWebsocketUrl = 'ws://cloud/tpa-ws';
+            userSession.logger.info(`Using Docker internal URL for system app ${packageName}`);
+          }
+        } else {
+          // Local development for system apps
+          augmentOSWebsocketUrl = 'ws://localhost:8002/tpa-ws';
+          userSession.logger.info(`Using local URL for system app ${packageName}`);
+        }
+      } else {
+        // For non-system apps, use the public host
+        augmentOSWebsocketUrl = `wss://${PUBLIC_HOST_NAME}/tpa-ws`;
+        userSession.logger.info(`Using public URL for app ${packageName}`);
       }
-      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server Websocket URL: ${augmentOSWebsocketUrl}`);
+      
+      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server WebSocket URL: ${augmentOSWebsocketUrl}`);
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Start Session webhook URL: ${app.webhookURL}`);
       await appService.triggerWebhook(app.webhookURL, {
-        // type: 'session_request',
         type: WebhookRequestType.SESSION_REQUEST,
         sessionId: userSession.sessionId + '-' + packageName,
         userId: userSession.userId,
@@ -438,7 +461,7 @@ export class WebSocketService {
       effectiveSubscription = `${streamType}:${(data as any).transcribeLanguage}`;
     }
 
-    const subscribedApps = subscriptionService.getSubscribedApps(userSessionId, effectiveSubscription);
+    const subscribedApps = subscriptionService.getSubscribedApps(userSession, effectiveSubscription);
 
     subscribedApps.forEach(packageName => {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
@@ -461,7 +484,7 @@ export class WebSocketService {
   }
 
   broadcastToTpaAudio(userSession: UserSession, arrayBuffer: ArrayBufferLike): void {
-    const subscribedApps = subscriptionService.getSubscribedApps(userSession.sessionId, StreamType.AUDIO_CHUNK);
+    const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.AUDIO_CHUNK);
 
     for (const packageName of subscribedApps) {
       const websocket = userSession.appConnections.get(packageName);
@@ -514,14 +537,13 @@ export class WebSocketService {
     logger.info('[websocket.service]: New glasses client attempting to connect...');
     const startTimestamp = new Date();
 
+    // Register this connection with the health monitor
+    healthMonitorService.registerGlassesConnection(ws);
+    
     const userSession = await sessionService.createSession(ws);
     ws.on('message', async (message: Buffer | string, isBinary: boolean) => {
-      try {
-        // console.log('####### message', message);
-        // console.log('####### isBinary', isBinary);
-
-        // if we do: Buffer.isBuffer(message) || isBinary should get it to work 
-        // for both prod, and dev environments. - Isaiah.
+      try {        
+        // Handle binary messages (typically audio)
         if (Buffer.isBuffer(message) && isBinary) {
           const _buffer = message as Buffer;
           // Convert Node.js Buffer to ArrayBuffer
@@ -529,42 +551,57 @@ export class WebSocketService {
             _buffer.byteOffset,
             _buffer.byteOffset + _buffer.byteLength
           );
-          // Pass the ArrayBuffer to Azure Speech or wherever you need it
+          // Process the audio data
           const _arrayBuffer = await sessionService.handleAudioData(userSession, arrayBuf);
-          // send audio chunk to TPA's subscribed to audio_chunk.
+          // Send audio chunk to TPAs subscribed to audio_chunk
           if (_arrayBuffer) {
             this.broadcastToTpaAudio(userSession, _arrayBuffer);
           }
-
           return;
         }
+
+        // Update the last activity timestamp for this connection
+        healthMonitorService.updateGlassesActivity(ws);
+        console.log("🔥🔥🔥: Received message from glasses:", message);
+
+        // Handle JSON messages
         const parsedMessage = JSON.parse(message.toString()) as GlassesToCloudMessage;
-        // console.log('####### userSession', userSession);
         await this.handleGlassesMessage(userSession, ws, parsedMessage);
       } catch (error) {
         userSession.logger.error(`[websocket.service]: Error handling glasses message:`, error);
         this.sendError(ws, {
-          // code: 'MESSAGE_HANDLING_ERROR',
           type: CloudToGlassesMessageType.CONNECTION_ERROR,
           message: 'Error processing message'
         });
       }
     });
 
+    // Set up ping handler to track connection health
+    ws.on('ping', () => {
+      // Update activity whenever a ping is received
+      healthMonitorService.updateGlassesActivity(ws);
+      // Send pong response
+      try {
+        ws.pong();
+      } catch (error) {
+        userSession.logger.error('[websocket.service]: Error sending pong:', error);
+      }
+    });
+
     const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 5; // 5 minutes
     ws.on('close', () => {
       userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}`);
-      // Mark the session as disconnected but do not remove it immediately.
+      // Mark the session as disconnected but do not remove it immediately
       sessionService.markSessionDisconnected(userSession);
 
-      // Optionally, set a timeout to eventually clean up the session if not reconnected.
+      // Set a timeout to eventually clean up the session if not reconnected
       setTimeout(() => {
         if (sessionService.isItTimeToKillTheSession(userSession.sessionId)) {
           sessionService.endSession(userSession.sessionId);
         }
       }, RECONNECT_GRACE_PERIOD_MS);
 
-      // Track disconnection event posthog.
+      // Track disconnection event in posthog
       const endTimestamp = new Date();
       const connectionDuration = endTimestamp.getTime() - startTimestamp.getTime();
       PosthogService.trackEvent('disconnected', userSession.userId, {
@@ -576,7 +613,7 @@ export class WebSocketService {
     });
 
     ws.on('error', (error) => {
-      userSession.logger.error(`Glasses WebSocket error:`, error);
+      userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
       sessionService.endSession(userSession.sessionId);
       ws.close();
     });
@@ -874,8 +911,14 @@ export class WebSocketService {
     }
     let userSessionId = '';
     let userSession: UserSession | null = null;
+    
+    // Register this connection with the health monitor
+    healthMonitorService.registerTpaConnection(ws);
 
     ws.on('message', async (data: Buffer | string, isBinary: boolean) => {
+      // Update activity timestamp whenever a message is received
+      healthMonitorService.updateTpaActivity(ws);
+      
       if (isBinary) {
         userSession?.logger.warn('Received unexpected binary message from TPA');
         return;
@@ -973,7 +1016,7 @@ export class WebSocketService {
           }
         }
         catch (error) {
-          userSession?.logger.error('Error handling TPA message:', message, error);
+          userSession?.logger.error('[websocket.service]: Error handling TPA message:', message, error);
           this.sendError(ws, {
             type: CloudToTpaMessageType.CONNECTION_ERROR,
             message: 'Error processing message'
@@ -985,11 +1028,23 @@ export class WebSocketService {
           });
         }
       } catch (error) {
-        userSession?.logger.error('Error handling TPA message:', error);
+        userSession?.logger.error('[websocket.service]: Error handling TPA message:', error);
         this.sendError(ws, {
           type: CloudToTpaMessageType.CONNECTION_ERROR,
           message: 'Error processing message'
         });
+      }
+    });
+    
+    // Set up ping handler to track connection health
+    ws.on('ping', () => {
+      // Update activity whenever a ping is received
+      healthMonitorService.updateTpaActivity(ws);
+      // Send pong response
+      try {
+        ws.pong();
+      } catch (error) {
+        logger.error('[websocket.service]: Error sending pong to TPA:', error);
       }
     });
 
@@ -998,33 +1053,43 @@ export class WebSocketService {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
         const userSession = sessionService.getSession(userSessionId);
+        
         if (!userSession) {
-          logger.error(`\n\n[websocket.service] User session not found for ${currentAppSession}\n\n`);
+          logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
           return;
         }
-        if (userSession.appConnections.has(currentAppSession)) {
-          userSession.appConnections.delete(currentAppSession);
+        
+        // Clean up the connection 
+        if (userSession.appConnections.has(packageName)) {
+          userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
-        userSession?.logger.info(`TPA session ${currentAppSession} disconnected`);
+        
+        // Log the disconnection
+        userSession.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
+        
+        // Notify the registration service that this session is disconnected
+        // but DON'T remove it from registry - we want to enable recovery!
+        // Just note that the session is temporarily disconnected
+        tpaRegistrationService.handleTpaSessionEnd(currentAppSession);
       }
     });
 
     ws.on('error', (error) => {
-      logger.error('TPA WebSocket error:', error);
+      logger.error('[websocket.service]: TPA WebSocket error:', error);
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
         const userSession = sessionService.getSession(userSessionId);
         if (!userSession) {
-          logger.error(`\n\n[websocket.service] User session not found for ${currentAppSession}\n\n`);
+          logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
           return;
         }
-        if (userSession.appConnections.has(currentAppSession)) {
-          userSession.appConnections.delete(currentAppSession);
+        if (userSession.appConnections.has(packageName)) {
+          userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
-        userSession?.logger.info(`TPA session ${currentAppSession} disconnected`);
+        userSession?.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
       }
       ws.close();
     });
@@ -1046,34 +1111,51 @@ export class WebSocketService {
     const userSession = sessionService.getSession(userSessionId);
 
     if (!userSession) {
-      logger.error(`\n\n[websocket.service] User session not found for ${userSessionId}\n\n`);
+      logger.error(`[websocket.service] User session not found for ${userSessionId}`);
       ws.close(1008, 'No active session');
       return;
     }
 
-    // TODO: Why doesn't this not work?
-    // if (!userSession?.loadingApps.includes(initMessage.packageName) || initMessage.packageName !== systemApps.dashboard.packageName) {
-    //   console.error('\n\n[websocket.service.ts]🙅‍♀️TPA session not found\nYou shall not pass! 🧙‍♂️\n:', initMessage.sessionId,
-    //     '\n\nLoading apps:', userSession?.loadingApps, '\n\n'
-    //   );
-    //   // TODO(isaiah): 🔐 Close the connection if the session ID is invalid. important for real TPAs.
-    //   ws.close(1008, 'Invalid session ID');
-    //   return;
-    // }
+    // Validate the TPA connection using the registration service
+    // This checks the API key against registered servers
+    const isValidTpa = tpaRegistrationService.handleTpaSessionStart(initMessage);
+    
+    const isSystemApp = Object.values(systemApps).some(
+      app => app.packageName === initMessage.packageName
+    );
+    
+    // Skip validation for system apps but validate all others
+    if (!isSystemApp && !isValidTpa) {
+      userSession.logger.warn(`[websocket.service] Unregistered TPA attempting to connect: ${initMessage.packageName}`);
+      // We still allow the connection for now, but in production we would reject unregistered TPAs
+      // ws.close(1008, 'Unregistered TPA');
+      // return;
+    }
+    
+    // For regular apps, check if they're in the loading apps list or already active
+    const isLoading = userSession.loadingApps.has(initMessage.packageName);
+    const isActive = userSession.activeAppSessions.includes(initMessage.packageName);
+    
+    if (!isSystemApp && !isLoading && !isActive) {
+      userSession.logger.warn(`[websocket.service] TPA not in loading or active state: ${initMessage.packageName}`);
+      // In production, we would reject TPAs that aren't properly initialized
+      // ws.close(1008, 'TPA not initialized properly');
+      // return;
+    }
 
-    // TODO(isaiah): 🔐 Authenticate TPA with API key !important 😳.
-    // We should insure that the TPA is who they say they are. the session id is legit and they own the package name.
-    // For now because all the TPAs are internal we can just trust them.
-    // This is a good place to add a check for the TPA's API key for when we have external TPAs.
-
-    // this.pendingTpaSessions.delete(initMessage.appSessionId);
-    // userSession.loadingApps = userSession.loadingApps.filter(
-    //   (packageName) => packageName !== initMessage.packageName
-    // );
-
-    userSession.appConnections.set(initMessage.packageName, ws as WebSocket);
+    // Store the connection
+    userSession.appConnections.set(initMessage.packageName, ws);
     setCurrentSessionId(initMessage.sessionId);
 
+    // If the app was in loading state, move it to active
+    if (isLoading) {
+      userSession.loadingApps.delete(initMessage.packageName);
+      if (!userSession.activeAppSessions.includes(initMessage.packageName)) {
+        userSession.activeAppSessions.push(initMessage.packageName);
+      }
+    }
+
+    // Send acknowledgment
     const ackMessage: TpaConnectionAck = {
       type: CloudToTpaMessageType.CONNECTION_ACK,
       sessionId: initMessage.sessionId,
@@ -1082,7 +1164,7 @@ export class WebSocketService {
     ws.send(JSON.stringify(ackMessage));
     userSession.logger.info(`TPA ${initMessage.packageName} connected for session ${initMessage.sessionId}`);
 
-    // If this is the dashboard app, send the current location if it's cached. so it can update the timezone.
+    // If this is the dashboard app, send the current location if it's cached
     try {
       const user = await User.findByEmail(userSession.userId);
       if (user && initMessage.packageName === systemApps.dashboard.packageName) {
@@ -1098,9 +1180,8 @@ export class WebSocketService {
           this.broadcastToTpa(userSessionId, StreamType.LOCATION_UPDATE, locationUpdate);
         }
       }
-    }
-    catch (error) {
-      userSession.logger.error(`\n\n[websocket.service] Error sending location to dashboard:`, error, `\n\n`);
+    } catch (error) {
+      userSession.logger.error(`[websocket.service] Error sending location to dashboard:`, error);
     }
   }
 
