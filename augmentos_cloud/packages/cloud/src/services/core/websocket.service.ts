@@ -185,56 +185,56 @@ export class WebSocketService {
     }, delay);
   }
 
- /**
-   * 📊 Generates the current app status for a user session
-   * @param userSession - User session to generate status for
-   * @returns Promise resolving to App State Change object ready to be sent to glasses or API
-   */
- async generateAppStateStatus(userSession: UserSession): Promise<AppStateChange> {
-  // Get the list of active apps
-  const activeAppPackageNames = Array.from(new Set(userSession.activeAppSessions));
+  /**
+    * 📊 Generates the current app status for a user session
+    * @param userSession - User session to generate status for
+    * @returns Promise resolving to App State Change object ready to be sent to glasses or API
+    */
+  async generateAppStateStatus(userSession: UserSession): Promise<AppStateChange> {
+    // Get the list of active apps
+    const activeAppPackageNames = Array.from(new Set(userSession.activeAppSessions));
 
-  // Create a map of active apps and what stream types they are subscribed to
-  const appSubscriptions = new Map<string, ExtendedStreamType[]>(); // packageName -> streamTypes
-  const whatToStream: Set<ExtendedStreamType> = new Set(); // packageName -> streamTypes
+    // Create a map of active apps and what stream types they are subscribed to
+    const appSubscriptions = new Map<string, ExtendedStreamType[]>(); // packageName -> streamTypes
+    const whatToStream: Set<ExtendedStreamType> = new Set(); // packageName -> streamTypes
 
-  for (const packageName of activeAppPackageNames) {
-    const subscriptions = subscriptionService.getAppSubscriptions(userSession.sessionId, packageName);
-    appSubscriptions.set(packageName, subscriptions);
-    for (const subscription of subscriptions) {
+    for (const packageName of activeAppPackageNames) {
+      const subscriptions = subscriptionService.getAppSubscriptions(userSession.sessionId, packageName);
+      appSubscriptions.set(packageName, subscriptions);
+      for (const subscription of subscriptions) {
+        whatToStream.add(subscription);
+      }
+    }
+
+    // Dashboard subscriptions
+    const dashboardSubscriptions = subscriptionService.getAppSubscriptions(
+      userSession.sessionId,
+      systemApps.dashboard.packageName
+    );
+    appSubscriptions.set(systemApps.dashboard.packageName, dashboardSubscriptions);
+    for (const subscription of dashboardSubscriptions) {
       whatToStream.add(subscription);
     }
+
+    const userSessionData = {
+      sessionId: userSession.sessionId,
+      userId: userSession.userId,
+      startTime: userSession.startTime,
+      installedApps: await appService.getAllApps(userSession.userId),
+      appSubscriptions: Object.fromEntries(appSubscriptions),
+      activeAppPackageNames,
+      whatToStream: Array.from(new Set(whatToStream)),
+    };
+
+    const appStateChange: AppStateChange = {
+      type: CloudToGlassesMessageType.APP_STATE_CHANGE,
+      sessionId: userSession.sessionId,
+      userSession: userSessionData,
+      timestamp: new Date()
+    };
+
+    return appStateChange;
   }
-
-  // Dashboard subscriptions
-  const dashboardSubscriptions = subscriptionService.getAppSubscriptions(
-    userSession.sessionId, 
-    systemApps.dashboard.packageName
-  );
-  appSubscriptions.set(systemApps.dashboard.packageName, dashboardSubscriptions);
-  for (const subscription of dashboardSubscriptions) {
-    whatToStream.add(subscription);
-  }
-
-  const userSessionData = {
-    sessionId: userSession.sessionId,
-    userId: userSession.userId,
-    startTime: userSession.startTime,
-    installedApps: await appService.getAllApps(userSession.userId),
-    appSubscriptions: Object.fromEntries(appSubscriptions),
-    activeAppPackageNames,
-    whatToStream: Array.from(new Set(whatToStream)),
-  };
-
-  const appStateChange: AppStateChange = {
-    type: CloudToGlassesMessageType.APP_STATE_CHANGE,
-    sessionId: userSession.sessionId,
-    userSession: userSessionData,
-    timestamp: new Date()
-  };
-
-  return appStateChange;
-}
 
   /**
    * 🚀🪝 Initiates a new TPA session and triggers the TPA's webhook.
@@ -249,7 +249,7 @@ export class WebSocketService {
       userSession.logger.info(`[websocket.service]: 🚀🚀🚀 App ${packageName} already loading or running\n `);
       return userSession.sessionId + '-' + packageName;
     }
-    
+
     const app = await appService.getApp(packageName);
     if (!app) {
       userSession.logger.error(`[websocket.service]: 🚀🚀🚀 App ${packageName} not found\n `);
@@ -268,14 +268,14 @@ export class WebSocketService {
 
       // Set up the websocket URL for the TPA connection
       let augmentOSWebsocketUrl = '';
-      
+
       // Determine the appropriate WebSocket URL based on the environment and app type
       if (app.isSystemApp) {
         // For system apps in container environments, use internal service name
-        if (process.env.CONTAINER_ENVIRONMENT === 'true' || 
-            process.env.CLOUD_HOST_NAME === 'cloud' ||
-            process.env.PORTER_APP_NAME) {
-          
+        if (process.env.CONTAINER_ENVIRONMENT === 'true' ||
+          process.env.CLOUD_HOST_NAME === 'cloud' ||
+          process.env.PORTER_APP_NAME) {
+
           // Porter environment (Kubernetes)
           if (process.env.PORTER_APP_NAME) {
             augmentOSWebsocketUrl = `ws://${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80/tpa-ws`;
@@ -295,7 +295,7 @@ export class WebSocketService {
         augmentOSWebsocketUrl = `wss://${PUBLIC_HOST_NAME}/tpa-ws`;
         userSession.logger.info(`Using public URL for app ${packageName}`);
       }
-      
+
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server WebSocket URL: ${augmentOSWebsocketUrl}`);
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Start Session webhook URL: ${app.webhookURL}`);
       await appService.triggerWebhook(app.webhookURL, {
@@ -324,11 +324,11 @@ export class WebSocketService {
       if (!userSession.activeAppSessions.includes(packageName)) {
         userSession.activeAppSessions.push(packageName);
       }
-      
+
       // Remove from loading apps after successfully starting
       userSession.loadingApps.delete(packageName);
       userSession.logger.info(`[websocket.service]: Successfully started app ${packageName}`);
-      
+
       // Update database
       try {
         const user = await User.findByEmail(userSession.userId);
@@ -347,7 +347,7 @@ export class WebSocketService {
           this.sendDebouncedMicrophoneStateChange(userSession.websocket, userSession, true);
         }
       }
-      
+
       return userSession.sessionId + '-' + packageName;
     } catch (error) {
       userSession.logger.error(`[websocket.service]: Error starting app ${packageName}:`, error);
@@ -356,14 +356,14 @@ export class WebSocketService {
     }
   }
 
-   /**
-   * 🛑 Stops an app session and handles cleanup.
-   * @param userSession - userSession object for the user stopping the app
-   * @param packageName - Package name of the app to stop
-   * @returns Promise resolving to boolean indicating success
-   * @throws Error if app not found or stop fails
-   */
-   async stopAppSession(userSession: UserSession, packageName: string): Promise<boolean> {
+  /**
+  * 🛑 Stops an app session and handles cleanup.
+  * @param userSession - userSession object for the user stopping the app
+  * @param packageName - Package name of the app to stop
+  * @returns Promise resolving to boolean indicating success
+  * @throws Error if app not found or stop fails
+  */
+  async stopAppSession(userSession: UserSession, packageName: string): Promise<boolean> {
     userSession.logger.info(`\n[websocket.service]\n🛑 Stopping app ${packageName} for user ${userSession.userId}\n`);
 
     const app = await appService.getApp(packageName);
@@ -539,10 +539,10 @@ export class WebSocketService {
 
     // Register this connection with the health monitor
     healthMonitorService.registerGlassesConnection(ws);
-    
+
     const userSession = await sessionService.createSession(ws);
     ws.on('message', async (message: Buffer | string, isBinary: boolean) => {
-      try {        
+      try {
         // Handle binary messages (typically audio)
         if (Buffer.isBuffer(message) && isBinary) {
           const _buffer = message as Buffer;
@@ -734,15 +734,15 @@ export class WebSocketService {
         case 'start_app': {
           const startMessage = message as StartApp;
           userSession.logger.info(`🚀🚀🚀[START_APP]: Starting app ${startMessage.packageName}`);
-          
+
           try {
             // Start the app using our service method
             await this.startAppSession(userSession, startMessage.packageName);
-            
+
             // Generate and send app state to the glasses
             const appStateChange = await this.generateAppStateStatus(userSession);
             ws.send(JSON.stringify(appStateChange));
-            
+
             // Track event
             PosthogService.trackEvent(`start_app:${startMessage.packageName}`, userSession.userId, {
               sessionId: userSession.sessionId,
@@ -758,7 +758,7 @@ export class WebSocketService {
         case 'stop_app': {
           const stopMessage = message as StopApp;
           userSession.logger.info(`Stopping app ${stopMessage.packageName}`);
-          
+
           try {
             // Track event before stopping
             PosthogService.trackEvent(`stop_app:${stopMessage.packageName}`, userSession.userId, {
@@ -773,7 +773,7 @@ export class WebSocketService {
               userSession.logger.info(`[websocket.service]: Closing app connection for ${stopMessage.packageName}`);
               appConnection.close(1000, 'App stopped by user');
             }
-            userSession.appConnections.delete(stopMessage.packageName);    
+            userSession.appConnections.delete(stopMessage.packageName);
             // Stop the app using our service method
             await this.stopAppSession(userSession, stopMessage.packageName);
 
@@ -911,14 +911,14 @@ export class WebSocketService {
     }
     let userSessionId = '';
     let userSession: UserSession | null = null;
-    
+
     // Register this connection with the health monitor
     healthMonitorService.registerTpaConnection(ws);
 
     ws.on('message', async (data: Buffer | string, isBinary: boolean) => {
       // Update activity timestamp whenever a message is received
       healthMonitorService.updateTpaActivity(ws);
-      
+
       if (isBinary) {
         userSession?.logger.warn('Received unexpected binary message from TPA');
         return;
@@ -1035,7 +1035,7 @@ export class WebSocketService {
         });
       }
     });
-    
+
     // Set up ping handler to track connection health
     ws.on('ping', () => {
       // Update activity whenever a ping is received
@@ -1053,21 +1053,21 @@ export class WebSocketService {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
         const userSession = sessionService.getSession(userSessionId);
-        
+
         if (!userSession) {
           logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
           return;
         }
-        
+
         // Clean up the connection 
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
-        
+
         // Log the disconnection
         userSession.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
-        
+
         // Notify the registration service that this session is disconnected
         // but DON'T remove it from registry - we want to enable recovery!
         // Just note that the session is temporarily disconnected
@@ -1116,14 +1116,32 @@ export class WebSocketService {
       return;
     }
 
+    // Get client IP address for system app validation
+    const clientIp = (ws as any)._socket?.remoteAddress || '';
+    userSession.logger.info(`[websocket.service] TPA connection from IP: ${clientIp}`);
+
+    // Validate API key with IP check for system apps
+    const isValidKey = await appService.validateApiKey(
+      initMessage.packageName,
+      initMessage.apiKey,
+      clientIp
+    );
+
+    if (!isValidKey) {
+      userSession.logger.error(`[websocket.service] Invalid API key for package: ${initMessage.packageName}`);
+      ws.close(1008, 'Invalid API key');
+      return;
+    }
+
+
     // Validate the TPA connection using the registration service
     // This checks the API key against registered servers
     const isValidTpa = tpaRegistrationService.handleTpaSessionStart(initMessage);
-    
+
     const isSystemApp = Object.values(systemApps).some(
       app => app.packageName === initMessage.packageName
     );
-    
+
     // Skip validation for system apps but validate all others
     if (!isSystemApp && !isValidTpa) {
       userSession.logger.warn(`[websocket.service] Unregistered TPA attempting to connect: ${initMessage.packageName}`);
@@ -1131,11 +1149,11 @@ export class WebSocketService {
       // ws.close(1008, 'Unregistered TPA');
       // return;
     }
-    
+
     // For regular apps, check if they're in the loading apps list or already active
     const isLoading = userSession.loadingApps.has(initMessage.packageName);
     const isActive = userSession.activeAppSessions.includes(initMessage.packageName);
-    
+
     if (!isSystemApp && !isLoading && !isActive) {
       userSession.logger.warn(`[websocket.service] TPA not in loading or active state: ${initMessage.packageName}`);
       // In production, we would reject TPAs that aren't properly initialized
