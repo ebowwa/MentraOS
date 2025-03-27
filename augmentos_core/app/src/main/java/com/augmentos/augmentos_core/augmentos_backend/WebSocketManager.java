@@ -360,9 +360,18 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
             // Safe cleanup of client
             if (client != null) {
                 try {
+                    // Properly clean up connection pool
                     client.dispatcher().executorService().shutdown();
-                    // Remove this line as it crashes the app eventually
-                    // client.connectionPool().evictAll();
+                    
+                    // Safely evict connections without crashing
+                    try {
+                        client.connectionPool().evictAll();
+                    } catch (Exception poolException) {
+                        Log.w(TAG, "Could not evict connection pool: " + poolException.getMessage());
+                    }
+                    
+                    // Try to force GC to clean up lingering connections
+                    System.gc();
                 } catch (Exception e) {
                     Log.e(TAG, "Error cleaning up OkHttp client", e);
                 }

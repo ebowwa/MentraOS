@@ -139,7 +139,7 @@ public class AudioSystem {
         // Start first socketThread
         if (socket == null) {
             mConnectState = 1;
-            SocketThread = new Thread(new SocketThread());
+            SocketThread = new Thread(new SocketThread(), "SocketThread");
             SocketThread.start();
 
             // Setup handler to handle keeping connection alive, all subsequent start of SocketThread
@@ -193,7 +193,7 @@ public class AudioSystem {
         }
 
         // Start a new socket thread
-        SocketThread = new Thread(new SocketThread());
+        SocketThread = new Thread(new SocketThread(), "RestartSocketThread");
         SocketThread.start();
     }
 
@@ -232,7 +232,7 @@ public class AudioSystem {
                     input = new DataInputStream(new DataInputStream(socket.getInputStream()));
                     mConnectState = 2;
                     if (ReceiveThread == null) { //if the thread is null, make a new one (the first one)
-                        ReceiveThread = new Thread(new ReceiveThread());
+                        ReceiveThread = new Thread(new ReceiveThread(), "ReceiveThread");
                         ReceiveThread.start();
                     } else if (!ReceiveThread.isAlive()) { //if the thread is not null but it's dead, let it join then start a new one
                         try {
@@ -240,11 +240,11 @@ public class AudioSystem {
                         } catch (InterruptedException e) {
                             e.printStackTrace();
                         }
-                        ReceiveThread = new Thread(new ReceiveThread());
+                        ReceiveThread = new Thread(new ReceiveThread(), "ReceiveThread");
                         ReceiveThread.start();
                     }
                     if (SendThread == null) { //if the thread is null, make a new one (the first one)
-                    SendThread = new Thread(new SendThread());
+                    SendThread = new Thread(new SendThread(), "SendThread");
                     SendThread.start();
                 } else if (!SendThread.isAlive()) { //if the thread is not null but it's dead, let it join then start a new one
                     try {
@@ -252,7 +252,7 @@ public class AudioSystem {
                     } catch (InterruptedException e) {
                         e.printStackTrace();
                     }
-                    SendThread =  new Thread(new SendThread());
+                    SendThread =  new Thread(new SendThread(), "SendThread");
                     SendThread.start();
                 }
                 } catch (IOException e) {

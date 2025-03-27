@@ -29,11 +29,13 @@ import androidx.preference.PreferenceManager;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 //BMP
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.zip.CRC32;
 import java.nio.ByteBuffer;
 
@@ -1349,7 +1351,8 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     // Queue to hold pending requests
-    private final ConcurrentLinkedQueue<SendRequest []> sendQueue = new ConcurrentLinkedQueue<>();
+    private final BlockingQueue<SendRequest[]> sendQueue = new LinkedBlockingQueue<>();
+
     private volatile boolean isWorkerRunning = false;
 
     // Non-blocking function to add new send request
@@ -1396,7 +1399,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private synchronized void startWorkerIfNeeded() {
         if (!isWorkerRunning) {
             isWorkerRunning = true;
-            new Thread(this::processQueue).start();
+            new Thread(this::processQueue, "EvenRealitiesG1SGCProcessQueue").start();
         }
     }
 
@@ -1428,7 +1431,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private static final long INITIAL_CONNECTION_DELAY_MS = 350; // Adjust this value as needed
 
     private void processQueue() {
-        //first wait until the services are setup and ready to receive data
+        // First wait until the services are setup and ready to receive data
         Log.d(TAG, "PROC_QUEUE - waiting on services waiters");
         try {
             leftServicesWaiter.waitWhileTrue();
@@ -1438,102 +1441,84 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
         Log.d(TAG, "PROC_QUEUE - DONE waiting on services waiters");
 
-        while (true) {
+        while (!isKilled) {
             try {
+                // Make sure services are ready before processing requests
                 leftServicesWaiter.waitWhileTrue();
                 rightServicesWaiter.waitWhileTrue();
+
+                // This will block until data is available - no CPU spinning!
+                SendRequest[] requests = sendQueue.take();
+
+                for (SendRequest request : requests) {
+                    if (request == null) {
+                        isWorkerRunning = false;
+                        break;
+                    }
+
+                    try {
+                        // Force an initial delay so BLE gets all setup
+                        long timeSinceConnection = System.currentTimeMillis() - lastConnectionTimestamp;
+                        if (timeSinceConnection < INITIAL_CONNECTION_DELAY_MS) {
+                            Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
+                        }
+
+                        boolean leftSuccess = true;
+                        boolean rightSuccess = true;
+
+                        // Send to left glass
+                        if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
+                            leftWaiter.setTrue();
+                            leftTxChar.setValue(request.data);
+                            leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
+                            if (leftSuccess) {
+                                lastSendTimestamp = System.currentTimeMillis();
+                            }
+                        }
+
+                        if (leftSuccess) {
+                            leftWaiter.waitWhileTrue();
+                        } else {
+                            //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
+                        }
+
+                        // Send to right glass
+                        if (!request.onlyLeft && rightGlassGatt != null && rightTxChar != null && isRightConnected) {
+                            rightWaiter.setTrue();
+                            rightTxChar.setValue(request.data);
+                            rightSuccess = rightGlassGatt.writeCharacteristic(rightTxChar);
+                            if (rightSuccess) {
+                                lastSendTimestamp = System.currentTimeMillis();
+                            }
+                        }
+
+                        if (rightSuccess) {
+                            rightWaiter.waitWhileTrue();
+                        } else {
+                            //Log.d(TAG, "PROC_QUEUE - RIGHT send fail");
+                        }
+
+                        Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
+
+                        // If the packet asked us to do a delay, then do it
+                        if (request.waitTime != -1){
+                            Thread.sleep(request.waitTime);
+                        }
+                    } catch (InterruptedException e) {
+                        Log.e(TAG, "Error sending data: " + e.getMessage());
+                        if (isKilled) break;
+                    }
+                }
             } catch (InterruptedException e) {
-                Log.e(TAG, "Interrupted waiting for descriptor writes: " + e);
-            }
-
-            SendRequest[] requests = sendQueue.poll();
-            if (requests == null){
-                continue;
-            }
-
-            for (SendRequest request : requests) {
-                if (request == null) {
-                    isWorkerRunning = false;
+                if (isKilled) {
+                    Log.d(TAG, "Process queue thread interrupted - shutting down");
                     break;
                 }
-
-                try {
-                    //force an initial delay so BLE gets all setup
-                    long timeSinceConnection = System.currentTimeMillis() - lastConnectionTimestamp;
-                    if (timeSinceConnection < INITIAL_CONNECTION_DELAY_MS) {
-                        Thread.sleep(INITIAL_CONNECTION_DELAY_MS - timeSinceConnection);
-                    }
-
-//                    Log.d(TAG, "PROC_QUEUE - DEBOUNCE_DELAY_MS: " + DEBOUNCE_DELAY_MS);
-
-                    // Apply debouncing
-//                    long currentTime = System.currentTimeMillis();
-//                    long timeSinceLastSend = currentTime - lastSendTimestamp;
-//                    if (timeSinceLastSend < DEBOUNCE_DELAY_MS) {
-//                        Thread.sleep(DEBOUNCE_DELAY_MS - timeSinceLastSend);
-//                    }
-
-//                    Log.d(TAG, "PROC_QUEUE - timeSinceLastSend: " + timeSinceLastSend);
-                    boolean leftSuccess = true;
-                    boolean rightSuccess = true;
-
-                    // Send to left glass
-                    if (!request.onlyRight && leftGlassGatt != null && leftTxChar != null && isLeftConnected) {
-                        leftWaiter.setTrue();
-                        leftTxChar.setValue(request.data);
-                        leftSuccess = leftGlassGatt.writeCharacteristic(leftTxChar);
-                        if (leftSuccess) {
-                            lastSendTimestamp = System.currentTimeMillis();
-                        }
-                    }
-
-                    if (leftSuccess) {
-                        //Log.d(TAG, "PROC_QUEUE - WAIT ON LEFT");
-                        leftWaiter.waitWhileTrue();
-                        //Log.d(TAG, "PROC_QUEUE - DONE WAIT ON LEFT");
-                    } else {
-                        //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
-                    }
-
-//                    Thread.sleep(DELAY_BETWEEN_SENDS_MS);
-
-                    // Send to right glass
-                    if (!request.onlyLeft && rightGlassGatt != null && rightTxChar != null && isRightConnected) {
-                        rightWaiter.setTrue();
-                        rightTxChar.setValue(request.data);
-                        rightSuccess = rightGlassGatt.writeCharacteristic(rightTxChar);
-                        if (rightSuccess) {
-                            lastSendTimestamp = System.currentTimeMillis();
-                        }
-                    }
-
-                    //wait to make sure the right happens
-                    if (rightSuccess) {
-                        //Log.d(TAG, "PROC_QUEUE - WAIT ON RIGHT");
-                        rightWaiter.waitWhileTrue();
-                        //Log.d(TAG, "PROC_QUEUE - DONE WAIT ON RIGHT");
-                    } else {
-                         //Log.d(TAG, "PROC_QUEUE - LEFT send fail");
-                    }
-
-                    Thread.sleep(DELAY_BETWEEN_CHUNKS_SEND);
-
-                    // if the packet asked us to do a delay, then do it
-                    if (request.waitTime != -1){
-                        Thread.sleep(request.waitTime);
-                    }
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Error sending data: " + e.getMessage());
-                    // Optionally re-add the failed request to the queue
-                    // sendQueue.offer(request);
-                }
+                Log.e(TAG, "Error in queue processing: " + e.getMessage());
             }
-//            try {
-//                Thread.sleep(DELAY_BETWEEN_ACTIONS_SEND);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
         }
+
+        Log.d(TAG, "Process queue thread exiting");
     }
 
 //    @Override
@@ -1740,6 +1725,10 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
 
         sendQueue.clear();
+
+        // Add a dummy element to unblock the take() call if needed
+        sendQueue.offer(new SendRequest[0]); //is this needed?
+
         isWorkerRunning = false;
 
         isLeftConnected = false;
