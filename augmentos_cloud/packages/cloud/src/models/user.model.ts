@@ -306,7 +306,7 @@ UserSchema.statics.findOrCreateUser = async function (email: string): Promise<Us
 
 UserSchema.statics.findUserInstalledApps = async function (email: string): Promise<any[]> {
   if (!email) {
-    logger.warn('[User.findUserInstalledApps] Called with null or empty email');
+    console.warn('[User.findUserInstalledApps] Called with null or empty email');
     return [];
   }
   
@@ -318,12 +318,12 @@ UserSchema.statics.findUserInstalledApps = async function (email: string): Promi
     const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
     
     // Get package names from installed apps (or empty array if no user or no installed apps)
-    const userInstalledPackages = user?.installedApps?.map(app => app.packageName) || [];
+    const userInstalledPackages = user?.installedApps?.map((app: any) => app.packageName) || [];
     
     // Create a map of package names to installation dates
     const installDates = new Map();
     if (user?.installedApps) {
-      user.installedApps.forEach(app => {
+      user.installedApps.forEach((app: any) => {
         installDates.set(app.packageName, app.installedDate);
       });
     }
@@ -351,8 +351,8 @@ UserSchema.statics.findUserInstalledApps = async function (email: string): Promi
     // Add user-installed apps from the database that aren't already in the list
     if (userInstalledPackages.length > 0) {
       // Filter out packages that are already in the result (system apps)
-      const existingPackages = result.map(app => app.packageName);
-      const remainingPackages = userInstalledPackages.filter(pkg => !existingPackages.includes(pkg));
+      const existingPackages = result.map((app: any) => app.packageName);
+      const remainingPackages = userInstalledPackages.filter((pkg: string) => !existingPackages.includes(pkg));
       
       if (remainingPackages.length > 0) {
         // Then check database apps

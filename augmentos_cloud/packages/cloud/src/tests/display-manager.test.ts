@@ -41,10 +41,10 @@ const createMockUserSession = (userId: string, websocket: any): UserSession => {
     displayManager: {} as any, // Will be set later
     isTranscribing: false,
     logger: {
-      info: (message: string, ...args: any[]) => logger.info(`[TEST:${userId}] ${message}`, ...args),
-      warn: (message: string, ...args: any[]) => logger.warn(`[TEST:${userId}] ${message}`, ...args),
-      error: (message: string, ...args: any[]) => logger.error(`[TEST:${userId}] ${message}`, ...args),
-      debug: (message: string, ...args: any[]) => logger.debug(`[TEST:${userId}] ${message}`, ...args),
+      info: (infoObject: object | string, ...args: any[]) => logger.info(`[TEST:${userId}] ${String(infoObject)}`, ...args),
+      warn: (infoObject: object | string, ...args: any[]) => logger.warn(`[TEST:${userId}] ${String(infoObject)}`, ...args),
+      error: (infoObject: object | string, ...args: any[]) => logger.error(`[TEST:${userId}] ${String(infoObject)}`, ...args),
+      debug: (infoObject: object | string, ...args: any[]) => logger.debug(`[TEST:${userId}] ${String(infoObject)}`, ...args),
     },
   };
 };
@@ -80,7 +80,7 @@ async function runDisplayManagerTests() {
       text: 'Hello, world!'
     },
     timestamp: new Date()
-  };
+  } as any;
   
   // Attempting display should fail since app isn't registered
   const result1 = displayManager.handleDisplayEvent(displayRequest1, userSession);
@@ -118,7 +118,7 @@ async function runDisplayManagerTests() {
       layoutType: LayoutType.TEXT_WALL,
       text: 'Request 1'
     }
-  };
+  } as any;
   
   const displayRequest3 = {
     ...displayRequest1,
@@ -126,7 +126,7 @@ async function runDisplayManagerTests() {
       layoutType: LayoutType.TEXT_WALL,
       text: 'Request 2'
     }
-  };
+  } as any;
   
   const displayRequest4 = {
     ...displayRequest1,
@@ -134,7 +134,7 @@ async function runDisplayManagerTests() {
       layoutType: LayoutType.TEXT_WALL,
       text: 'Request 3'
     }
-  };
+  } as any;
   
   // Send first request - should succeed
   const throttleResult1 = displayManager.handleDisplayEvent(displayRequest2, userSession);
@@ -177,7 +177,7 @@ async function runDisplayManagerTests() {
       text: 'Background App 1'
     },
     timestamp: new Date()
-  };
+  } as any;
   
   const backgroundRequest2 = {
     type: TpaToCloudMessageType.DISPLAY_REQUEST,
@@ -188,7 +188,7 @@ async function runDisplayManagerTests() {
       text: 'Background App 2'
     },
     timestamp: new Date()
-  };
+  } as any;
   
   // First app should get the lock
   const bgResult1 = displayManager.handleDisplayEvent(backgroundRequest1, userSession);
@@ -220,7 +220,7 @@ async function runDisplayManagerTests() {
       text: 'Core App Display'
     },
     timestamp: new Date()
-  };
+  } as any;
   
   // Core app should override background
   const coreResult = displayManager.handleDisplayEvent(coreRequest, userSession);
