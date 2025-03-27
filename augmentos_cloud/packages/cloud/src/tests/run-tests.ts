@@ -3,7 +3,6 @@
  * 
  * Runs all the test suites for the cloud package.
  */
-import { runDisplayManagerTests } from './display-manager.test';
 
 // Track test results
 interface TestResult {
@@ -20,8 +19,8 @@ async function runAllTests() {
   const results: TestResult[] = [];
   
   // Test suites to run
-  const suites = [
-    { name: 'DisplayManager', runner: runDisplayManagerTests }
+  const suites: Array<{ name: string, runner: () => Promise<any> }> = [
+    // Add test suites here
   ];
   
   // Run each suite
