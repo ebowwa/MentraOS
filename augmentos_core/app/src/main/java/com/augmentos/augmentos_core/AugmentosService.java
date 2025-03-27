@@ -1259,6 +1259,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onMicStateForFrontendEvent(isMicEnabledForFrontendEvent event) {
         Log.d("AugmentOsService", "Received mic state for frontend event: " + event.micState);
         isMicEnabledForFrontend = event.micState;
+        sendStatusToAugmentOsManager();
     }
 
     @Override
