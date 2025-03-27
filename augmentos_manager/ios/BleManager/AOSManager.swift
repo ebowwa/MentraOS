@@ -205,6 +205,17 @@ import AVFoundation
           return
         }
         
+        
+        if self.bypassVad {
+          let pcmConverter = PcmConverter()
+          let lc3Data = pcmConverter.encode(pcmData) as Data
+          checkSetVadStatus(speaking: true)
+          // first send out whatever's in the vadBuffer (if there is anything):
+          emptyVadBuffer()
+          self.serverComms.sendAudioChunk(lc3Data)
+          return
+        }
+        
         // convert audioData to Int16 array:
         let pcmDataArray = pcmData.withUnsafeBytes { pointer -> [Int16] in
           Array(UnsafeBufferPointer(
@@ -212,13 +223,13 @@ import AVFoundation
             count: pointer.count / MemoryLayout<Int16>.stride
           ))
         }
-        
+      
         vad.checkVAD(pcm: pcmDataArray) { [weak self] state in
           guard let self = self else { return }
           //            self.handler?(state)
           print("VAD State: \(state)")
         }
-        
+      
         // encode the pcmData as LC3:
         let pcmConverter = PcmConverter()
         let lc3Data = pcmConverter.encode(pcmData) as Data
@@ -235,6 +246,7 @@ import AVFoundation
           // add to the vadBuffer:
           addToVadBuffer(lc3Data)
         }
+        
       }
       .store(in: &cancellables)
     
@@ -257,6 +269,15 @@ import AVFoundation
         return
       }
       
+      
+      if self.bypassVad {
+        checkSetVadStatus(speaking: true)
+        // first send out whatever's in the vadBuffer (if there is anything):
+        emptyVadBuffer()
+        self.serverComms.sendAudioChunk(lc3Data)
+        return
+      }
+        
       let pcmConverter = PcmConverter()
       let pcmData = pcmConverter.decode(lc3Data) as Data
       

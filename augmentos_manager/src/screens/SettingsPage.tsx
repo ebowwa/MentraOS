@@ -88,7 +88,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const toggleAutoBrightness = async () => {
     const newVal = !isAutoBrightnessEnabled;
-    await coreCommunicator.sendToggleAutoBrightness(newVal);
+    await coreCommunicator.setGlassesAutoBrightness(newVal);
     setIsAutoBrightnessEnabled(newVal);
   };
 
@@ -402,7 +402,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </TouchableOpacity>
 
           {/* Brightness Slider */}
-          <View style={styles.settingItem}>
+          {!(status.glasses_info?.auto_brightness) && (<View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text
                 style={[
@@ -424,8 +424,39 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 ]}>
                 Adjust the brightness level of your smart glasses.
               </Text>
-              <Slider {...sliderProps} />
+                <Slider {...sliderProps} />
+              </View>
             </View>
+          )}
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}
+              >
+                Auto Brightness
+              </Text>
+              {status.glasses_info?.model_name && (
+                <Text
+                  style={[
+                    styles.value,
+                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  ]}
+                >
+                  Automatically adjust the brightness of your smart glasses based on the ambient light.
+                </Text>
+              )}
+            </View>
+            <Switch
+              value={isAutoBrightnessEnabled}
+              onValueChange={toggleAutoBrightness}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
           </View>
 
           {/* Developer Settings */}
@@ -460,37 +491,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             <Text style={[styles.label, styles.redText]}>Report an Issue</Text>
           </View>
         </TouchableOpacity> */}
-
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}
-              >
-                Auto Brightness
-              </Text>
-              {status.glasses_info?.model_name && (
-                <Text
-                  style={[
-                    styles.value,
-                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  ]}
-                >
-                  Automatically adjust the brightness of your smart glasses based on the ambient light.
-                </Text>
-              )}
-            </View>
-            <Switch
-              value={isAutoBrightnessEnabled}
-              onValueChange={toggleAutoBrightness}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
-            />
-          </View>
 
           {/* Forget Glasses */}
           <TouchableOpacity
