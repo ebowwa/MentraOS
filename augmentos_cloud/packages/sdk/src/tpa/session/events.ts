@@ -143,6 +143,40 @@ export class EventManager {
     this.emitter.on('settings_update', handler);
     return () => this.emitter.off('settings_update', handler);
   }
+  
+  /**
+   * 🔄 Listen for changes to a specific setting
+   * @param key - Setting key to monitor
+   * @param handler - Function to handle setting value changes
+   * @returns Cleanup function to remove the handler
+   */
+  onSettingChange<T>(key: string, handler: (value: T, previousValue: T | undefined) => void): () => void {
+    let previousValue: T | undefined = undefined;
+    
+    const settingsHandler = (settings: AppSettings) => {
+      try {
+        const setting = settings.find(s => s.key === key);
+        if (setting) {
+          // Only call handler if value has changed
+          if (setting.value !== previousValue) {
+            const newValue = setting.value as T;
+            handler(newValue, previousValue);
+            previousValue = newValue;
+          }
+        }
+      } catch (error: unknown) {
+        console.error(`Error in onSettingChange handler for key "${key}":`, error);
+      }
+    };
+    
+    this.emitter.on('settings_update', settingsHandler);
+    this.emitter.on('connected', settingsHandler); // Also check when first connected
+    
+    return () => {
+      this.emitter.off('settings_update', settingsHandler);
+      this.emitter.off('connected', settingsHandler);
+    };
+  }
 
   /**
    * 🔄 Generic event handler

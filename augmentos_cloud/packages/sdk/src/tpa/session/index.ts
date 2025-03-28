@@ -33,6 +33,9 @@ import {
 
   // Other types
   AppSettings,
+  AppSetting,
+  TpaConfig,
+  validateTpaConfig,
   AudioChunk,
   isAudioChunk
 } from '../../types';
@@ -101,6 +104,16 @@ export class TpaSession {
   private subscriptions = new Set<StreamType>();
   /** Resource tracker for automatic cleanup */
   private resources = new ResourceTracker();
+  /** User settings for this TPA */
+  private settings: AppSettings = [];
+  /** TPA configuration loaded from tpa_config.json */
+  private tpaConfig: TpaConfig | null = null;
+  /** Whether to update subscriptions when settings change */
+  private shouldUpdateSubscriptionsOnSettingsChange = false;
+  /** Custom subscription handler for settings-based subscriptions */
+  private subscriptionSettingsHandler?: (settings: AppSettings) => StreamType[];
+  /** Settings that should trigger subscription updates when changed */
+  private subscriptionUpdateTriggers: string[] = [];
 
   /** 🎮 Event management interface */
   public readonly events: EventManager;
@@ -462,6 +475,149 @@ export class TpaSession {
     this.reconnectAttempts = 0;
   }
 
+  /**
+   * 🛠️ Get all current user settings
+   * @returns A copy of the current settings array
+   */
+  getSettings(): AppSettings {
+    return [...this.settings]; // Return a copy to prevent accidental mutations
+  }
+
+  /**
+   * 🔍 Get a specific setting value by key
+   * @param key The setting key to look for
+   * @returns The setting's value, or undefined if not found
+   */
+  getSetting<T>(key: string): T | undefined {
+    const setting = this.settings.find(s => s.key === key);
+    return setting ? (setting.value as T) : undefined;
+  }
+
+  /**
+   * ⚙️ Configure settings-based subscription updates
+   * This allows TPAs to automatically update their subscriptions when certain settings change
+   * @param options Configuration options for settings-based subscriptions
+   */
+  setSubscriptionSettings(options: {
+    updateOnChange: string[]; // Setting keys that should trigger subscription updates
+    handler: (settings: AppSettings) => StreamType[]; // Handler that returns new subscriptions
+  }): void {
+    this.shouldUpdateSubscriptionsOnSettingsChange = true;
+    this.subscriptionUpdateTriggers = options.updateOnChange;
+    this.subscriptionSettingsHandler = options.handler;
+    
+    // If we already have settings, update subscriptions immediately
+    if (this.settings.length > 0) {
+      this.updateSubscriptionsFromSettings();
+    }
+  }
+
+  /**
+   * 🔄 Update subscriptions based on current settings
+   * Called automatically when relevant settings change
+   */
+  private updateSubscriptionsFromSettings(): void {
+    if (!this.subscriptionSettingsHandler) return;
+    
+    try {
+      // Get new subscriptions from handler
+      const newSubscriptions = this.subscriptionSettingsHandler(this.settings);
+      
+      // Update all subscriptions at once
+      this.subscriptions.clear();
+      newSubscriptions.forEach(subscription => {
+        this.subscriptions.add(subscription);
+      });
+      
+      // Send subscription update to cloud if connected
+      if (this.ws && this.ws.readyState === 1) {
+        this.updateSubscriptions();
+      }
+    } catch (error: unknown) {
+      console.error('Error updating subscriptions from settings:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.events.emit('error', new Error(`Failed to update subscriptions: ${errorMessage}`));
+    }
+  }
+
+  /**
+   * 🧪 For testing: Update settings locally
+   * In normal operation, settings come from the cloud
+   * @param newSettings The new settings to apply
+   */
+  updateSettingsForTesting(newSettings: AppSettings): void {
+    this.settings = newSettings;
+    this.events.emit('settings_update', this.settings);
+    
+    // Check if we should update subscriptions
+    if (this.shouldUpdateSubscriptionsOnSettingsChange) {
+      this.updateSubscriptionsFromSettings();
+    }
+  }
+  
+  /**
+   * 📝 Load configuration from a JSON file
+   * @param jsonData JSON string containing TPA configuration
+   * @returns The loaded configuration
+   * @throws Error if the configuration is invalid
+   */
+  loadConfigFromJson(jsonData: string): TpaConfig {
+    try {
+      const parsedConfig = JSON.parse(jsonData);
+      
+      if (validateTpaConfig(parsedConfig)) {
+        this.tpaConfig = parsedConfig;
+        return parsedConfig;
+      } else {
+        throw new Error('Invalid TPA configuration format');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to load TPA configuration: ${errorMessage}`);
+    }
+  }
+  
+  /**
+   * 📋 Get the loaded TPA configuration
+   * @returns The current TPA configuration or null if not loaded
+   */
+  getConfig(): TpaConfig | null {
+    return this.tpaConfig;
+  }
+  
+  /**
+   * 🔍 Get default settings from the TPA configuration
+   * @returns Array of settings with default values
+   * @throws Error if configuration is not loaded
+   */
+  getDefaultSettings(): AppSettings {
+    if (!this.tpaConfig) {
+      throw new Error('TPA configuration not loaded. Call loadConfigFromJson first.');
+    }
+    
+    return this.tpaConfig.settings
+      .filter((s: AppSetting | { type: 'group'; title: string }): s is AppSetting => s.type !== 'group')
+      .map((s: AppSetting) => ({
+        ...s,
+        value: s.defaultValue  // Set value to defaultValue
+      }));
+  }
+  
+  /**
+   * 🔍 Get setting schema from configuration
+   * @param key Setting key to look up
+   * @returns The setting schema or undefined if not found
+   */
+  getSettingSchema(key: string): AppSetting | undefined {
+    if (!this.tpaConfig) return undefined;
+    
+    const setting = this.tpaConfig.settings.find((s: AppSetting | { type: 'group'; title: string }) => 
+      s.type !== 'group' && 'key' in s && s.key === key
+    );
+    
+    return setting as AppSetting | undefined;
+  }
+
   // =====================================
   // 🔧 Private Methods
   // =====================================
@@ -486,10 +642,33 @@ export class TpaSession {
       // Using type guards to determine message type and safely handle each case
       try {
         if (isTpaConnectionAck(message)) {
-          // Validate settings object exists with required fields
-          const settings = message.settings || [];
-          this.events.emit('connected', settings);
+          // Store settings from connection acknowledgment
+          this.settings = message.settings || [];
+          
+          // Store config if provided
+          if (message.config && validateTpaConfig(message.config)) {
+            this.tpaConfig = message.config;
+          }
+          
+          // Use default settings from config if no settings were provided
+          if (this.settings.length === 0 && this.tpaConfig) {
+            try {
+              this.settings = this.getDefaultSettings();
+            } catch (error) {
+              console.warn('Failed to load default settings from config:', error);
+            }
+          }
+          
+          // Emit connected event with settings
+          this.events.emit('connected', this.settings);
+          
+          // Update subscriptions (normal flow)
           this.updateSubscriptions();
+          
+          // If settings-based subscriptions are enabled, update those too
+          if (this.shouldUpdateSubscriptionsOnSettingsChange && this.settings.length > 0) {
+            this.updateSubscriptionsFromSettings();
+          }
         }
         else if (isTpaConnectionError(message)) {
           const errorMessage = message.message || 'Unknown connection error';
@@ -509,9 +688,29 @@ export class TpaSession {
           }
         }
         else if (isSettingsUpdate(message)) {
-          // Validate settings object exists
-          const settings = message.settings || [];
-          this.events.emit('settings_update', settings);
+          // Store previous settings to check for changes
+          const prevSettings = [...this.settings];
+          
+          // Update settings
+          this.settings = message.settings || [];
+          
+          // Emit settings update event
+          this.events.emit('settings_update', this.settings);
+          
+          // Check if we should update subscriptions
+          if (this.shouldUpdateSubscriptionsOnSettingsChange) {
+            // Check if any subscription trigger settings changed
+            const shouldUpdateSubs = this.subscriptionUpdateTriggers.some(key => {
+              const oldSetting = prevSettings.find(s => s.key === key);
+              const newSetting = this.settings.find(s => s.key === key);
+              return (!oldSetting && newSetting) || 
+                (oldSetting && newSetting && oldSetting.value !== newSetting.value);
+            });
+            
+            if (shouldUpdateSubs) {
+              this.updateSubscriptionsFromSettings();
+            }
+          }
         }
         else if (isAppStopped(message)) {
           const reason = message.reason || 'unknown';
