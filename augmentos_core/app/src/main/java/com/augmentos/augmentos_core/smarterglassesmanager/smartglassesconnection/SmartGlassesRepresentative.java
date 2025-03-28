@@ -47,7 +47,9 @@ import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConn
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 
 //rxjava
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import io.reactivex.rxjava3.subjects.PublishSubject;
 
@@ -82,6 +84,12 @@ public class SmartGlassesRepresentative {
 
         uiHandler = new Handler();
         micHandler = new Handler();
+
+        //setup lc3 encoder
+        lc3EncoderPointer = L3cCpp.initEncoder();
+        if (lc3EncoderPointer == 0) {
+            Log.e(TAG, "Failed to initialize LC3 encoder");
+        }
 
         //register event bus subscribers
         EventBus.getDefault().register(this);
@@ -210,16 +218,40 @@ public class SmartGlassesRepresentative {
     }
 
     //data from the local microphone, convert to LC3, send
-    private void receiveChunk(ByteBuffer chunk){
+    private long lc3EncoderPointer = 0;
+    private final ByteArrayOutputStream remainderBuffer = new ByteArrayOutputStream();
+    private int BYTES_PER_FRAME = 320;
+
+    // data from the local microphone, convert to LC3, send
+    private void receiveChunk(ByteBuffer chunk) {
         byte[] audio_bytes = chunk.array();
 
-        //encode as LC3
-        byte[] lc3Data = L3cCpp.encodeLC3(chunk.array());
-        // Log.d(TAG, "LC3 Data encoded: " + lc3Data.toString());
+        // Append to remainder buffer
+        remainderBuffer.write(audio_bytes, 0, audio_bytes.length);
 
-        //throw off new audio chunk event
-        EventBus.getDefault().post(new AudioChunkNewEvent(audio_bytes));
-//        EventBus.getDefault().post(new LC3AudioChunkNewEvent(audio_bytes));
+        byte[] fullBuffer = remainderBuffer.toByteArray();
+        int fullLength = fullBuffer.length;
+        int frameCount = fullLength / BYTES_PER_FRAME; // BYTES_PER_FRAME = 320
+
+        for (int i = 0; i < frameCount; i++) {
+            int offset = i * BYTES_PER_FRAME;
+            byte[] frameBytes = Arrays.copyOfRange(fullBuffer, offset, offset + BYTES_PER_FRAME);
+
+            byte[] lc3Data = L3cCpp.encodeLC3(lc3EncoderPointer, frameBytes);
+
+            // Post encoded LC3
+            EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3Data));
+
+            // (Optional) Post raw PCM if needed
+            EventBus.getDefault().post(new AudioChunkNewEvent(frameBytes));
+        }
+
+        // Save remainder (partial frame) for next round
+        int leftoverBytes = fullLength % BYTES_PER_FRAME;
+        remainderBuffer.reset();
+        if (leftoverBytes > 0) {
+            remainderBuffer.write(fullBuffer, fullLength - leftoverBytes, leftoverBytes);
+        }
     }
 
     public void destroy(){
@@ -234,6 +266,11 @@ public class SmartGlassesRepresentative {
         if (smartGlassesCommunicator != null){
             smartGlassesCommunicator.destroy();
             smartGlassesCommunicator = null;
+        }
+
+        if (lc3EncoderPointer != 0) {
+            L3cCpp.freeEncoder(lc3EncoderPointer);
+            lc3EncoderPointer = 0;
         }
 
         if (uiHandler != null) {

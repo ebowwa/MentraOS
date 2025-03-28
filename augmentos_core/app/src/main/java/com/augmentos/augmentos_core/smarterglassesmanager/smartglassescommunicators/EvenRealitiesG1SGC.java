@@ -200,6 +200,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     private static final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
+    private long lc3DecoderPtr = 0;
 
     public EvenRealitiesG1SGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
@@ -211,6 +212,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         brightnessValue = getSavedBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.shouldRunOnboardMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
+
+        //setup LC3 decoder
+        if (lc3DecoderPtr == 0) {
+            lc3DecoderPtr = L3cCpp.initDecoder();
+        }
 
         //setup fonts
         fontLoader = new G1FontLoader(context);
@@ -465,16 +471,27 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                             int seq = data[1] & 0xFF; // Sequence number
                             // eg. LC3 to PCM
                             byte[] lc3 = Arrays.copyOfRange(data, 2, 202);
-                            byte[] pcmData = L3cCpp.decodeLC3(lc3);
-                            if (pcmData == null) {
-                                throw new IllegalStateException("Failed to decode LC3 data");
-                            }
+//                            byte[] pcmData = L3cCpp.decodeLC3(lc3);
+//                            if (pcmData == null) {
+//                                throw new IllegalStateException("Failed to decode LC3 data");
+//                            }
 
                             if (deviceName.contains("R_")) {
-                                // Log.d(TAG, "Audio data received. Seq: " + seq + ", from: " + deviceName + ", length: " + pcmData.length);
+                                //decode the LC3 audio
+                                if (lc3DecoderPtr != 0) {
+                                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                                    if (pcmData != null && pcmData.length > 0) {
+                                        if (shouldRunOnboardMic) {
+                                            EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
+                                        }
+                                    } else {
+                                        Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
+                                    }
+                                }
+
+                                //send the LC3 out
                                 if (shouldRunOnboardMic) {
-                                    EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
-//                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
+                                    EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3));
                                 }
                             } else {
 //                                Log.d(TAG, "Lc3 Audio data received. Seq: " + seq + ", Data: " + Arrays.toString(lc3) + ", from: " + deviceName);
@@ -1637,7 +1654,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 sendDataSequentially(chunk, false, 300);
             }
         }
-
         Log.d(TAG, "Send simple reference card");
     }
 
@@ -1671,6 +1687,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
         // Stop periodic notifications
         stopPeriodicNotifications();
+
 
         // Stop periodic text wall
 //        stopPeriodicNotifications();
@@ -1723,6 +1740,12 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
         if (queryBatteryStatusHandler != null && queryBatteryStatusHandler != null) {
             queryBatteryStatusHandler.removeCallbacksAndMessages(null);
+        }
+
+        //free LC3 decoder
+        if (lc3DecoderPtr != 0) {
+            L3cCpp.freeDecoder(lc3DecoderPtr);
+            lc3DecoderPtr = 0;
         }
 
         sendQueue.clear();

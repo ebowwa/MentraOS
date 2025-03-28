@@ -222,7 +222,7 @@ public class ServerComms {
             if (wsManager.isConnected()) {
                 wsManager.sendBinary(chunk);
                 // Debug - Write to PCM file as we send
-//                 writeToPcmFile(chunk);
+                 writeToPcmFile(chunk);
             } else {
                 // If connection drops during playback, stop sending
                 break;
@@ -712,7 +712,7 @@ public class ServerComms {
                         if (chunk != null) {
                             wsManager.sendBinary(chunk);
                             // Write to PCM file whenever we send binary data over websocket
-                            writeToPcmFile(chunk);
+//                            writeToPcmFile(chunk);
                         }
                     } else {
                         // If not connected, just wait a bit
