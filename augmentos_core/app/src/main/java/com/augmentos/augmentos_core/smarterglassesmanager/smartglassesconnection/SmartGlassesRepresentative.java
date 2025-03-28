@@ -7,17 +7,17 @@ import org.greenrobot.eventbus.Subscribe;
 import org.json.JSONObject;
 
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 //custom, our code
 import androidx.lifecycle.LifecycleOwner;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisableBleScoAudioEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.VirtualSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.special.SelfSGC;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentoslib.events.DisplayCustomContentRequestEvent;
 import com.augmentos.augmentoslib.events.DoubleTextWallViewRequestEvent;
 import com.augmentos.augmentoslib.events.HomeScreenEvent;
@@ -70,20 +70,24 @@ public class SmartGlassesRepresentative {
 
     LifecycleOwner lifecycleOwner;
 
-    //handler to handle delayed UI events
-    Handler uiHandler;
-    Handler micHandler;
+    //consolidated handler for UI events
+    private Handler handler;
+    
+    // Direct callback for audio processing (replaces EventBus)
+    private AudioProcessingCallback audioProcessingCallback;
 
-    public SmartGlassesRepresentative(Context context, SmartGlassesDevice smartGlassesDevice, LifecycleOwner lifecycleOwner, PublishSubject<JSONObject> dataObservable){
+    public SmartGlassesRepresentative(Context context, SmartGlassesDevice smartGlassesDevice, LifecycleOwner lifecycleOwner, PublishSubject<JSONObject> dataObservable, AudioProcessingCallback audioProcessingCallback){
         this.context = context;
         this.smartGlassesDevice = smartGlassesDevice;
         this.lifecycleOwner = lifecycleOwner;
 
         //receive/send data
         this.dataObservable = dataObservable;
+        
+        // Store the audio processing callback
+        this.audioProcessingCallback = audioProcessingCallback;
 
-        uiHandler = new Handler();
-        micHandler = new Handler();
+        // Handler is initialized on demand via getHandler()
 
         //setup lc3 encoder
         lc3EncoderPointer = L3cCpp.initEncoder();
@@ -135,22 +139,52 @@ public class SmartGlassesRepresentative {
      * Helper to create the appropriate communicator once.
      */
     private SmartGlassesCommunicator createCommunicator() {
+        SmartGlassesCommunicator communicator;
+        
         switch (smartGlassesDevice.getGlassesOs()) {
             case ANDROID_OS_GLASSES:
-                return new AndroidSGC(context, smartGlassesDevice, dataObservable);
+                communicator = new AndroidSGC(context, smartGlassesDevice, dataObservable);
+                break;
+                
             case AUDIO_WEARABLE_GLASSES:
-                return new AudioWearableSGC(context, smartGlassesDevice);
+                communicator = new AudioWearableSGC(context, smartGlassesDevice);
+                break;
+                
             case VIRTUAL_WEARABLE:
-                return new VirtualSGC(context, smartGlassesDevice);
+                communicator = new VirtualSGC(context, smartGlassesDevice);
+                break;
+                
             case ULTRALITE_MCU_OS_GLASSES:
-                return new UltraliteSGC(context, smartGlassesDevice, lifecycleOwner);
+                communicator = new UltraliteSGC(context, smartGlassesDevice, lifecycleOwner);
+                break;
+                
             case EVEN_REALITIES_G1_MCU_OS_GLASSES:
-                return new EvenRealitiesG1SGC(context, smartGlassesDevice);
+                communicator = new EvenRealitiesG1SGC(context, smartGlassesDevice);
+                break;
+                
             case SELF_OS_GLASSES:
-                return new SelfSGC(context, smartGlassesDevice);
+                communicator = new SelfSGC(context, smartGlassesDevice);
+                break;
+                
             default:
                 return null;  // or throw an exception
         }
+        
+        // BATTERY OPTIMIZATION: Register audio processing callback with the base communicator
+        if (communicator != null && audioProcessingCallback != null) {
+            // Standard registration for all communicators via base class
+            communicator.registerAudioProcessingCallback(audioProcessingCallback);
+            Log.d(TAG, "BATTERY OPTIMIZATION: Registered audio processing callback for " + 
+                  smartGlassesDevice.getGlassesOs().name());
+                
+            // Special case for AndroidSGC which has additional AudioSystem registration
+            if (communicator instanceof AndroidSGC) {
+                ((AndroidSGC) communicator).registerSpeechRecSystem(audioProcessingCallback);
+                Log.d(TAG, "BATTERY OPTIMIZATION: Registered additional AudioSystem callback for AndroidSGC");
+            }
+        }
+        
+        return communicator;
     }
 
     /**
@@ -201,22 +235,32 @@ public class SmartGlassesRepresentative {
         }
     }
 
+    // Get handler with lazy initialization
+    private Handler getHandler() {
+        if (handler == null) {
+            handler = new Handler(Looper.getMainLooper());
+        }
+        return handler;
+    }
+    
     private void connectAndStreamLocalMicrophone(boolean useBluetoothSco) {
         //follow this order for speed
         //start audio from bluetooth headset
-        uiHandler.post(new Runnable() {
-            @Override
-            public void run() {
-                bluetoothAudio = new MicrophoneLocalAndBluetooth(context, useBluetoothSco, new AudioChunkCallback(){
-                    @Override
-                    public void onSuccess(ByteBuffer chunk){
-                        receiveChunk(chunk);
-                    }
-                });
-            }
+        getHandler().post(() -> {
+            bluetoothAudio = new MicrophoneLocalAndBluetooth(context, useBluetoothSco, 
+                chunk -> receiveChunk(chunk));
         });
     }
 
+    /**
+     * BATTERY OPTIMIZATION: Direct method to control audio encoding bypass
+     * (Implementation removed as requested)
+     */
+    public void setBypassAudioEncoding(boolean bypass) {
+        // Method kept for API compatibility but bypass functionality removed
+        Log.d(TAG, "Audio encoding bypass setting ignored - feature disabled");
+    }
+    
     //data from the local microphone, convert to LC3, send
     private long lc3EncoderPointer = 0;
     private final ByteArrayOutputStream remainderBuffer = new ByteArrayOutputStream();
@@ -239,11 +283,10 @@ public class SmartGlassesRepresentative {
 
             byte[] lc3Data = L3cCpp.encodeLC3(lc3EncoderPointer, frameBytes);
 
-            // Post encoded LC3
-            EventBus.getDefault().post(new LC3AudioChunkNewEvent(lc3Data));
-
-            // (Optional) Post raw PCM if needed
-            EventBus.getDefault().post(new AudioChunkNewEvent(frameBytes));
+            if (audioProcessingCallback != null) {
+                audioProcessingCallback.onAudioDataAvailable(audio_bytes);
+                audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
+            }
         }
 
         // Save remainder (partial frame) for next round
@@ -257,10 +300,22 @@ public class SmartGlassesRepresentative {
     public void destroy(){
         Log.d(TAG, "SG rep destroying");
 
-        EventBus.getDefault().unregister(this);
+        // BATTERY OPTIMIZATION: Safe EventBus unregistration
+        try {
+            if (EventBus.getDefault().isRegistered(this)) {
+                EventBus.getDefault().unregister(this);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error unregistering from EventBus", e);
+        }
 
         if (bluetoothAudio != null) {
-            bluetoothAudio.destroy();
+            try {
+                bluetoothAudio.destroy();
+                bluetoothAudio = null; // BATTERY OPTIMIZATION: Prevent memory leaks
+            } catch (Exception e) {
+                Log.e(TAG, "Error destroying bluetoothAudio", e);
+            }
         }
 
         if (smartGlassesCommunicator != null){
@@ -273,9 +328,19 @@ public class SmartGlassesRepresentative {
             lc3EncoderPointer = 0;
         }
 
-        if (uiHandler != null) {
-            uiHandler.removeCallbacksAndMessages(null);
+        if (handler != null) {
+            handler.removeCallbacksAndMessages(null);
+            handler = null;
         }
+        
+        // BATTERY OPTIMIZATION: Clear references to prevent memory leaks
+        context = null;
+        lifecycleOwner = null;
+        audioProcessingCallback = null;
+        dataObservable = null;
+        
+        // Clear the callback reference
+        audioProcessingCallback = null;
 
         Log.d(TAG, "SG rep destroy complete");
     }
@@ -316,12 +381,7 @@ public class SmartGlassesRepresentative {
     }
 
     private void homeUiAfterDelay(long delayTime){
-        uiHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                homeScreen();
-            }
-        }, delayTime);
+        getHandler().postDelayed(this::homeScreen, delayTime);
     }
 
     public void homeScreen() {
@@ -330,6 +390,8 @@ public class SmartGlassesRepresentative {
         }
     }
 
+    // Keep only the subscribe methods for static methods that still use EventBus or from other components
+    
     @Subscribe
     public void onHomeScreenEvent(HomeScreenEvent receivedEvent) {
         homeScreen();
@@ -338,7 +400,6 @@ public class SmartGlassesRepresentative {
     @Subscribe
     public void onTextWallViewEvent(TextWallViewRequestEvent receivedEvent){
         if (smartGlassesCommunicator != null) {
-            // Log.d(TAG, "SINGLE TEXT WALL BOOM");
             smartGlassesCommunicator.displayTextWall(receivedEvent.text);
         }
     }
@@ -355,7 +416,6 @@ public class SmartGlassesRepresentative {
         Log.d(TAG, "SHOWING REFERENCE CARD");
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayReferenceCardSimple(receivedEvent.title, receivedEvent.body);
-//            homeUiAfterDelay(referenceCardDelayTime);
         }
     }
 
@@ -363,35 +423,9 @@ public class SmartGlassesRepresentative {
     public void onRowsCardViewEvent(RowsCardViewRequestEvent receivedEvent){
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayRowsCard(receivedEvent.rowStrings);
-//            homeUiAfterDelay(referenceCardDelayTime);
         }
     }
-
-    @Subscribe
-    public void onBulletPointListViewEvent(BulletPointListViewRequestEvent receivedEvent){
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.displayBulletList(receivedEvent.title, receivedEvent.bullets);
-//            homeUiAfterDelay(referenceCardDelayTime);
-        }
-    }
-
-    @Subscribe
-    public void onReferenceCardImageViewEvent(ReferenceCardImageViewRequestEvent receivedEvent){
-        Log.d(TAG, "sending reference card image view event");
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.displayReferenceCardImage(receivedEvent.title, receivedEvent.body, receivedEvent.imgUrl);
-//            homeUiAfterDelay(referenceCardDelayTime);
-        }
-    }
-
-    @Subscribe
-    public void onSendBitmapViewRequestEvent(SendBitmapViewRequestEvent receievedEvent){
-        Log.d(TAG, "Sending a bitmap event");
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.displayBitmap(receievedEvent.bmp);
-        }
-    }
-
+    
     @Subscribe
     public void onDisplayCustomContentRequestEvent(DisplayCustomContentRequestEvent receivedEvent){
         Log.d(TAG, "Got display custom content event: " + receivedEvent.json);
@@ -399,37 +433,7 @@ public class SmartGlassesRepresentative {
             smartGlassesCommunicator.displayCustomContent(receivedEvent.json);
         }
     }
-
-    @Subscribe
-    public void onTextLineViewRequestEvent(TextLineViewRequestEvent receivedEvent){
-        Log.d(TAG, "Got text line event: " + receivedEvent.text);
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.displayTextLine(receivedEvent.text);
-        }
-    }
-
-    @Subscribe
-    public void onStartScrollingTextViewEvent(ScrollingTextViewStartRequestEvent receivedEvent){
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.startScrollingTextViewMode(receivedEvent.title);
-        }
-    }
-
-    @Subscribe
-    public void onStopScrollingTextViewEvent(ScrollingTextViewStopRequestEvent receivedEvent){
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.stopScrollingTextViewMode();
-        }
-    }
-
-    @Subscribe
-    public void onFinalScrollingTextEvent(FinalScrollingTextRequestEvent receivedEvent) {
-        Log.d(TAG, "onFinalScrollingTextEvent");
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.scrollingTextViewFinalText(receivedEvent.text);
-        }
-    }
-
+    
     @Subscribe
     public void onIntermediateScrollingTextEvent(IntermediateScrollingTextRequestEvent receivedEvent) {
         if (smartGlassesCommunicator != null) {
@@ -442,13 +446,6 @@ public class SmartGlassesRepresentative {
         Log.d(TAG, "onPromptViewRequestEvent called");
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.displayPromptView(receivedEvent.prompt, receivedEvent.options);
-        }
-    }
-
-    @Subscribe
-    public void onSetFontSizeEvent(SetFontSizeEvent receivedEvent) {
-        if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.setFontSize(receivedEvent.fontSize);
         }
     }
 
