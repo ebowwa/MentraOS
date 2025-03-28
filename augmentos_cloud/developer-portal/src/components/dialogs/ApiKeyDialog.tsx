@@ -10,7 +10,7 @@ import { AppI } from '@augmentos/sdk';
 import { TPA } from '@/types/tpa';
 
 interface ApiKeyDialogProps {
-  tpa: AppI | TPA | null;
+  tpa: TPA | null;
   apiKey: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -215,8 +215,11 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({ tpa, open, onOpenChange, ap
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Webhook URL</h3>
                 <div className="font-mono text-sm p-2 border rounded-md bg-gray-50 overflow-x-auto">
-                  {tpa?.webhookURL || 'No webhook URL defined'}
+                  {tpa?.publicUrl ? `${tpa.publicUrl}/webhook` : 'No server URL defined'}
                 </div>
+                <p className="text-xs text-gray-500">
+                  This is the full webhook URL where AugmentOS will send events to your app.
+                </p>
               </div>
             </>
           )}
