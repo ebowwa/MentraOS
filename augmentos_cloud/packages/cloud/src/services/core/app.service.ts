@@ -27,7 +27,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.captions.packageName,
     name: systemApps.captions.name,
     tpaType: TpaType.STANDARD,
-    webhookURL: `http://${systemApps.captions.host}/webhook`,
+    publicUrl: `http://${systemApps.captions.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
     description: systemApps.captions.description
   },
@@ -35,7 +35,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.notify.packageName,
     name: systemApps.notify.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.notify.host}/webhook`,
+    publicUrl: `http://${systemApps.notify.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
     description: systemApps.notify.description,
   },
@@ -43,7 +43,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.mira.packageName,
     name: systemApps.mira.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.mira.host}/webhook`,
+    publicUrl: `http://${systemApps.mira.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
     description: systemApps.mira.description,
   },
@@ -51,7 +51,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.merge.packageName,
     name: systemApps.merge.name,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.merge.host}/webhook`,
+    publicUrl: `http://${systemApps.merge.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
     description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
   },
@@ -59,7 +59,7 @@ export const LOCAL_APPS: AppI[] = [
     packageName: systemApps.liveTranslation.packageName,
     name: systemApps.liveTranslation.name,
     tpaType: TpaType.STANDARD,
-    webhookURL: `http://${systemApps.liveTranslation.host}/webhook`,
+    publicUrl: `http://${systemApps.liveTranslation.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
     description: systemApps.liveTranslation.description,
   },
@@ -67,7 +67,7 @@ export const LOCAL_APPS: AppI[] = [
   //   packageName: systemApps.teleprompter.packageName,
   //   name: "Teleprompt",
   //   tpaType: TpaType.STANDARD,
-  //   webhookURL: `http://${systemApps.teleprompter.host}/webhook`,
+  //   publicUrl: `http://${systemApps.teleprompter.host}`,
   //   logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
   //   description: systemApps.teleprompter.description,
   // }
@@ -80,7 +80,7 @@ if (process.env.NODE_ENV !== 'production') {
     name: "Navigation",
     description: systemApps.flash.description,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.flash.host}/webhook`,
+    publicUrl: `http://${systemApps.flash.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
   });
   LOCAL_APPS.push({
@@ -88,7 +88,7 @@ if (process.env.NODE_ENV !== 'production') {
     name: "Screen Mirror",
     description: systemApps.flash.description,
     tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.flash.host}/webhook`,
+    publicUrl: `http://${systemApps.flash.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
   });
 }
@@ -104,7 +104,7 @@ export const SYSTEM_TPAS: AppI[] = [
     name: systemApps.dashboard.name,
     tpaType: TpaType.BACKGROUND,
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    webhookURL: `http:/${systemApps.dashboard.host}/webhook`,
+    publicUrl: `http:/${systemApps.dashboard.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
   },
 ];
@@ -245,11 +245,13 @@ export class AppService {
  * @param payload - Data to send
  * @throws If stop webhook fails
  */
-  async triggerStopWebhook(webhookUrl: string, payload: StopWebhookRequest): Promise<{
+  async triggerStopWebhook(publicUrl: string, payload: StopWebhookRequest): Promise<{
     status: number;
     data: WebhookResponse;
   }> {
-    const response = await axios.post(`${webhookUrl}/stop`, payload);
+    // Construct the stop webhook URL from the app's public URL
+    const webhookUrl = `${publicUrl}/webhook/stop`;
+    const response = await axios.post(webhookUrl, payload);
     return {
       status: response.status,
       data: response.data

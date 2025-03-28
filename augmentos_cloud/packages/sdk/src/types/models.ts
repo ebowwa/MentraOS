@@ -20,7 +20,7 @@ export interface DeveloperProfile {
 export interface AppI {
   packageName: string;
   name: string;
-  webhookURL: string;
+  publicUrl: string;             // Base URL of the app server
   isSystemApp?: boolean;         // Is this a system app?
 
   webviewURL?: string;            // URL for phone UI

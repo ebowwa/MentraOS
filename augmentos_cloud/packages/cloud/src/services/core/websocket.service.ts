@@ -262,7 +262,7 @@ export class WebSocketService {
 
     try {
       // Trigger TPA webhook
-      userSession.logger.info("[websocket.service]: ⚡️Triggering webhook for app⚡️: ", app.webhookURL);
+      userSession.logger.info("[websocket.service]: ⚡️Triggering webhook for app⚡️: ", app.publicUrl);
 
       // Set up the websocket URL for the TPA connection.
       let augmentOSWebsocketUrl = `wss://${PUBLIC_HOST_NAME}/tpa-ws`;
@@ -273,8 +273,10 @@ export class WebSocketService {
         augmentOSWebsocketUrl = `ws://${LOCAL_HOST_NAME}/tpa-ws`;
       }
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server Websocket URL: ${augmentOSWebsocketUrl}`);
-      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Start Session webhook URL: ${app.webhookURL}`);
-      await appService.triggerWebhook(app.webhookURL, {
+      // Construct the webhook URL from the app's public URL
+      const webhookURL = `${app.publicUrl}/webhook`;
+      userSession.logger.info(`🔥🔥🔥 [websocket.service]: Start Session webhook URL: ${webhookURL}`);
+      await appService.triggerWebhook(webhookURL, {
         // type: 'session_request',
         type: WebhookRequestType.SESSION_REQUEST,
         sessionId: userSession.sessionId + '-' + packageName,
@@ -364,7 +366,7 @@ export class WebSocketService {
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
         await this.appService.triggerStopWebhook(
-          app.webhookURL,
+          app.publicUrl,
           {
             type: 'stop_request',
             sessionId: tpaSessionId,
