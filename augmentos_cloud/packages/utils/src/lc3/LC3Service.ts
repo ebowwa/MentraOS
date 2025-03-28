@@ -210,7 +210,7 @@ export class LC3Service {
         // If this isn't the first chunk and sequence doesn't match expected
         if (this.lastProcessedSequence !== -1 && sequenceNumber !== expectedSequence) {
           this.sequenceDiscontinuities++;
-          logger.warn(`Session ${this.sessionId}: LC3 decoder sequence discontinuity - expected ${expectedSequence}, got ${sequenceNumber}. Total discontinuities: ${this.sequenceDiscontinuities}`);
+          // logger.warn(`Session ${this.sessionId}: LC3 decoder sequence discontinuity - expected ${expectedSequence}, got ${sequenceNumber}. Total discontinuities: ${this.sequenceDiscontinuities}`);
         }
         
         this.lastProcessedSequence = sequenceNumber;
@@ -221,7 +221,7 @@ export class LC3Service {
       if (this.lastDecodeTimestamp > 0) {
         const timeSinceLastChunk = now - this.lastDecodeTimestamp;
         if (timeSinceLastChunk > 100) { // Log only significant gaps (>100ms)
-          logger.debug(`Session ${this.sessionId}: LC3 decoding gap of ${timeSinceLastChunk}ms between chunks`);
+          // logger.debug(`Session ${this.sessionId}: LC3 decoding gap of ${timeSinceLastChunk}ms between chunks`);
         }
       }
       this.lastDecodeTimestamp = now;
