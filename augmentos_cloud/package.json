@@ -32,6 +32,7 @@
 
     "logs": "docker-compose -f docker-compose.dev.yml -p dev logs -f --tail=0",
     "logs:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud --tail=0",
+    "logs:live-captions": "docker-compose -f docker-compose.dev.yml -p dev logs -f live-captions --tail=50",
     "logs:service": "docker-compose -f docker-compose.dev.yml -p dev logs -f",
     
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
