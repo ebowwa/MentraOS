@@ -402,7 +402,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </TouchableOpacity>
 
           {/* Brightness Slider */}
-          {!(status.glasses_info?.auto_brightness) && (<View style={styles.settingItem}>
+          {!isAutoBrightnessEnabled && (<View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
               <Text
                 style={[
