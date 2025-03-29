@@ -1,7 +1,7 @@
 "on":
     push:
         branches:
-            - isaiah/debug
+            - websocket-headers
 name: Deploy to augmentos-cloud-debug
 jobs:
     porter-deploy:
