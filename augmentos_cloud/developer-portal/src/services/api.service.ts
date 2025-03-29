@@ -42,6 +42,7 @@ async function retryWithBackoff<T>(
 
 // Extended TPA interface for API responses
 export interface AppResponse extends AppI {
+  id: string; // Add id property to match TPA interface
   createdAt: string;
   updatedAt: string;
   publicUrl: string;

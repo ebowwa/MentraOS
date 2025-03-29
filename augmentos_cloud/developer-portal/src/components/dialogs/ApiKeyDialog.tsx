@@ -10,7 +10,7 @@ import { AppI } from '@augmentos/sdk';
 import { TPA } from '@/types/tpa';
 
 interface ApiKeyDialogProps {
-  tpa: TPA | null;
+  tpa: AppI | null;
   apiKey: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
