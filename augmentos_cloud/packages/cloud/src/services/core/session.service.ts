@@ -48,25 +48,36 @@ export interface ExtendedUserSession extends UserSession {
   lc3Service?: LC3Service;
   audioWriter?: AudioWriter; // for debugging audio streams.
   audioBuffer?: OrderedAudioBuffer; // Ordered buffer for audio chunks
+  disconnectedAt: Date | null; // Timestamp of disconnection
 }
 
 export class SessionService {
   private activeSessions = new Map<string, ExtendedUserSession>();
   private sessionsByUser = new Map<string, ExtendedUserSession>();
 
-  async createSession(ws: WebSocket, userId = 'anonymous'): Promise<ExtendedUserSession> {
+  async createSession(ws: WebSocket, userId: string): Promise<ExtendedUserSession> {
     // Check for existing sessions for this user that might need to be preserved
     const existingSession = this.sessionsByUser.get(userId);
-    
-    const sessionId = uuidv4();
+    if (existingSession) {
+      // If the existing session is still active, reuse it.
+      existingSession.websocket = ws;
+      existingSession.disconnectedAt = null; // Reset disconnected timestamp
+      existingSession.isTranscribing = false; // Reset transcription state
+      existingSession.logger.info(`Reusing existing UserSession for user ${userId}`);
+
+      existingSession.websocket.send(JSON.stringify({ type: 'reconnect' }));
+      return existingSession;
+    }
+
+    const sessionId = userId;
     const userSession: ExtendedUserSession = {
       logger: createLoggerForUserSession(userId),
       sessionId,
       userId,
       startTime: new Date(),
-      activeAppSessions: existingSession?.activeAppSessions || [],
+      activeAppSessions: [],
       installedApps: await appService.getAllApps(),
-      whatToStream: existingSession?.whatToStream || new Array<StreamType>(),
+      whatToStream: new Array<StreamType>(),
       appSubscriptions: new Map<string, StreamType[]>(),
       transcriptionStreams: new Map<string, ASRStreamInstance>(),
       loadingApps: new Set<string>(),
@@ -74,12 +85,13 @@ export class SessionService {
       OSSettings: { brightness: 50, volume: 50 },
       displayManager: new DisplayManager(),
       transcript: { segments: [] },
-      websocket: ws as any,
+      websocket: ws,
       bufferedAudio: [],
       disconnectedAt: null,
       isTranscribing: false
-    } as UserSession & { disconnectedAt: Date | null };
-    userSession.logger.info(`Session ${sessionId} created for user ${userId}`);
+    } as ExtendedUserSession;
+
+    userSession.logger.info(`UserSession ${sessionId} created for user ${userId}`);
 
     // Create and initialize a new LC3Service instance for this session
     // Use the new factory function to create a session-specific instance
@@ -108,10 +120,7 @@ export class SessionService {
     userSession.logger.info(`[session.service] Created new session ${sessionId} for user ${userId}`);
     
     // Always keep the latest session for each user in the user lookup map
-    if (userId !== 'anonymous') {
-      this.sessionsByUser.set(userId, userSession);
-    }
-    
+    this.sessionsByUser.set(userId, userSession);
     return userSession;
   }
 
@@ -182,86 +191,6 @@ export class SessionService {
       timestamp: new Date()
     };
     userSession.websocket.send(JSON.stringify(clientResponse));
-  }
-
-  async handleReconnectUserSession(newSession: ExtendedUserSession, userId: string): Promise<void> {
-  const oldUserSession = this.getSession(userId);
-    if (oldUserSession) {
-      newSession.activeAppSessions = oldUserSession.activeAppSessions;
-      newSession.transcript = oldUserSession.transcript;
-      newSession.OSSettings = oldUserSession.OSSettings;
-      newSession.appSubscriptions = oldUserSession.appSubscriptions;
-      newSession.appConnections = oldUserSession.appConnections;
-      newSession.whatToStream = oldUserSession.whatToStream;
-      newSession.isTranscribing = false; // Reset transcription state
-
-      // Transfer LC3Service instance to new session
-      if (oldUserSession.lc3Service) {
-        // Use the existing LC3 service instance
-        newSession.lc3Service = oldUserSession.lc3Service;
-        newSession.logger.info(`✅ Transferred existing LC3 Service from session ${oldUserSession.sessionId} to ${newSession.sessionId}`);
-      } else {
-        // Create a new one with the session ID if needed
-        newSession.logger.warn(`⚠️ No LC3 service found for reconnected session, creating a new one`);
-        const lc3ServiceInstance = createLC3Service(newSession.sessionId);
-        try {
-          await lc3ServiceInstance.initialize();
-          newSession.logger.info(`✅ New LC3 Service initialized for reconnected session ${newSession.sessionId}`);
-        }
-        catch (error) {
-          newSession.logger.error(`❌ Failed to initialize LC3 service for reconnected session ${newSession.sessionId}:`, error);
-        }
-        newSession.lc3Service = lc3ServiceInstance;
-      }
-
-      // Transfer audio buffer with proper state management
-      if (oldUserSession.audioBuffer) {
-        // Clear the old interval before creating a new one
-        clearInterval(oldUserSession.audioBuffer.bufferProcessingInterval);
-        
-        // Create a new buffer with the existing state
-        newSession.audioBuffer = {
-          chunks: [...oldUserSession.audioBuffer.chunks],
-          lastProcessedSequence: oldUserSession.audioBuffer.lastProcessedSequence,
-          processingInProgress: false, // Reset processing flag for safety
-          expectedNextSequence: oldUserSession.audioBuffer.expectedNextSequence,
-          bufferSizeLimit: oldUserSession.audioBuffer.bufferSizeLimit,
-          bufferTimeWindowMs: oldUserSession.audioBuffer.bufferTimeWindowMs,
-          bufferProcessingInterval: setInterval(() => {
-            // Will be properly set up by websocket service
-          }, 100)
-        };
-        
-        newSession.logger.info(`✅ Transferred audio buffer from session ${oldUserSession.sessionId} to ${newSession.sessionId}`);
-        newSession.logger.debug(`Audio buffer state: ${newSession.audioBuffer.chunks.length} chunks, last processed: ${newSession.audioBuffer.lastProcessedSequence}`);
-      }
-
-      // Clean up old session resources
-      if (oldUserSession.recognizer) {
-        transcriptionService.stopTranscription(oldUserSession);
-      }
-
-      // Close old websocket
-      if (oldUserSession.websocket.readyState === 1) {
-        oldUserSession.websocket?.close();
-      }
-
-      // Note: we don't clean up the LC3 service since we're transferring it
-
-      this.activeSessions.delete(oldUserSession.sessionId);
-      newSession.logger.info(`Transferred data from session ${oldUserSession.sessionId} to ${newSession.sessionId}`);
-    }
-
-    newSession.userId = userId;
-    newSession.sessionId = userId;
-    newSession.logger = createLoggerForUserSession(userId);
-
-    this.activeSessions.set(newSession.sessionId, newSession);
-    newSession.logger.info(`Reconnected session ${newSession.sessionId} for user ${userId}`);
-
-    if (newSession.websocket.readyState === 1) {
-      newSession.websocket.send(JSON.stringify({ type: 'reconnect' }));
-    }
   }
 
   updateDisplay(userSessionId: string, displayRequest: DisplayRequest): void {
@@ -370,8 +299,7 @@ export class SessionService {
     return processedAudioData;
   }
 
-  endSession(sessionId: string): void {
-    const userSession = this.getSession(sessionId);
+  endSession(userSession: ExtendedUserSession): void {
     if (!userSession) return;
 
     if (userSession.recognizer) {
@@ -380,21 +308,21 @@ export class SessionService {
 
     // Clean up the LC3 instance for this session if it exists
     if (userSession.lc3Service) {
-      userSession.logger.info(`🧹 Cleaning up LC3 service for session ${sessionId}`);
+      userSession.logger.info(`🧹 Cleaning up LC3 service for session ${userSession.sessionId}`);
       userSession.lc3Service.cleanup();
       userSession.lc3Service = undefined;
     }
 
     // Clean up audio buffer resources
     if (userSession.audioBuffer) {
-      userSession.logger.info(`🧹 Cleaning up audio buffer for session ${sessionId}`);
+      userSession.logger.info(`🧹 Cleaning up audio buffer for session ${userSession.sessionId}`);
       clearInterval(userSession.audioBuffer.bufferProcessingInterval);
       userSession.audioBuffer.chunks = [];
       userSession.audioBuffer.processingInProgress = false;
     }
 
     // Clean up subscription history for this session
-    subscriptionService.removeSessionSubscriptionHistory(sessionId);
+    subscriptionService.removeSessionSubscriptionHistory(userSession.sessionId);
 
     // Clear transcript history
     if (userSession.transcript && userSession.transcript.segments) {
@@ -406,8 +334,8 @@ export class SessionService {
       userSession.bufferedAudio = [];
     }
 
-    this.activeSessions.delete(sessionId);
-    userSession.logger.info(`[Ended session] ${sessionId}`);
+    this.activeSessions.delete(userSession.sessionId);
+    userSession.logger.info(`[Ended session] ${userSession.sessionId}`);
 
     // Suggest garbage collection if available
     if (global.gc) {
@@ -493,14 +421,14 @@ export class SessionService {
     }
   }
 
-  isItTimeToKillTheSession(sessionId: string): boolean {
-    const session = this.getSession(sessionId);
-    if (session && session.disconnectedAt) {
-      const elapsed = Date.now() - session.disconnectedAt.getTime();
-      return elapsed > RECONNECT_GRACE_PERIOD_MS;
-    }
-    return false;
-  }
+  // isItTimeToKillTheSession(sessionId: string): boolean {
+  //   const session = this.getSession(sessionId);
+  //   if (session && session.disconnectedAt) {
+  //     const elapsed = Date.now() - session.disconnectedAt.getTime();
+  //     return elapsed > RECONNECT_GRACE_PERIOD_MS;
+  //   }
+  //   return false;
+  // }
   
   // Method to get audio service info for debugging
   getAudioServiceInfo(sessionId: string): object | null {
