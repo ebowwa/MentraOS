@@ -585,10 +585,9 @@ export class WebSocketService {
    * @param streamType - Type of data stream
    * @param data - Data to broadcast
    */
-  broadcastToTpa(userSessionId: string, streamType: StreamType, data: CloudToTpaMessage): void {
-    const userSession = sessionService.getSession(userSessionId);
+  broadcastToTpa(userSession: ExtendedUserSession, streamType: StreamType, data: CloudToTpaMessage): void {
     if (!userSession) {
-      logger.error(`[websocket.service]: User session not found for ${userSessionId}`);
+      logger.error(`[websocket.service]: User session not found for ${userSession}`);
       return;
     }
 
@@ -1026,7 +1025,7 @@ export class WebSocketService {
             userSession.isTranscribing = false;
             transcriptionService.stopTranscription(userSession);
           }
-          this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
+          this.broadcastToTpa(userSession, message.type as any, message as any);
           break;
         }
 
@@ -1042,7 +1041,7 @@ export class WebSocketService {
           catch (error) {
             userSession.logger.error(`[websocket.service]: Error updating user location:`, error);
           }
-          this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
+          this.broadcastToTpa(userSession, message.type as any, message as any);
           console.warn(`[Session ${userSession.sessionId}] Catching and Sending message type:`, message.type);
           // userSession.location = locationUpdate.location;
           break;
@@ -1052,7 +1051,7 @@ export class WebSocketService {
           const calendarEvent = message as CalendarEvent;
           userSession.logger.info('Calendar event:', calendarEvent);
 
-          this.broadcastToTpa(userSession.sessionId, message.type as any, message);
+          this.broadcastToTpa(userSession, message.type as any, message);
           break;
         }
 
@@ -1060,7 +1059,7 @@ export class WebSocketService {
         default: {
           userSession.logger.info(`[Session ${userSession.sessionId}] Catching and Sending message type:`, message.type);
           // check if it's a type of Client to TPA message.
-          this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
+          this.broadcastToTpa(userSession, message.type as any, message as any);
         }
       }
     } catch (error) {
@@ -1376,12 +1375,12 @@ export class WebSocketService {
         if (location) {
           const locationUpdate: LocationUpdate = {
             type: GlassesToCloudMessageType.LOCATION_UPDATE,
-            sessionId: userSessionId,
+            sessionId: userSession.userId,
             lat: location.lat,
             lng: location.lng,
             timestamp: new Date()
           };
-          this.broadcastToTpa(userSessionId, StreamType.LOCATION_UPDATE, locationUpdate);
+          this.broadcastToTpa(userSession, StreamType.LOCATION_UPDATE, locationUpdate);
         }
       }
     } catch (error) {
