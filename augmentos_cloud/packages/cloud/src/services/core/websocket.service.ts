@@ -404,7 +404,7 @@ export class WebSocketService {
     userSession.logger.debug(`[websocket.service]: Current Loading Apps:`, userSession.loadingApps);
 
     try {
-      // Trigger TPA webhook
+      // Trigger TPA webhook 
       userSession.logger.info("[websocket.service]: ⚡️Triggering webhook for app⚡️: ", app.publicUrl);
 
       // Set up the websocket URL for the TPA connection
