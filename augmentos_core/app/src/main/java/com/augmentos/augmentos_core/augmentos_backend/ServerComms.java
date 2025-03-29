@@ -164,7 +164,7 @@ public class ServerComms {
         }
         
         this.coreToken = coreToken;
-        wsManager.connect(getServerUrl());
+        wsManager.connect(getServerUrl(), coreToken);
     }
 
     /**
