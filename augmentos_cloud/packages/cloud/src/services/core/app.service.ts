@@ -186,6 +186,8 @@ export class AppService {
 
     if (APPSTORE_ENABLED) {
       if (!app) {
+        // Check if the app is in the app store
+        console.log('Checking app store for app:', packageName);
         app = await App.findOne({
           packageName: packageName
         }) as AppI;
@@ -268,44 +270,46 @@ export class AppService {
   async validateApiKey(packageName: string, apiKey: string, clientIp?: string): Promise<boolean> {
     const app = await this.getApp(packageName);
     if (!app) return false;
-    
+
     // Additional verification for system apps
-    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(sysApp => sysApp.packageName === packageName);
-    if (isSystemApp) {
-      // If a system app, verify it's coming from the internal cluster network
-      if (clientIp) {
-        // Check if IP is from the internal network
-        // Docker networks typically use 172.x.x.x, 10.x.x.x, or 192.168.x.x
-        // Kubernetes pod IPs depend on your cluster configuration
-        // Handle IPv6-mapped IPv4 addresses (::ffff:a.b.c.d)
-        const ipv4 = clientIp.startsWith('::ffff:') ? clientIp.substring(7) : clientIp;
-        
-        const isInternalIp = ipv4.startsWith('10.') || 
-                             ipv4.startsWith('172.') || 
-                             ipv4.startsWith('192.168.') ||
-                             // For Kubernetes cluster IPs (adjust based on your actual cluster IP range)
-                             ipv4.includes('.svc.cluster.local') || 
-                             clientIp === '::ffff:127.0.0.1' || 
-                             ipv4 === '127.0.0.1' || 
-                             ipv4 === 'localhost';
-        
-        console.log(`System app ${packageName} connection IP check: ${clientIp} (IPv4: ${ipv4}), isInternal: ${isInternalIp}`);
-        
-        if (!isInternalIp) {
-          console.error(`System app ${packageName} connection rejected - not from internal network. IP: ${clientIp}`);
-          return false;
-        }
+    // const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(sysApp => sysApp.packageName === packageName);
+    // If a system app, verify it's coming from the internal cluster network
+    if (clientIp) {
+      // Check if IP is from the internal network
+      // Docker networks typically use 172.x.x.x, 10.x.x.x, or 192.168.x.x
+      // Kubernetes pod IPs depend on your cluster configuration
+      // Handle IPv6-mapped IPv4 addresses (::ffff:a.b.c.d)
+      const ipv4 = clientIp.startsWith('::ffff:') ? clientIp.substring(7) : clientIp;
+
+      const isInternalIp = ipv4.startsWith('10.') ||
+        ipv4.startsWith('172.') ||
+        ipv4.startsWith('192.168.') ||
+        // For Kubernetes cluster IPs (adjust based on your actual cluster IP range)
+        ipv4.includes('.svc.cluster.local') ||
+        clientIp === '::ffff:127.0.0.1' ||
+        ipv4 === '127.0.0.1' ||
+        ipv4 === 'localhost';
+
+      console.log(`System app ${packageName} connection IP check: ${clientIp} (IPv4: ${ipv4}), isInternal: ${isInternalIp}`);
+
+      if (isInternalIp) {
+        // Reject connection if not from internal network
+        console.warn(`System app ${packageName} connection is an internal IP: ${clientIp} (IPv4: ${ipv4}) - allowing access`);
+        return true;
       }
-      return true;
     }
-    
+
     // For regular apps, validate API key as normal
     // Get the MongoDB app document to access hashedApiKey
     const appDoc = await App.findOne({ packageName });
     if (!appDoc?.hashedApiKey) return false;
-    
+
     // Hash the provided API key and compare with stored hash
     const hashedKey = this.hashApiKey(apiKey);
+
+    console.log(`Validating API key for ${packageName}: ${hashedKey} === ${appDoc.hashedApiKey}`);
+    // Compare the hashed API key with the stored hashed API key
+
     return hashedKey === appDoc.hashedApiKey;
   }
 
@@ -369,13 +373,13 @@ export class AppService {
       // Make sure only valid fields are included
       const validFields = ['company', 'website', 'contactEmail', 'description'];
       const sanitizedDeveloperInfo: any = {};
-      
+
       for (const field of validFields) {
         if (appData.developerInfo[field] !== undefined) {
           sanitizedDeveloperInfo[field] = appData.developerInfo[field];
         }
       }
-      
+
       // Replace with sanitized version
       appData.developerInfo = sanitizedDeveloperInfo;
     }
@@ -389,7 +393,7 @@ export class AppService {
 
     return updatedApp!;
   }
-  
+
   /**
    * Publish an app to the app store
    */

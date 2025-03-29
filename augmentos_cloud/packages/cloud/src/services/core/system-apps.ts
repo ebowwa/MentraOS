@@ -36,13 +36,14 @@ const systemApps = {
     description: "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command.",
     isSystemApp: true,
   },
-  teleprompter: {
-    host: `teleprompter`,
-    packageName: 'com.augmentos.teleprompter',
-    name: 'Teleprompter',
-    description: "Teleprompter for live presentations.",
-    isSystemApp: true,
-  },
+
+  // teleprompter: {
+  //   host: `teleprompter`,
+  //   packageName: 'com.augmentos.teleprompter',
+  //   name: 'Teleprompter',
+  //   description: "Teleprompter for live presentations.",
+  //   isSystemApp: true,
+  // },
 
   // liveTranslation: {
   //   host: "live-translation",
@@ -59,6 +60,15 @@ const systemApps = {
   //   description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
   //   isSystemApp: true,
   //   skipPorterHostUpdate: true,
+  // },
+
+  // {
+  //   packageName: systemApps.link.packageName,
+  //   name: systemApps.link.name,
+  //   tpaType: TpaType.STANDARD,
+  //   webhookURL: `http://${systemApps.link.host}/webhook`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.link.packageName}.png`,
+  //   description: systemApps.link.description,
   // },
 };
 
@@ -81,7 +91,6 @@ for (const app of Object.values(systemApps)) {
     console.log(`⚡️⚡️⚡️⚡️⚡️ Skipping porter host update for ${app.name} ||| HOST ||| (${app.host}) ⚡️⚡️⚡️⚡️⚡️`);
     continue;
   }
-
 
   if (process.env.PORTER_APP_NAME) {
     app.host = `${process.env.PORTER_APP_NAME}-${app.host}.default.svc.cluster.local:${process.env.PORTER_APP_PORT || 80}`;
