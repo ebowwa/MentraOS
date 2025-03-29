@@ -1,0 +1,7 @@
+# augmentos_cloud/store/web/wrangler.toml
+name = "augmentos-store"
+account_id = "3c764e987404b8a1199ce5fdc3544a94"
+compatibility_date = "2025-03-28"
+
+[pages]
+project = "augmentos-store"
