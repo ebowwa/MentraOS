@@ -43,21 +43,23 @@ const systemApps = {
     description: "Teleprompter for live presentations.",
     isSystemApp: true,
   },
-  liveTranslation: {
-    host: "live-translation",
-    packageName: 'com.augmentos.live-translation',
-    name: 'Live Translation',
-    description: "Live language translation.",
-    isSystemApp: true,
-  },
-  merge: {
-    host: process.env.MERGE_HOST_NAME || `merge`,
-    packageName: 'com.mentra.merge',
-    name: 'Merge',
-    description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
-    isSystemApp: true,
-    skipPorterHostUpdate: true,
-  },
+
+  // liveTranslation: {
+  //   host: "live-translation",
+  //   packageName: 'com.augmentos.live-translation',
+  //   name: 'Live Translation',
+  //   description: "Live language translation.",
+  //   isSystemApp: true,
+  // },
+
+  // merge: {
+  //   host: process.env.MERGE_HOST_NAME || `merge`,
+  //   packageName: 'com.mentra.merge',
+  //   name: 'Merge',
+  //   description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
+  //   isSystemApp: true,
+  //   skipPorterHostUpdate: true,
+  // },
 };
 
 // Check if deployed on porter. if so we need to modify the hosts with the porter env prefix.
