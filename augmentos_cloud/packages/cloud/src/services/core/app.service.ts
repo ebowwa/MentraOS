@@ -47,22 +47,8 @@ export const LOCAL_APPS: AppI[] = [
     logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
     description: systemApps.mira.description,
   },
-  // {
-  //   packageName: systemApps.merge.packageName,
-  //   name: systemApps.merge.name,
-  //   tpaType: TpaType.BACKGROUND,
-  //   publicUrl: `http://${systemApps.merge.host}`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
-  //   description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
-  // },
-  // {
-  //   packageName: systemApps.liveTranslation.packageName,
-  //   name: systemApps.liveTranslation.name,
-  //   tpaType: TpaType.STANDARD,
-  //   publicUrl: `http://${systemApps.liveTranslation.host}`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
-  //   description: systemApps.liveTranslation.description,
-  // },
+
+  // This will be added to the appstore instead of being run here.
   // {
   //   packageName: systemApps.teleprompter.packageName,
   //   name: "Teleprompt",
@@ -73,25 +59,6 @@ export const LOCAL_APPS: AppI[] = [
   // }
 ];
 
-// if we are not in production, add the dashboard to the app 
-if (process.env.NODE_ENV !== 'production') {
-  LOCAL_APPS.push({
-    packageName: systemApps.flash.packageName,
-    name: "Navigation",
-    description: systemApps.flash.description,
-    tpaType: TpaType.BACKGROUND,
-    publicUrl: `http://${systemApps.flash.host}`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
-  });
-  LOCAL_APPS.push({
-    packageName: "com.augmentos.screenmirror",
-    name: "Screen Mirror",
-    description: systemApps.flash.description,
-    tpaType: TpaType.BACKGROUND,
-    publicUrl: `http://${systemApps.flash.host}`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
-  });
-}
 
 /**
  * System TPAs that are always available.
