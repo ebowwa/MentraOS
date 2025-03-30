@@ -39,7 +39,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
   [PermissionFeatures.NOTIFICATIONS]: {
     name: 'Notification Access',
     description: 'Allow AugmentOS to forward notifications to your glasses',
-    ios: [], // iOS handles notification permission differently
+    ios: [PERMISSIONS.IOS.NOTIFICATIONS], // iOS notification permission
     android: typeof Platform.Version === 'number' && Platform.Version >= 33 ? 
       [PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS] : 
       [],
@@ -493,6 +493,13 @@ export const requestAugmentOSPermissions = async (): Promise<boolean> => {
   const hasBasicPermissions = await requestBasicPermissions();
   if (!hasBasicPermissions) return false;
   
+  // Request notification permissions (important for app functionality)
+  const hasNotifications = await requestFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
+  if (!hasNotifications) {
+    console.log('Notification permissions not granted. Some features may be limited.');
+    // We continue even if notification permissions are denied
+  }
+  
   // Background location permission temporarily disabled
   // const hasBackgroundLocation = await requestFeaturePermissions(PermissionFeatures.BACKGROUND_LOCATION);
   
@@ -509,18 +516,19 @@ export const requestGrantPermissions = async (): Promise<boolean> => {
 };
 
 export const doesHaveAllPermissions = async (): Promise<boolean> => {
-  // Check basic permissions only for now
+  // Check basic permissions first
   const hasBasic = await checkFeaturePermissions(PermissionFeatures.BASIC);
-  return hasBasic;
+  if (!hasBasic) return false;
   
-  // Notification listener check temporarily disabled
-  /*
-  // On Android, also check notification permission (since it's critical for the app)
-  if (Platform.OS === 'android') {
-    const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
-    return hasNotifications;
+  // Also check notification permissions (important for both platforms)
+  const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
+  
+  // For now, we'll treat this as non-blocking but it's recommended
+  if (!hasNotifications) {
+    console.log('Notification permissions not granted. Some features may be limited.');
   }
-  */
+  
+  return hasBasic;
 };
 
 // For backwards compatibility

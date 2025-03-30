@@ -111,23 +111,22 @@ const GrantPermissionsScreen: React.FC<GrantPermissionsScreenProps> = ({
     console.log("Basic permissions request completed");
     
     if (basicPermissionsGranted) {
-      // If basic permissions are granted, request optional calendar permission
-      // with explanation about why it's needed
+      // Request notification permissions with explanation
       Alert.alert(
-        'Calendar Access',
-        'AugmentOS would like to access your calendar to display events on your smart glasses. This permission is optional.',
+        'Notification Access',
+        'AugmentOS would like to access your notifications to forward them to your smart glasses. This enhances your experience by showing phone notifications on your glasses.',
         [
           {
             text: 'Grant Access',
             onPress: async () => {
-              await requestFeaturePermissions(PermissionFeatures.CALENDAR);
-              proceedToNextScreen();
+              await requestFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
+              requestCalendarAccess();
             }
           },
           {
-            text: 'Skip',
+            text: 'Skip for Now',
             style: 'cancel',
-            onPress: () => proceedToNextScreen()
+            onPress: () => requestCalendarAccess()
           }
         ]
       );
@@ -135,6 +134,28 @@ const GrantPermissionsScreen: React.FC<GrantPermissionsScreenProps> = ({
       // Basic permissions were denied
       await displayPermissionDeniedWarning('Required Permissions');
     }
+  }
+  
+  const requestCalendarAccess = () => {
+    // After notification permission flow, request optional calendar permission
+    Alert.alert(
+      'Calendar Access',
+      'AugmentOS would like to access your calendar to display events on your smart glasses. This permission is optional.',
+      [
+        {
+          text: 'Grant Access',
+          onPress: async () => {
+            await requestFeaturePermissions(PermissionFeatures.CALENDAR);
+            proceedToNextScreen();
+          }
+        },
+        {
+          text: 'Skip',
+          style: 'cancel',
+          onPress: () => proceedToNextScreen()
+        }
+      ]
+    );
   }
 
   const proceedToNextScreen = async () => {
