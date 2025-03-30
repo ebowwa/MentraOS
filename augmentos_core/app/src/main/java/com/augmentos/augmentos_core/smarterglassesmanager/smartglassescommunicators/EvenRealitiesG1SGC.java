@@ -203,6 +203,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     private static final long DEBOUNCE_DELAY_MS = 270; // Minimum time between chunk sends
     private volatile long lastSendTimestamp = 0;
+    private long lc3DecoderPtr = 0;
 
     public EvenRealitiesG1SGC(Context context, SmartGlassesDevice smartGlassesDevice) {
         super();
@@ -214,6 +215,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         brightnessValue = getSavedBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.shouldRunOnboardMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
+
+        //setup LC3 decoder
+        if (lc3DecoderPtr == 0) {
+            lc3DecoderPtr = L3cCpp.initDecoder();
+        }
 
         //setup fonts
         fontLoader = new G1FontLoader(context);
@@ -474,28 +480,41 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                             int seq = data[1] & 0xFF; // Sequence number
                             // eg. LC3 to PCM
                             byte[] lc3 = Arrays.copyOfRange(data, 2, 202);
-                            byte[] pcmData = L3cCpp.decodeLC3(lc3);
-                            if (pcmData == null) {
-                                throw new IllegalStateException("Failed to decode LC3 data");
-                            }
+//                            byte[] pcmData = L3cCpp.decodeLC3(lc3);
+//                            if (pcmData == null) {
+//                                throw new IllegalStateException("Failed to decode LC3 data");
+//                            }
 
                             if (deviceName.contains("R_")) {
-                                // Log.d(TAG, "Audio data received. Seq: " + seq + ", from: " + deviceName + ", length: " + pcmData.length);
-                                if (shouldRunOnboardMic) {
-                                    // BATTERY OPTIMIZATION: Use direct callback instead of EventBus posts
-                                    if (audioProcessingCallback != null) {
-                                        // Log.d(TAG, "Using direct audio callback");
-                                        audioProcessingCallback.onAudioDataAvailable(pcmData);
-                                        //audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+                                //decode the LC3 audio
+                                if (lc3DecoderPtr != 0) {
+                                    byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
+                                    //send the PCM out
+                                    if (shouldRunOnboardMic) {
+                                        if (audioProcessingCallback != null) {
+                                            if (pcmData != null && pcmData.length > 0) {
+                                                audioProcessingCallback.onAudioDataAvailable(pcmData);
+                                            }
+                                        } else {
+                                            // If we get here, it means the callback wasn't properly registered
+                                            Log.e(TAG, "Audio processing callback is null - callback registration failed!");
+                                        }
+                                    }
+
+                                    if (shouldRunOnboardMic) {
+                                        EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
                                     } else {
-                                        // If we get here, it means the callback wasn't properly registered
-                                        Log.e(TAG, "Audio processing callback is null - callback registration failed!");
+                                        Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
                                     }
                                 }
-                            } else {
+
+                            //send through the LC3
+                            audioProcessingCallback.onLC3AudioDataAvailable(lc3);
+
+                        } else {
 //                                Log.d(TAG, "Lc3 Audio data received. Seq: " + seq + ", Data: " + Arrays.toString(lc3) + ", from: " + deviceName);
-                            }
                         }
+                    }
                         //HEAD UP MOVEMENTS
                         else if (data.length > 1 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x02) {
                             // Only check head movements from the right sensor
@@ -1636,7 +1655,6 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 sendDataSequentially(chunk, false, 300);
             }
         }
-
         Log.d(TAG, "Send simple reference card");
     }
 
@@ -1670,6 +1688,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
         // Stop periodic notifications
         stopPeriodicNotifications();
+
 
         // Stop periodic text wall
 //        stopPeriodicNotifications();
@@ -1722,6 +1741,12 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
         if (queryBatteryStatusHandler != null && queryBatteryStatusHandler != null) {
             queryBatteryStatusHandler.removeCallbacksAndMessages(null);
+        }
+
+        //free LC3 decoder
+        if (lc3DecoderPtr != 0) {
+            L3cCpp.freeDecoder(lc3DecoderPtr);
+            lc3DecoderPtr = 0;
         }
 
         sendQueue.clear();

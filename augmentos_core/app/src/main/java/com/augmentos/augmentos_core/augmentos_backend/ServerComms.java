@@ -235,7 +235,7 @@ public class ServerComms {
             if (wsManager.isConnected()) {
                 wsManager.sendBinary(chunk);
                 // Debug - Write to PCM file as we send
-//                 writeToPcmFile(chunk);
+                 writeToPcmFile(chunk);
             } else {
                 // If connection drops during playback, stop sending
                 break;
@@ -725,7 +725,8 @@ public class ServerComms {
                         byte[] chunk = liveAudioQueue.poll(250, TimeUnit.MILLISECONDS);
                         if (chunk != null) {
                             wsManager.sendBinary(chunk);
-                            writeToPcmFile(chunk);
+                            // Write to PCM file whenever we send binary data over websocket
+//                            writeToPcmFile(chunk);
                         }
                         // If poll times out (1 second with no data), we'll loop back and check conditions again
                     } else {

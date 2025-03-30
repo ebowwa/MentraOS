@@ -53,12 +53,18 @@ router.get('/:tpaName', async (req, res) => {
       // tpaConfig = JSON.parse(rawData);
       // find the app, then call it with it's port. i.e: http://localhost:8017/tpa_config.json
       const _tpa = await appService.getApp(req.params.tpaName);
-      const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
-      
-      if (!host || !_tpa) {
-        throw new Error('Port / TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
+      // const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
+      const publicUrl = _tpa?.publicUrl;
+
+      if (!_tpa) {
+        throw new Error('TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
       }
-      const _tpaConfig = (await axios.get(`http://${host}/tpa_config.json`)).data; 
+      if (!publicUrl) {
+        // get the host from the public url;
+        throw new Error('publicUrl not found for app ' + req.params.tpaName); // throw an error if the port is not found.
+
+      }
+      const _tpaConfig = (await axios.get(`${publicUrl}/tpa_config.json`)).data; 
       tpaConfig = _tpaConfig;
 
     } catch (err) {
