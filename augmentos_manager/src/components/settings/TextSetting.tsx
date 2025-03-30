@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, StyleSheet, LayoutChangeEvent } from 'react-native';
 
 type TextSettingProps = {
   label: string;
@@ -15,11 +15,17 @@ const TextSetting: React.FC<TextSettingProps> = ({
   theme
 }) => {
   const [localValue, setLocalValue] = useState(value);
+  const [height, setHeight] = useState(100);
 
-  // Whenever the parent’s value changes, update localValue
+  // Whenever the parent's value changes, update localValue
   useEffect(() => {
     setLocalValue(value);
   }, [value]);
+
+  const handleContentSizeChange = (event: { nativeEvent: { contentSize: { height: number } } }) => {
+    const newHeight = Math.max(100, event.nativeEvent.contentSize.height + 20);
+    setHeight(newHeight);
+  };
 
   return (
     <View style={styles.container}>
@@ -27,11 +33,18 @@ const TextSetting: React.FC<TextSettingProps> = ({
       <TextInput
         style={[
           styles.input,
-          { color: theme.textColor, borderColor: theme.textColor }
+          { 
+            color: theme.textColor, 
+            borderColor: theme.textColor,
+            height
+          }
         ]}
         value={localValue}
         onChangeText={setLocalValue}
         onBlur={() => onChangeText(localValue)}
+        multiline
+        onContentSizeChange={handleContentSizeChange}
+        textAlignVertical="top"
       />
     </View>
   );
@@ -50,7 +63,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 5,
     padding: 10,
-    fontSize: 16
+    fontSize: 16,
+    textAlignVertical: 'top'
   }
 });
 

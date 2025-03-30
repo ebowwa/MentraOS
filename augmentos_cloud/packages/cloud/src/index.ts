@@ -105,6 +105,9 @@ app.use(cors({
 
     "https://appstore.augmentos.org",
     "https://console.augmentos.org",
+
+    "https://augmentos.pages.dev",
+    "https://augmentos-appstore-2.pages.dev",
   ]
 }));
 

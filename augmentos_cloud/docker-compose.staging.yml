@@ -1,5 +1,24 @@
 services:
+  # Build shared packages first
+  shared-packages:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    command: >
+      bash -c "bun install && 
+              cd packages/utils && bun run build &&
+              cd ../sdk && bun run build &&
+              cd ../config && bun run build &&
+              cd ../agents && bun run build"
+    networks:
+      - augmentos-network-staging
+    environment:
+      - SERVICE_NAME=shared-packages
 
+  # Cloud service
   cloud:
     stop_grace_period: 10s
     init: true
@@ -28,9 +47,13 @@ services:
     volumes:
       - ./:/app
       - node_modules:/app/node_modules
-    command: bash -c "cd packages/cloud && bun run start"
+    command: bash -c "bun install && cd packages/cloud && bun run build && bun run start"
     networks:
       - augmentos-network-staging
+    depends_on:
+      - shared-packages
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
   # Live Captions service
   live-captions:
@@ -55,11 +78,46 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
-    command: bash -c "cd packages/apps/livecaptions && bun run start"
+    command: bash -c "bun install && cd packages/apps/livecaptions && bun run build && bun run start"
     networks:
       - augmentos-network-staging
     depends_on:
+      - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
+
+  # Flash service
+  flash:
+    stop_grace_period: 10s
+    init: true
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - target: 80
+        published: ${FLASH_PORT:-9011}
+        protocol: tcp
+    environment:
+      - NODE_ENV=staging
+      - HOST=0.0.0.0
+      - SERVICE_NAME=flash
+    env_file:
+      - .env
+      - .env.staging
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+      - ./logs:/app/logs
+    command: bash -c "bun install && cd packages/apps/flash && bun run build && bun run start"
+    networks:
+      - augmentos-network-staging
+    depends_on:
+      - shared-packages
+      - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "flash", "service": "flash"}]'
 
   # Dashboard Manager service
   dashboard-manager:
@@ -84,11 +142,14 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
-    command: bash -c "cd packages/apps/dashboard-manager && bun run start"
+    command: bash -c "bun install && cd packages/apps/dashboard-manager && bun run build && bun run start"
     networks:
       - augmentos-network-staging
     depends_on:
+      - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "dashboard-manager", "service": "dashboard-manager"}]'
 
   # Notifications service
   notify:
@@ -113,11 +174,14 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
-    command: bash -c "cd packages/apps/notify && bun run start"
+    command: bash -c "bun install && cd packages/apps/notify && bun run build && bun run start"
     networks:
       - augmentos-network-staging
     depends_on:
+      - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "notify", "service": "notify"}]'
 
   # Mira AI service
   mira:
@@ -142,11 +206,14 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
-    command: bash -c "cd packages/apps/miraai && bun run start"
+    command: bash -c "bun install && cd packages/apps/miraai && bun run build && bun run start"
     networks:
       - augmentos-network-staging
     depends_on:
+      - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "mira", "service": "mira"}]'
 
   live-translation:
     stop_grace_period: 10s
@@ -170,11 +237,14 @@ services:
       - ./:/app
       - node_modules:/app/node_modules
       - ./logs:/app/logs
-    command: bash -c "cd packages/apps/livetranslation && bun run start"
+    command: bash -c "bun install && cd packages/apps/livetranslation && bun run build && bun run start"
     networks:
       - augmentos-network-staging
     depends_on:
+      - shared-packages
       - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
 
 networks:
   augmentos-network-staging:

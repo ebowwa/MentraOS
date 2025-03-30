@@ -8,7 +8,8 @@
     "build": "concurrently \"cd packages/sdk && bun run build\" \"cd packages/utils && bun run build\" \"cd packages/agents && bun run build\"",
     "setup-deps": "bun install --no-link",
 
-    "dev": "docker-compose -f docker-compose.dev.yml -p dev up -d",
+    "dev": "docker-compose -f docker-compose.dev.yml -p dev up",
+    "dev:detached": "docker-compose -f docker-compose.dev.yml -p dev up -d",
     "dev:rebuild": "docker-compose -f docker-compose.dev.yml -p dev up -d --build --remove-orphans",
     "dev:stop": "docker-compose -f docker-compose.dev.yml -p dev down --timeout 5 || docker kill $(docker ps -q)",
     "dev:setup-network": "docker network create augmentos-network-dev",
@@ -31,6 +32,7 @@
 
     "logs": "docker-compose -f docker-compose.dev.yml -p dev logs -f --tail=0",
     "logs:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud --tail=0",
+    "logs:live-captions": "docker-compose -f docker-compose.dev.yml -p dev logs -f live-captions --tail=50",
     "logs:service": "docker-compose -f docker-compose.dev.yml -p dev logs -f",
     
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
