@@ -56,33 +56,43 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
-  # Live Captions service
+  # Live Captions service - using external repo
   live-captions:
     stop_grace_period: 5s
     init: true
     build:
-      context: .
+      context: ../../AugmentApps/Live-Captions
       dockerfile: Dockerfile.dev
+    container_name: live-captions
     restart: unless-stopped
     ports:
       - "8020:80"
     environment:
+      - PORT=80
+      - CLOUD_HOST_NAME=cloud
       - NODE_ENV=development
-      - HOST=0.0.0.0
-      - SERVICE_NAME=live-captions
-    env_file:
-      - .env
     volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - bun_cache:/root/.bun
-      - ./logs:/app/logs
-    command: bash -c "cd packages/apps/livecaptions && bun run dev"
+      - ../../AugmentApps/Live-Captions/src:/app/src:delegated
+      - ../../AugmentApps/Live-Captions/tsconfig.json:/app/tsconfig.json:delegated
+      - ../../AugmentApps/Live-Captions/dev.sh:/app/dev.sh:delegated
+      - ../../AugmentApps/Live-Captions/entrypoint.sh:/app/entrypoint.sh:delegated
+      - ../../AugmentApps/Live-Captions/package.json:/app/package.json:delegated
+      - ../../AugmentApps/augmentos_cloud/node_modules/@augmentos:/app/node_modules/@augmentos:delegated
+      # Don't sync node_modules back to host
+      - /app/node_modules
+    command: ["bash", "/app/entrypoint.sh"]
+    stdin_open: true
+    tty: true
     networks:
       - augmentos-network-dev
     depends_on:
       - shared-packages
       - cloud
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     labels:
       com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
 
@@ -234,6 +244,44 @@ services:
       - cloud
     labels:
       com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
+
+  merge:
+    # Use local development setup for MentraMerge
+    build:
+      context: ../../AugmentApps/MentraMerge  # Path to the MentraMerge repo
+      dockerfile: Dockerfile.dev
+    container_name: merge
+    ports:
+      - "8016:80"
+    environment:
+      - PORT=80
+      - CLOUD_HOST_NAME=cloud
+      - NODE_ENV=development
+      - MERGE_API_KEY=${MERGE_API_KEY:-test_key}
+    volumes:
+      - ../../AugmentApps/MentraMerge/src:/app/src:delegated
+      - ../../AugmentApps/MentraMerge/tsconfig.json:/app/tsconfig.json:delegated
+      - ../../AugmentApps/MentraMerge/dev.sh:/app/dev.sh:delegated
+      - ../../AugmentApps/MentraMerge/entrypoint.sh:/app/entrypoint.sh:delegated
+      - ../../AugmentApps/MentraMerge/package.json:/app/package.json:delegated
+      - ../../AugmentApps/augmentos_cloud/node_modules/@augmentos:/app/node_modules/@augmentos:delegated
+      # Don't sync node_modules back to host
+      - /app/node_modules
+    command: ["bash", "/app/entrypoint.sh"]
+    restart: "no"
+    stdin_open: true
+    tty: true
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    depends_on:
+      - shared-packages
+      - cloud
+    networks:
+      - augmentos-network-dev
+
 
 networks:
   augmentos-network-dev:
