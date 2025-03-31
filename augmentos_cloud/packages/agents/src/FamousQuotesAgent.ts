@@ -10,19 +10,21 @@ interface AgentOutput {
 
 const MAX_HISTORY_SIZE = 50; // Keep track of last 50 items
 
-const agentPromptBlueprint = `You are an AI assistant specialized in providing fascinating and engaging fun facts. Your goal is to share interesting, surprising, and educational information that captivates the audience.
+const agentPromptBlueprint = `You are an AI assistant specialized in providing inspiring and thought-provoking quotes from famous figures throughout history. Your goal is to share meaningful, impactful, and memorable quotes that resonate with the audience.
 
-When generating fun facts, follow these rules:
-1. Focus on facts that are surprising, counterintuitive, or particularly interesting
-2. Keep facts concise (under 15 words)
-3. Ensure facts are verifiable and accurate
-4. Avoid controversial or sensitive topics
+When generating quotes, follow these rules:
+1. Focus on quotes that are inspiring, thought-provoking, or particularly meaningful
+2. Keep quotes concise (under 20 words)
+3. Ensure quotes are accurately attributed to real historical figures
+4. Avoid controversial or inappropriate content
 5. Do not repeat any previously shared content (including both fun facts and quotes)
+6. ALWAYS include the author's name in the quote format: "Quote" - Author
+7. Make sure the attribution is clear and prominent in the output
 
-Question: Generate an interesting fun fact.
+Question: Generate an inspiring quote from a famous figure.
 
-When you have a fun fact to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
-Final Answer: {{"insight": "<fun fact>"}}
+When you have a quote to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
+Final Answer: {{"insight": "<quote>"}}
 
 {agent_scratchpad}
 
@@ -30,10 +32,10 @@ Final Answer: {{"insight": "<fun fact>"}}
 
 {tool_names}`;
 
-export class FunFactAgent implements Agent {
-  public agentId = 'fun_facts';
-  public agentName = 'Fun Fact Generator';
-  public agentDescription = 'Generates interesting and engaging fun facts on various topics. Call this agent when you want to share surprising, educational, or fascinating information. Best for adding engaging content to conversations or presentations.';
+export class FamousQuotesAgent implements Agent {
+  public agentId = 'famous_quotes';
+  public agentName = 'Famous Quotes Generator';
+  public agentDescription = 'Generates inspiring and thought-provoking quotes from famous figures throughout history. Call this agent when you want to share meaningful, impactful, or memorable quotes. Best for adding motivational content to conversations or presentations.';
   public agentExamples = '';
   public agentPrompt = agentPromptBlueprint;
   public agentTools = [];
@@ -65,11 +67,11 @@ export class FunFactAgent implements Agent {
         temperature: 0.9,
       });
 
-      const randomTopics = [
-        "science", "nature", "history", "space", "ocean", 
-        "animals", "human body", "technology", "geography", "culture"
+      const randomCategories = [
+        "leadership", "wisdom", "success", "creativity", "courage",
+        "innovation", "philosophy", "science", "art", "humanity"
       ];
-      const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+      const randomCategory = randomCategories[Math.floor(Math.random() * randomCategories.length)];
       
       // Get shared history from userContext
       const agentHistory = userContext.agentHistory || [];
@@ -80,7 +82,7 @@ export class FunFactAgent implements Agent {
         : '';
       
       const prompt = new PromptTemplate({
-        template: this.agentPrompt + `\nConsider focusing on ${randomTopic} for variety.${historyContext}`,
+        template: this.agentPrompt + `\nConsider focusing on ${randomCategory} for variety.${historyContext}`,
         inputVariables: ["agent_scratchpad", "tools", "tool_names"],
       });
 
@@ -99,11 +101,11 @@ export class FunFactAgent implements Agent {
 
       const result = await executor.invoke({});
 
-      console.log('[FunFactAgent] Result:', result.output);
+      console.log('[FamousQuotesAgent] Result:', result.output);
 
       const parsedResult = this.parseOutput(result.output);
       
-      // Return both the fact and updated history
+      // Return both the quote and updated history
       if (parsedResult.insight && parsedResult.insight !== "null") {
         const updatedHistory = [...agentHistory, parsedResult.insight];
         // Keep history size manageable
@@ -121,11 +123,11 @@ export class FunFactAgent implements Agent {
         agentHistory: agentHistory
       };
     } catch (err) {
-      console.error('[FunFactAgent] Error:', err);
+      console.error('[FamousQuotesAgent] Error:', err);
       return {
         insight: "null",
         agentHistory: userContext.agentHistory || []
       };
     }
   }
-}
+} 

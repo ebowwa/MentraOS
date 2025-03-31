@@ -10,19 +10,21 @@ interface AgentOutput {
 
 const MAX_HISTORY_SIZE = 50; // Keep track of last 50 items
 
-const agentPromptBlueprint = `You are an AI assistant specialized in providing fascinating and engaging fun facts. Your goal is to share interesting, surprising, and educational information that captivates the audience.
+const agentPromptBlueprint = `You are an AI assistant specialized in generating gratitude prompts and reflections. Your goal is to help users cultivate gratitude and appreciation for the positive aspects of their life.
 
-When generating fun facts, follow these rules:
-1. Focus on facts that are surprising, counterintuitive, or particularly interesting
-2. Keep facts concise (under 15 words)
-3. Ensure facts are verifiable and accurate
-4. Avoid controversial or sensitive topics
-5. Do not repeat any previously shared content (including both fun facts and quotes)
+When generating gratitude prompts, follow these rules:
+1. Focus on prompts that encourage reflection on meaningful aspects of life
+2. Keep prompts concise (under 15 words)
+3. Make prompts personal and relatable
+4. Avoid clichés and overly generic statements
+5. Do not repeat any previously shared content (including other agent outputs)
+6. Format: Start with "Be grateful for:" followed by the prompt
+7. Make prompts specific and actionable
 
-Question: Generate an interesting fun fact.
+Question: Generate a gratitude prompt.
 
-When you have a fun fact to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
-Final Answer: {{"insight": "<fun fact>"}}
+When you have a gratitude prompt to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
+Final Answer: {{"insight": "<gratitude prompt>"}}
 
 {agent_scratchpad}
 
@@ -30,10 +32,10 @@ Final Answer: {{"insight": "<fun fact>"}}
 
 {tool_names}`;
 
-export class FunFactAgent implements Agent {
-  public agentId = 'fun_facts';
-  public agentName = 'Fun Fact Generator';
-  public agentDescription = 'Generates interesting and engaging fun facts on various topics. Call this agent when you want to share surprising, educational, or fascinating information. Best for adding engaging content to conversations or presentations.';
+export class GratitudePingAgent implements Agent {
+  public agentId = 'gratitude_ping';
+  public agentName = 'Gratitude Prompt Generator';
+  public agentDescription = 'Generates thoughtful gratitude prompts to help users reflect on and appreciate the positive aspects of their life. Best for promoting mindfulness and positive thinking.';
   public agentExamples = '';
   public agentPrompt = agentPromptBlueprint;
   public agentTools = [];
@@ -45,12 +47,10 @@ export class FunFactAgent implements Agent {
     }
     try {
       const parsed = JSON.parse(text);
-      // If the object has an "insight" key, return it.
       if (typeof parsed.insight === "string") {
         return { insight: parsed.insight };
       }
     } catch (e) {
-      // Fallback attempt to extract an "insight" value from a string
       const match = text.match(/"insight"\s*:\s*"([^"]+)"/);
       if (match) {
         return { insight: match[1] };
@@ -65,11 +65,11 @@ export class FunFactAgent implements Agent {
         temperature: 0.9,
       });
 
-      const randomTopics = [
-        "science", "nature", "history", "space", "ocean", 
-        "animals", "human body", "technology", "geography", "culture"
+      const randomCategories = [
+        "personal growth", "relationships", "health", "opportunities", "achievements",
+        "daily comforts", "nature", "technology", "community", "learning"
       ];
-      const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+      const randomCategory = randomCategories[Math.floor(Math.random() * randomCategories.length)];
       
       // Get shared history from userContext
       const agentHistory = userContext.agentHistory || [];
@@ -80,7 +80,7 @@ export class FunFactAgent implements Agent {
         : '';
       
       const prompt = new PromptTemplate({
-        template: this.agentPrompt + `\nConsider focusing on ${randomTopic} for variety.${historyContext}`,
+        template: this.agentPrompt + `\nConsider focusing on ${randomCategory} for variety.${historyContext}`,
         inputVariables: ["agent_scratchpad", "tools", "tool_names"],
       });
 
@@ -99,11 +99,11 @@ export class FunFactAgent implements Agent {
 
       const result = await executor.invoke({});
 
-      console.log('[FunFactAgent] Result:', result.output);
+      console.log('[GratitudePingAgent] Result:', result.output);
 
       const parsedResult = this.parseOutput(result.output);
       
-      // Return both the fact and updated history
+      // Return both the prompt and updated history
       if (parsedResult.insight && parsedResult.insight !== "null") {
         const updatedHistory = [...agentHistory, parsedResult.insight];
         // Keep history size manageable
@@ -121,11 +121,11 @@ export class FunFactAgent implements Agent {
         agentHistory: agentHistory
       };
     } catch (err) {
-      console.error('[FunFactAgent] Error:', err);
+      console.error('[GratitudePingAgent] Error:', err);
       return {
         insight: "null",
         agentHistory: userContext.agentHistory || []
       };
     }
   }
-}
+} 

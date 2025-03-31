@@ -10,30 +10,34 @@ interface AgentOutput {
 
 const MAX_HISTORY_SIZE = 50; // Keep track of last 50 items
 
-const agentPromptBlueprint = `You are an AI assistant specialized in providing fascinating and engaging fun facts. Your goal is to share interesting, surprising, and educational information that captivates the audience.
+const agentPromptBlueprint = `You are a ruthless motivational coach inspired by Andrew Tate's direct, unfiltered style. Your goal is to deliver hard-hitting reality checks that force people to confront their mediocrity and push beyond their limits.
 
-When generating fun facts, follow these rules:
-1. Focus on facts that are surprising, counterintuitive, or particularly interesting
-2. Keep facts concise (under 15 words)
-3. Ensure facts are verifiable and accurate
-4. Avoid controversial or sensitive topics
-5. Do not repeat any previously shared content (including both fun facts and quotes)
+When generating messages, follow these rules:
+1. Use aggressive, dominant, and forceful language like Tate
+2. Keep messages concise (under 10 words)
+3. Focus on wealth, power, discipline, and breaking free from average life
+4. Demolish excuses and weak mindsets
+5. Do not repeat any previously shared content
+7. Call out laziness and mediocrity directly
+8. Use metaphors about Bugattis, wolves, and winners
+9. Make people uncomfortable with their comfort zone
 
-Question: Generate an interesting fun fact.
+Example tone:
+- What color is your success? All I see is excuses.
+- Breathing is free. Everything else requires you to be exceptional.
+- While you scroll social media, real players are building empires.
 
-When you have a fun fact to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
-Final Answer: {{"insight": "<fun fact>"}}
+Question: Generate a brutal motivational message.
 
-{agent_scratchpad}
+When you have a message to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
+Final Answer: {{"insight": "<message>"}}
 
-{tools}
+{agent_scratchpad}`;
 
-{tool_names}`;
-
-export class FunFactAgent implements Agent {
-  public agentId = 'fun_facts';
-  public agentName = 'Fun Fact Generator';
-  public agentDescription = 'Generates interesting and engaging fun facts on various topics. Call this agent when you want to share surprising, educational, or fascinating information. Best for adding engaging content to conversations or presentations.';
+export class TrashTalkAgent implements Agent {
+  public agentId = 'trash_talk';
+  public agentName = 'Motivational Trash Talk Generator';
+  public agentDescription = 'Generates intense, motivational trash talk messages to challenge and motivate users. Best for users who respond well to tough love and direct feedback.';
   public agentExamples = '';
   public agentPrompt = agentPromptBlueprint;
   public agentTools = [];
@@ -45,12 +49,10 @@ export class FunFactAgent implements Agent {
     }
     try {
       const parsed = JSON.parse(text);
-      // If the object has an "insight" key, return it.
       if (typeof parsed.insight === "string") {
         return { insight: parsed.insight };
       }
     } catch (e) {
-      // Fallback attempt to extract an "insight" value from a string
       const match = text.match(/"insight"\s*:\s*"([^"]+)"/);
       if (match) {
         return { insight: match[1] };
@@ -65,11 +67,10 @@ export class FunFactAgent implements Agent {
         temperature: 0.9,
       });
 
-      const randomTopics = [
-        "science", "nature", "history", "space", "ocean", 
-        "animals", "human body", "technology", "geography", "culture"
+      const randomCategories = [
+        "wealth", "power", "discipline", "breaking free", "winners", "Bugattis", "wolves"
       ];
-      const randomTopic = randomTopics[Math.floor(Math.random() * randomTopics.length)];
+      const randomCategory = randomCategories[Math.floor(Math.random() * randomCategories.length)];
       
       // Get shared history from userContext
       const agentHistory = userContext.agentHistory || [];
@@ -80,7 +81,7 @@ export class FunFactAgent implements Agent {
         : '';
       
       const prompt = new PromptTemplate({
-        template: this.agentPrompt + `\nConsider focusing on ${randomTopic} for variety.${historyContext}`,
+        template: this.agentPrompt + `\nConsider focusing on ${randomCategory} for variety.${historyContext}`,
         inputVariables: ["agent_scratchpad", "tools", "tool_names"],
       });
 
@@ -99,11 +100,11 @@ export class FunFactAgent implements Agent {
 
       const result = await executor.invoke({});
 
-      console.log('[FunFactAgent] Result:', result.output);
+      console.log('[TrashTalkAgent] Result:', result.output);
 
       const parsedResult = this.parseOutput(result.output);
       
-      // Return both the fact and updated history
+      // Return both the message and updated history
       if (parsedResult.insight && parsedResult.insight !== "null") {
         const updatedHistory = [...agentHistory, parsedResult.insight];
         // Keep history size manageable
@@ -121,11 +122,11 @@ export class FunFactAgent implements Agent {
         agentHistory: agentHistory
       };
     } catch (err) {
-      console.error('[FunFactAgent] Error:', err);
+      console.error('[TrashTalkAgent] Error:', err);
       return {
         insight: "null",
         agentHistory: userContext.agentHistory || []
       };
     }
   }
-}
+} 
