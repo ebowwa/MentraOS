@@ -17,8 +17,10 @@ import {
 } from '@augmentos/sdk';
 import tzlookup from 'tz-lookup';
 import { NewsAgent } from '@augmentos/agents';
-import { NotificationFilterAgent } from '@augmentos/agents'; // <-- added import
+import { NotificationSummaryAgent } from '@augmentos/agents'; // <-- added import
+import { FunFactAgent } from '@augmentos/agents';
 import { WeatherModule } from './dashboard-modules/WeatherModule';
+import { fetchSettings, getUserDashboardContent } from './settings_handler'; // <-- new import
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
@@ -35,7 +37,7 @@ interface SessionInfo {
   lastNewsUpdate?: number;
   // cache for phone notifications as raw objects
   phoneNotificationCache?: { title: string; content: string; timestamp: number; uuid: string }[];
-  // store the ranked notifications from the NotificationFilterAgent
+  // store the ranked notifications from the NotificationSummaryAgent
   phoneNotificationRanking?: any[];
   transcriptionCache: any[];
   // embed the dashboard card into session info
@@ -68,6 +70,9 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
   try {
     const { sessionId, userId } = req.body;
     console.log(`\n[Webhook] Session start for user ${userId}, session ${sessionId}\n`);
+
+    // Fetch user settings
+    await fetchSettings(userId);
 
     // 1) Create a new WebSocket connection to the cloud
     const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
@@ -195,7 +200,7 @@ function handleMessage(sessionId: string, ws: WebSocket, message: any) {
         // case 'phone_notification':
         case StreamType.PHONE_NOTIFICATION:
           // Instead of immediately handling the notification,
-          // cache it and send the entire list to the NotificationFilterAgent.
+          // cache it and send the entire list to the NotificationSummaryAgent.
           handlePhoneNotification(sessionId, streamMessage.data);
           break;
 
@@ -203,7 +208,6 @@ function handleMessage(sessionId: string, ws: WebSocket, message: any) {
           handleCalendarEvent(sessionId, streamMessage.data);
           break;
 
-        // case 'location_update':
         case StreamType.LOCATION_UPDATE:
           handleLocationUpdate(sessionId, streamMessage.data);
           break;
@@ -528,6 +532,9 @@ async function updateDashboard(sessionId?: string) {
 
   // Helper: update a single session dashboard.
   async function updateSessionDashboard(sessionId: string, sessionInfo: SessionInfo) {
+    // Get user dashboard content setting
+    const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+    
     // Prepare a context for modules that need it.
     // Include the session itself so that per-user caches (like weatherCache and newsCache) can be accessed.
     const context = {
@@ -543,19 +550,33 @@ async function updateDashboard(sessionId?: string) {
     const leftGroup1Results = await Promise.all(leftGroup1Promises);
     const leftGroup1Text = leftGroup1Results.filter(text => text.trim()).join(', ');
 
-    // Left group 2: notifications.
+    // Left group 2: notifications or fun facts based on settings
     const leftModulesGroup2 = [
       {
-        name: "notifications",
+        name: "notifications_or_funfacts",
         async run() {
-          // Use the ranked notifications from the NotificationFilterAgent if available.
-          const rankedNotifications = sessionInfo.phoneNotificationRanking || [];
-          // The NotificationFilterAgent returns notifications sorted by importance (rank=1 first).
-          const topTwoNotifications = rankedNotifications.slice(0, 2);
-          console.log(`[Session ${sessionId}] Ranked Notifications:`, topTwoNotifications);
-          return topTwoNotifications
-            .map(notification => wrapText(notification.summary, 25))
-            .join('\n');
+          if (dashboardContent === 'notification_summary') {
+            // Use the ranked notifications from the NotificationSummaryAgent if available
+            const rankedNotifications = sessionInfo.phoneNotificationRanking || [];
+            const topTwoNotifications = rankedNotifications.slice(0, 2);
+            console.log(`[Session ${sessionId}] Ranked Notifications:`, topTwoNotifications);
+            return topTwoNotifications
+              .map(notification => wrapText(notification.summary, 25))
+              .join('\n');
+          } else if (dashboardContent === 'fun_fact') {
+            // Use the FunFactAgent to get interesting facts
+            const funFactAgent = new FunFactAgent();
+            try {
+              const result = await funFactAgent.handleContext({});
+              if (result && result.insight) {
+                return wrapText(result.insight, 25);
+              }
+            } catch (err) {
+              console.error(`[Session ${sessionId}] Error getting fun fact:`, err);
+            }
+          }
+          // Return empty string for other settings
+          return '';
         }
       }
     ];
@@ -655,24 +676,33 @@ function handlePhoneNotification(sessionId: string, notificationData: any) {
   sessionInfo.phoneNotificationCache.push(newNotification);
   console.log(`[Session ${sessionId}] Received phone notification:`, notificationData);
 
-  // Instantiate the NotificationFilterAgent.
-  const notificationFilterAgent = new NotificationFilterAgent();
+  // Get user dashboard content setting
+  const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+  
+  // Only process notifications if setting is notification_summary
+  if (dashboardContent === 'notification_summary') {
+    // Instantiate the NotificationSummaryAgent.
+    const notificationSummaryAgent = new NotificationSummaryAgent();
 
-  // Pass the entire list of notifications to the filter agent.
-  notificationFilterAgent.handleContext({ notifications: sessionInfo.phoneNotificationCache })
-    .then((filteredNotifications: any) => {
-      // console.log(`[Session ${sessionId}] Filtered Notifications:`, filteredNotifications);
-      // Save the ranked notifications for later use in the dashboard.
-      sessionInfo.phoneNotificationRanking = filteredNotifications;
-      // Update the dashboard after the notifications have been filtered.
-      // console.log(`[Session ${sessionId}] Updating dashboard after notification filtering.` + filteredNotifications);
-      updateDashboard(sessionId);
-    })
-    .catch(err => {
-      console.error(`[Session ${sessionId}] Notification filtering failed:`, err);
-      // Fallback: update dashboard with the raw notifications.
-      updateDashboard(sessionId);
-    });
+    // Pass the entire list of notifications to the agent.
+    notificationSummaryAgent.handleContext({ notifications: sessionInfo.phoneNotificationCache })
+      .then((filteredNotifications: any) => {
+        // console.log(`[Session ${sessionId}] Filtered Notifications:`, filteredNotifications);
+        // Save the ranked notifications for later use in the dashboard.
+        sessionInfo.phoneNotificationRanking = filteredNotifications;
+        // Update the dashboard after the notifications have been filtered.
+        // console.log(`[Session ${sessionId}] Updating dashboard after notification filtering.` + filteredNotifications);
+        updateDashboard(sessionId);
+      })
+      .catch(err => {
+        console.error(`[Session ${sessionId}] Notification filtering failed:`, err);
+        // Fallback: update dashboard with the raw notifications.
+        updateDashboard(sessionId);
+      });
+  } else {
+    // Different dashboard content setting, update normally
+    updateDashboard(sessionId);
+  }
 }
 
 // -----------------------------------
@@ -700,3 +730,39 @@ setTimeout(() => {
   // Then, schedule it to run every 5 seconds.
   setInterval(() => updateDashboard(), 60000);
 }, 5000);
+
+// Add settings endpoint
+app.post('/settings', async (req: express.Request, res: express.Response) => {
+  try {
+    console.log('Received settings update for dashboard:', req.body);
+    const { userIdForSettings } = req.body;
+    
+    // Fetch and apply new settings
+    await fetchSettings(userIdForSettings);
+    
+    // Update dashboard for all sessions with this userId
+    updateDashboardForUser(userIdForSettings);
+    
+    res.status(200).json({ status: 'settings updated' });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ error: 'Internal server error updating settings' });
+  }
+});
+
+// Helper function to update dashboard for all sessions of a specific user
+function updateDashboardForUser(userId: string) {
+  let userSessionsFound = false;
+  
+  // Find all sessions for this user and update them
+  for (const [sessionId, session] of activeSessions.entries()) {
+    if (session.userId === userId) {
+      userSessionsFound = true;
+      updateDashboard(sessionId);
+    }
+  }
+  
+  if (!userSessionsFound) {
+    console.log(`No active sessions found for user ${userId}`);
+  }
+}
