@@ -55,8 +55,10 @@ class WebSocketManager: NSObject, URLSessionWebSocketDelegate {
     // Update status to connecting
     updateStatus(.connecting)
     
-    // Create new WebSocket task
-    webSocket = session?.webSocketTask(with: url)
+    // Create new WebSocket task with Authorization header
+    var request = URLRequest(url: url)
+    request.addValue("Bearer \(coreToken)", forHTTPHeaderField: "Authorization")
+    webSocket = session?.webSocketTask(with: request)
     webSocket?.resume()
     
     // Start receiving messages
