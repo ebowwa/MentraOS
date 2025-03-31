@@ -203,7 +203,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         </TouchableOpacity>
 
         {/* Dashboard Height */}
-        <View style={styles.settingItem}>
+        {/* <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
@@ -229,7 +229,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               {...dashboardHeightSliderProps}
             />
           </View>
-        </View>
+        </View> */}
       </ScrollView>
 
       {/* HEADUP ANGLE MODAL */}
