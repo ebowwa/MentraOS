@@ -57,44 +57,44 @@ services:
       com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
   # Live Captions service - using external repo
-  live-captions:
-    stop_grace_period: 5s
-    init: true
-    build:
-      context: ../../AugmentApps/Live-Captions
-      dockerfile: Dockerfile.dev
-    container_name: live-captions
-    restart: unless-stopped
-    ports:
-      - "8020:80"
-    environment:
-      - PORT=80
-      - CLOUD_HOST_NAME=cloud
-      - NODE_ENV=development
-    volumes:
-      - ../../AugmentApps/Live-Captions/src:/app/src:delegated
-      - ../../AugmentApps/Live-Captions/tsconfig.json:/app/tsconfig.json:delegated
-      - ../../AugmentApps/Live-Captions/dev.sh:/app/dev.sh:delegated
-      - ../../AugmentApps/Live-Captions/entrypoint.sh:/app/entrypoint.sh:delegated
-      - ../../AugmentApps/Live-Captions/package.json:/app/package.json:delegated
-      - ../../AugmentApps/augmentos_cloud/node_modules/@augmentos:/app/node_modules/@augmentos:delegated
-      # Don't sync node_modules back to host
-      - /app/node_modules
-    command: ["bash", "/app/entrypoint.sh"]
-    stdin_open: true
-    tty: true
-    networks:
-      - augmentos-network-dev
-    depends_on:
-      - shared-packages
-      - cloud
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
+  # live-captions:
+  #   stop_grace_period: 5s
+  #   init: true
+  #   build:
+  #     context: ../../Apps/Live-Captions
+  #     dockerfile: Dockerfile.dev
+  #   container_name: live-captions
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8020:80"
+  #   environment:
+  #     - PORT=80
+  #     - CLOUD_HOST_NAME=cloud
+  #     - NODE_ENV=development
+  #   volumes:
+  #     - ../../Apps/Live-Captions/src:/app/src:delegated
+  #     - ../../Apps/Live-Captions/tsconfig.json:/app/tsconfig.json:delegated
+  #     - ../../Apps/Live-Captions/dev.sh:/app/dev.sh:delegated
+  #     - ../../Apps/Live-Captions/entrypoint.sh:/app/entrypoint.sh:delegated
+  #     - ../../Apps/Live-Captions/package.json:/app/package.json:delegated
+  #     - ../../AugmentOS/augmentos_cloud/node_modules/@augmentos:/app/node_modules/@augmentos:delegated
+  #     # Don't sync node_modules back to host
+  #     - /app/node_modules
+  #   command: ["bash", "/app/entrypoint.sh"]
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - augmentos-network-dev
+  #   depends_on:
+  #     - shared-packages
+  #     - cloud
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   labels:
+  #     com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
 
   # Flash service
   flash:
@@ -245,43 +245,70 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
 
-  merge:
-    # Use local development setup for MentraMerge
-    build:
-      context: ../../AugmentApps/MentraMerge  # Path to the MentraMerge repo
-      dockerfile: Dockerfile.dev
-    container_name: merge
-    ports:
-      - "8016:80"
-    environment:
-      - PORT=80
-      - CLOUD_HOST_NAME=cloud
-      - NODE_ENV=development
-      - MERGE_API_KEY=${MERGE_API_KEY:-test_key}
-    volumes:
-      - ../../AugmentApps/MentraMerge/src:/app/src:delegated
-      - ../../AugmentApps/MentraMerge/tsconfig.json:/app/tsconfig.json:delegated
-      - ../../AugmentApps/MentraMerge/dev.sh:/app/dev.sh:delegated
-      - ../../AugmentApps/MentraMerge/entrypoint.sh:/app/entrypoint.sh:delegated
-      - ../../AugmentApps/MentraMerge/package.json:/app/package.json:delegated
-      - ../../AugmentApps/augmentos_cloud/node_modules/@augmentos:/app/node_modules/@augmentos:delegated
-      # Don't sync node_modules back to host
-      - /app/node_modules
-    command: ["bash", "/app/entrypoint.sh"]
-    restart: "no"
-    stdin_open: true
-    tty: true
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    depends_on:
-      - shared-packages
-      - cloud
-    networks:
-      - augmentos-network-dev
+  # merge:
+  #   # Use local development setup for MentraMerge
+  #   build:
+  #     context: ../../AugmentApps/MentraMerge  # Path to the MentraMerge repo
+  #     dockerfile: Dockerfile.dev
+  #   container_name: merge
+  #   ports:
+  #     - "8016:80"
+  #   environment:
+  #     - PORT=80
+  #     - CLOUD_HOST_NAME=cloud
+  #     - NODE_ENV=development
+  #     - MERGE_API_KEY=${MERGE_API_KEY:-test_key}
+  #   volumes:
+  #     - ../../Apps/MentraMerge/src:/app/src:delegated
+  #     - ../../Apps/MentraMerge/tsconfig.json:/app/tsconfig.json:delegated
+  #     - ../../Apps/MentraMerge/dev.sh:/app/dev.sh:delegated
+  #     - ../../Apps/MentraMerge/entrypoint.sh:/app/entrypoint.sh:delegated
+  #     - ../../Apps/MentraMerge/package.json:/app/package.json:delegated
+  #     - ../../AugmentOS/augmentos_cloud/node_modules/@augmentos:/app/node_modules/@augmentos:delegated
+  #     # Don't sync node_modules back to host
+  #     - /app/node_modules
+  #   command: ["bash", "/app/entrypoint.sh"]
+  #   restart: "no"
+  #   stdin_open: true
+  #   tty: true
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
+  #   depends_on:
+  #     - shared-packages
+  #     - cloud
+  #   networks:
+  #     - augmentos-network-dev
 
+
+  # AugHog TPA
+  # aughog:
+  #   build:
+  #     context: ../../Apps/AugHog
+  #     dockerfile: docker/Dockerfile.dev
+  #   container_name: aughog
+  #   ports:
+  #     - "8030:80"
+  #   environment:
+  #     - PORT=80
+  #     - CLOUD_HOST_NAME=cloud
+  #     - NODE_ENV=development
+  #   volumes:
+  #     - ../../Apps/AugHog:/app
+  #     - /app/node_modules
+  #   command: sh -c "bun install && bun --hot --watch src/index.ts"
+  #   networks:
+  #     - augmentos-network-dev
+  #   depends_on:
+  #     - cloud
+  #   restart: unless-stopped
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "10m"
+  #       max-file: "3"
 
 networks:
   augmentos-network-dev:

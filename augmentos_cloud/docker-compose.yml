@@ -295,6 +295,39 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
 
+  # AugHog TPA
+  aughog:
+    build:
+      context: ../../Apps/AugHog
+      dockerfile: docker/Dockerfile
+    container_name: aughog
+    ports:
+      - target: 80
+        published: ${AUGHOG_PORT:-7030}
+        protocol: tcp
+    environment:
+      - PORT=80
+      - CLOUD_HOST_NAME=cloud
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - augmentos-network
+    depends_on:
+      - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "aughog", "service": "aughog"}]'
+
 networks:
   augmentos-network:
     driver: bridge

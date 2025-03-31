@@ -256,6 +256,33 @@ router.post('/:tpaName', async (req, res) => {
     const updatedSettings = await user.updateAppSettings(tpaName, settingsArray);
 
     logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
+    
+    // Get user session to send WebSocket update
+    const sessionService = require('../services/core/session.service');
+    const userSessions = sessionService.getUserSessions(userId);
+    
+    // If user has active sessions, send them settings updates via WebSocket
+    if (userSessions && userSessions.length > 0) {
+      const { CloudToTpaMessageType } = require('@augmentos/sdk');
+      
+      userSessions.forEach(session => {
+        // Look for this TPA's connection
+        const tpaConnection = session.appConnections.get(tpaName);
+        if (tpaConnection && tpaConnection.readyState === 1) { // 1 = OPEN
+          // Send settings update via WebSocket
+          const settingsUpdate = {
+            type: CloudToTpaMessageType.SETTINGS_UPDATE,
+            packageName: tpaName,
+            sessionId: `${session.sessionId}-${tpaName}`,
+            settings: updatedSettings,
+            timestamp: new Date()
+          };
+          
+          tpaConnection.send(JSON.stringify(settingsUpdate));
+          logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
+        }
+      });
+    }
 
     const matchingApp = Object.values(systemApps).find(app =>
       app.packageName.endsWith(tpaName)
