@@ -50,8 +50,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
   const dashboardContentOptions = [
     { label: 'Notification Summary', value: 'notification_summary' },
-    { label: 'Motivational Quotes', value: 'motivational_quotes' },
-    { label: 'Word from Chinese to English', value: 'chinese_to_english' },
+    { label: 'Fun Facts', value: 'fun_facts' },
+    { label: 'Famous Quotes', value: 'famous_quotes' },
+    { label: "Trash Talk", value: "trash_talk" },
+    { label: 'Chinese Words', value: 'chinese_words' },
     { label: 'Gratitude Ping', value: 'gratitude_ping' }
   ];
 
