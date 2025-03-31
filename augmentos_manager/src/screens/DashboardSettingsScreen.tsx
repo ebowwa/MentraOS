@@ -10,6 +10,7 @@ import {
   Alert,
   Modal,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -19,6 +20,7 @@ import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import HeadUpAngleComponent from '../components/HeadUpAngleComponent.tsx';
 import NavigationBar from '../components/NavigationBar';
+import BackendServerComms from '../backend_comms/BackendServerComms';
 
 interface DashboardSettingsScreenProps {
   isDarkTheme: boolean;
@@ -32,6 +34,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   navigation,
 }) => {
   const { status } = useStatus();
+  const backendServerComms = BackendServerComms.getInstance();
 
   // -- States --
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
@@ -39,14 +42,17 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   );
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false);
   const [headUpAngle, setHeadUpAngle] = useState<number | null>(null);
-  const [dashboardContent, setDashboardContent] = useState('Notifications');
+  const [dashboardContent, setDashboardContent] = useState('');
   const [showContentPicker, setShowContentPicker] = useState(false);
+  const [serverSettings, setServerSettings] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const dashboardContentOptions = [
-    'Notification Summary',
-    'Motivational Quotes',
-    'Word from Chinese to English',
-    'Gratitude Ping'
+    { label: 'Notification Summary', value: 'notification_summary' },
+    { label: 'Motivational Quotes', value: 'motivational_quotes' },
+    { label: 'Word from Chinese to English', value: 'chinese_to_english' },
+    { label: 'Gratitude Ping', value: 'gratitude_ping' }
   ];
 
   // -- Handlers --
@@ -75,6 +81,47 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   };
 
   // -- Effects --
+  useEffect(() => {
+    fetchDashboardSettings();
+  }, []);
+
+  const fetchDashboardSettings = async () => {
+    try {
+      setIsLoading(true);
+      const data = await backendServerComms.getTpaSettings('com.augmentos.dashboard');
+      setServerSettings(data);
+      // Find the dashboard content setting
+      const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
+      if (contentSetting) {
+        setDashboardContent(contentSetting.selected);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard settings:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDashboardContentChange = async (value: string) => {
+    try {
+      setIsUpdating(true);
+      // Update the local state immediately to show loading
+      setDashboardContent(value);
+      await backendServerComms.updateTpaSetting('com.augmentos.dashboard', {
+        key: 'dashboard_content',
+        value: value
+      });
+    } catch (error) {
+      console.error('Error updating dashboard content:', error);
+      Alert.alert('Error', 'Failed to update dashboard content');
+      // Revert the local state on error
+      setDashboardContent(dashboardContent);
+    } finally {
+      setIsUpdating(false);
+      setShowContentPicker(false);
+    }
+  };
+
   useEffect(() => {
     if (status.glasses_info) {
       if (status.glasses_info?.headUp_angle != null) {
@@ -105,7 +152,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       visible={showContentPicker}
       transparent={true}
       animationType="fade"
-      onRequestClose={() => setShowContentPicker(false)}
+      onRequestClose={() => !isUpdating && setShowContentPicker(false)}
     >
       <View style={[styles.modalOverlay, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
         <View style={[styles.pickerContainer, isDarkTheme ? styles.darkPickerContainer : styles.lightPickerContainer]}>
@@ -114,8 +161,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               Select Dashboard Content
             </Text>
             <TouchableOpacity 
-              onPress={() => setShowContentPicker(false)}
-              style={styles.closeButton}
+              onPress={() => !isUpdating && setShowContentPicker(false)}
+              style={[styles.closeButton, isUpdating && styles.disabledButton]}
+              disabled={isUpdating}
             >
               <Text style={[styles.closeButtonText, isDarkTheme ? styles.lightText : styles.darkText]}>✕</Text>
             </TouchableOpacity>
@@ -123,27 +171,30 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           <ScrollView style={styles.pickerOptionsContainer}>
             {dashboardContentOptions.map((option) => (
               <TouchableOpacity
-                key={option}
+                key={option.value}
                 style={[
                   styles.pickerOption,
-                  dashboardContent === option && styles.selectedOption,
-                  isDarkTheme ? styles.darkOption : styles.lightOption
+                  dashboardContent === option.value && styles.selectedOption,
+                  isDarkTheme ? styles.darkOption : styles.lightOption,
+                  isUpdating && styles.disabledItem
                 ]}
-                onPress={() => {
-                  setDashboardContent(option);
-                  setShowContentPicker(false);
-                }}
+                onPress={() => !isUpdating && handleDashboardContentChange(option.value)}
+                disabled={isUpdating}
               >
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.pickerOptionText,
                     isDarkTheme ? styles.lightText : styles.darkText,
-                    dashboardContent === option && styles.selectedOptionText
+                    dashboardContent === option.value && styles.selectedOptionText
                   ]}>
-                    {option}
+                    {option.label}
                   </Text>
-                  {dashboardContent === option && (
-                    <Icon name="check" size={20} color="#FFFFFF" />
+                  {dashboardContent === option.value && (
+                    isUpdating ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Icon name="check" size={20} color="#FFFFFF" />
+                    )
                   )}
                 </View>
               </TouchableOpacity>
@@ -214,7 +265,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           </Text>
           <TouchableOpacity
             style={[styles.settingItem, styles.elevatedCard, isDarkTheme ? styles.darkCard : styles.lightCard]}
-            onPress={() => setShowContentPicker(true)}
+            onPress={() => !isLoading && setShowContentPicker(true)}
+            disabled={isLoading}
           >
             <View style={styles.settingTextContainer}>
               <Text
@@ -235,16 +287,27 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               </Text>
             </View>
             <View style={styles.selectedValueContainer}>
-              <Text
-                style={[
-                  styles.selectedValue,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}
-              >
-                {dashboardContent}
-              </Text>
-              <Icon name="chevron-right" size={16} color={isDarkTheme ? '#FFFFFF' : '#000000'} />
+              {isLoading ? (
+                <ActivityIndicator size="small" color={isDarkTheme ? '#FFFFFF' : '#007AFF'} />
+              ) : (
+                <>
+                  <Text
+                    style={[
+                      styles.selectedValue,
+                      isDarkTheme ? styles.lightText : styles.darkText,
+                    ]}
+                  >
+                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label || 'Notification Summary'}
+                  </Text>
+                  <Icon name="chevron-right" size={16} color={isDarkTheme ? '#FFFFFF' : '#000000'} />
+                </>
+              )}
             </View>
+            {isUpdating && (
+              <View style={[styles.loadingOverlay, isDarkTheme ? styles.darkLoadingOverlay : styles.lightLoadingOverlay]}>
+                <ActivityIndicator size="small" color={isDarkTheme ? '#FFFFFF' : '#007AFF'} />
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -472,5 +535,24 @@ const styles = StyleSheet.create({
   },
   lightOption: {
     backgroundColor: '#F5F5F5',
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+  },
+  darkLoadingOverlay: {
+    backgroundColor: 'rgba(44, 44, 44, 0.7)',
+  },
+  lightLoadingOverlay: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
 });
