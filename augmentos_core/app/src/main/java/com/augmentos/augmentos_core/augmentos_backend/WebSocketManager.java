@@ -56,6 +56,7 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
     private boolean intentionalDisconnect = false;
     private final Handler reconnectHandler = new Handler(Looper.getMainLooper());
     private Context context;
+    private String coreToken;
 
     // Add these fields for thread safety
     private final Object connectionLock = new Object();
@@ -111,11 +112,12 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
     /**
      * Opens a connection to the given WebSocket URL.
      */
-    public void connect(String url) {
+    public void connect(String url, String coreToken) {
         synchronized (connectionLock) {
             this.serverUrl = url;
             this.intentionalDisconnect = false;
             this.retryAttempts = 0;
+            this.coreToken = coreToken;
             shouldAutoReconnect = true;
 
             if (networkMonitor != null && !networkMonitor.isNetworkCurrentlyAvailable()) {
@@ -160,7 +162,10 @@ public class WebSocketManager extends WebSocketListener implements NetworkMonito
                     .pingInterval(30, TimeUnit.SECONDS) // Increased from 10 to 30 seconds
                     .build();
 
-            Request request = new Request.Builder().url(serverUrl).build();
+            Request request = new Request.Builder()
+                    .url(serverUrl)
+                    .header("Authorization", "Bearer " + coreToken) // Pass Core token here.
+                    .build();
             webSocket = client.newWebSocket(request, this);
         }
     }

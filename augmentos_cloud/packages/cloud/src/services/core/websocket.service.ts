@@ -17,7 +17,7 @@
 
 // import { WebSocketServer, WebSocket } from 'ws';
 import WebSocket from 'ws';
-import { Server } from 'http';
+import { IncomingMessage, Server } from 'http';
 import sessionService, { ExtendedUserSession, SequencedAudioChunk } from './session.service';
 import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
@@ -82,7 +82,7 @@ type MicrophoneStateChangeDebouncer = { timer: ReturnType<typeof setTimeout> | n
 export class WebSocketService {
   private glassesWss: WebSocket.Server;
   private tpaWss: WebSocket.Server;
-  
+
   // Global counter for generating sequential audio chunk numbers
   private globalAudioSequence: number = 0;
 
@@ -90,7 +90,7 @@ export class WebSocketService {
     this.glassesWss = new WebSocketServer({ noServer: true });
     this.tpaWss = new WebSocketServer({ noServer: true });
   }
-  
+
   /**
    * Add an audio chunk to the ordered buffer for a session
    * @param userSession User session to add the chunk to
@@ -107,95 +107,95 @@ export class WebSocketService {
         expectedNextSequence: 0,
         bufferSizeLimit: 100,
         bufferTimeWindowMs: 500,
-        bufferProcessingInterval: setInterval(() => 
+        bufferProcessingInterval: setInterval(() =>
           this.processAudioBuffer(userSession), 100)
       };
     }
-    
+
     // Update expected next sequence
-    userSession.audioBuffer.expectedNextSequence = 
+    userSession.audioBuffer.expectedNextSequence =
       Math.max(userSession.audioBuffer.expectedNextSequence, chunk.sequenceNumber + 1);
-    
+
     // Insert chunk in correct position to maintain sorted order
     const index = userSession.audioBuffer.chunks.findIndex(
       c => c.sequenceNumber > chunk.sequenceNumber
     );
-    
+
     if (index === -1) {
       userSession.audioBuffer.chunks.push(chunk);
     } else {
       userSession.audioBuffer.chunks.splice(index, 0, chunk);
     }
-    
+
     // Enforce buffer size limit
     if (userSession.audioBuffer.chunks.length > userSession.audioBuffer.bufferSizeLimit) {
       const droppedCount = userSession.audioBuffer.chunks.length - userSession.audioBuffer.bufferSizeLimit;
-      
+
       // Remove oldest chunks beyond the limit
       userSession.audioBuffer.chunks = userSession.audioBuffer.chunks.slice(
         userSession.audioBuffer.chunks.length - userSession.audioBuffer.bufferSizeLimit
       );
-      
+
       userSession.logger.warn(
         `Audio buffer exceeded limit. Dropped ${droppedCount} oldest chunks. Buffer now has ${userSession.audioBuffer.chunks.length} chunks.`
       );
     }
   }
-  
+
   /**
    * Process audio chunks in sequence from the buffer
    * @param userSession User session whose audio buffer to process
    */
   private async processAudioBuffer(userSession: ExtendedUserSession): Promise<void> {
     // Skip if no buffer, no chunks, or already processing
-    if (!userSession.audioBuffer || 
-        userSession.audioBuffer.chunks.length === 0 ||
-        userSession.audioBuffer.processingInProgress) {
+    if (!userSession.audioBuffer ||
+      userSession.audioBuffer.chunks.length === 0 ||
+      userSession.audioBuffer.processingInProgress) {
       return;
     }
-    
+
     // Set processing flag to prevent concurrent processing
     userSession.audioBuffer.processingInProgress = true;
-    
+
     try {
       const now = Date.now();
       const chunks = userSession.audioBuffer.chunks;
-      
+
       // Only proceed if we have chunks to process
       if (chunks.length > 0) {
         const oldestChunkTime = chunks[0].receivedAt;
         const bufferTimeElapsed = now - oldestChunkTime > userSession.audioBuffer.bufferTimeWindowMs;
-        
+
         // Only process if we have accumulated enough time or have enough chunks
         if (bufferTimeElapsed || chunks.length >= 5) {
           // Sort by sequence number (should already be mostly sorted)
           chunks.sort((a, b) => a.sequenceNumber - b.sequenceNumber);
-          
+
           // Process chunks in sequence until we find a gap or reach the end
           while (chunks.length > 0) {
             const nextChunk = chunks[0];
-            
+
             // Check if this is the next expected chunk or we've waited long enough
-            const isNextInSequence = nextChunk.sequenceNumber === 
+            const isNextInSequence = nextChunk.sequenceNumber ===
               userSession.audioBuffer.lastProcessedSequence + 1;
-            const hasWaitedLongEnough = now - nextChunk.receivedAt > 
+            const hasWaitedLongEnough = now - nextChunk.receivedAt >
               userSession.audioBuffer.bufferTimeWindowMs;
-            
+
             if (isNextInSequence || hasWaitedLongEnough) {
               // Remove from buffer
               chunks.shift();
-              
+
               // Process the chunk with sequence number
               const processedData = await sessionService.handleAudioData(
-                userSession, 
-                nextChunk.data, 
+                userSession,
+                nextChunk.data,
                 nextChunk.isLC3,
                 nextChunk.sequenceNumber  // Pass sequence to track continuity
               );
-              
+
               // Update last processed sequence
               userSession.audioBuffer.lastProcessedSequence = nextChunk.sequenceNumber;
-              
+
               // If we have processed audio data, broadcast it to TPAs
               if (processedData) {
                 this.broadcastToTpaAudio(userSession, processedData);
@@ -211,7 +211,7 @@ export class WebSocketService {
               break;
             }
           }
-          
+
           // Log buffer status if chunks remain
           if (chunks.length > 0 && LOG_AUDIO) {
             userSession.logger.debug(
@@ -676,27 +676,62 @@ export class WebSocketService {
    * @param ws - WebSocket connection
    * @private
    */
-  private async handleGlassesConnection(ws: WebSocket): Promise<void> {
+  private async handleGlassesConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
+    // Get the headers from the request and log them with lots of fire emojis. 🔥🔥🔥 🔥🔥 🔥 🔥🔥🔥.
+    logger.info(`[websocket.service]: Glasses WebSocket connection request headers:`, request.headers);
     logger.info('[websocket.service]: New glasses client attempting to connect...');
+    // get the coreToken from the request headers authorization: Bearer <coreToken>
+    const coreToken = request.headers.authorization?.split(' ')[1];
+    if (!coreToken) {
+      logger.error('[websocket.service]: No core token provided in request headers');
+      const errorMessage: ConnectionError = {
+        type: CloudToGlassesMessageType.CONNECTION_ERROR,
+        message: 'No core token provided',
+        timestamp: new Date()
+      };
+      ws.send(JSON.stringify(errorMessage));
+      return;
+    }
+    // Verify the core token
+    let userId = '';
+    try {
+      const userData = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET);
+      userId = (userData as JwtPayload).email;
+      if (!userId) {
+        throw new Error('User ID is required');
+      }
+    } catch (error) {
+      logger.error('[websocket.service]: Error verifying core token:', error);
+      const errorMessage: ConnectionError = {
+        type: CloudToGlassesMessageType.CONNECTION_ERROR,
+        message: 'Invalid core token',
+        timestamp: new Date()
+      };
+      ws.send(JSON.stringify(errorMessage));
+      return;
+    }
+    // Set up the user session
+    logger.info('[websocket.service]: Glasses client connected successfully');
+    // Set up the user session
     const startTimestamp = new Date();
+
 
     // Register this connection with the health monitor
     healthMonitorService.registerGlassesConnection(ws);
+    const userSession = await sessionService.createSession(ws, userId);
 
-    const userSession = await sessionService.createSession(ws);
-    
     // Set up the audio buffer processing interval
     if (userSession.audioBuffer) {
       // Clear any existing interval first
       if (userSession.audioBuffer.bufferProcessingInterval) {
         clearInterval(userSession.audioBuffer.bufferProcessingInterval);
       }
-      
+
       // Create new interval that calls our processAudioBuffer method
       userSession.audioBuffer.bufferProcessingInterval = setInterval(() => {
         this.processAudioBuffer(userSession);
       }, 100); // Process every 100ms
-      
+
       userSession.logger.info(`✅ Audio buffer processing interval set up for session ${userSession.sessionId}`);
     }
     ws.on('message', async (message: Buffer | string, isBinary: boolean) => {
@@ -709,11 +744,11 @@ export class WebSocketService {
             _buffer.byteOffset,
             _buffer.byteOffset + _buffer.byteLength
           );
-          
+
           // Generate a sequence number
           const sequenceNumber = this.globalAudioSequence++;
           const now = Date.now();
-          
+
           // Create a sequenced audio chunk
           const chunk: SequencedAudioChunk = {
             sequenceNumber,
@@ -722,15 +757,15 @@ export class WebSocketService {
             isLC3: true, // Assuming LC3 based on global IS_LC3 setting
             receivedAt: now
           };
-          
+
           // Add to the ordered buffer
           this.addToAudioBuffer(userSession, chunk);
-          
+
           // Trigger buffer processing
           // Processing will happen asynchronously via the interval,
           // but we can also trigger it immediately for responsive feedback
           this.processAudioBuffer(userSession);
-          
+
           return;
         }
 
@@ -762,7 +797,7 @@ export class WebSocketService {
       }
     });
 
-    const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 5; // 5 minutes
+    const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 1; // 1 minute
     ws.on('close', () => {
       userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}`);
       // Mark the session as disconnected but do not remove it immediately
@@ -770,8 +805,10 @@ export class WebSocketService {
 
       // Set a timeout to eventually clean up the session if not reconnected
       setTimeout(() => {
-        if (sessionService.isItTimeToKillTheSession(userSession.sessionId)) {
-          sessionService.endSession(userSession.sessionId);
+        userSession.logger.info(`[websocket.service]: Grace period expired, checking if we should cleanup session: ${userSession.sessionId}`);
+        if (userSession.websocket.readyState === WebSocket.CLOSED || userSession.websocket.readyState === WebSocket.CLOSING) {
+          userSession.logger.info(`[websocket.service]: User disconnected: ${userSession.sessionId}`);
+          sessionService.endSession(userSession);
         }
       }, RECONNECT_GRACE_PERIOD_MS);
 
@@ -786,9 +823,10 @@ export class WebSocketService {
       });
     });
 
+    // TODO(isaiahb): Investigate if we really need to destroy the session on an error.
     ws.on('error', (error) => {
       userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
-      sessionService.endSession(userSession.sessionId);
+      sessionService.endSession(userSession);
       ws.close();
     });
   }
@@ -816,38 +854,17 @@ export class WebSocketService {
       switch (message.type) {
         // 'connection_init'
         case GlassesToCloudMessageType.CONNECTION_INIT: {
-          const initMessage = message as ConnectionInit;
-          const coreToken = initMessage.coreToken || "";
-          let userId = '';
+          // const initMessage = message as ConnectionInit;
+          // we refactored this logic to happen when the websocket is created, so the client doesn't need to send this message anymore.
 
-          // Verify the core token, and extract the user ID.
+          // Start all the apps that the user has running.
           try {
-            const userData = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET);
-            userId = (userData as JwtPayload).email;
-            if (!userId) {
-              throw new Error('User ID is required');
-            }
+            // Start the dashboard app, but let's not add to the user's running apps since it's a system app.
+            // honestly there should be no annyomous users so if it's an anonymous user we should just not start the dashboard
+            await this.startAppSession(userSession, systemApps.dashboard.packageName);
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service] Error verifying core token:`, error);
-            const errorMessage: AuthError = {
-              type: CloudToGlassesMessageType.AUTH_ERROR,
-              message: 'User not authenticated',
-              timestamp: new Date()
-            };
-            ws.send(JSON.stringify(errorMessage));
-            return;
-          }
-
-          // let userId = 'loriamistadi75@gmail.com';
-          userSession.logger.info(`[websocket.service] Glasses client connected: ${userId}`);
-
-          // See if this user has an existing session and reconnect if so.
-          try {
-            sessionService.handleReconnectUserSession(userSession, userId);
-          }
-          catch (error) {
-            userSession.logger.error(`[websocket.service]: Error reconnecting user session starting new session:`, error);
+            userSession.logger.error(`[websocket.service]: Error starting dashboard app:`, error);
           }
 
           // Start all the apps that the user has running.
@@ -872,13 +889,7 @@ export class WebSocketService {
                 }
               }
             }
-
-            // Start the dashboard app, but let's not add to the user's running apps since it's a system app.
-            // honestly there should be no annyomous users so if it's an anonymous user we should just not start the dashboard
-            if (userSession.userId !== 'anonymous') {
-              await this.startAppSession(userSession, systemApps.dashboard.packageName);
-              userSession.logger.info(`[websocket.service]: 🗿🗿✅🗿🗿 Starting app ${systemApps.dashboard.packageName}`);
-            }
+            userSession.logger.info(`[websocket.service]: 🗿🗿✅🗿🗿 Starting app ${systemApps.dashboard.packageName}`);
           }
           catch (error) {
             userSession.logger.error(`[websocket.service] Error starting user apps:`, error);
@@ -891,11 +902,12 @@ export class WebSocketService {
           const ackMessage: ConnectionAck = {
             type: CloudToGlassesMessageType.CONNECTION_ACK,
             sessionId: userSession.sessionId,
-            userSession: await sessionService.transformUserSessionForClient(userSession),
+            userSession: await sessionService.transformUserSessionForClient(userSession as ExtendedUserSession),
             timestamp: new Date()
           };
+
           ws.send(JSON.stringify(ackMessage));
-          userSession.logger.info(`[websocket.service]\nSENDING connection_ack to ${userId}`);
+          userSession.logger.info(`[websocket.service]\nSENDING connection_ack`);
 
           // Track connection event.
           PosthogService.trackEvent('connected', userSession.userId, {
@@ -1170,7 +1182,7 @@ export class WebSocketService {
               const clientResponse: AppStateChange = {
                 type: CloudToGlassesMessageType.APP_STATE_CHANGE,
                 sessionId: userSession.sessionId,
-                userSession: await sessionService.transformUserSessionForClient(userSession),
+                userSession: await sessionService.transformUserSessionForClient(userSession as ExtendedUserSession),
                 timestamp: new Date()
               };
               userSession?.websocket.send(JSON.stringify(clientResponse));

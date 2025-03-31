@@ -57,34 +57,34 @@ services:
       com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
   # Live Captions service
-  # live-captions:
-  #   stop_grace_period: 5s
-  #   init: true
-  #   build:
-  #     context: .
-  #     dockerfile: Dockerfile.dev
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8020:80"
-  #   environment:
-  #     - NODE_ENV=development
-  #     - HOST=0.0.0.0
-  #     - SERVICE_NAME=live-captions
-  #   env_file:
-  #     - .env
-  #   volumes:
-  #     - ./:/app
-  #     - node_modules:/app/node_modules
-  #     - bun_cache:/root/.bun
-  #     - ./logs:/app/logs
-  #   command: bash -c "cd packages/apps/livecaptions && bun run dev"
-  #   networks:
-  #     - augmentos-network-dev
-  #   depends_on:
-  #     - shared-packages
-  #     - cloud
-  #   labels:
-  #     com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
+  live-captions:
+    stop_grace_period: 5s
+    init: true
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    ports:
+      - "8020:80"
+    environment:
+      - NODE_ENV=development
+      - HOST=0.0.0.0
+      - SERVICE_NAME=live-captions
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - node_modules:/app/node_modules
+      - bun_cache:/root/.bun
+      - ./logs:/app/logs
+    command: bash -c "cd packages/apps/livecaptions && bun run dev"
+    networks:
+      - augmentos-network-dev
+    depends_on:
+      - shared-packages
+      - cloud
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
 
   # Flash service
   flash:
