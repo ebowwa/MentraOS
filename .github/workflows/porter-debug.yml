@@ -1,8 +1,8 @@
 "on":
     push:
         branches:
-            - websocket-headers
-name: Deploy to augmentos-cloud-debug
+            - isaiah/debug
+name: 🚀 [debug] Porter.run Deploy
 jobs:
     porter-deploy:
         runs-on: ubuntu-latest
@@ -18,7 +18,7 @@ jobs:
               timeout-minutes: 30
               run: exec porter apply -f ./augmentos_cloud/porter.yaml
               env:
-                PORTER_APP_NAME: augmentos-cloud-debug
+                PORTER_APP_NAME: cloud-debug
                 PORTER_NAMESPACE: debug
                 NODE_ENV: debug
                 PORTER_CLUSTER: "4689"
