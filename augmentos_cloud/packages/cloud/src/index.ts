@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // import "./instrument";
-import "./sentry";
+// import "./sentry";
 
 import express from 'express';
 import { Server } from 'http';
