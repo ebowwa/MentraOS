@@ -236,7 +236,10 @@ export class AppService {
    */
   async validateApiKey(packageName: string, apiKey: string, clientIp?: string): Promise<boolean> {
     const app = await this.getApp(packageName);
-    if (!app) return false;
+    if (!app) {
+      console.warn(`App ${packageName} not found`);
+      return false;
+    }
 
     // Additional verification for system apps
     // const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(sysApp => sysApp.packageName === packageName);
@@ -269,7 +272,19 @@ export class AppService {
     // For regular apps, validate API key as normal
     // Get the MongoDB app document to access hashedApiKey
     const appDoc = await App.findOne({ packageName });
-    if (!appDoc?.hashedApiKey) return false;
+
+    if (!appDoc) {
+      console.warn(`App ${packageName} not found in database`);
+      return false;
+    }
+
+    // Check if the app has a hashed API key
+    // If the app is a system app, we don't need to validate the API key
+    
+    if (!appDoc?.hashedApiKey){
+      console.warn(`App ${packageName} does not have a hashed API key`);
+      return false;
+    }
 
     // Hash the provided API key and compare with stored hash
     const hashedKey = this.hashApiKey(apiKey);

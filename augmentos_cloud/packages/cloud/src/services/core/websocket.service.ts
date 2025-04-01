@@ -61,6 +61,7 @@ import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
 import tpaRegistrationService from './tpa-registration.service';
 import healthMonitorService from './health-monitor.service';
+import axios from 'axios';
 
 export const PUBLIC_HOST_NAME = process.env.PUBLIC_HOST_NAME || "dev.augmentos.cloud";
 export let LOCAL_HOST_NAME = process.env.CLOUD_HOST_NAME || process.env.PORTER_APP_NAME ? `${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80` : "cloud"
@@ -1226,6 +1227,7 @@ export class WebSocketService {
     ws.on('ping', () => {
       // Update activity whenever a ping is received
       healthMonitorService.updateTpaActivity(ws);
+      console.log("🔥🔥🔥: Received ping from TPA");
       // Send pong response
       try {
         ws.pong();
@@ -1359,10 +1361,51 @@ export class WebSocketService {
       }
     }
 
-    // Send acknowledgment
+    // Get user settings for this TPA
+    let userSettings = [];
+    try {
+      const user = await User.findOrCreateUser(userSession.userId);
+      userSettings = user.getAppSettings(initMessage.packageName) || [];
+      
+      // If no settings found, try to fetch and create default settings
+      if (!userSettings || userSettings.length === 0) {
+        try {
+          // Try to fetch TPA config to get default settings
+          const app = await appService.getApp(initMessage.packageName);
+          if (app && app.publicUrl) {
+            const tpaConfigResponse = await axios.get(`${app.publicUrl}/tpa_config.json`);
+            const tpaConfig = tpaConfigResponse.data;
+            
+            if (tpaConfig && tpaConfig.settings) {
+              const defaultSettings = tpaConfig.settings
+                .filter((setting: any) => setting.type !== 'group')
+                .map((setting: any) => ({
+                  key: setting.key,
+                  value: setting.defaultValue,
+                  defaultValue: setting.defaultValue,
+                  type: setting.type,
+                  label: setting.label,
+                  options: setting.options || []
+                }));
+                
+              await user.updateAppSettings(initMessage.packageName, defaultSettings);
+              userSettings = defaultSettings;
+              userSession.logger.info(`Created default settings for ${initMessage.packageName}`);
+            }
+          }
+        } catch (error) {
+          userSession.logger.error(`Error fetching TPA config for default settings: ${error}`);
+        }
+      }
+    } catch (error) {
+      userSession.logger.error(`Error retrieving settings for ${initMessage.packageName}: ${error}`);
+    }
+    
+    // Send acknowledgment with settings
     const ackMessage: TpaConnectionAck = {
       type: CloudToTpaMessageType.CONNECTION_ACK,
       sessionId: initMessage.sessionId,
+      settings: userSettings, // Include user settings in the response
       timestamp: new Date()
     };
     ws.send(JSON.stringify(ackMessage));
