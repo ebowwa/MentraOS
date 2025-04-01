@@ -33,8 +33,9 @@ Some of the apps running on AugmentOS...
 
 <details>
 <summary>
-### "Mira" AI Assistant
+<strong>"Mira" AI Assistant</strong>
 </summary>
+
 Smart and fast AI assistant with access to Google search. Say "Hey Mira" and then ask a question/say a command. 
 
 - "hey Mira, how long is a direct flight from Toronto to Hong Kong?"
@@ -44,15 +45,19 @@ Smart and fast AI assistant with access to Google search. Say "Hey Mira" and the
 
 <details>
 <summary>
-#### Screen Mirror
+<strong>
+Screen Mirror
+</strong>
 </summary>
+
 Mirror anything on your screen to your smart glasses. We use a lightweight, novel approach, which makes it very fast and makes text easy to read.
 </details>
 
 <details>
 <summary>
-#### Mentra Merge: Proactive AI Agents
+<strong>Mentra Merge: Proactive AI Agents</strong>
 </summary>
+
 Convoscope is a suite of proactive AI agents to augment conversations. Imagine a council of superintelligent assistants listening in to your conversation and helping you solve problems, have new ideas, and better connect with those you're speaking with
 
 <a href="https://www.youtube.com/watch?v=3n6DzuYQ_v8">
@@ -68,8 +73,9 @@ Convoscope is a suite of proactive AI agents to augment conversations. Imagine a
 
 <details>
 <summary>
-#### Mentra Link: Language Learning
+<strong>Mentra Link: Language Learning</strong>
 </summary>
+
 Learn a new language 10x faster with smart glasses. Partial translation, AI foreign language conversations, word/phrase suggestions, immersive AR language annotations, and more.
 
 [Mentra Link](https://mentra.glass/)
@@ -84,22 +90,25 @@ TEDxMIT Talk on "Can Smart Glasses Revolutionize How We Learn Languages?" by Cay
 
 <details>
 <summary>
-#### Live Captions
+<strong>Live Captions</strong>
 </summary>
+
 See live captions of everything that is said. 100s of languages supported with high accuracy and low latency.
 </details>
 
 <details>
 <summary>
-#### ADHD Glasses
+<strong>ADHD Glasses</strong>
 </summary>
+
 A 10 minute short term memory buffer to help get back on track during conversations after a zone-out.
 </details>
 
 <details>
 <summary>
-#### Live Language Translation
+<strong>Live Language Translation</strong>
 </summary>
+
 Live translate languages - when someone speaks a foreign language, instantly see it translated on your vision. Supports 100s of language.
 </details>
 
