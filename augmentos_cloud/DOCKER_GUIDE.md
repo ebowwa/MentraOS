@@ -33,15 +33,17 @@ Augment/
 
 ## Docker Networks
 
-Two Docker networks are used to separate development and production environments:
+Three Docker networks are used to separate development and production environments:
 
-- `augmentos-network-dev`: Used for development (dev/staging)
+- `augmentos-network-dev`: Used for development (dev)
+- `augmentos-network-staging`: Used for staging (staging)
 - `augmentos-network`: Used for production
 
 Create these networks with:
 
 ```bash
 docker network create augmentos-network-dev
+docker network create augmentos-network-staging
 docker network create augmentos-network
 ```
 
