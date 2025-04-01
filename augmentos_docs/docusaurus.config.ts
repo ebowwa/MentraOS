@@ -68,12 +68,6 @@ const config: Config = {
       // Only docs in the navbar
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'tutorialSidebar',
-          position: 'left',
-          label: 'Docs',
-        },
-        {
           href: 'https://github.com/augmentos-community/augmentos',
           label: 'GitHub',
           position: 'right',
@@ -87,9 +81,16 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              // Points to the docs root now
-              label: 'Tutorial',
+              label: 'Home',
               to: '/',
+            },
+            {
+              label: 'Quickstart',
+              to: '/quickstart',
+            },
+            {
+              label: 'Getting Started (From Scratch)',
+              to: '/getting-started',
             },
           ],
         },
@@ -97,12 +98,8 @@ const config: Config = {
           title: 'Community',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            },
-            {
               label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
+              href: 'https://discord.gg/5ukNvkEAqT',
             },
             {
               label: 'X',

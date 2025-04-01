@@ -10,14 +10,16 @@ export default function AugmentOSArchImage({
   const darkImage = useBaseUrl('/img/augmentos-arch-dark.png');
 
   return (
-    <ThemedImage
-      alt="AugmentOS Architecture"
-      sources={{
-        light: lightImage,
-        dark: darkImage,
-      }}
-      style={{ width: width }}
-      className={className}
-    />
+    <div style={{ textAlign: 'center', margin: '20px 0' }}>
+      <ThemedImage
+        alt="AugmentOS Architecture"
+        sources={{
+          light: lightImage,
+          dark: darkImage,
+        }}
+        style={{ maxWidth: `${width}px` }}
+        className={className}
+      />
+    </div>
   );
 }

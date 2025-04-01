@@ -15,7 +15,7 @@ import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 const sidebars: SidebarsConfig = {
   // Manually defined sidebar structure
   tutorialSidebar: [
-    'intro',
+    'index',
     'quickstart',
     {
       type: 'doc',
