@@ -10,6 +10,7 @@ import { User } from '../models/user.model';
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 import appService from '../services/core/app.service';
 import { logger } from '@augmentos/utils';
+import { UserSession } from '@augmentos/sdk';
 
 const router = express.Router();
 
@@ -265,7 +266,7 @@ router.post('/:tpaName', async (req, res) => {
     if (userSessions && userSessions.length > 0) {
       const { CloudToTpaMessageType } = require('@augmentos/sdk');
       
-      userSessions.forEach(session => {
+      userSessions.forEach((session: UserSession) => {
         // Look for this TPA's connection
         const tpaConnection = session.appConnections.get(tpaName);
         if (tpaConnection && tpaConnection.readyState === 1) { // 1 = OPEN
