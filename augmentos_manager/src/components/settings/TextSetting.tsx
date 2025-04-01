@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { View, Text, TextInput, StyleSheet, LayoutChangeEvent, TouchableOpacity } from 'react-native';
 
 type TextSettingProps = {
   label: string;
@@ -27,6 +27,10 @@ const TextSetting: React.FC<TextSettingProps> = ({
     setHeight(newHeight);
   };
 
+  const handleSubmit = () => {
+    onChangeText(localValue);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={[styles.label, { color: theme.textColor }]}>{label}</Text>
@@ -41,11 +45,16 @@ const TextSetting: React.FC<TextSettingProps> = ({
         ]}
         value={localValue}
         onChangeText={setLocalValue}
-        onBlur={() => onChangeText(localValue)}
         multiline
         onContentSizeChange={handleContentSizeChange}
         textAlignVertical="top"
       />
+      <TouchableOpacity 
+        style={[styles.submitButton, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}
+        onPress={handleSubmit}
+      >
+        <Text style={[styles.submitButtonText, { color: theme.textColor }]}>Save Changes</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -64,7 +73,19 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     fontSize: 16,
-    textAlignVertical: 'top'
+    textAlignVertical: 'top',
+    marginBottom: 10
+  },
+  submitButton: {
+    padding: 10,
+    borderRadius: 5,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  submitButtonText: {
+    fontSize: 14,
+    fontWeight: '600'
   }
 });
 

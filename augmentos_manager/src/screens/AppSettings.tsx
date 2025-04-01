@@ -16,8 +16,6 @@ import TitleValueSetting from '../components/settings/TitleValueSetting';
 import LoadingComponent from '../components/LoadingComponent';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import BackendServerComms from '../backend_comms/BackendServerComms';
-import { AppInfo } from '../AugmentOSStatusParser';
-import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { getAppImage } from '../logic/getAppImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
