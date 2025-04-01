@@ -1,53 +1,41 @@
 ---
 sidebar_position: 1
+slug: /intro
 ---
 
-# Intro
+import AugmentOSArchImage from '@site/src/components/ThemedImage';
 
-Welcome to the AugmentOS TPA SDK!  This SDK provides everything you need to build server-side applications (called **Third Party Applications** or **TPAs**) that extend the functionality of AugmentOS smart glasses.  If you want to create real-time, interactive experiences on the glasses, you're in the right place.
+# Welcome to AugmentOS SDK
 
-## 🚧 Disclaimer 🚧
-These Docs are still under construction 👷🚧, and the code is evolving fast. 
-If you have any issues or get stuck, feel free to reach out at isaiah@mentra.glass.
+*Last updated: March 31, 2025*
 
-**What is a TPA?**
+## What is AugmentOS?
 
-A TPA is a Node.js application that runs on a server (or serverless environment) and communicates with the AugmentOS Cloud. The cloud acts as a bridge between your TPA and the user's smart glasses.  Your TPA can:
+AugmentOS is a cloud operating system for smart glasses that handles the hard parts: connections, Bluetooth, streaming, and more. This lets you focus on creating great smart glasses apps.
 
-*   **Receive real-time data** from the glasses, such as:
-    *   Speech (transcription)
-    *   Head position (up/down)
-    *   Button presses
-    *   Phone notifications
-    *   Location updates
-    *   And more...
-*   **Control the glasses' display:**  Show text, cards, and other UI elements.
-*   **Integrate with external services:** Connect to APIs, databases, and other services to provide rich functionality.
+<div style={{textAlign: 'center', margin: '20px 0'}}>
+  <AugmentOSArchImage width={500} />
+</div>
 
-**Why Build a TPA?**
+As a Cloud OS, you can write apps in JavaScript/TypeScript (with Python coming soon) and use our SDK to build for smart glasses. Our SDK enables you to access smart glasses I/O with low latency from a cloud application.
 
-*   **Extend the Glasses:** Add new features and capabilities beyond the built-in OS functionality.
-*   **Real-time Interaction:** Create experiences that respond instantly to user input and the environment.
-*   **AR Content:**  Display contextual information and interfaces directly in the user's field of view.
-*   **Server-Side Logic:**  Perform complex processing, data analysis, and integrations on the server, keeping the glasses lightweight.
+## Compatible Hardware
 
-**Key Benefits of the SDK:**
+You'll need [compatible smart glasses](https://augmentos.org/glasses/) to build with AugmentOS.
 
-*   **Simplified Development:**  Easy-to-use classes and methods handle the complexities of WebSocket communication and data parsing.
-*   **Type Safety:**  TypeScript provides strong typing, improving code reliability and developer experience.
-*   **Event-Driven:**  React to events from the glasses and the cloud in a clean, organized way.
-*   **Flexible Layouts:**  Control the glasses' display with a variety of pre-built layout types.
-*   **Well-Documented:**  Comprehensive documentation and examples to guide you.
+## Getting Started
 
-**This Documentation Will Cover:**
+- [Quickstart](quickstart) - Build your first app in minutes
+- [Complete Setup](getting-started) - Detailed step-by-step guide
 
-*   **Getting Started:** Setting up your environment and creating a basic TPA.
-*   **Core Concepts:**  Understanding the key principles of the AugmentOS ecosystem.
-*   **TPA Lifecycle:**  How TPAs connect, run, and interact with the cloud.
-*   **Events:**  Handling real-time data from the glasses.
-*   **Layouts:**  Displaying content on the glasses.
-*   **Configuration:**  Setting up your TPA's configuration files.
-*   **Best Practices:**  Security, error handling, and performance tips.
-*   **API Reference:**  Detailed documentation for all SDK classes and methods.
+## Deployment
 
-Let's get started!  Move on to the [Getting Started](./getting-started) guide to build your first TPA.
+Developers can deploy finished apps to the [AugmentOS Store](https://appstore.augmentos.org) for users to discover and install.
+
+## Resources
+
+- [AugmentOS Website](https://augmentos.org)
+- [GitHub Repo](https://github.com/AugmentOS-Community/AugmentOS)
+- [Discord Community](https://discord.gg/5ukNvkEAqT) - Get help from the team and community
+
+Ready to build? Head to our [Quickstart guide](quickstart).

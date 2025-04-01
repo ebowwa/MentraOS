@@ -48,7 +48,7 @@ const LandingPage: React.FC = () => {
               </svg>
             </a>
             <a
-              href="https://www.npmjs.com/package/@augmentos/sdk"
+              href="https://docs.augmentos.org"
               className="px-6 py-3 rounded-md border border-gray-300 font-medium hover:bg-gray-100"
             >
               View Documentation

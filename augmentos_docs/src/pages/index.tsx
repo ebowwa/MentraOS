@@ -4,6 +4,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import HomepageFeatures from '@site/src/components/HomepageFeatures';
 import Heading from '@theme/Heading';
+import SEOHead from '@site/src/components/Head';
 
 import styles from './index.module.css';
 
@@ -13,13 +14,13 @@ function HomepageHeader() {
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
         <Heading as="h1" className="hero__title">
-          {siteConfig.title}
+          AugmentOS SDK Docs <sup style={{fontSize: '0.5em', verticalAlign: 'super'}}>beta</sup>
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"
-            to="/docs/intro">
+            to="/intro">
             Get Started
           </Link>
         </div>
@@ -31,9 +32,11 @@ function HomepageHeader() {
 export default function Home(): JSX.Element {
   const {siteConfig} = useDocusaurusContext();
   return (
-    <Layout
-      title={`Welcome to ${siteConfig.title}`}
-      description="AugmentOS Developer Documentation - Build applications for the open-source operating system for smart glasses">
+    <>
+      <SEOHead />
+      <Layout
+        title={`Welcome to ${siteConfig.title}`}
+        description="AugmentOS Developer Documentation - Build applications for the open-source operating system for smart glasses">
       <HomepageHeader />
       <main>
         <div className="container">
@@ -42,9 +45,7 @@ export default function Home(): JSX.Element {
               <Heading as="h2">Welcome to AugmentOS Developer Docs</Heading>
               <p>
                 This documentation will guide you through building applications for AugmentOS, 
-                the open-source operating system for smart glasses. Whether you're creating 
-                third-party apps (TPAs), integrating with AugmentOS APIs, or contributing to 
-                the OS itself, you'll find everything you need here.
+                the open-source operating system for smart glasses.
               </p>
               
               <div className="text--center margin-vert--lg">
@@ -62,18 +63,17 @@ export default function Home(): JSX.Element {
               
               <Heading as="h3">Prerequisites</Heading>
               <p>
-                Before you start, ensure you have the following installed:
+                Before you start, ensure you have the following:
               </p>
               <ul>
-                <li>Node.js (v18 or later)</li>
-                <li>Git</li>
-                <li>Mobile device running the AugmentOS app</li>
-                <li>A compatible smart glasses device (e.g., Mentra Mach1, Even Realities G1, Vuzix Z100)</li>
+                <li>Phone running the <a href="https://augmentos.org/install">AugmentOS app</a></li>
+                <li><a href="https://augmentos.org/glasses">Compatible pair of smart glasses</a></li>
               </ul>
             </div>
           </div>
         </div>
       </main>
     </Layout>
+    </>
   );
 }
