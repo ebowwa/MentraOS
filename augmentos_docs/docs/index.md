@@ -35,6 +35,8 @@ Developers can deploy finished apps to the [AugmentOS Store](https://appstore.au
 
 - [AugmentOS Website](https://augmentos.org)
 - [GitHub Repo](https://github.com/AugmentOS-Community/AugmentOS)
+- [Example App Repo](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App)
+- [Live-Captions Repo](https://github.com/AugmentOS-Community/LiveCaptionsOnSmartGlasses) - A more in-depth example with app settings support
 - [Discord Community](https://discord.gg/5ukNvkEAqT) - Get help from the team and community
 
 Ready to dive deeper? Follow our [Quickstart guide](quickstart) to build your first app!

@@ -235,3 +235,4 @@ Congratulations! You've built your first AugmentOS app. To continue your journey
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for support
 - Visit [AugmentOS.org](https://augmentos.org) for the latest updates
 - Check out the [GitHub repository](https://github.com/AugmentOS-Community/AugmentOS) for examples
+- For a more in-depth example with app settings support, see the [Live-Captions repository](https://github.com/AugmentOS-Community/LiveCaptionsOnSmartGlasses)
