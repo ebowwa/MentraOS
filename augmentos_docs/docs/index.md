@@ -1,12 +1,12 @@
 ---
 id: index
-title: Welcome
+title: Intro
 slug: /
 ---
 
 import AugmentOSArchImage from '@site/src/components/ThemedImage';
 
-# Welcome to AugmentOS SDK Beta
+# Intro to the AugmentOS SDK Beta
 
 *Last updated: March 31, 2025*
 
