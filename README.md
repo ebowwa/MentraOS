@@ -11,14 +11,14 @@
 ![AugmentOS Smart Glasses](./images/glasses_banner_TOSG_AugmentOS_Cayden_low_res.jpg)
 
 - AI Assistant
-- Translation
 - Live Captions
-- Screen Mirror (Teleprompter, Karaoke/Lyrics, video captions, etc.)
-- Convoscope
+- Merge (Proactive AI)
+- Translation
 - Language Learning
 - ADHD Tools
+- Screen Mirror (Teleprompter, Karaoke/Lyrics, video captions, etc.)
 
-AugmentOS is the *the* way to build apps for smart glasses. For developers, it's a no-brainer, because AugmentOS-SDK enables:
+AugmentOS is the *the* way to build apps for smart glasses. The [AugmentOS SDK](https://console.augmentos.org) enables:
 - Your app to immediately runs on any pair of smart glasses.
 - Simple + fast dev - focus on building a great experience.
 - Continuously access smart glasses I/O.
@@ -31,20 +31,28 @@ AugmentOS enables you to run multiple apps *at the same time* so you can truly t
 
 Some of the apps running on AugmentOS...
 
-#### "Mira" AI Assistant
-
+<details>
+<summary>
+### "Mira" AI Assistant
+</summary>
 Smart and fast AI assistant with access to Google search. Say "Hey Mira" and then ask a question/say a command. 
 
 - "hey Mira, how long is a direct flight from Toronto to Hong Kong?"
 - "hey Mira, what's the weather like this weekend in Cambridge?"
 - "hey Mira, how much does YC invest in each company and what do they take?"
- 
+</details>
+
+<details>
+<summary>
 #### Screen Mirror
-
+</summary>
 Mirror anything on your screen to your smart glasses. We use a lightweight, novel approach, which makes it very fast and makes text easy to read.
+</details>
 
+<details>
+<summary>
 #### Mentra Merge: Proactive AI Agents
-
+</summary>
 Convoscope is a suite of proactive AI agents to augment conversations. Imagine a council of superintelligent assistants listening in to your conversation and helping you solve problems, have new ideas, and better connect with those you're speaking with
 
 <a href="https://www.youtube.com/watch?v=3n6DzuYQ_v8">
@@ -56,9 +64,12 @@ Convoscope is a suite of proactive AI agents to augment conversations. Imagine a
 - Groupthink happening? A devil's advocate agent presents an alternative viewpiont to stimulate thought
 - Someone makes a shaky claim? A fact checker agent provides a source to back it up or show it's false
 - Can't remember the website your coworker reccomended? Proactive agents review your past conversations and pull up the url.
+</details>
 
+<details>
+<summary>
 #### Mentra Link: Language Learning
-
+</summary>
 Learn a new language 10x faster with smart glasses. Partial translation, AI foreign language conversations, word/phrase suggestions, immersive AR language annotations, and more.
 
 [Mentra Link](https://mentra.glass/)
@@ -69,18 +80,28 @@ TEDxMIT Talk on "Can Smart Glasses Revolutionize How We Learn Languages?" by Cay
 <p align="center">
   <img src="./images/LLSG_demo_picture.png" alt="Mentra Link Language Learning" width="340"/>
 </p>
+</details>
 
+<details>
+<summary>
 #### Live Captions
-
+</summary>
 See live captions of everything that is said. 100s of languages supported with high accuracy and low latency.
+</details>
 
+<details>
+<summary>
 #### ADHD Glasses
-
+</summary>
 A 10 minute short term memory buffer to help get back on track during conversations after a zone-out.
+</details>
 
+<details>
+<summary>
 #### Live Language Translation
-
+</summary>
 Live translate languages - when someone speaks a foreign language, instantly see it translated on your vision. Supports 100s of language.
+</details>
 
 #### More Coming
 
@@ -106,25 +127,11 @@ To get started, check out our [Example App](https://github.com/TeamOpenSmartGlas
 
 ### Glasses
 
-**Current Support:**
-
-- [Vuzix Z100](https://www.vuzix.com/products/z100-smart-glasses)
-- [Mentra Mach1](https://mentra.glass/)
-- [Even Realities G1](https://www.evenrealities.com/g1)
-
-**Future Support:**
-
-- [Meizu StarV](https://www.meizu.com/starv)
+[Supported glasses list](https://augmentos.org/glasses)
 
 ### Smart Phones
 
-**Android:** 
-
 [Install Now](https://AugmentOS.org/install)
-
-**iPhone / iOS** 
-
-Coming February/March 2025
 
 ## Authors / Team
 
@@ -135,12 +142,13 @@ AugmentOS is made by a decentralized community of contributors, and managed by [
 - Cayden Pierce
 - Alex Israelov
 - Nicolo Micheletti
+- Isaiah Ballah
 
 Contributions welcome! Our team is growing and we have a lot to do! Join our Discord and reach out!
 
 ## AugmentOS Community
 
-The AugmentOS Community is a team building open-source smart glasses tech towards an open, self-empowered, intercognitive, augmented future. Our industry partners include companies like Vuzix, Activelook, TCL, and others. To get involved, check out our website https://AugmentOS.org and join our [Discord server](https://discord.gg/bAKsjh8CtE).
+The AugmentOS Community is a team building open-source smart glasses tech towards an open, self-empowered, intercognitive, augmented future. Our industry partners include companies like Vuzix, Activelook, TCL, and others. To get involved, check out [our website](https://augmentos.org) and join our [Discord server](https://discord.gg/bAKsjh8CtE).
 
 ## License
 
