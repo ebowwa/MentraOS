@@ -79,41 +79,12 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
   };
 
   return (
-    <SafeAreaView
+    <View
       style={[
         styles.container,
         isFullScreen ? styles.fullscreenContainer : (isDarkTheme ? styles.darkContainer : styles.lightContainer),
       ]}
     >
-      {!isFullScreen && (
-        <View
-          style={[
-            styles.titleContainer,
-            isDarkTheme ? styles.titleContainerDark : styles.titleContainerLight,
-          ]}
-        >
-          <Text
-            style={[
-              styles.title,
-              isDarkTheme ? styles.titleTextDark : styles.titleTextLight,
-            ]}
-          >
-            Glasses Mirror
-          </Text>
-          
-          {isGlassesConnected && lastEvent && (
-            <TouchableOpacity
-              style={styles.fullscreenButton}
-              onPress={toggleFullScreen}
-            >
-              <Text style={styles.fullscreenButtonText}>
-                Enter Fullscreen
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      )}
-
       {/* Fullscreen mode */}
       {isFullScreen && isGlassesConnected && lastEvent ? (
         <View style={styles.fullscreenContainer}>
@@ -124,7 +95,6 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
               style={styles.cameraBackground}
               type={RNCamera.Constants.Type.front}
               captureAudio={false}
-              // ratio='1:1' this works on flipped razr 2024?
               androidCameraPermissionOptions={{
                 title: 'Camera Permission',
                 message: 'This app needs access to your camera for the fullscreen mirror mode.',
@@ -160,44 +130,76 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
           </TouchableOpacity>
         </View>
       ) : (
-        /* Regular mode - same as before */
-        <>
-          {isGlassesConnected ? (
-            <View style={styles.contentContainer}>
-              {lastEvent ? (
-                <View style={styles.glassesDisplayContainer}>
-                  <View style={styles.glassesScreen}>
-                    {lastEvent.layout && lastEvent.layout.layoutType ? (
-                      renderLayout(lastEvent.layout)
-                    ) : (
-                      <Text style={styles.glassesText}>
-                        Unknown layout data
-                      </Text>
-                    )}
+        /* Regular mode - with fixed layout */
+        <View style={styles.regularContainer}>
+          {/* Header */}
+          <View
+            style={[
+              styles.titleContainer,
+              isDarkTheme ? styles.titleContainerDark : styles.titleContainerLight,
+            ]}
+          >
+            <Text
+              style={[
+                styles.title,
+                isDarkTheme ? styles.titleTextDark : styles.titleTextLight,
+              ]}
+            >
+              Glasses Mirror
+            </Text>
+            
+            {isGlassesConnected && lastEvent && (
+              <TouchableOpacity
+                style={styles.fullscreenButton}
+                onPress={toggleFullScreen}
+              >
+                <Text style={styles.fullscreenButtonText}>
+                  Enter Fullscreen
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          
+          {/* Content */}
+          <View style={styles.contentWrapper}>
+            {isGlassesConnected ? (
+              <View style={styles.contentContainer}>
+                {lastEvent ? (
+                  <View style={styles.glassesDisplayContainer}>
+                    <View style={styles.glassesScreen}>
+                      {lastEvent.layout && lastEvent.layout.layoutType ? (
+                        renderLayout(lastEvent.layout)
+                      ) : (
+                        <Text style={styles.glassesText}>
+                          Unknown layout data
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                </View>
-              ) : (
-                <View style={styles.fallbackContainer}>
-                  <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
-                    No display events available
-                  </Text>
-                </View>
-              )}
-            </View>
-          ) : (
-            <View style={styles.fallbackContainer}>
-              <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
-                Connect glasses to use the Glasses Mirror
-              </Text>
-            </View>
-          )}
-        </>
+                ) : (
+                  <View style={styles.fallbackContainer}>
+                    <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
+                      No display events available
+                    </Text>
+                  </View>
+                )}
+              </View>
+            ) : (
+              <View style={styles.fallbackContainer}>
+                <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
+                  Connect glasses to use the Glasses Mirror
+                </Text>
+              </View>
+            )}
+          </View>
+          
+          {/* Navigation bar at the bottom */}
+          <View style={styles.navbarWrapper}>
+            <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={() => {}} />
+          </View>
+        </View>
       )}
-
-      {!isFullScreen && (
-        <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={() => {}} />
-      )}
-    </SafeAreaView>
+    </View>
   );
 };
 
@@ -269,17 +271,18 @@ function renderLayout(layout: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 0,
   },
   darkContainer: {
     backgroundColor: '#121212',
   },
   lightContainer: {
-    // backgroundColor: '#f8f9fa',
+    backgroundColor: '#f8f9fa',
   },
+  // Fullscreen layout
   fullscreenContainer: {
     flex: 1,
-    padding: 0, // No padding in fullscreen mode
+    padding: 0,
     backgroundColor: 'black',
     position: 'absolute',
     top: 0,
@@ -292,29 +295,50 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
-    aspectRatio: 1, // Force a square aspect ratio
+    aspectRatio: 1,
     alignSelf: 'center',
   },
+  // Regular layout container with proper stacking
+  regularContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+  },
   titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    marginBottom: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    minHeight: 60, // Match the Header.tsx height
+    ...Platform.select({
+      ios: {
+        paddingTop: 16,
+      },
+      android: {
+        paddingTop: 16,
+      },
+    }),
   },
   titleContainerDark: {
     backgroundColor: '#333333',
   },
   titleContainerLight: {
-    // backgroundColor: '#ffffff',
+    backgroundColor: '#ffffff',
+  },
+  contentWrapper: {
+    flex: 1,
+    paddingBottom: 0,
+  },
+  navbarWrapper: {
+    width: '100%',
+    height: 64, // Fixed height for the navbar
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
     fontFamily: 'Montserrat-Bold',
     textAlign: 'left',
-    marginBottom: 5,
     flex: 1,
   },
   titleTextDark: {
@@ -337,14 +361,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 0,
   },
   // Glasses display styling
   glassesDisplayContainer: {
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
+    padding: 16,
   },
   glassesScreen: {
     width: '100%',
@@ -396,10 +419,10 @@ const styles = StyleSheet.create({
   // Fullscreen mode styles
   fullscreenButton: {
     backgroundColor: '#4c8bf5',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
     borderRadius: 8,
-    alignSelf: 'flex-end',
+    alignSelf: 'center',
   },
   fullscreenButtonText: {
     color: 'white',

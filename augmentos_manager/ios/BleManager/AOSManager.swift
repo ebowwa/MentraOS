@@ -556,8 +556,8 @@ struct ViewState {
   
   func handleSearchForCompatibleDeviceNames(_ modelName: String) {
     print("Searching for compatible device names for: \(modelName)")
-    if (modelName.contains("Virtual")) {
-      self.deviceName = "Virtual Wearable"
+    if (modelName.contains("Simulated")) {
+      self.deviceName = "Simulated Glasses"
       self.useOnboardMic = true;
       self.micEnabled = true;
 //      onMicrophoneStateChange(true)
@@ -815,7 +815,7 @@ struct ViewState {
   private func handleRequestStatus() {
     // construct the status object:
     
-    let isVirtualWearable = self.deviceName == "Virtual Wearable"
+    let isVirtualWearable = self.deviceName == "Simulated Glasses"
     let isAudioWearable = self.deviceName == "Audio Wearable"
     
     let isGlassesConnected = self.g1Manager?.g1Ready ?? false

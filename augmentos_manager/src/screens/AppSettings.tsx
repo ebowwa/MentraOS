@@ -305,18 +305,17 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                styles.disabledButton,
                 { borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }
               ]}
               activeOpacity={0.7}
-              disabled={true}
+              onPress={handleUninstallApp}
             >
               <FontAwesome
                 name="trash"
                 size={16}
-                style={[styles.buttonIcon, { color: theme.secondaryTextColor }]}
+                style={[styles.buttonIcon, { color: '#ff3b30' }]}
               />
-              <Text style={[styles.buttonText, { color: theme.secondaryTextColor }]}>Uninstall</Text>
+              <Text style={[styles.buttonText, { color: '#ff3b30' }]}>Uninstall</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -49,7 +49,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
-  const [isBrightnessAutoEnabled, setBrightnessAutoEnabled] = useState(false);
   const [isSensingEnabled, setIsSensingEnabled] = useState(
     status.core_info.sensing_enabled,
   );
@@ -58,12 +57,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   );
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled,
-  );
-
-  const [brightness, setBrightness] = useState<number | null>(null);
-
-  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
-    status.glasses_info?.auto_brightness
   );
 
   // -- Handlers for toggles, etc. --
@@ -85,39 +78,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setIsAlwaysOnStatusBarEnabled(newVal);
   };
 
-  const toggleAutoBrightness = async () => {
-    const newVal = !isAutoBrightnessEnabled;
-    await coreCommunicator.setGlassesAutoBrightness(newVal);
-    setIsAutoBrightnessEnabled(newVal);
-  };
-
-  useEffect(() => {
-    if (status.glasses_info) {
-      if (status.glasses_info?.brightness != null) {
-        setBrightness(parseBrightness(status.glasses_info.brightness));
-      }
-    }
-  }, [status.glasses_info?.brightness, status.glasses_info]);
-
-  const changeBrightness = async (newBrightness: number) => {
-    if (!status.glasses_info) {
-      Alert.alert(
-        'Glasses not connected',
-        'Please connect your smart glasses first.',
-      );
-      return;
-    }
-
-    if (newBrightness == null) {
-      return;
-    }
-
-    if (status.glasses_info.brightness === '-') {
-      return;
-    } // or handle accordingly
-    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
-    setBrightness(newBrightness);
-  };
 
   const forgetGlasses = async () => {
     await coreCommunicator.sendForgetSmartGlasses();
@@ -235,28 +195,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     selectedChipText: isDarkTheme ? '#FFFFFF' : '#FFFFFF',
   };
 
-  // Fixed slider props to avoid warning
-  const sliderProps = {
-    disabled:
-      !status.glasses_info?.model_name ||
-      status.glasses_info?.brightness === '-' ||
-      !status.glasses_info.model_name.toLowerCase().includes('even'),
-    style: styles.slider,
-    minimumValue: 0,
-    maximumValue: 100,
-    step: 1,
-    onSlidingComplete: (value: number) => changeBrightness(value),
-    value: brightness ?? 50,
-    minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: isDarkTheme
-      ? styles.maximumTrackTintColorDark.color
-      : styles.maximumTrackTintColorLight.color,
-    thumbTintColor: styles.thumbTintColor.color,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: { width: 40, height: 40 },
-    trackStyle: { height: 5 },
-    thumbStyle: { height: 20, width: 20 },
-  };
+  // Slider theme styles - not used anymore, but keep style references for potential future use
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -289,7 +228,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
                   //   styles.disabledItem,
                 ]}>
-                Force Phone Microphone
+                Use Phone Microphone
               </Text>
               <Text
                 style={[
@@ -298,7 +237,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
                   //   styles.disabledItem,
                 ]}>
-                Force the use of the phone's microphone instead of the glasses'
+                Use the phone's microphone instead of the glasses'
                 microphone (if applicable).
               </Text>
             </View>
@@ -400,63 +339,36 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             />
           </TouchableOpacity>
 
-          {/* Brightness Slider */}
-          {!isAutoBrightnessEnabled && (<View style={styles.settingItem}>
+          {/* Screen Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('ScreenSettingsScreen');
+            }}>
             <View style={styles.settingTextContainer}>
               <Text
                 style={[
                   styles.label,
                   isDarkTheme ? styles.lightText : styles.darkText,
-                  (!status.core_info.puck_connected ||
-                    !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
                 ]}>
-                Brightness
+                Screen Settings
               </Text>
               <Text
                 style={[
                   styles.value,
                   isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  (!status.core_info.puck_connected ||
-                    !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
                 ]}>
-                Adjust the brightness level of your smart glasses.
+                Adjust brightness, auto-brightness, and other display settings.
               </Text>
-                <Slider {...sliderProps} />
-              </View>
             </View>
-          )}
-
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}
-              >
-                Auto Brightness
-              </Text>
-              {status.glasses_info?.model_name && (
-                <Text
-                  style={[
-                    styles.value,
-                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  ]}
-                >
-                  Automatically adjust the brightness of your smart glasses based on the ambient light.
-                </Text>
-              )}
-            </View>
-            <Switch
-              value={isAutoBrightnessEnabled}
-              onValueChange={toggleAutoBrightness}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
+            <Icon
+              name="angle-right"
+              size={20}
+              color={
+                isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color
+              }
             />
-          </View>
+          </TouchableOpacity>
 
           {/* Developer Settings */}
           <TouchableOpacity

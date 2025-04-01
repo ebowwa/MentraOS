@@ -1469,13 +1469,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
-    public void updateGlassesBrightness(int brightness) {
+    public void updateGlassesBrightness(int brightness, boolean autoLight) {
         Log.d("AugmentOsService", "Updating glasses brightness: " + brightness);
         if (smartGlassesManager != null) {
             String title = "Brightness Adjustment";
             String body = "Updating glasses brightness to " + brightness + "%.";
             smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard(title, body), 6);
-            smartGlassesManager.updateGlassesBrightness(brightness);
+            smartGlassesManager.updateGlassesBrightness(brightness, autoLight);
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
         }

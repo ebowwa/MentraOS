@@ -1,9 +1,11 @@
 // This file serves as a platform-independent interface for CoreCommunicator
-// React Native will automatically resolve to the correct platform-specific implementation
-// based on the extension (.ios.tsx or .android.tsx)
+// We explicitly import the correct platform-specific implementation
 
-// Export the default instance from the platform-specific implementation
-export { default } from './CoreCommunicator.ios';
+import { Platform } from 'react-native';
 
-// Also export the class if needed
-export { CoreCommunicator } from './CoreCommunicator.ios';
+// Import based on platform
+if (Platform.OS === 'ios') {
+  module.exports = require('./CoreCommunicator.ios');
+} else {
+  module.exports = require('./CoreCommunicator.android');
+}

@@ -196,9 +196,9 @@ public class SmartGlassesRepresentative {
     //            && comm.getDevice().equals(device);
     //}
 
-    public void updateGlassesBrightness(int brightness) {
+    public void updateGlassesBrightness(int brightness, boolean autoLight) {
         if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.updateGlassesBrightness(brightness);
+            smartGlassesCommunicator.updateGlassesBrightness(brightness, autoLight);
         }
     }
 

@@ -42,6 +42,7 @@ import TestingPage from './screens/TestingPage.tsx';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DeveloperSettingsScreen from './screens/DeveloperSettingsScreen.tsx';
 import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
+import ScreenSettingsScreen from './screens/ScreenSettingsScreen.tsx';
 
 const linking = {
   prefixes: ['https://augmentos.org'],
@@ -187,6 +188,17 @@ const App: React.FC = () => {
                 >
                   {props => (
                     <DashboardSettingsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="ScreenSettingsScreen"
+                  options={{ title: 'Screen Settings' }}
+                >
+                  {props => (
+                    <ScreenSettingsScreen
                       {...props}
                       toggleTheme={toggleTheme}
                       isDarkTheme={isDarkTheme}
