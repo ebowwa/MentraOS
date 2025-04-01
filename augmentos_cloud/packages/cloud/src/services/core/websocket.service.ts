@@ -68,19 +68,19 @@ export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g.,
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
 if (!CLOUD_PUBLIC_HOST_NAME) {
-  logger.error("PUBLIC_HOST_NAME is not set. Please set it in your environment variables.");
+  logger.error("CLOUD_PUBLIC_HOST_NAME is not set. Please set it in your environment variables.");
 }
 
 if (!CLOUD_LOCAL_HOST_NAME) {
-  logger.error("LOCAL_HOST_NAME is not set. Please set it in your environment variables.");
+  logger.error("CLOUD_LOCAL_HOST_NAME is not set. Please set it in your environment variables.");
 }
 
 if (!AUGMENTOS_AUTH_JWT_SECRET) {
   logger.error("AUGMENTOS_AUTH_JWT_SECRET is not set. Please set it in your environment variables.");
 }
 
-logger.info(`🔥🔥🔥 [websocket.service]: PUBLIC_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}`);
-logger.info(`🔥🔥🔥 [websocket.service]: LOCAL_HOST_NAME: ${CLOUD_LOCAL_HOST_NAME}`);
+logger.info(`🔥🔥🔥 [websocket.service]: CLOUD_PUBLIC_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}`);
+logger.info(`🔥🔥🔥 [websocket.service]: CLOUD_LOCAL_HOST_NAME: ${CLOUD_LOCAL_HOST_NAME}`);
 
 const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 

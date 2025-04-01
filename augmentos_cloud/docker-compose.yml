@@ -52,8 +52,6 @@ services:
       - augmentos-network
     depends_on:
       - shared-packages
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
   # Live Captions service - using local app files
   live-captions:
@@ -92,8 +90,6 @@ services:
       - augmentos-network
     depends_on:
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "live-captions", "service": "live-captions"}]'
       
   # MentraMerge service - using local app files
   merge:
@@ -133,40 +129,6 @@ services:
       - augmentos-network
     depends_on:
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "merge", "service": "merge"}]'
-
-  # Flash service
-  flash:
-    stop_grace_period: 10s
-    init: true
-    build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
-    ports:
-      - target: 80
-        published: ${FLASH_PORT:-7011}
-        protocol: tcp
-    environment:
-      - NODE_ENV=production
-      - HOST=0.0.0.0
-      - SERVICE_NAME=flash
-    env_file:
-      - .env
-      - .env.production
-    volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - ./logs:/app/logs
-    command: bash -c "bun install && cd packages/apps/flash && bun run build && bun run start"
-    networks:
-      - augmentos-network
-    depends_on:
-      - shared-packages
-      - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "flash", "service": "flash"}]'
 
   # Dashboard Manager service
   dashboard-manager:
@@ -197,9 +159,7 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "dashboard-manager", "service": "dashboard-manager"}]'
-
+  
   # Notifications service
   notify:
     stop_grace_period: 10s
@@ -229,8 +189,6 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "notify", "service": "notify"}]'
 
   # Mira AI service
   mira:
@@ -261,9 +219,7 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "mira", "service": "mira"}]'
-
+ 
   live-translation:
     stop_grace_period: 10s
     init: true
@@ -292,41 +248,6 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
-
-  # AugHog TPA
-  aughog:
-    build:
-      context: ../../Apps/AugHog
-      dockerfile: docker/Dockerfile
-    container_name: aughog
-    ports:
-      - target: 80
-        published: ${AUGHOG_PORT:-7030}
-        protocol: tcp
-    environment:
-      - PORT=80
-      - CLOUD_HOST_NAME=cloud
-      - NODE_ENV=production
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    networks:
-      - augmentos-network
-    depends_on:
-      - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "aughog", "service": "aughog"}]'
 
 networks:
   augmentos-network:

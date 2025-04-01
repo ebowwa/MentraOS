@@ -3,20 +3,12 @@ version: v2
 namespace: ${PORTER_NAMESPACE}
 
 envGroups:
-- dev
-
-env:
-    NODE_ENV: ${NODE_ENV}
-    PORTER_APP_NAME: ${PORTER_APP_NAME}
-    CLOUD_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}
-    CLOUD_PUBLIC_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}
-    CLOUD_LOCAL_HOST_NAME: ${CLOUD_LOCAL_HOST_NAME}
-    TEST_ENV: this-is-a-test
+  - dev
 
 build:
   method: docker
   context: ./augmentos_cloud/.
-  dockerfile: ./augmentos_cloud/Dockerfile
+  dockerfile: ./augmentos_cloud/docker/Dockerfile.porter
 
 services:
   - name: cloud
