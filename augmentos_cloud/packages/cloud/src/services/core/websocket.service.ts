@@ -63,8 +63,8 @@ import tpaRegistrationService from './tpa-registration.service';
 import healthMonitorService from './health-monitor.service';
 import axios from 'axios';
 
-export const CLOUD_PUBLIC_HOST_NAME = process.env.PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
-export const CLOUD_LOCAL_HOST_NAME = process.env.LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
+export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
+export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
 if (!CLOUD_PUBLIC_HOST_NAME) {
