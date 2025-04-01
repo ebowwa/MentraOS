@@ -116,21 +116,13 @@ Live translate languages - when someone speaks a foreign language, instantly see
 
 The community is working on many more apps - fully open source - join us and help build! [Check out our roadmap here!](https://docs.google.com/document/d/1XK4TE6hDRa2ut0WBpMQGcNLS6icWj6DJCLP49Fldz2E/edit?usp=sharing)
 
-## Developer Guide | How to build your own AugmentOS app
+## Dev Guide + Documentation
 
-Documentation: [docs.AugmentOS.org](https://docs.AugmentOS.org).
+Developer Console: https://console.AugmentOS.org
 
-For developers,
+SDK Documentation: https://docs.AugmentOS.org.
 
-AugmentOS is the best way to write a smart glasses app because it enables:
-
-1. Your single app runs on any pair of smart glasses.
-2. Access to smart glasses I/O continously
-3. Running multiple apps running at the same time
-
-AugmentOS is a fully open source OS for wearables. The AugmentOS SDK is a lightweight wrapper (Python, C++, Javascript, more) that allows any existing app to run as an AugmentOS app, in the cloud or on the edge. 
-
-To get started, check out our [Example App](https://github.com/TeamOpenSmartGlasses/AugmentOS-Example-App).
+AugmentOS Example App: https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App.
 
 ## Required Hardware
 
