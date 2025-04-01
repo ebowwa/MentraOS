@@ -14,12 +14,12 @@ COPY . .
 
 # Build packages in sequence
 RUN echo "🚀 Starting build process..." && \
-    echo "⚙️ Building packages/utils..." && \
-    cd packages/utils && bun run build && \
-    echo "✅ Building packages/utils..." && \
     echo "⚙️ Building packages/sdk..." && \
     cd ../sdk && bun run build && \
     echo "✅ Building packages/sdk..." && \
+    echo "⚙️ Building packages/utils..." && \
+    cd packages/utils && bun run build && \
+    echo "✅ Building packages/utils..." && \
     echo "⚙️ Building packages/agents..." && \
     cd ../agents && bun run build && \
     echo "✅ Building packages/agents..." && \
