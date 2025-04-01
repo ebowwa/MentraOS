@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'AugmentOS SDK Docs',
+  title: 'AugmentOS SDK Docs (Beta)',
   tagline: 'Build your AugmentOS smart glasses app.',
   favicon: 'img/favicon.ico',
 
@@ -60,7 +60,7 @@ const config: Config = {
       {name: 'twitter:card', content: 'summary_large_image'},
     ],
     navbar: {
-      title: 'AugmentOS SDK Docs',
+      title: 'AugmentOS SDK Docs (Beta)',
       logo: {
         alt: 'AugmentOS Logo',
         src: 'img/logo.svg',

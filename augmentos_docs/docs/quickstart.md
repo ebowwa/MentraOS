@@ -6,7 +6,7 @@ sidebar_position: 2
 
 *Last updated: March 31, 2025*
 
-**This is the recommended way to build an AugmentOS smart glasses app as of March 31 2025.** 
+**This is the recommended way to build an AugmentOS smart glasses app as of March 31 2025. The SDK is currently in beta.** 
 
 AugmentOS is how you write powerful smart glasses apps. In this Quickstart, let's go from 0 to fully functioning app (that works on [these smart glasses](https://augmentos.org/glasses/)) in less than 15 minutes.
 
