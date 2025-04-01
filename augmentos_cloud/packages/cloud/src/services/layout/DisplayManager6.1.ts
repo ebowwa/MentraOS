@@ -307,7 +307,7 @@ class DisplayManager implements DisplayManagerI {
       timestamp: new Date(),
       durationMs: 0
     };
-//     console.log('####### clearDisplay', clearRequest);
+    console.log('🔥🔥🔥🔥🔥🔥🔥 clearDisplay 🔥🔥🔥🔥🔥🔥🔥🔥', clearRequest);
     this.sendDisplay(clearRequest);
   }
 

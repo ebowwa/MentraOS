@@ -1227,6 +1227,7 @@ export class WebSocketService {
     ws.on('ping', () => {
       // Update activity whenever a ping is received
       healthMonitorService.updateTpaActivity(ws);
+      console.log("🔥🔥🔥: Received ping from TPA");
       // Send pong response
       try {
         ws.pong();
