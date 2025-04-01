@@ -16,6 +16,13 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
 2. Create an ngrok account
 3. [Set up a static address/URL in the ngrok dashboard](https://dashboard.ngrok.com/)
 
+* Make sure you run the `ngrok config add-authtoken <your_authtoken>` line.
+* Make sure you select `Static Domain`, then generate a static domain.
+
+<center>
+  <img width="75%" src="https://docs.augmentos.org/img/ngrok_guide_1.png"></img>
+</center>
+
 ### Register your app with AugmentOS
 
 ![AugmentOS Console](https://github.com/user-attachments/assets/36192c2b-e1ba-423b-90de-47ff8cd91318)

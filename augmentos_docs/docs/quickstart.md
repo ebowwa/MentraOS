@@ -2,7 +2,7 @@
 sidebar_position: 2
 ---
 
-# Quickstart - Build AugmentOS Smart Glasses Apps
+# ✅ Quickstart
 
 *Last updated: March 31, 2025*
 
@@ -29,6 +29,13 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
 1. [Install ngrok](https://ngrok.com/docs/getting-started/)
 2. Create an ngrok account
 3. [Set up a static address/URL in the ngrok dashboard](https://dashboard.ngrok.com/)
+
+* Make sure you run the `ngrok config add-authtoken <your_authtoken>` line.
+* Make sure you select `Static Domain`, then generate a static domain.
+
+<center>
+  <img width="75%" src="/img/ngrok_guide_1.png"></img>
+</center>
 
 ### Register your app with AugmentOS
 
@@ -74,6 +81,6 @@ For more information, visit the [AugmentOS-Cloud-Example-App repository](https:/
 
 ## Next Steps
 
-- Explore the [Getting Started (From Scratch)](getting-started) guide for a more detailed walkthrough
-- Learn about [Core Concepts](core-concepts) to understand how AugmentOS apps work
+- Explore the [🚧 Build From Scratch](getting-started) guide for a more detailed walkthrough
+- Learn about [🚧 Core Concepts](core-concepts) to understand how AugmentOS apps work
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for help and support

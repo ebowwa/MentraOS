@@ -2,7 +2,7 @@
 sidebar_position: 3
 ---
 
-# Getting Started (From Scratch)
+# 🚧 Build From Scratch
 
 *Last updated: March 31, 2025*
 
@@ -179,6 +179,13 @@ To make your locally running app accessible from the internet:
 2. Create an ngrok account
 3. [Set up a static address/URL in the ngrok dashboard](https://dashboard.ngrok.com/)
 
+* Make sure you run the `ngrok config add-authtoken <your_authtoken>` line.
+* Make sure you select `Static Domain`, then generate a static domain.
+
+<center>
+  <img width="75%" src="/img/ngrok_guide_1.png"></img>
+</center>
+
 ### 10. Register Your App
 
 ![AugmentOS Console](https://github.com/user-attachments/assets/36192c2b-e1ba-423b-90de-47ff8cd91318)
@@ -195,11 +202,9 @@ Edit your `index.ts` to match the app you registered:
 
 ```typescript
 const server = new MyAugmentOSApp({
-    packageName: "com.example.myfirstapp", // Must match what you registered
+    packageName: "com.example.myfirstapp", // Must match your packageName in console.AugmentOS.org
     apiKey: 'your_api_key', // Get this from console.AugmentOS.org
     port: 3000, // The port your server runs on
-    augmentOSWebsocketUrl: `ws://cloud.augmentos.org/tpa-ws`, // Connects to AugmentOS Cloud
-    webhookPath: '/webhook', // The path your server will listen on
 });
 ```
 
@@ -222,7 +227,7 @@ ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
 Congratulations! You've built your first AugmentOS app. To continue your journey:
 
 ### Learn More
-- Explore [Core Concepts](core-concepts) to understand sessions, events, and the app lifecycle
+- Explore [🚧 Core Concepts](core-concepts) to understand sessions, events, and the app lifecycle
 - Dive into [Events](events) to handle user interactions and sensor data
 - Master [Layouts](layouts) to create rich visual experiences on smart glasses
 

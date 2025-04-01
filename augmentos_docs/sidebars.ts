@@ -20,11 +20,11 @@ const sidebars: SidebarsConfig = {
     {
       type: 'doc',
       id: 'getting-started',
-      label: 'Getting Started (From Scratch)',
+      label: '🚧 Build From Scratch',
     },
     {
       type: 'category',
-      label: 'Core Concepts',
+      label: '🚧 Core Concepts',
       link: {
         type: 'doc',
         id: 'core-concepts',

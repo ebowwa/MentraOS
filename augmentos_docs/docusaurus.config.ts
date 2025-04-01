@@ -89,7 +89,7 @@ const config: Config = {
               to: '/quickstart',
             },
             {
-              label: 'Getting Started (From Scratch)',
+              label: '🚧 Build From Scratch',
               to: '/getting-started',
             },
           ],
