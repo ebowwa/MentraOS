@@ -175,7 +175,7 @@ Download and install the AugmentOS app from [AugmentOS.org/install](https://Augm
 
 To make your locally running app accessible from the internet:
 
-1. Install ngrok: `brew install ngrok`
+1. [Install ngrok](https://ngrok.com/docs/getting-started/)
 2. Create an ngrok account
 3. [Set up a static address/URL in the ngrok dashboard](https://dashboard.ngrok.com/)
 
