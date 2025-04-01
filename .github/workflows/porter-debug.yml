@@ -21,6 +21,8 @@ jobs:
                 PORTER_APP_NAME: cloud-debug
                 PORTER_NAMESPACE: debug
                 NODE_ENV: debug
+                CLOUD_PUBLIC_HOST_NAME: debug.augmentos.cloud
+                CLOUD_LOCAL_HOST_NAME: cloud-debug-cloud.default.svc.cluster.local:80
                 PORTER_CLUSTER: "4689"
                 PORTER_DEPLOYMENT_TARGET_ID: 4a24a192-04c8-421f-8fc2-22db1714fdc0
                 PORTER_HOST: https://dashboard.porter.run

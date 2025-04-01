@@ -2,6 +2,17 @@ version: v2
 # Omit a hard-coded name here. Use environment variables to supply dynamic values.
 namespace: ${PORTER_NAMESPACE}
 
+envGroups:
+- dev
+
+env:
+    NODE_ENV: ${NODE_ENV}
+    PORTER_APP_NAME: ${PORTER_APP_NAME}
+    CLOUD_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}
+    CLOUD_PUBLIC_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}
+    CLOUD_LOCAL_HOST_NAME: ${CLOUD_LOCAL_HOST_NAME}
+    TEST_ENV: this-is-a-test
+
 build:
   method: docker
   context: ./augmentos_cloud/.
@@ -15,8 +26,6 @@ services:
     cpuCores: 2.0
     ramMegabytes: 2048
     env:
-      NODE_ENV: ${NODE_ENV}
-      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "cloud"
   - name: dashboard-manager
@@ -26,7 +35,5 @@ services:
     cpuCores: 0.5
     ramMegabytes: 512
     env:
-      NODE_ENV: ${NODE_ENV}
-      PORTER_APP_NAME: ${PORTER_APP_NAME}
       HOST: "0.0.0.0"
       SERVICE_NAME: "dashboard-manager"
