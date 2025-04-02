@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   TouchableOpacity,
   StatusBar,
   SafeAreaView,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { RNCamera } from 'react-native-camera';
 import NavigationBar from '../components/NavigationBar';
+import GlassesDisplayMirror from '../components/GlassesDisplayMirror';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { useGlassesMirror } from '../providers/GlassesMirrorContext';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
@@ -112,13 +112,11 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
           
           {/* Overlay the glasses display content */}
           <View style={styles.fullscreenOverlay}>
-            {lastEvent.layout && lastEvent.layout.layoutType ? (
-              renderLayout(lastEvent.layout)
-            ) : (
-              <Text style={styles.glassesText}>
-                Unknown layout data
-              </Text>
-            )}
+            <GlassesDisplayMirror 
+              layout={lastEvent.layout}
+              fallbackMessage="Unknown layout data"
+              containerStyle={styles.fullscreenDisplayContainer}
+            />
           </View>
           
           {/* Fullscreen exit button */}
@@ -165,17 +163,10 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
             {isGlassesConnected ? (
               <View style={styles.contentContainer}>
                 {lastEvent ? (
-                  <View style={styles.glassesDisplayContainer}>
-                    <View style={styles.glassesScreen}>
-                      {lastEvent.layout && lastEvent.layout.layoutType ? (
-                        renderLayout(lastEvent.layout)
-                      ) : (
-                        <Text style={styles.glassesText}>
-                          Unknown layout data
-                        </Text>
-                      )}
-                    </View>
-                  </View>
+                  <GlassesDisplayMirror 
+                    layout={lastEvent.layout} 
+                    fallbackMessage="Unknown layout data"
+                  />
                 ) : (
                   <View style={styles.fallbackContainer}>
                     <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
@@ -203,70 +194,6 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
   );
 };
 
-/**
- *  Render logic for each layoutType
- */
-function renderLayout(layout: any) {
-  const textStyle = styles.glassesText;
-
-  switch (layout.layoutType) {
-    case 'reference_card': {
-      const { title, text } = layout;
-      return (
-        <>
-          <Text style={[styles.cardTitle, textStyle]}>{title}</Text>
-          <Text style={[styles.cardContent, textStyle]}>{text}</Text>
-        </>
-      );
-    }
-    case 'text_wall':
-    case 'text_line': {
-      const { text } = layout;
-      // Even if text is empty, show a placeholder message for text_wall layouts
-      return (
-        <Text style={[styles.cardContent, textStyle]}>
-          {text || text === "" ? text : ""}
-        </Text>
-      );
-    }
-    case 'double_text_wall': {
-      const { topText, bottomText } = layout;
-      return (
-        <>
-          <Text style={[styles.cardContent, textStyle]}>{topText}</Text>
-          <Text style={[styles.cardContent, textStyle]}>{bottomText}</Text>
-        </>
-      );
-    }
-    case 'text_rows': {
-      // layout.text is presumably an array of strings
-      const rows = layout.text || [];
-      return rows.map((row: string, index: number) => (
-        <Text key={index} style={[styles.cardContent, textStyle]}>
-          {row}
-        </Text>
-      ));
-    }
-    case 'bitmap_view': {
-      // layout.data is a base64 string. We can show an image in RN by creating a data URL
-      // e.g. { uri: "data:image/png;base64,<base64string>" }
-      const { data } = layout;
-      const imageUri = `data:image/png;base64,${data}`;
-      return (
-        <Image
-          source={{ uri: imageUri }}
-          style={{ width: 200, height: 200, resizeMode: 'contain', tintColor: '#00FF00' }}
-        />
-      );
-    }
-    default:
-      return (
-        <Text style={[styles.cardContent, textStyle]}>
-          Unknown layout type: {layout.layoutType}
-        </Text>
-      );
-  }
-}
 
 const styles = StyleSheet.create({
   container: {
@@ -362,48 +289,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Glasses display styling
-  glassesDisplayContainer: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-  },
-  glassesScreen: {
-    width: '100%',
-    minHeight: 200,
-    backgroundColor: '#000000',
-    borderRadius: 10,
-    padding: 15,
-    borderWidth: 2,
-    borderColor: '#333333',
-  },
-  glassesText: {
-    color: '#00FF00', // Bright green color for monochrome display
-    fontFamily: 'Montserrat-Regular',
-    fontSize: 16,
-    // Add text shadow for better visibility against any background
-    textShadowColor: 'rgba(0, 0, 0, 0.9)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-  },
-  emptyTextWall: {
-    borderWidth: 1,
-    borderColor: '#00FF00',
-    borderStyle: 'dashed',
-    width: '100%',
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontFamily: 'Montserrat-Bold',
-    marginBottom: 5,
-  },
-  cardContent: {
-    fontSize: 16,
-    fontFamily: 'Montserrat-Regular',
+  fullscreenDisplayContainer: {
+    padding: 0,
+    backgroundColor: 'transparent',
   },
   // Fallback
   fallbackContainer: {
