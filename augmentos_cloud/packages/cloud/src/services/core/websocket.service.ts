@@ -524,15 +524,13 @@ export class WebSocketService {
         (appName) => appName !== packageName
       );
 
-      // Optional: Trigger stop webhook if needed
-      // Uncomment this if you want to implement stop webhook calls
-      /*
+      
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
-        await this.appService.triggerStopWebhook(
+        await appService.triggerStopWebhook(
           app.publicUrl,
           {
-            type: 'stop_request',
+            type: WebhookRequestType.STOP_REQUEST,
             sessionId: tpaSessionId,
             userId: userSession.userId,
             reason: 'user_disabled',
@@ -543,7 +541,18 @@ export class WebSocketService {
         userSession.logger.error(`Error calling stop webhook for ${packageName}:`, error);
         // Continue with cleanup even if webhook fails
       }
-      */
+
+      // End the websocket connection for the app
+      try {
+        const websocket = userSession.appConnections.get(packageName);
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+          websocket.close();
+          userSession.appConnections.delete(packageName);
+        }
+      } catch (error) {
+        userSession.logger.error(`Error ending websocket for TPA ${packageName}:`, error);
+        // Continue with cleanup even if webhook fails
+      }
 
       // Update user's running apps in database
       try {

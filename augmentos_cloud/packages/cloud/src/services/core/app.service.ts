@@ -219,7 +219,7 @@ export class AppService {
     data: WebhookResponse;
   }> {
     // Construct the stop webhook URL from the app's public URL
-    const webhookUrl = `${publicUrl}/webhook/stop`;
+    const webhookUrl = `${publicUrl}/webhook`;
     const response = await axios.post(webhookUrl, payload);
     return {
       status: response.status,
