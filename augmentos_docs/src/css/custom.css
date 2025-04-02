@@ -94,3 +94,19 @@ h3 {
 h4, h5, h6 {
   font-size: 14pt;
 }
+
+/* Make the pagination/next box 2x wider and ensure it stays on the right */
+.pagination-nav {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 1rem;
+}
+
+.pagination-nav__item--prev {
+  grid-column: 1;
+}
+
+.pagination-nav__item--next {
+  grid-column: 2;
+  text-align: right; /* Align content to the right */
+}
