@@ -46,7 +46,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
-  const [isBrightnessAutoEnabled, setBrightnessAutoEnabled] = useState(false);
   const [isSensingEnabled, setIsSensingEnabled] = useState(status.core_info.sensing_enabled);
   const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(
     status.core_info.force_core_onboard_mic
@@ -54,9 +53,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled
   );
-  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
-    status.core_info.auto_brightness_enabled
-  );
+  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState<boolean>(false);
   const [brightness, setBrightness] = useState<number|null>(null);
 
   // -- Handlers for toggles, etc. --
@@ -78,12 +75,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setIsAlwaysOnStatusBarEnabled(newVal);
   };
 
-  const toggleAutoBrightness = async () => {
-    const newVal = !isAutoBrightnessEnabled;
-    await coreCommunicator.setGlassesBrightnessMode(50, newVal);
-    setIsAutoBrightnessEnabled(newVal);
-  };
-
   useEffect(() => {
     if (status.glasses_info) {
       if (status.glasses_info?.brightness != null) {
@@ -91,6 +82,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       }
     }
   }, [status.glasses_info?.brightness, status.glasses_info]);
+
+  useEffect(() => {
+    if (status.glasses_info) {
+      if (status.glasses_info?.auto_brightness_enabled != null) {
+        setIsAutoBrightnessEnabled(status.glasses_info.auto_brightness_enabled);
+      }
+    }
+  }, [status.glasses_info?.auto_brightness_enabled, status.glasses_info]);
 
   const changeBrightness = async (newBrightness: number) => {
     if (!status.glasses_info) {
@@ -107,6 +106,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setBrightness(newBrightness);
   };
 
+  const toggleAutoBrightness = async () => {
+    const newVal = !isAutoBrightnessEnabled;
+    await coreCommunicator.setGlassesBrightnessMode(-1, newVal);
+    setIsAutoBrightnessEnabled(newVal);
+  };
 
   const forgetGlasses = async () => {
     await coreCommunicator.sendForgetSmartGlasses();

@@ -158,6 +158,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     private Integer batteryLevel;
     private Integer brightnessLevel;
+    private Boolean autoBrightness;
     private Integer headUpAngle;
 
     private final boolean showingDashboardNow = false;
@@ -339,10 +340,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Subscribe
     public void onBrightnessLevelEvent(BrightnessLevelEvent event) {
         brightnessLevel = event.brightnessLevel;
-        PreferenceManager.getDefaultSharedPreferences(this)
+        autoBrightness = event.autoBrightness;
+
+        if (brightnessLevel != -1) {
+            PreferenceManager.getDefaultSharedPreferences(this)
                 .edit()
                 .putString(this.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightnessLevel))
                 .apply();
+        } else {
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
+                .apply();
+        }
         sendStatusToAugmentOsManager();
     }
 
@@ -379,6 +389,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         calendarSystem = CalendarSystem.getInstance(this);
 
         brightnessLevel = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), "50"));
+        autoBrightness = Boolean.parseBoolean(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), "false"));
         headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEADUP_ANGLE), "20"));
 
         contextualDashboardEnabled = getContextualDashboardEnabled();
@@ -1072,6 +1083,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     brightnessString = brightnessLevel + "%";
                 }
                 connectedGlasses.put("brightness", brightnessString);
+                connectedGlasses.put("auto_brightness_enabled", autoBrightness);
 //                Log.d(TAG, "Connected glasses info: " + headUpAngle);
                 if (headUpAngle == null) {
                     headUpAngle = 20;
@@ -1478,6 +1490,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesBrightness(brightness);
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
+        }
+    }
+
+    @Override
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        Log.d("AugmentOsService", "Updating glasses auto brightness: " + autoBrightness);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
         }
     }
 

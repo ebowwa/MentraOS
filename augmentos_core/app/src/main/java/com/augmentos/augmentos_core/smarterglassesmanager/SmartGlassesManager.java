@@ -432,6 +432,12 @@ public class SmartGlassesManager {
         }
     }
 
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        if (smartGlassesRepresentative != null) {
+            smartGlassesRepresentative.updateGlassesAutoBrightness(autoBrightness);
+        }
+    }
+
     public void updateGlassesHeadUpAngle(int headUpAngle) {
         if (smartGlassesRepresentative != null) {
             smartGlassesRepresentative.updateGlassesHeadUpAngle(headUpAngle);

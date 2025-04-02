@@ -6,6 +6,7 @@ interface Glasses {
   is_searching: boolean;
   brightness: string | null; // 0-100
   headUp_angle: number | null; // 0-60
+  auto_brightness_enabled: boolean;
 }
 
 interface WifiConnection {
@@ -53,7 +54,6 @@ export interface CoreInfo {
   bypass_vad_for_debugging: boolean;
   bypass_audio_encoding_for_debugging: boolean;
   always_on_status_bar_enabled: boolean;
-  auto_brightness_enabled: boolean;
 }
 
 export interface AugmentOSMainStatus {
@@ -82,7 +82,6 @@ export class AugmentOSParser {
       bypass_audio_encoding_for_debugging: false,
       default_wearable: null,
       always_on_status_bar_enabled: false,
-      auto_brightness_enabled: false,
     },
     glasses_info: null,
     wifi: { is_connected: false, ssid: '', signal_strength: 0 },
@@ -111,7 +110,6 @@ export class AugmentOSParser {
       bypass_audio_encoding_for_debugging: false,
       default_wearable: 'evenrealities_g1',
       always_on_status_bar_enabled: false,
-      auto_brightness_enabled: false,
     },
     glasses_info: {
       model_name: 'Even Realities G1',
@@ -119,6 +117,7 @@ export class AugmentOSParser {
       is_searching: false,
       brightness: "87%",
       headUp_angle: 20,
+      auto_brightness_enabled: false,
     },
     wifi: { is_connected: true, ssid: 'TP-LINK69', signal_strength: 100 },
     gsm: { is_connected: false, carrier: '', signal_strength: 0 },
@@ -248,7 +247,6 @@ export class AugmentOSParser {
             : (status.core_info.default_wearable ?? null),
           is_mic_enabled_for_frontend: status.core_info.is_mic_enabled_for_frontend ?? false,
           always_on_status_bar_enabled: status.core_info.always_on_status_bar_enabled ?? false,
-          auto_brightness_enabled: status.core_info.auto_brightness_enabled ?? false,
         },
         glasses_info: status.connected_glasses
           ? {
@@ -257,6 +255,7 @@ export class AugmentOSParser {
             is_searching: status.connected_glasses.is_searching ?? false,
             brightness: status.connected_glasses.brightness,
             headUp_angle: status.connected_glasses.headUp_angle,
+            auto_brightness_enabled: status.connected_glasses.auto_brightness_enabled ?? false,
           }
           : null,
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
