@@ -54,6 +54,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled
   );
+  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
+    status.core_info.auto_brightness_enabled
+  );
   const [brightness, setBrightness] = useState<number|null>(null);
 
   // -- Handlers for toggles, etc. --
@@ -73,6 +76,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     const newVal = !isAlwaysOnStatusBarEnabled;
     await coreCommunicator.sendToggleAlwaysOnStatusBar(newVal);
     setIsAlwaysOnStatusBarEnabled(newVal);
+  };
+
+  const toggleAutoBrightness = async () => {
+    const newVal = !isAutoBrightnessEnabled;
+    await coreCommunicator.setGlassesBrightnessMode(50, newVal);
+    setIsAutoBrightnessEnabled(newVal);
   };
 
   useEffect(() => {
@@ -217,7 +226,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
  const sliderProps = {
   disabled: !status.glasses_info?.model_name ||
            status.glasses_info?.brightness === '-' ||
-           !status.glasses_info.model_name.toLowerCase().includes('even'),
+           !status.glasses_info.model_name.toLowerCase().includes('even') ||
+           isAutoBrightnessEnabled,
   style: styles.slider,
   minimumValue: 0,
   maximumValue: 100,
@@ -382,8 +392,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           />
         </TouchableOpacity>
 
-               {/* Brightness Slider */}
-               <View style={styles.settingItem}>
+        {/* Auto Brightness */}
+        <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
@@ -393,7 +403,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   styles.disabledItem,
               ]}
             >
-              Brightness
+              Auto Brightness
             </Text>
             <Text
               style={[
@@ -403,10 +413,47 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   styles.disabledItem,
               ]}
             >
+              Automatically adjust brightness based on ambient light conditions.
+            </Text>
+          </View>
+          <Switch
+            value={isAutoBrightnessEnabled}
+            onValueChange={toggleAutoBrightness}
+            trackColor={switchColors.trackColor}
+            thumbColor={switchColors.thumbColor}
+            ios_backgroundColor={switchColors.ios_backgroundColor}
+          />
+        </View>
+
+        {/* Brightness Slider */}
+        <View style={styles.settingItem}>
+          <View style={styles.settingTextContainer}>
+            <Text
+              style={[
+                styles.label,
+                isDarkTheme ? styles.lightText : styles.darkText,
+                (!status.core_info.puck_connected || !status.glasses_info?.model_name || isAutoBrightnessEnabled) &&
+                  styles.disabledItem,
+              ]}
+            >
+              Brightness
+            </Text>
+            <Text
+              style={[
+                styles.value,
+                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                (!status.core_info.puck_connected || !status.glasses_info?.model_name || isAutoBrightnessEnabled) &&
+                  styles.disabledItem,
+              ]}
+            >
               Adjust the brightness level of your smart glasses.
             </Text>
             <Slider
               {...sliderProps}
+              style={[
+                styles.slider,
+                isAutoBrightnessEnabled && styles.disabledItem
+              ]}
             />
           </View>
         </View>
