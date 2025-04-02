@@ -8,7 +8,7 @@ export type RootStackParamList = {
   SettingsPage: undefined;
   AppStore: undefined;
   AppStoreNative: undefined;
-  AppStoreWeb: undefined;
+  AppStoreWeb: { packageName?: string };
   PairPuckScreen: undefined;
   SplashScreen: undefined;
   VerifyEmailScreen: undefined;

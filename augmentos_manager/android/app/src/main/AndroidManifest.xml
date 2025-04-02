@@ -52,6 +52,27 @@
                     android:host="auth"
                     android:pathPrefix="/callback" />
             </intent-filter>
+            
+            <!-- Deep links for appstore URLs -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="appstore.augmentos.org"
+                    android:pathPattern="/package/.*" />
+            </intent-filter>
+            
+            <!-- Custom app scheme for direct deeplinks -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="augmentosappstore"
+                    android:host="package" />
+            </intent-filter>
         </activity>
     </application>
 

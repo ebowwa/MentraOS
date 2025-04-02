@@ -8,17 +8,21 @@ import LoadingComponent from '../components/LoadingComponent';
 import InternetConnectionFallbackComponent from '../components/InternetConnectionFallbackComponent';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../AuthContext';
+import { RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../components/types';
 
 interface AppStoreWebProps {
   isDarkTheme: boolean;
+  route?: RouteProp<RootStackParamList, 'AppStoreWeb'>;
 }
 
-const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme }) => {
+const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
   const { status } = useStatus();
   const coreToken = status.core_info.core_token;
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const { user, session, loading } = useAuth();
+  const packageName = route?.params?.packageName;
 
   // Theme colors
   const theme = {
@@ -33,7 +37,9 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme }) => {
   };
 
   // Get the app store URL from environment variable or use a fallback
-  const appStoreUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org/webview';
+  const baseUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org/webview';
+  // Add package name if provided
+  const appStoreUrl = packageName ? `${baseUrl}/package/${packageName}` : baseUrl;
   const webViewRef = useRef(null);
 
   // Handle WebView loading events

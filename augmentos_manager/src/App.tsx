@@ -45,11 +45,21 @@ import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
 import ScreenSettingsScreen from './screens/ScreenSettingsScreen.tsx';
 
 const linking = {
-  prefixes: ['https://augmentos.org'],
+  prefixes: [
+    'https://augmentos.org', 
+    'https://appstore.augmentos.org', 
+    'com.augmentos://',
+    'augmentosappstore://'
+  ],
   config: {
     screens: {
       VerifyEmailScreen: 'verify_email',
-      // Add other screens as needed
+      AppStoreWeb: {
+        path: 'package/:packageName',
+        parse: {
+          packageName: (packageName: string) => packageName,
+        }
+      },
     },
   },
 };
@@ -62,7 +72,6 @@ const App: React.FC = () => {
 
   // Reset ignoreVersionCheck setting on app start
   useEffect(() => {
-
     saveSetting('ignoreVersionCheck', false);
     console.log('Reset version check ignore flag on app start');
   }, []);
