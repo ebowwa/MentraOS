@@ -14,7 +14,7 @@ import AugmentOSArchImage from '@site/src/components/ThemedImage';
 
 AugmentOS is a cloud operating system for smart glasses that handles the hard parts: connections, Bluetooth, streaming, and more. This lets you focus on creating great smart glasses apps.
 
-<AugmentOSArchImage width={500} />
+<AugmentOSArchImage width="100%" />
 
 As a Cloud OS, you can write apps in JavaScript/TypeScript (with Python coming soon) and use our SDK to build for smart glasses. Our SDK enables you to access smart glasses I/O with low latency from a cloud application.
 
