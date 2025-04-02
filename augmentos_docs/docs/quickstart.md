@@ -79,6 +79,8 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
    ```
    Note: `3000` is the port. It must match what is in the app config. If you changed it to `8080`, use `8080` for ngrok instead.
 
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
+
 For more information, visit the [AugmentOS-Cloud-Example-App repository](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App). For a more in-depth example with app settings support, see the [Live-Captions repository](https://github.com/AugmentOS-Community/LiveCaptionsOnSmartGlasses).
 
 ## Next Steps
