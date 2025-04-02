@@ -22,6 +22,7 @@ import NavigationBar from '../components/NavigationBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
+import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -67,6 +68,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const toggleForceCoreOnboardMic = async () => {
+    // First request microphone permission if we're enabling the mic
+    if (!forceCoreOnboardMic) {
+      // We're about to enable the mic, so request permission
+      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
+      if (!hasMicPermission) {
+        // Permission denied, don't toggle the setting
+        console.log('Microphone permission denied, cannot enable phone microphone');
+        Alert.alert(
+          'Microphone Permission Required',
+          'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+    
+    // Continue with toggling the setting if permission granted or turning off
     const newVal = !forceCoreOnboardMic;
     await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
     setForceCoreOnboardMic(newVal);

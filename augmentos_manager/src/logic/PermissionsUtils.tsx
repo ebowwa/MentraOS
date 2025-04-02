@@ -14,7 +14,8 @@ export const PermissionFeatures: Record<string, string> = {
   CALENDAR: 'calendar',
   LOCATION: 'location',
   BACKGROUND_LOCATION: 'background_location',
-  BATTERY_OPTIMIZATION: 'battery_optimization'
+  BATTERY_OPTIMIZATION: 'battery_optimization',
+  PHONE_STATE: 'phone_state'  // Phone state permission for device identification
 };
 
 // Define permission configuration interface
@@ -33,7 +34,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     name: 'Basic Permissions',
     description: 'Basic permissions required for AugmentOS to function',
     ios: [], // Different approach for iOS - we'll handle these individually
-    android: [], // Will be set dynamically based on Android version
+    android: [], // Will be set dynamically based on Android version, excluding Bluetooth which is handled in pairing flow
     critical: true, // App can't function without these
   },
   [PermissionFeatures.NOTIFICATIONS]: {
@@ -90,6 +91,15 @@ PERMISSION_CONFIG[PermissionFeatures.BACKGROUND_LOCATION] = {
   specialRequestNeeded: true // This flag indicates we need special handling
 };
 
+// Add configuration for phone state permission
+PERMISSION_CONFIG[PermissionFeatures.PHONE_STATE] = {
+  name: 'Phone State',
+  description: 'Used to identify your device to connect to glasses',
+  ios: [], // iOS doesn't use this permission
+  android: [PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE],
+  critical: true, // Critical for pairing with glasses
+};
+
 // Battery optimization permission temporarily disabled
 // PERMISSION_CONFIG[PermissionFeatures.BATTERY_OPTIMIZATION] = {
 //   name: 'Battery Optimization',
@@ -112,19 +122,12 @@ if (Platform.OS === 'android') {
     basicPermissions.push(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
   }
   
-  // Bluetooth permissions based on Android version
-  if (Platform.Version >= 30 && Platform.Version < 31) {
-    basicPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH);
-    basicPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADMIN);
-  }
-  if (Platform.Version >= 31) {
-    basicPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_SCAN);
-    basicPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_CONNECT);
-    basicPermissions.push(PermissionsAndroid.PERMISSIONS.BLUETOOTH_ADVERTISE);
-  }
+  // Bluetooth permissions are now handled in the pairing flow
+  // NOT requesting here anymore:
+  // - BLUETOOTH, BLUETOOTH_ADMIN (Android 11)
+  // - BLUETOOTH_SCAN, BLUETOOTH_CONNECT, BLUETOOTH_ADVERTISE (Android 12+)
   
-  // Add phone state permission
-  basicPermissions.push(PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE);
+  // Phone state permission moved to pairing flow
   
   PERMISSION_CONFIG[PermissionFeatures.BASIC].android = basicPermissions;
 }
@@ -516,19 +519,22 @@ export const requestGrantPermissions = async (): Promise<boolean> => {
 };
 
 export const doesHaveAllPermissions = async (): Promise<boolean> => {
-  // Check basic permissions first
-  const hasBasic = await checkFeaturePermissions(PermissionFeatures.BASIC);
-  if (!hasBasic) return false;
-  
-  // Also check notification permissions (important for both platforms)
-  const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
-  
-  // For now, we'll treat this as non-blocking but it's recommended
-  if (!hasNotifications) {
-    console.log('Notification permissions not granted. Some features may be limited.');
+  // Check if permissions have been requested before - if yes, we won't show screen again
+  const basicRequested = await hasPermissionBeenRequested(PermissionFeatures.BASIC);
+  if (basicRequested) {
+    console.log("Basic permissions have been requested before, won't show screen again");
+    return true;
   }
   
-  return hasBasic;
+  // Check basic permissions
+  const hasBasic = await checkFeaturePermissions(PermissionFeatures.BASIC);
+  if (!hasBasic) {
+    console.log("Missing basic permissions, need to show permission screen");
+    return false;
+  }
+  
+  // If we reach here, we have basic permissions or they've been requested already
+  return true;
 };
 
 // For backwards compatibility

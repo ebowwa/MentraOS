@@ -34,13 +34,9 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ }) => {
         return;
       }
 
-     if (!(await doesHaveAllPermissions())){
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'GrantPermissionsScreen' }],
-      });
-      return;
-     }
+     // We're now skipping the Grant Permissions screen completely
+     // Optional permissions will be handled via the Additional Permissions screen
+     // accessed through the alert icon on the homepage
 
      initializeCoreConnection();
 

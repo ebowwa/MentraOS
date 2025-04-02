@@ -17,7 +17,8 @@ import {
   requestAugmentOSPermissions,
   PermissionFeatures,
   requestFeaturePermissions,
-  requestBasicPermissions
+  requestBasicPermissions,
+  markPermissionRequested
 } from '../logic/PermissionsUtils';
 import Button from '../components/Button';
 import { checkNotificationPermission } from '../logic/NotificationServiceUtils';
@@ -159,11 +160,21 @@ const GrantPermissionsScreen: React.FC<GrantPermissionsScreenProps> = ({
   }
 
   const proceedToNextScreen = async () => {
-    // Move to next screen even if some permissions are missing
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'SplashScreen' }],
-    });
+    // Mark that we've shown all permission requests, even if some were skipped
+    // This will prevent the permissions screen from showing again
+    await markPermissionRequested(PermissionFeatures.BASIC);
+    await markPermissionRequested(PermissionFeatures.NOTIFICATIONS);
+    await markPermissionRequested(PermissionFeatures.CALENDAR);
+    
+    console.log("Proceeding to next screen regardless of optional permissions");
+    
+    // Add a small delay to ensure state updates have completed
+    setTimeout(() => {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'SplashScreen' }],
+      });
+    }, 100);
   }
 
   return (
