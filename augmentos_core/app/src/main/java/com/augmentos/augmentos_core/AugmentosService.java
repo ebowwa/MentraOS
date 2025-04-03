@@ -645,7 +645,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         
         int delay = 250; // Frame delay
         int totalFrames = ARROW_FRAMES.length;
-        int totalCycles = 4;
+        int totalCycles = 3;
 
         animationRunnable = new Runnable() {
             int frameIndex = 0;
@@ -680,18 +680,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
 
                 // Send current frame
+                String currentAnimationTextFrame = "                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex];
                 smartGlassesManager.windowManager.showAppLayer(
                         "system",
                         () -> {
-                                smartGlassesManager.sendTextWall("                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex]);
-//                            if (frameIndex % 2 == 0) {
-//                                smartGlassesManager.sendTextWall("                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex]);
-//                            } else {
-//                                smartGlassesManager.sendTextWall("                  /// AugmentOS Connected \\\\\\");
-//                            }
+                                smartGlassesManager.sendTextWall(currentAnimationTextFrame);
                         },
                         6
                 );
+                // Send the same text wall to AugmentOS Manager in JSONObject format
+                JSONObject displayJson = new JSONObject();
+                try {
+                    JSONObject layoutJson = new JSONObject();
+                    layoutJson.put("layoutType", "text_wall");
+                    layoutJson.put("text", currentAnimationTextFrame);
+                    displayJson.put("layout", layoutJson);
+                    //blePeripheral.sendGlassesDisplayEventToManager(displayJson);
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error creating display JSON", e);
+                }
 
                 // Move to next frame
                 frameIndex = (frameIndex + 1) % totalFrames;

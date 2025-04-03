@@ -113,15 +113,13 @@ export const VirtualWearablePairingGuide: React.FC<GlassesPairingGuideProps> = (
         Simulated Glasses Pairing Instructions
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
-        1. No physical device is needed. The Simulated Glasses simulates a pair of smart glasses.
+        No smart glasses required!
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
-        2. Continue to automatically connect to the virtual device.
+        Continue to automatically connect to the simulated glasses.
       </Text>
       <Text style={[styles.guideDescription, { color: textColor }]}>
         The Simulated Glasses allows you to test and develop with AugmentOS without physical smart glasses. 
-        It simulates a wearable device and works with all AugmentOS features. This is perfect for development, 
-        testing, or experiencing AugmentOS functionality before purchasing smart glasses.
       </Text>
     </View>
   );

@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../components/types';
 import NavigationBar from '../components/NavigationBar';
 import coreCommunicator from '../bridge/CoreCommunicator';
-import { MOCK_CONNECTION } from '../consts';
+import { MOCK_CONNECTION, SETTINGS_KEYS } from '../consts';
 import GroupTitle from '../components/settings/GroupTitle';
 import ToggleSetting from '../components/settings/ToggleSetting';
 import TextSetting from '../components/settings/TextSetting';

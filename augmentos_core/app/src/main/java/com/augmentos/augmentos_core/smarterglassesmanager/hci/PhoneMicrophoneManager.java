@@ -397,9 +397,24 @@ public class PhoneMicrophoneManager {
                     // If call state changed, update mic mode
                     if (wasCallActive != isPhoneCallActive) {
                         if (isPhoneCallActive) {
-                            pauseRecording();
+                            // Check if we can switch to glasses mic during the call
+                            boolean usingForcedPhoneMic = SmartGlassesManager.getForceCoreOnboardMic(context);
+                            boolean glassesWithMicAvailable = glassesRep != null && 
+                                                           glassesRep.smartGlassesDevice != null && 
+                                                           glassesRep.smartGlassesDevice.getHasInMic();
+                            
+                            if (usingForcedPhoneMic && glassesWithMicAvailable) {
+                                // User was using forced phone mic but has glasses with mic - switch temporarily
+                                Log.d(TAG, "🔄 Phone call active - temporarily switching to glasses mic");
+                                switchToGlassesMic();
+                            } else {
+                                // No glasses mic available - need to pause recording
+                                Log.d(TAG, "Phone call active - pausing recording (no glasses mic available)");
+                                pauseRecording();
+                            }
                         } else {
                             // Call ended, resume with preferred mode
+                            Log.d(TAG, "Phone call ended - resuming preferred microphone mode");
                             startPreferredMicMode();
                         }
                     }

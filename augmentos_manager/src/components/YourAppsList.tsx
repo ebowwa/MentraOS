@@ -28,6 +28,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const [_isLoading, setIsLoading] = React.useState(false);
     const [showOnboardingTip, setShowOnboardingTip] = useState(false);
     const [onboardingCompleted, setOnboardingCompleted] = useState(true);
+    const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false);
+    const [showSettingsHint, setShowSettingsHint] = useState(false);
   
     const [containerWidth, setContainerWidth] = React.useState(0);
     const arrowAnimation = React.useRef(new Animated.Value(0)).current;
@@ -45,7 +47,19 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             const checkOnboardingStatus = async () => {
                 const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
                 setOnboardingCompleted(completed);
-                setShowOnboardingTip(!completed);
+                
+                if (!completed) {
+                    // Always show the tip to tap Live Captions
+                    setShowOnboardingTip(true);
+                    setShowSettingsHint(false); // Hide settings hint during onboarding
+                } else {
+                    setShowOnboardingTip(false);
+                    
+                    // If onboarding is completed, check how many times settings have been accessed
+                    const settingsAccessCount = await loadSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0);
+                    // Only show hint if they've accessed settings less than 3 times
+                    setShowSettingsHint(settingsAccessCount < 3);
+                }
             };
             
             checkOnboardingStatus();
@@ -87,11 +101,25 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         checkOnboardingStatus();
     }, []);
 
-    // Mark onboarding as completed
+    // Mark onboarding as completed and ensure all UI elements are updated
     const completeOnboarding = () => {
         saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
         setOnboardingCompleted(true);
         setShowOnboardingTip(false);
+        setInLiveCaptionsPhase(false); // Reset any live captions phase state
+        
+        // Make sure to post an update to ensure all components re-render
+        // This is important to immediately hide any UI elements that depend on these states
+        setTimeout(() => {
+            // Force a re-render by setting state again
+            setShowOnboardingTip(false);
+        }, 100);
+    };
+    
+    // This function is no longer needed but kept for possible future use
+    const dismissSettingsHint = () => {
+        saveSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 3); // Force to max count
+        setShowSettingsHint(false);
     };
 
     // Show a tip about how to access app settings
@@ -106,15 +134,40 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     };
 
     const startApp = async (packageName: string) => {
-        // If onboarding is not completed, show the tip instead of starting the app
+        // If onboarding is not completed, only allow starting Live Captions
         if (!onboardingCompleted) {
-            showAppSettingsTip();
-            return;
+            if (packageName !== 'com.augmentos.livecaptions') {
+                Alert.alert(
+                    "Complete Onboarding",
+                    "Please tap the Live Captions app to complete the onboarding process.",
+                    [{ text: "OK" }]
+                );
+                return;
+            } else {
+                // Mark onboarding as completed and immediately hide the onboarding tip
+                // when they start Live Captions
+                completeOnboarding();
+                setShowOnboardingTip(false); // Immediately hide the tip
+            }
         }
         
         setIsLoading(true);
         try {
             BackendServerComms.getInstance().startApp(packageName);
+            
+            // Display a special message for Live Captions when starting the app
+            if (packageName === 'com.augmentos.livecaptions') {
+                // If this is the Live Captions app, make sure we've hidden the tip
+                setShowOnboardingTip(false);
+                
+                setTimeout(() => {
+                    Alert.alert(
+                        "Try Live Captions!",
+                        "Start talking now to see your speech transcribed on your glasses in real-time!",
+                        [{ text: "OK" }]
+                    );
+                }, 500);
+            }
         } catch (error) {
             console.error('start app error:', error);
         } finally {
@@ -181,22 +234,28 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 >
                     Your Apps
                 </Text>
-                
-                {/* {showOnboardingTip && (
-                    <TouchableOpacity 
-                        style={styles.tipButton}
-                        onPress={showAppSettingsTip}
-                    >
-                        <Icon name="information-outline" size={20} color={isDarkTheme ? "#FFFFFF" : "#2196F3"} />
-                        <Text style={[
-                            styles.tipText,
-                            { color: isDarkTheme ? "#FFFFFF" : "#2196F3" }
-                        ]}>
-                            Tip
-                        </Text>
-                    </TouchableOpacity>
-                )} */}
             </View>
+            
+            {/* Settings hint - only shown after onboarding and if settings accessed count < 3 */}
+            {showSettingsHint && (
+                <View 
+                    style={[
+                        styles.settingsHintContainer, 
+                        { backgroundColor: isDarkTheme ? '#1A2733' : '#E3F2FD', 
+                          borderColor: isDarkTheme ? '#1E88E5' : '#BBDEFB' }
+                    ]}
+                >
+                    <View style={styles.hintContent}>
+                        <Icon name="gesture-tap-hold" size={22} color="#2196F3" />
+                        <Text style={[
+                            styles.hintText,
+                            { color: isDarkTheme ? '#FFFFFF' : '#0D47A1' }
+                        ]}>
+                            Pro tip: Long-press any app to access its settings
+                        </Text>
+                    </View>
+                </View>
+            )}
 
             {/* {showOnboardingTip && (
                 <View style={[
@@ -231,7 +290,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                             },
                         ]}
                     >
-                        {showOnboardingTip && index === 0 && (
+                        {showOnboardingTip && app.packageName === 'com.augmentos.livecaptions' && (
                             <Animated.View 
                                 style={[
                                     styles.arrowContainer,
@@ -246,9 +305,11 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                             >
                                 <View style={styles.arrowWrapper}>
                                     <View style={styles.arrowBubble}>
-                                        <Text style={styles.arrowBubbleText}>Long press</Text>
+                                        <Text style={styles.arrowBubbleText}>
+                                            Tap to start
+                                        </Text>
                                         <Icon 
-                                            name="gesture-tap-hold" 
+                                            name="gesture-tap"
                                             size={20} 
                                             color="#FFFFFF"
                                             style={styles.bubbleIcon}
@@ -293,24 +354,28 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                             styles.modalContent,
                             isDarkTheme ? styles.modalContentDark : styles.modalContentLight
                         ]}>
-                            <Icon name="gesture-tap-hold" size={40} color={isDarkTheme ? "#FFFFFF" : "#2196F3"} />
+                            <Icon 
+                                name="gesture-tap" 
+                                size={40} 
+                                color={isDarkTheme ? "#FFFFFF" : "#2196F3"} 
+                            />
                             <Text style={[
                                 styles.modalTitle,
                                 isDarkTheme ? styles.lightText : styles.darkText
                             ]}>
-                                Complete the Onboarding
+                                Start Live Captions
                             </Text>
                             <Text style={[
                                 styles.modalDescription,
                                 isDarkTheme ? styles.lightSubtext : styles.darkSubtext
                             ]}>
-                                To continue, please long-press on any app icon to access its settings.
+                                To continue, please tap on the Live Captions app to start it. You won't be able to use other apps until you complete the onboarding.
                             </Text>
                             <TouchableOpacity 
                                 style={styles.modalButton}
                                 onPress={() => {
                                     // Just dismiss the modal, but don't mark onboarding as completed
-                                    // User still needs to long-press an app icon
+                                    // User still needs to interact with the Live Captions app
                                     setOnboardingCompleted(true);
                                 }}
                             >
@@ -416,6 +481,26 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 12,
         fontWeight: 'bold',
+    },
+    settingsHintContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    hintContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    hintText: {
+        marginLeft: 10,
+        fontSize: 14,
+        fontWeight: '500',
+        flex: 1,
     },
     arrowContainer: {
         position: 'absolute',
