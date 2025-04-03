@@ -5,7 +5,7 @@ title: EventManager
 
 # EventManager
 
-The [`EventManager`](#eventmanager) handles event subscriptions and dispatching within a [`TpaSession`](/reference/tpa-session). It provides methods for subscribing to various event types from the AugmentOS platform.
+The `EventManager` handles event subscriptions and dispatching within a [`TpaSession`](/reference/tpa-session). It provides methods for subscribing to various event types from the AugmentOS platform.
 
 You access the EventManager through the `events` property of a [`TpaSession`](/reference/tpa-session) instance:
 
@@ -147,7 +147,7 @@ onVoiceActivity(handler: (data: Vad) => void): () => void
 ```
 
 **Parameters:**
-- `handler`: Callback function that receives [`Vad`](/reference/interfaces/event-types#vad) objects
+- `handler`: Callback function that receives [`Vad`](/reference/interfaces/event-types#vad-voice-activity-detection) objects
 
 **Returns:** An unsubscribe function to remove the handler
 

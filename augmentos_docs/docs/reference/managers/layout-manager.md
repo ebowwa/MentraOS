@@ -5,7 +5,7 @@ title: LayoutManager
 
 # LayoutManager
 
-The [`LayoutManager`](#layoutmanager) is responsible for sending display requests to AugmentOS Cloud to show layouts in the AR view. It provides methods for displaying different types of content in the user's field of view.
+The `LayoutManager` is responsible for sending display requests to AugmentOS Cloud to show layouts in the AR view. It provides methods for displaying different types of content in the user's field of view.
 
 You access the LayoutManager through the `layouts` property of a [`TpaSession`](/reference/tpa-session) instance:
 

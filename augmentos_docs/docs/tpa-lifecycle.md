@@ -28,7 +28,7 @@ An AugmentOS app goes through the following stages:
 
     Your app server should listen for these POST requests on the configured `webhookPath` (default: `/webhook`).
 
-3.  **WebSocket Connection:**  Upon receiving the `session_request`, your app establishes a WebSocket connection to AugmentOS Cloud. The [`TpaServer`](/reference/tpaserver) class in the SDK handles this for you automatically. You provide the cloud's WebSocket URL in the [`TpaServerConfig`](/reference/tpa-server#configuration):
+3.  **WebSocket Connection:**  Upon receiving the `session_request`, your app establishes a WebSocket connection to AugmentOS Cloud. The [`TpaServer`](/reference/tpa-server) class in the SDK handles this for you automatically. You provide the cloud's WebSocket URL in the [`TpaServerConfig`](/reference/tpa-server#configuration):
 
     ```typescript
     const server = new TpaServer({
@@ -62,7 +62,7 @@ An AugmentOS app goes through the following stages:
     *   Your app explicitly disconnects.
     *   An error occurs that terminates the session.
 
-    AugmentOS Cloud will send a [`stop_request`](/reference/interfaces/webhook-types#stopwebhookrequest) webhook to your app when a session ends. You can override the [`onStop`](/reference/tpa-server#onstop-protected) method in your [`TpaServer`](/reference/tpaserver) to handle any necessary cleanup. The [`TpaSession`](/reference/tpa-session) also emits a [`disconnected`](/reference/managers/event-manager#ondisconnected) event.
+    AugmentOS Cloud will send a [`stop_request`](/reference/interfaces/webhook-types#stopwebhookrequest) webhook to your app when a session ends. You can override the [`onStop`](/reference/tpa-server#onstop-protected) method in your [`TpaServer`](/reference/tpa-server) to handle any necessary cleanup. The [`TpaSession`](/reference/tpa-session) also emits a [`disconnected`](/reference/managers/event-manager#ondisconnected) event.
 
 ## Important Implementation Details
 

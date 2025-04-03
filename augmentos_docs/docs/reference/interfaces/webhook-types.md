@@ -240,7 +240,7 @@ function processWebhook(request: WebhookRequest): WebhookResponse {
 
 ## Webhook Flow
 
-1. **Registration**: When your [`TpaServer`](/reference/tpaserver) starts, it is registered with AugmentOS Cloud.
+1. **Registration**: When your [`TpaServer`](/reference/tpa-server) starts, it is registered with AugmentOS Cloud.
 2. **Server Registration Confirmation**: AugmentOS Cloud sends a [`SERVER_REGISTRATION`](/reference/enums#webhookrequesttype) webhook to confirm registration.
 3. **Heartbeat**: AugmentOS Cloud periodically sends [`SERVER_HEARTBEAT`](/reference/enums#webhookrequesttype) webhooks to check if your server is still running.
 4. **Session Initialization**: When a user starts your TPA, AugmentOS Cloud sends a [`SESSION_REQUEST`](/reference/enums#webhookrequesttype) webhook.

@@ -263,4 +263,4 @@ tpaSession.setSubscriptionSettings({
 });
 ```
 
-The [`setSubscriptionSettings()`](/reference/primary-classes#setsubscriptionsettings) method is available on the [`TpaSession`](/reference/tpa-session) class. It allows automatic management of [`StreamType`](/reference/enums#streamtype) subscriptions based on setting changes.
+The [`setSubscriptionSettings()`](/reference/tpa-session#setsubscriptionsettings) method is available on the [`TpaSession`](/reference/tpa-session) class. It allows automatic management of [`StreamType`](/reference/enums#streamtype) subscriptions based on setting changes.

@@ -45,7 +45,7 @@ protected onSession(
 ```
 
 **Parameters:**
-- `session`: The [`TpaSession`](#tpasession) instance for this specific user session
+- `session`: The [`TpaSession`](/reference/tpa-session) instance for this specific user session
 - `sessionId`: The unique identifier for this session
 - `userId`: The unique identifier for the user
 

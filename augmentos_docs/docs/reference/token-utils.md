@@ -168,7 +168,7 @@ interface TokenConfig {
 
 ## Token Usage in TpaServer
 
-The [`TpaServer`](/reference/tpaserver) class includes a protected method for generating tokens:
+The [`TpaServer`](/reference/tpa-server) class includes a protected method for generating tokens:
 
 ```typescript
 protected generateToken(
@@ -178,7 +178,7 @@ protected generateToken(
 ): string
 ```
 
-This method is available when you extend the [`TpaServer`](/reference/tpaserver) class and is useful for generating tokens within webhook handlers.
+This method is available when you extend the [`TpaServer`](/reference/tpa-server) class and is useful for generating tokens within webhook handlers.
 
 ## Common Token Usage Patterns
 

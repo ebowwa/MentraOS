@@ -6,7 +6,7 @@ AugmentOS Cloud uses an event-driven architecture to communicate real-time data 
 
 ## Subscribing to Events
 
-The [`TpaSession`](/reference/tpa-session) class in the `@augmentos/sdk` provides several ways to subscribe to events.  You'll typically do this within the [`onSession`](/reference/tpa-server#onsession-protected) method of your [`TpaServer`](/reference/tpaserver):
+The [`TpaSession`](/reference/tpa-session) class in the `@augmentos/sdk` provides several ways to subscribe to events.  You'll typically do this within the [`onSession`](/reference/tpa-server#onsession-protected) method of your [`TpaServer`](/reference/tpa-server):
 
 ```typescript
 protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -101,7 +101,7 @@ The following table lists the available event types, their descriptions, and the
 | Phone Battery Update           | [`StreamType.PHONE_BATTERY_UPDATE`](/reference/enums#streamtype)   | Battery level update from the phone.                                           | [`PhoneBatteryUpdate`](/reference/interfaces/event-types#phonebatteryupdate)             |
 | Glasses Connection State       | [`StreamType.GLASSES_CONNECTION_STATE`](/reference/enums#streamtype) | Connection status of the glasses.                                             | [`GlassesConnectionState`](/reference/interfaces/event-types#glassesconnectionstate)         |
 | Location Update                | [`StreamType.LOCATION_UPDATE`](/reference/enums#streamtype)        | User's GPS location.                                                             | [`LocationUpdate`](/reference/interfaces/event-types#locationupdate)                 |
-| Voice Activity Detection (VAD) | [`StreamType.VAD`](/reference/enums#streamtype)                    | Indicates whether voice activity is detected.                                  | [`Vad`](/reference/interfaces/event-types#vad)                            |
+| Voice Activity Detection (VAD) | [`StreamType.VAD`](/reference/enums#streamtype)                    | Indicates whether voice activity is detected.                                  | [`Vad`](/reference/interfaces/event-types#vad-voice-activity-detection)                            |
 | Notification Dismissed         | [`StreamType.NOTIFICATION_DISMISSED`](/reference/enums#streamtype) | User dismissed a notification.                                                    | [`NotificationDismissed`](/reference/interfaces/event-types#notificationdismissed)          |
 | Audio Chunk                    | [`StreamType.AUDIO_CHUNK`](/reference/enums#streamtype)            | Raw audio data (for advanced use cases).                                      | [`ArrayBuffer`](/reference/interfaces/event-types#audiochunk)                   |
 | Video                         |  [`StreamType.VIDEO`](/reference/enums#streamtype)               | Raw video data.                                             | [`ArrayBuffer`](/reference/interfaces/event-types#audiochunk)       |
