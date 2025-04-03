@@ -18,6 +18,7 @@ import Reviews from './screens/ReviewSection';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppStoreItem, RootStackParamList } from './components/types'; // Update path as needed
 import MessageBanner from './components/MessageBanner';
+import { ModalProvider } from './utils/AlertUtils';
 import SelectGlassesModelScreen from './screens/SelectGlassesModelScreen';
 import GlassesPairingGuideScreen from './screens/GlassesPairingGuideScreen';
 import SelectGlassesBluetoothScreen from './screens/SelectGlassesBluetoothScreen';
@@ -42,13 +43,24 @@ import TestingPage from './screens/TestingPage.tsx';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DeveloperSettingsScreen from './screens/DeveloperSettingsScreen.tsx';
 import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
+import ScreenSettingsScreen from './screens/ScreenSettingsScreen.tsx';
 
 const linking = {
-  prefixes: ['https://augmentos.org'],
+  prefixes: [
+    'https://augmentos.org', 
+    'https://appstore.augmentos.org', 
+    'com.augmentos://',
+    'augmentosappstore://'
+  ],
   config: {
     screens: {
       VerifyEmailScreen: 'verify_email',
-      // Add other screens as needed
+      AppStoreWeb: {
+        path: 'package/:packageName',
+        parse: {
+          packageName: (packageName: string) => packageName,
+        }
+      },
     },
   },
 };
@@ -61,7 +73,6 @@ const App: React.FC = () => {
 
   // Reset ignoreVersionCheck setting on app start
   useEffect(() => {
-
     saveSetting('ignoreVersionCheck', false);
     console.log('Reset version check ignore flag on app start');
   }, []);
@@ -79,6 +90,7 @@ const App: React.FC = () => {
               <SearchResultsProvider>
                 <GlassesMirrorProvider>
                   <MessageBanner />
+                  <ModalProvider isDarkTheme={isDarkTheme} />
                   <NavigationContainer linking={linking}>
                     <Stack.Navigator initialRouteName="SplashScreen">
                       <Stack.Screen
@@ -187,6 +199,17 @@ const App: React.FC = () => {
                 >
                   {props => (
                     <DashboardSettingsScreen
+                      {...props}
+                      toggleTheme={toggleTheme}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="ScreenSettingsScreen"
+                  options={{ title: 'Screen Settings' }}
+                >
+                  {props => (
+                    <ScreenSettingsScreen
                       {...props}
                       toggleTheme={toggleTheme}
                       isDarkTheme={isDarkTheme}

@@ -10,6 +10,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
 import ConnectedDeviceInfo from '../components/ConnectedDeviceInfo';
+import ConnectedSimulatedGlassesInfo from '../components/ConnectedSimulatedGlassesInfo';
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
 import NavigationBar from '../components/NavigationBar';
@@ -193,7 +194,13 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           }
 
           <AnimatedSection>
-            <ConnectedDeviceInfo isDarkTheme={isDarkTheme} />
+            {/* Use the simulated version if we're connected to simulated glasses */}
+            {status.glasses_info?.model_name && 
+             status.glasses_info.model_name.toLowerCase().includes('simulated') ? (
+              <ConnectedSimulatedGlassesInfo isDarkTheme={isDarkTheme} />
+            ) : (
+              <ConnectedDeviceInfo isDarkTheme={isDarkTheme} />
+            )}
           </AnimatedSection>
 
           {status.core_info.puck_connected && (

@@ -471,16 +471,6 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
-  async setGlassesAutoBrightness(autoBrightness: boolean) {
-    return await this.sendData({
-      command: 'update_glasses_auto_brightness',
-      params: {
-        brightness: 50,
-        autoLight: autoBrightness,
-      },
-    });
-  }
-
   async setGlassesHeadUpAngle(headUpAngle: number) {
     return await this.sendData({
       command: 'update_glasses_headUp_angle',

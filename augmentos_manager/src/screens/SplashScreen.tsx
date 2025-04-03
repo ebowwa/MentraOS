@@ -34,32 +34,16 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ }) => {
         return;
       }
 
-     if (!(await doesHaveAllPermissions())){
+      // We're now skipping the Grant Permissions screen completely
+      // Optional permissions will be handled via the Additional Permissions screen
+      // accessed through the alert icon on the homepage
+
+      initializeCoreConnection();
+
       navigation.reset({
         index: 0,
-        routes: [{ name: 'GrantPermissionsScreen' }],
+        routes: [{ name: 'ConnectingToPuck' }],
       });
-      return;
-     }
-
-     initializeCoreConnection();
-
-     // Check if the user has completed onboarding
-     const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
-
-     if (onboardingCompleted) {
-       // If onboarding is completed, go directly to Home
-       navigation.reset({
-         index: 0,
-         routes: [{ name: 'ConnectingToPuck' }],
-       });
-     } else {
-       // If onboarding is not completed, go to WelcomePage
-       navigation.reset({
-         index: 0,
-         routes: [{ name: 'WelcomePage' }],
-       });
-     }
     };
 
     if (!loading) {
