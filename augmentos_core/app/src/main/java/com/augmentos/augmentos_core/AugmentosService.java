@@ -63,6 +63,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -102,6 +103,7 @@ import java.util.Map;
 //SpeechRecIntermediateOutputEvent
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
 
 import okhttp3.Call;
@@ -1273,6 +1275,30 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Received mic state for frontend event: " + event.micState);
         isMicEnabledForFrontend = event.micState;
         sendStatusToAugmentOsManager();
+    }
+
+        // TODO: This is for debug.. remove before pushing to prod
+    @Subscribe
+    public void handleMicModeChangedEvent(MicModeChangedEvent event) {
+        Log.d(TAG, "Microphone mode changed: " + event.getStatus());
+        
+        // Log the new microphone status
+        PhoneMicrophoneManager.MicStatus status = event.getStatus();
+        blePeripheral.sendNotifyManager(status.name(), "success");
+        switch (status) {
+            case SCO_MODE:
+                Log.d(TAG, "Microphone using Bluetooth SCO mode");
+                break;
+            case NORMAL_MODE:
+                Log.d(TAG, "Microphone using normal phone mic");
+                break;
+            case GLASSES_MIC:
+                Log.d(TAG, "Microphone using glasses onboard mic");
+                break;
+            case PAUSED:
+                Log.d(TAG, "Microphone recording paused (conflict detected)");
+                break;
+        }
     }
 
     @Override
