@@ -64,6 +64,12 @@ An AugmentOS app goes through the following stages:
 
     AugmentOS Cloud will send a `stop_request` webhook to your app when a session ends. You can override the `onStop` method in your `TpaServer` to handle any necessary cleanup. The `TpaSession` also emits a `disconnected` event.
 
+## Important Implementation Details
+
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
+
+This restart is necessary because the AugmentOS phone app maintains a connection to your cloud app. When you make code changes or restart your server, you need to establish a fresh connection.
+
 ## Example Lifecycle Flow
 
 ```mermaid
