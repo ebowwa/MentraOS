@@ -27,6 +27,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const { status } = useStatus();
     const [_isLoading, setIsLoading] = React.useState(false);
     const [showOnboardingTip, setShowOnboardingTip] = useState(false);
+    const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
     const [onboardingCompleted, setOnboardingCompleted] = useState(true);
     const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false);
     const [showSettingsHint, setShowSettingsHint] = useState(false);
@@ -51,6 +52,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 if (!completed) {
                     // Always show the tip to tap Live Captions
                     setShowOnboardingTip(true);
+                    setOnboardingModalVisible(true);
                     setShowSettingsHint(false); // Hide settings hint during onboarding
                 } else {
                     setShowOnboardingTip(false);
@@ -134,9 +136,12 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     };
 
     const startApp = async (packageName: string) => {
+        console.log("STARTAPP: ECHECK ONBOARDING??")
         // If onboarding is not completed, only allow starting Live Captions
         if (!onboardingCompleted) {
+            console.log("STARTAPP: ONBOARDING NOT COMPLETED")
             if (packageName !== 'com.augmentos.livecaptions') {
+                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME NOT CAPTIONS")
                 Alert.alert(
                     "Complete Onboarding",
                     "Please tap the Live Captions app to complete the onboarding process.",
@@ -144,6 +149,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 );
                 return;
             } else {
+                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME === cAPTIONS!!!")
                 // Mark onboarding as completed and immediately hide the onboarding tip
                 // when they start Live Captions
                 completeOnboarding();
@@ -343,7 +349,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             </View>
 
             {/* Modal overlay to prevent interaction until onboarding is completed */}
-            {!onboardingCompleted && uniqueApps.length > 0 && (
+            {onboardingModalVisible && uniqueApps.length > 0 && (
                 <Modal
                     transparent={true}
                     visible={true}
@@ -369,14 +375,12 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                                 styles.modalDescription,
                                 isDarkTheme ? styles.lightSubtext : styles.darkSubtext
                             ]}>
-                                To continue, please tap on the Live Captions app to start it. You won't be able to use other apps until you complete the onboarding.
+                                To continue, start the Live Captions app.
                             </Text>
                             <TouchableOpacity 
                                 style={styles.modalButton}
                                 onPress={() => {
-                                    // Just dismiss the modal, but don't mark onboarding as completed
-                                    // User still needs to interact with the Live Captions app
-                                    setOnboardingCompleted(true);
+                                    setOnboardingModalVisible(false);
                                 }}
                             >
                                 <Text style={styles.modalButtonText}>I understand</Text>
