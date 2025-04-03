@@ -222,6 +222,8 @@ ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
 
 > Note: The port number (3000) must match the port in your app configuration.
 
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
+
 ## What's Next?
 
 Congratulations! You've built your first AugmentOS app. To continue your journey:
@@ -235,3 +237,4 @@ Congratulations! You've built your first AugmentOS app. To continue your journey
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for support
 - Visit [AugmentOS.org](https://augmentos.org) for the latest updates
 - Check out the [GitHub repository](https://github.com/AugmentOS-Community/AugmentOS) for examples
+- For a more in-depth example with app settings support, see the [Live-Captions repository](https://github.com/AugmentOS-Community/LiveCaptionsOnSmartGlasses)

@@ -17,6 +17,7 @@ struct ViewState {
   var bottomText: String
   var layoutType: String
   var text: String
+  var eventStr: String
 }
 
 // This class handles logic for managing devices and connections to AugmentOS servers
@@ -49,8 +50,8 @@ struct ViewState {
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
   
   var viewStates: [ViewState] = [
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "DASHBOARD_NOT_SET"),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "DASHBOARD_NOT_SET", eventStr: ""),
   ]
   
   
@@ -225,12 +226,13 @@ struct ViewState {
         
         
         if self.bypassVad {
-          let pcmConverter = PcmConverter()
-          let lc3Data = pcmConverter.encode(pcmData) as Data
-          checkSetVadStatus(speaking: true)
-          // first send out whatever's in the vadBuffer (if there is anything):
-          emptyVadBuffer()
-          self.serverComms.sendAudioChunk(lc3Data)
+//          let pcmConverter = PcmConverter()
+//          let lc3Data = pcmConverter.encode(pcmData) as Data
+//          checkSetVadStatus(speaking: true)
+//          // first send out whatever's in the vadBuffer (if there is anything):
+//          emptyVadBuffer()
+//          self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
           return
         }
         
@@ -249,8 +251,8 @@ struct ViewState {
         }
       
         // encode the pcmData as LC3:
-        let pcmConverter = PcmConverter()
-        let lc3Data = pcmConverter.encode(pcmData) as Data
+//        let pcmConverter = PcmConverter()
+//        let lc3Data = pcmConverter.encode(pcmData) as Data
         
         
         let vadState = vad.currentState()
@@ -258,11 +260,13 @@ struct ViewState {
           checkSetVadStatus(speaking: true)
           // first send out whatever's in the vadBuffer (if there is anything):
           emptyVadBuffer()
-          self.serverComms.sendAudioChunk(lc3Data)
+//          self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
         } else {
           checkSetVadStatus(speaking: false)
           // add to the vadBuffer:
-          addToVadBuffer(lc3Data)
+//          addToVadBuffer(lc3Data)
+          addToVadBuffer(pcmData)
         }
         
       }
@@ -292,7 +296,10 @@ struct ViewState {
         checkSetVadStatus(speaking: true)
         // first send out whatever's in the vadBuffer (if there is anything):
         emptyVadBuffer()
-        self.serverComms.sendAudioChunk(lc3Data)
+        let pcmConverter = PcmConverter()
+        let pcmData = pcmConverter.decode(lc3Data) as Data
+//        self.serverComms.sendAudioChunk(lc3Data)
+        self.serverComms.sendAudioChunk(pcmData)
         return
       }
         
@@ -328,11 +335,13 @@ struct ViewState {
         checkSetVadStatus(speaking: true)
         // first send out whatever's in the vadBuffer (if there is anything):
         emptyVadBuffer()
-        self.serverComms.sendAudioChunk(lc3Data)
+//        self.serverComms.sendAudioChunk(lc3Data)
+        self.serverComms.sendAudioChunk(pcmData)
       } else {
         checkSetVadStatus(speaking: false)
         // add to the vadBuffer:
-        addToVadBuffer(lc3Data)
+//        addToVadBuffer(lc3Data)
+        addToVadBuffer(pcmData)
       }
     }
     .store(in: &cancellables)
@@ -405,6 +414,9 @@ struct ViewState {
       if (isDashboard && !contextualDashboard) {
         return
       }
+      
+      let eventStr = currentViewState.eventStr
+      CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
       
       let layoutType = currentViewState.layoutType
       switch layoutType {
@@ -488,9 +500,22 @@ struct ViewState {
       stateIndex = 0
     }
     
+    // save the state string to forward to the mirror:
+    // forward to the glasses mirror:
+    let wrapperObj: [String: Any] = ["glasses_display_event": event]
+    var eventStr = ""
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
+      eventStr = String(data: jsonData, encoding: .utf8) ?? ""
+    } catch {
+      print("Error converting to JSON: \(error)")
+    }
+    
+    self.viewStates[stateIndex].eventStr = eventStr
     let layout = event["layout"] as! [String: Any];
     let layoutType = layout["layoutType"] as! String
     self.viewStates[stateIndex].layoutType = layoutType
+    
     
     
     var text = layout["text"] as? String ?? " "
@@ -532,17 +557,6 @@ struct ViewState {
     //    print("displayEvent \(event)", event)
     
     handleDisplayEvent(event)
-    
-    // forward to the glasses mirror:
-    let wrapperObj: [String: Any] = ["glasses_display_event": event]
-    do {
-      let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
-      if let jsonString = String(data: jsonData, encoding: .utf8) {
-        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
-      }
-    } catch {
-      print("Error converting to JSON: \(error)")
-    }
   }
   
   func onRequestSingle(_ dataType: String) {

@@ -10,6 +10,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface PcmConverter : NSObject
++ (void)setupStaticEncoderAndDecoder;
 -(NSMutableData *)decode: (NSData *)lc3data;
 -(NSMutableData *)encode: (NSData *)pcmdata;
 @end
