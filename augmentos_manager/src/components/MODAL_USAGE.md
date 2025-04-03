@@ -69,12 +69,36 @@ const [modalVisible, setModalVisible] = useState(false);
   visible={modalVisible}
   title="Modal Title"
   message="This is the modal message"
-  buttonText="Got it"
-  onButtonPress={() => setModalVisible(false)}
+  buttons={[
+    { text: "Got it", onPress: () => setModalVisible(false) }
+  ]}
   onDismiss={() => setModalVisible(false)}
   isDarkTheme={isDarkTheme}
   iconName="gesture-tap"
   iconSize={40}
+/>
+
+// Example with multiple buttons:
+<MessageModal
+  visible={confirmModalVisible}
+  title="Confirm Action"
+  message="Are you sure you want to proceed with this action?"
+  buttons={[
+    { 
+      text: "Cancel", 
+      onPress: () => setConfirmModalVisible(false),
+      style: "cancel" // Styles available: 'default', 'cancel', 'destructive'
+    },
+    { 
+      text: "Yes, proceed", 
+      onPress: () => {
+        setConfirmModalVisible(false);
+        performAction();
+      }
+    }
+  ]}
+  isDarkTheme={isDarkTheme}
+  iconName="alert-circle-outline"
 />
 ```
 
@@ -82,12 +106,17 @@ const [modalVisible, setModalVisible] = useState(false);
 The `MessageModal` component accepts the following props:
 
 ```tsx
+interface ButtonProps {
+  text: string;
+  onPress?: () => void;
+  style?: 'default' | 'cancel' | 'destructive';
+}
+
 interface MessageModalProps {
   visible: boolean;
   title: string;
   message: string;
-  buttonText?: string; // Defaults to "I understand"
-  onButtonPress?: () => void;
+  buttons?: ButtonProps[]; // Array of buttons with text, onPress and optional style
   onDismiss?: () => void;
   isDarkTheme?: boolean; // Defaults to false
   iconName?: string; // Defaults to "information-outline"
@@ -106,7 +135,8 @@ interface MessageModalProps {
 
 ## Future Enhancements
 
-1. Support for multiple buttons
-2. Support for different button styles (primary, secondary, destructive)
+1. ✅ Support for multiple buttons (implemented!)
+2. ✅ Support for different button styles (primary, cancel, destructive) (implemented!)
 3. Support for form inputs within the modal
 4. Animation customization
+5. Configurable button layout options (row vs column)

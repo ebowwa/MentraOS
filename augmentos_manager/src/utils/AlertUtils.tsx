@@ -2,6 +2,16 @@ import React from 'react';
 import { Alert, AlertButton } from 'react-native';
 import MessageModal from '../components/MessageModal';
 
+// Type for button style options
+type ButtonStyle = 'default' | 'cancel' | 'destructive';
+
+// Button interface aligned with MessageModal
+interface ModalButton {
+  text: string;
+  onPress?: () => void;
+  style?: ButtonStyle;
+}
+
 // Global state to manage the modal
 let modalRef: {
   showModal: (
@@ -22,15 +32,36 @@ export const setModalRef = (ref: typeof modalRef) => {
   modalRef = ref;
 };
 
+// Converts a React Native AlertButton to our ModalButton format
+const convertToModalButton = (button: AlertButton, index: number, totalButtons: number): ModalButton => {
+  let style: ButtonStyle = 'default';
+  
+  // Heuristics to determine button style based on text and position
+  if (button.style === 'cancel' || button.style === 'destructive') {
+    // Use RN's native styles if provided
+    style = button.style;
+  } else if (button.text && ['cancel', 'no', 'back'].includes(button.text.toLowerCase())) {
+    style = 'cancel';
+  } else if (button.text && ['delete', 'remove', 'destroy'].includes(button.text.toLowerCase())) {
+    style = 'destructive';
+  } else if (index === totalButtons - 1) {
+    // Last button is usually confirm/primary
+    style = 'default';
+  }
+  
+  return {
+    text: button.text || '',
+    onPress: button.onPress,
+    style,
+  };
+};
+
 // Global component that will be rendered once at the app root
 export const ModalProvider: React.FC<{ isDarkTheme?: boolean }> = ({ isDarkTheme = false }) => {
   const [visible, setVisible] = React.useState(false);
   const [title, setTitle] = React.useState('');
   const [message, setMessage] = React.useState('');
-  const [button, setButton] = React.useState<{
-    text: string;
-    onPress?: () => void;
-  } | null>(null);
+  const [buttons, setButtons] = React.useState<ModalButton[]>([]);
   const [options, setOptions] = React.useState<{
     isDarkTheme?: boolean;
     iconName?: string;
@@ -41,22 +72,16 @@ export const ModalProvider: React.FC<{ isDarkTheme?: boolean }> = ({ isDarkTheme
   React.useEffect(() => {
     // Register the modal functions for global access
     setModalRef({
-      showModal: (title, message, buttons = [], opts = {}) => {
+      showModal: (title, message, alertButtons = [], opts = {}) => {
         setTitle(title);
         setMessage(message);
         
-        // Use the first button as the confirm button
-        if (buttons.length > 0) {
-          setButton({
-            text: buttons[0].text || "",
-            onPress: buttons[0].onPress,
-          });
-        } else {
-          setButton({
-            text: 'OK',
-            onPress: undefined,
-          });
-        }
+        // Convert all buttons to our ModalButton format with style hints
+        const modalButtons = alertButtons.length > 0 
+          ? alertButtons.map((btn, idx) => convertToModalButton(btn, idx, alertButtons.length))
+          : [{ text: 'OK' }];
+        
+        setButtons(modalButtons);
 
         // Set options with fallback to component's props
         setOptions({
@@ -79,20 +104,12 @@ export const ModalProvider: React.FC<{ isDarkTheme?: boolean }> = ({ isDarkTheme
     setVisible(false);
   };
 
-  const handleButtonPress = () => {
-    setVisible(false);
-    if (button?.onPress) {
-      button.onPress();
-    }
-  };
-
   return (
     <MessageModal
       visible={visible}
       title={title}
       message={message}
-      buttonText={button?.text || 'OK'}
-      onButtonPress={handleButtonPress}
+      buttons={buttons}
       onDismiss={handleDismiss}
       isDarkTheme={options.isDarkTheme}
       iconName={options.iconName}

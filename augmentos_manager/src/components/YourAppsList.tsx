@@ -326,8 +326,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 visible={onboardingModalVisible && uniqueApps.length > 0}
                 title="Start Live Captions"
                 message="To continue, start the Live Captions app."
-                buttonText="I understand"
-                onButtonPress={() => setOnboardingModalVisible(false)}
+                buttons={[
+                    { text: "I understand", onPress: () => setOnboardingModalVisible(false) }
+                ]}
                 isDarkTheme={isDarkTheme}
                 iconName="gesture-tap"
                 iconSize={40}

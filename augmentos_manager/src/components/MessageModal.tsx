@@ -8,12 +8,17 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
+interface ButtonProps {
+  text: string;
+  onPress?: () => void;
+  style?: 'default' | 'cancel' | 'destructive';
+}
+
 interface MessageModalProps {
   visible: boolean;
   title: string;
   message: string;
-  buttonText?: string;
-  onButtonPress?: () => void;
+  buttons?: ButtonProps[];
   onDismiss?: () => void;
   isDarkTheme?: boolean;
   iconName?: string;
@@ -25,24 +30,82 @@ const MessageModal: React.FC<MessageModalProps> = ({
   visible,
   title,
   message,
-  buttonText = 'I understand',
-  onButtonPress,
+  buttons = [{ text: 'I understand' }],
   onDismiss,
   isDarkTheme = false,
   iconName = 'information-outline',
   iconSize = 40,
   iconColor,
 }) => {
-  const handleButtonPress = () => {
-    if (onButtonPress) {
-      onButtonPress();
+  const defaultIconColor = iconColor || (isDarkTheme ? '#FFFFFF' : '#2196F3');
+
+  // Handle button press and dismiss modal
+  const handleButtonPress = (onPress?: () => void) => {
+    if (onPress) {
+      onPress();
     }
     if (onDismiss) {
       onDismiss();
     }
   };
 
-  const defaultIconColor = iconColor || (isDarkTheme ? '#FFFFFF' : '#2196F3');
+  // Determine how to render buttons based on count
+  const renderButtons = () => {
+    if (buttons.length === 0) {
+      // Fallback to default button
+      return (
+        <TouchableOpacity 
+          style={styles.modalButton}
+          onPress={() => handleButtonPress(undefined)}
+        >
+          <Text style={styles.modalButtonText}>OK</Text>
+        </TouchableOpacity>
+      );
+    } else if (buttons.length === 1) {
+      // Single button - full width
+      return (
+        <TouchableOpacity 
+          style={styles.modalButton}
+          onPress={() => handleButtonPress(buttons[0].onPress)}
+        >
+          <Text style={styles.modalButtonText}>{buttons[0].text}</Text>
+        </TouchableOpacity>
+      );
+    } else {
+      // Multiple buttons
+      return (
+        <View style={buttons.length > 2 ? styles.buttonColumnContainer : styles.buttonRowContainer}>
+          {buttons.map((button, index) => {
+            const isDestructive = button.style === 'destructive';
+            const isCancel = button.style === 'cancel';
+            
+            return (
+              <TouchableOpacity 
+                key={index}
+                style={[
+                  styles.modalButton,
+                  buttons.length > 2 ? styles.buttonFullWidth : styles.buttonHalfWidth,
+                  isDestructive && styles.destructiveButton,
+                  isCancel && styles.cancelButton,
+                  index < buttons.length - 1 && buttons.length > 2 && styles.buttonMarginBottom,
+                  index === 0 && buttons.length === 2 && styles.buttonMarginRight,
+                ]}
+                onPress={() => handleButtonPress(button.onPress)}
+              >
+                <Text style={[
+                  styles.modalButtonText,
+                  isDestructive && styles.destructiveButtonText,
+                  isCancel && styles.cancelButtonText,
+                ]}>
+                  {button.text}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      );
+    }
+  };
 
   return (
     <Modal
@@ -75,12 +138,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
           ]}>
             {message}
           </Text>
-          <TouchableOpacity 
-            style={styles.modalButton}
-            onPress={handleButtonPress}
-          >
-            <Text style={styles.modalButtonText}>{buttonText}</Text>
-          </TouchableOpacity>
+          {renderButtons()}
         </View>
       </View>
     </Modal>
@@ -119,19 +177,56 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     lineHeight: 22,
   },
+  // Button styles
+  buttonRowContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  buttonColumnContainer: {
+    flexDirection: 'column',
+    width: '100%',
+  },
   modalButton: {
     backgroundColor: '#2196F3',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
-    width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonFullWidth: {
+    width: '100%',
+  },
+  buttonHalfWidth: {
+    flex: 1,
+  },
+  buttonMarginBottom: {
+    marginBottom: 10,
+  },
+  buttonMarginRight: {
+    marginRight: 10,
   },
   modalButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
+  // Button type styles
+  destructiveButton: {
+    backgroundColor: '#F44336', // Red
+  },
+  destructiveButtonText: {
+    color: '#FFFFFF',
+  },
+  cancelButton: {
+    backgroundColor: '#9E9E9E', // Gray
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+  },
+  // Text styles
   lightText: {
     color: '#FFFFFF',
   },
