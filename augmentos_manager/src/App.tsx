@@ -18,6 +18,7 @@ import Reviews from './screens/ReviewSection';
 import { StyleSheet, Text, View } from 'react-native';
 import { AppStoreItem, RootStackParamList } from './components/types'; // Update path as needed
 import MessageBanner from './components/MessageBanner';
+import { ModalProvider } from './utils/AlertUtils';
 import SelectGlassesModelScreen from './screens/SelectGlassesModelScreen';
 import GlassesPairingGuideScreen from './screens/GlassesPairingGuideScreen';
 import SelectGlassesBluetoothScreen from './screens/SelectGlassesBluetoothScreen';
@@ -89,6 +90,7 @@ const App: React.FC = () => {
               <SearchResultsProvider>
                 <GlassesMirrorProvider>
                   <MessageBanner />
+                  <ModalProvider isDarkTheme={isDarkTheme} />
                   <NavigationContainer linking={linking}>
                     <Stack.Navigator initialRouteName="SplashScreen">
                       <Stack.Screen

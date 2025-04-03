@@ -10,6 +10,8 @@ import {
     Easing,
     Modal,
 } from 'react-native';
+import showAlert from '../utils/AlertUtils';
+import MessageModal from './MessageModal';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import AppIcon from './AppIcon';
 import coreCommunicator from '../bridge/CoreCommunicator';
@@ -114,25 +116,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         // This is important to immediately hide any UI elements that depend on these states
         setTimeout(() => {
             // Force a re-render by setting state again
-            setShowOnboardingTip(false);
+            setShowOnboardingTip(false);                    
+            setShowSettingsHint(true);
         }, 100);
-    };
-    
-    // This function is no longer needed but kept for possible future use
-    const dismissSettingsHint = () => {
-        saveSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 3); // Force to max count
-        setShowSettingsHint(false);
-    };
-
-    // Show a tip about how to access app settings
-    const showAppSettingsTip = () => {
-        Alert.alert(
-            "App Settings Tip",
-            "Long-press on any app icon to access its settings.",
-            [
-                { text: "Got it!", onPress: () => {} }
-            ]
-        );
     };
 
     const startApp = async (packageName: string) => {
@@ -142,10 +128,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             console.log("STARTAPP: ONBOARDING NOT COMPLETED")
             if (packageName !== 'com.augmentos.livecaptions') {
                 console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME NOT CAPTIONS")
-                Alert.alert(
+                showAlert(
                     "Complete Onboarding",
                     "Please tap the Live Captions app to complete the onboarding process.",
-                    [{ text: "OK" }]
+                    [{ text: "OK" }],
+                    { 
+                        isDarkTheme,
+                        iconName: "information-outline"
+                    }
                 );
                 return;
             } else {
@@ -167,10 +157,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 setShowOnboardingTip(false);
                 
                 setTimeout(() => {
-                    Alert.alert(
+                    showAlert(
                         "Try Live Captions!",
                         "Start talking now to see your speech transcribed on your glasses in real-time!",
-                        [{ text: "OK" }]
+                        [{ text: "OK" }],
+                        { 
+                            isDarkTheme,
+                            iconName: "microphone" 
+                        }
                     );
                 }, 500);
             }
@@ -263,27 +257,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 </View>
             )}
 
-            {/* {showOnboardingTip && (
-                <View style={[
-                    styles.onboardingTip,
-                    isDarkTheme ? styles.onboardingTipDark : styles.onboardingTipLight
-                ]}>
-                    <Icon name="gesture-tap-hold" size={24} color={isDarkTheme ? "#FFFFFF" : "#2196F3"} />
-                    <Text style={[
-                        styles.onboardingTipText,
-                        isDarkTheme ? styles.onboardingTipTextDark : styles.onboardingTipTextLight
-                    ]}>
-                        Long-press on any app icon to access its settings
-                    </Text>
-                    <TouchableOpacity 
-                        style={styles.gotItButton}
-                        onPress={showAppSettingsTip}
-                    >
-                        <Text style={styles.gotItButtonText}>Show me</Text>
-                    </TouchableOpacity>
-                </View>
-            )} */}
-
             <View style={styles.gridContainer}>
                 {uniqueApps.map((app, index) => (
                     <View
@@ -349,46 +322,16 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             </View>
 
             {/* Modal overlay to prevent interaction until onboarding is completed */}
-            {onboardingModalVisible && uniqueApps.length > 0 && (
-                <Modal
-                    transparent={true}
-                    visible={true}
-                    animationType="fade"
-                >
-                    <View style={styles.modalOverlay}>
-                        <View style={[
-                            styles.modalContent,
-                            isDarkTheme ? styles.modalContentDark : styles.modalContentLight
-                        ]}>
-                            <Icon 
-                                name="gesture-tap" 
-                                size={40} 
-                                color={isDarkTheme ? "#FFFFFF" : "#2196F3"} 
-                            />
-                            <Text style={[
-                                styles.modalTitle,
-                                isDarkTheme ? styles.lightText : styles.darkText
-                            ]}>
-                                Start Live Captions
-                            </Text>
-                            <Text style={[
-                                styles.modalDescription,
-                                isDarkTheme ? styles.lightSubtext : styles.darkSubtext
-                            ]}>
-                                To continue, start the Live Captions app.
-                            </Text>
-                            <TouchableOpacity 
-                                style={styles.modalButton}
-                                onPress={() => {
-                                    setOnboardingModalVisible(false);
-                                }}
-                            >
-                                <Text style={styles.modalButtonText}>I understand</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </Modal>
-            )}
+            <MessageModal
+                visible={onboardingModalVisible && uniqueApps.length > 0}
+                title="Start Live Captions"
+                message="To continue, start the Live Captions app."
+                buttonText="I understand"
+                onButtonPress={() => setOnboardingModalVisible(false)}
+                isDarkTheme={isDarkTheme}
+                iconName="gesture-tap"
+                iconSize={40}
+            />
         </View>
     );
 };
@@ -567,62 +510,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         top: -15,
         left: -15,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalContent: {
-        width: '85%',
-        padding: 24,
-        borderRadius: 16,
-        alignItems: 'center',
-    },
-    modalContentLight: {
-        backgroundColor: '#FFFFFF',
-    },
-    modalContentDark: {
-        backgroundColor: '#1c1c1c',
-    },
-    modalTitle: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        marginTop: 16,
-        marginBottom: 8,
-        textAlign: 'center',
-    },
-    modalDescription: {
-        fontSize: 16,
-        textAlign: 'center',
-        marginBottom: 24,
-        lineHeight: 22,
-    },
-    modalButton: {
-        backgroundColor: '#2196F3',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
-        borderRadius: 8,
-        width: '100%',
-        alignItems: 'center',
-    },
-    modalButtonText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        fontWeight: 'bold',
-    },
-    lightText: {
-        color: '#FFFFFF',
-    },
-    darkText: {
-        color: '#1a1a1a',
-    },
-    lightSubtext: {
-        color: '#e0e0e0',
-    },
-    darkSubtext: {
-        color: '#4a4a4a',
     },
 });
 
