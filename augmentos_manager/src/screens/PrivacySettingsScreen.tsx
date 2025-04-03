@@ -9,6 +9,7 @@ import {
   ScrollView,
   Animated,
   Alert,
+  AppState,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';

@@ -52,13 +52,8 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
       return;
     }
     
-    // Skip Bluetooth check for simulated glasses
-    if (glassesModelName === 'Simulated Glasses') {
-      navigation.navigate('SelectGlassesBluetoothScreen', {
-        glassesModelName: glassesModelName,
-      });
-      return;
-    }
+    // For Simulated Glasses, we still need critical permissions but can skip Bluetooth
+    const needsBluetoothPermissions = glassesModelName !== 'Simulated Glasses';
     
     // For real glasses, we need to check and request Bluetooth and Microphone permissions
     if (Platform.OS === 'android') {
@@ -81,8 +76,8 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
           }
         }
         
-        // Request Bluetooth permissions if needed
-        if (bluetoothPermissions.length > 0) {
+        // Request Bluetooth permissions if needed (only for real glasses)
+        if (needsBluetoothPermissions && bluetoothPermissions.length > 0) {
           const results = await PermissionsAndroid.requestMultiple(bluetoothPermissions);
           const allGranted = Object.values(results).every(
             (value) => value === PermissionsAndroid.RESULTS.GRANTED
@@ -134,16 +129,18 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
       }
     }
 
-    // Check that Bluetooth and Location are enabled/granted
-    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
-    if (!requirementsCheck.isReady) {
-      // Show alert about missing requirements
-      GlobalEventEmitter.emit('SHOW_BANNER', { 
-        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
-        type: 'error'
-      });
-      
-      return;
+    // Check that Bluetooth and Location are enabled/granted (skip for simulated glasses)
+    if (needsBluetoothPermissions) {
+      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
+      if (!requirementsCheck.isReady) {
+        // Show alert about missing requirements
+        GlobalEventEmitter.emit('SHOW_BANNER', { 
+          message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
+          type: 'error'
+        });
+        
+        return;
+      }
     }
 
     navigation.navigate('SelectGlassesBluetoothScreen', {
