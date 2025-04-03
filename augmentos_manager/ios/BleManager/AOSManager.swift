@@ -225,12 +225,13 @@ struct ViewState {
         
         
         if self.bypassVad {
-          let pcmConverter = PcmConverter()
-          let lc3Data = pcmConverter.encode(pcmData) as Data
-          checkSetVadStatus(speaking: true)
-          // first send out whatever's in the vadBuffer (if there is anything):
-          emptyVadBuffer()
-          self.serverComms.sendAudioChunk(lc3Data)
+//          let pcmConverter = PcmConverter()
+//          let lc3Data = pcmConverter.encode(pcmData) as Data
+//          checkSetVadStatus(speaking: true)
+//          // first send out whatever's in the vadBuffer (if there is anything):
+//          emptyVadBuffer()
+//          self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
           return
         }
         
@@ -249,8 +250,8 @@ struct ViewState {
         }
       
         // encode the pcmData as LC3:
-        let pcmConverter = PcmConverter()
-        let lc3Data = pcmConverter.encode(pcmData) as Data
+//        let pcmConverter = PcmConverter()
+//        let lc3Data = pcmConverter.encode(pcmData) as Data
         
         
         let vadState = vad.currentState()
@@ -258,11 +259,13 @@ struct ViewState {
           checkSetVadStatus(speaking: true)
           // first send out whatever's in the vadBuffer (if there is anything):
           emptyVadBuffer()
-          self.serverComms.sendAudioChunk(lc3Data)
+//          self.serverComms.sendAudioChunk(lc3Data)
+          self.serverComms.sendAudioChunk(pcmData)
         } else {
           checkSetVadStatus(speaking: false)
           // add to the vadBuffer:
-          addToVadBuffer(lc3Data)
+//          addToVadBuffer(lc3Data)
+          addToVadBuffer(pcmData)
         }
         
       }
@@ -292,7 +295,10 @@ struct ViewState {
         checkSetVadStatus(speaking: true)
         // first send out whatever's in the vadBuffer (if there is anything):
         emptyVadBuffer()
-        self.serverComms.sendAudioChunk(lc3Data)
+        let pcmConverter = PcmConverter()
+        let pcmData = pcmConverter.decode(lc3Data) as Data
+//        self.serverComms.sendAudioChunk(lc3Data)
+        self.serverComms.sendAudioChunk(pcmData)
         return
       }
         
@@ -328,11 +334,13 @@ struct ViewState {
         checkSetVadStatus(speaking: true)
         // first send out whatever's in the vadBuffer (if there is anything):
         emptyVadBuffer()
-        self.serverComms.sendAudioChunk(lc3Data)
+//        self.serverComms.sendAudioChunk(lc3Data)
+        self.serverComms.sendAudioChunk(pcmData)
       } else {
         checkSetVadStatus(speaking: false)
         // add to the vadBuffer:
-        addToVadBuffer(lc3Data)
+//        addToVadBuffer(lc3Data)
+        addToVadBuffer(pcmData)
       }
     }
     .store(in: &cancellables)
