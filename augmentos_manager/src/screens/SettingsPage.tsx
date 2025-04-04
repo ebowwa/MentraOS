@@ -9,6 +9,7 @@ import {
   ScrollView,
   Alert,
   Modal,
+  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Slider } from 'react-native-elements';
@@ -43,6 +44,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   navigation,
 }) => {
   const { status } = useStatus();
+  const [isScrolled, setIsScrolled] = useState(false);
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -198,7 +200,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     );
   };
 
-
   // Switch track colors
   const switchColors = {
     trackColor: {
@@ -228,25 +229,37 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
  // Fixed slider props to avoid warning
  const sliderProps = {
-  disabled: !status.glasses_info?.model_name ||
-           status.glasses_info?.brightness === '-' ||
-           !status.glasses_info.model_name.toLowerCase().includes('even') ||
-           isAutoBrightnessEnabled,
-  style: styles.slider,
+  disabled: !status.glasses_info?.model_name || isAutoBrightnessEnabled,
+  style: [
+    styles.slider,
+    (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledItem
+  ],
   minimumValue: 0,
   maximumValue: 100,
   step: 1,
   onSlidingComplete: (value: number) => changeBrightness(value),
   value: brightness ?? 50,
-  minimumTrackTintColor: styles.minimumTrackTintColor.color,
+  minimumTrackTintColor: !status.glasses_info?.model_name ? 'rgba(33, 150, 243, 0.4)' : styles.minimumTrackTintColor.color,
   maximumTrackTintColor: isDarkTheme
     ? styles.maximumTrackTintColorDark.color
     : styles.maximumTrackTintColorLight.color,
-  thumbTintColor: styles.thumbTintColor.color,
-  // Using inline objects instead of defaultProps
+  thumbTintColor: !status.glasses_info?.model_name ? '#e0e0e0' : styles.thumbTintColor.color,
   thumbTouchSize: { width: 40, height: 40 },
   trackStyle: { height: 5 },
-  thumbStyle: { height: 20, width: 20 }
+  thumbStyle: { 
+    height: 24, 
+    width: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  }
 };
 
   return (
@@ -273,7 +286,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </Text>
       </View>
 
-      <ScrollView style={styles.scrollViewContainer}>
+      <ScrollView 
+        style={styles.scrollViewContainer}
+        contentContainerStyle={styles.scrollViewContent}
+      >
         {/* Force Onboard Microphone */}
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
@@ -397,14 +413,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </TouchableOpacity>
 
         {/* Auto Brightness */}
-        <View style={styles.settingItem}>
+        <View style={[
+          styles.settingItem,
+          !status.glasses_info?.model_name && styles.disabledItem
+        ]}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
                 styles.label,
                 isDarkTheme ? styles.lightText : styles.darkText,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
+                !status.glasses_info?.model_name && styles.disabledText
               ]}
             >
               Auto Brightness
@@ -413,31 +431,36 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               style={[
                 styles.value,
                 isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
+                !status.glasses_info?.model_name && styles.disabledText
               ]}
             >
               Automatically adjust brightness based on ambient light conditions.
             </Text>
           </View>
           <Switch
+            disabled={!status.glasses_info?.model_name}
             value={isAutoBrightnessEnabled}
             onValueChange={toggleAutoBrightness}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
+            trackColor={{
+              false: !status.glasses_info?.model_name ? 'rgba(209, 209, 214, 0.8)' : switchColors.trackColor.false,
+              true: !status.glasses_info?.model_name ? 'rgba(33, 150, 243, 0.4)' : switchColors.trackColor.true
+            }}
+            thumbColor={!status.glasses_info?.model_name ? 'rgba(255, 255, 255, 0.8)' : switchColors.thumbColor}
+            ios_backgroundColor={!status.glasses_info?.model_name ? 'rgba(209, 209, 214, 0.8)' : switchColors.ios_backgroundColor}
           />
         </View>
 
         {/* Brightness Slider */}
-        <View style={styles.settingItem}>
+        <View style={[
+          styles.settingItem,
+          (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledItem
+        ]}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
                 styles.label,
                 isDarkTheme ? styles.lightText : styles.darkText,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name || isAutoBrightnessEnabled) &&
-                  styles.disabledItem,
+                (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledText
               ]}
             >
               Brightness
@@ -446,19 +469,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               style={[
                 styles.value,
                 isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name || isAutoBrightnessEnabled) &&
-                  styles.disabledItem,
+                (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledText
               ]}
             >
               Adjust the brightness level of your smart glasses.
             </Text>
-            <Slider
-              {...sliderProps}
-              style={[
-                styles.slider,
-                isAutoBrightnessEnabled && styles.disabledItem
-              ]}
-            />
+            <Slider {...sliderProps} />
           </View>
         </View>
 
@@ -523,7 +539,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </TouchableOpacity>
       </ScrollView>
 
-
       {/* Your app's bottom navigation bar */}
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </View>
@@ -534,50 +549,51 @@ export default SettingsPage;
 
 const styles = StyleSheet.create({
   scrollViewContainer: {
-    marginBottom: 0,
+    flex: 1,
+  },
+  scrollViewContent: {
+    paddingBottom: 80,
   },
   container: {
     flex: 1,
-    padding: -1,
-    margin: -1,
-    paddingLeft: 20,
-    paddingRight: 20,
+    backgroundColor: '#f5f5f5',
   },
   titleContainer: {
-    paddingVertical: 15,
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    marginHorizontal: -20,
-    marginTop: 0,
-    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fafafa',
+    marginTop: Platform.OS === 'ios' ? 40 : 0,
   },
   titleContainerDark: {
-    backgroundColor: '#333333',
+    backgroundColor: '#1c1c1c',
+    borderBottomColor: '#333333',
   },
   titleContainerLight: {
     backgroundColor: '#ffffff',
+    borderBottomColor: '#e0e0e0',
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
-    textAlign: 'left',
-    color: '#FFFFFF',
-    marginBottom: 5,
+    fontSize: 34,
+    fontWeight: '700',
+    color: '#000000',
+    marginBottom: 0,
   },
   darkBackground: {
     backgroundColor: '#1c1c1c',
   },
   lightBackground: {
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#f5f5f5',
   },
   redText: {
     color: '#FF0F0F',
   },
   darkText: {
-    color: 'black',
+    color: '#1c1c1c',
   },
   lightText: {
-    color: 'white',
+    color: '#ffffff',
   },
   darkSubtext: {
     color: '#666666',
@@ -595,9 +611,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 20,
-    borderBottomColor: '#333',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    backgroundColor: '#fafafa',
+    marginBottom: 1,
   },
   settingTextContainer: {
     flex: 1,
@@ -613,7 +632,10 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   disabledItem: {
-    opacity: 0.4,
+    opacity: 0.8,
+  },
+  disabledText: {
+    opacity: 0.7,
   },
   slider: {
     width: '100%',
@@ -626,9 +648,19 @@ const styles = StyleSheet.create({
   trackStyle: {
     height: 5,
   },
-  thumbStyle: {
-    height: 20,
-    width: 20,
+  thumbStyle: { 
+    height: 24, 
+    width: 24,
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   minimumTrackTintColor: {
     color: '#2196F3',
