@@ -202,6 +202,12 @@ public class SmartGlassesRepresentative {
         }
     }
 
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.updateGlassesAutoBrightness(autoBrightness);
+        }
+    }
+
     public void updateGlassesHeadUpAngle(int headUpAngle) {
         if (smartGlassesCommunicator != null) {
             smartGlassesCommunicator.updateGlassesHeadUpAngle(headUpAngle);
