@@ -16,13 +16,13 @@ node_require('react-native-permissions/scripts/setup.rb')
 platform :ios, '13.4'
 prepare_react_native_project!
 
-# ⬇️ uncomment the permissions you need
+# All required permissions must be uncommented here
 setup_permissions([
   # 'AppTrackingTransparency',
   'Bluetooth',
   'Calendars',
   # 'CalendarsWriteOnly',
-  # 'Camera',
+  'Camera',
   # 'Contacts',
   # 'FaceID',
   'LocationAccuracy',
@@ -32,7 +32,7 @@ setup_permissions([
   'Microphone',
   # 'Motion',
   'Notifications',
-  # 'PhotoLibrary',
+  'PhotoLibrary',
   # 'PhotoLibraryAddOnly',
   # 'Reminders',
   # 'Siri',

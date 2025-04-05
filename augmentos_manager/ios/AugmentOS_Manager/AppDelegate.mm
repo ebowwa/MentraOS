@@ -29,7 +29,12 @@
 //  [[ManagerCoreCommsService allocWithZone:nil] init];
 //  [EvenRealitiesG1Manager sharedInstance];
 
-  return [super application:application didFinishLaunchingWithOptions:launchOptions];
+  // Important: Call super FIRST to initialize the permission handlers properly
+  BOOL result = [super application:application didFinishLaunchingWithOptions:launchOptions];
+  
+  // Add any additional setup after permission handlers have been initialized
+  
+  return result;
 }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge

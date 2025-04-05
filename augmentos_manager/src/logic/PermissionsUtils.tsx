@@ -40,7 +40,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
   [PermissionFeatures.NOTIFICATIONS]: {
     name: 'Notification Access',
     description: 'Allow AugmentOS to forward notifications to your glasses',
-    ios: [PERMISSIONS.IOS.NOTIFICATIONS], // iOS notification permission
+    ios: [], // iOS notification permission
     android: typeof Platform.Version === 'number' && Platform.Version >= 33 ? 
       [PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS] : 
       [],

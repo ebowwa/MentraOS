@@ -20,6 +20,7 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log('Checking Bluetooth state...');
+      await BleManager.start({ showAlert: false });
       const state = await BleManager.checkState();
       console.log('Bluetooth state:', state);
       return state === 'on';
@@ -195,6 +196,7 @@ export class CoreCommunicator extends EventEmitter {
       this.parseDataFromCore(data);
     } catch (e) {
       console.error('Failed to parse JSON from core message:', e);
+      console.log(jsonString);
     }
   }
 
