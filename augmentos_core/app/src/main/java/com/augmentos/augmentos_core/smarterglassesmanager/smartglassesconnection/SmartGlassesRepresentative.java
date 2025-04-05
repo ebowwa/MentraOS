@@ -290,9 +290,12 @@ public class SmartGlassesRepresentative {
             byte[] lc3Data = L3cCpp.encodeLC3(lc3EncoderPointer, frameBytes);
 
             if (audioProcessingCallback != null) {
-                audioProcessingCallback.onAudioDataAvailable(audio_bytes);
                 audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
             }
+        }
+
+        if (audioProcessingCallback != null) {
+            audioProcessingCallback.onAudioDataAvailable(audio_bytes);
         }
 
         // Save remainder (partial frame) for next round
