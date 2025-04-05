@@ -2069,10 +2069,10 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Sent auto light brightness command => Brightness: " + brightness + ", Auto Light: " + (autoLight ? "Open" : "Close"));
 
         //send to AugmentOS core
-        if (brightness != -1) {
-            EventBus.getDefault().post(new BrightnessLevelEvent(brightness));
-        } else {
+        if (autoLight) {
             EventBus.getDefault().post(new BrightnessLevelEvent(autoLight));
+        } else {
+            EventBus.getDefault().post(new BrightnessLevelEvent(brightness));
         }
     }
 

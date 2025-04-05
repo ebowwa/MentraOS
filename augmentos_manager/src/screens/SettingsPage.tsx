@@ -110,7 +110,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const toggleAutoBrightness = async () => {
     const newVal = !isAutoBrightnessEnabled;
-    await coreCommunicator.setGlassesBrightnessMode(-1, newVal);
+    await coreCommunicator.setGlassesBrightnessMode(brightness ?? 50, newVal);
     setIsAutoBrightnessEnabled(newVal);
   };
 

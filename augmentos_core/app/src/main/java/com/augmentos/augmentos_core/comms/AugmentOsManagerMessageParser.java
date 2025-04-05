@@ -134,7 +134,7 @@ public class AugmentOsManagerMessageParser {
                     int brightnessLevel = commandObject.getJSONObject("params").getInt("brightness");
                     boolean isAutoBrightness = commandObject.getJSONObject("params").getBoolean("autoBrightness");
                     Log.d(TAG, "Brightness level: " + brightnessLevel + ", autoBrightness: " + isAutoBrightness);
-                    if (brightnessLevel == -1) {
+                    if (isAutoBrightness) {
                         callback.updateGlassesAutoBrightness(isAutoBrightness);
                     }
                     else {

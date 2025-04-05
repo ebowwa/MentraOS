@@ -347,6 +347,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 .edit()
                 .putString(this.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightnessLevel))
                 .apply();
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
+                .apply();
         } else {
             PreferenceManager.getDefaultSharedPreferences(this)
                 .edit()
@@ -388,8 +392,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         notificationSystem = new NotificationSystem(this, userId);
         calendarSystem = CalendarSystem.getInstance(this);
 
+        Log.d(TAG, "Auto Brightness___: " + PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false));
         brightnessLevel = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), "50"));
-        autoBrightness = Boolean.parseBoolean(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), "false"));
+        autoBrightness = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false);
         headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEADUP_ANGLE), "20"));
 
         contextualDashboardEnabled = getContextualDashboardEnabled();
