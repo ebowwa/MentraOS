@@ -35,13 +35,21 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
     const [glassesModelNameToPair, setGlassesModelNameToPair] = useState<string | null>(null);
     const [isOnboarding, setIsOnboarding] = useState(false);
   
-    const glassesOptions = [
-        { modelName: 'Vuzix Z100', key: 'vuzix-z100' },
-        { modelName: 'Mentra Mach1', key: 'mentra_mach1' },
-        { modelName: 'Even Realities G1', key: 'evenrealities_g1' },
-        { modelName: 'Audio Wearable', key: 'Audio Wearable' },
-        { modelName: 'Simulated Glasses', key: 'Simulated Glasses' },
-    ];
+    // Platform-specific glasses options
+    const glassesOptions = Platform.OS === 'ios' 
+        ? [
+            // iOS only supports these two options
+            { modelName: 'Even Realities G1', key: 'evenrealities_g1' },
+            { modelName: 'Simulated Glasses', key: 'Simulated Glasses' },
+          ]
+        : [
+            // Android supports all options
+            { modelName: 'Vuzix Z100', key: 'vuzix-z100' },
+            { modelName: 'Mentra Mach1', key: 'mentra_mach1' },
+            { modelName: 'Even Realities G1', key: 'evenrealities_g1' },
+            { modelName: 'Audio Wearable', key: 'Audio Wearable' },
+            { modelName: 'Simulated Glasses', key: 'Simulated Glasses' },
+          ];
 
     // Check onboarding status when component mounts
     React.useEffect(() => {

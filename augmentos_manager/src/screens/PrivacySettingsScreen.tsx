@@ -46,6 +46,7 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
   );
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
   const [calendarEnabled, setCalendarEnabled] = React.useState(false);
+  const [calendarPermissionPending, setCalendarPermissionPending] = React.useState(false);
   const [appState, setAppState] = React.useState(AppState.currentState);
 
   // Check permissions when screen loads
@@ -186,42 +187,57 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
   
   const handleToggleCalendar = async () => {
     if (!calendarEnabled) {
-      // For iOS specifically, we need to handle permission granting with special care
-      if (Platform.OS === 'ios') {
-        // Don't update UI state until after permission dialog is completed
-        const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
-        
-        // Double-check permission status after the request to be sure
-        const actualStatus = await checkFeaturePermissions(PermissionFeatures.CALENDAR);
-        
-        console.log(`Calendar permission request result: ${granted}, actual status: ${actualStatus}`);
-        
-        // Update UI based on actual permission status
-        if (actualStatus) {
+      // Immediately set pending state to prevent toggle flicker
+      setCalendarPermissionPending(true);
+      
+      try {
+        // For iOS specifically, we need to handle permission granting with special care
+        if (Platform.OS === 'ios') {
+          // Keep the switch in ON position during the request by setting it true
           setCalendarEnabled(true);
           
-          // Try to trigger calendar sync
-          try {
-            const moduleMethod = NativeModules.CalendarSync?.syncCalendarEvents;
-            if (moduleMethod) {
-              moduleMethod();
-              console.log('Explicitly triggered iOS calendar sync after permission granted');
-            } else {
-              console.log('CalendarSync native module not available');
+          // Request permission
+          const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
+          
+          // Double-check permission status after the request to be sure
+          const actualStatus = await checkFeaturePermissions(PermissionFeatures.CALENDAR);
+          
+          console.log(`Calendar permission request result: ${granted}, actual status: ${actualStatus}`);
+          
+          // Update UI based on actual permission status
+          if (actualStatus) {
+            // Already set to true, but ensure it stays that way
+            setCalendarEnabled(true);
+            
+            // Try to trigger calendar sync
+            try {
+              const moduleMethod = NativeModules.CalendarSync?.syncCalendarEvents;
+              if (moduleMethod) {
+                moduleMethod();
+                console.log('Explicitly triggered iOS calendar sync after permission granted');
+              } else {
+                console.log('CalendarSync native module not available');
+              }
+            } catch (error) {
+              console.error('Failed to trigger calendar sync:', error);
             }
-          } catch (error) {
-            console.error('Failed to trigger calendar sync:', error);
+          } else {
+            // The permission was denied, update UI to reflect this
+            setCalendarEnabled(false);
           }
         } else {
-          // The permission was denied, ensure UI reflects this
-          setCalendarEnabled(false);
+          // For Android, keep original flow
+          const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
+          if (granted) {
+            setCalendarEnabled(true);
+          }
         }
-      } else {
-        // For Android, keep original flow
-        const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
-        if (granted) {
-          setCalendarEnabled(true);
-        }
+      } catch (error) {
+        console.error('Error requesting calendar permissions:', error);
+        setCalendarEnabled(false);
+      } finally {
+        // Always clear the pending state
+        setCalendarPermissionPending(false);
       }
     } else {
       // We can't revoke the permission, but we can provide info
@@ -321,6 +337,7 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
           <Switch
             value={calendarEnabled}
             onValueChange={handleToggleCalendar}
+            disabled={calendarPermissionPending}
             trackColor={switchColors.trackColor}
             thumbColor={switchColors.thumbColor}
             ios_backgroundColor={switchColors.ios_backgroundColor}
