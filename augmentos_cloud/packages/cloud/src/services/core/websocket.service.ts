@@ -736,6 +736,10 @@ export class WebSocketService {
     }
     ws.on('message', async (message: Buffer | string, isBinary: boolean) => {
       try {
+
+        // console.log("@@@@@: Received message from glasses:", message);
+        // console.log("🔥🔥🔥: isBinary:", isBinary);
+
         // Handle binary messages (typically audio)
         if (Buffer.isBuffer(message) && isBinary) {
           const _buffer = message as Buffer;
@@ -754,7 +758,7 @@ export class WebSocketService {
             sequenceNumber,
             timestamp: now,
             data: arrayBuf,
-            isLC3: true, // Assuming LC3 based on global IS_LC3 setting
+            isLC3: false, // Assuming LC3 based on global IS_LC3 setting
             receivedAt: now
           };
 
@@ -1160,6 +1164,7 @@ export class WebSocketService {
                   `🎤 Previous: `, previousLanguageSubscriptions,
                   `🎤 New: `, newLanguageSubscriptions
                 );
+                // console.log("🔥🔥🔥: newLanguageSubscriptions:", newLanguageSubscriptions);
                 // Update transcription streams with new language subscriptions
                 transcriptionService.updateTranscriptionStreams(
                   userSession as any, // Cast to ExtendedUserSession
