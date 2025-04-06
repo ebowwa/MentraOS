@@ -537,7 +537,6 @@ export class WebSocketService {
         (appName) => appName !== packageName
       );
 
-      
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
         await appService.triggerStopWebhook(

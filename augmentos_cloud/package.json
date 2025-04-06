@@ -17,14 +17,6 @@
     "dev:clean": "docker-compose -f docker-compose.dev.yml -p dev down -v && docker system prune -f",
 
     "ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud 8002",
-    "dev:ngrok:isaiah": "ngrok http --url=isaiah.augmentos.cloud host.docker.internal:8002",
-    "dev:ngrok:appstore": "ngrok http --domain=appstore.augmentos.cloud host.docker.internal:8042",
-
-    "staging": "docker-compose -f docker-compose.staging.yml -p staging up -d",
-    "staging:stop": "docker-compose -f docker-compose.staging.yml -p staging down",
-    "staging:deploy": "bun run staging:stop && bun run staging",
-    "staging:setup-network": "docker network create augmentos-network-staging",
-    "staging:logs": "docker-compose -f docker-compose.staging.yml -p staging logs -f --tail=50",
 
     "prod": "docker-compose -f docker-compose.yml -p prod up -d",
     "prod:stop": "docker-compose -f docker-compose.yml -p prod down",
@@ -33,16 +25,7 @@
 
     "logs": "docker-compose -f docker-compose.dev.yml -p dev logs -f --tail=0",
     "logs:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud --tail=0",
-    "logs:live-captions": "docker-compose -f docker-compose.dev.yml -p dev logs -f live-captions --tail=50",
-    "logs:merge": "docker-compose -f docker-compose.dev.yml -p dev logs -f merge --tail=50",
-    "logs:service": "docker-compose -f docker-compose.dev.yml -p dev logs -f",
-    
-    "merge:dev": "docker-compose -f docker-compose.dev.yml -p dev up merge",
-    "merge:dev:detached": "docker-compose -f docker-compose.dev.yml -p dev up -d merge",
-    "merge:dev:build": "docker-compose -f docker-compose.dev.yml -p dev up -d --build merge",
-    "merge:prod": "docker-compose -f docker-compose.yml -p prod up -d merge",
-    "merge:prod:build": "docker-compose -f docker-compose.yml -p prod up -d --build merge",
-    
+
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
     "test:display": "bun run packages/cloud/src/tests/display-manager.test.ts"
 },

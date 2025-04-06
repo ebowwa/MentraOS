@@ -13,4 +13,7 @@ WORKDIR /app
 # RUN groupadd -r bunuser && useradd -r -g bunuser bunuser
 # USER bunuser
 
+# Install dependencies
+CMD ["bun", "install"]
+
 CMD ["echo", "Ready to run services"]
