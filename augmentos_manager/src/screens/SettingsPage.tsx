@@ -513,7 +513,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
         {/* Forget Glasses */}
         <TouchableOpacity
-          style={styles.settingItem}
+          style={[
+            styles.settingItem,
+            (!status.core_info.puck_connected || status.core_info.default_wearable === '') && styles.disabledItem
+          ]}
           disabled={!status.core_info.puck_connected || status.core_info.default_wearable === ''}
           onPress={confirmForgetGlasses}
         >
@@ -522,8 +525,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               style={[
                 styles.label,
                 styles.redText,
-                (!status.core_info.puck_connected || status.core_info.default_wearable === '') &&
-                  styles.disabledItem,
+                (!status.core_info.puck_connected || status.core_info.default_wearable === '') && styles.disabledText
               ]}
             >
               Forget Glasses
