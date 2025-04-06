@@ -24,6 +24,7 @@ import { EvenRealitiesG1PairingGuide, VuzixZ100PairingGuide } from '../component
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 import { useSearchResults } from '../providers/SearchResultsContext';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import showAlert from '../utils/AlertUtils';
 // import NavigationBar from '../components/NavigationBar'; // if needed
 
 interface SelectGlassesBluetoothScreenProps {
@@ -91,7 +92,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
       console.log("SEARCH RESULTS:")
       console.log(JSON.stringify(searchResults));
       if (searchResultsRef.current.length === 0) {
-        Alert.alert(
+        showAlert(
           "No " + modelName + " found",
           "Retry search?",
           [
@@ -154,7 +155,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
       
       if (!hasLocationPermission) {
         // Inform the user that location permission is required for Bluetooth scanning
-        Alert.alert(
+        showAlert(
           'Location Permission Required',
           'Location permission is required to scan for and connect to smart glasses on Android. This is a requirement of the Android Bluetooth system.',
           [{ text: 'OK' }]
@@ -169,7 +170,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
     // Only proceed if permission is granted
     if (!hasMicPermission) {
       // Inform the user that microphone permission is required
-      Alert.alert(
+      showAlert(
         'Microphone Permission Required',
         'Microphone permission is required to connect to smart glasses. Voice control and audio features are essential for the AR experience.',
         [{ text: 'OK' }]

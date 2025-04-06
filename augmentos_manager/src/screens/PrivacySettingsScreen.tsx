@@ -24,6 +24,7 @@ import { supabase } from '../supabaseClient';
 import { requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions, PermissionRequestResult } from '../logic/PermissionsUtils';
 import { checkNotificationAccessSpecialPermission, checkAndRequestNotificationAccessSpecialPermission } from "../utils/NotificationServiceUtils";
 import { NotificationService } from '../logic/NotificationServiceUtils';
+import showAlert from '../utils/AlertUtils';
 
 interface PrivacySettingsScreenProps {
   isDarkTheme: boolean;
@@ -128,7 +129,7 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
       if (!hasMicPermission) {
         // Permission denied, don't toggle the setting
         console.log('Microphone permission denied, cannot enable onboard mic');
-        Alert.alert(
+        showAlert(
           'Microphone Permission Required',
           'Microphone permission is required to use the onboard microphone feature. Please grant microphone permission in settings.',
           [{ text: 'OK' }]
@@ -252,7 +253,7 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
       }
     } else {
       // We can't revoke the permission, but we can provide info
-      Alert.alert(
+      showAlert(
         'Permission Management',
         'To revoke calendar permission, please go to your device settings and modify app permissions.',
         [{ text: 'OK' }]

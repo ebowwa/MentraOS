@@ -551,6 +551,16 @@ export class CoreCommunicator extends EventEmitter {
       command: 'delete_auth_secret_key',
     });
   }
+  
+  async stopService() {
+    // Clean up any active listeners
+    this.cleanup();
+    
+    // Stop the service if it's running
+    if (CoreCommsService && typeof CoreCommsService.stopService === 'function') {
+      CoreCommsService.stopService();
+    }
+  }
 }
 
 // Create and export the singleton instance

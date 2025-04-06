@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  Alert,
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,6 +22,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import showAlert from '../utils/AlertUtils';
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -75,10 +75,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       if (!hasMicPermission) {
         // Permission denied, don't toggle the setting
         console.log('Microphone permission denied, cannot enable phone microphone');
-        Alert.alert(
+        showAlert(
           'Microphone Permission Required',
           'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
-          [{ text: 'OK' }]
+          [{ text: 'OK' }],
+          {
+            isDarkTheme,
+            iconName: 'microphone',
+            iconColor: '#2196F3'
+          }
         );
         return;
       }
@@ -102,14 +107,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const confirmForgetGlasses = () => {
-    Alert.alert(
+    showAlert(
       'Forget Glasses',
       'Are you sure you want to forget your glasses?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Yes', onPress: forgetGlasses },
       ],
-      { cancelable: false },
+      { 
+        cancelable: false,
+        isDarkTheme
+      },
     );
   };
 
@@ -176,14 +184,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const confirmSignOut = () => {
-    Alert.alert(
+    showAlert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Yes', onPress: handleSignOut },
       ],
-      { cancelable: false },
+      { 
+        cancelable: false,
+        isDarkTheme,
+      },
     );
   };
 

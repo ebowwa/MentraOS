@@ -10,7 +10,6 @@ interface Glasses {
   dashboard_height: number | null; // 0-8
   dashboard_distance: number | null; // ???
   dashboard_x_offset: number | null; // 0-1
-  auto_brightness_enabled: boolean;
 }
 
 interface WifiConnection {
@@ -122,7 +121,6 @@ export class AugmentOSParser {
       brightness: 87,
       auto_brightness: false,
       headUp_angle: 20,
-      auto_brightness_enabled: false,
     },
     wifi: { is_connected: true, ssid: 'TP-LINK69', signal_strength: 100 },
     gsm: { is_connected: false, carrier: '', signal_strength: 0 },
@@ -260,12 +258,11 @@ export class AugmentOSParser {
             battery_life: glassesInfo.battery_life,
             is_searching: glassesInfo.is_searching ?? false,
             brightness: glassesInfo.brightness,
-            auto_brightness: glassesInfo.auto_brightness,
+            auto_brightness: glassesInfo.auto_brightness ?? false,
             headUp_angle: glassesInfo.headUp_angle,
             dashboard_height: glassesInfo.dashboard_height,
             dashboard_distance: glassesInfo.dashboard_distance,
             dashboard_x_offset: glassesInfo.dashboard_x_offset,
-            auto_brightness_enabled: status.connected_glasses.auto_brightness_enabled ?? false,
           }
           : null,
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,

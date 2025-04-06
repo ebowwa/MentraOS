@@ -19,6 +19,7 @@ import GoogleIcon from '../icons/GoogleIcon';
 import AppleIcon from '../icons/AppleIcon';
 import { supabase } from '../supabaseClient';
 import { Linking } from 'react-native';
+import showAlert from '../utils/AlertUtils';
 
 interface LoginScreenProps {
   navigation: any;
@@ -132,7 +133,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       // 2) If there's an error, handle it
       if (error) {
         console.error('Supabase Google sign-in error:', error);
-        Alert.alert('Authentication Error', error.message);
+        showAlert('Authentication Error', error.message);
         return;
       }
 
@@ -154,7 +155,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     } catch (err) {
       console.error('Google sign in failed:', err);
-      Alert.alert('Authentication Error', 'Google sign in failed. Please try again.');
+      showAlert('Authentication Error', 'Google sign in failed. Please try again.');
     }
 
     console.log('signInWithOAuth call finished');
@@ -175,7 +176,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       // If there's an error, handle it
       if (error) {
         console.error('Supabase Apple sign-in error:', error);
-        Alert.alert('Authentication Error', error.message);
+        showAlert('Authentication Error', error.message);
         return;
       }
 
@@ -194,7 +195,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
     } catch (err) {
       console.error('Apple sign in failed:', err);
-      Alert.alert('Authentication Error', 'Apple sign in failed. Please try again.');
+      showAlert('Authentication Error', 'Apple sign in failed. Please try again.');
     }
 
     console.log('signInWithOAuth for Apple finished');
@@ -219,16 +220,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       });
 
       if (error) {
-        Alert.alert("Error", error.message);
+        showAlert("Error", error.message);
       } else if (!data.session) {
-        Alert.alert("Please check your inbox for email verification!");
+        showAlert("Success!", "Please check your inbox for email verification!");
       } else {
         console.log("Sign-up successful:", data);
         navigation.replace("SplashScreen");
       }
     } catch (err) {
       console.error("Error during sign-up:", err);
-      Alert.alert("Error", "Something went wrong. Please try again.");
+      showAlert("Error", "Something went wrong. Please try again.");
     } finally {
       setIsFormLoading(false);
     }
@@ -243,7 +244,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     });
 
     if (error) {
-      Alert.alert(error.message);
+      showAlert("Error", error.message);
       // Handle sign-in error
     } else {
       console.log('Sign-in successful:', data);
@@ -257,7 +258,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       if (backPressCount === 0) {
         setBackPressCount(1);
         setTimeout(() => setBackPressCount(0), 2000);
-        Alert.alert('Press back again to exit');
+        showAlert("Leaving already?", 'Press back again to exit');
         return true;
       } else {
         BackHandler.exitApp();

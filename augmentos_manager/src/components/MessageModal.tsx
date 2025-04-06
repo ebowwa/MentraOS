@@ -33,7 +33,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
   buttons = [{ text: 'I understand' }],
   onDismiss,
   isDarkTheme = false,
-  iconName = 'information-outline',
+  iconName,
   iconSize = 40,
   iconColor,
 }) => {

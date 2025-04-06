@@ -1,4 +1,5 @@
 import { Alert, NativeModules, Platform } from 'react-native';
+import showAlert from './AlertUtils';
 
 const { NotificationAccess } = NativeModules;
 
@@ -18,7 +19,7 @@ export async function checkAndRequestNotificationAccessSpecialPermission() {
   try {
     const hasAccess = await NotificationAccess.hasNotificationAccess();
     if (!hasAccess) {
-      Alert.alert(
+      showAlert(
         'Enable Notification Access',
         'AugmentOS needs permission to read your phone notifications to display them on your smart glasses.\n\n' +
         'On the next screen:\n' +
@@ -26,6 +27,10 @@ export async function checkAndRequestNotificationAccessSpecialPermission() {
         '2. Toggle the switch to ON\n' +
         '3. Tap ALLOW when prompted',
         [
+          {
+            text: 'Later',
+            style: 'cancel',
+          },
           {
             text: 'Go to Settings',
             onPress: () => {
@@ -35,18 +40,14 @@ export async function checkAndRequestNotificationAccessSpecialPermission() {
                 })
                 .catch((err: any) => {
                   console.error('Error opening notification settings:', err);
-                  Alert.alert(
+                  showAlert(
                     'Error',
                     'Could not open notification settings. Please enable notification access manually in your device settings.',
                     [{ text: 'OK' }]
                   );
                 });
             },
-          },
-          {
-            text: 'Later',
-            style: 'cancel',
-          },
+          }
         ],
         { cancelable: true },
       );
@@ -57,7 +58,7 @@ export async function checkAndRequestNotificationAccessSpecialPermission() {
     return false;
   } catch (error) {
     console.error('Failed to check notification listener permission:', error);
-    Alert.alert(
+    showAlert(
       'Error',
       'There was a problem checking notification permissions. Please try again later.',
       [{ text: 'OK' }]

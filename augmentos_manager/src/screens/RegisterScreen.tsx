@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView, KeyboardAvoidingView, Platform, ImageBackground } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
+import showAlert from '../utils/AlertUtils';
 
 const RegisterScreen: React.FC = () => {
   const [fullName, setFullName] = useState<string>('');
@@ -12,15 +13,15 @@ const RegisterScreen: React.FC = () => {
 
   const handleRegister = () => {
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      showAlert('Error', 'Passwords do not match');
       return;
     }
     if (!fullName || !email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
     // Handle registration logic here
-    Alert.alert('Success', 'You have successfully registered!', [
+    showAlert('Success', 'You have successfully registered!', [
       {
         text: 'OK',
         onPress: () => navigation.navigate('Home' as never)      },
