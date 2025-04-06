@@ -6,6 +6,9 @@ import { isAugmentOsCoreInstalled, isLocationServicesEnabled as checkLocationSer
 import { check, PERMISSIONS, RESULTS } from 'react-native-permissions';
 import BleManager from 'react-native-ble-manager';
 
+// For checking if location services are enabled
+const { ServiceStarter } = NativeModules;
+
 const { CoreCommsService } = NativeModules;
 const eventEmitter = new NativeEventEmitter(CoreCommsService);
 
@@ -87,42 +90,6 @@ export class CoreCommunicator extends EventEmitter {
         return {
           isReady: false,
           message: 'Location permission is required to scan for glasses on Android. Please grant location permission and try again.'
-        };
-      }
-      
-      // Check phone state permission
-      try {
-        const result = await check(PERMISSIONS.ANDROID.READ_PHONE_STATE);
-        console.log('Phone state permission check:', result);
-        if (result !== RESULTS.GRANTED) {
-          console.log('Phone state permission missing, showing error');
-          return {
-            isReady: false,
-            message: 'Phone state permission is required for call detection. Please grant phone state permission and try again.'
-          };
-        }
-        
-        // Additional phone permissions check for Android 11+
-        if (typeof Platform.Version === 'number' && Platform.Version >= 30) {
-          try {
-            // Check for READ_PRECISE_PHONE_STATE permission for newer Android versions
-            // This is only available to system apps, so we may need to handle failure gracefully
-            const callLogResult = await check(PERMISSIONS.ANDROID.READ_CALL_LOG);
-            console.log('Call log permission check:', callLogResult);
-            if (callLogResult !== RESULTS.GRANTED) {
-              console.log('Call log permission missing, this might cause issues with call detection');
-              // We don't fail here, but just log a warning
-            }
-          } catch (err) {
-            console.warn('Error checking additional phone permissions:', err);
-            // Continue anyway, as this may not be critical
-          }
-        }
-      } catch (err) {
-        console.error('Error checking phone state permission:', err);
-        return {
-          isReady: false,
-          message: 'Error checking phone permissions. Please check your permission settings and try again.'
         };
       }
       
@@ -485,13 +452,12 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
-
-  async setGlassesBrightnessMode(brightness: number, autoLight: boolean) {
+  async setGlassesBrightnessMode(brightness: number, autoBrightness: boolean) {
     return await this.sendData({
       command: 'update_glasses_brightness',
       params: {
         brightness: brightness,
-        autoLight: autoLight,
+        autoBrightness: autoBrightness,
       },
     });
   }
@@ -584,14 +550,6 @@ export class CoreCommunicator extends EventEmitter {
     return await this.sendData({
       command: 'delete_auth_secret_key',
     });
-  }
-
-  async startService() {
-    CoreCommsService.startService();
-  }
-
-  async stopService() {
-    CoreCommsService.stopService();
   }
 }
 

@@ -179,7 +179,12 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void updateGlassesBrightness(int brightness, boolean autoLight) {
+    public void updateGlassesBrightness(int brightness) {
+        // TODO: Implement this method
+    }
+
+    @Override
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
         // TODO: Implement this method
     }
 

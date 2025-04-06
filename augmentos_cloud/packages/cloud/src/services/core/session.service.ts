@@ -21,9 +21,10 @@ import { Logger } from 'winston';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
 const LOG_AUDIO = false;
-const PROCESS_AUDIO = true;
 const DEBUG_AUDIO = false;
-const IS_LC3 = true;
+export const IS_LC3 = false;
+
+console.log("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
 
 // --- Interfaces ---
 export interface SequencedAudioChunk {
@@ -248,58 +249,138 @@ export class SessionService {
     }
   }
 
-  async handleAudioData(
-    userSession: ExtendedUserSession,
-    audioData: ArrayBufferLike | any,
-    isLC3 = IS_LC3,
-    sequenceNumber?: number
-  ): Promise<ArrayBuffer | void> {
+  // Updated handleAudioData method with improved LC3 handling
+  async handleAudioData(userSession: ExtendedUserSession, audioData: ArrayBuffer | any, isLC3 = IS_LC3): Promise<ArrayBuffer | void> {
+    // Update the last audio timestamp
     userSession.lastAudioTimestamp = Date.now();
 
-    if (LOG_AUDIO && sequenceNumber !== undefined) {
-      userSession.logger.debug(`Processing audio chunk ${sequenceNumber}`);
-    }
+    // If not transcribing, just ignore the audio
+    // if (!userSession.isTranscribing) {
+    //   if (LOG_AUDIO) console.log('🔇 Skipping audio while transcription is paused');
+    //   return;
+    // }
 
+    // Lazy initialize the audio writer if it doesn't exist
     if (DEBUG_AUDIO && !userSession.audioWriter) {
       userSession.audioWriter = new AudioWriter(userSession.userId);
     }
+
+    // Write the raw LC3 audio if applicable
     if (DEBUG_AUDIO && isLC3 && audioData) {
       await userSession.audioWriter?.writeLC3(audioData);
     }
 
+    // Process LC3 first if needed
     let processedAudioData = audioData;
     if (isLC3 && userSession.lc3Service) {
       try {
-        processedAudioData = await userSession.lc3Service.decodeAudioChunk(audioData, sequenceNumber);
+        // The improved LC3Service handles null checks internally
+        processedAudioData = await userSession.lc3Service.decodeAudioChunk(audioData);
+
         if (!processedAudioData) {
-          if (LOG_AUDIO) userSession.logger.warn(`⚠️ LC3 decode returned null, sequence ${sequenceNumber}`);
-          return; // Return void if null
+          if (LOG_AUDIO) userSession.logger.warn(`⚠️ LC3 decode returned null for session ${userSession.sessionId}`);
+          return; // Skip this chunk
         }
-        if (DEBUG_AUDIO && processedAudioData) await userSession.audioWriter?.writePCM(processedAudioData);
+
+        if (DEBUG_AUDIO) {
+          // Write the decoded PCM audio
+          await userSession.audioWriter?.writePCM(processedAudioData);
+        }
       } catch (error) {
-        userSession.logger.error(`❌ Error decoding LC3 audio, sequence ${sequenceNumber}:`, error);
-        // LC3 reinitialization logic could go here
-        return; // Return void on error
+        userSession.logger.error(`❌ Error decoding LC3 audio for session ${userSession.sessionId}:`, error);
+
+        // If there was an error with the LC3 service, try to reinitialize it
+        if (userSession.lc3Service) {
+          userSession.logger.warn(`⚠️ Attempting to reinitialize LC3 service for session ${userSession.sessionId}`);
+          try {
+            // Clean up existing service
+            userSession.lc3Service.cleanup();
+
+            // Create a new service
+            const newLc3Service = createLC3Service(userSession.sessionId);
+            await newLc3Service.initialize();
+            userSession.lc3Service = newLc3Service;
+            userSession.logger.info(`✅ Successfully reinitialized LC3 service for session ${userSession.sessionId}`);
+          } catch (reinitError) {
+            userSession.logger.error(`❌ Failed to reinitialize LC3 service:`, reinitError);
+          }
+        }
+
+        return; // Skip this chunk after an error
       }
-    } else if (processedAudioData && DEBUG_AUDIO) {
-      await userSession.audioWriter?.writePCM(processedAudioData);
+    } else if (processedAudioData) {
+      if (DEBUG_AUDIO) {
+        // If it's not LC3 or doesn't need decoding, still write it as PCM
+        await userSession.audioWriter?.writePCM(processedAudioData);
+      }
     }
 
-    if (processedAudioData) {
-      transcriptionService.feedAudioToTranscriptionStreams(userSession, processedAudioData);
-      // Ensure we return ArrayBuffer, not ArrayBufferLike
-      if (processedAudioData instanceof ArrayBuffer) {
-        return processedAudioData;
-      } else if (processedAudioData.buffer instanceof ArrayBuffer) {
-        // Handle cases like Node.js Buffer or TypedArrays
-        return processedAudioData.buffer.slice(processedAudioData.byteOffset, processedAudioData.byteOffset + processedAudioData.byteLength);
-      } else {
-        userSession.logger.error('Processed audio data is not an ArrayBuffer or convertible.');
-        return; // Return void if conversion fails
-      }
-    }
-    return; // Return void if no processed data
+    transcriptionService.feedAudioToTranscriptionStreams(userSession, processedAudioData);
+    return processedAudioData;
   }
+
+
+  // async handleAudioData(
+  //   userSession: ExtendedUserSession,
+  //   audioData: ArrayBufferLike | any,
+  //   isLC3 = IS_LC3,
+  //   sequenceNumber?: number
+  // ): Promise<ArrayBuffer | void> {
+  //   userSession.lastAudioTimestamp = Date.now();
+
+  //   if (LOG_AUDIO && sequenceNumber !== undefined) {
+  //     userSession.logger.debug(`Processing audio chunk ${sequenceNumber}`);
+  //   }
+
+  //   if (DEBUG_AUDIO && !userSession.audioWriter) {
+  //     userSession.audioWriter = new AudioWriter(userSession.userId);
+  //   }
+  //   // if (DEBUG_AUDIO && isLC3 && audioData) {
+  //   //   await userSession.audioWriter?.writeLC3(audioData);
+  //   // }
+
+  //   let processedAudioData = audioData;
+  //   // if (isLC3 && userSession.lc3Service) {
+  //   //   try {
+  //   //     processedAudioData = await userSession.lc3Service.decodeAudioChunk(audioData, sequenceNumber);
+  //   //     if (!processedAudioData) {
+  //   //       if (LOG_AUDIO) userSession.logger.warn(`⚠️ LC3 decode returned null, sequence ${sequenceNumber}`);
+  //   //       return; // Return void if null
+  //   //     }
+  //   //     if (DEBUG_AUDIO && processedAudioData) await userSession.audioWriter?.writePCM(processedAudioData);
+  //   //   } catch (error) {
+  //   //     userSession.logger.error(`❌ Error decoding LC3 audio, sequence ${sequenceNumber}:`, error);
+  //   //     // LC3 reinitialization logic could go here
+  //   //     return; // Return void on error
+  //   //   }
+  //   // } else if (processedAudioData && DEBUG_AUDIO) {
+  //     // await userSession.audioWriter?.writePCM(processedAudioData);
+  //   // }
+
+  //   try {
+  //     if (DEBUG_AUDIO && processedAudioData) {
+  //       await userSession.audioWriter?.writePCM(processedAudioData);
+  //     }
+  //   }
+  //   catch (error) {
+  //     userSession.logger.error(`❌ Error writing audio data:`, error);
+  //   }
+
+  //   if (processedAudioData) {
+  //     transcriptionService.feedAudioToTranscriptionStreams(userSession, processedAudioData);
+  //     // Ensure we return ArrayBuffer, not ArrayBufferLike
+  //     if (processedAudioData instanceof ArrayBuffer) {
+  //       return processedAudioData;
+  //     } else if (processedAudioData.buffer instanceof ArrayBuffer) {
+  //       // Handle cases like Node.js Buffer or TypedArrays
+  //       return processedAudioData.buffer.slice(processedAudioData.byteOffset, processedAudioData.byteOffset + processedAudioData.byteLength);
+  //     } else {
+  //       userSession.logger.error('Processed audio data is not an ArrayBuffer or convertible.');
+  //       return; // Return void if conversion fails
+  //     }
+  //   }
+  //   return; // Return void if no processed data
+  // }
 
   endSession(userSession: ExtendedUserSession): void {
     if (!userSession) return;

@@ -222,9 +222,15 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
     //            && comm.getDevice().equals(device);
     //}
 
-    public void updateGlassesBrightness(int brightness, boolean autoLight) {
+    public void updateGlassesBrightness(int brightness) {
         if (smartGlassesCommunicator != null) {
-            smartGlassesCommunicator.updateGlassesBrightness(brightness, autoLight);
+            smartGlassesCommunicator.updateGlassesBrightness(brightness);
+        }
+    }
+
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        if (smartGlassesCommunicator != null) {
+            smartGlassesCommunicator.updateGlassesAutoBrightness(autoBrightness);
         }
     }
 
@@ -316,9 +322,12 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             byte[] lc3Data = L3cCpp.encodeLC3(lc3EncoderPointer, frameBytes);
 
             if (audioProcessingCallback != null) {
-                audioProcessingCallback.onAudioDataAvailable(audio_bytes);
                 audioProcessingCallback.onLC3AudioDataAvailable(lc3Data);
             }
+        }
+
+        if (audioProcessingCallback != null) {
+            audioProcessingCallback.onAudioDataAvailable(audio_bytes);
         }
 
         // Save remainder (partial frame) for next round

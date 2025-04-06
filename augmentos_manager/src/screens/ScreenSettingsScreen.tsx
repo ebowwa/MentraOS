@@ -40,35 +40,8 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null);
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
-    status.glasses_info?.auto_brightness
+    status.glasses_info?.auto_brightness_enabled
   );
-
-  // -- Handlers --
-  const changeBrightness = async (newBrightness: number) => {
-    if (!status.glasses_info) {
-      Alert.alert(
-        'Glasses not connected',
-        'Please connect your smart glasses first.',
-      );
-      return;
-    }
-
-    if (newBrightness == null) {
-      return;
-    }
-
-    if (status.glasses_info.brightness === '-') {
-      return;
-    } // or handle accordingly
-    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
-    setBrightness(newBrightness);
-  };
-
-  const toggleAutoBrightness = async () => {
-    const newVal = !isAutoBrightnessEnabled;
-    await coreCommunicator.setGlassesBrightnessMode(50, true);
-    setIsAutoBrightnessEnabled(newVal);
-  };
 
   // -- Effects --
   useEffect(() => {
@@ -78,6 +51,36 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
       }
     }
   }, [status.glasses_info?.brightness, status.glasses_info]);
+
+  useEffect(() => {
+    if (status.glasses_info) {
+      if (status.glasses_info?.auto_brightness_enabled != null) {
+        setIsAutoBrightnessEnabled(status.glasses_info.auto_brightness_enabled);
+      }
+    }
+  }, [status.glasses_info?.auto_brightness_enabled, status.glasses_info]);
+
+  // -- Handlers --
+  const changeBrightness = async (newBrightness: number) => {
+    if (!status.glasses_info) {
+      Alert.alert('Glasses not connected', 'Please connect your smart glasses first.');
+      return;
+    }
+
+    if (newBrightness == null) {
+        return;
+    }
+
+    if (status.glasses_info.brightness === '-') {return;} // or handle accordingly
+    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
+    setBrightness(newBrightness);
+  };
+
+  const toggleAutoBrightness = async () => {
+    const newVal = !isAutoBrightnessEnabled;
+    await coreCommunicator.setGlassesBrightnessMode(brightness ?? 50, newVal);
+    setIsAutoBrightnessEnabled(newVal);
+  };
 
   // Switch track colors
   const switchColors = {

@@ -257,21 +257,40 @@ router.post('/:tpaName', async (req, res) => {
 
     logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
 
-    const matchingApp = Object.values(systemApps).find(app =>
-      app.packageName.endsWith(tpaName)
-    );
-
-    if (matchingApp) {
-      const appEndpoint = `http://${matchingApp.host}/settings`;
-      try {
-        // Add userIdForSettings to the payload that the captions app expects
-        const response = await axios.post(appEndpoint, {
-          userIdForSettings: userId,
-          settings: updatedSettings
-        });
-        logger.info(`Called app endpoint at ${appEndpoint} with response:`, response.data);
-      } catch (err) {
-        logger.error(`Error calling app endpoint at ${appEndpoint}:`, err);
+    // Get the app to access its properties
+    const app = await appService.getApp(tpaName);
+    
+    if (app) {
+      let appEndpoint;
+      
+      // Check if it's a system app first
+      if (app.isSystemApp) {
+        // For system apps, use the internal host approach
+        const matchingApp = Object.values(systemApps).find(sysApp => 
+          sysApp.packageName === tpaName
+        );
+        
+        if (matchingApp && matchingApp.host) {
+          appEndpoint = `http://${matchingApp.host}/settings`;
+        }
+      } 
+      
+      // If not a system app or system app info not found, use publicUrl
+      if (!appEndpoint && app.publicUrl) {
+        appEndpoint = `${app.publicUrl}/settings`;
+      }
+      
+      // Send settings update if we have an endpoint
+      if (appEndpoint) {
+        try {
+          const response = await axios.post(appEndpoint, {
+            userIdForSettings: userId,
+            settings: updatedSettings
+          });
+          logger.info(`Called app endpoint at ${appEndpoint} with response:`, response.data);
+        } catch (err) {
+          logger.error(`Error calling app endpoint at ${appEndpoint}:`, err);
+        }
       }
     }
 

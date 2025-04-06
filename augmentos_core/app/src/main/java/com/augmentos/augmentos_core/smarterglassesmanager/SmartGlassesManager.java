@@ -432,9 +432,15 @@ public class SmartGlassesManager {
         return smartGlassesRepresentative.smartGlassesDevice.glassesOs;
     }
 
-    public void updateGlassesBrightness(int brightness, boolean autoLight) {
+    public void updateGlassesBrightness(int brightness) {
         if (smartGlassesRepresentative != null) {
-            smartGlassesRepresentative.updateGlassesBrightness(brightness, autoLight);
+            smartGlassesRepresentative.updateGlassesBrightness(brightness);
+        }
+    }
+
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        if (smartGlassesRepresentative != null) {
+            smartGlassesRepresentative.updateGlassesAutoBrightness(autoBrightness);
         }
     }
 

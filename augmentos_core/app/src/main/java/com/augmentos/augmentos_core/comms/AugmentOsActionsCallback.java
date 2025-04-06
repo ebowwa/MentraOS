@@ -26,6 +26,7 @@ public interface AugmentOsActionsCallback {
     void deleteAuthSecretKey();
     void updateAppSettings(String targetApp, JSONObject settings);
     void requestAppInfo(String packageNameToGetDetails);
-    void updateGlassesBrightness(int brightness, boolean brightnessAuto);
+    void updateGlassesBrightness(int brightness);
+    void updateGlassesAutoBrightness(boolean autoBrightness);
     void updateGlassesHeadUpAngle(int headUpAngle);
 }

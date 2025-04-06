@@ -6,8 +6,9 @@ export class TranscriptProcessor {
   private lastUserTranscript: string;
   private finalTranscriptHistory: string[]; // Array to store history of final transcripts
   private maxFinalTranscripts: number; // Max number of final transcripts to keep
-  
-  constructor(maxCharsPerLine: number, maxLines: number, maxFinalTranscripts: number = 3) {
+  private isChinese: boolean;
+
+  constructor(maxCharsPerLine: number, maxLines: number, maxFinalTranscripts: number = 3, isChinese: boolean = false) {
     this.maxCharsPerLine = maxCharsPerLine;
     this.maxLines = maxLines;
     this.lastUserTranscript = "";
@@ -15,6 +16,7 @@ export class TranscriptProcessor {
     this.partialText = "";
     this.finalTranscriptHistory = []; // Initialize empty history
     this.maxFinalTranscripts = maxFinalTranscripts; // Default to 3 if not specified
+    this.isChinese = isChinese;
   }
 
   public processString(newText: string | null, isFinal: boolean): string {
@@ -171,12 +173,14 @@ export class TranscriptProcessor {
       } else {
         let splitIndex = maxLineLength;
         // move splitIndex left until we find a space
-        while (splitIndex > 0 && text.charAt(splitIndex) !== " ") {
-          splitIndex--;
-        }
-        // If we didn't find a space, force split
-        if (splitIndex === 0) {
-          splitIndex = maxLineLength;
+        if (!this.isChinese) {          
+          while (splitIndex > 0 && text.charAt(splitIndex) !== " ") {
+            splitIndex--;
+          }
+          // If we didn't find a space, force split
+          if (splitIndex === 0) {
+            splitIndex = maxLineLength;
+          }
         }
 
         const chunk = text.substring(0, splitIndex).trim();

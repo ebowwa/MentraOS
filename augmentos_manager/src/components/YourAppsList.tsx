@@ -152,7 +152,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             BackendServerComms.getInstance().startApp(packageName);
             
             // Display a special message for Live Captions when starting the app
-            if (packageName === 'com.augmentos.livecaptions') {
+            if (!onboardingCompleted && packageName === 'com.augmentos.livecaptions') {
                 // If this is the Live Captions app, make sure we've hidden the tip
                 setShowOnboardingTip(false);
                 

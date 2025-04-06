@@ -213,6 +213,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         this.smartGlassesDevice = smartGlassesDevice;
         preferredG1DeviceId = getPreferredG1DeviceId(context);
         brightnessValue = getSavedBrightnessValue(context);
+        shouldUseAutoBrightness = getSavedAutoBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.shouldRunOnboardMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
 
@@ -830,6 +831,10 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
 
     public static int getSavedBrightnessValue(Context context){
         return Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(context).getString(context.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), "50"));
+    }
+
+    public static boolean getSavedAutoBrightnessValue(Context context){
+        return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false);
     }
 
     private void savePairedDeviceNames() {
@@ -2039,7 +2044,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
     public void sendBrightnessCommand(int brightness, boolean autoLight) {
         // Validate brightness range
-        int validBrightness = (brightness * 63) / 100;
+
+        int validBrightness;
+        if (brightness != -1) {
+            validBrightness = (brightness * 63) / 100;
+        } else {
+            validBrightness = (30 * 63) / 100;
+        }
 
         // Construct the command
         ByteBuffer buffer = ByteBuffer.allocate(3);
@@ -2052,7 +2063,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         Log.d(TAG, "Sent auto light brightness command => Brightness: " + brightness + ", Auto Light: " + (autoLight ? "Open" : "Close"));
 
         //send to AugmentOS core
-        EventBus.getDefault().post(new BrightnessLevelEvent(autoLight ? -1 : brightness));
+        if (autoLight) {
+            EventBus.getDefault().post(new BrightnessLevelEvent(autoLight));
+        } else {
+            EventBus.getDefault().post(new BrightnessLevelEvent(brightness));
+        }
     }
 
     public void sendHeadUpAngleCommand(int headUpAngle) {
@@ -2076,8 +2091,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void updateGlassesBrightness(int brightness, boolean autoLight) {
-        sendBrightnessCommand(brightness, autoLight);
+    public void updateGlassesBrightness(int brightness) {
+        sendBrightnessCommand(brightness, false);
+    }
+
+    @Override
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        sendBrightnessCommand(-1, autoBrightness);
     }
 
     @Override
