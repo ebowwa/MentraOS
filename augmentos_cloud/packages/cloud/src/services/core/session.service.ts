@@ -20,7 +20,7 @@ import { SubscriptionManager } from './subscription.manager'; // Import the new 
 import { Logger } from 'winston';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
-const LOG_AUDIO = true;
+const LOG_AUDIO = false;
 const DEBUG_AUDIO = false;
 export const IS_LC3 = false;
 
