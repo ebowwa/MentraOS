@@ -37,15 +37,12 @@ class OnboardMicrophoneManager {
   
   // MARK: - Public Methods
   
-  /// Request microphone permissions
+  /// Check (but don't request) microphone permissions
+  /// Permissions are requested by React Native UI, not directly by Swift
   func requestPermissions() async -> Bool {
-    return await withCheckedContinuation { continuation in
-      AVAudioSession.sharedInstance().requestRecordPermission { granted in
-        DispatchQueue.main.async {
-          continuation.resume(returning: granted)
-        }
-      }
-    }
+    // Instead of requesting permissions directly, we just check the current status
+    // This maintains compatibility with existing code that calls this method
+    return checkPermissions()
   }
   
   /// Check if microphone permissions have been granted

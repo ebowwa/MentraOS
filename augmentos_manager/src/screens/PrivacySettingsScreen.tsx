@@ -10,6 +10,7 @@ import {
   Animated,
   Alert,
   AppState,
+  NativeModules,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -185,9 +186,42 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
   
   const handleToggleCalendar = async () => {
     if (!calendarEnabled) {
-      const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
-      if (granted) {
-        setCalendarEnabled(true);
+      // For iOS specifically, we need to handle permission granting with special care
+      if (Platform.OS === 'ios') {
+        // Don't update UI state until after permission dialog is completed
+        const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
+        
+        // Double-check permission status after the request to be sure
+        const actualStatus = await checkFeaturePermissions(PermissionFeatures.CALENDAR);
+        
+        console.log(`Calendar permission request result: ${granted}, actual status: ${actualStatus}`);
+        
+        // Update UI based on actual permission status
+        if (actualStatus) {
+          setCalendarEnabled(true);
+          
+          // Try to trigger calendar sync
+          try {
+            const moduleMethod = NativeModules.CalendarSync?.syncCalendarEvents;
+            if (moduleMethod) {
+              moduleMethod();
+              console.log('Explicitly triggered iOS calendar sync after permission granted');
+            } else {
+              console.log('CalendarSync native module not available');
+            }
+          } catch (error) {
+            console.error('Failed to trigger calendar sync:', error);
+          }
+        } else {
+          // The permission was denied, ensure UI reflects this
+          setCalendarEnabled(false);
+        }
+      } else {
+        // For Android, keep original flow
+        const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
+        if (granted) {
+          setCalendarEnabled(true);
+        }
       }
     } else {
       // We can't revoke the permission, but we can provide info

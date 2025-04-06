@@ -20,6 +20,7 @@ import { getPairingGuide } from '../logic/getPairingGuide';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 import { PermissionsAndroid } from 'react-native';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import { showAlert } from '../utils/AlertUtils';
 interface GlassesPairingGuidePreparationScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
@@ -55,9 +56,9 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
     // For Simulated Glasses, we still need critical permissions but can skip Bluetooth
     const needsBluetoothPermissions = glassesModelName !== 'Simulated Glasses';
     
-    // For real glasses, we need to check and request Bluetooth and Microphone permissions
-    if (Platform.OS === 'android') {
-      try {
+    try {
+      // Android-specific Bluetooth permissions
+      if (Platform.OS === 'android' && needsBluetoothPermissions) {
         const bluetoothPermissions: any[] = [];
         
         // Bluetooth permissions based on Android version
@@ -76,57 +77,73 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
           }
         }
         
-        // Request Bluetooth permissions if needed (only for real glasses)
-        if (needsBluetoothPermissions && bluetoothPermissions.length > 0) {
+        // Request Bluetooth permissions if needed
+        if (bluetoothPermissions.length > 0) {
           const results = await PermissionsAndroid.requestMultiple(bluetoothPermissions);
           const allGranted = Object.values(results).every(
             (value) => value === PermissionsAndroid.RESULTS.GRANTED
           );
           
           if (!allGranted) {
-            GlobalEventEmitter.emit('SHOW_BANNER', { 
-              message: 'Bluetooth permissions are required to connect to glasses',
-              type: 'error'
-            });
+            showAlert(
+              'Permission Required',
+              'Bluetooth permissions are required to connect to glasses',
+              [{ text: 'OK' }]
+            );
             return;
           }
         }
         
-        // Request microphone and phone state permissions
-        const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
-        if (!hasMicPermission) {
-          GlobalEventEmitter.emit('SHOW_BANNER', { 
-            message: 'Microphone permission is required for voice commands',
-            type: 'error'
-          });
-          return;
-        }
-        
-        // Request phone state permission
+        // Android-specific Phone State permission
         console.log("Requesting PHONE_STATE permission...");
         const hasPhoneStatePermission = await requestFeaturePermissions(PermissionFeatures.PHONE_STATE);
         console.log("PHONE_STATE permission result:", hasPhoneStatePermission);
         
         if (!hasPhoneStatePermission) {
-          GlobalEventEmitter.emit('SHOW_BANNER', { 
-            message: 'Phone state permission is required to connect to glasses',
-            type: 'error'
-          });
+          showAlert(
+            'Permission Required',
+            'Phone state permission is required to connect to glasses',
+            [{ text: 'OK' }]
+          );
           return;
         }
-        
-        // Request location permission
-        const hasLocationPermission = await requestFeaturePermissions(PermissionFeatures.LOCATION);
-        if (!hasLocationPermission) {
-          GlobalEventEmitter.emit('SHOW_BANNER', { 
-            message: 'Location permission is required for Bluetooth scanning on Android',
-            type: 'error'
-          });
-          return;
-        }
-      } catch (error) {
-        console.error('Error requesting permissions:', error);
       }
+      
+      // Cross-platform permissions needed for both iOS and Android
+      
+      // Request microphone permission (needed for both platforms)
+      console.log("Requesting microphone permission...");
+      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
+      console.log("Microphone permission result:", hasMicPermission);
+      if (!hasMicPermission) {
+        showAlert(
+          'Permission Required',
+          'Microphone permission is required to connect to glasses',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
+      // Request location permission (needed for both platforms)
+      console.log("Requesting location permission...");
+      const hasLocationPermission = await requestFeaturePermissions(PermissionFeatures.LOCATION);
+      console.log("Location permission result:", hasLocationPermission);
+      if (!hasLocationPermission) {
+        showAlert(
+          'Permission Required',
+          'Location permission is required to connect to glasses',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
+      showAlert(
+        'Error',
+        'Failed to request necessary permissions',
+        [{ text: 'OK' }]
+      );
+      return;
     }
 
     // Check that Bluetooth and Location are enabled/granted (skip for simulated glasses)
@@ -134,10 +151,11 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
       const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
       if (!requirementsCheck.isReady) {
         // Show alert about missing requirements
-        GlobalEventEmitter.emit('SHOW_BANNER', { 
-          message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
-          type: 'error'
-        });
+        showAlert(
+          'Connection Issue',
+          requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
+          [{ text: 'OK' }]
+        );
         
         return;
       }

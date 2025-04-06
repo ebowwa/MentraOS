@@ -38,24 +38,41 @@ class CalendarManager {
   
   init() {
     setupCalendarChangeObserver()
+    // Start monitoring for authorization status changes
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleAuthorizationStatusChange),
+      name: NSNotification.Name(rawValue: "EKAuthorizationStatusDidChangeNotification"),
+      object: nil
+    )
   }
   
   deinit {
     removeCalendarChangeObserver()
+    NotificationCenter.default.removeObserver(self, name: NSNotification.Name(rawValue: "EKAuthorizationStatusDidChangeNotification"), object: nil)
   }
   
   func setCalendarChangedCallback(_ callback: @escaping () -> Void) {
       self.onCalendarChanged = callback
   }
   
-  func requestAccess() async -> Bool {
-    do {
-      // Request calendar access permission
-      return try await eventStore.requestAccess(to: .event)
-    } catch {
-      print("Error requesting calendar access: \(error)")
-      return false
+  // Handle authorization status changes
+  @objc private func handleAuthorizationStatusChange() {
+    print("Calendar authorization status changed")
+    let status = EKEventStore.authorizationStatus(for: .event)
+    if status == .authorized {
+      print("Calendar access now authorized, triggering callback")
+      handleCalendarChanged()
+    } else {
+      print("Calendar access status changed to: \(status)")
     }
+  }
+  
+  // No longer directly requesting access - permissions are handled by React Native
+  func requestAccess() async -> Bool {
+    // This method is kept for compatibility but no longer requests permissions directly
+    // It just returns the current status
+    return EKEventStore.authorizationStatus(for: .event) == .authorized
   }
   
   func fetchUpcomingEvents(days: Int = 7) async -> [EKEvent]? {
@@ -65,12 +82,10 @@ class CalendarManager {
     switch status {
     case .authorized:
       return fetchEvents(days: days)
-    case .notDetermined:
-      if await requestAccess() {
-        return fetchEvents(days: days)
-      } else {
-        return nil
-      }
+    case .notDetermined, .denied, .restricted:
+      // No longer requesting access here - will just return nil if not authorized
+      print("Calendar access not authorized")
+      return nil
     default:
       print("Calendar access not authorized")
       return nil

@@ -26,10 +26,9 @@ class LocationManager: NSObject, CLLocationManagerDelegate {
     locationManager.allowsBackgroundLocationUpdates = false
     locationManager.pausesLocationUpdatesAutomatically = true
     
-    // Request authorization
-    locationManager.requestWhenInUseAuthorization()
+    // No longer requesting authorization here - permissions are handled by React Native
     
-    // Start location updates
+    // Start location updates (will only work if permission is already granted)
     locationManager.startUpdatingLocation()
   }
   

@@ -42,9 +42,12 @@ const WelcomePageComponent: React.FC<WelcomePageComponentProps> = ({
     // Mark that onboarding should be shown on Home screen
     saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
 
-    // Send to glasses selection instead of connecting to puck
-    navigation.navigate('SelectGlassesModelScreen', {
-      isDarkTheme: isDarkTheme
+    navigation.reset({
+      index: 0,
+      routes: [{ 
+        name: 'SelectGlassesModelScreen',
+        params: { isDarkTheme: isDarkTheme }
+      }],
     });
   };
 

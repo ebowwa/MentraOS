@@ -251,7 +251,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                             styles.hintText,
                             { color: isDarkTheme ? '#FFFFFF' : '#0D47A1' }
                         ]}>
-                            Pro tip: Long-press any app to access its settings
+                            Long-press any app to access its settings
                         </Text>
                     </View>
                 </View>
