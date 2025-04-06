@@ -18,6 +18,7 @@ export type RootStackParamList = {
   AppDetails: { app: AppStoreItem };
   ProfileSettings: undefined;
   GlassesMirror: undefined;
+  GlassesMirrorFullscreen: undefined;
   Reviews: { appId: string; appName: string };
   ConnectingToPuck: undefined;
   PhoneNotificationSettings: undefined;

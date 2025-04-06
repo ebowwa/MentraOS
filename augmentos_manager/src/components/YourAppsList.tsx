@@ -61,8 +61,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                     
                     // If onboarding is completed, check how many times settings have been accessed
                     const settingsAccessCount = await loadSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0);
-                    // Only show hint if they've accessed settings less than 3 times
-                    setShowSettingsHint(settingsAccessCount < 3);
+                    // Only show hint if they've accessed settings less than 1 times
+                    setShowSettingsHint(settingsAccessCount < 1);
                 }
             };
             

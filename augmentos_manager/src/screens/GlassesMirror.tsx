@@ -1,36 +1,27 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  StatusBar,
-  SafeAreaView,
   Platform,
-  BackHandler,
 } from 'react-native';
-import { RNCamera } from 'react-native-camera';
+import { useNavigation } from '@react-navigation/native';
 import NavigationBar from '../components/NavigationBar';
 import GlassesDisplayMirror from '../components/GlassesDisplayMirror';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { useGlassesMirror } from '../providers/GlassesMirrorContext';
-import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import { NavigationProps } from '../components/types';
 
 interface GlassesMirrorProps {
   isDarkTheme: boolean;
 }
 
-// Request camera permission when needed
-const requestCameraPermission = async () => {
-  return await requestFeaturePermissions(PermissionFeatures.CAMERA);
-};
 
-const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
+const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
   const { status } = useStatus();
   const { events } = useGlassesMirror(); // From context
-  const [isFullScreen, setIsFullScreen] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState(false);
-  const cameraRef = useRef<RNCamera | null>(null);
+  const navigation = useNavigation<NavigationProps>();
 
   // Helper to check if we have a glasses model name
   const isGlassesConnected = !!status.glasses_info?.model_name;
@@ -38,97 +29,19 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
   // Get only the last event
   const lastEvent = events.length > 0 ? events[events.length - 1] : null;
   
-  // Check camera permission when entering fullscreen
-  const checkCameraPermission = async () => {
-    const hasPermission = await requestCameraPermission();
-    setHasCameraPermission(hasPermission);
-    return hasPermission;
-  };
-  
-  // Setup back button handling
-  useEffect(() => {
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isFullScreen) {
-        toggleFullScreen();
-        return true;
-      }
-      return false;
-    });
-
-    return () => backHandler.remove();
-  }, [isFullScreen]);
-  
-  // Check permission when entering fullscreen
-  useEffect(() => {
-    if (isFullScreen) {
-      checkCameraPermission();
-    }
-  }, [isFullScreen]);
-  
-  // Function to toggle fullscreen mode
-  const toggleFullScreen = () => {
-    if (!isFullScreen) {
-      // Enter fullscreen mode and hide status bar
-      StatusBar.setHidden(true);
-      setIsFullScreen(true);
-    } else {
-      // Exit fullscreen mode and show status bar
-      StatusBar.setHidden(false);
-      setIsFullScreen(false);
-    }
+  // Function to navigate to fullscreen mode
+  const navigateToFullScreen = () => {
+    navigation.navigate('GlassesMirrorFullscreen');
   };
 
   return (
     <View
       style={[
         styles.container,
-        isFullScreen ? styles.fullscreenContainer : (isDarkTheme ? styles.darkContainer : styles.lightContainer),
+        isDarkTheme ? styles.darkContainer : styles.lightContainer,
       ]}
     >
-      {/* Fullscreen mode */}
-      {isFullScreen && isGlassesConnected && lastEvent ? (
-        <View style={styles.fullscreenContainer}>
-          {/* Camera feed */}
-          {hasCameraPermission ? (
-            <RNCamera
-              ref={cameraRef}
-              style={styles.cameraBackground}
-              type={RNCamera.Constants.Type.front}
-              captureAudio={false}
-              androidCameraPermissionOptions={{
-                title: 'Camera Permission',
-                message: 'This app needs access to your camera for the fullscreen mirror mode.',
-                buttonPositive: 'OK',
-                buttonNegative: 'Cancel',
-              }}
-            />
-          ) : (
-            <View style={styles.fullscreenBackground}>
-              <Text style={styles.cameraPermissionText}>
-                Camera permission needed for fullscreen mode
-              </Text>
-            </View>
-          )}
-          
-          {/* Overlay the glasses display content */}
-          <View style={styles.fullscreenOverlay}>
-            <GlassesDisplayMirror 
-              layout={lastEvent.layout}
-              fallbackMessage="Unknown layout data"
-              containerStyle={styles.fullscreenDisplayContainer}
-            />
-          </View>
-          
-          {/* Fullscreen exit button */}
-          <TouchableOpacity
-            style={styles.exitFullscreenButton}
-            onPress={toggleFullScreen}
-          >
-            <Text style={styles.exitFullscreenText}>Exit</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        /* Regular mode - with fixed layout */
+      {/* Regular mode - with fixed layout */ }
         <View style={styles.regularContainer}>
           {/* Header */}
           <View
@@ -149,7 +62,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
             {isGlassesConnected && lastEvent && (
               <TouchableOpacity
                 style={styles.fullscreenButton}
-                onPress={toggleFullScreen}
+                onPress={navigateToFullScreen}
               >
                 <Text style={styles.fullscreenButtonText}>
                   Enter Fullscreen
@@ -189,7 +102,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({isDarkTheme}) => {
             <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={() => {}} />
           </View>
         </View>
-      )}
+      
     </View>
   );
 };
@@ -205,25 +118,6 @@ const styles = StyleSheet.create({
   },
   lightContainer: {
     backgroundColor: '#f8f9fa',
-  },
-  // Fullscreen layout
-  fullscreenContainer: {
-    flex: 1,
-    padding: 0,
-    backgroundColor: 'black',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-  },
-  cameraBackground: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    aspectRatio: 1,
-    alignSelf: 'center',
   },
   // Regular layout container with proper stacking
   regularContainer: {
@@ -315,45 +209,6 @@ const styles = StyleSheet.create({
   fullscreenButtonText: {
     color: 'white',
     fontSize: 14,
-    fontFamily: 'Montserrat-Bold',
-  },
-  fullscreenBackground: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1a1a1a', // Dark background for contrast with green text
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cameraPermissionText: {
-    color: 'white',
-    fontSize: 16,
-    fontFamily: 'Montserrat-Regular',
-    textAlign: 'center',
-  },
-  fullscreenOverlay: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'transparent',
-    padding: 40,
-    zIndex: 10,
-  },
-  exitFullscreenButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    zIndex: 10,
-  },
-  exitFullscreenText: {
-    color: 'white',
-    fontSize: 16,
     fontFamily: 'Montserrat-Bold',
   },
 });

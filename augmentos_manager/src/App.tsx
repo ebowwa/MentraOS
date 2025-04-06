@@ -9,6 +9,7 @@ import SettingsPage from './screens/SettingsPage';
 import RegisterScreen from './screens/RegisterScreen';
 import ProfileSettingsPage from './screens/ProfileSettingsPage';
 import GlassesMirror from './screens/GlassesMirror';
+import GlassesMirrorFullscreen from './screens/GlassesMirrorFullscreen';
 import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
 import AppStoreNative from './screens/AppStoreNative';
@@ -300,6 +301,15 @@ const App: React.FC = () => {
                           headerTintColor: isDarkTheme ? '#ffffff' : '#000000',
                         }}>
                         {() => <GlassesMirror isDarkTheme={isDarkTheme} />}
+                      </Stack.Screen>
+                      <Stack.Screen
+                        name="GlassesMirrorFullscreen"
+                        options={{
+                          headerShown: false,
+                          title: 'Glasses Mirror Fullscreen',
+                          gestureEnabled: false,
+                        }}>
+                        {() => <GlassesMirrorFullscreen isDarkTheme={isDarkTheme} />}
                       </Stack.Screen>
                       <Stack.Screen name="AppSettings"
                         options={({ route }) => ({
