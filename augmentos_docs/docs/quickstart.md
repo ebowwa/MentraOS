@@ -1,8 +1,22 @@
-# @augmentos/sdk
+---
+sidebar_position: 2
+---
 
-Build Third Party Apps (TPAs) for AugmentOS smartglasses. This SDK provides everything you need to create real-time AR applications that respond to voice, head movements, and other inputs.
+# ✅ Quickstart
 
-## 🚀 Building Your First App
+*Last updated: March 31, 2025*
+
+**This is the recommended way to build an AugmentOS smart glasses app as of March 31 2025. The SDK is currently in beta.** 
+
+AugmentOS is how you write powerful smart glasses apps. In this Quickstart, let's go from 0 to fully functioning app (that works on [these smart glasses](https://augmentos.org/glasses/)) in less than 15 minutes.
+
+## Prerequisites
+
+- Node.js (v18 or later)
+- Bun
+- Basic TypeScript knowledge
+
+## Building Your First App
 
 The quickest way to get started is using our example app. This guide assumes you have a pair of [compatible smart glasses](https://augmentos.org/glasses) connected to a phone running the [AugmentOS app](https://augmentos.org/install).
 
@@ -20,7 +34,7 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
 * Make sure you select `Static Domain`, then generate a static domain.
 
 <center>
-  <img width="75%" src="https://docs.augmentos.org/img/ngrok_guide_1.png"></img>
+  <img width="75%" src="/img/ngrok_guide_1.png"></img>
 </center>
 
 ### Register your app with AugmentOS
@@ -40,11 +54,13 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
    ```bash
    git clone git@github.com:AugmentOS-Community/AugmentOS-Cloud-Example-App.git
    ```
+   
+   **Note:** If you want a more in-depth example (recommended for those who've already completed this quickstart), you can use the [Live-Captions repository](https://github.com/AugmentOS-Community/LiveCaptionsOnSmartGlasses) which includes app settings support.
 3. Navigate to the repo directory and install dependencies:
-    ```bash
-    cd AugmentOS-Cloud-Example-App
-    bun install
-    ```
+   ```bash
+   cd AugmentOS-Cloud-Example-App
+   bun install
+   ```
 4. Edit your `index.ts` to match the app you registered:
    ```typescript
    const app = new ExampleAugmentOSApp({
@@ -63,14 +79,12 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
    ```
    Note: `3000` is the port. It must match what is in the app config. If you changed it to `8080`, use `8080` for ngrok instead.
 
-For more information, visit the [AugmentOS-Cloud-Example-App repository](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App).
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
+
+For more information, visit the [AugmentOS-Cloud-Example-App repository](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App). For a more in-depth example with app settings support, see the [Live-Captions repository](https://github.com/AugmentOS-Community/LiveCaptionsOnSmartGlasses).
 
 ## Next Steps
 
-- Explore the [Getting Started (From Scratch)](getting-started) guide for a more detailed walkthrough
-- Learn about [Core Concepts](core-concepts) to understand how AugmentOS apps work
+- Explore the [🚧 Build From Scratch](getting-started) guide for a more detailed walkthrough
+- Learn about [🚧 Core Concepts](core-concepts) to understand how AugmentOS apps work
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for help and support
-
-## 📄 License
-
-MIT License.
