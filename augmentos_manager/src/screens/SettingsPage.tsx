@@ -232,7 +232,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   disabled: !status.glasses_info?.model_name || isAutoBrightnessEnabled,
   style: [
     styles.slider,
-    (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledItem
   ],
   minimumValue: 0,
   maximumValue: 100,
@@ -243,7 +242,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   maximumTrackTintColor: isDarkTheme
     ? styles.maximumTrackTintColorDark.color
     : styles.maximumTrackTintColorLight.color,
-  thumbTintColor: !status.glasses_info?.model_name ? '#e0e0e0' : styles.thumbTintColor.color,
+  thumbTintColor: styles.thumbTintColor.color,
   thumbTouchSize: { width: 40, height: 40 },
   trackStyle: { height: 5 },
   thumbStyle: { 
@@ -415,7 +414,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         {/* Auto Brightness */}
         <View style={[
           styles.settingItem,
-          !status.glasses_info?.model_name && styles.disabledItem
         ]}>
           <View style={styles.settingTextContainer}>
             <Text
@@ -441,19 +439,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             disabled={!status.glasses_info?.model_name}
             value={isAutoBrightnessEnabled}
             onValueChange={toggleAutoBrightness}
-            trackColor={{
-              false: !status.glasses_info?.model_name ? 'rgba(209, 209, 214, 0.8)' : switchColors.trackColor.false,
-              true: !status.glasses_info?.model_name ? 'rgba(33, 150, 243, 0.4)' : switchColors.trackColor.true
-            }}
-            thumbColor={!status.glasses_info?.model_name ? 'rgba(255, 255, 255, 0.8)' : switchColors.thumbColor}
-            ios_backgroundColor={!status.glasses_info?.model_name ? 'rgba(209, 209, 214, 0.8)' : switchColors.ios_backgroundColor}
+            trackColor={switchColors.trackColor}
+            thumbColor={switchColors.thumbColor}
+            ios_backgroundColor={switchColors.ios_backgroundColor}
           />
         </View>
 
         {/* Brightness Slider */}
         <View style={[
           styles.settingItem,
-          (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledItem
         ]}>
           <View style={styles.settingTextContainer}>
             <Text
