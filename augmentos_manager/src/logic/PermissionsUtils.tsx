@@ -260,6 +260,12 @@ export const requestBackgroundLocationPermission = async (): Promise<boolean> =>
   }
 };
 
+// Define a more detailed result type for permission requests
+export interface PermissionRequestResult {
+  granted: boolean;
+  previouslyDenied: boolean;
+}
+
 // Request permissions for a specific feature - the main entry point
 export const requestFeaturePermissions = async (featureKey: string): Promise<boolean> => {
   const config = PERMISSION_CONFIG[featureKey];
@@ -281,6 +287,29 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
   
   let allGranted = true;
   let partiallyGranted = false;
+  let previouslyDenied = false;
+  
+  // For iOS, check if previously denied before attempting to request
+  if (Platform.OS === 'ios' && config.ios.length > 0) {
+    for (const permission of config.ios) {
+      try {
+        // Check current status before requesting
+        const currentStatus = await check(permission);
+        console.log(`Current status for ${permission}:`, currentStatus);
+        
+        // If permission is blocked at system level, handle it differently
+        if (currentStatus === RESULTS.BLOCKED) {
+          console.log(`Permission ${permission} is BLOCKED by system`);
+          previouslyDenied = true;
+          // Show dialog to direct user to Settings
+          await handlePreviouslyDeniedPermission(config.name);
+          return false; // Just return false since we've handled the alert internally
+        }
+      } catch (error) {
+        console.error(`Error checking permission status: ${error}`);
+      }
+    }
+  }
   
   // Mark this feature as having been requested
   await markPermissionRequested(featureKey);
@@ -295,15 +324,28 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
       // Check each permission result
       let hasGranted = false;
       let allDenied = true;
+      let anyNeverAskAgain = false;
       
       Object.entries(results).forEach(([permission, result]) => {
         if (result === PermissionsAndroid.RESULTS.GRANTED) {
           hasGranted = true;
           allDenied = false;
+        } else if (result === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
+          anyNeverAskAgain = true;
+          allDenied = false;
         } else if (result !== PermissionsAndroid.RESULTS.DENIED) {
           allDenied = false;
         }
       });
+      
+      // Handle "Never Ask Again" case similar to iOS previouslyDenied
+      if (anyNeverAskAgain) {
+        previouslyDenied = true;
+        // Handle the previously denied permission by showing the alert
+        await handlePreviouslyDeniedPermission(config.name);
+        // Just return false, since we've handled the alert internally
+        return false;
+      }
       
       if (hasGranted && !allDenied) {
         partiallyGranted = true;
@@ -342,6 +384,16 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
         } else if (result === RESULTS.LIMITED) {
           partiallyGranted = true;
           allGranted = false;
+        } else if (result === RESULTS.BLOCKED) {
+          // Permission is blocked at the system level
+          previouslyDenied = true;
+          allGranted = false;
+          
+          // This shouldn't happen as we checked before, but just in case
+          if (config.critical) {
+            await handlePreviouslyDeniedPermission(config.name);
+            return false; // Just return false since we've handled the alert internally
+          }
         } else {
           allGranted = false;
           
@@ -365,6 +417,7 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
     }
   }
   
+  // Simply return boolean indicating if permission was granted
   return allGranted || partiallyGranted;
 };
 
@@ -403,6 +456,31 @@ export const displayCriticalPermissionDeniedWarning = (permissionName: string): 
           style: 'default',
           onPress: () => resolve(true)
         },
+      ]
+    );
+  });
+};
+
+// Helper function to handle permissions that were previously denied at the system level
+export const handlePreviouslyDeniedPermission = (permissionName: string): Promise<boolean> => {
+  return new Promise((resolve) => {
+    Alert.alert(
+      'Permission Required',
+      `${permissionName} permission is required but has been denied previously. Please enable it in your device settings.`,
+      [
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            Linking.openSettings();
+            // Return false since we don't know if the user actually changed the setting
+            resolve(false);
+          }
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => resolve(false)
+        }
       ]
     );
   });

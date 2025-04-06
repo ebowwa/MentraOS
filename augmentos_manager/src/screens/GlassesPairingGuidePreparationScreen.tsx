@@ -5,6 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Platform,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -19,12 +20,21 @@ import Button from '../components/Button';
 import { getPairingGuide } from '../logic/getPairingGuide';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 import { PermissionsAndroid } from 'react-native';
-import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import { 
+  requestFeaturePermissions, 
+  PermissionFeatures, 
+  handlePreviouslyDeniedPermission
+} from '../logic/PermissionsUtils';
 import { showAlert } from '../utils/AlertUtils';
 interface GlassesPairingGuidePreparationScreenProps {
   isDarkTheme: boolean;
   toggleTheme: () => void;
 }
+
+// Alert handling is now done directly in PermissionsUtils.tsx
+
+// On Android, we'll check permissions once during the actual request process
+// This simplifies our code and avoids making redundant permission requests
 
 const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparationScreenProps> = ({
   isDarkTheme,
@@ -57,8 +67,21 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
     const needsBluetoothPermissions = glassesModelName !== 'Simulated Glasses';
     
     try {
-      // Android-specific Bluetooth permissions
-      if (Platform.OS === 'android' && needsBluetoothPermissions) {
+      // Check for Android-specific permissions
+      if (Platform.OS === 'android') {
+        // Android-specific Phone State permission - request for ALL glasses including simulated
+        console.log("Requesting PHONE_STATE permission...");
+        const phoneStateGranted = await requestFeaturePermissions(PermissionFeatures.PHONE_STATE);
+        console.log("PHONE_STATE permission result:", phoneStateGranted);
+        
+        if (!phoneStateGranted) {
+          // The specific alert for previously denied permission is already handled in requestFeaturePermissions
+          // We just need to stop the flow here
+          return;
+        }
+        
+        // Bluetooth permissions only for physical glasses
+        if (needsBluetoothPermissions) {
         const bluetoothPermissions: any[] = [];
         
         // Bluetooth permissions based on Android version
@@ -77,63 +100,80 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
           }
         }
         
-        // Request Bluetooth permissions if needed
+        // Request Bluetooth permissions directly
         if (bluetoothPermissions.length > 0) {
           const results = await PermissionsAndroid.requestMultiple(bluetoothPermissions);
           const allGranted = Object.values(results).every(
             (value) => value === PermissionsAndroid.RESULTS.GRANTED
           );
           
+          // Since we now handle NEVER_ASK_AGAIN in requestFeaturePermissions,
+          // we just need to check if all are granted
           if (!allGranted) {
-            showAlert(
-              'Permission Required',
-              'Bluetooth permissions are required to connect to glasses',
-              [{ text: 'OK' }]
+            // Check if any are NEVER_ASK_AGAIN to show proper dialog
+            const anyNeverAskAgain = Object.values(results).some(
+              (value) => value === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN
             );
+            
+            if (anyNeverAskAgain) {
+              // Show "previously denied" dialog for Bluetooth
+              showAlert(
+                'Permission Required',
+                'Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.',
+                [
+                  { 
+                    text: 'Open Settings', 
+                    onPress: () => Linking.openSettings() 
+                  },
+                  {
+                    text: 'Cancel',
+                    style: 'cancel'
+                  }
+                ]
+              );
+            } else {
+              // Show standard permission required dialog
+              showAlert(
+                'Permission Required',
+                'Bluetooth permissions are required to connect to glasses',
+                [{ text: 'OK' }]
+              );
+            }
             return;
           }
         }
         
-        // Android-specific Phone State permission
-        console.log("Requesting PHONE_STATE permission...");
-        const hasPhoneStatePermission = await requestFeaturePermissions(PermissionFeatures.PHONE_STATE);
-        console.log("PHONE_STATE permission result:", hasPhoneStatePermission);
-        
-        if (!hasPhoneStatePermission) {
-          showAlert(
-            'Permission Required',
-            'Phone state permission is required to connect to glasses',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-      }
+        // Phone state permission already requested above for all Android devices
+        } // End of Bluetooth permissions block
+      } // End of Android-specific permissions block
       
       // Cross-platform permissions needed for both iOS and Android
       
       // Request microphone permission (needed for both platforms)
       console.log("Requesting microphone permission...");
-      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
-      console.log("Microphone permission result:", hasMicPermission);
-      if (!hasMicPermission) {
-        showAlert(
-          'Permission Required',
-          'Microphone permission is required to connect to glasses',
-          [{ text: 'OK' }]
-        );
+      
+      // This now handles showing alerts for previously denied permissions internally
+      const micGranted = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
+      
+      console.log("Microphone permission result:", micGranted);
+      
+      if (!micGranted) {
+        // The specific alert for previously denied permission is already handled in requestFeaturePermissions
+        // We just need to stop the flow here
         return;
       }
       
       // Request location permission (needed for both platforms)
       console.log("Requesting location permission...");
-      const hasLocationPermission = await requestFeaturePermissions(PermissionFeatures.LOCATION);
-      console.log("Location permission result:", hasLocationPermission);
-      if (!hasLocationPermission) {
-        showAlert(
-          'Permission Required',
-          'Location permission is required to connect to glasses',
-          [{ text: 'OK' }]
-        );
+      
+      // This now handles showing alerts for previously denied permissions internally
+      const locGranted = await requestFeaturePermissions(PermissionFeatures.LOCATION);
+      
+      console.log("Location permission result:", locGranted);
+      
+      if (!locGranted) {
+        // The specific alert for previously denied permission is already handled in requestFeaturePermissions
+        // We just need to stop the flow here
         return;
       }
     } catch (error) {

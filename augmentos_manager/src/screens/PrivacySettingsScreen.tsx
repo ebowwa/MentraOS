@@ -21,7 +21,7 @@ import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import NavigationBar from '../components/NavigationBar';
 import { supabase } from '../supabaseClient';
-import { requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions } from '../logic/PermissionsUtils';
+import { requestFeaturePermissions, PermissionFeatures, checkFeaturePermissions, PermissionRequestResult } from '../logic/PermissionsUtils';
 import { checkNotificationAccessSpecialPermission, checkAndRequestNotificationAccessSpecialPermission } from "../utils/NotificationServiceUtils";
 import { NotificationService } from '../logic/NotificationServiceUtils';
 
@@ -199,14 +199,18 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
           // Request permission
           const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
           
-          // Double-check permission status after the request to be sure
-          const actualStatus = await checkFeaturePermissions(PermissionFeatures.CALENDAR);
+          console.log(`Calendar permission request result:`, granted);
           
-          console.log(`Calendar permission request result: ${granted}, actual status: ${actualStatus}`);
-          
-          // Update UI based on actual permission status
-          if (actualStatus) {
-            // Already set to true, but ensure it stays that way
+          // If permission was not granted, the permission utility has already shown the appropriate message
+          // Note: We can't determine if it was denied or previously denied anymore
+          // as requestFeaturePermissions now handles that internally
+          if (!granted) {
+            // Permission was denied (either first time or previously)
+            // We'll check when they come back from Settings with the AppState change listener
+            console.log('Calendar permission denied or previously denied');
+            setCalendarEnabled(false);
+          } else {
+            // Permission was granted, ensure toggle is ON
             setCalendarEnabled(true);
             
             // Try to trigger calendar sync
@@ -221,15 +225,14 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
             } catch (error) {
               console.error('Failed to trigger calendar sync:', error);
             }
-          } else {
-            // The permission was denied, update UI to reflect this
-            setCalendarEnabled(false);
           }
         } else {
           // For Android, keep original flow
           const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
-          if (granted) {
+          if (granted === true) {
             setCalendarEnabled(true);
+          } else {
+            setCalendarEnabled(false);
           }
         }
       } catch (error) {
@@ -287,9 +290,22 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
       ]}>
       <ScrollView style={styles.scrollViewContainer}>
 
+        {/* ADDITIONAL PERMISSIONS SECTION */}
+        <Text style={[
+          styles.sectionHeader,
+          isDarkTheme ? styles.lightText : styles.darkText
+        ]}>
+          Additional Permissions
+        </Text>
+
         {/* Notification Permission - Android Only */}
         {Platform.OS === 'android' && (
-          <View style={styles.settingItem}>
+          <View style={[
+            styles.settingItem, 
+            // Add a border at the bottom of the notifications item since it's not the last item
+            styles.settingItemWithBorder,
+            { borderBottomColor: isDarkTheme ? '#444444' : '#e0e0e0' }
+          ]}>
             <View style={styles.settingTextContainer}>
               <Text
                 style={[
@@ -316,8 +332,8 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
           </View>
         )}
         
-        {/* Calendar Permission */}
-        <View style={styles.settingItem}>
+        {/* Calendar Permission - last item in this section so no border */}
+        <View style={[styles.settingItem, styles.lastItemInSection]}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
@@ -344,7 +360,16 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
           />
         </View>
 
-        <View style={styles.settingItem}>
+        {/* PRIVACY OPTIONS SECTION */}
+        <Text style={[
+          styles.sectionHeader, 
+          styles.sectionHeaderWithMargin,
+          isDarkTheme ? styles.lightText : styles.darkText
+        ]}>
+          Privacy Options
+        </Text>
+
+        <View style={[styles.settingItem, styles.lastItemInSection]}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
@@ -381,6 +406,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    marginTop: 8,
+    fontFamily: 'Montserrat-Bold',
+  },
+  sectionHeaderWithMargin: {
+    marginTop: 30, // Add space between sections
   },
   titleContainer: {
     paddingVertical: 15,
@@ -445,8 +480,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 20,
-    borderBottomColor: '#333',
+  },
+  settingItemWithBorder: {
     borderBottomWidth: 1,
+    // Border color will be set dynamically based on theme
+  },
+  lastItemInSection: {
+    // No bottom border for the last item in a section
+    borderBottomWidth: 0,
   },
   settingTextContainer: {
     flex: 1,

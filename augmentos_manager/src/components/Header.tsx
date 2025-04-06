@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, AppState } f
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { checkNotificationAccessSpecialPermission } from '../utils/NotificationServiceUtils';
 import { checkFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import { showAlert } from '../utils/AlertUtils';
 
 interface HeaderProps {
   isDarkTheme: boolean;
@@ -72,12 +73,28 @@ const Header: React.FC<HeaderProps> = ({ isDarkTheme, navigation }) => {
   };
 
   const handleNotificationAlert = () => {
-    // Navigate to PrivacySettingsScreen instead
-    if (navigation) {
-      navigation.navigate('PrivacySettingsScreen');
-    } else {
-      console.error('Navigation prop is undefined');
-    }
+    // Show explanation alert before navigating to privacy settings
+    showAlert(
+      'Additional Features Available',
+      'Enhance your AugmentOS experience by enabling additional permissions.',
+      [
+        {
+          text: 'Go to Settings',
+          onPress: () => {
+            // Navigate to PrivacySettingsScreen after explaining
+            if (navigation) {
+              navigation.navigate('PrivacySettingsScreen');
+            } else {
+              console.error('Navigation prop is undefined');
+            }
+          }
+        }
+      ],
+      {
+        iconName: 'information-outline',
+        iconColor: '#007AFF'
+      }
+    );
   };
 
   const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
