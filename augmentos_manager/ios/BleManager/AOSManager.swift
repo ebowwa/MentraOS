@@ -29,6 +29,7 @@ struct ViewState {
   @objc var g1Manager: ERG1Manager?
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
+  private var calendarManager: CalendarManager?
   
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
@@ -67,6 +68,7 @@ struct ViewState {
   override init() {
     self.vad = SileroVADStrategy()
     self.serverComms = ServerComms.getInstance()
+    self.calendarManager = CalendarManager()
     super.init()
     Task {
         await loadSettings()
@@ -141,6 +143,17 @@ struct ViewState {
   
   @objc func setCoreToken(_ coreToken: String) {
     serverComms.setAuthCredentials("", coreToken)
+  }
+  
+  @objc func syncCalendarEvents() {
+    // Trigger calendar sync when permissions have been granted
+    Task {
+      if let calendarManager = calendarManager {
+        let events = await calendarManager.fetchUpcomingEvents(days: 7)
+        // Process events here if needed
+        print("Calendar sync triggered, found \(events?.count ?? 0) events")
+      }
+    }
   }
   
   @objc func startApp(_ packageName: String) {

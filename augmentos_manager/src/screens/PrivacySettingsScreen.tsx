@@ -193,34 +193,40 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
       try {
         // For iOS specifically, we need to handle permission granting with special care
         if (Platform.OS === 'ios') {
-          // Keep the switch in ON position during the request by setting it true
+          // Keep the toggle enabled during the permission request
+          // Wait a short time before requesting to ensure the UI updates first
           setCalendarEnabled(true);
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           // Request permission
           const granted = await requestFeaturePermissions(PermissionFeatures.CALENDAR);
           
           console.log(`Calendar permission request result:`, granted);
           
-          // If permission was not granted, the permission utility has already shown the appropriate message
-          // Note: We can't determine if it was denied or previously denied anymore
-          // as requestFeaturePermissions now handles that internally
           if (!granted) {
             // Permission was denied (either first time or previously)
             // We'll check when they come back from Settings with the AppState change listener
             console.log('Calendar permission denied or previously denied');
             setCalendarEnabled(false);
           } else {
-            // Permission was granted, ensure toggle is ON
+            // Permission was granted, make sure toggle stays ON
             setCalendarEnabled(true);
+            
+            // Wait a moment to ensure UI updates before calendar sync
+            await new Promise(resolve => setTimeout(resolve, 100));
             
             // Try to trigger calendar sync
             try {
-              const moduleMethod = NativeModules.CalendarSync?.syncCalendarEvents;
-              if (moduleMethod) {
-                moduleMethod();
-                console.log('Explicitly triggered iOS calendar sync after permission granted');
+              if (Platform.OS === 'ios' && NativeModules.AOSModule) {
+                // Use a synchronous pattern to prevent state changes during the promise
+                try {
+                  const result = await NativeModules.AOSModule.syncCalendarEvents();
+                  console.log('Explicitly triggered iOS calendar sync after permission granted', result);
+                } catch (syncErr) {
+                  console.error('Error syncing calendar:', syncErr);
+                }
               } else {
-                console.log('CalendarSync native module not available');
+                console.log('Calendar sync not available for this platform');
               }
             } catch (error) {
               console.error('Failed to trigger calendar sync:', error);
@@ -239,8 +245,10 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
         console.error('Error requesting calendar permissions:', error);
         setCalendarEnabled(false);
       } finally {
-        // Always clear the pending state
-        setCalendarPermissionPending(false);
+        // Make sure we're setting pending to false after everything else is done
+        setTimeout(() => {
+          setCalendarPermissionPending(false);
+        }, 300);
       }
     } else {
       // We can't revoke the permission, but we can provide info

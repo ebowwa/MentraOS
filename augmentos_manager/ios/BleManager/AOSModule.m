@@ -182,6 +182,22 @@ RCT_EXPORT_METHOD(
 }
 
 RCT_EXPORT_METHOD(
+  syncCalendarEvents:
+  (RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+{
+  @try {
+    // Trigger calendar sync via AOSManager
+    [self.aosManager syncCalendarEvents];
+    resolve(@[@"Calendar sync triggered"]);
+  }
+  @catch(NSException *exception) {
+    reject(@"0", exception.description, nil);
+  }
+}
+
+RCT_EXPORT_METHOD(
   setCoreToken:
   (NSString *)token
   resolver:(RCTPromiseResolveBlock)resolve
