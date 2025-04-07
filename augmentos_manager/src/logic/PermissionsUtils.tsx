@@ -15,7 +15,8 @@ export const PermissionFeatures: Record<string, string> = {
   LOCATION: 'location',
   BACKGROUND_LOCATION: 'background_location',
   BATTERY_OPTIMIZATION: 'battery_optimization',
-  PHONE_STATE: 'phone_state'  // Phone state permission for device identification
+  PHONE_STATE: 'phone_state',  // Phone state permission for device identification
+  BLUETOOTH: 'bluetooth'       // Bluetooth permission for connecting to glasses
 };
 
 // Define permission configuration interface
@@ -76,6 +77,14 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     ios: [PERMISSIONS.IOS.LOCATION_WHEN_IN_USE, PERMISSIONS.IOS.LOCATION_ALWAYS],
     android: [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
     critical: false,
+  },
+  [PermissionFeatures.BLUETOOTH]: {
+    name: 'Bluetooth',
+    description: 'Used to connect to your glasses',
+    ios: [PERMISSIONS.IOS.BLUETOOTH], // iOS Bluetooth permission (correct constant)
+    android: [], // Android handles Bluetooth differently - see pairing screens
+    critical: true, // Critical for glasses pairing
+    specialRequestNeeded: Platform.OS === 'ios', // Special handling for iOS
   }
 };
 
@@ -489,6 +498,26 @@ export const handlePreviouslyDeniedPermission = (permissionName: string): Promis
 // Request just the basic permissions needed for the app to function
 export const requestBasicPermissions = async (): Promise<boolean> => {
   return await requestFeaturePermissions(PermissionFeatures.BASIC);
+};
+
+// Request Bluetooth permissions specifically - used before glasses pairing
+export const requestBluetoothPermissions = async (): Promise<boolean> => {
+  if (Platform.OS === 'ios') {
+    try {
+      // Try to request through the normal permission system
+      return await requestFeaturePermissions(PermissionFeatures.BLUETOOTH);
+    } catch (error) {
+      console.warn('Error requesting Bluetooth permissions through standard flow:', error);
+      
+      // If that fails (e.g., with older versions of the library), 
+      // we'll consider permissions granted on iOS since they'll be requested
+      // when BleManager is initialized anyway
+      console.log('Falling back to automatic Bluetooth permission handling on iOS');
+      return true;
+    }
+  }
+  // On Android, Bluetooth permissions are handled directly in the pairing flow
+  return true;
 };
 
 // Check if a feature has the permissions it needs

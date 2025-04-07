@@ -128,9 +128,20 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
 
 
   React.useEffect(() => {
-    console.log('Searching for compatible devices for: ', glassesModelName);
-    setSearchResults([]);
-    coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName);
+    const initializeAndSearchForDevices = async () => {
+      console.log('Searching for compatible devices for: ', glassesModelName);
+      setSearchResults([]);
+      
+      // For iOS, make sure BleManager is initialized before searching
+      if (Platform.OS === 'ios') {
+        // Using any type since we don't have direct access to the private method
+        await (coreCommunicator as any).initializeBleManager?.();
+      }
+      
+      coreCommunicator.sendSearchForCompatibleDeviceNames(glassesModelName);
+    };
+    
+    initializeAndSearchForDevices();
   }, [glassesModelName]);
 
   React.useEffect(() => {
@@ -205,7 +216,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
         <View style={styles.contentContainer}>
           <PairingDeviceInfo glassesModelName={glassesModelName} isDarkTheme={isDarkTheme} />
         </View>
-        <View style={{ flex: 1, marginBottom:20 }}>
+        <View style={{ flex: 1, marginBottom: 20, marginTop: 10 }}>
           {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
           {searchResults && searchResults.length > 0 && (
             <>
@@ -214,7 +225,10 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
                   key={index}
                   style={[
                     styles.settingItem,
-                    { backgroundColor: theme.cardBg, borderColor: theme.borderColor },
+                    { 
+                      backgroundColor: theme.cardBg, 
+                      borderColor: theme.borderColor,
+                    }
                   ]}
                   onPress={() => {
                     triggerGlassesPairingGuide(glassesModelName, deviceName);
@@ -260,12 +274,15 @@ const styles = StyleSheet.create({
   },
   scrollViewContainer: {
     flex: 1,
-    paddingBottom:0,
+    paddingBottom: 0,
+    marginHorizontal: -20, // Remove the horizontal margin to eliminate "line" effect
+    paddingHorizontal: 20, // Add padding inside to maintain visual spacing
   },
   container: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 0,
+    paddingTop: 20, // Consistent spacing at the top
+    overflow: 'hidden', // Prevent content from creating visual lines
   },
   titleContainer: {
     paddingVertical: 15,
@@ -340,14 +357,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
 
-    // Shadow for iOS
+    // More subtle shadow for iOS
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
 
-    // Elevation for Android
-    elevation: 3,
+    // More subtle elevation for Android
+    elevation: 2,
   },
   settingTextContainer: {
     flex: 1,

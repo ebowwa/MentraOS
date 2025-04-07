@@ -7,6 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import NavigationBar from '../components/NavigationBar';
 import GlassesDisplayMirror from '../components/GlassesDisplayMirror';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
@@ -34,76 +35,73 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
     navigation.navigate('GlassesMirrorFullscreen');
   };
 
+  // Create style object mirroring Homepage approach
+  const currentThemeStyles = {
+    container: { flex: 1 },
+    contentContainer: {
+      flex: 1, 
+      paddingBottom: isDarkTheme ? 55 : 0  // Key difference! Homepage has 55px padding in dark mode
+    }
+  };
+
   return (
-    <View
-      style={[
-        styles.container,
-        isDarkTheme ? styles.darkContainer : styles.lightContainer,
-      ]}
-    >
-      {/* Regular mode - with fixed layout */ }
-        <View style={styles.regularContainer}>
-          {/* Header */}
-          <View
+    <SafeAreaView style={{ flex: 1 }}>
+      <View
+        style={[
+          currentThemeStyles.container,
+          isDarkTheme ? styles.darkContainer : styles.lightContainer,
+        ]}>
+        {/* Header */}
+        <View style={styles.titleContainer}>
+          <Text
             style={[
-              styles.titleContainer,
-              isDarkTheme ? styles.titleContainerDark : styles.titleContainerLight,
+              styles.title,
+              isDarkTheme ? styles.titleTextDark : styles.titleTextLight,
             ]}
           >
-            <Text
-              style={[
-                styles.title,
-                isDarkTheme ? styles.titleTextDark : styles.titleTextLight,
-              ]}
+            Glasses Mirror
+          </Text>
+          
+          {isGlassesConnected && lastEvent && (
+            <TouchableOpacity
+              style={styles.fullscreenButton}
+              onPress={navigateToFullScreen}
             >
-              Glasses Mirror
-            </Text>
-            
-            {isGlassesConnected && lastEvent && (
-              <TouchableOpacity
-                style={styles.fullscreenButton}
-                onPress={navigateToFullScreen}
-              >
-                <Text style={styles.fullscreenButtonText}>
-                  Enter Fullscreen
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          {/* Content */}
-          <View style={styles.contentWrapper}>
-            {isGlassesConnected ? (
-              <View style={styles.contentContainer}>
-                {lastEvent ? (
-                  <GlassesDisplayMirror 
-                    layout={lastEvent.layout} 
-                    fallbackMessage="Unknown layout data"
-                  />
-                ) : (
-                  <View style={styles.fallbackContainer}>
-                    <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
-                      No display events available
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ) : (
-              <View style={styles.fallbackContainer}>
-                <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
-                  Connect glasses to use the Glasses Mirror
-                </Text>
-              </View>
-            )}
-          </View>
-          
-          {/* Navigation bar at the bottom */}
-          <View style={styles.navbarWrapper}>
-            <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={() => {}} />
-          </View>
+              <Text style={styles.fullscreenButtonText}>
+                Enter Fullscreen
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
-      
-    </View>
+        
+        {/* Content */}
+        <View style={[styles.contentWrapper, currentThemeStyles.contentContainer]}>
+          {isGlassesConnected ? (
+            <View style={styles.contentContainer}>
+              {lastEvent ? (
+                <GlassesDisplayMirror 
+                  layout={lastEvent.layout} 
+                  fallbackMessage="Unknown layout data"
+                />
+              ) : (
+                <View style={styles.fallbackContainer}>
+                  <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
+                    No display events available
+                  </Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={styles.fallbackContainer}>
+              <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
+                Connect glasses to use the Glasses Mirror
+              </Text>
+            </View>
+          )}
+        </View>
+      </View>
+      <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={() => {}} />
+    </SafeAreaView>
   );
 };
 
@@ -114,11 +112,12 @@ const styles = StyleSheet.create({
     padding: 0,
   },
   darkContainer: {
-    backgroundColor: '#121212',
+    backgroundColor: '#000000', // Match Homepage dark theme
   },
   lightContainer: {
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f0f0f0', // Match Settings light theme
   },
+  // Removed navBarOuterContainer
   // Regular layout container with proper stacking
   regularContainer: {
     flex: 1,
@@ -126,31 +125,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   titleContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 15,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    minHeight: 60, // Match the Header.tsx height
-    ...Platform.select({
-      ios: {
-        paddingTop: 16,
-      },
-      android: {
-        paddingTop: 16,
-      },
-    }),
+    marginBottom: 10,
   },
-  titleContainerDark: {
-    backgroundColor: '#333333',
-  },
-  titleContainerLight: {
-    backgroundColor: '#ffffff',
-  },
+  // No separate background colors for title container
+  titleContainerDark: {},
+  titleContainerLight: {},
   contentWrapper: {
     flex: 1,
-    paddingBottom: 0,
+    marginBottom: 10,
   },
+  // This wrapper is no longer used
   navbarWrapper: {
     width: '100%',
     height: 64, // Fixed height for the navbar
@@ -161,6 +150,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     textAlign: 'left',
     flex: 1,
+    marginBottom: 5,
   },
   titleTextDark: {
     color: '#ffffff',

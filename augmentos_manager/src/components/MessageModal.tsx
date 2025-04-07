@@ -30,7 +30,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
   visible,
   title,
   message,
-  buttons = [{ text: 'I understand' }],
+  buttons = [{ text: 'Okay' }],
   onDismiss,
   isDarkTheme = false,
   iconName,

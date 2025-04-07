@@ -5,7 +5,8 @@ import {
   ActivityIndicator,
   StyleSheet,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  Animated
 } from 'react-native';
 import { useStatus } from "../providers/AugmentOSStatusProvider.tsx";
 import { useNavigation } from "@react-navigation/native";
@@ -35,6 +36,7 @@ const ConnectingToPuckComponent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('Connection to AugmentOS failed. Please check your connection and try again.');
   const hasAttemptedConnection = useRef(false);
+  const loadingOverlayOpacity = useRef(new Animated.Value(1)).current;
 
   const handleTokenExchange = async () => {
     if (isLoading) return;
@@ -132,22 +134,22 @@ const ConnectingToPuckComponent = ({
       <View
         style={[
           styles.container,
-          styles.loadingContainer,
           isDarkTheme ? styles.darkBackground : styles.lightBackground
         ]}
       >
-        <ActivityIndicator
-          size="large"
-          color={isDarkTheme ? '#FFFFFF' : '#2196F3'}
-        />
-        <Text
+        <Animated.View 
           style={[
-            styles.loadingText,
-            isDarkTheme ? styles.lightText : styles.darkText
+            styles.authLoadingOverlay,
+            { opacity: loadingOverlayOpacity }
           ]}
         >
-          Connecting to AugmentOS...
-        </Text>
+          <View style={styles.authLoadingContent}>
+            {/* Logo placeholder instead of image */}
+            <View style={styles.authLoadingLogoPlaceholder} />
+            <ActivityIndicator size="large" color="#2196F3" style={styles.authLoadingIndicator} />
+            <Text style={styles.authLoadingText}>Connecting to AugmentOS...</Text>
+          </View>
+        </Animated.View>
       </View>
     );
   }
@@ -215,6 +217,35 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+  },
+  authLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authLoadingContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  authLoadingLogoPlaceholder: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  authLoadingIndicator: {
+    marginBottom: 16,
+  },
+  authLoadingText: {
+    fontSize: 16,
+    fontFamily: 'Montserrat-Medium',
+    color: '#333',
+    textAlign: 'center',
   },
   mainContainer: {
     flex: 1,

@@ -165,7 +165,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
   };
 
   return (
-    <View style={[styles.deviceInfoContainer, { backgroundColor: themeStyles.backgroundColor }]}>
+    <View style={[styles.deviceInfoContainer]}>
       {microphoneActive && (
         <View style={styles.microphoneContainer}>
           <Icon name="microphone" size={20} color="#4CAF50" />

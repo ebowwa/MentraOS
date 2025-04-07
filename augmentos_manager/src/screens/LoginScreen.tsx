@@ -12,6 +12,9 @@ import {
   BackHandler,
   Platform,
   KeyboardAvoidingView,
+  ActivityIndicator,
+  Image,
+  AppState,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -29,12 +32,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isFormLoading, setIsFormLoading] = useState(false)
+  const [isFormLoading, setIsFormLoading] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
   const [backPressCount, setBackPressCount] = useState(0);
 
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(20)).current;
   const formScale = useRef(new Animated.Value(0)).current;
+  const authOverlayOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -64,6 +69,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     }
   }, [formScale, isSigningUp]);
 
+  // Add a listener for app state changes to detect when the app comes back from background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: any) => {
+      console.log('App state changed to:', nextAppState);
+      // If app comes back to foreground, hide the loading overlay
+      if (nextAppState === 'active' && isAuthLoading) {
+        console.log('App became active, hiding auth overlay');
+        setIsAuthLoading(false);
+        authOverlayOpacity.setValue(0);
+      }
+    };
+
+    // Subscribe to app state changes
+    const appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+
+    return () => {
+      appStateSubscription.remove();
+    };
+  }, [isAuthLoading, authOverlayOpacity]);
+
   useEffect(() => {
     const handleDeepLink = async (event: any) => {
       console.log('Deep link URL:', event.url);
@@ -83,7 +108,13 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         } catch (err) {
           console.error('Exception during setSession:', err);
         }
-      }
+      } 
+      
+      // Always hide the loading overlay when we get any deep link callback
+      // This ensures it gets hidden even if auth was not completed
+      console.log('Deep link received, hiding auth overlay');
+      setIsAuthLoading(false);
+      authOverlayOpacity.setValue(0);
     };
 
     const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
@@ -103,7 +134,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
     return () => {
       linkingSubscription.remove();
     };
-  }, []);
+  }, [authOverlayOpacity]);
 
   const parseAuthParams = (url: string) => {
     const parts = url.split('#');
@@ -122,6 +153,24 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
 
   const handleGoogleSignIn = async () => {
     try {
+      // Start auth flow
+      setIsAuthLoading(true);
+      
+      // Show the auth loading overlay
+      Animated.timing(authOverlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+      
+      // Automatically hide the overlay after 5 seconds regardless of what happens
+      // This is a failsafe in case the auth flow is interrupted
+      setTimeout(() => {
+        console.log('Auth flow failsafe timeout - hiding loading overlay');
+        setIsAuthLoading(false);
+        authOverlayOpacity.setValue(0);
+      }, 5000);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -134,6 +183,8 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       if (error) {
         console.error('Supabase Google sign-in error:', error);
         showAlert('Authentication Error', error.message);
+        setIsAuthLoading(false);
+        authOverlayOpacity.setValue(0);
         return;
       }
 
@@ -141,25 +192,21 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       if (data?.url) {
         console.log("Opening browser with:", data.url);
         await Linking.openURL(data.url);
+        
+        // Directly hide the loading overlay when we leave the app
+        // This ensures it won't be shown when user returns without completing auth
+        setIsAuthLoading(false);
+        authOverlayOpacity.setValue(0);
       }
-
-      // Right after returning from the browser (or in the subscription):
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('Current session:', sessionData.session);
-
-
-      // This will open the default browser (Chrome, etc.) to the Google OAuth page.
-      // After a successful sign-in, Google redirects the user to:
-      //   com.augmentos://auth/callback
-      // Android sees that intent-filter in your Manifest, and opens your app again.
 
     } catch (err) {
       console.error('Google sign in failed:', err);
       showAlert('Authentication Error', 'Google sign in failed. Please try again.');
+      setIsAuthLoading(false);
+      authOverlayOpacity.setValue(0);
     }
 
     console.log('signInWithOAuth call finished');
-
   };
 
 
@@ -277,15 +324,41 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
       console.log('onAuthStateChange event:', event, session);
       if (session) {
         // If session is present, user is authenticated
-        navigation.replace('SplashScreen');
+        // Hide the auth loading overlay after a short delay
+        setTimeout(() => {
+          Animated.timing(authOverlayOpacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setIsAuthLoading(false);
+            navigation.replace('SplashScreen');
+          });
+        }, 500); // Give a slight delay to ensure the animation is seen
       }
     });
 
-    // Cleanup subscription on unmount
+    // Also add a focus listener to hide the loading overlay when returning to this screen
+    const unsubscribe = navigation.addListener('focus', () => {
+      // If we're coming back to this screen and the auth overlay is still showing, hide it
+      if (isAuthLoading) {
+        console.log('Screen focused, hiding auth overlay if showing');
+        Animated.timing(authOverlayOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          setIsAuthLoading(false);
+        });
+      }
+    });
+
+    // Cleanup subscriptions on unmount
     return () => {
       subscription.unsubscribe();
+      unsubscribe();
     };
-  }, []);
+  }, [navigation, authOverlayOpacity, isAuthLoading]);
 
 
 
@@ -297,6 +370,26 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
           style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <View style={styles.card}>
+            {/* Auth Loading Overlay */}
+            {isAuthLoading && (
+              <Animated.View 
+                style={[
+                  styles.authLoadingOverlay,
+                  { opacity: authOverlayOpacity }
+                ]}
+              >
+                <View style={styles.authLoadingContent}>
+                  {/* Logo image commented out until we have a new one */}
+                  {/* <Image 
+                    source={require('../assets/AOS.png')} 
+                    style={styles.authLoadingLogo} 
+                  /> */}
+                  <View style={styles.authLoadingLogoPlaceholder} />
+                  <ActivityIndicator size="large" color="#2196F3" style={styles.authLoadingIndicator} />
+                  <Text style={styles.authLoadingText}>Connecting to your account...</Text>
+                </View>
+              </Animated.View>
+            )}
             <Animated.Text
               style={[styles.title, { opacity, transform: [{ translateY }] }]}>
               AugmentOS
@@ -478,6 +571,41 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 24,
+  },
+  authLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authLoadingContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  authLoadingLogo: {
+    width: 100,
+    height: 100,
+    resizeMode: 'contain',
+    marginBottom: 20,
+  },
+  authLoadingLogoPlaceholder: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  authLoadingIndicator: {
+    marginBottom: 16,
+  },
+  authLoadingText: {
+    fontSize: 16,
+    fontFamily: 'Montserrat-Medium',
+    color: '#333',
+    textAlign: 'center',
   },
   header: {
     alignItems: 'center',

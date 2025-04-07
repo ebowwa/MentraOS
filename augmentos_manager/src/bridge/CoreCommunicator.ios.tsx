@@ -67,7 +67,13 @@ export class CoreCommunicator extends EventEmitter {
   async checkConnectivityRequirements(): Promise<{isReady: boolean, message?: string}> {
     console.log('Checking connectivity requirements');
     
-    // Check Bluetooth
+    // On iOS, we'll assume Bluetooth is available initially to avoid premature permissions
+    // The actual check will happen during the scanning process
+    if (Platform.OS === 'ios') {
+      return { isReady: true };
+    }
+    
+    // For Android, still check Bluetooth
     const isBtEnabled = await this.isBluetoothEnabled();
     console.log('Is Bluetooth enabled:', isBtEnabled);
     if (!isBtEnabled) {

@@ -17,7 +17,7 @@ export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = (
   return (
     <View style={styles.guideContainer}>
       <Text style={[styles.guideTitle, { color: textColor }]}>
-        Even Realities G1 Pairing Instructions
+        Even Realities G1
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
         1. Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app
@@ -39,13 +39,33 @@ export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = ({
   return (
     <View style={styles.guideContainer}>
       <Text style={[styles.guideTitle, { color: textColor }]}>
-        Vuzix Z100 Pairing Instructions
+        Vuzix Z100
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
         1. Make sure your Z100 is fully charged and turned on.
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
         2. Pair your Z100 with your device using the Vuzix Connect app.
+      </Text>
+    </View>
+  );
+};
+
+export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = ({
+  isDarkTheme,
+}) => {
+  const textColor = isDarkTheme ? 'white' : 'black';
+
+  return (
+    <View style={styles.guideContainer}>
+      <Text style={[styles.guideTitle, { color: textColor }]}>
+        Mentra Mach1
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        1. Make sure your Mach1 is fully charged and turned on.
+      </Text>
+      <Text style={[styles.guideStep, { color: textColor }]}>
+        2. Pair your Mach1 with your device using the Vuzix Connect app.
       </Text>
     </View>
   );
@@ -59,7 +79,7 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({
   return (
     <View style={styles.guideContainer}>
       <Text style={[styles.guideTitle, { color: textColor }]}>
-        Mentra Live Pairing Instructions
+        Mentra Live
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
         1. Make sure your Mentra Live is fully charged and turned on.
@@ -82,7 +102,7 @@ export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = ({
   return (
     <View style={styles.guideContainer}>
       <Text style={[styles.guideTitle, { color: textColor }]}>
-        Audio Wearable Pairing Instructions
+        Audio Wearable
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
         1. Make sure your Audio Wearable is fully charged and turned on.
@@ -110,16 +130,10 @@ export const VirtualWearablePairingGuide: React.FC<GlassesPairingGuideProps> = (
   return (
     <View style={styles.guideContainer}>
       <Text style={[styles.guideTitle, { color: textColor }]}>
-        Simulated Glasses Pairing Instructions
+        Simulated Glasses
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
-        No smart glasses required!
-      </Text>
-      <Text style={[styles.guideStep, { color: textColor }]}>
-        Continue to automatically connect to the simulated glasses.
-      </Text>
-      <Text style={[styles.guideDescription, { color: textColor }]}>
-        The Simulated Glasses allows you to test and develop with AugmentOS without physical smart glasses. 
+        The Simulated Glasses allows you to run AugmentOS without physical smart glasses. 
       </Text>
     </View>
   );

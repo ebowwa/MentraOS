@@ -70,29 +70,15 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         }, [])
     );
 
-    // Start arrow animation
+    // Set arrow to static position (no animation)
     useEffect(() => {
+        // Just set to a fixed value instead of animating
         if (showOnboardingTip) {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(arrowAnimation, {
-                        toValue: 1,
-                        duration: 1200,
-                        easing: Easing.inOut(Easing.ease),
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(arrowAnimation, {
-                        toValue: 0,
-                        duration: 1200,
-                        easing: Easing.inOut(Easing.ease),
-                        useNativeDriver: true,
-                    })
-                ])
-            ).start();
+            arrowAnimation.setValue(0.5); // Middle value for static appearance
         } else {
             arrowAnimation.setValue(0);
         }
-    }, [showOnboardingTip, arrowAnimation]);
+    }, [showOnboardingTip]);
 
     // Check if onboarding is completed on initial load
     useEffect(() => {
@@ -190,29 +176,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         });
     }, [status.apps]);
 
-    // Calculate arrow position based on animation value
-    const arrowTranslateY = arrowAnimation.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, 12]
-    });
-
-    // Add pulse animation for the arrow
-    const arrowScale = arrowAnimation.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [1, 1.15, 1]
-    });
-
-    // Add opacity animation for the arrow
-    const arrowOpacity = arrowAnimation.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [0.9, 1, 0.9]
-    });
-
-    // Add glow animation for the arrow
-    const glowOpacity = arrowAnimation.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [0.2, 0.6, 0.2]
-    });
+    // Remove all animations - we're keeping animation reference for compatibility
 
     return (
         <View
@@ -270,18 +234,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                         ]}
                     >
                         {showOnboardingTip && app.packageName === 'com.augmentos.livecaptions' && (
-                            <Animated.View 
-                                style={[
-                                    styles.arrowContainer,
-                                    {
-                                        transform: [
-                                            { translateY: arrowTranslateY },
-                                            { scale: arrowScale }
-                                        ],
-                                        opacity: arrowOpacity
-                                    }
-                                ]}
-                            >
+                            <View style={styles.arrowContainer}>
                                 <View style={styles.arrowWrapper}>
                                     <View style={styles.arrowBubble}>
                                         <Text style={styles.arrowBubbleText}>
@@ -298,18 +251,20 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                                         styles.arrowIconContainer,
                                         isDarkTheme ? styles.arrowIconContainerDark : styles.arrowIconContainerLight
                                     ]}>
-                                        <Animated.View style={[
-                                            styles.glowEffect,
-                                            { opacity: glowOpacity }
-                                        ]} />
+                                        <View style={styles.glowEffect} />
                                         <Icon 
                                             name="arrow-down-bold" 
                                             size={30} 
-                                            color="#FFFFFF" 
+                                            color="#FFFFFF"
+                                            style={{
+                                                textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                                                textShadowOffset: {width: 0, height: 1},
+                                                textShadowRadius: 3,
+                                            }}
                                         />
                                     </View>
                                 </View>
-                            </Animated.View>
+                            </View>
                         )}
                         <AppIcon
                             app={app}
@@ -327,7 +282,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 title="Start Live Captions"
                 message="To continue, start the Live Captions app."
                 buttons={[
-                    { text: "I understand", onPress: () => setOnboardingModalVisible(false) }
+                    { text: "Okay", onPress: () => setOnboardingModalVisible(false) }
                 ]}
                 isDarkTheme={isDarkTheme}
                 iconName="gesture-tap"
@@ -469,39 +424,46 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.5,
+        shadowRadius: 8,
+        elevation: 10,
+        borderWidth: 1,
+        borderColor: '#1E88E5',
     },
     arrowBubbleText: {
         color: '#FFFFFF',
         fontWeight: 'bold',
-        fontSize: 14,
+        fontSize: 15,
         marginRight: 6,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: {width: 0, height: 1},
+        textShadowRadius: 2,
     },
     bubbleIcon: {
         marginLeft: 2,
     },
     arrowIconContainer: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 45,
+        height: 45,
+        borderRadius: 23,
         alignItems: 'center',
         justifyContent: 'center',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8,
+        elevation: 12,
         overflow: 'hidden',
         position: 'relative',
+        borderWidth: 2,
+        borderColor: '#1E88E5',
     },
     arrowIconContainerLight: {
-        backgroundColor: '#2196F3',
+        backgroundColor: '#2196F3', // Match the bubble color
     },
     arrowIconContainerDark: {
-        backgroundColor: '#1976D2',
+        backgroundColor: '#2196F3', // Keep consistent color in both themes
     },
     glowEffect: {
         position: 'absolute',
@@ -511,6 +473,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         top: -15,
         left: -15,
+        opacity: 0, // Remove glow effect completely
     },
 });
 
