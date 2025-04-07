@@ -423,6 +423,57 @@ class DisplayManager implements DisplayManagerI {
       this.showDisplay(this.displayState.coreAppDisplay);
       return;
     }
+    
+    // If an app was stopped, check if there are any throttled requests from other apps
+    // that could be shown immediately instead of clearing the display
+    if (reason === 'app_stop' && this.throttledRequests.size > 0 && this.userSession) {
+      logger.info(`[DisplayManager] - [${this.userSession.userId}] 🔄 App stopped, checking throttled requests from other apps`);
+      
+      // Find the oldest throttled request from an app that's still running
+      let oldestRequest: ThrottledRequest | null = null;
+      let oldestAppName: string | null = null;
+      
+      for (const [appName, request] of this.throttledRequests.entries()) {
+        // Skip requests from apps that aren't running
+        if (!this.userSession.activeAppSessions.includes(appName)) {
+          continue;
+        }
+        
+        // Check if this is the oldest request we've seen
+        if (!oldestRequest || request.timestamp < oldestRequest.timestamp) {
+          oldestRequest = request;
+          oldestAppName = appName;
+        }
+      }
+      
+      // If we found a valid throttled request, show it immediately
+      if (oldestRequest && oldestAppName) {
+        logger.info(`[DisplayManager] - [${this.userSession.userId}] ✅ Showing throttled display from: ${oldestAppName}`);
+        
+        // Process the display request immediately
+        this.sendToWebSocket(oldestRequest.activeDisplay.displayRequest, this.userSession.websocket);
+        
+        // Update display state
+        this.displayState.currentDisplay = oldestRequest.activeDisplay;
+        this.lastDisplayTime = Date.now();
+        
+        // Remove from throttle queue
+        this.throttledRequests.delete(oldestAppName);
+        
+        // Trigger any associated duration expiry
+        if (oldestRequest.activeDisplay.expiresAt) {
+          const timeUntilExpiry = oldestRequest.activeDisplay.expiresAt.getTime() - Date.now();
+          setTimeout(() => {
+            // Only clear if this display is still showing
+            if (this.displayState.currentDisplay === oldestRequest!.activeDisplay) {
+              this.showNextDisplay('duration_expired');
+            }
+          }, timeUntilExpiry);
+        }
+        
+        return;
+      }
+    }
 
     logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔄 Nothing to show, clearing display`);
     this.clearDisplay('main');

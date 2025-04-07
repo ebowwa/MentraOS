@@ -10,6 +10,7 @@ import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 import { systemApps } from '../../../core/system-apps';
 import { TpaToCloudMessageType, ViewType, LayoutType } from '@augmentos/sdk';
+import { testShowThrottledAfterAppStop } from './show-throttled-after-app-stop.test';
 
 // Mock app package names
 const APP1 = 'com.example.app1';
@@ -463,6 +464,7 @@ export async function testNoDisplayRestoreForStoppedApps() {
   }
 }
 
+
 // Run the tests when this module is loaded
 if (require.main === module) {
   (async () => {
@@ -486,6 +488,10 @@ if (require.main === module) {
       console.log('Running testNoDisplayRestoreForStoppedApps...');
       await testNoDisplayRestoreForStoppedApps();
       console.log('✅ testNoDisplayRestoreForStoppedApps passed!');
+      
+      console.log('Running testShowThrottledAfterAppStop...');
+      await testShowThrottledAfterAppStop();
+      console.log('✅ testShowThrottledAfterAppStop passed!');
       
       console.log('All boot scenarios tests passed!');
     } catch (error) {
