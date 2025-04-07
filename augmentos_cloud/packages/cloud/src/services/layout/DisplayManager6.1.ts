@@ -126,13 +126,29 @@ class DisplayManager implements DisplayManagerI {
     
     // If no queued requests were processed, restore previous display if available
     if (this.displayState.savedDisplayBeforeBoot) {
-      logger.info(`[DisplayManager] - [${this.userSession?.userId}] ⭐ Restoring saved display from before boot`);
-      const success = this.sendToWebSocket(this.displayState.savedDisplayBeforeBoot.displayRequest, this.userSession?.websocket);
-      if (success) {
-        this.displayState.currentDisplay = this.displayState.savedDisplayBeforeBoot;
-        this.lastDisplayTime = Date.now();
+      // Check if the app that owned the saved display is still running
+      const savedAppName = this.displayState.savedDisplayBeforeBoot.displayRequest.packageName;
+      const isAppStillRunning = this.userSession?.activeAppSessions.includes(savedAppName);
+      
+      if (isAppStillRunning) {
+        logger.info(`[DisplayManager] - [${this.userSession?.userId}] ⭐ Restoring saved display from before boot: ${savedAppName}`);
+        const success = this.sendToWebSocket(this.displayState.savedDisplayBeforeBoot.displayRequest, this.userSession?.websocket);
+        
+        // Whether successful or not, we should clear the savedDisplayBeforeBoot
+        // to avoid restoring stale displays in future boot sequences
+        const savedDisplay = this.displayState.savedDisplayBeforeBoot;
         this.displayState.savedDisplayBeforeBoot = null;
-        return;
+        
+        if (success) {
+          this.displayState.currentDisplay = savedDisplay;
+          this.lastDisplayTime = Date.now();
+          return;
+        } else {
+          logger.error(`[DisplayManager] - [${this.userSession?.userId}] ❌ Failed to restore saved display - websocket error`);
+        }
+      } else {
+        logger.info(`[DisplayManager] - [${this.userSession?.userId}] ❌ Not restoring saved display - app ${savedAppName} is no longer running`);
+        this.displayState.savedDisplayBeforeBoot = null;
       }
     }
     
@@ -180,6 +196,12 @@ class DisplayManager implements DisplayManagerI {
     if (this.displayState.backgroundLock?.packageName === packageName) {
       logger.info(`[DisplayManager] - [${userSession.userId}] 🔓 Clearing background lock for: ${packageName}`);
       this.displayState.backgroundLock = null;
+    }
+    
+    // Also clear any saved display from this app
+    if (this.displayState.savedDisplayBeforeBoot?.displayRequest.packageName === packageName) {
+      logger.info(`[DisplayManager] - [${userSession.userId}] 🧹 Clearing saved display from stopped app: ${packageName}`);
+      this.displayState.savedDisplayBeforeBoot = null;
     }
 
     // If this was the core app, clear its saved display

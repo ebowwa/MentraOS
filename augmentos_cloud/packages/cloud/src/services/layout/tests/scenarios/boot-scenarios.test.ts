@@ -156,6 +156,66 @@ export async function testAppStopDuringBoot() {
   }
 }
 
+/**
+ * Test that displays from stopped apps are not restored after boot
+ */
+export async function testNoDisplayRestoreForStoppedApps() {
+  const harness = new DisplayManagerTestHarness({ enableLogging: true });
+  
+  try {
+    console.log('1. Start App1 and let it display content');
+    // Start App1
+    harness.startApp(APP1);
+    // Advance time to complete boot
+    harness.advanceTime(1500);
+    harness.advanceTime(50);  // Small additional advance for callbacks
+    
+    // App1 sends a display
+    harness.sendDisplayRequest(APP1, 'App1 Initial Display');
+    
+    // Verify App1's display is showing
+    harness.assertAppDisplaying(APP1);
+    console.log('✓ App1 display is showing');
+    
+    console.log('2. Stop App1');
+    // Stop App1
+    harness.stopApp(APP1);
+    
+    console.log('3. Start App2 (which should NOT restore App1\'s display after boot)');
+    // Start App2
+    harness.startApp(APP2);
+    
+    // Boot screen should be showing
+    harness.assertBootScreenShowing();
+    console.log('✓ Boot screen is showing for App2');
+    
+    // Advance time to complete boot
+    harness.advanceTime(1500);
+    harness.advanceTime(50);  // Small additional advance for callbacks
+    
+    // App1's display should NOT be restored since App1 is stopped
+    // Dashboard or empty display should be shown instead
+    const currentDisplay = harness.mockDisplaySystem.getCurrentDisplay();
+    
+    if (currentDisplay) {
+      const packageName = currentDisplay.displayRequest.packageName;
+      console.log(`Current display package after boot: ${packageName}`);
+      
+      // Make sure it's not App1's display
+      if (packageName === APP1) {
+        throw new Error('App1\'s display was incorrectly restored after boot even though App1 is stopped');
+      }
+      
+      console.log('✓ App1\'s display was NOT restored after boot (correct behavior)');
+    } else {
+      console.log('✓ No display showing after boot (acceptable behavior)');
+    }
+    
+  } finally {
+    harness.cleanup();
+  }
+}
+
 // Run the tests when this module is loaded
 if (require.main === module) {
   (async () => {
@@ -175,6 +235,10 @@ if (require.main === module) {
       console.log('Running testAppStopDuringBoot...');
       await testAppStopDuringBoot();
       console.log('✅ testAppStopDuringBoot passed!');
+      
+      console.log('Running testNoDisplayRestoreForStoppedApps...');
+      await testNoDisplayRestoreForStoppedApps();
+      console.log('✅ testNoDisplayRestoreForStoppedApps passed!');
       
       console.log('All boot scenarios tests passed!');
     } catch (error) {
