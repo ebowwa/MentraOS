@@ -4,6 +4,7 @@
 import EventEmitter from 'events';
 import { 
   StreamType,
+  ExtendedStreamType,
   AppSettings,
   WebSocketError,
   // Event data types
@@ -19,7 +20,10 @@ import {
   Vad,
   NotificationDismissed,
   AudioChunk,
-  CalendarEvent
+  CalendarEvent,
+  // Language stream helpers
+  createTranscriptionStream,
+  isValidLanguageCode
 } from '../../types';
 
 /** 🎯 Type-safe event handler function */
@@ -34,10 +38,10 @@ interface SystemEvents {
 }
 
 /** 📡 All possible event types */
-type EventType = StreamType | keyof SystemEvents;
+type EventType = ExtendedStreamType | keyof SystemEvents;
 
 /** 📦 Map of stream types to their data types */
-interface StreamDataTypes {
+export interface StreamDataTypes {
   [StreamType.BUTTON_PRESS]: ButtonPress;
   [StreamType.HEAD_POSITION]: HeadPosition;
   [StreamType.PHONE_NOTIFICATION]: PhoneNotification;
@@ -60,25 +64,64 @@ interface StreamDataTypes {
 }
 
 /** 📦 Data type for an event */
-type EventData<T extends EventType> = T extends keyof StreamDataTypes 
+export type EventData<T extends EventType> = T extends keyof StreamDataTypes 
   ? StreamDataTypes[T] 
   : T extends keyof SystemEvents 
     ? SystemEvents[T] 
-    : never;
+    : T extends string 
+      ? T extends `${StreamType.TRANSCRIPTION}:${string}`
+        ? TranscriptionData
+        : T extends `${StreamType.TRANSLATION}:${string}`
+          ? TranslationData
+          : never
+      : never;
 
 export class EventManager {
   private emitter: EventEmitter;
   private handlers: Map<EventType, Set<Handler<unknown>>>;
+  private lastLanguageTranscriptioCleanupHandler: () => void;
 
-  constructor(private subscribe: (type: StreamType) => void) {
+  constructor(
+    private subscribe: (type: ExtendedStreamType) => void,
+    private unsubscribe: (type: ExtendedStreamType) => void
+  ) {
     this.emitter = new EventEmitter();
     this.handlers = new Map();
+    this.lastLanguageTranscriptioCleanupHandler = () => {};
   }
 
   // Convenience handlers for common event types
 
   onTranscription(handler: Handler<TranscriptionData>) {
-    return this.addHandler(StreamType.TRANSCRIPTION, handler);
+    // Default to en-US when using the generic transcription handler
+    return this.addHandler(createTranscriptionStream('en-US'), handler);
+  }
+
+  /**
+   * 🎤 Listen for transcription events in a specific language
+   * @param language - Language code (e.g., "en-US")
+   * @param handler - Function to handle transcription data
+   * @returns Cleanup function to remove the handler
+   * @throws Error if language code is invalid
+   */
+  onTranscriptionForLanguage(language: string, handler: Handler<TranscriptionData>): () => void {
+    if (!isValidLanguageCode(language)) {
+      throw new Error(`Invalid language code: ${language}`);
+    }
+    this.lastLanguageTranscriptioCleanupHandler();
+
+    // console.log(`((())) onTranscriptionForLanguage: ${language}`);
+
+    const streamType = createTranscriptionStream(language);
+    // console.log(`((())) streamType: ${streamType}`);
+
+    // console.log(`^^^^^^^ handler: ${handler.toString()}`);
+    this.lastLanguageTranscriptioCleanupHandler = this.addHandler(streamType, handler);
+    return this.lastLanguageTranscriptioCleanupHandler;
+  }
+
+  onTranslation(handler: Handler<TranslationData>) {
+    return this.addHandler(StreamType.TRANSLATION, handler);
   }
 
   onHeadPosition(handler: Handler<HeadPosition>) {
@@ -183,34 +226,46 @@ export class EventManager {
    * 
    * Use this for stream types without specific handler methods
    */
-  on<T extends StreamType>(type: T, handler: Handler<StreamDataTypes[T]>): () => void {
+  on<T extends ExtendedStreamType>(type: T, handler: Handler<EventData<T>>): () => void {
     return this.addHandler(type, handler);
   }
 
   /**
    * ➕ Add an event handler and subscribe if needed
    */
-  private addHandler<T extends StreamType>(
+  private addHandler<T extends ExtendedStreamType>(
     type: T, 
-    handler: Handler<StreamDataTypes[T]>
+    handler: Handler<EventData<T>>
   ): () => void {
     const handlers = this.handlers.get(type) ?? new Set();
     
     if (handlers.size === 0) {
+      // console.log(`$$$#### Subscribing to ${type}`);
       this.handlers.set(type, handlers);
       this.subscribe(type);
     }
 
+    // console.log(`((())) Handler: ${handler.toString()}`);
+    // console.log(`$$$#### Handlers: ${JSON.stringify(handlers)}`);
+
     handlers.add(handler as Handler<unknown>);
+    // console.log(`@@@@ #### Handlers: ${JSON.stringify(handlers)}`);
+    // console.log(`#### Added handler for ${type}`);
+    // console.log('Handler details:', {
+    //   type,
+    //   handler: handler.toString(),
+    //   handlerCount: handlers.size,
+    //   allHandlers: Array.from(handlers).map(h => h.toString())
+    // });
     return () => this.removeHandler(type, handler);
   }
 
   /**
    * ➖ Remove an event handler
    */
-  private removeHandler<T extends StreamType>(
+  private removeHandler<T extends ExtendedStreamType>(
     type: T, 
-    handler: Handler<StreamDataTypes[T]>
+    handler: Handler<EventData<T>>
   ): void {
     const handlers = this.handlers.get(type);
     if (!handlers) return;
@@ -218,6 +273,7 @@ export class EventManager {
     handlers.delete(handler as Handler<unknown>);
     if (handlers.size === 0) {
       this.handlers.delete(type);
+      this.unsubscribe(type);
     }
   }
 
@@ -227,14 +283,18 @@ export class EventManager {
   emit<T extends EventType>(event: T, data: EventData<T>): void {
     try {
       // Emit to EventEmitter handlers (system events)
+      // console.log(`#### Emitting to ${event}`);
       this.emitter.emit(event, data);
 
       // Emit to stream handlers if applicable
       const handlers = this.handlers.get(event);
+      // console.log(`#### Handlers: ${JSON.stringify(handlers)}`);
+
       if (handlers) {
         // Create array of handlers to prevent modification during iteration
         const handlersArray = Array.from(handlers);
-        
+        // console.log(`((())) HandlersArray: ${JSON.stringify(handlersArray)}`);
+
         // Execute each handler in isolated try/catch to prevent one handler
         // from crashing the entire TPA
         handlersArray.forEach(handler => {
