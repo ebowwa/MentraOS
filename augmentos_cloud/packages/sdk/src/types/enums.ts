@@ -5,7 +5,6 @@
  */
 export enum TpaType {
     SYSTEM_DASHBOARD = 'system_dashboard',  // Special UI placement, system functionality
-    SYSTEM_APPSTORE = 'system_appstore',    // System app store functionality
     BACKGROUND = 'background',              // Can temporarily take control of display
     STANDARD = 'standard'                   // Regular TPA (default) only one standard app can run at a time. starting a standard TPA will close any other standard TPA that is running.
 }

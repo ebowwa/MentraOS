@@ -14,7 +14,7 @@ import App from '../../models/app.model';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 
-
+const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 const APPSTORE_ENABLED = true;
 
 /**
@@ -23,30 +23,30 @@ const APPSTORE_ENABLED = true;
  * @Param developerId - leaving this undefined indicates a system app.
  */
 export const LOCAL_APPS: AppI[] = [
-  {
-    packageName: systemApps.captions.packageName,
-    name: systemApps.captions.name,
-    tpaType: TpaType.STANDARD,
-    publicUrl: `http://${systemApps.captions.host}`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
-    description: systemApps.captions.description
-  },
-  {
-    packageName: systemApps.notify.packageName,
-    name: systemApps.notify.name,
-    tpaType: TpaType.BACKGROUND,
-    publicUrl: `http://${systemApps.notify.host}`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
-    description: systemApps.notify.description,
-  },
-  {
-    packageName: systemApps.mira.packageName,
-    name: systemApps.mira.name,
-    tpaType: TpaType.BACKGROUND,
-    publicUrl: `http://${systemApps.mira.host}`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
-    description: systemApps.mira.description,
-  },
+  // {
+  //   packageName: systemApps.captions.packageName,
+  //   name: systemApps.captions.name,
+  //   tpaType: TpaType.STANDARD,
+  //   publicUrl: `http://${systemApps.captions.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
+  //   description: systemApps.captions.description
+  // },
+  // {
+  //   packageName: systemApps.notify.packageName,
+  //   name: systemApps.notify.name,
+  //   tpaType: TpaType.BACKGROUND,
+  //   publicUrl: `http://${systemApps.notify.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
+  //   description: systemApps.notify.description,
+  // },
+  // {
+  //   packageName: systemApps.mira.packageName,
+  //   name: systemApps.mira.name,
+  //   tpaType: TpaType.BACKGROUND,
+  //   publicUrl: `http://${systemApps.mira.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
+  //   description: systemApps.mira.description,
+  // },
 
   // This will be added to the appstore instead of being run here.
   // {
@@ -59,6 +59,7 @@ export const LOCAL_APPS: AppI[] = [
   // }
 ];
 
+// TODO: create function that fetches local / preinstalled apps, and have list of local / preinstalled apps just based on package name.
 
 /**
  * System TPAs that are always available.
@@ -69,9 +70,9 @@ export const SYSTEM_TPAS: AppI[] = [
   {
     packageName: systemApps.dashboard.packageName,
     name: systemApps.dashboard.name,
-    tpaType: TpaType.BACKGROUND,
+    tpaType: TpaType.SYSTEM_DASHBOARD,
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    publicUrl: `http:/${systemApps.dashboard.host}`,
+    publicUrl: `http://${systemApps.dashboard.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
   },
 ];
@@ -227,6 +228,15 @@ export class AppService {
     };
   }
 
+  isSystemApp(packageName: string, apiKey?: string): boolean {
+    // Check if the app is in the system apps list
+    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(app => app.packageName === packageName);
+    // or if the xxx.yyy.zzz if the xxx == "system" or "local"
+    const _isSystemApp = packageName.split('.').length > 2 && (packageName.split('.')[0] === 'system' || packageName.split('.')[0] === 'local');
+    
+    return isSystemApp || (_isSystemApp && apiKey === AUGMENTOS_AUTH_JWT_SECRET);
+  }
+
   /**
    * Validates a TPA's API key.
    * @param packageName - TPA identifier
@@ -241,9 +251,12 @@ export class AppService {
       return false;
     }
 
+    if (this.isSystemApp(packageName, apiKey)) {
+      return true;
+    }
+
     // Additional verification for system apps
-    // const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(sysApp => sysApp.packageName === packageName);
-    // If a system app, verify it's coming from the internal cluster network
+    // If a system app, verify it's coming from the internal cluster network. note: for some reason this doesn't work in porter. but does work if running the cloud from docker-compose on the azure vm.
     if (clientIp) {
       // Check if IP is from the internal network
       // Docker networks typically use 172.x.x.x, 10.x.x.x, or 192.168.x.x

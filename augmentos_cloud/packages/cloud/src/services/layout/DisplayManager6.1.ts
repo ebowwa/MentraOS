@@ -40,7 +40,9 @@ class DisplayManager implements DisplayManagerI {
   private readonly BOOT_DURATION = 1500;
   private lastDisplayTime = 0;
   private userSession: UserSession | null = null;
-  private mainApp: string = systemApps.captions.packageName; // Hardcode captions as core app
+  private mainApp: string = ""; // systemApps.captions.packageName; // Hardcode captions as core app
+  // TODO: the main app is the APP that's running that is a TpaType.STANDARD. there should only be 1 standard TPA running at a time.
+  // We need to make it so when a new standard TPA starts, it stops the previous one(s) even though there should only be 1 previous one.
 
   public handleAppStart(packageName: string, userSession: UserSession): void {
     this.userSession = userSession;

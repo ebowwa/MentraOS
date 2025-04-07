@@ -23,8 +23,13 @@ import { WeatherModule } from './dashboard-modules/WeatherModule';
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const CLOUD_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME || "cloud"; 
-const PACKAGE_NAME = "com.augmentos.dashboard";
-const API_KEY = 'test_key'; // In production, store securely
+const PACKAGE_NAME = "system.augmentos.dashboard";
+const API_KEY = process.env.AUGMENTOS_AUTH_JWT_SECRET; // In production, store securely
+
+if (!API_KEY) {
+  console.error("[dashboard-manager]: API_KEY is not set. Please set the AUGMENTOS_AUTH_JWT_SECRET environment variable.");
+  process.exit(1);
+}
 
 console.log(`\n\n[Dashboard Manager] Starting TPA on port ${PORT}...`);
 console.log(`[Dashboard Manager] Connecting to cloud at ${CLOUD_HOST_NAME}...`);
