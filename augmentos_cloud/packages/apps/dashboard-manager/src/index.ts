@@ -22,9 +22,12 @@ import { WeatherModule } from './dashboard-modules/WeatherModule';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
-const CLOUD_HOST_NAME = process.env.CLOUD_HOST_NAME || "cloud"; 
+const CLOUD_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME || "cloud"; 
 const PACKAGE_NAME = "com.augmentos.dashboard";
 const API_KEY = 'test_key'; // In production, store securely
+
+console.log(`\n\n[Dashboard Manager] Starting TPA on port ${PORT}...`);
+console.log(`[Dashboard Manager] Connecting to cloud at ${CLOUD_HOST_NAME}...`);
 
 // For demonstration, we'll keep session-based info in-memory.
 // In real usage, you might store persistent data in a DB.
