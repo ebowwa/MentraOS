@@ -46,12 +46,14 @@ export class MockWebSocket extends EventEmitter {
   }
 }
 
-export class MockUserSession implements UserSession {
+export class MockUserSession implements Partial<UserSession> {
+  // Implementing only the properties we need for testing
   sessionId: string;
   userId: string;
   startTime: Date;
+  disconnectedAt: Date | null = null;
   activeAppSessions: string[] = [];
-  websocket: MockWebSocket;
+  websocket: any; // Using 'any' to bypass type checking
   loadingApps: Set<string> = new Set();
   logger: any = {
     info: console.log,
@@ -59,8 +61,17 @@ export class MockUserSession implements UserSession {
     warn: console.warn,
     debug: console.log
   };
-  appConnections: Map<string, WebSocket | MockWebSocket> = new Map();
+  appConnections: Map<string, any> = new Map(); // Using 'any' to bypass type checking
   isTranscribing: boolean = false;
+  
+  // Mock properties required by UserSession interface
+  installedApps: any[] = [];
+  appSubscriptions: Map<string, any[]> = new Map();
+  displayManager: any = null;
+  transcript: any = {};
+  bufferedAudio: ArrayBufferLike[] = [];
+  whatToStream: any[] = [];
+  OSSettings: any = {};
   
   constructor(userId: string = 'test-user', timeMachine?: TimeMachine) {
     this.sessionId = uuidv4();

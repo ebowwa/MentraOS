@@ -107,14 +107,28 @@ export class DisplayManagerTestHarness {
       view?: string
     } = {}
   ): void {
+    // Create a properly typed layout based on the layout type
+    let layout: any;
+    
+    if (options.layoutType === LayoutType.REFERENCE_CARD) {
+      layout = {
+        layoutType: LayoutType.REFERENCE_CARD,
+        title: "Test Title", // Default title
+        text: content
+      };
+    } else {
+      // Default to TEXT_WALL
+      layout = {
+        layoutType: LayoutType.TEXT_WALL,
+        text: content
+      };
+    }
+    
     const displayRequest: DisplayRequest = {
       type: TpaToCloudMessageType.DISPLAY_REQUEST,
       packageName,
       view: options.view as ViewType || ViewType.MAIN,
-      layout: {
-        layoutType: (options.layoutType as LayoutType) || LayoutType.TEXT_WALL,
-        text: content
-      },
+      layout: layout,
       timestamp: new Date(),
       durationMs: options.durationMs,
       forceDisplay: options.forceDisplay
@@ -233,14 +247,22 @@ export class DisplayManagerTestHarness {
     let displayText = '';
     const layout = currentDisplay.displayRequest.layout;
     
-    if ('text' in layout && typeof layout.text === 'string') {
-      displayText = layout.text;
-    } else if ('title' in layout && typeof layout.title === 'string') {
-      displayText = layout.title;
-    } else if ('message' in layout && typeof layout.message === 'string') {
-      displayText = layout.message;
-    } else {
-      displayText = JSON.stringify(layout);
+    // Safely check for properties based on layout type
+    switch (layout.layoutType) {
+      case LayoutType.TEXT_WALL:
+        displayText = (layout as any).text || '';
+        break;
+      case LayoutType.REFERENCE_CARD:
+        displayText = [(layout as any).title || '', (layout as any).text || ''].join(' ');
+        break;
+      case LayoutType.DOUBLE_TEXT_WALL:
+        displayText = [(layout as any).topText || '', (layout as any).bottomText || ''].join(' ');
+        break;
+      case LayoutType.DASHBOARD_CARD:
+        displayText = [(layout as any).leftText || '', (layout as any).rightText || ''].join(' ');
+        break;
+      default:
+        displayText = JSON.stringify(layout);
     }
     
     // Check if the package name is one of our test apps - if so, bypass content checking

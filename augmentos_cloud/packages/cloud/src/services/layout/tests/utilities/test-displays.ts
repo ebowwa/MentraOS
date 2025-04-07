@@ -60,57 +60,6 @@ export function createReferenceCard(
   };
 }
 
-/**
- * Create a command list display request
- */
-export function createCommandList(
-  packageName: string,
-  title: string,
-  commands: string[],
-  options: {
-    durationMs?: number;
-    forceDisplay?: boolean;
-    view?: ViewType;
-  } = {}
-): DisplayRequest {
-  return {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
-    packageName,
-    view: options.view || ViewType.MAIN,
-    layout: {
-      layoutType: LayoutType.COMMAND_LIST,
-      title,
-      commands
-    },
-    timestamp: new Date(),
-    durationMs: options.durationMs,
-    forceDisplay: options.forceDisplay
-  };
-}
-
-/**
- * Create a notification display request
- */
-export function createNotification(
-  packageName: string,
-  title: string,
-  message: string,
-  options: {
-    durationMs?: number;
-    forceDisplay?: boolean;
-  } = {}
-): DisplayRequest {
-  return {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
-    packageName,
-    view: ViewType.MAIN,
-    layout: {
-      layoutType: LayoutType.NOTIFICATION,
-      title,
-      message
-    },
-    timestamp: new Date(),
-    durationMs: options.durationMs || 5000, // Default 5s for notifications
-    forceDisplay: options.forceDisplay
-  };
-}
+// Note: The above functions (createTextDisplay and createReferenceCard)
+// are sufficient for testing and align with the actual SDK layout types.
+// The command list and notification layout types were removed as they don't exist in the SDK.
