@@ -428,7 +428,9 @@ struct ViewState {
       }
       
       let eventStr = currentViewState.eventStr
-      CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+      if eventStr != "" {
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+      }
       
       let layoutType = currentViewState.layoutType
       switch layoutType {
