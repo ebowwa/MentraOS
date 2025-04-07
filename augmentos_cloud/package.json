@@ -39,8 +39,7 @@
     
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
     "test:display": "bun run packages/cloud/src/tests/display-manager.test.ts"
-},
-
+  },
   "dependencies": {
     "@langchain/anthropic": "^0.3.13",
     "@langchain/community": "^0.3.31",
