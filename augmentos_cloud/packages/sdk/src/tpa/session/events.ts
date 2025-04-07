@@ -23,7 +23,8 @@ import {
   CalendarEvent,
   // Language stream helpers
   createTranscriptionStream,
-  isValidLanguageCode
+  isValidLanguageCode,
+  createTranslationStream
 } from '../../types';
 
 /** 🎯 Type-safe event handler function */
@@ -80,6 +81,7 @@ export class EventManager {
   private emitter: EventEmitter;
   private handlers: Map<EventType, Set<Handler<unknown>>>;
   private lastLanguageTranscriptioCleanupHandler: () => void;
+  private lastLanguageTranslationCleanupHandler: () => void;
 
   constructor(
     private subscribe: (type: ExtendedStreamType) => void,
@@ -88,6 +90,7 @@ export class EventManager {
     this.emitter = new EventEmitter();
     this.handlers = new Map();
     this.lastLanguageTranscriptioCleanupHandler = () => {};
+    this.lastLanguageTranslationCleanupHandler = () => {};
   }
 
   // Convenience handlers for common event types
@@ -120,8 +123,27 @@ export class EventManager {
     return this.lastLanguageTranscriptioCleanupHandler;
   }
 
-  onTranslation(handler: Handler<TranslationData>) {
-    return this.addHandler(StreamType.TRANSLATION, handler);
+  /**
+   * 🌐 Listen for translation events for a specific language pair
+   * @param sourceLanguage - Source language code (e.g., "es-ES")
+   * @param targetLanguage - Target language code (e.g., "en-US")
+   * @param handler - Function to handle translation data
+   * @returns Cleanup function to remove the handler
+   * @throws Error if language codes are invalid
+   */
+  ontranslationForLanguage(sourceLanguage: string, targetLanguage: string, handler: Handler<TranslationData>): () => void {
+    if (!isValidLanguageCode(sourceLanguage)) {
+      throw new Error(`Invalid source language code: ${sourceLanguage}`);
+    }
+    if (!isValidLanguageCode(targetLanguage)) {
+      throw new Error(`Invalid target language code: ${targetLanguage}`);
+    }
+
+    this.lastLanguageTranslationCleanupHandler();
+    const streamType = createTranslationStream(sourceLanguage, targetLanguage);
+    this.lastLanguageTranslationCleanupHandler = this.addHandler(streamType, handler);
+
+    return this.lastLanguageTranslationCleanupHandler;
   }
 
   onHeadPosition(handler: Handler<HeadPosition>) {

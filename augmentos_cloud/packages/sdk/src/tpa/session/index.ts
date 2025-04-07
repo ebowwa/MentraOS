@@ -40,7 +40,8 @@ import {
   validateTpaConfig,
   AudioChunk,
   isAudioChunk,
-  createTranscriptionStream
+  createTranscriptionStream,
+  createTranslationStream
 } from '../../types';
 
 /**
@@ -197,12 +198,15 @@ export class TpaSession {
   }
 
   /**
-   * 🔄 Listen for translation events
+   * 🌐 Listen for speech translation events for a specific language pair
+   * @param sourceLanguage - Source language code (e.g., "es-ES")
+   * @param targetLanguage - Target language code (e.g., "en-US")
    * @param handler - Function to handle translation data
    * @returns Cleanup function to remove the handler
+   * @throws Error if language codes are invalid
    */
-  onTranslation(handler: (data: TranslationData) => void): () => void {
-    return this.events.onTranslation(handler);
+  onTranslationForLanguage(sourceLanguage: string, targetLanguage: string, handler: (data: TranslationData) => void): () => void {
+    return this.events.ontranslationForLanguage(sourceLanguage, targetLanguage, handler);
   }
 
   /**
@@ -726,6 +730,13 @@ export class TpaSession {
             // console.log(`((())) transcriptionData.transcribe_language: ${transcriptionData.transcribeLanguage}`);
             if (transcriptionData.transcribeLanguage) {
               messageStreamType = createTranscriptionStream(transcriptionData.transcribeLanguage) as ExtendedStreamType;
+            }
+          } else if (message.streamType === StreamType.TRANSLATION) {
+            const translationData = message.data as TranslationData;
+            // console.log(`((())) translationData.sourceLanguage: ${translationData.sourceLanguage}`);
+            // console.log(`((())) translationData.targetLanguage: ${translationData.targetLanguage}`);
+            if (translationData.transcribeLanguage && translationData.translateLanguage) {
+              messageStreamType = createTranslationStream(translationData.transcribeLanguage, translationData.translateLanguage) as ExtendedStreamType;
             }
           }
 
