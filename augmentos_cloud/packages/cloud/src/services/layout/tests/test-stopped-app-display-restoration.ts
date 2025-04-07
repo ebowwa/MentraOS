@@ -6,6 +6,7 @@
 
 import DisplayManager from '../DisplayManager6.1';
 import { strict as assert } from 'assert';
+import { systemApps } from '../../core/system-apps';
 
 /**
  * Test that savedDisplayBeforeBoot is checked for app still running

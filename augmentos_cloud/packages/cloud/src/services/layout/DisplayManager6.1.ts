@@ -54,8 +54,17 @@ class DisplayManager implements DisplayManagerI {
     // Save current display before showing boot screen (if not dashboard)
     if (this.displayState.currentDisplay && 
         this.displayState.currentDisplay.displayRequest.packageName !== systemApps.dashboard.packageName) {
-      logger.info(`[DisplayManager] - [${userSession.userId}] 💾 Saving current display for restoration after boot`);
-      this.displayState.savedDisplayBeforeBoot = this.displayState.currentDisplay;
+        
+      // Get the package name of the currently displayed content
+      const currentDisplayPackage = this.displayState.currentDisplay.displayRequest.packageName;
+      
+      // Only save the display if the app that owns it is still running
+      if (userSession.activeAppSessions.includes(currentDisplayPackage)) {
+        logger.info(`[DisplayManager] - [${userSession.userId}] 💾 Saving current display for restoration after boot: ${currentDisplayPackage}`);
+        this.displayState.savedDisplayBeforeBoot = this.displayState.currentDisplay;
+      } else {
+        logger.info(`[DisplayManager] - [${userSession.userId}] ⚠️ Not saving current display - app ${currentDisplayPackage} is no longer running`);
+      }
     }
 
     logger.info(`[DisplayManager] - [${userSession.userId}] 🚀 Starting app: ${packageName}`);

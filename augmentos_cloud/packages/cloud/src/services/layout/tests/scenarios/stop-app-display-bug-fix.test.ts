@@ -9,6 +9,7 @@ import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@augmentos/sdk';
 import { strict as assert } from 'assert';
+import { systemApps } from '../../../core/system-apps';
 
 // App package names
 const APP1 = 'com.example.app1';
@@ -50,8 +51,9 @@ export async function testNoDisplayRestoreForStoppedApps() {
     userSession.addActiveApp(APP1); // Re-add the app to active apps
     
     console.log('3. App1 shows a display');
-    // App1 sends a display request
+    // App1 sends a display request - force display to bypass throttling
     const app1Display = createDisplayRequest(APP1, 'Display from App1');
+    app1Display.forceDisplay = true; // Add this to bypass throttling
     const result1 = displayManager.handleDisplayEvent(app1Display, userSession);
     assert.equal(result1, true, 'App1 display request should be accepted');
     
