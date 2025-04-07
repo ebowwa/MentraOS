@@ -58,12 +58,19 @@ class DisplayManager implements DisplayManagerI {
       // Get the package name of the currently displayed content
       const currentDisplayPackage = this.displayState.currentDisplay.displayRequest.packageName;
       
-      // Only save the display if the app that owns it is still running
-      if (userSession.activeAppSessions.includes(currentDisplayPackage)) {
+      // Check if the display is still valid/active using our enhanced check
+      const displayIsValid = this.hasRemainingDuration(this.displayState.currentDisplay);
+      
+      // Only save the display if:
+      // 1. The app that owns it is still running AND
+      // 2. The display is still valid/active
+      if (userSession.activeAppSessions.includes(currentDisplayPackage) && displayIsValid) {
         logger.info(`[DisplayManager] - [${userSession.userId}] 💾 Saving current display for restoration after boot: ${currentDisplayPackage}`);
         this.displayState.savedDisplayBeforeBoot = this.displayState.currentDisplay;
-      } else {
+      } else if (!userSession.activeAppSessions.includes(currentDisplayPackage)) {
         logger.info(`[DisplayManager] - [${userSession.userId}] ⚠️ Not saving current display - app ${currentDisplayPackage} is no longer running`);
+      } else if (!displayIsValid) {
+        logger.info(`[DisplayManager] - [${userSession.userId}] ⚠️ Not saving current display - display is no longer valid`);
       }
     }
 
@@ -139,12 +146,14 @@ class DisplayManager implements DisplayManagerI {
       const savedAppName = this.displayState.savedDisplayBeforeBoot.displayRequest.packageName;
       const isAppStillRunning = this.userSession?.activeAppSessions.includes(savedAppName);
       
-      if (isAppStillRunning) {
+      // Check if the saved display is still valid using our enhanced check
+      const isSavedDisplayValid = this.hasRemainingDuration(this.displayState.savedDisplayBeforeBoot);
+      
+      if (isAppStillRunning && isSavedDisplayValid) {
         logger.info(`[DisplayManager] - [${this.userSession?.userId}] ⭐ Restoring saved display from before boot: ${savedAppName}`);
         const success = this.sendToWebSocket(this.displayState.savedDisplayBeforeBoot.displayRequest, this.userSession?.websocket);
         
-        // Whether successful or not, we should clear the savedDisplayBeforeBoot
-        // to avoid restoring stale displays in future boot sequences
+        // Always clear the savedDisplayBeforeBoot to prevent it from being restored again
         const savedDisplay = this.displayState.savedDisplayBeforeBoot;
         this.displayState.savedDisplayBeforeBoot = null;
         
@@ -155,10 +164,20 @@ class DisplayManager implements DisplayManagerI {
         } else {
           logger.error(`[DisplayManager] - [${this.userSession?.userId}] ❌ Failed to restore saved display - websocket error`);
         }
-      } else {
+      } else if (!isAppStillRunning) {
         logger.info(`[DisplayManager] - [${this.userSession?.userId}] ❌ Not restoring saved display - app ${savedAppName} is no longer running`);
         this.displayState.savedDisplayBeforeBoot = null;
+      } else if (!isSavedDisplayValid) {
+        logger.info(`[DisplayManager] - [${this.userSession?.userId}] ❌ Not restoring saved display - display is no longer valid`);
+        this.displayState.savedDisplayBeforeBoot = null;
       }
+    }
+    
+    // Check if the current display is still valid
+    // If not, clear it to prevent it from being kept as "current" during showNextDisplay
+    if (this.displayState.currentDisplay && !this.hasRemainingDuration(this.displayState.currentDisplay)) {
+      logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🧹 Clearing invalid current display from ${this.displayState.currentDisplay.displayRequest.packageName}`);
+      this.displayState.currentDisplay = null;
     }
     
     // Otherwise, show the next available display
@@ -201,10 +220,16 @@ class DisplayManager implements DisplayManagerI {
       }
     }
 
-    // Clear any background lock held by this app
+    // Always clear any background lock held by this app
     if (this.displayState.backgroundLock?.packageName === packageName) {
       logger.info(`[DisplayManager] - [${userSession.userId}] 🔓 Clearing background lock for: ${packageName}`);
       this.displayState.backgroundLock = null;
+    }
+    
+    // Important: Also remove this app's display from current display if it's showing
+    const wasDisplaying = this.displayState.currentDisplay?.displayRequest.packageName === packageName;
+    if (wasDisplaying) {
+      this.displayState.currentDisplay = null;
     }
     
     // Also clear any saved display from this app
@@ -219,16 +244,15 @@ class DisplayManager implements DisplayManagerI {
       this.displayState.coreAppDisplay = null;
 
       // If core app was currently displaying, clear the display
-      if (this.displayState.currentDisplay?.displayRequest.packageName === packageName) {
+      if (wasDisplaying) {
         logger.info(`[DisplayManager] - [${userSession.userId}] 🔄 Core app was displaying, clearing display`);
         this.clearDisplay('main');
       }
     }
 
-    // If this app was currently displaying something, show next display
-    if (this.displayState.currentDisplay?.displayRequest.packageName === packageName) {
-      this.showNextDisplay('app_stop');
-    }
+    // Always show next display when an app stops, even if it wasn't displaying
+    // This will process any throttled requests or find the next app to display
+    this.showNextDisplay('app_stop');
   }
 
   public handleDisplayEvent(displayRequest: DisplayRequest, userSession: UserSession): boolean {
@@ -385,49 +409,11 @@ class DisplayManager implements DisplayManagerI {
       this.updateBootScreen();
       return;
     }
-
-    // Check for background app with lock
-    if (this.displayState.backgroundLock) {
-      const { packageName, expiresAt, lastActiveTime } = this.displayState.backgroundLock;
-      const now = Date.now();
-
-      // Check if lock should be released due to inactivity
-      if (now - lastActiveTime > this.LOCK_INACTIVE_TIMEOUT) {
-        logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Releasing lock due to inactivity: ${packageName}`);
-        this.displayState.backgroundLock = null;
-      } else if (expiresAt.getTime() > now) {
-        // Lock is still valid and active
-        if (this.displayState.currentDisplay?.displayRequest.packageName === packageName) {
-          logger.info(`[DisplayManager] - [${this.userSession?.userId}] ✅ Lock holder is current display, keeping it`);
-          return;
-        }
-
-        // If lock holder isn't displaying, try showing core app
-        if (this.displayState.coreAppDisplay &&
-          this.hasRemainingDuration(this.displayState.coreAppDisplay)) {
-          logger.info(`[DisplayManager] - [${this.userSession?.userId}] ✅ Lock holder not displaying, showing core app`);
-          if (this.showDisplay(this.displayState.coreAppDisplay)) {
-            return;
-          }
-          // If showing core app failed, continue to next checks
-        }
-      } else {
-        logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Lock expired for ${packageName}, clearing lock`);
-        this.displayState.backgroundLock = null;
-      }
-    }
-
-    // Show core app display if it exists and has remaining duration
-    if (this.displayState.coreAppDisplay && this.hasRemainingDuration(this.displayState.coreAppDisplay)) {
-      logger.info(`[DisplayManager] - [${this.userSession?.userId}] ✅ Showing core app display`);
-      this.showDisplay(this.displayState.coreAppDisplay);
-      return;
-    }
     
-    // If an app was stopped, check if there are any throttled requests from other apps
-    // that could be shown immediately instead of clearing the display
-    if (reason === 'app_stop' && this.throttledRequests.size > 0 && this.userSession) {
-      logger.info(`[DisplayManager] - [${this.userSession.userId}] 🔄 App stopped, checking throttled requests from other apps`);
+    // Check for throttled requests from other apps that could be shown immediately
+    // We'll do this early for all reasons, not just app_stop, since throttled requests are priorities
+    if (this.throttledRequests.size > 0 && this.userSession) {
+      logger.info(`[DisplayManager] - [${this.userSession.userId}] 🔄 Checking throttled requests from apps`);
       
       // Find the oldest throttled request from an app that's still running
       let oldestRequest: ThrottledRequest | null = null;
@@ -475,18 +461,99 @@ class DisplayManager implements DisplayManagerI {
       }
     }
 
+    // Check for background app with lock
+    if (this.displayState.backgroundLock) {
+      const { packageName, expiresAt, lastActiveTime } = this.displayState.backgroundLock;
+      const now = Date.now();
+
+      // Check if the app with the lock is still active/running
+      const isLockHolderStillRunning = this.userSession?.activeAppSessions.includes(packageName);
+      
+      // Check if lock should be released due to inactivity or app being stopped
+      if (!isLockHolderStillRunning) {
+        logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Releasing lock because app is no longer running: ${packageName}`);
+        this.displayState.backgroundLock = null;
+      } else if (now - lastActiveTime > this.LOCK_INACTIVE_TIMEOUT) {
+        logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Releasing lock due to inactivity: ${packageName}`);
+        this.displayState.backgroundLock = null;
+      } else if (expiresAt.getTime() > now) {
+        // Lock is still valid and active and app is still running
+        
+        // Additional check: if the current call is due to the app stopping,
+        // then don't try to keep its display even if it has the lock
+        if (reason === 'app_stop' && 
+            this.displayState.currentDisplay?.displayRequest.packageName === packageName) {
+          logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 App ${packageName} is stopping, releasing lock`);
+          this.displayState.backgroundLock = null;
+        } else if (this.displayState.currentDisplay?.displayRequest.packageName === packageName) {
+          // Check if the current display is still valid/active
+          if (this.displayState.currentDisplay && 
+              this.hasRemainingDuration(this.displayState.currentDisplay)) {
+            logger.info(`[DisplayManager] - [${this.userSession?.userId}] ✅ Lock holder is current display and still valid, keeping it`);
+            return;
+          } else {
+            logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Lock holder's display is no longer valid, releasing lock`);
+            this.displayState.backgroundLock = null;
+          }
+        }
+
+        // If lock holder isn't displaying, try showing core app
+        if (this.displayState.coreAppDisplay &&
+          this.hasRemainingDuration(this.displayState.coreAppDisplay)) {
+          logger.info(`[DisplayManager] - [${this.userSession?.userId}] ✅ Lock holder not displaying, showing core app`);
+          if (this.showDisplay(this.displayState.coreAppDisplay)) {
+            return;
+          }
+          // If showing core app failed, continue to next checks
+        }
+      } else {
+        logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Lock expired for ${packageName}, clearing lock`);
+        this.displayState.backgroundLock = null;
+      }
+    }
+
+    // Show core app display if it exists and has remaining duration
+    if (this.displayState.coreAppDisplay && this.hasRemainingDuration(this.displayState.coreAppDisplay)) {
+      logger.info(`[DisplayManager] - [${this.userSession?.userId}] ✅ Showing core app display`);
+      this.showDisplay(this.displayState.coreAppDisplay);
+      return;
+    }
+
     logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔄 Nothing to show, clearing display`);
     this.clearDisplay('main');
   }
 
   private canBackgroundAppDisplay(packageName: string): boolean {
+    // First check if the app is still running
+    if (!this.userSession || !this.userSession.activeAppSessions.includes(packageName)) {
+      logger.info(`[DisplayManager] - [${this.userSession?.userId}] ❌ ${packageName} can't display - app not running`);
+      return false;
+    }
+  
+    // Check if this app already has the background lock
     if (this.displayState.backgroundLock?.packageName === packageName) {
       logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔒 ${packageName} already has background lock`);
       return true;
     }
 
+    // Check if there's no background lock yet
     if (!this.displayState.backgroundLock) {
       logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔒 Granting new background lock to ${packageName}`);
+      this.displayState.backgroundLock = {
+        packageName,
+        expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT),
+        lastActiveTime: Date.now()
+      };
+      return true;
+    }
+    
+    // Check if the current lock holder is still running
+    const lockHolderStillRunning = this.userSession?.activeAppSessions.includes(
+      this.displayState.backgroundLock.packageName
+    );
+    
+    if (!lockHolderStillRunning) {
+      logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔓 Lock holder ${this.displayState.backgroundLock.packageName} is no longer running, releasing lock`);
       this.displayState.backgroundLock = {
         packageName,
         expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT),
@@ -547,9 +614,42 @@ class DisplayManager implements DisplayManagerI {
     this.sendDisplay(clearRequest);
   }
 
+  /**
+   * Checks if a display should still be considered valid/active
+   * 
+   * A display is considered valid when:
+   * 1. It has no expiration, OR
+   * 2. It has an expiration time that hasn't passed yet
+   * 
+   * Additionally, we consider other factors like:
+   * - For displays without expiration, consider them consumed after they've been shown
+   * - Short-lived displays (< 1 second) are considered transient and won't be restored
+   */
   private hasRemainingDuration(activeDisplay: ActiveDisplay): boolean {
-    if (!activeDisplay.expiresAt) return true;
-    return activeDisplay.expiresAt.getTime() > Date.now();
+    // If the display has an explicit expiration time, check if it has passed
+    if (activeDisplay.expiresAt) {
+      return activeDisplay.expiresAt.getTime() > Date.now();
+    }
+    
+    // Special handling for displays without explicit duration
+    
+    // 1. If the display request has a zero duration, it was likely meant to be shown once
+    // and should not be restored after a different display is shown
+    if (activeDisplay.displayRequest.durationMs === 0) {
+      return false;
+    }
+    
+    // 2. If the display has been shown for more than a few seconds,
+    // it's likely been "consumed" by the user and shouldn't be restored
+    const displayAge = Date.now() - activeDisplay.startedAt.getTime();
+    const MIN_DISPLAY_LIFETIME = 1000; // 1 second
+    
+    if (displayAge > MIN_DISPLAY_LIFETIME) {
+      return false;
+    }
+    
+    // Default case - if no expiration and recently shown, consider it valid
+    return true;
   }
 
   private createActiveDisplay(displayRequest: DisplayRequest): ActiveDisplay {
