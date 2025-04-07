@@ -71,7 +71,7 @@ class LiveCaptionsApp extends TpaServer {
       userTranscriptProcessors.set(userId, transcriptProcessor);
       
       // Subscribe with default language using the new method
-      const cleanup = session.events.onTranscriptionForLanguage('en-US', (data: TranscriptionData) => {
+      const cleanup = session.onTranscriptionForLanguage('en-US', (data: TranscriptionData) => {
         this.handleTranscription(session, sessionId, userId, data);
       });
       
@@ -206,6 +206,12 @@ class LiveCaptionsApp extends TpaServer {
       // Update the processor
       userTranscriptProcessors.set(userId, newProcessor);
 
+      // Show the updated transcript layout immediately with the new formatting
+      if (session) {
+        const formattedTranscript = newProcessor.getFormattedTranscriptHistory();
+        this.showTranscriptsToUser(session, formattedTranscript, true);
+      }
+
       // If we're in session context, set up transcription handler
       console.log(`Setting up transcription handlers for session ${sessionId}`);
       
@@ -217,7 +223,7 @@ class LiveCaptionsApp extends TpaServer {
       };
 
       // Subscribe to language-specific transcription
-      const cleanup = session.events.onTranscriptionForLanguage(locale, languageHandler);
+      const cleanup = session.onTranscriptionForLanguage(locale, languageHandler);
       
       // Register cleanup handler
       this.addCleanupHandler(cleanup);
