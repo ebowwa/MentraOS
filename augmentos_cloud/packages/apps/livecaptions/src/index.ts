@@ -172,7 +172,7 @@ class LiveCaptionsApp extends TpaServer {
 
       // Process line width
       let lineWidth = 30; // default
-      const isChineseLanguage = locale.startsWith('zh-') || locale.startsWith('ja-');
+      const isChineseLanguage = locale.toLowerCase().startsWith('zh-') || locale.toLowerCase().startsWith('ja-');
       
       if (lineWidthSetting) {
         lineWidth = convertLineWidth(lineWidthSetting.value, isChineseLanguage);
@@ -187,10 +187,10 @@ class LiveCaptionsApp extends TpaServer {
         if (isNaN(numberOfLines) || numberOfLines < 1) numberOfLines = 3;
       }
 
-      console.log(`Applied settings for user ${userId}: language=${locale}, lineWidth=${lineWidth}, numberOfLines=${numberOfLines}`);
+      console.log(`Applied settings for user ${userId}: language=${locale}, lineWidth=${lineWidth}, numberOfLines=${numberOfLines}, isChineseLanguage=${isChineseLanguage}`);
 
       // Create new processor with the settings
-      const newProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS);
+      const newProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS, isChineseLanguage);
 
       // Preserve transcript history if language didn't change and we have a previous processor
       if (!languageChanged && previousTranscriptProcessor) {
