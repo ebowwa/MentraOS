@@ -48,6 +48,7 @@ import {
   TpaConnectionInit,
   TpaSubscriptionUpdate,
   TpaToCloudMessage,
+  TpaType,
   UserSession,
   Vad,
   WebhookRequestType
@@ -410,6 +411,41 @@ export class WebSocketService {
     }
 
     userSession.logger.info(`[websocket.service]: ⚡️ Loading app ${packageName} for user ${userSession.userId}\n`);
+
+    // If this is a STANDARD app, we need to stop any other STANDARD apps that are running
+    if (app.tpaType === TpaType.STANDARD) {
+      userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
+      
+      // Find all active STANDARD apps
+      const runningStandardApps = [];
+      
+      for (const activeAppName of userSession.activeAppSessions) {
+        // Skip if this is the app we're trying to start
+        if (activeAppName === packageName) continue;
+        
+        // Get the app details to check its type
+        try {
+          const activeApp = await appService.getApp(activeAppName);
+          if (activeApp && activeApp.tpaType === TpaType.STANDARD) {
+            runningStandardApps.push(activeAppName);
+          }
+        } catch (error) {
+          userSession.logger.error(`[websocket.service]: Error checking app type for ${activeAppName}:`, error);
+          // Continue with the next app even if there's an error
+        }
+      }
+      
+      // Stop any running STANDARD apps
+      for (const standardAppToStop of runningStandardApps) {
+        userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
+        try {
+          await this.stopAppSession(userSession, standardAppToStop);
+        } catch (error) {
+          userSession.logger.error(`[websocket.service]: Error stopping STANDARD app ${standardAppToStop}:`, error);
+          // Continue with the next app even if there's an error
+        }
+      }
+    }
 
     // Store pending session.
     userSession.loadingApps.add(packageName);
