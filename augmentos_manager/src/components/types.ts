@@ -37,7 +37,8 @@ export type RootStackParamList = {
   SelectGlassesBluetoothScreen: { glassesModelName: string };
   GlassesPairingGuideScreen: { glassesModelName: string };
   GlassesPairingGuidePreparationScreen: { glassesModelName: string };
-  AppSettings: { packageName: string, appName: string };
+  AppSettings: { packageName: string, appName: string, fromWebView?: boolean };
+  AppWebView: { webviewURL: string, appName: string, packageName?: string, fromSettings?: boolean };
   ErrorReportScreen: undefined;
 };
 
@@ -65,4 +66,3 @@ export type AppStoreItem = {
 };
 
 export type NavigationProps = NativeStackNavigationProp<RootStackParamList>;
-

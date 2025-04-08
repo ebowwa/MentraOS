@@ -42,7 +42,7 @@ struct ViewState {
   private var batteryLevel = -1;
   private var autoBrightness: Bool = false;
   private var dashboardHeight: Int = 4;
-  private var sensingEnabled: Bool = false;
+  private var sensingEnabled: Bool = true;
   private var isSearching: Bool = false;
   private var alwaysOnStatusBar: Bool = false;
   private var bypassVad: Bool = false;
@@ -369,12 +369,15 @@ struct ViewState {
     
     // Handle microphone state change if needed
     Task {
-      let glassesMic = self.micEnabled && !self.useOnboardMic
-      print("user enabled microphone: \(isEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
+      // Only enable microphone if sensing is also enabled
+      let actuallyEnabled = isEnabled && self.sensingEnabled
+      
+      let glassesMic = actuallyEnabled && !self.useOnboardMic
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
       //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
       await self.g1Manager?.setMicEnabled(enabled: glassesMic)
       
-      setOnboardMicEnabled(self.useOnboardMic && self.micEnabled)
+      setOnboardMicEnabled(self.useOnboardMic && actuallyEnabled)
     }
   }
   
@@ -791,6 +794,8 @@ struct ViewState {
           }
           self.sensingEnabled = enabled
           saveSettings()
+          // Update microphone state when sensing is toggled
+          onMicrophoneStateChange(self.micEnabled)
           handleRequestStatus()// to update the UI
           break
         case .enableAlwaysOnStatusBar:

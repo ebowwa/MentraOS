@@ -14,6 +14,7 @@ import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
 import AppStoreNative from './screens/AppStoreNative';
 import AppStoreWeb from './screens/AppStoreWebview';
+import AppWebView from './screens/AppWebView';
 import AppDetails from './screens/AppDetails';
 import Reviews from './screens/ReviewSection';
 import { StyleSheet, Text, View } from 'react-native';
@@ -321,6 +322,23 @@ const App: React.FC = () => {
                         })}>
                         {props => (
                           <AppSettings
+                            {...props}
+                            toggleTheme={toggleTheme}
+                            isDarkTheme={isDarkTheme}
+                          />
+                        )}
+                      </Stack.Screen>
+                      <Stack.Screen name="AppWebView"
+                        options={({ route }) => ({
+                          title: route.params?.appName || 'App',
+                          headerStyle: {
+                            backgroundColor: isDarkTheme ? '#000000' : '#ffffff',
+                          },
+                          headerTintColor: isDarkTheme ? '#ffffff' : '#000000',
+                          headerBackTitle: 'Back',
+                        })}>
+                        {props => (
+                          <AppWebView
                             {...props}
                             toggleTheme={toggleTheme}
                             isDarkTheme={isDarkTheme}
