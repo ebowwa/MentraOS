@@ -79,7 +79,7 @@ async function fetchAndApplySettings(sessionId: string, userId: string) {
     const isChineseLanguage = targetLang.toLowerCase().startsWith('zh-') || targetLang.toLowerCase().startsWith('ja-');
 
     const lineWidth = lineWidthSetting ? convertLineWidth(lineWidthSetting.value, isChineseLanguage) : 30;
-    const transcriptProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS);
+    const transcriptProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS, isChineseLanguage);
     userTranscriptProcessors.set(userId, transcriptProcessor);
 
     // Update subscription for the session to use translation stream.
@@ -89,7 +89,7 @@ async function fetchAndApplySettings(sessionId: string, userId: string) {
   } catch (err) {
     console.error(`Error fetching settings for session ${sessionId}:`, err);
     // Fallback defaults
-    const transcriptProcessor = new TranscriptProcessor(30, 3, MAX_FINAL_TRANSCRIPTS);
+    const transcriptProcessor = new TranscriptProcessor(30, 3, MAX_FINAL_TRANSCRIPTS, false);
     userTranscriptProcessors.set(userId, transcriptProcessor);
     usertranscribeLanguageSettings.set(userId, 'zh-CN');
     userTranslateLanguageSettings.set(userId, 'en-US');
@@ -126,7 +126,9 @@ function updateSubscriptionForSession(sessionId: string, userId: string) {
 function handleTranslation(sessionId: string, userId: string, ws: WebSocket, translationData: any) {
   let transcriptProcessor = userTranscriptProcessors.get(userId);
   if (!transcriptProcessor) {
-    transcriptProcessor = new TranscriptProcessor(30, 3, MAX_FINAL_TRANSCRIPTS);
+    const targetLang = userTranslateLanguageSettings.get(userId) || 'en-US';
+    const isChineseLanguage = targetLang.toLowerCase().startsWith('zh-') || targetLang.toLowerCase().startsWith('ja-');
+    transcriptProcessor = new TranscriptProcessor(30, 3, MAX_FINAL_TRANSCRIPTS, isChineseLanguage);
     userTranscriptProcessors.set(userId, transcriptProcessor);
   }
 
@@ -381,7 +383,7 @@ app.post('/settings', async (req, res) => {
     console.log(`Updating settings for user ${userIdForSettings}: lineWidth=${lineWidth}, numberOfLines=${numberOfLines}, source=${sourceLanguage}, target=${targetLanguage}`);
     
     // Create a new processor
-    const newProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS);
+    const newProcessor = new TranscriptProcessor(lineWidth, numberOfLines, MAX_FINAL_TRANSCRIPTS, isChineseLanguage);
     
     // Important: Only preserve transcript history if language DIDN'T change
     if (!languageChanged && userTranscriptProcessors.has(userIdForSettings)) {

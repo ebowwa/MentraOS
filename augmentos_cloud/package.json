@@ -22,8 +22,10 @@
     "prod:stop": "docker-compose -f docker-compose.yml -p prod down",
     "prod:deploy": "bun run prod:stop && bun run prod",
     "prod:setup-network": "docker network create augmentos-network",
+    "prod:logs": "docker-compose -f docker-compose.yml -p prod logs -f --tail=10",
 
     "logs": "docker-compose -f docker-compose.dev.yml -p dev logs -f --tail=0",
+    "logs:prod": "docker-compose -f docker-compose.yml -p prod logs -f --tail=10",
     "logs:cloud": "docker-compose -f docker-compose.dev.yml -p dev logs -f cloud --tail=0",
 
     "test": "bun run packages/cloud/src/tests/run-tests.ts",
