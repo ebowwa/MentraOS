@@ -247,7 +247,7 @@ export class TpaSession {
   subscribe(type: ExtendedStreamType): void {
     this.subscriptions.add(type);
     if (this.ws?.readyState === 1) {
-      console.log(`1111  Subscribing to ${type}`);
+      // console.log(`1111  Subscribing to ${type}`);
       this.updateSubscriptions();
     }
   }
