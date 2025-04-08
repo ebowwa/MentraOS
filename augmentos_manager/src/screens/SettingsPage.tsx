@@ -7,22 +7,22 @@ import {
   TouchableOpacity,
   Platform,
   ScrollView,
-  Alert,
   Modal,
-  Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Slider } from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
-import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
+import { useStatus } from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import { stopExternalService } from '../bridge/CoreServiceStarter';
-import CoreCommsService from '../bridge/CoreCommsService';
+import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
 import NavigationBar from '../components/NavigationBar';
-
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
+import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import showAlert from '../utils/AlertUtils';
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -31,6 +31,9 @@ interface SettingsPageProps {
 }
 
 const parseBrightness = (brightnessStr: string | null | undefined): number => {
+  if (typeof brightnessStr === 'number') {
+    return brightnessStr;
+  }
   if (!brightnessStr || brightnessStr.includes('-')) {
     return 50;
   }
@@ -44,19 +47,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   navigation,
 }) => {
   const { status } = useStatus();
-  const [isScrolled, setIsScrolled] = useState(false);
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
-  const [isSensingEnabled, setIsSensingEnabled] = useState(status.core_info.sensing_enabled);
+  const [isSensingEnabled, setIsSensingEnabled] = useState(
+    status.core_info.sensing_enabled,
+  );
   const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(
-    status.core_info.force_core_onboard_mic
+    status.core_info.force_core_onboard_mic,
   );
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
-    status.core_info.always_on_status_bar_enabled
+    status.core_info.always_on_status_bar_enabled,
   );
-  const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState<boolean>(false);
-  const [brightness, setBrightness] = useState<number|null>(null);
 
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
@@ -66,6 +68,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const toggleForceCoreOnboardMic = async () => {
+    // First request microphone permission if we're enabling the mic
+    if (!forceCoreOnboardMic) {
+      // We're about to enable the mic, so request permission
+      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
+      if (!hasMicPermission) {
+        // Permission denied, don't toggle the setting
+        console.log('Microphone permission denied, cannot enable phone microphone');
+        showAlert(
+          'Microphone Permission Required',
+          'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
+          [{ text: 'OK' }],
+          {
+            isDarkTheme,
+            iconName: 'microphone',
+            iconColor: '#2196F3'
+          }
+        );
+        return;
+      }
+    }
+    
+    // Continue with toggling the setting if permission granted or turning off
     const newVal = !forceCoreOnboardMic;
     await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
     setForceCoreOnboardMic(newVal);
@@ -77,56 +101,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setIsAlwaysOnStatusBarEnabled(newVal);
   };
 
-  useEffect(() => {
-    if (status.glasses_info) {
-      if (status.glasses_info?.brightness != null) {
-        setBrightness(parseBrightness(status.glasses_info.brightness));
-      }
-    }
-  }, [status.glasses_info?.brightness, status.glasses_info]);
-
-  useEffect(() => {
-    if (status.glasses_info) {
-      if (status.glasses_info?.auto_brightness_enabled != null) {
-        setIsAutoBrightnessEnabled(status.glasses_info.auto_brightness_enabled);
-      }
-    }
-  }, [status.glasses_info?.auto_brightness_enabled, status.glasses_info]);
-
-  const changeBrightness = async (newBrightness: number) => {
-    if (!status.glasses_info) {
-      Alert.alert('Glasses not connected', 'Please connect your smart glasses first.');
-      return;
-    }
-
-    if (newBrightness == null) {
-        return;
-    }
-
-    if (status.glasses_info.brightness === '-') {return;} // or handle accordingly
-    await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
-    setBrightness(newBrightness);
-  };
-
-  const toggleAutoBrightness = async () => {
-    const newVal = !isAutoBrightnessEnabled;
-    await coreCommunicator.setGlassesBrightnessMode(brightness ?? 50, newVal);
-    setIsAutoBrightnessEnabled(newVal);
-  };
 
   const forgetGlasses = async () => {
     await coreCommunicator.sendForgetSmartGlasses();
   };
 
   const confirmForgetGlasses = () => {
-    Alert.alert(
+    showAlert(
       'Forget Glasses',
       'Are you sure you want to forget your glasses?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Yes', onPress: forgetGlasses },
       ],
-      { cancelable: false }
+      { 
+        cancelable: false,
+        isDarkTheme
+      },
     );
   };
 
@@ -134,7 +125,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     try {
       // Try to sign out with Supabase - may fail in offline mode
       await supabase.auth.signOut().catch(err => {
-        console.log('Supabase sign-out failed, continuing with local cleanup:', err);
+        console.log(
+          'Supabase sign-out failed, continuing with local cleanup:',
+          err,
+        );
       });
 
       // Completely clear ALL Supabase Auth storage
@@ -149,10 +143,11 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
       // Clear any other user-related storage that might prevent proper logout
       const allKeys = await AsyncStorage.getAllKeys();
-      const userKeys = allKeys.filter(key =>
-        key.startsWith('supabase.auth.') ||
-        key.includes('user') ||
-        key.includes('token')
+      const userKeys = allKeys.filter(
+        key =>
+          key.startsWith('supabase.auth.') ||
+          key.includes('user') ||
+          key.includes('token'),
       );
 
       if (userKeys.length > 0) {
@@ -161,17 +156,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
       // Clean up other services
       console.log('Cleaning up local sessions and services');
-      
+
       // Delete core auth key
       await coreCommunicator.deleteAuthenticationSecretKey();
-      
+
       // Stop the native services
-      CoreCommsService.stopService();
+      coreCommunicator.stopService();
       stopExternalService();
-      
+
       // Clean up communicator resources
       coreCommunicator.cleanup();
-      
+
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
@@ -189,14 +184,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const confirmSignOut = () => {
-    Alert.alert(
+    showAlert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Yes', onPress: handleSignOut },
       ],
-      { cancelable: false }
+      { 
+        cancelable: false,
+        isDarkTheme,
+      },
     );
   };
 
@@ -226,278 +224,207 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     selectedChipText: isDarkTheme ? '#FFFFFF' : '#FFFFFF',
   };
 
-
- // Fixed slider props to avoid warning
- const sliderProps = {
-  disabled: !status.glasses_info?.model_name || isAutoBrightnessEnabled,
-  style: [
-    styles.slider,
-  ],
-  minimumValue: 0,
-  maximumValue: 100,
-  step: 1,
-  onSlidingComplete: (value: number) => changeBrightness(value),
-  value: brightness ?? 50,
-  minimumTrackTintColor: !status.glasses_info?.model_name ? 'rgba(33, 150, 243, 0.4)' : styles.minimumTrackTintColor.color,
-  maximumTrackTintColor: isDarkTheme
-    ? styles.maximumTrackTintColorDark.color
-    : styles.maximumTrackTintColorLight.color,
-  thumbTintColor: styles.thumbTintColor.color,
-  thumbTouchSize: { width: 40, height: 40 },
-  trackStyle: { height: 5 },
-  thumbStyle: { 
-    height: 24, 
-    width: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-  }
-};
+  // Slider theme styles - not used anymore, but keep style references for potential future use
 
   return (
-    <View
-      style={[
-        styles.container,
-        isDarkTheme ? styles.darkBackground : styles.lightBackground,
-      ]}
-    >
-      {/* Title Section */}
-      <View
-        style={[
-          styles.titleContainer,
-          isDarkTheme ? styles.titleContainerDark : styles.titleContainerLight,
-        ]}
-      >
-        <Text
+    <SafeAreaView style={{ flex: 1 }}>
+      <View style={styles.container}>
+        {/* Title Section */}
+        <View
           style={[
-            styles.title,
-            isDarkTheme ? styles.lightText : styles.darkText,
-          ]}
-        >
-          Settings
-        </Text>
-      </View>
-
-      <ScrollView 
-        style={styles.scrollViewContainer}
-        contentContainerStyle={styles.scrollViewContent}
-      >
-        {/* Force Onboard Microphone */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-                // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                //   styles.disabledItem,
-              ]}
-            >
-              Force Phone Microphone
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                //   styles.disabledItem,
-              ]}
-            >
-              Force the use of the phone's microphone instead of the glasses' microphone (if applicable).
-            </Text>
-          </View>
-          <Switch
-            //disabled={!status.glasses_info?.model_name}
-            value={forceCoreOnboardMic}
-            onValueChange={toggleForceCoreOnboardMic}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
+            styles.titleContainer,
+            isDarkTheme
+              ? styles.titleContainerDark
+              : styles.titleContainerLight,
+          ]}>
+          <Text
+            style={[
+              styles.title,
+              isDarkTheme ? styles.lightText : styles.darkText,
+            ]}>
+            Settings
+          </Text>
         </View>
 
-        {/* Always on time, date and battery */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Always On Status Bar (Beta Feature)
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-              ]}
-            >
-              Always show the time, date and battery level on your smart glasses.
-            </Text>
+        <ScrollView style={styles.scrollViewContainer}>
+          {/* Force Onboard Microphone */}
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  //   styles.disabledItem,
+                ]}>
+                Use Phone Microphone
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  //   styles.disabledItem,
+                ]}>
+                Use the phone's microphone instead of the glasses'
+                microphone (if applicable).
+              </Text>
+            </View>
+            <Switch
+              //disabled={!status.glasses_info?.model_name}
+              value={forceCoreOnboardMic}
+              onValueChange={toggleForceCoreOnboardMic}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
           </View>
-          <Switch
-            value={isAlwaysOnStatusBarEnabled}
-            onValueChange={toggleAlwaysOnStatusBar}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
 
-        {/* Privacy Settings */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => {
-            navigation.navigate('PrivacySettingsScreen');
-          }}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Privacy Settings
-            </Text>
-          </View>
-          <Icon
-            name="angle-right"
-            size={20}
-            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
-          />
-        </TouchableOpacity>
+          {/* Always on time, date and battery */}
+          {Platform.OS === 'android' && (
+            <View style={styles.settingItem}>
+              <View style={styles.settingTextContainer}>
+                <Text
+                  style={[
+                    styles.label,
+                    isDarkTheme ? styles.lightText : styles.darkText,
+                  ]}>
+                  Always On Status Bar (Beta Feature)
+                </Text>
+                <Text
+                  style={[
+                    styles.value,
+                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  ]}>
+                  Always show the time, date and battery level on your smart
+                  glasses.
+                </Text>
+              </View>
+              <Switch
+                value={isAlwaysOnStatusBarEnabled}
+                onValueChange={toggleAlwaysOnStatusBar}
+                trackColor={switchColors.trackColor}
+                thumbColor={switchColors.thumbColor}
+                ios_backgroundColor={switchColors.ios_backgroundColor}
+              />
+            </View>
+          )}
 
-        {/* Dashboard Settings */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => {
-            navigation.navigate('DashboardSettingsScreen', {
-              isDarkTheme,
-              toggleTheme,
-            });
-          }}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Dashboard Settings
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-              ]}
-            >
-              Configure the contextual dashboard and HeadUp settings
-            </Text>
-          </View>
-          <Icon
-            name="angle-right"
-            size={20}
-            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
-          />
-        </TouchableOpacity>
+          {/* Privacy Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('PrivacySettingsScreen');
+            }}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}>
+                Privacy Settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={
+                isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color
+              }
+            />
+          </TouchableOpacity>
 
-        {/* Auto Brightness */}
-        <View style={[
-          styles.settingItem,
-        ]}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-                !status.glasses_info?.model_name && styles.disabledText
-              ]}
-            >
-              Auto Brightness
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                !status.glasses_info?.model_name && styles.disabledText
-              ]}
-            >
-              Automatically adjust brightness based on ambient light conditions.
-            </Text>
-          </View>
-          <Switch
-            disabled={!status.glasses_info?.model_name}
-            value={isAutoBrightnessEnabled}
-            onValueChange={toggleAutoBrightness}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
+          {/* Dashboard Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('DashboardSettingsScreen', {
+                isDarkTheme,
+                toggleTheme,
+              });
+            }}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}>
+                Dashboard Settings
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                ]}>
+                Configure the contextual dashboard and HeadUp settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={
+                isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color
+              }
+            />
+          </TouchableOpacity>
 
-        {/* Brightness Slider */}
-        <View style={[
-          styles.settingItem,
-        ]}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-                (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledText
-              ]}
-            >
-              Brightness
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                (!status.glasses_info?.model_name || isAutoBrightnessEnabled) && styles.disabledText
-              ]}
-            >
-              Adjust the brightness level of your smart glasses.
-            </Text>
-            <Slider {...sliderProps} />
-          </View>
-        </View>
+          {/* Screen Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('ScreenSettingsScreen');
+            }}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}>
+                Screen Settings
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                ]}>
+                Adjust brightness, auto-brightness, and other display settings.
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={
+                isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color
+              }
+            />
+          </TouchableOpacity>
 
-        {/* Developer Settings */}
-        <TouchableOpacity
-          style={styles.settingItem}
-          onPress={() => {
-            navigation.navigate('DeveloperSettingsScreen');
-          }}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Developer Settings
-            </Text>
-          </View>
-          <Icon
-            name="angle-right"
-            size={20}
-            color={isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color}
-          />
-        </TouchableOpacity>
+          {/* Developer Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('DeveloperSettingsScreen');
+            }}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}>
+                Developer Settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={
+                isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color
+              }
+            />
+          </TouchableOpacity>
 
-        {/* Bug Report */}
-        {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
+          {/* Bug Report */}
+          {/* <TouchableOpacity style={styles.settingItem} onPress={() => {
             navigation.navigate('ErrorReportScreen');
         }}>
           <View style={styles.settingTextContainer}>
@@ -505,39 +432,38 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
         </TouchableOpacity> */}
 
-        {/* Forget Glasses */}
-        <TouchableOpacity
-          style={[
-            styles.settingItem,
-            (!status.core_info.puck_connected || status.core_info.default_wearable === '') && styles.disabledItem
-          ]}
-          disabled={!status.core_info.puck_connected || status.core_info.default_wearable === ''}
-          onPress={confirmForgetGlasses}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                styles.redText,
-                (!status.core_info.puck_connected || status.core_info.default_wearable === '') && styles.disabledText
-              ]}
-            >
-              Forget Glasses
-            </Text>
-          </View>
-        </TouchableOpacity>
+          {/* Forget Glasses */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            disabled={
+              !status.core_info.puck_connected ||
+              status.core_info.default_wearable === ''
+            }
+            onPress={confirmForgetGlasses}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  styles.redText,
+                  (!status.core_info.puck_connected ||
+                    status.core_info.default_wearable === '') &&
+                  styles.disabledItem,
+                ]}>
+                Forget Glasses
+              </Text>
+            </View>
+          </TouchableOpacity>
 
-        {/* Sign Out */}
-        <TouchableOpacity style={styles.settingItem} onPress={confirmSignOut}>
-          <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, styles.redText]}>Sign Out</Text>
-          </View>
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* Your app's bottom navigation bar */}
+          {/* Sign Out */}
+          <TouchableOpacity style={styles.settingItem} onPress={confirmSignOut}>
+            <View style={styles.settingTextContainer}>
+              <Text style={[styles.label, styles.redText]}>Sign Out</Text>
+            </View>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
       <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -545,51 +471,45 @@ export default SettingsPage;
 
 const styles = StyleSheet.create({
   scrollViewContainer: {
-    flex: 1,
-  },
-  scrollViewContent: {
-    paddingBottom: 80,
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   titleContainer: {
-    paddingVertical: 16,
+    paddingVertical: 15,
     paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#fafafa',
-    marginTop: Platform.OS === 'ios' ? 40 : 0,
+    marginBottom: 10,
   },
   titleContainerDark: {
-    backgroundColor: '#1c1c1c',
-    borderBottomColor: '#333333',
+    backgroundColor: '#333333',
   },
   titleContainerLight: {
-    backgroundColor: '#ffffff',
-    borderBottomColor: '#e0e0e0',
+    // backgroundColor: '#ffffff',
   },
   title: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#000000',
-    marginBottom: 0,
+    fontSize: 24,
+    fontWeight: 'bold',
+    fontFamily: 'Montserrat-Bold',
+    textAlign: 'left',
+    color: '#FFFFFF',
+    marginBottom: 5,
   },
   darkBackground: {
     backgroundColor: '#1c1c1c',
   },
   lightBackground: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f0f0f0',
   },
   redText: {
     color: '#FF0F0F',
   },
   darkText: {
-    color: '#1c1c1c',
+    color: 'black',
   },
   lightText: {
-    color: '#ffffff',
+    color: 'white',
   },
   darkSubtext: {
     color: '#666666',
@@ -607,12 +527,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderBottomColor: '#333',
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#fafafa',
-    marginBottom: 1,
   },
   settingTextContainer: {
     flex: 1,
@@ -628,10 +545,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   disabledItem: {
-    opacity: 0.8,
-  },
-  disabledText: {
-    opacity: 0.7,
+    opacity: 0.4,
   },
   slider: {
     width: '100%',
@@ -644,19 +558,9 @@ const styles = StyleSheet.create({
   trackStyle: {
     height: 5,
   },
-  thumbStyle: { 
-    height: 24, 
-    width: 24,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+  thumbStyle: {
+    height: 20,
+    width: 20,
   },
   minimumTrackTintColor: {
     color: '#2196F3',

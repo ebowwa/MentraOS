@@ -14,6 +14,7 @@ import {
 import LogService from '../logic/LogService';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import Button from '../components/Button';
+import showAlert from '../utils/AlertUtils';
 
 interface ErrorReportingScreenProps {
   navigation: any;
@@ -39,7 +40,7 @@ const ErrorReportingScreen: React.FC<ErrorReportingScreenProps> = ({ navigation 
       // Send the error report - token is now handled internally by BackendServerComms
       await logService.sendErrorReport(description);
 
-      Alert.alert(
+      showAlert(
         'Success',
         'Error report submitted successfully. Thank you for helping improve the app!',
         [{
@@ -52,7 +53,7 @@ const ErrorReportingScreen: React.FC<ErrorReportingScreenProps> = ({ navigation 
       );
     } catch (error) {
       console.error("Error sending report:", error);
-      Alert.alert(
+      showAlert(
         'Error',
         'Could not send error report. Please try again later.',
         [{ text: 'OK' }]

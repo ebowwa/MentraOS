@@ -1,21 +1,24 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
-  View, 
-  Text, 
-  ActivityIndicator, 
-  StyleSheet, 
-  Platform, 
-  TouchableOpacity
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  Platform,
+  TouchableOpacity,
+  Animated
 } from 'react-native';
-import {useStatus} from "../providers/AugmentOSStatusProvider.tsx";
-import {useNavigation} from "@react-navigation/native";
-import {NavigationProps} from "./types.ts";
+import { useStatus } from "../providers/AugmentOSStatusProvider.tsx";
+import { useNavigation } from "@react-navigation/native";
+import { NavigationProps } from "./types.ts";
 import { useAuth } from '../AuthContext.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import BackendServerComms from '../backend_comms/BackendServerComms.tsx';
 import Config from 'react-native-config';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Button from './Button';
+import { loadSetting } from '../logic/SettingsHelper.tsx';
+import { SETTINGS_KEYS } from '../consts.tsx';
 
 interface ConnectingToPuckComponentProps {
   isDarkTheme?: boolean;
@@ -33,12 +36,13 @@ const ConnectingToPuckComponent = ({
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('Connection to AugmentOS failed. Please check your connection and try again.');
   const hasAttemptedConnection = useRef(false);
-  
+  const loadingOverlayOpacity = useRef(new Animated.Value(1)).current;
+
   const handleTokenExchange = async () => {
     if (isLoading) return;
-    
+
     setIsLoading(true);
-    
+
     try {
       const supabaseToken = session?.access_token;
       if (!supabaseToken) {
@@ -46,7 +50,7 @@ const ConnectingToPuckComponent = ({
         setIsLoading(false);
         return;
       }
-      
+
       // Exchange token with backend
       const backend = BackendServerComms.getInstance();
       const coreToken = await backend.exchangeToken(supabaseToken)
@@ -56,16 +60,27 @@ const ConnectingToPuckComponent = ({
           // console.error('Token exchange failed:', err);
           throw err;
         });
-      
+
       let uid = user.email || user.id;
       coreCommunicator.setAuthenticationSecretKey(uid, coreToken);
       BackendServerComms.getInstance().setCoreToken(coreToken);
-      
-      // Navigate to Home on success
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
+
+      // Navigate
+      // Check if the user has completed onboarding
+      const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
+      if (onboardingCompleted) {
+        // If onboarding is completed, go directly to Home
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Home' }],
+        });
+      } else {
+        // If onboarding is not completed, go to WelcomePage
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'WelcomePage' }],
+        });
+      }
     } catch (err) {
       // Don't log the error to console
       setErrorMessage('Connection to AugmentOS failed. Please check your connection and try again.');
@@ -75,14 +90,16 @@ const ConnectingToPuckComponent = ({
   };
 
   useEffect(() => {
+    console.log("STATUS", status);
+
     // Don't show the error UI for initial load attempts and avoid repeating failed attempts
     if (connectionError || hasAttemptedConnection.current) return;
-    
+
     // We only proceed once the core is connected, the user is loaded, etc.
     if (status.core_info.puck_connected && !authLoading && user) {
       // Track that we've attempted a connection
       hasAttemptedConnection.current = true;
-      
+
       // 1) Get the Supabase token from your AuthContext
       const supabaseToken = session?.access_token;
       if (!supabaseToken) {
@@ -91,11 +108,11 @@ const ConnectingToPuckComponent = ({
         setConnectionError(true);
         return;
       }
-      
+
       // 2) Check if we need to do the exchange
       if (!status.auth.core_token_owner || status.auth.core_token_owner !== user.email) {
         console.log("OWNER IS NULL CALLING VERIFY (TOKEN EXCHANGE)");
-        
+
         // Don't try automatic retry if we're already loading or had an error
         if (!isLoading) {
           handleTokenExchange();
@@ -114,25 +131,25 @@ const ConnectingToPuckComponent = ({
   // Loading screen
   if (!connectionError) {
     return (
-      <View 
+      <View
         style={[
           styles.container,
-          styles.loadingContainer,
           isDarkTheme ? styles.darkBackground : styles.lightBackground
         ]}
       >
-        <ActivityIndicator 
-          size="large" 
-          color={isDarkTheme ? '#FFFFFF' : '#2196F3'}
-        />
-        <Text 
+        <Animated.View 
           style={[
-            styles.loadingText,
-            isDarkTheme ? styles.lightText : styles.darkText
+            styles.authLoadingOverlay,
+            { opacity: loadingOverlayOpacity }
           ]}
         >
-          Connecting to AugmentOS...
-        </Text>
+          <View style={styles.authLoadingContent}>
+            {/* Logo placeholder instead of image */}
+            <View style={styles.authLoadingLogoPlaceholder} />
+            <ActivityIndicator size="large" color="#2196F3" style={styles.authLoadingIndicator} />
+            <Text style={styles.authLoadingText}>Connecting to AugmentOS...</Text>
+          </View>
+        </Animated.View>
       </View>
     );
   }
@@ -200,6 +217,35 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 16,
     fontSize: 16,
+  },
+  authLoadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    zIndex: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  authLoadingContent: {
+    alignItems: 'center',
+    padding: 20,
+  },
+  authLoadingLogoPlaceholder: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
+  },
+  authLoadingIndicator: {
+    marginBottom: 16,
+  },
+  authLoadingText: {
+    fontSize: 16,
+    fontFamily: 'Montserrat-Medium',
+    color: '#333',
+    textAlign: 'center',
   },
   mainContainer: {
     flex: 1,

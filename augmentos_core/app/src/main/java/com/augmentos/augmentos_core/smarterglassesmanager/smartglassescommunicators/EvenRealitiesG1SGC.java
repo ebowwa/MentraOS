@@ -502,11 +502,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                                         }
                                     }
 
-                                    if (shouldRunOnboardMic) {
-                                        EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
-                                    } else {
-                                        Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
-                                    }
+//                                    if (shouldRunOnboardMic) { TODO: add this back if needed
+//                                        EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
+//                                    } else {
+//                                        Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
+//                                    }
                                 }
 
                             //send through the LC3

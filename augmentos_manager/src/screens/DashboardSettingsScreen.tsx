@@ -20,7 +20,9 @@ import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import HeadUpAngleComponent from '../components/HeadUpAngleComponent.tsx';
 import NavigationBar from '../components/NavigationBar';
+// Merged imports from both branches
 import BackendServerComms from '../backend_comms/BackendServerComms';
+import { Slider } from 'react-native-elements';
 
 interface DashboardSettingsScreenProps {
   isDarkTheme: boolean;
@@ -42,11 +44,14 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   );
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false);
   const [headUpAngle, setHeadUpAngle] = useState<number | null>(null);
+  // Merged state variables from HEAD
   const [dashboardContent, setDashboardContent] = useState('');
   const [showContentPicker, setShowContentPicker] = useState(false);
   const [serverSettings, setServerSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
+  // Merged state variable from origin/dev
+  const [dashboardHeight, setDashboardHeight] = useState<number | null>(null);
 
   const dashboardContentOptions = [
     { label: 'Notification Summary', value: 'notification_summary' },
@@ -80,6 +85,21 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
   const onCancelHeadUpAngle = () => {
     setHeadUpAngleComponentVisible(false);
+  };
+
+  const changeDashboardHeight = async (newDashboardHeight: number) => {
+    if (!status.glasses_info) {
+      Alert.alert('Glasses not connected', 'Please connect your smart glasses first.');
+      return;
+    }
+
+    if (newDashboardHeight == null) {
+      return;
+    }
+
+    // if (status.glasses_info.dashboard_height === -1) { return; } // or handle accordingly
+    await coreCommunicator.setGlassesDashboardHeight(newDashboardHeight);
+    setDashboardHeight(newDashboardHeight);
   };
 
   // -- Effects --
@@ -149,6 +169,28 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     status.glasses_info?.brightness === '-' ||
     !status.glasses_info.model_name.toLowerCase().includes('even');
 
+  // From origin/dev branch - Dashboard height slider props
+  const dashboardHeightSliderProps = {
+    disabled: !status.glasses_info?.model_name ||
+      !status.glasses_info.model_name.toLowerCase().includes('even'),
+    style: styles.slider,
+    minimumValue: 0,
+    maximumValue: 8,
+    step: 1,
+    onSlidingComplete: (value: number) => changeDashboardHeight(value),
+    value: status.glasses_info?.dashboard_height ?? 4,
+    minimumTrackTintColor: styles.minimumTrackTintColor.color,
+    maximumTrackTintColor: isDarkTheme
+      ? styles.maximumTrackTintColorDark.color
+      : styles.maximumTrackTintColorLight.color,
+    thumbTintColor: styles.thumbTintColor.color,
+    // Using inline objects instead of defaultProps
+    thumbTouchSize: { width: 40, height: 40 },
+    trackStyle: { height: 5 },
+    thumbStyle: { height: 20, width: 20 }
+  };
+
+  // ContentPicker Modal from HEAD branch
   const renderContentPicker = () => (
     <Modal
       visible={showContentPicker}
@@ -313,11 +355,13 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Head-Up Angle Setting */}
+        {/* Display Settings Section */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, isDarkTheme ? styles.lightText : styles.darkText]}>
             Display Settings
           </Text>
+          
+          {/* Head-Up Angle Setting */}
           <TouchableOpacity
             style={[
               styles.settingItem,
@@ -349,6 +393,35 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
             </View>
             <Icon name="chevron-right" size={16} color={isDarkTheme ? '#FFFFFF' : '#000000'} />
           </TouchableOpacity>
+
+          {/* Dashboard Height Slider - Commented out but preserved from origin/dev */}
+          {/* <View style={[styles.settingItem, styles.elevatedCard, isDarkTheme ? styles.darkCard : styles.lightCard]}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  styles.disabledItem,
+                ]}
+              >
+                Dashboard Height
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
+                  styles.disabledItem,
+                ]}
+              >
+                Adjust the height of the dashboard.
+              </Text>
+              <Slider
+                {...dashboardHeightSliderProps}
+              />
+            </View>
+          </View> */}
         </View>
       </ScrollView>
 
@@ -370,6 +443,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 export default DashboardSettingsScreen;
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
   },
@@ -556,5 +632,32 @@ const styles = StyleSheet.create({
   },
   lightLoadingOverlay: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  slider: {
+    width: '100%',
+    height: 40,
+  },
+  thumbTouchSize: {
+    width: 40,
+    height: 40,
+  },
+  trackStyle: {
+    height: 5,
+  },
+  thumbStyle: {
+    height: 20,
+    width: 20,
+  },
+  minimumTrackTintColor: {
+    color: '#2196F3',
+  },
+  maximumTrackTintColorDark: {
+    color: '#666666',
+  },
+  maximumTrackTintColorLight: {
+    color: '#D1D1D6',
+  },
+  thumbTintColor: {
+    color: '#FFFFFF',
   },
 });

@@ -47,8 +47,22 @@ export const LOCAL_APPS: AppI[] = [
     logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
     description: systemApps.mira.description,
   },
-
-  // This will be added to the appstore instead of being run here.
+  // {
+  //   packageName: systemApps.merge.packageName,
+  //   name: systemApps.merge.name,
+  //   tpaType: TpaType.BACKGROUND,
+  //   publicUrl: `http://${systemApps.merge.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
+  //   description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
+  // },
+  // {
+  //   packageName: systemApps.liveTranslation.packageName,
+  //   name: systemApps.liveTranslation.name,
+  //   tpaType: TpaType.STANDARD,
+  //   publicUrl: `http://${systemApps.liveTranslation.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
+  //   description: systemApps.liveTranslation.description,
+  // },
   // {
   //   packageName: systemApps.teleprompter.packageName,
   //   name: "Teleprompt",
@@ -56,6 +70,30 @@ export const LOCAL_APPS: AppI[] = [
   //   publicUrl: `http://${systemApps.teleprompter.host}`,
   //   logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
   //   description: systemApps.teleprompter.description,
+  // },
+  // {
+  //   packageName: systemApps.xstats.packageName,
+  //   name: systemApps.xstats.name,
+  //   tpaType: TpaType.BACKGROUND,
+  //   publicUrl: `http://${systemApps.xstats.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.xstats.packageName}.png`,
+  //   description: systemApps.xstats.description,
+  // },
+  // {
+  //   packageName: systemApps.calendarreminder.packageName,
+  //   name: systemApps.calendarreminder.name,
+  //   tpaType: TpaType.BACKGROUND,
+  //   publicUrl: `http://${systemApps.calendarreminder.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.calendarreminder.packageName}.png`,
+  //   description: systemApps.calendarreminder.description,
+  // },
+  // {
+  //   packageName: systemApps.tictactoe.packageName,
+  //   name: systemApps.tictactoe.name,
+  //   tpaType: TpaType.STANDARD,
+  //   publicUrl: `http://${systemApps.tictactoe.host}`,
+  //   logoURL: `https://cloud.augmentos.org/${systemApps.tictactoe.packageName}.png`,
+  //   description: systemApps.tictactoe.description,
   // }
 ];
 
