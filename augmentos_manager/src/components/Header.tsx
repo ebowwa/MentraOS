@@ -26,8 +26,10 @@ const Header: React.FC<HeaderProps> = ({ isDarkTheme, navigation }) => {
         const hasNotificationPermission = await checkNotificationAccessSpecialPermission();
         setHasNotificationListenerPermission(hasNotificationPermission);
       } else {
-        const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
-        setHasNotificationListenerPermission(hasNotificationPermission);
+        // const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
+        // setHasNotificationListenerPermission(hasNotificationPermission);
+        // TODO: ios (there's no way to get the notification permission on ios so just set to true to disable the warning)
+        setHasNotificationListenerPermission(true);
       }
       
       // Check calendar permission
