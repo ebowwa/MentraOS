@@ -25,6 +25,7 @@ import { TrashTalkAgent } from '@augmentos/agents';
 import { ChineseWordAgent } from '@augmentos/agents';
 import { WeatherModule } from './dashboard-modules/WeatherModule';
 import { fetchSettings, getUserDashboardContent } from './settings_handler'; // <-- new import
+import { wrapText } from '@augmentos/utils';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
@@ -131,38 +132,6 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
         return;
       }
 
-      if (dashboardContent === 'fun_facts') {
-        const funFactAgent = new FunFactAgent();
-        try {
-          const result = await funFactAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
-          console.log(`[Session ${sessionId}] Fun fact result:`, JSON.stringify(result));
-          if (sessionInfo.agentResults) {
-            sessionInfo.agentResults['fun_facts'] = {
-              result: { insight: result.insight },
-              timestamp: Date.now()
-            };
-            sessionInfo.agentHistory = result.agentHistory;
-          }
-        } catch (err) {
-          console.error(`[Session ${sessionId}] Error initializing fun fact:`, err);
-        }
-      } else if (dashboardContent === 'famous_quotes') {
-        const famousQuotesAgent = new FamousQuotesAgent();
-        try {
-          const result = await famousQuotesAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
-          console.log(`[Session ${sessionId}] Famous quote result:`, JSON.stringify(result));
-          if (sessionInfo.agentResults) {
-            sessionInfo.agentResults['famous_quotes'] = {
-              result: { insight: result.insight },
-              timestamp: Date.now()
-            };
-            sessionInfo.agentHistory = result.agentHistory;
-          }
-        } catch (err) {
-          console.error(`[Session ${sessionId}] Error initializing famous quote:`, err);
-        }
-      }
-
       const displayRequest: DisplayRequest = {
         // type: 'display_event',
         // view: 'dashboard',
@@ -186,12 +155,8 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
           "News summary 3"
         ]
       };
-      if (sessionInfo && newsResult && newsResult.news_summaries && newsResult.news_summaries.length > 0) {
-        sessionInfo.newsCache = newsResult.news_summaries;
-        sessionInfo.newsIndex = 0;
-        // Update dashboard so that news is visible.
-        updateDashboard(sessionId);
-      }
+      await updateDashboardCache(sessionId, sessionInfo);
+      await updateDashboard(sessionId);
     });
 
     // 3) On message, handle incoming data
@@ -294,6 +259,8 @@ function handleLocationUpdate(sessionId: string, locationData: any) {
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
 
+  console.log(`[Session ${sessionId}] Received location update:`, locationData);
+
   // Extract lat, lng, and timestamp from the locationData.
   const { lat, lng, timestamp } = locationData;
 
@@ -334,155 +301,162 @@ function handleCalendarEvent(sessionId: string, calendarEvent: any) {
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
 
+  // Validate calendar event structure
+  if (!calendarEvent.title || !calendarEvent.dtStart) {
+    console.error(`[Session ${sessionId}] Invalid calendar event structure:`, calendarEvent);
+    return;
+  }
+
   // Add the calendar event to the session's cache.
   sessionInfo.calendarEvent = calendarEvent;
+  console.log(`[Session ${sessionId}] Cached calendar event:`, calendarEvent);
   
   updateDashboard(sessionId);
 }
 
-function handleHeadPosition(sessionId: string, headPositionData: any) {
+// Helper function to update dashboard cache for a specific session
+async function updateDashboardCache(sessionId: string, sessionInfo: SessionInfo) {
+  const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+  
+  // Initialize agentResults if needed
+  if (!sessionInfo.agentResults) {
+    sessionInfo.agentResults = {};
+  }
+
+  // Check if the dashboard content has changed
+  const currentContent = sessionInfo.agentResults['current_content']?.result?.content;
+  if (currentContent !== dashboardContent) {
+    // Content has changed, clear the old cache and prepare new one
+    sessionInfo.agentResults = {};
+    sessionInfo.agentResults['current_content'] = {
+      result: { content: dashboardContent },
+      timestamp: Date.now()
+    };
+  }
+
+  // Handle different dashboard content types
+  switch (dashboardContent) {
+    case 'notification_summary':
+      // Notifications are handled separately as they come from phone events
+      // No need to refresh on head up
+      break;
+    
+    case 'fun_facts':
+      // Update fun fact cache
+      const funFactAgent = new FunFactAgent();
+      try {
+        const result = await funFactAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['fun_facts'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating fun fact:`, err);
+      }
+      break;
+
+    case 'famous_quotes':
+      // Update famous quotes cache
+      const famousQuotesAgent = new FamousQuotesAgent();
+      try {
+        const result = await famousQuotesAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['famous_quotes'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating famous quote:`, err);
+      }
+      break;
+
+    case 'gratitude_ping':
+      // Update gratitude ping cache
+      const gratitudePingAgent = new GratitudePingAgent();
+      try {
+        const result = await gratitudePingAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['gratitude_ping'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating gratitude ping:`, err);
+      }
+      break;
+
+    case 'trash_talk':
+      // Update trash talk cache
+      const trashTalkAgent = new TrashTalkAgent();
+      try {
+        const result = await trashTalkAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['trash_talk'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating trash talk:`, err);
+      }
+      break;
+
+    case 'chinese_words':
+      // Update Chinese word cache
+      const chineseWordAgent = new ChineseWordAgent();
+      try {
+        const result = await chineseWordAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['chinese_words'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating Chinese word:`, err);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  // Update the dashboard after cache is updated
+  updateDashboard(sessionId);
+}
+
+async function handleHeadPosition(sessionId: string, headPositionData: any) {
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
 
   if (headPositionData.position === 'up') {
-    const dashboardContent = getUserDashboardContent(sessionInfo.userId);
-    
-    // Initialize agentResults if needed
-    if (!sessionInfo.agentResults) {
-      sessionInfo.agentResults = {};
-    }
-
-    // Check if the dashboard content has changed
-    const currentContent = sessionInfo.agentResults['current_content']?.result?.content;
-    if (currentContent !== dashboardContent) {
-      // Content has changed, clear the old cache and prepare new one
-      sessionInfo.agentResults = {};
-      sessionInfo.agentResults['current_content'] = {
-        result: { content: dashboardContent },
-        timestamp: Date.now()
-      };
-    }
-
-    // Handle different dashboard content types
-    switch (dashboardContent) {
-      case 'notification_summary':
-        // Notifications are handled separately as they come from phone events
-        // No need to refresh on head up
-        break;
-      
-      case 'fun_facts':
-        // Update fun fact cache
-        const funFactAgent = new FunFactAgent();
-        funFactAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] })
-          .then(result => {
-            if (sessionInfo.agentResults) {
-              sessionInfo.agentResults['fun_facts'] = {
-                result: { insight: result.insight },
-                timestamp: Date.now()
-              };
-              sessionInfo.agentHistory = result.agentHistory;
-              updateDashboard(sessionId);
-            }
-          })
-          .catch(err => {
-            console.error(`[Session ${sessionId}] Error updating fun fact:`, err);
-          });
-        break;
-
-      case 'famous_quotes':
-        // Update famous quotes cache
-        const famousQuotesAgent = new FamousQuotesAgent();
-        famousQuotesAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] })
-          .then((result: { insight: string; agentHistory: string[] }) => {
-            if (sessionInfo.agentResults) {
-              sessionInfo.agentResults['famous_quotes'] = {
-                result: { insight: result.insight },
-                timestamp: Date.now()
-              };
-              sessionInfo.agentHistory = result.agentHistory;
-              updateDashboard(sessionId);
-            }
-          })
-          .catch((err: Error) => {
-            console.error(`[Session ${sessionId}] Error updating famous quote:`, err);
-          });
-        break;
-
-      case 'gratitude_ping':
-        // Update gratitude ping cache
-        const gratitudePingAgent = new GratitudePingAgent();
-        gratitudePingAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] })
-          .then(result => {
-            if (sessionInfo.agentResults) {
-              sessionInfo.agentResults['gratitude_ping'] = {
-                result: { insight: result.insight },
-                timestamp: Date.now()
-              };
-              sessionInfo.agentHistory = result.agentHistory;
-              updateDashboard(sessionId);
-            }
-          })
-          .catch(err => {
-            console.error(`[Session ${sessionId}] Error updating gratitude ping:`, err);
-          });
-        break;
-
-      case 'trash_talk':
-        // Update trash talk cache
-        const trashTalkAgent = new TrashTalkAgent();
-        trashTalkAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] })
-          .then(result => {
-            if (sessionInfo.agentResults) {
-              sessionInfo.agentResults['trash_talk'] = {
-                result: { insight: result.insight },
-                timestamp: Date.now()
-              };
-              sessionInfo.agentHistory = result.agentHistory;
-              updateDashboard(sessionId);
-            }
-          })
-          .catch(err => {
-            console.error(`[Session ${sessionId}] Error updating trash talk:`, err);
-          });
-        break;
-
-      case 'chinese_words':
-        // Update Chinese word cache
-        const chineseWordAgent = new ChineseWordAgent();
-        chineseWordAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] })
-          .then((result: { insight: string; agentHistory: string[] }) => {
-            if (sessionInfo.agentResults) {
-              sessionInfo.agentResults['chinese_words'] = {
-                result: { insight: result.insight },
-                timestamp: Date.now()
-              };
-              sessionInfo.agentHistory = result.agentHistory;
-              updateDashboard(sessionId);
-            }
-          })
-          .catch((err: Error) => {
-            console.error(`[Session ${sessionId}] Error updating Chinese word:`, err);
-          });
-        break;
-
-      // Add more cases here for future agent types
-      default:
-        break;
-    }
+    // Update the dashboard cache
+    await updateDashboardCache(sessionId, sessionInfo);
 
     // Handle news separately as it has its own rotation logic
     if (sessionInfo.newsCache && sessionInfo.newsCache.length > 0) {
       const currentIndex = sessionInfo.newsIndex || 0;
       const nextIndex = currentIndex + 1;
-      
+
       if (nextIndex >= sessionInfo.newsCache.length) {
         sessionInfo.newsCache = ["News summary 1", "News summary 2", "News summary 3"];
         sessionInfo.newsIndex = 0;
       } else {
         sessionInfo.newsIndex = nextIndex;
       }
+
       updateDashboard(sessionId);
     }
+
   }
 }
 
@@ -531,41 +505,6 @@ async function updateDashboard(sessionId?: string) {
   }
 
   console.log(`[Session ${sessionId}] Updating dashboard...`);
-
-  // Utility function to wrap text to a maximum line length without breaking words.
-  function wrapText(text: string, maxLength = 25): string {
-    return text
-      .split('\n')
-      .map(line => {
-        const words = line.split(' ');
-        let currentLine = '';
-        const wrappedLines: string[] = [];
-
-        words.forEach(word => {
-          if ((currentLine.length + (currentLine ? 1 : 0) + word.length) <= maxLength) {
-            currentLine += (currentLine ? ' ' : '') + word;
-          } else {
-            if (currentLine) {
-              wrappedLines.push(currentLine);
-            }
-            currentLine = word;
-
-            // If a single word is too long, hardcut it.
-            while (currentLine.length > maxLength) {
-              wrappedLines.push(currentLine.slice(0, maxLength));
-              currentLine = currentLine.slice(maxLength);
-            }
-          }
-        });
-
-        if (currentLine) {
-          wrappedLines.push(currentLine.trim());
-        }
-
-        return wrappedLines.join('\n');
-      })
-      .join('\n');
-  }
 
   // Define left modules in group 1 (same-line modules).
   const leftModulesGroup1 = [
@@ -665,9 +604,12 @@ async function updateDashboard(sessionId?: string) {
       async run(context: any) {
         // Check that we have location data.
         if (!context.latestLocation) {
+          console.log(`[Session ${context.session.userId}] No location data available for weather`);
           return '';
         }
         const { latitude, longitude } = context.latestLocation;
+        console.log(`[Session ${context.session.userId}] Fetching weather for lat=${latitude}, lon=${longitude}`);
+        
         // Use per-session weather cache.
         const session: SessionInfo = context.session;
         if (
@@ -679,11 +621,17 @@ async function updateDashboard(sessionId?: string) {
         }
         // Otherwise, fetch new weather data.
         const weatherAgent = new WeatherModule();
-        const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
-        const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
-        // Cache the result on the session.
-        session.weatherCache = { timestamp: Date.now(), data: result };
-        return result;
+        try {
+          const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
+          console.log(`[Session ${session.userId}][Weather] Fetched weather data:`, weather);
+          const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
+          // Cache the result on the session.
+          session.weatherCache = { timestamp: Date.now(), data: result };
+          return result;
+        } catch (error) {
+          console.error(`[Session ${session.userId}][Weather] Error fetching weather:`, error);
+          return '';
+        }
       },
     },
   ];
@@ -739,20 +687,28 @@ async function updateDashboard(sessionId?: string) {
     const leftGroup2Promises = leftModulesGroup2.map(module => module.run());
     const leftGroup2Results = await Promise.all(leftGroup2Promises);
     console.log(`[Session ${sessionId}] Left group 2 results:`, JSON.stringify(leftGroup2Results));
-    const leftGroup2Text = leftGroup2Results.filter(text => text.trim()).join('\n');
+    const leftGroup2Text = leftGroup2Results.filter((text: string) => text.trim()).join('\n');
 
     // Combine left texts.
     let leftText = leftGroup1Text;
     if (leftGroup2Text) {
-      leftText += `\n${leftGroup2Text}`;
+      if (dashboardContent === 'chinese_words') {
+        leftText += `\n\n${leftGroup2Text}`;
+      } else {
+        leftText += `\n${leftGroup2Text}`;
+      }
     }
-    leftText = wrapText(leftText, 40);
+
+    leftText = wrapText(leftText, 30);
 
     // Run right modules concurrently.
     const rightPromises = rightModules.map(module => module.run(context));
     const rightResults = await Promise.all(rightPromises);
     let rightText = rightResults.filter(text => text.trim() !== '').join('\n');
     rightText = wrapText(rightText, 30);
+
+    console.log(`[Session ${sessionId}] Left text: ${leftText}`);
+    console.log(`[Session ${sessionId}] Right text: ${rightText}`);
 
     // Create display event.
     const displayRequest: DisplayRequest = {
@@ -898,7 +854,7 @@ app.post('/settings', async (req: express.Request, res: express.Response) => {
     await fetchSettings(userIdForSettings);
     
     // Update dashboard for all sessions with this userId
-    updateDashboardForUser(userIdForSettings);
+    await updateDashboardForUser(userIdForSettings);
     
     res.status(200).json({ status: 'settings updated' });
   } catch (error) {
@@ -908,17 +864,19 @@ app.post('/settings', async (req: express.Request, res: express.Response) => {
 });
 
 // Helper function to update dashboard for all sessions of a specific user
-function updateDashboardForUser(userId: string) {
+async function updateDashboardForUser(userId: string) {
   let userSessionsFound = false;
-  
+
   // Find all sessions for this user and update them
   for (const [sessionId, session] of activeSessions.entries()) {
     if (session.userId === userId) {
       userSessionsFound = true;
-      updateDashboard(sessionId);
+
+      await updateDashboardCache(sessionId, session);
+      await updateDashboard(sessionId);
     }
   }
-  
+
   if (!userSessionsFound) {
     console.log(`No active sessions found for user ${userId}`);
   }

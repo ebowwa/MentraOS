@@ -158,6 +158,9 @@ export class NotificationSummaryAgent implements Agent {
         return [];
       }
 
+      // console.log("RESPONSE:");
+      // console.log(response);
+
       const content = typeof response.content === 'string' 
         ? response.content 
         : Array.isArray(response.content) 
