@@ -23,6 +23,8 @@ router.get('/:tpaName', async (req, res) => {
   // Extract TPA name from URL (use third segment if dot-separated).
   // const parts = req.params.tpaName.split('.');
   const tpaName = req.params.tpaName;
+  let webviewURL: string | undefined;
+
   if (!tpaName) {
     return res.status(400).json({ error: 'TPA name missing in request' });
   }
@@ -56,18 +58,16 @@ router.get('/:tpaName', async (req, res) => {
       const _tpa = await appService.getApp(req.params.tpaName);
       // const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
       const publicUrl = _tpa?.publicUrl;
-
+      
       if (!_tpa) {
         throw new Error('TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
       }
       if (!publicUrl) {
         // get the host from the public url;
         throw new Error('publicUrl not found for app ' + req.params.tpaName); // throw an error if the port is not found.
-
       }
+      webviewURL = _tpa.webviewURL;
       const _tpaConfig = (await axios.get(`${publicUrl}/tpa_config.json`)).data;
-      const uninstallable = isUninstallable(_tpa.packageName);
-      _tpaConfig.uninstallable = uninstallable;
       tpaConfig = _tpaConfig;
     } catch (err) {
       const _tpa = await appService.getApp(req.params.tpaName);
@@ -78,6 +78,7 @@ router.get('/:tpaName', async (req, res) => {
           version: "1.0.0",
           settings: []
         }
+        webviewURL = _tpa.webviewURL;
       } else {
         logger.error('Error reading TPA config file:', err);
         return res.status(500).json({ error: 'Error reading TPA config file' });
@@ -120,7 +121,6 @@ router.get('/:tpaName', async (req, res) => {
 
     // console.log('Merged settings:', mergedSettings);
     const uninstallable = isUninstallable(tpaName);
-
     return res.json({
       success: true,
       userId,

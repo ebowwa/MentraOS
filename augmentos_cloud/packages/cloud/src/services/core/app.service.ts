@@ -57,7 +57,7 @@ export const SYSTEM_APPS: AppI[] = [
 ];
 
 export function isUninstallable(packageName: string) {
-  return PRE_INSTALLED.includes(packageName);
+  return !PRE_INSTALLED.includes(packageName);
 }
 
 /**
