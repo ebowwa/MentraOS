@@ -16,57 +16,35 @@ import crypto from 'crypto';
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 const APPSTORE_ENABLED = true;
+export const PRE_INSTALLED = ["cloud.augmentos.live-captions", "cloud.augmentos.notify", "cloud.augmentos.mira"];
 
 /**
  * System TPAs that are always available.
  * These are core applications provided by the platform.
  * @Param developerId - leaving this undefined indicates a system app.
  */
-export const LOCAL_APPS: AppI[] = [
-  // {
-  //   packageName: systemApps.captions.packageName,
-  //   name: systemApps.captions.name,
-  //   tpaType: TpaType.STANDARD,
-  //   publicUrl: `http://${systemApps.captions.host}`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
-  //   description: systemApps.captions.description
-  // },
-  // {
-  //   packageName: systemApps.notify.packageName,
-  //   name: systemApps.notify.name,
-  //   tpaType: TpaType.BACKGROUND,
-  //   publicUrl: `http://${systemApps.notify.host}`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
-  //   description: systemApps.notify.description,
-  // },
-  // {
-  //   packageName: systemApps.mira.packageName,
-  //   name: systemApps.mira.name,
-  //   tpaType: TpaType.BACKGROUND,
-  //   publicUrl: `http://${systemApps.mira.host}`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
-  //   description: systemApps.mira.description,
-  // },
+export const LOCAL_APPS: AppI[] = [];
 
-  // This will be added to the appstore instead of being run here.
-  // {
-  //   packageName: systemApps.teleprompter.packageName,
-  //   name: "Teleprompt",
-  //   tpaType: TpaType.STANDARD,
-  //   publicUrl: `http://${systemApps.teleprompter.host}`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
-  //   description: systemApps.teleprompter.description,
-  // }
-];
+// String list of packageNames to preinstall / make uninstallable.
 
-// TODO: create function that fetches local / preinstalled apps, and have list of local / preinstalled apps just based on package name.
+// Fetch from appstore and populate LOCAL_APPS.
+(async function loadPreinstalledApps() {
+  // Fetch all apps from the app store that are preinstalled.
+  const preinstalledApps = await App.find({ packageName: { $in: PRE_INSTALLED } }) as AppI[];
+
+  // Add them to the LOCAL_APPS array.
+  preinstalledApps.forEach(app => {
+    LOCAL_APPS.push(app);
+  });
+})();
+
 
 /**
  * System TPAs that are always available.
  * These are core applications provided by the platform.
  * @Param developerId - leaving this undefined indicates a system app.
  */
-export const SYSTEM_TPAS: AppI[] = [
+export const SYSTEM_APPS: AppI[] = [
   {
     packageName: systemApps.dashboard.packageName,
     name: systemApps.dashboard.name,
@@ -77,16 +55,6 @@ export const SYSTEM_TPAS: AppI[] = [
   },
 ];
 
-/**
- * Interface for webhook payloads sent to TPAs.
- */
-interface WebhookPayload {
-  type: 'session_request' | 'app_update' | 'system_event';
-  sessionId?: string;
-  userId?: string;
-  timestamp: string;
-  data?: any;
-}
 
 /**
  * Implementation of the app management service.
@@ -139,7 +107,7 @@ export class AppService {
   //  * @returns array of system apps.
   //  */
   getSystemApps(): AppI[] {
-    return SYSTEM_TPAS;
+    return SYSTEM_APPS;
   }
 
   /**
@@ -149,7 +117,7 @@ export class AppService {
    */
   async getApp(packageName: string): Promise<AppI | undefined> {
     // return [...SYSTEM_TPAS, ...APP_STORE].find(app => app.packageName === packageName);
-    let app: AppI | undefined = [...SYSTEM_TPAS, ...LOCAL_APPS].find(app => app.packageName === packageName);
+    let app: AppI | undefined = [...SYSTEM_APPS, ...LOCAL_APPS].find(app => app.packageName === packageName);
     // if we can't find the app, try checking the appstore via the App Mongodb model.
 
     if (APPSTORE_ENABLED) {
@@ -230,7 +198,7 @@ export class AppService {
 
   isSystemApp(packageName: string, apiKey?: string): boolean {
     // Check if the app is in the system apps list
-    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_TPAS].some(app => app.packageName === packageName);
+    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_APPS].some(app => app.packageName === packageName);
     // or if the xxx.yyy.zzz if the xxx == "system" or "local"
     const _isSystemApp = packageName.split('.').length > 2 && (packageName.split('.')[0] === 'system' || packageName.split('.')[0] === 'local');
     
