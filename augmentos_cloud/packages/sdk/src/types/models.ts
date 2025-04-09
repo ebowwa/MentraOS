@@ -20,8 +20,9 @@ export interface DeveloperProfile {
 export interface AppI {
   packageName: string;
   name: string;
-  publicUrl: string;             // Base URL of the app server
-  isSystemApp?: boolean;         // Is this a system app?
+  publicUrl: string;              // Base URL of the app server
+  isSystemApp?: boolean;          // Is this a system app?
+  uninstallable?: boolean;        // Can the app be uninstalled?
 
   webviewURL?: string;            // URL for phone UI
   logoURL: string;

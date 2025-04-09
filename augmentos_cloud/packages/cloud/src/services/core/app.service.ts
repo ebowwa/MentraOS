@@ -34,6 +34,7 @@ export const LOCAL_APPS: AppI[] = [];
 
   // Add them to the LOCAL_APPS array.
   preinstalledApps.forEach(app => {
+    app.uninstallable = true;
     LOCAL_APPS.push(app);
   });
 })();
@@ -55,6 +56,9 @@ export const SYSTEM_APPS: AppI[] = [
   },
 ];
 
+export function isUninstallable(packageName: string) {
+  return PRE_INSTALLED.includes(packageName);
+}
 
 /**
  * Implementation of the app management service.
