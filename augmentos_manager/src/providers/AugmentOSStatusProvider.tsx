@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { Platform } from 'react-native';
 import { AugmentOSParser, AugmentOSMainStatus } from '../AugmentOSStatusParser.tsx';
 import { INTENSE_LOGGING, MOCK_CONNECTION } from '../consts.tsx';
 import GlobalEventEmitter from "../logic/GlobalEventEmitter.tsx";

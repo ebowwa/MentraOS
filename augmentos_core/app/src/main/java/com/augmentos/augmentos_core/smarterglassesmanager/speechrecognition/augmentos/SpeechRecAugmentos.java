@@ -190,7 +190,7 @@ public class SpeechRecAugmentos extends SpeechRecFramework {
     }
 
 
-    public boolean sendPcmToBackend = false;
+    public boolean sendPcmToBackend = true;
 
     /**
      * Called by external code to feed raw PCM chunks (16-bit, 16kHz).

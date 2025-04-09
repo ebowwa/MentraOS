@@ -36,15 +36,20 @@ const systemApps = {
     description: "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command.",
     isSystemApp: true,
   },
-
   // teleprompter: {
   //   host: `teleprompter`,
   //   packageName: 'com.augmentos.teleprompter',
-  //   name: 'Teleprompter',
+  //   name: 'Teleprompt',
   //   description: "Teleprompter for live presentations.",
   //   isSystemApp: true,
   // },
-
+  // xstats: {
+  //   host: `xstats`,
+  //   packageName: 'com.augmentos.xstats',
+  //   name: 'X Stats',
+  //   description: "Show X stats on your smart glasses.",
+  //   isSystemApp: true,
+  // },
   // liveTranslation: {
   //   host: "live-translation",
   //   packageName: 'com.augmentos.live-translation',
@@ -52,7 +57,6 @@ const systemApps = {
   //   description: "Live language translation.",
   //   isSystemApp: true,
   // },
-
   // merge: {
   //   host: process.env.MERGE_HOST_NAME || `merge`,
   //   packageName: 'com.mentra.merge',
@@ -61,14 +65,19 @@ const systemApps = {
   //   isSystemApp: true,
   //   skipPorterHostUpdate: true,
   // },
-
-  // {
-  //   packageName: systemApps.link.packageName,
-  //   name: systemApps.link.name,
-  //   tpaType: TpaType.STANDARD,
-  //   webhookURL: `http://${systemApps.link.host}/webhook`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.link.packageName}.png`,
-  //   description: systemApps.link.description,
+  // calendarreminder: {
+  //   host: "calendarreminder",
+  //   packageName: 'com.augmentos.calendarreminder',
+  //   name: 'Calendar Reminder',
+  //   description: "Calendar Reminder",
+  //   isSystemApp: true,
+  // },
+  // tictactoe: {
+  //   host: "tictactoe",
+  //   packageName: 'com.augmentos.tictactoe',
+  //   name: 'Tic Tac Toe',
+  //   description: "Tic Tac Toe",
+  //   isSystemApp: true,
   // },
 };
 

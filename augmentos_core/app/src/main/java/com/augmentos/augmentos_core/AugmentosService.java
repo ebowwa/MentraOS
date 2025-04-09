@@ -63,6 +63,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -102,6 +103,7 @@ import java.util.Map;
 //SpeechRecIntermediateOutputEvent
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
 
 import okhttp3.Call;
@@ -158,6 +160,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     private Integer batteryLevel;
     private Integer brightnessLevel;
+    private Boolean autoBrightness;
     private Integer headUpAngle;
 
     private final boolean showingDashboardNow = false;
@@ -339,10 +342,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Subscribe
     public void onBrightnessLevelEvent(BrightnessLevelEvent event) {
         brightnessLevel = event.brightnessLevel;
-        PreferenceManager.getDefaultSharedPreferences(this)
+        autoBrightness = event.autoBrightness;
+
+        if (brightnessLevel != -1) {
+            PreferenceManager.getDefaultSharedPreferences(this)
                 .edit()
                 .putString(this.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightnessLevel))
                 .apply();
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
+                .apply();
+        } else {
+            PreferenceManager.getDefaultSharedPreferences(this)
+                .edit()
+                .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
+                .apply();
+        }
         sendStatusToAugmentOsManager();
     }
 
@@ -378,7 +394,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         notificationSystem = new NotificationSystem(this, userId);
         calendarSystem = CalendarSystem.getInstance(this);
 
+        Log.d(TAG, "Auto Brightness___: " + PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false));
         brightnessLevel = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), "50"));
+        autoBrightness = PreferenceManager.getDefaultSharedPreferences(this)
+                .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false);
         headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEADUP_ANGLE), "20"));
 
         contextualDashboardEnabled = getContextualDashboardEnabled();
@@ -643,7 +663,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         
         int delay = 250; // Frame delay
         int totalFrames = ARROW_FRAMES.length;
-        int totalCycles = 4;
+        int totalCycles = 3;
 
         animationRunnable = new Runnable() {
             int frameIndex = 0;
@@ -678,18 +698,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
 
                 // Send current frame
+                String currentAnimationTextFrame = "                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex];
                 smartGlassesManager.windowManager.showAppLayer(
                         "system",
                         () -> {
-                                smartGlassesManager.sendTextWall("                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex]);
-//                            if (frameIndex % 2 == 0) {
-//                                smartGlassesManager.sendTextWall("                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex]);
-//                            } else {
-//                                smartGlassesManager.sendTextWall("                  /// AugmentOS Connected \\\\\\");
-//                            }
+                                smartGlassesManager.sendTextWall(currentAnimationTextFrame);
                         },
                         6
                 );
+                // Send the same text wall to AugmentOS Manager in JSONObject format
+                JSONObject displayJson = new JSONObject();
+                try {
+                    JSONObject layoutJson = new JSONObject();
+                    layoutJson.put("layoutType", "text_wall");
+                    layoutJson.put("text", currentAnimationTextFrame);
+                    displayJson.put("layout", layoutJson);
+                    //blePeripheral.sendGlassesDisplayEventToManager(displayJson);
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error creating display JSON", e);
+                }
 
                 // Move to next frame
                 frameIndex = (frameIndex + 1) % totalFrames;
@@ -1072,6 +1099,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     brightnessString = brightnessLevel + "%";
                 }
                 connectedGlasses.put("brightness", brightnessString);
+                connectedGlasses.put("auto_brightness_enabled", autoBrightness);
 //                Log.d(TAG, "Connected glasses info: " + headUpAngle);
                 if (headUpAngle == null) {
                     headUpAngle = 20;
@@ -1273,6 +1301,30 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Received mic state for frontend event: " + event.micState);
         isMicEnabledForFrontend = event.micState;
         sendStatusToAugmentOsManager();
+    }
+
+        // TODO: This is for debug.. remove before pushing to prod
+    @Subscribe
+    public void handleMicModeChangedEvent(MicModeChangedEvent event) {
+        Log.d(TAG, "Microphone mode changed: " + event.getStatus());
+        
+        // Log the new microphone status
+        PhoneMicrophoneManager.MicStatus status = event.getStatus();
+        blePeripheral.sendNotifyManager(status.name(), "success");
+        switch (status) {
+            case SCO_MODE:
+                Log.d(TAG, "Microphone using Bluetooth SCO mode");
+                break;
+            case NORMAL_MODE:
+                Log.d(TAG, "Microphone using normal phone mic");
+                break;
+            case GLASSES_MIC:
+                Log.d(TAG, "Microphone using glasses onboard mic");
+                break;
+            case PAUSED:
+                Log.d(TAG, "Microphone recording paused (conflict detected)");
+                break;
+        }
     }
 
     @Override
@@ -1478,6 +1530,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesBrightness(brightness);
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
+        }
+    }
+
+    @Override
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        Log.d("AugmentOsService", "Updating glasses auto brightness: " + autoBrightness);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
         }
     }
 

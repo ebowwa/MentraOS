@@ -15,9 +15,10 @@ import BackendServerComms from '../backend_comms/BackendServerComms';
 import { ScrollView } from 'react-native-gesture-handler';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Button from '../components/Button';
-import InstallApkModule from '../bridge/InstallApkModule.tsx';
+import InstallApkModule from '../bridge/InstallApkModule';
 import { saveSetting } from '../logic/SettingsHelper';
 import { Linking } from 'react-native';
+import showAlert from '../utils/AlertUtils';
 
 interface VersionUpdateScreenProps {
   route: {
@@ -149,7 +150,7 @@ const VersionUpdateScreen: React.FC<VersionUpdateScreenProps> = ({
     Linking.openURL('https://augmentos.org/install')
     .catch((error) => {
       console.error('Error opening installation website:', error);
-      Alert.alert(
+      showAlert(
         "Browser Error",
         "Could not open the installation website. Please visit https://augmentos.org/install manually.",
         [{ text: "OK", onPress: () => {} }]
