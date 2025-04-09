@@ -127,6 +127,7 @@ router.get('/:tpaName', async (req, res) => {
       name: tpaConfig.name,
       description: tpaConfig.description,
       uninstallable,
+      webviewURL,
       version: tpaConfig.version,
       settings: mergedSettings,
     });
