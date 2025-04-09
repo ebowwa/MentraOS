@@ -114,7 +114,7 @@ public class PhoneMicrophoneManager {
                 if (glassesRep != null) {
                     // Use the existing receiveChunk method to handle PCM -> LC3 conversion and callbacks
                     glassesRep.receiveChunk(data);
-                    Log.d(TAG, "✅ PCM audio forwarded to SmartGlassesRepresentative.receiveChunk() for LC3 conversion");
+//                    Log.d(TAG, "✅ PCM audio forwarded to SmartGlassesRepresentative.receiveChunk() for LC3 conversion");
                 } else {
                     // Fallback to direct callback if glassesRep is not available
                     if (audioProcessingCallback != null) {
