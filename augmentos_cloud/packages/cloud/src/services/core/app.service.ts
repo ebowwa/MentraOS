@@ -78,7 +78,7 @@ export class AppService {
    * @returns Promise resolving to array of all apps
    */
   async getAllApps(userId?: string): Promise<AppI[]> {
-    const usersApps: AppI[] = [];
+    let usersApps: AppI[] = [];
 
     if (APPSTORE_ENABLED && userId) {
       // Find apps the developer made.
@@ -98,9 +98,11 @@ export class AppService {
       const _appMap = new Map<string, AppI>();
       _allApps.forEach(app => {
         _appMap.set(app.packageName, app);
-      }
-      );
+      });
+      
       usersApps.push(..._appMap.values());
+      // Filter out any that are already in the LOCAL_APPS map since those would have already been fetched.
+      usersApps = usersApps.filter(app => !LOCAL_APPS.some(localApp => localApp.packageName === app.packageName));
     }
     const allApps = [...LOCAL_APPS, ...usersApps];
     return allApps;
@@ -205,7 +207,7 @@ export class AppService {
     const isSystemApp = [...LOCAL_APPS, ...SYSTEM_APPS].some(app => app.packageName === packageName);
     // or if the xxx.yyy.zzz if the xxx == "system" or "local"
     const _isSystemApp = packageName.split('.').length > 2 && (packageName.split('.')[0] === 'system' || packageName.split('.')[0] === 'local');
-    
+
     return isSystemApp || (_isSystemApp && apiKey === AUGMENTOS_AUTH_JWT_SECRET);
   }
 
@@ -265,8 +267,8 @@ export class AppService {
 
     // Check if the app has a hashed API key
     // If the app is a system app, we don't need to validate the API key
-    
-    if (!appDoc?.hashedApiKey){
+
+    if (!appDoc?.hashedApiKey) {
       console.warn(`App ${packageName} does not have a hashed API key`);
       return false;
     }
