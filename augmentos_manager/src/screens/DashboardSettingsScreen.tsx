@@ -20,20 +20,19 @@ import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import HeadUpAngleComponent from '../components/HeadUpAngleComponent.tsx';
 import NavigationBar from '../components/NavigationBar';
-// Merged imports from both branches
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { Slider } from 'react-native-elements';
 
 interface DashboardSettingsScreenProps {
+  navigation: any;
   isDarkTheme: boolean;
   toggleTheme: () => void;
-  navigation: any;
 }
 
 const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
+  navigation,
   isDarkTheme,
   toggleTheme,
-  navigation,
 }) => {
   const { status } = useStatus();
   const backendServerComms = BackendServerComms.getInstance();
@@ -44,13 +43,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   );
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false);
   const [headUpAngle, setHeadUpAngle] = useState<number | null>(null);
-  // Merged state variables from HEAD
   const [dashboardContent, setDashboardContent] = useState('');
   const [showContentPicker, setShowContentPicker] = useState(false);
   const [serverSettings, setServerSettings] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
-  // Merged state variable from origin/dev
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null);
 
   const dashboardContentOptions = [
@@ -87,21 +84,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     setHeadUpAngleComponentVisible(false);
   };
 
-  const changeDashboardHeight = async (newDashboardHeight: number) => {
-    if (!status.glasses_info) {
-      Alert.alert('Glasses not connected', 'Please connect your smart glasses first.');
-      return;
-    }
-
-    if (newDashboardHeight == null) {
-      return;
-    }
-
-    // if (status.glasses_info.dashboard_height === -1) { return; } // or handle accordingly
-    await coreCommunicator.setGlassesDashboardHeight(newDashboardHeight);
-    setDashboardHeight(newDashboardHeight);
-  };
-
   // -- Effects --
   useEffect(() => {
     fetchDashboardSettings();
@@ -112,7 +94,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       setIsLoading(true);
       const data = await backendServerComms.getTpaSettings('com.augmentos.dashboard');
       setServerSettings(data);
-      // Find the dashboard content setting
       const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
       if (contentSetting) {
         setDashboardContent(contentSetting.selected);
@@ -127,7 +108,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const handleDashboardContentChange = async (value: string) => {
     try {
       setIsUpdating(true);
-      // Update the local state immediately to show loading
       setDashboardContent(value);
       await backendServerComms.updateTpaSetting('com.augmentos.dashboard', {
         key: 'dashboard_content',
@@ -136,7 +116,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     } catch (error) {
       console.error('Error updating dashboard content:', error);
       Alert.alert('Error', 'Failed to update dashboard content');
-      // Revert the local state on error
       setDashboardContent(dashboardContent);
     } finally {
       setIsUpdating(false);
@@ -155,12 +134,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   // Switch track colors
   const switchColors = {
     trackColor: {
-      false: isDarkTheme ? '#666666' : '#D1D1D6',
+      false: '#D1D1D6',
       true: '#2196F3',
     },
-    thumbColor:
-      Platform.OS === 'ios' ? undefined : isDarkTheme ? '#FFFFFF' : '#FFFFFF',
-    ios_backgroundColor: isDarkTheme ? '#666666' : '#D1D1D6',
+    thumbColor: Platform.OS === 'ios' ? undefined : '#FFFFFF',
+    ios_backgroundColor: '#D1D1D6',
   };
 
   // Condition to disable HeadUp Angle setting
@@ -169,28 +147,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     status.glasses_info?.brightness === '-' ||
     !status.glasses_info.model_name.toLowerCase().includes('even');
 
-  // From origin/dev branch - Dashboard height slider props
-  const dashboardHeightSliderProps = {
-    disabled: !status.glasses_info?.model_name ||
-      !status.glasses_info.model_name.toLowerCase().includes('even'),
-    style: styles.slider,
-    minimumValue: 0,
-    maximumValue: 8,
-    step: 1,
-    onSlidingComplete: (value: number) => changeDashboardHeight(value),
-    value: status.glasses_info?.dashboard_height ?? 4,
-    minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: isDarkTheme
-      ? styles.maximumTrackTintColorDark.color
-      : styles.maximumTrackTintColorLight.color,
-    thumbTintColor: styles.thumbTintColor.color,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: { width: 40, height: 40 },
-    trackStyle: { height: 5 },
-    thumbStyle: { height: 20, width: 20 }
-  };
-
-  // ContentPicker Modal from HEAD branch
+  // ContentPicker Modal
   const renderContentPicker = () => (
     <Modal
       visible={showContentPicker}
@@ -198,10 +155,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       animationType="fade"
       onRequestClose={() => !isUpdating && setShowContentPicker(false)}
     >
-      <View style={[styles.modalOverlay, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
-        <View style={[styles.pickerContainer, isDarkTheme ? styles.darkPickerContainer : styles.lightPickerContainer]}>
+      <View style={[styles.modalOverlay]}>
+        <View style={[styles.pickerContainer]}>
           <View style={styles.pickerHeader}>
-            <Text style={[styles.pickerTitle, isDarkTheme ? styles.lightText : styles.darkText]}>
+            <Text style={styles.pickerTitle}>
               Select Dashboard Content
             </Text>
             <TouchableOpacity 
@@ -209,7 +166,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               style={[styles.closeButton, isUpdating && styles.disabledButton]}
               disabled={isUpdating}
             >
-              <Text style={[styles.closeButtonText, isDarkTheme ? styles.lightText : styles.darkText]}>✕</Text>
+              <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.pickerOptionsContainer}>
@@ -219,7 +176,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 style={[
                   styles.pickerOption,
                   dashboardContent === option.value && styles.selectedOption,
-                  isDarkTheme ? styles.darkOption : styles.lightOption,
                   isUpdating && styles.disabledItem
                 ]}
                 onPress={() => !isUpdating && handleDashboardContentChange(option.value)}
@@ -228,7 +184,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 <View style={styles.optionContent}>
                   <Text style={[
                     styles.pickerOptionText,
-                    isDarkTheme ? styles.lightText : styles.darkText,
                     dashboardContent === option.value && styles.selectedOptionText
                   ]}>
                     {option.label}
@@ -250,9 +205,9 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   );
 
   return (
-    <SafeAreaView style={[styles.safeArea, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, isDarkTheme ? styles.lightText : styles.darkText]}>
+        <Text style={styles.headerTitle}>
           Dashboard Settings
         </Text>
       </View>
@@ -262,26 +217,16 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       >
         {/* Contextual Dashboard */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkTheme ? styles.lightText : styles.darkText]}>
+          <Text style={styles.sectionTitle}>
             General Settings
           </Text>
-          <View style={[styles.settingItem, styles.elevatedCard, isDarkTheme ? styles.darkCard : styles.lightCard]}>
+          <View style={[styles.settingItem, styles.elevatedCard]}>
             <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}
-              >
+              <Text style={styles.label}>
                 Contextual Dashboard
               </Text>
               {status.glasses_info?.model_name && (
-                <Text
-                  style={[
-                    styles.value,
-                    isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  ]}
-                >
+                <Text style={styles.value}>
                   {`Show a summary of your phone notifications when you ${
                     status.glasses_info?.model_name
                       .toLowerCase()
@@ -304,52 +249,37 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
         {/* Dashboard Content Selection */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkTheme ? styles.lightText : styles.darkText]}>
+          <Text style={styles.sectionTitle}>
             Content Settings
           </Text>
           <TouchableOpacity
-            style={[styles.settingItem, styles.elevatedCard, isDarkTheme ? styles.darkCard : styles.lightCard]}
+            style={[styles.settingItem, styles.elevatedCard]}
             onPress={() => !isLoading && setShowContentPicker(true)}
             disabled={isLoading}
           >
             <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}
-              >
+              <Text style={styles.label}>
                 Dashboard Content
               </Text>
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                ]}
-              >
+              <Text style={styles.value}>
                 Choose what to display in your dashboard
               </Text>
             </View>
             <View style={styles.selectedValueContainer}>
               {isLoading ? (
-                <ActivityIndicator size="small" color={isDarkTheme ? '#FFFFFF' : '#007AFF'} />
+                <ActivityIndicator size="small" color="#007AFF" />
               ) : (
                 <>
-                  <Text
-                    style={[
-                      styles.selectedValue,
-                      isDarkTheme ? styles.lightText : styles.darkText,
-                    ]}
-                  >
+                  <Text style={styles.selectedValue}>
                     {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label || 'Notification Summary'}
                   </Text>
-                  <Icon name="chevron-right" size={16} color={isDarkTheme ? '#FFFFFF' : '#000000'} />
+                  <Icon name="chevron-right" size={16} color="#000000" />
                 </>
               )}
             </View>
             {isUpdating && (
-              <View style={[styles.loadingOverlay, isDarkTheme ? styles.darkLoadingOverlay : styles.lightLoadingOverlay]}>
-                <ActivityIndicator size="small" color={isDarkTheme ? '#FFFFFF' : '#007AFF'} />
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="small" color="#007AFF" />
               </View>
             )}
           </TouchableOpacity>
@@ -357,7 +287,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
         {/* Display Settings Section */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDarkTheme ? styles.lightText : styles.darkText]}>
+          <Text style={styles.sectionTitle}>
             Display Settings
           </Text>
           
@@ -366,62 +296,21 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
             style={[
               styles.settingItem,
               styles.elevatedCard,
-              isDarkTheme ? styles.darkCard : styles.lightCard,
               disableHeadUpAngle && styles.disabledItem,
             ]}
             disabled={disableHeadUpAngle}
             onPress={() => setHeadUpAngleComponentVisible(true)}
           >
             <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                ]}
-              >
+              <Text style={styles.label}>
                 Adjust Head-Up Angle
               </Text>
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  disableHeadUpAngle && styles.disabledItem,
-                ]}
-              >
+              <Text style={[styles.value, disableHeadUpAngle && styles.disabledItem]}>
                 Adjust the angle at which the contextual dashboard appears when you look up.
               </Text>
             </View>
-            <Icon name="chevron-right" size={16} color={isDarkTheme ? '#FFFFFF' : '#000000'} />
+            <Icon name="chevron-right" size={16} color="#000000" />
           </TouchableOpacity>
-
-          {/* Dashboard Height Slider - Commented out but preserved from origin/dev */}
-          {/* <View style={[styles.settingItem, styles.elevatedCard, isDarkTheme ? styles.darkCard : styles.lightCard]}>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
-                ]}
-              >
-                Dashboard Height
-              </Text>
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  styles.disabledItem,
-                ]}
-              >
-                Adjust the height of the dashboard.
-              </Text>
-              <Slider
-                {...dashboardHeightSliderProps}
-              />
-            </View>
-          </View> */}
         </View>
       </ScrollView>
 
@@ -435,7 +324,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         />
       )}
 
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
+      <NavigationBar />
     </SafeAreaView>
   );
 };
@@ -448,6 +337,7 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
+    backgroundColor: '#f9f9f9',
   },
   header: {
     padding: 20,
@@ -459,6 +349,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 'bold',
     fontFamily: 'Montserrat-Bold',
+    color: '#333333',
   },
   scrollViewContainer: {
     flex: 1,
@@ -472,10 +363,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 12,
     marginLeft: 4,
+    color: '#333333',
   },
   elevatedCard: {
     borderRadius: 12,
     marginBottom: 12,
+    backgroundColor: '#FFFFFF',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -487,12 +380,6 @@ const styles = StyleSheet.create({
         elevation: 3,
       },
     }),
-  },
-  darkCard: {
-    backgroundColor: '#2C2C2C',
-  },
-  lightCard: {
-    backgroundColor: '#FFFFFF',
   },
   settingItem: {
     flexDirection: 'row',
@@ -508,10 +395,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 4,
+    color: '#333333',
   },
   value: {
     fontSize: 14,
     lineHeight: 20,
+    color: '#666666',
   },
   selectedValueContainer: {
     flexDirection: 'row',
@@ -520,6 +409,7 @@ const styles = StyleSheet.create({
   selectedValue: {
     fontSize: 16,
     marginRight: 4,
+    color: '#333333',
   },
   modalOverlay: {
     flex: 1,
@@ -532,6 +422,7 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     borderRadius: 16,
     overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -547,6 +438,7 @@ const styles = StyleSheet.create({
   closeButtonText: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#333333',
   },
   pickerOptionsContainer: {
     maxHeight: 400,
@@ -564,57 +456,15 @@ const styles = StyleSheet.create({
   pickerOptionText: {
     fontSize: 16,
     flex: 1,
+    color: '#333333',
   },
   selectedOption: {
     backgroundColor: '#007AFF',
   },
   selectedOptionText: {
-    color: '#007AFF',
+    color: '#FFFFFF',
   },
   disabledItem: {
-    opacity: 0.5,
-  },
-  darkBackground: {
-    backgroundColor: '#1c1c1c',
-  },
-  lightBackground: {
-    backgroundColor: '#f0f0f0',
-  },
-  darkText: {
-    color: 'black',
-  },
-  lightText: {
-    color: 'white',
-  },
-  darkSubtext: {
-    color: '#666666',
-  },
-  lightSubtext: {
-    color: '#999999',
-  },
-  darkIcon: {
-    color: '#333333',
-  },
-  lightIcon: {
-    color: '#666666',
-  },
-  darkPickerContainer: {
-    backgroundColor: '#2C2C2C',
-  },
-  lightPickerContainer: {
-    backgroundColor: '#FFFFFF',
-  },
-  pickerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  darkOption: {
-    backgroundColor: '#3C3C3C',
-  },
-  lightOption: {
-    backgroundColor: '#F5F5F5',
-  },
-  disabledButton: {
     opacity: 0.5,
   },
   loadingOverlay: {
@@ -626,38 +476,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 12,
-  },
-  darkLoadingOverlay: {
-    backgroundColor: 'rgba(44, 44, 44, 0.7)',
-  },
-  lightLoadingOverlay: {
     backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
-  slider: {
-    width: '100%',
-    height: 40,
+  pickerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333333',
   },
-  thumbTouchSize: {
-    width: 40,
-    height: 40,
-  },
-  trackStyle: {
-    height: 5,
-  },
-  thumbStyle: {
-    height: 20,
-    width: 20,
-  },
-  minimumTrackTintColor: {
-    color: '#2196F3',
-  },
-  maximumTrackTintColorDark: {
-    color: '#666666',
-  },
-  maximumTrackTintColorLight: {
-    color: '#D1D1D6',
-  },
-  thumbTintColor: {
-    color: '#FFFFFF',
+  disabledButton: {
+    opacity: 0.5,
   },
 });
