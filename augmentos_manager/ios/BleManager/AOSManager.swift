@@ -375,9 +375,19 @@ struct ViewState {
       let glassesMic = actuallyEnabled && !self.useOnboardMic
       print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
       //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
-      await self.g1Manager?.setMicEnabled(enabled: glassesMic)
       
-      setOnboardMicEnabled(self.useOnboardMic && actuallyEnabled)
+      
+      let areGlassesConnected = self.g1Manager?.g1Ready ?? false
+      
+      if(areGlassesConnected){
+        await self.g1Manager?.setMicEnabled(enabled: glassesMic)
+        setOnboardMicEnabled(self.useOnboardMic && actuallyEnabled)
+      }else{
+        print("Glasses not connected, using onboardMic \(isEnabled)")
+        //If glasses aren't connected, default to phone mic always.
+        setOnboardMicEnabled(isEnabled)
+      }
+      
     }
   }
   
