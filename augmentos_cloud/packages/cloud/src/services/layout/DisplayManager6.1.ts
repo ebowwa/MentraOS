@@ -572,6 +572,10 @@ class DisplayManager implements DisplayManagerI {
     if (!this.userSession || this.bootingApps.size === 0) return;
 
     const bootingAppNames = Array.from(this.bootingApps).map(packageName => {
+      // Get the "name" of the app from looking into the userSession object.
+      const name = this.userSession?.installedApps.find(app => app.packageName === packageName)?.name;
+      if (name) return name;
+
       const app = Object.values(systemApps).find(app => app.packageName === packageName);
       return app ? app.name : packageName;
     });
