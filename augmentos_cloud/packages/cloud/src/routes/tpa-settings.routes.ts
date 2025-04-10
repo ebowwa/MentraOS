@@ -23,7 +23,8 @@ router.get('/:tpaName', async (req, res) => {
 
   // Extract TPA name from URL (use third segment if dot-separated).
   // const parts = req.params.tpaName.split('.');
-  const tpaName = req.params.tpaName;
+  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? systemApps.dashboard.packageName : req.params.tpaName;
+
   let webviewURL: string | undefined;
 
   if (!tpaName) {
@@ -56,25 +57,25 @@ router.get('/:tpaName', async (req, res) => {
       // const rawData = fs.readFileSync(configFilePath, 'utf8');
       // tpaConfig = JSON.parse(rawData);
       // find the app, then call it with it's port. i.e: http://localhost:8017/tpa_config.json
-      const _tpa = await appService.getApp(req.params.tpaName);
-      // const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
+      const _tpa = await appService.getApp(tpaName);
+      // const host = Object.values(systemApps).find(app => app.packageName === tpaName)?.host;
       const publicUrl = _tpa?.publicUrl;
       
       if (!_tpa) {
-        throw new Error('TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
+        throw new Error('TPA not found for app ' + tpaName); // throw an error if the port is not found.
       }
       if (!publicUrl) {
         // get the host from the public url;
-        throw new Error('publicUrl not found for app ' + req.params.tpaName); // throw an error if the port is not found.
+        throw new Error('publicUrl not found for app ' + tpaName); // throw an error if the port is not found.
       }
       webviewURL = _tpa.webviewURL;
       const _tpaConfig = (await axios.get(`${publicUrl}/tpa_config.json`)).data;
       tpaConfig = _tpaConfig;
     } catch (err) {
-      const _tpa = await appService.getApp(req.params.tpaName);
+      const _tpa = await appService.getApp(tpaName);
       if (_tpa) {
         tpaConfig = {
-          name: _tpa.name || req.params.tpaName,
+          name: _tpa.name || tpaName,
           description: _tpa.description || '',
           version: "1.0.0",
           settings: []
@@ -149,13 +150,13 @@ router.get('/user/:tpaName', async (req, res) => {
     return res.status(400).json({ error: 'User ID missing in Authorization header' });
   }
   const userId = authHeader.split(' ')[1];
-  const tpaName = req.params.tpaName;
+  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? systemApps.dashboard.packageName : req.params.tpaName;
 
   try {
     const user = await User.findOrCreateUser(userId);
     let storedSettings = user.getAppSettings(tpaName);
 
-    if (!storedSettings) {
+    if (!storedSettings && tpaName !== systemApps.dashboard.packageName) {
       let tpaConfig;
       try {
         const _tpa = await appService.getApp(tpaName);
@@ -208,7 +209,8 @@ router.get('/user/:tpaName', async (req, res) => {
 router.post('/:tpaName', async (req, res) => {
   // Extract TPA name.
   // const parts = req.params.tpaName.split('.');
-  const tpaName = req.params.tpaName;
+  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? systemApps.dashboard.packageName : req.params.tpaName;
+
   if (!tpaName) {
     return res.status(400).json({ error: 'TPA name missing in request' });
   }
@@ -265,7 +267,7 @@ router.post('/:tpaName', async (req, res) => {
     const userSession = sessionService.getSession(userId);
 
     // If user has active sessions, send them settings updates via WebSocket
-    if (userSession) {
+    if (userSession && tpaName !== systemApps.dashboard.packageName && tpaName !== "com.augmentos.dashboard") {
       const settingsUpdate = {
         type: CloudToTpaMessageType.SETTINGS_UPDATE,
         packageName: tpaName,
@@ -276,15 +278,17 @@ router.post('/:tpaName', async (req, res) => {
 
       const tpaConnection = userSession.appConnections.get(tpaName);
 
+
       tpaConnection.send(JSON.stringify(settingsUpdate));
       logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
     }
-
     // Get the app to access its properties
     const app = await appService.getApp(tpaName);
 
     if (app) {
       let appEndpoint;
+
+      // console.log('@@@@@ app', app);
 
       // Check if it's a system app first
       if (app.isSystemApp) {

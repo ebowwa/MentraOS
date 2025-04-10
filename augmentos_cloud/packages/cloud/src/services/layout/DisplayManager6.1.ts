@@ -47,6 +47,12 @@ class DisplayManager implements DisplayManagerI {
   public handleAppStart(packageName: string, userSession: UserSession): void {
     this.userSession = userSession;
 
+    const app = this.userSession.installedApps.find(app => app.packageName === packageName);
+    if (app && app.tpaType === 'standard') {
+      this.mainApp = packageName; 
+      logger.info(`⚡️⚡️⚡️[DisplayManager]⚡️⚡️⚡️ - [${userSession.userId}] 📱 Setting main app to: ${this.mainApp} ⚡️⚡️⚡️`);
+    } 
+
     // Don't show boot screen for dashboard
     if (packageName === systemApps.dashboard.packageName) {
       logger.info(`[DisplayManager] - [${userSession.userId}] 🚀 Dashboard starting`);
