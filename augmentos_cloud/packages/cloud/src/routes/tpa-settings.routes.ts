@@ -8,8 +8,9 @@ import { systemApps } from '../services/core/system-apps';
 import { User } from '../models/user.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
-import appService from '../services/core/app.service';
+import appService, { isUninstallable } from '../services/core/app.service';
 import { logger } from '@augmentos/utils';
+import { UserSession } from '@augmentos/sdk';
 
 const router = express.Router();
 
@@ -22,6 +23,8 @@ router.get('/:tpaName', async (req, res) => {
   // Extract TPA name from URL (use third segment if dot-separated).
   // const parts = req.params.tpaName.split('.');
   const tpaName = req.params.tpaName;
+  let webviewURL: string | undefined;
+
   if (!tpaName) {
     return res.status(400).json({ error: 'TPA name missing in request' });
   }
@@ -55,18 +58,17 @@ router.get('/:tpaName', async (req, res) => {
       const _tpa = await appService.getApp(req.params.tpaName);
       // const host = Object.values(systemApps).find(app => app.packageName === req.params.tpaName)?.host;
       const publicUrl = _tpa?.publicUrl;
-
+      
       if (!_tpa) {
         throw new Error('TPA not found for app ' + req.params.tpaName); // throw an error if the port is not found.
       }
       if (!publicUrl) {
         // get the host from the public url;
         throw new Error('publicUrl not found for app ' + req.params.tpaName); // throw an error if the port is not found.
-
       }
-      const _tpaConfig = (await axios.get(`${publicUrl}/tpa_config.json`)).data; 
+      webviewURL = _tpa.webviewURL;
+      const _tpaConfig = (await axios.get(`${publicUrl}/tpa_config.json`)).data;
       tpaConfig = _tpaConfig;
-
     } catch (err) {
       const _tpa = await appService.getApp(req.params.tpaName);
       if (_tpa) {
@@ -76,6 +78,7 @@ router.get('/:tpaName', async (req, res) => {
           version: "1.0.0",
           settings: []
         }
+        webviewURL = _tpa.webviewURL;
       } else {
         logger.error('Error reading TPA config file:', err);
         return res.status(500).json({ error: 'Error reading TPA config file' });
@@ -117,12 +120,14 @@ router.get('/:tpaName', async (req, res) => {
     });
 
     // console.log('Merged settings:', mergedSettings);
-
+    const uninstallable = isUninstallable(tpaName);
     return res.json({
       success: true,
       userId,
       name: tpaConfig.name,
       description: tpaConfig.description,
+      uninstallable,
+      webviewURL,
       version: tpaConfig.version,
       settings: mergedSettings,
     });
@@ -154,7 +159,7 @@ router.get('/user/:tpaName', async (req, res) => {
       try {
         const _tpa = await appService.getApp(tpaName);
         const host = Object.values(systemApps).find(app => app.packageName === tpaName)?.host;
-        
+
         if (!host || !_tpa) {
           throw new Error('Port / TPA not found for app ' + tpaName);
         }
@@ -231,7 +236,7 @@ router.post('/:tpaName', async (req, res) => {
 
     const updatedPayload = req.body;
     let settingsArray;
-    
+
     // Handle both array and single object formats
     if (Array.isArray(updatedPayload)) {
       settingsArray = updatedPayload;
@@ -254,29 +259,56 @@ router.post('/:tpaName', async (req, res) => {
 
     logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
 
+    // Get user session to send WebSocket update
+    const sessionService = require('../services/core/session.service');
+    const userSessions = sessionService.getUserSessions(userId);
+
+    // If user has active sessions, send them settings updates via WebSocket
+    if (userSessions && userSessions.length > 0) {
+      const { CloudToTpaMessageType } = require('@augmentos/sdk');
+
+      userSessions.forEach((session: UserSession) => {
+        // Look for this TPA's connection
+        const tpaConnection = session.appConnections.get(tpaName);
+        if (tpaConnection && tpaConnection.readyState === 1) { // 1 = OPEN
+          // Send settings update via WebSocket
+          const settingsUpdate = {
+            type: CloudToTpaMessageType.SETTINGS_UPDATE,
+            packageName: tpaName,
+            sessionId: `${session.sessionId}-${tpaName}`,
+            settings: updatedSettings,
+            timestamp: new Date()
+          };
+
+          tpaConnection.send(JSON.stringify(settingsUpdate));
+          logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
+        }
+      });
+    }
+
     // Get the app to access its properties
     const app = await appService.getApp(tpaName);
-    
+
     if (app) {
       let appEndpoint;
-      
+
       // Check if it's a system app first
       if (app.isSystemApp) {
         // For system apps, use the internal host approach
-        const matchingApp = Object.values(systemApps).find(sysApp => 
+        const matchingApp = Object.values(systemApps).find(sysApp =>
           sysApp.packageName === tpaName
         );
-        
+
         if (matchingApp && matchingApp.host) {
           appEndpoint = `http://${matchingApp.host}/settings`;
         }
-      } 
-      
+      }
+
       // If not a system app or system app info not found, use publicUrl
       if (!appEndpoint && app.publicUrl) {
         appEndpoint = `${app.publicUrl}/settings`;
       }
-      
+
       // Send settings update if we have an endpoint
       if (appEndpoint) {
         try {

@@ -92,7 +92,11 @@ AugmentOS is a cloud-based operating system for smart glasses that enables real-
    bun run staging:deploy
    ```
 
-## Docker Tips
+## Docker Setup
+
+For a comprehensive guide on running AugmentOS Cloud and TPAs in Docker, see [DOCKER_GUIDE.md](./DOCKER_GUIDE.md).
+
+### Docker Tips
 
 - Each service uses a shared node_modules volume to prevent duplicate installations
 - The shared-packages service builds all dependencies first
@@ -113,7 +117,3 @@ For detailed documentation, see the `/docs` directory:
 - **"Failed to link" errors**: Run `bun run dev:clean` to clean up Docker volumes and restart with `bun run dev:rebuild`
 - **Connection issues**: Check network settings with `docker network ls` to verify `augmentos-network-dev` exists
 - **Performance issues**: Adjust resource limits in docker-compose.yml if needed
-
-## License
-
-Copyright © 2025 BallahTech, Inc. All rights reserved.

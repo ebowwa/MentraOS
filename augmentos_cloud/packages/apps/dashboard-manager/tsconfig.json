@@ -12,9 +12,9 @@
     "paths": {
       "@augmentos/sdk": ["../sdk/dist"],
       "@augmentos/utils": ["../utils/dist"],
-      "@augmentos/agents": ["../agents/dist"],
+      "@augmentos/agents": ["../agents/dist"]
     }
   },
-  "include": ["src/**/*", "../../agents/src/FunFactAgent.ts"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

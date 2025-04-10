@@ -1,0 +1,32 @@
+# Single-stage build with Bun
+FROM oven/bun:latest
+
+WORKDIR /app
+
+# Copy source code
+COPY . .
+
+# Install dependencies
+RUN bun install
+
+# Build packages in sequence
+RUN echo "🚀 Starting build process..." && \
+    echo "⚙️ Building packages/sdk..." && \
+    cd packages/sdk && bun run build && \
+    echo "✅ Building packages/sdk..." && \
+    echo "⚙️ Building packages/utils..." && \
+    cd ../utils && bun run build && \
+    echo "✅ Building packages/utils..." && \
+    echo "⚙️ Building packages/agents..." && \
+    cd ../agents && bun run build && \
+    echo "✅ Building packages/agents..." && \
+    echo "⚙️ Building packages/cloud..." && \
+    cd ../cloud && bun run build && \
+    echo "✅ Building packages/cloud..." && \
+    echo "⚙️ Building packages/apps/dashboard-manager..." && \
+    cd ../apps/dashboard-manager && bun run build && \
+    echo "🎉🎉🎉 All packages built successfully! 🎉🎉🎉"
+
+# Use Bun to run the application
+ENV NODE_ENV=production
+CMD ["echo", "Ready to run services"]
