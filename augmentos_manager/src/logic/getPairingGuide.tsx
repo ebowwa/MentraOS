@@ -4,6 +4,7 @@ import {
   AudioWearablePairingGuide,
   EvenRealitiesG1PairingGuide, 
   MentraLivePairingGuide, 
+  MentraMach1PairingGuide, 
   VirtualWearablePairingGuide,
   VuzixZ100PairingGuide 
 } from '../components/GlassesPairingGuides';
@@ -22,6 +23,8 @@ export const getPairingGuide = (glassesModelName: string, isDarkTheme: boolean) 
       return <VuzixZ100PairingGuide isDarkTheme={isDarkTheme} />;
     case 'Mentra Live':
       return <MentraLivePairingGuide isDarkTheme={isDarkTheme} />;
+    case 'Mentra Mach1':
+      return <MentraMach1PairingGuide isDarkTheme={isDarkTheme} />;
     case 'Audio Wearable':
       return <AudioWearablePairingGuide isDarkTheme={isDarkTheme} />;
     case 'Simulated Glasses':

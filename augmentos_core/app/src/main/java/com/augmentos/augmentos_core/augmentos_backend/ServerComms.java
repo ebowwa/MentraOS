@@ -557,6 +557,8 @@ public class ServerComms {
                 Log.d(TAG, "Received connection_ack. Possibly store sessionId if needed.");
                 startAudioSenderThread();
                 if (serverCommsCallback != null) {
+                    // Log.d( TAG, "Calling onConnectionAck callback");
+                    // Log.d(TAG, "Apps installed: " + msg);
                     serverCommsCallback.onAppStateChange(parseAppList(msg));
                     serverCommsCallback.onConnectionAck();
                 }
@@ -564,6 +566,8 @@ public class ServerComms {
 
             case "app_state_change":
                 //Log.d(TAG, "Received app_state_change.");
+                // Log.d( TAG, "Calling onConnectionAck callback");
+                // Log.d(TAG, "Apps installed: " + msg);
                 if (serverCommsCallback != null)
                     serverCommsCallback.onAppStateChange(parseAppList(msg));
                 break;

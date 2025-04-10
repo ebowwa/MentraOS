@@ -164,6 +164,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
     // const backgroundColor = isDarkTheme ? '#1E1E1E' : '#F5F5F5';
 
+    // console.log('status.apps', status.apps);
+
     // Optional: Filter out duplicate apps
     const uniqueApps = React.useMemo(() => {
         const seen = new Set();

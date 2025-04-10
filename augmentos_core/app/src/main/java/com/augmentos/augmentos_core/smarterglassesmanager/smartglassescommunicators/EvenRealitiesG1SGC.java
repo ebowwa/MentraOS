@@ -501,6 +501,12 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                                             Log.e(TAG, "Audio processing callback is null - callback registration failed!");
                                         }
                                     }
+
+//                                    if (shouldRunOnboardMic) { TODO: add this back if needed
+//                                        EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
+//                                    } else {
+//                                        Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
+//                                    }
                                 }
 
                             //send through the LC3

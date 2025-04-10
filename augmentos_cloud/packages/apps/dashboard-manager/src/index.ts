@@ -17,8 +17,15 @@ import {
 } from '@augmentos/sdk';
 import tzlookup from 'tz-lookup';
 import { NewsAgent } from '@augmentos/agents';
-import { NotificationFilterAgent } from '@augmentos/agents'; // <-- added import
+import { NotificationSummaryAgent } from '@augmentos/agents';
+import { FunFactAgent } from '@augmentos/agents';
+import { FamousQuotesAgent } from '@augmentos/agents';
+import { GratitudePingAgent } from '@augmentos/agents';
+import { TrashTalkAgent } from '@augmentos/agents';
+import { ChineseWordAgent } from '@augmentos/agents';
 import { WeatherModule } from './dashboard-modules/WeatherModule';
+import { fetchSettings, getUserDashboardContent } from './settings_handler'; // <-- new import
+import { wrapText } from '@augmentos/utils';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
@@ -43,7 +50,7 @@ interface SessionInfo {
   lastNewsUpdate?: number;
   // cache for phone notifications as raw objects
   phoneNotificationCache?: { title: string; content: string; timestamp: number; uuid: string }[];
-  // store the ranked notifications from the NotificationFilterAgent
+  // store the ranked notifications from the NotificationSummaryAgent
   phoneNotificationRanking?: any[];
   transcriptionCache: any[];
   // embed the dashboard card into session info
@@ -59,6 +66,15 @@ interface SessionInfo {
   newsIndex?: number;
   // NEW: Cached battery level from glasses
   batteryLevel?: number;
+  // NEW: Cache for agent results
+  agentResults?: {
+    [key: string]: {
+      result: any;
+      timestamp: number;
+    }
+  };
+  // NEW: Single history list for all agents
+  agentHistory?: string[];
   [key: string]: any;
 }
 
@@ -76,6 +92,9 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
   try {
     const { sessionId, userId } = req.body;
     console.log(`\n[Webhook] Session start for user ${userId}, session ${sessionId}\n`);
+
+    // Fetch user settings
+    await fetchSettings(userId);
 
     // 1) Create a new WebSocket connection to the cloud
     const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
@@ -95,6 +114,8 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
       lastNewsUpdate: Date.now(), // start time for e.g. news
       transcriptionCache: [],
       dashboard: dashboardCard,
+      agentResults: {}, // Initialize agentResults
+      agentHistory: [], // Initialize single history list
     });
 
     // 2) On open, send tpa_connection_init and initial dashboard display event
@@ -109,6 +130,15 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
         apiKey: API_KEY,
       };
       ws.send(JSON.stringify(initMessage));
+
+      // Initialize agent results based on dashboard content
+      const dashboardContent = getUserDashboardContent(userId);
+      console.log(`[Session ${sessionId}] Dashboard content: ${dashboardContent}`);
+      const sessionInfo = activeSessions.get(sessionId);
+      if (!sessionInfo) {
+        console.error(`[Session ${sessionId}] Session info not found`);
+        return;
+      }
 
       const displayRequest: DisplayRequest = {
         // type: 'display_event',
@@ -133,13 +163,8 @@ app.post('/webhook', async (req: express.Request, res: express.Response) => {
           "News summary 3"
         ]
       };
-      const sessionInfo = activeSessions.get(sessionId);
-      if (sessionInfo && newsResult && newsResult.news_summaries && newsResult.news_summaries.length > 0) {
-        sessionInfo.newsCache = newsResult.news_summaries;
-        sessionInfo.newsIndex = 0;
-        // Update dashboard so that news is visible.
-        updateDashboard(sessionId);
-      }
+      await updateDashboardCache(sessionId, sessionInfo);
+      await updateDashboard(sessionId);
     });
 
     // 3) On message, handle incoming data
@@ -203,7 +228,7 @@ function handleMessage(sessionId: string, ws: WebSocket, message: any) {
         // case 'phone_notification':
         case StreamType.PHONE_NOTIFICATION:
           // Instead of immediately handling the notification,
-          // cache it and send the entire list to the NotificationFilterAgent.
+          // cache it and send the entire list to the NotificationSummaryAgent.
           handlePhoneNotification(sessionId, streamMessage.data);
           break;
 
@@ -211,7 +236,6 @@ function handleMessage(sessionId: string, ws: WebSocket, message: any) {
           handleCalendarEvent(sessionId, streamMessage.data);
           break;
 
-        // case 'location_update':
         case StreamType.LOCATION_UPDATE:
           handleLocationUpdate(sessionId, streamMessage.data);
           break;
@@ -242,6 +266,8 @@ function handleMessage(sessionId: string, ws: WebSocket, message: any) {
 function handleLocationUpdate(sessionId: string, locationData: any) {
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
+
+  console.log(`[Session ${sessionId}] Received location update:`, locationData);
 
   // Extract lat, lng, and timestamp from the locationData.
   const { lat, lng, timestamp } = locationData;
@@ -283,52 +309,162 @@ function handleCalendarEvent(sessionId: string, calendarEvent: any) {
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
 
+  // Validate calendar event structure
+  if (!calendarEvent.title || !calendarEvent.dtStart) {
+    console.error(`[Session ${sessionId}] Invalid calendar event structure:`, calendarEvent);
+    return;
+  }
+
   // Add the calendar event to the session's cache.
   sessionInfo.calendarEvent = calendarEvent;
+  console.log(`[Session ${sessionId}] Cached calendar event:`, calendarEvent);
   
   updateDashboard(sessionId);
 }
 
-function handleHeadPosition(sessionId: string, headPositionData: any) {
+// Helper function to update dashboard cache for a specific session
+async function updateDashboardCache(sessionId: string, sessionInfo: SessionInfo) {
+  const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+  
+  // Initialize agentResults if needed
+  if (!sessionInfo.agentResults) {
+    sessionInfo.agentResults = {};
+  }
+
+  // Check if the dashboard content has changed
+  const currentContent = sessionInfo.agentResults['current_content']?.result?.content;
+  if (currentContent !== dashboardContent) {
+    // Content has changed, clear the old cache and prepare new one
+    sessionInfo.agentResults = {};
+    sessionInfo.agentResults['current_content'] = {
+      result: { content: dashboardContent },
+      timestamp: Date.now()
+    };
+  }
+
+  // Handle different dashboard content types
+  switch (dashboardContent) {
+    case 'notification_summary':
+      // Notifications are handled separately as they come from phone events
+      // No need to refresh on head up
+      break;
+    
+    case 'fun_facts':
+      // Update fun fact cache
+      const funFactAgent = new FunFactAgent();
+      try {
+        const result = await funFactAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['fun_facts'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating fun fact:`, err);
+      }
+      break;
+
+    case 'famous_quotes':
+      // Update famous quotes cache
+      const famousQuotesAgent = new FamousQuotesAgent();
+      try {
+        const result = await famousQuotesAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['famous_quotes'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating famous quote:`, err);
+      }
+      break;
+
+    case 'gratitude_ping':
+      // Update gratitude ping cache
+      const gratitudePingAgent = new GratitudePingAgent();
+      try {
+        const result = await gratitudePingAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['gratitude_ping'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating gratitude ping:`, err);
+      }
+      break;
+
+    case 'trash_talk':
+      // Update trash talk cache
+      const trashTalkAgent = new TrashTalkAgent();
+      try {
+        const result = await trashTalkAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['trash_talk'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating trash talk:`, err);
+      }
+      break;
+
+    case 'chinese_words':
+      // Update Chinese word cache
+      const chineseWordAgent = new ChineseWordAgent();
+      try {
+        const result = await chineseWordAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['chinese_words'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating Chinese word:`, err);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  // Update the dashboard after cache is updated
+  updateDashboard(sessionId);
+}
+
+async function handleHeadPosition(sessionId: string, headPositionData: any) {
   const sessionInfo = activeSessions.get(sessionId);
-
-  // console.log(sessionInfo);
-
   if (!sessionInfo) return;
-  // console.log(`[Session ${sessionId}] Received head position:`, headPositionData);
 
-  // When head is up, update the news index.
   if (headPositionData.position === 'up') {
+    // Update the dashboard cache
+    await updateDashboardCache(sessionId, sessionInfo);
+
+    // Handle news separately as it has its own rotation logic
     if (sessionInfo.newsCache && sessionInfo.newsCache.length > 0) {
-      // Determine the next index.
       const currentIndex = sessionInfo.newsIndex || 0;
       const nextIndex = currentIndex + 1;
-      
+
       if (nextIndex >= sessionInfo.newsCache.length) {
-        // We've gone through the entire list.
-        // Fetch new news and reset index.
-        // const newsAgent = new NewsAgent();
-        // newsAgent.handleContext({}).then(newsResult => {
-        //   if (newsResult && newsResult.news_summaries && newsResult.news_summaries.length > 0) {
-        //     sessionInfo.newsCache = newsResult.news_summaries;
-        //     sessionInfo.newsIndex = 0;
-        //   } else {
-        //     // If no new news are fetched, wrap around.
-        //     sessionInfo.newsIndex = 0;
-        //   }
-        // }).catch(err => {
-        //   console.error(`[Session ${sessionId}] Error fetching new news:`, err);
-        //   // Fallback: wrap around if error occurs.
-        //   sessionInfo.newsIndex = 0;
-        // });
         sessionInfo.newsCache = ["News summary 1", "News summary 2", "News summary 3"];
+        sessionInfo.newsIndex = 0;
       } else {
-        // Otherwise, simply update the index.
         sessionInfo.newsIndex = nextIndex;
       }
+
+      updateDashboard(sessionId);
     }
 
-    updateDashboard(sessionId);
   }
 }
 
@@ -377,41 +513,6 @@ async function updateDashboard(sessionId?: string) {
   }
 
   console.log(`[Session ${sessionId}] Updating dashboard...`);
-
-  // Utility function to wrap text to a maximum line length without breaking words.
-  function wrapText(text: string, maxLength = 25): string {
-    return text
-      .split('\n')
-      .map(line => {
-        const words = line.split(' ');
-        let currentLine = '';
-        const wrappedLines: string[] = [];
-
-        words.forEach(word => {
-          if ((currentLine.length + (currentLine ? 1 : 0) + word.length) <= maxLength) {
-            currentLine += (currentLine ? ' ' : '') + word;
-          } else {
-            if (currentLine) {
-              wrappedLines.push(currentLine);
-            }
-            currentLine = word;
-
-            // If a single word is too long, hardcut it.
-            while (currentLine.length > maxLength) {
-              wrappedLines.push(currentLine.slice(0, maxLength));
-              currentLine = currentLine.slice(maxLength);
-            }
-          }
-        });
-
-        if (currentLine) {
-          wrappedLines.push(currentLine.trim());
-        }
-
-        return wrappedLines.join('\n');
-      })
-      .join('\n');
-  }
 
   // Define left modules in group 1 (same-line modules).
   const leftModulesGroup1 = [
@@ -511,9 +612,12 @@ async function updateDashboard(sessionId?: string) {
       async run(context: any) {
         // Check that we have location data.
         if (!context.latestLocation) {
+          console.log(`[Session ${context.session.userId}] No location data available for weather`);
           return '';
         }
         const { latitude, longitude } = context.latestLocation;
+        console.log(`[Session ${context.session.userId}] Fetching weather for lat=${latitude}, lon=${longitude}`);
+        
         // Use per-session weather cache.
         const session: SessionInfo = context.session;
         if (
@@ -525,17 +629,26 @@ async function updateDashboard(sessionId?: string) {
         }
         // Otherwise, fetch new weather data.
         const weatherAgent = new WeatherModule();
-        const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
-        const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
-        // Cache the result on the session.
-        session.weatherCache = { timestamp: Date.now(), data: result };
-        return result;
+        try {
+          const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
+          console.log(`[Session ${session.userId}][Weather] Fetched weather data:`, weather);
+          const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
+          // Cache the result on the session.
+          session.weatherCache = { timestamp: Date.now(), data: result };
+          return result;
+        } catch (error) {
+          console.error(`[Session ${session.userId}][Weather] Error fetching weather:`, error);
+          return '';
+        }
       },
     },
   ];
 
   // Helper: update a single session dashboard.
   async function updateSessionDashboard(sessionId: string, sessionInfo: SessionInfo) {
+    // Get user dashboard content setting
+    const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+    
     // Prepare a context for modules that need it.
     // Include the session itself so that per-user caches (like weatherCache and newsCache) can be accessed.
     const context = {
@@ -551,38 +664,59 @@ async function updateDashboard(sessionId?: string) {
     const leftGroup1Results = await Promise.all(leftGroup1Promises);
     const leftGroup1Text = leftGroup1Results.filter(text => text.trim()).join(', ');
 
-    // Left group 2: notifications.
+    // Left group 2: notifications or fun facts based on settings
     const leftModulesGroup2 = [
       {
-        name: "notifications",
+        name: "custom_dashboard_content",
         async run() {
-          // Use the ranked notifications from the NotificationFilterAgent if available.
-          const rankedNotifications = sessionInfo.phoneNotificationRanking || [];
-          // The NotificationFilterAgent returns notifications sorted by importance (rank=1 first).
-          const topTwoNotifications = rankedNotifications.slice(0, 2);
-          console.log(`[Session ${sessionId}] Ranked Notifications:`, topTwoNotifications);
-          return topTwoNotifications
-            .map(notification => wrapText(notification.summary, 25))
-            .join('\n');
+          console.log(`[Session ${sessionId}] Dashboard content: ${dashboardContent}`);
+          console.log(`[Session ${sessionId}] Agent results:`, JSON.stringify(sessionInfo.agentResults));
+          if (dashboardContent === 'notification_summary') {
+            // Use the ranked notifications from the NotificationSummaryAgent if available
+            const rankedNotifications = sessionInfo.phoneNotificationRanking || [];
+            const topTwoNotifications = rankedNotifications.slice(0, 2);
+            console.log(`[Session ${sessionId}] Ranked Notifications:`, topTwoNotifications);
+            return topTwoNotifications
+              .map(notification => wrapText(notification.summary, 25))
+              .join('\n');
+          } else if (sessionInfo.agentResults![dashboardContent]) {
+            // Use cached agent result
+            const cachedResult = sessionInfo.agentResults![dashboardContent];
+            console.log(`[Session ${sessionId}] Cached result:`, JSON.stringify(cachedResult));
+            if (cachedResult.result && cachedResult.result.insight) {
+              return wrapText(cachedResult.result.insight, 25);
+            }
+          }
+          // Return empty string if no cached result
+          return '';
         }
       }
     ];
     const leftGroup2Promises = leftModulesGroup2.map(module => module.run());
     const leftGroup2Results = await Promise.all(leftGroup2Promises);
-    const leftGroup2Text = leftGroup2Results.filter(text => text.trim()).join('\n');
+    console.log(`[Session ${sessionId}] Left group 2 results:`, JSON.stringify(leftGroup2Results));
+    const leftGroup2Text = leftGroup2Results.filter((text: string) => text.trim()).join('\n');
 
     // Combine left texts.
     let leftText = leftGroup1Text;
     if (leftGroup2Text) {
-      leftText += `\n${leftGroup2Text}`;
+      if (dashboardContent === 'chinese_words') {
+        leftText += `\n\n${leftGroup2Text}`;
+      } else {
+        leftText += `\n${leftGroup2Text}`;
+      }
     }
-    leftText = wrapText(leftText, 40);
+
+    leftText = wrapText(leftText, 30);
 
     // Run right modules concurrently.
     const rightPromises = rightModules.map(module => module.run(context));
     const rightResults = await Promise.all(rightPromises);
     let rightText = rightResults.filter(text => text.trim() !== '').join('\n');
     rightText = wrapText(rightText, 30);
+
+    console.log(`[Session ${sessionId}] Left text: ${leftText}`);
+    console.log(`[Session ${sessionId}] Right text: ${rightText}`);
 
     // Create display event.
     const displayRequest: DisplayRequest = {
@@ -663,24 +797,33 @@ function handlePhoneNotification(sessionId: string, notificationData: any) {
   sessionInfo.phoneNotificationCache.push(newNotification);
   console.log(`[Session ${sessionId}] Received phone notification:`, notificationData);
 
-  // Instantiate the NotificationFilterAgent.
-  const notificationFilterAgent = new NotificationFilterAgent();
+  // Get user dashboard content setting
+  const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+  
+  // Only process notifications if setting is notification_summary
+  if (dashboardContent === 'notification_summary') {
+    // Instantiate the NotificationSummaryAgent.
+    const notificationSummaryAgent = new NotificationSummaryAgent();
 
-  // Pass the entire list of notifications to the filter agent.
-  notificationFilterAgent.handleContext({ notifications: sessionInfo.phoneNotificationCache })
-    .then((filteredNotifications: any) => {
-      // console.log(`[Session ${sessionId}] Filtered Notifications:`, filteredNotifications);
-      // Save the ranked notifications for later use in the dashboard.
-      sessionInfo.phoneNotificationRanking = filteredNotifications;
-      // Update the dashboard after the notifications have been filtered.
-      // console.log(`[Session ${sessionId}] Updating dashboard after notification filtering.` + filteredNotifications);
-      updateDashboard(sessionId);
-    })
-    .catch(err => {
-      console.error(`[Session ${sessionId}] Notification filtering failed:`, err);
-      // Fallback: update dashboard with the raw notifications.
-      updateDashboard(sessionId);
-    });
+    // Pass the entire list of notifications to the agent.
+    notificationSummaryAgent.handleContext({ notifications: sessionInfo.phoneNotificationCache })
+      .then((filteredNotifications: any) => {
+        // console.log(`[Session ${sessionId}] Filtered Notifications:`, filteredNotifications);
+        // Save the ranked notifications for later use in the dashboard.
+        sessionInfo.phoneNotificationRanking = filteredNotifications;
+        // Update the dashboard after the notifications have been filtered.
+        // console.log(`[Session ${sessionId}] Updating dashboard after notification filtering.` + filteredNotifications);
+        updateDashboard(sessionId);
+      })
+      .catch(err => {
+        console.error(`[Session ${sessionId}] Notification filtering failed:`, err);
+        // Fallback: update dashboard with the raw notifications.
+        updateDashboard(sessionId);
+      });
+  } else {
+    // Different dashboard content setting, update normally
+    updateDashboard(sessionId);
+  }
 }
 
 // -----------------------------------
@@ -708,3 +851,41 @@ setTimeout(() => {
   // Then, schedule it to run every 5 seconds.
   setInterval(() => updateDashboard(), 60000);
 }, 5000);
+
+// Add settings endpoint
+app.post('/settings', async (req: express.Request, res: express.Response) => {
+  try {
+    console.log('Received settings update for dashboard:', req.body);
+    const { userIdForSettings } = req.body;
+    
+    // Fetch and apply new settings
+    await fetchSettings(userIdForSettings);
+    
+    // Update dashboard for all sessions with this userId
+    await updateDashboardForUser(userIdForSettings);
+    
+    res.status(200).json({ status: 'settings updated' });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ error: 'Internal server error updating settings' });
+  }
+});
+
+// Helper function to update dashboard for all sessions of a specific user
+async function updateDashboardForUser(userId: string) {
+  let userSessionsFound = false;
+
+  // Find all sessions for this user and update them
+  for (const [sessionId, session] of activeSessions.entries()) {
+    if (session.userId === userId) {
+      userSessionsFound = true;
+
+      await updateDashboardCache(sessionId, session);
+      await updateDashboard(sessionId);
+    }
+  }
+
+  if (!userSessionsFound) {
+    console.log(`No active sessions found for user ${userId}`);
+  }
+}

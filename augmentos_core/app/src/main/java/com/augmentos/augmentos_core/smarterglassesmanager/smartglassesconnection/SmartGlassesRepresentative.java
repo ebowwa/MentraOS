@@ -305,7 +305,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
 
     // data from the local microphone, convert to LC3, send
     public void receiveChunk(ByteBuffer chunk) {
-        Log.d(TAG, "receiveChunk called - converting PCM to LC3 and sending to both PCM and LC3 callbacks");
+//        Log.d(TAG, "receiveChunk called - converting PCM to LC3 and sending to both PCM and LC3 callbacks");
         byte[] audio_bytes = chunk.array();
 
         // Append to remainder buffer

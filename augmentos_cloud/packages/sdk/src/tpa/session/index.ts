@@ -5,7 +5,7 @@
  * Handles real-time communication, event subscriptions, and display management.
  */
 import WebSocket from 'ws';
-import { EventManager } from './events';
+import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
 import { ResourceTracker } from '../../utils/resource-tracker';
@@ -20,10 +20,12 @@ import {
 
   // Event data types
   StreamType,
+  ExtendedStreamType,
   ButtonPress,
   HeadPosition,
   PhoneNotification,
   TranscriptionData,
+  TranslationData,
 
   // Type guards
   isTpaConnectionAck,
@@ -38,7 +40,9 @@ import {
   TpaConfig,
   validateTpaConfig,
   AudioChunk,
-  isAudioChunk
+  isAudioChunk,
+  createTranscriptionStream,
+  createTranslationStream
 } from '../../types';
 
 /**
@@ -102,7 +106,7 @@ export class TpaSession {
   /** Number of reconnection attempts made */
   private reconnectAttempts = 0;
   /** Active event subscriptions */
-  private subscriptions = new Set<StreamType>();
+  private subscriptions = new Set<ExtendedStreamType>();
   /** Resource tracker for automatic cleanup */
   private resources = new ResourceTracker();
   /** Internal settings storage - use public settings API instead */
@@ -112,7 +116,7 @@ export class TpaSession {
   /** Whether to update subscriptions when settings change */
   private shouldUpdateSubscriptionsOnSettingsChange = false;
   /** Custom subscription handler for settings-based subscriptions */
-  private subscriptionSettingsHandler?: (settings: AppSettings) => StreamType[];
+  private subscriptionSettingsHandler?: (settings: AppSettings) => ExtendedStreamType[];
   /** Settings that should trigger subscription updates when changed */
   private subscriptionUpdateTriggers: string[] = [];
 
@@ -165,7 +169,7 @@ export class TpaSession {
       }
     }
 
-    this.events = new EventManager(this.subscribe.bind(this));
+    this.events = new EventManager(this.subscribe.bind(this), this.unsubscribe.bind(this));
     this.layouts = new LayoutManager(
       config.packageName,
       this.send.bind(this)
@@ -187,6 +191,29 @@ export class TpaSession {
    */
   onTranscription(handler: (data: TranscriptionData) => void): () => void {
     return this.events.onTranscription(handler);
+  }
+
+  /**
+   * 🌐 Listen for speech transcription events in a specific language
+   * @param language - Language code (e.g., "en-US")
+   * @param handler - Function to handle transcription data
+   * @returns Cleanup function to remove the handler
+   * @throws Error if language code is invalid
+   */
+  onTranscriptionForLanguage(language: string, handler: (data: TranscriptionData) => void): () => void {
+    return this.events.onTranscriptionForLanguage(language, handler);
+  }
+
+  /**
+   * 🌐 Listen for speech translation events for a specific language pair
+   * @param sourceLanguage - Source language code (e.g., "es-ES")
+   * @param targetLanguage - Target language code (e.g., "en-US")
+   * @param handler - Function to handle translation data
+   * @returns Cleanup function to remove the handler
+   * @throws Error if language codes are invalid
+   */
+  onTranslationForLanguage(sourceLanguage: string, targetLanguage: string, handler: (data: TranslationData) => void): () => void {
+    return this.events.ontranslationForLanguage(sourceLanguage, targetLanguage, handler);
   }
 
   /**
@@ -224,8 +251,20 @@ export class TpaSession {
    * 📬 Subscribe to a specific event stream
    * @param type - Type of event to subscribe to
    */
-  subscribe(type: StreamType): void {
+  subscribe(type: ExtendedStreamType): void {
     this.subscriptions.add(type);
+    if (this.ws?.readyState === 1) {
+      // console.log(`1111  Subscribing to ${type}`);
+      this.updateSubscriptions();
+    }
+  }
+
+  /**
+   * 📭 Unsubscribe from a specific event stream
+   * @param type - Type of event to unsubscribe from
+   */
+  unsubscribe(type: ExtendedStreamType): void {
+    this.subscriptions.delete(type);
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
     }
@@ -236,7 +275,7 @@ export class TpaSession {
    * @param event - Event name to listen for
    * @param handler - Event handler function
    */
-  on<T extends StreamType>(event: T, handler: (data: any) => void): () => void {
+  on<T extends ExtendedStreamType>(event: T, handler: (data: EventData<T>) => void): () => void {
     return this.events.on(event, handler);
   }
 
@@ -417,7 +456,7 @@ export class TpaSession {
         };
         
         // Enhanced error handler with detailed logging
-        this.ws.on('error', (error) => {
+        this.ws.on('error', (error: Error) => {
           console.error(`⛔️⛔️⛔️ [${this.config.packageName}] WebSocket connection error:`, error);
           console.error(`⛔️⛔️⛔️ [${this.config.packageName}] Attempted URL: ${this.config.augmentOSWebsocketUrl}`);
           console.error(`⛔️⛔️⛔️ [${this.config.packageName}] Session ID: ${sessionId}`);
@@ -516,7 +555,7 @@ export class TpaSession {
    */
   setSubscriptionSettings(options: {
     updateOnChange: string[]; // Setting keys that should trigger subscription updates
-    handler: (settings: AppSettings) => StreamType[]; // Handler that returns new subscriptions
+    handler: (settings: AppSettings) => ExtendedStreamType[]; // Handler that returns new subscriptions
   }): void {
     this.shouldUpdateSubscriptionsOnSettingsChange = true;
     this.subscriptionUpdateTriggers = options.updateOnChange;
@@ -715,9 +754,28 @@ export class TpaSession {
         }
         else if (isDataStream(message)) {
           // Ensure streamType exists before emitting the event
-          if (message.streamType && this.subscriptions.has(message.streamType)) {
-            const sanitizedData = this.sanitizeEventData(message.streamType, message.data);
-            this.events.emit(message.streamType, sanitizedData);
+          // console.log(`((())) message.streamType: ${message.streamType}`);
+          // console.log(`((())) message.data: ${JSON.stringify(message.data)}`);
+
+          let messageStreamType = message.streamType as ExtendedStreamType;
+          if (message.streamType === StreamType.TRANSCRIPTION) {
+            const transcriptionData = message.data as TranscriptionData;
+            // console.log(`((())) transcriptionData.transcribe_language: ${transcriptionData.transcribeLanguage}`);
+            if (transcriptionData.transcribeLanguage) {
+              messageStreamType = createTranscriptionStream(transcriptionData.transcribeLanguage) as ExtendedStreamType;
+            }
+          } else if (message.streamType === StreamType.TRANSLATION) {
+            const translationData = message.data as TranslationData;
+            // console.log(`((())) translationData.sourceLanguage: ${translationData.sourceLanguage}`);
+            // console.log(`((())) translationData.targetLanguage: ${translationData.targetLanguage}`);
+            if (translationData.transcribeLanguage && translationData.translateLanguage) {
+              messageStreamType = createTranslationStream(translationData.transcribeLanguage, translationData.translateLanguage) as ExtendedStreamType;
+            }
+          }
+
+          if (messageStreamType && this.subscriptions.has(messageStreamType)) {
+            const sanitizedData = this.sanitizeEventData(messageStreamType, message.data) as EventData<typeof messageStreamType>;
+            this.events.emit(messageStreamType, sanitizedData);
           }
         }
         else if (isSettingsUpdate(message)) {
@@ -833,7 +891,7 @@ export class TpaSession {
    * @param data - The potentially unsafe data to sanitize
    * @returns Sanitized data safe for processing
    */
-  private sanitizeEventData(streamType: StreamType, data: unknown): any {
+  private sanitizeEventData(streamType: ExtendedStreamType, data: unknown): any {
     try {
       // If data is null or undefined, return an empty object to prevent crashes
       if (data === null || data === undefined) {
@@ -898,6 +956,8 @@ export class TpaSession {
    * 📝 Update subscription list with cloud
    */
   private updateSubscriptions(): void {
+    // console.log(`2222  Subscribing to ${Array.from(this.subscriptions)}`);
+    // console.log(`3333  Subscribing to ${this.config.packageName}`);
     const message: TpaSubscriptionUpdate = {
       type: TpaToCloudMessageType.SUBSCRIPTION_UPDATE,
       packageName: this.config.packageName,

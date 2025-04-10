@@ -372,12 +372,16 @@ struct ViewState {
       // Only enable microphone if sensing is also enabled
       let actuallyEnabled = isEnabled && self.sensingEnabled
       
-      let glassesMic = actuallyEnabled && !self.useOnboardMic
-      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
-      //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
-      await self.g1Manager?.setMicEnabled(enabled: glassesMic)
+      // if the glasses dont have a mic, use the onboard mic anyways
+      let useBoardMic = self.useOnboardMic || (!getGlassesHasMic())
+      let useGlassesMic = actuallyEnabled && !useBoardMic
+      let useOnboardMic = actuallyEnabled && useBoardMic
+
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useBoardMic) glassesMic: \(glassesMic)")
+
+      await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
       
-      setOnboardMicEnabled(self.useOnboardMic && actuallyEnabled)
+      setOnboardMicEnabled(useOnboardMic)
     }
   }
   
@@ -843,6 +847,13 @@ struct ViewState {
   private func handleDisconnectWearable() {
     self.g1Manager?.disconnect()
     handleRequestStatus()
+  }
+
+  private func getGlassesHasMic() -> Bool {
+    if self.deviceName.contains("G1") {
+      return true
+    }
+    return false
   }
   
   private func handleRequestStatus() {

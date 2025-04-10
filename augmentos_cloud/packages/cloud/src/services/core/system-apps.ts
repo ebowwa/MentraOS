@@ -8,6 +8,63 @@ const systemApps = {
     description: "Dashboard",
     isSystemApp: true,
   },
+  // notify: {
+  //   host: "notify",
+  //   packageName: 'com.augmentos.notify',
+  //   name: 'Notify',
+  //   description: "See your phone notifications on your smart glasses",
+  //   isSystemApp: true,
+  // },
+  // mira: {
+  //   host: "mira",
+  //   packageName: 'com.augmentos.miraai',
+  //   name: 'Mira AI',
+  //   description: "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command.",
+  //   isSystemApp: true,
+  // },
+  // teleprompter: {
+  //   host: `teleprompter`,
+  //   packageName: 'com.augmentos.teleprompter',
+  //   name: 'Teleprompt',
+  //   description: "Teleprompter for live presentations.",
+  //   isSystemApp: true,
+  // },
+  // xstats: {
+  //   host: `xstats`,
+  //   packageName: 'com.augmentos.xstats',
+  //   name: 'X Stats',
+  //   description: "Show X stats on your smart glasses.",
+  //   isSystemApp: true,
+  // },
+  // liveTranslation: {
+  //   host: "live-translation",
+  //   packageName: 'com.augmentos.live-translation',
+  //   name: 'Live Translation',
+  //   description: "Live language translation.",
+  //   isSystemApp: true,
+  // },
+  // merge: {
+  //   host: process.env.MERGE_HOST_NAME || `merge`,
+  //   packageName: 'com.mentra.merge',
+  //   name: 'Merge',
+  //   description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
+  //   isSystemApp: true,
+  //   skipPorterHostUpdate: true,
+  // },
+  // calendarreminder: {
+  //   host: "calendarreminder",
+  //   packageName: 'com.augmentos.calendarreminder',
+  //   name: 'Calendar Reminder',
+  //   description: "Calendar Reminder",
+  //   isSystemApp: true,
+  // },
+  // tictactoe: {
+  //   host: "tictactoe",
+  //   packageName: 'com.augmentos.tictactoe',
+  //   name: 'Tic Tac Toe',
+  //   description: "Tic Tac Toe",
+  //   isSystemApp: true,
+  // },
 };
 
 // Check if deployed on porter. if so we need to modify the hosts with the porter env prefix.
