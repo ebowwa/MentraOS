@@ -7,6 +7,7 @@
 import WebSocket from 'ws';
 import { EventManager } from './events';
 import { LayoutManager } from './layouts';
+import { SettingsManager } from './settings';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -104,8 +105,8 @@ export class TpaSession {
   private subscriptions = new Set<StreamType>();
   /** Resource tracker for automatic cleanup */
   private resources = new ResourceTracker();
-  /** User settings for this TPA */
-  private settings: AppSettings = [];
+  /** Internal settings storage - use public settings API instead */
+  private settingsData: AppSettings = [];
   /** TPA configuration loaded from tpa_config.json */
   private tpaConfig: TpaConfig | null = null;
   /** Whether to update subscriptions when settings change */
@@ -119,6 +120,8 @@ export class TpaSession {
   public readonly events: EventManager;
   /** 📱 Layout management interface */
   public readonly layouts: LayoutManager;
+  /** ⚙️ Settings management interface */
+  public readonly settings: SettingsManager;
 
   constructor(private config: TpaSessionConfig) {
     // Set defaults and merge with provided config
@@ -167,6 +170,10 @@ export class TpaSession {
       config.packageName,
       this.send.bind(this)
     );
+    
+    // Initialize settings manager without API client configuration
+    // We'll configure it once we have the session ID and server URL
+    this.settings = new SettingsManager();
   }
 
   // =====================================
@@ -244,6 +251,14 @@ export class TpaSession {
    */
   async connect(sessionId: string): Promise<void> {
     this.sessionId = sessionId;
+    
+    // Configure settings API client with the WebSocket URL and session ID
+    // This allows settings to be fetched from the correct server
+    this.settings.configureApiClient(
+      this.config.packageName,
+      this.config.augmentOSWebsocketUrl || '',
+      sessionId
+    );
 
     return new Promise((resolve, reject) => {
       try {
@@ -478,19 +493,20 @@ export class TpaSession {
   /**
    * 🛠️ Get all current user settings
    * @returns A copy of the current settings array
+   * @deprecated Use session.settings.getAll() instead
    */
   getSettings(): AppSettings {
-    return [...this.settings]; // Return a copy to prevent accidental mutations
+    return this.settings.getAll();
   }
 
   /**
    * 🔍 Get a specific setting value by key
    * @param key The setting key to look for
    * @returns The setting's value, or undefined if not found
+   * @deprecated Use session.settings.get(key) instead
    */
   getSetting<T>(key: string): T | undefined {
-    const setting = this.settings.find(s => s.key === key);
-    return setting ? (setting.value as T) : undefined;
+    return this.settings.get<T>(key);
   }
 
   /**
@@ -507,7 +523,7 @@ export class TpaSession {
     this.subscriptionSettingsHandler = options.handler;
     
     // If we already have settings, update subscriptions immediately
-    if (this.settings.length > 0) {
+    if (this.settingsData.length > 0) {
       this.updateSubscriptionsFromSettings();
     }
   }
@@ -521,7 +537,7 @@ export class TpaSession {
     
     try {
       // Get new subscriptions from handler
-      const newSubscriptions = this.subscriptionSettingsHandler(this.settings);
+      const newSubscriptions = this.subscriptionSettingsHandler(this.settingsData);
       
       // Update all subscriptions at once
       this.subscriptions.clear();
@@ -546,8 +562,13 @@ export class TpaSession {
    * @param newSettings The new settings to apply
    */
   updateSettingsForTesting(newSettings: AppSettings): void {
-    this.settings = newSettings;
-    this.events.emit('settings_update', this.settings);
+    this.settingsData = newSettings;
+    
+    // Update the settings manager with the new settings
+    this.settings.updateSettings(newSettings);
+    
+    // Emit update event for backwards compatibility
+    this.events.emit('settings_update', this.settingsData);
     
     // Check if we should update subscriptions
     if (this.shouldUpdateSubscriptionsOnSettingsChange) {
@@ -583,6 +604,14 @@ export class TpaSession {
    */
   getConfig(): TpaConfig | null {
     return this.tpaConfig;
+  }
+  
+  /**
+   * 🔌 Get the WebSocket server URL for this session
+   * @returns The WebSocket server URL used by this session
+   */
+  getServerUrl(): string | undefined {
+    return this.config.augmentOSWebsocketUrl;
   }
   
   /**
@@ -642,8 +671,9 @@ export class TpaSession {
       // Using type guards to determine message type and safely handle each case
       try {
         if (isTpaConnectionAck(message)) {
-          // Store settings from connection acknowledgment
-          this.settings = message.settings || [];
+          // Get settings from connection acknowledgment
+          const receivedSettings = message.settings || [];
+          this.settingsData = receivedSettings;
           
           // Store config if provided
           if (message.config && validateTpaConfig(message.config)) {
@@ -651,22 +681,25 @@ export class TpaSession {
           }
           
           // Use default settings from config if no settings were provided
-          if (this.settings.length === 0 && this.tpaConfig) {
+          if (receivedSettings.length === 0 && this.tpaConfig) {
             try {
-              this.settings = this.getDefaultSettings();
+              this.settingsData = this.getDefaultSettings();
             } catch (error) {
               console.warn('Failed to load default settings from config:', error);
             }
           }
           
+          // Update the settings manager with the new settings
+          this.settings.updateSettings(this.settingsData);
+          
           // Emit connected event with settings
-          this.events.emit('connected', this.settings);
+          this.events.emit('connected', this.settingsData);
           
           // Update subscriptions (normal flow)
           this.updateSubscriptions();
           
           // If settings-based subscriptions are enabled, update those too
-          if (this.shouldUpdateSubscriptionsOnSettingsChange && this.settings.length > 0) {
+          if (this.shouldUpdateSubscriptionsOnSettingsChange && this.settingsData.length > 0) {
             this.updateSubscriptionsFromSettings();
           }
         }
@@ -689,22 +722,22 @@ export class TpaSession {
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
-          const prevSettings = [...this.settings];
+          const prevSettings = [...this.settingsData];
           
-          // Update settings
-          this.settings = message.settings || [];
+          // Update internal settings storage
+          this.settingsData = message.settings || [];
           
-          // Emit settings update event
-          this.events.emit('settings_update', this.settings);
+          // Update the settings manager with the new settings
+          const changes = this.settings.updateSettings(this.settingsData);
+          
+          // Emit settings update event (for backwards compatibility)
+          this.events.emit('settings_update', this.settingsData);
           
           // Check if we should update subscriptions
           if (this.shouldUpdateSubscriptionsOnSettingsChange) {
             // Check if any subscription trigger settings changed
             const shouldUpdateSubs = this.subscriptionUpdateTriggers.some(key => {
-              const oldSetting = prevSettings.find(s => s.key === key);
-              const newSetting = this.settings.find(s => s.key === key);
-              return (!oldSetting && newSetting) || 
-                (oldSetting && newSetting && oldSetting.value !== newSetting.value);
+              return key in changes;
             });
             
             if (shouldUpdateSubs) {
