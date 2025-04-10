@@ -10,7 +10,8 @@ import { User } from '../models/user.model';
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 import appService, { isUninstallable } from '../services/core/app.service';
 import { logger } from '@augmentos/utils';
-import { UserSession } from '@augmentos/sdk';
+import { CloudToTpaMessageType, UserSession } from '@augmentos/sdk';
+import { sessionService } from '../services/core/session.service';
 
 const router = express.Router();
 
@@ -260,30 +261,23 @@ router.post('/:tpaName', async (req, res) => {
     logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
 
     // Get user session to send WebSocket update
-    const sessionService = require('../services/core/session.service');
-    const userSessions = sessionService.getUserSessions(userId);
+    // const sessionService = require('../services/core/session.service');
+    const userSession = sessionService.getSession(userId);
 
     // If user has active sessions, send them settings updates via WebSocket
-    if (userSessions && userSessions.length > 0) {
-      const { CloudToTpaMessageType } = require('@augmentos/sdk');
+    if (userSession) {
+      const settingsUpdate = {
+        type: CloudToTpaMessageType.SETTINGS_UPDATE,
+        packageName: tpaName,
+        sessionId: `${userSession.sessionId}-${tpaName}`,
+        settings: updatedSettings,
+        timestamp: new Date()
+      };
 
-      userSessions.forEach((session: UserSession) => {
-        // Look for this TPA's connection
-        const tpaConnection = session.appConnections.get(tpaName);
-        if (tpaConnection && tpaConnection.readyState === 1) { // 1 = OPEN
-          // Send settings update via WebSocket
-          const settingsUpdate = {
-            type: CloudToTpaMessageType.SETTINGS_UPDATE,
-            packageName: tpaName,
-            sessionId: `${session.sessionId}-${tpaName}`,
-            settings: updatedSettings,
-            timestamp: new Date()
-          };
+      const tpaConnection = userSession.appConnections.get(tpaName);
 
-          tpaConnection.send(JSON.stringify(settingsUpdate));
-          logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
-        }
-      });
+      tpaConnection.send(JSON.stringify(settingsUpdate));
+      logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
     }
 
     // Get the app to access its properties
