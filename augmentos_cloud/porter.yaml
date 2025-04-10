@@ -3,7 +3,7 @@ version: v2
 namespace: ${PORTER_NAMESPACE}
 
 envGroups:
-  - dev
+- dev
 
 build:
   method: docker
@@ -11,21 +11,21 @@ build:
   dockerfile: ./augmentos_cloud/docker/Dockerfile.porter
 
 services:
-  - name: cloud
-    type: web
-    run: node packages/cloud/dist/index.js
-    port: 80
-    cpuCores: 2.0
-    ramMegabytes: 2048
-    env:
-      HOST: "0.0.0.0"
-      SERVICE_NAME: "cloud"
-  - name: dashboard-manager
-    type: web
-    run: node packages/apps/dashboard-manager/dist/index.js
-    port: 80
-    cpuCores: 0.5
-    ramMegabytes: 512
-    env:
-      HOST: "0.0.0.0"
-      SERVICE_NAME: "dashboard-manager"
+- name: cloud
+  type: web
+  run: node packages/cloud/dist/index.js
+  port: 80
+  cpuCores: 3
+  ramMegabytes: 4096
+  env:
+    HOST: "0.0.0.0"
+    SERVICE_NAME: "cloud"
+- name: dashboard-manager
+  type: web
+  run: node packages/apps/dashboard-manager/dist/index.js
+  port: 80
+  cpuCores: 0.5
+  ramMegabytes: 512
+  env:
+    HOST: "0.0.0.0"
+    SERVICE_NAME: "dashboard-manager"

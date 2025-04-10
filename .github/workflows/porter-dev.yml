@@ -1,4 +1,4 @@
-name: Porter augmentos-cloud-dev
+name: Porter cloud-dev
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
         timeout-minutes: 30
         run: exec porter apply -f ./augmentos_cloud/porter.yaml
         env:
-          PORTER_APP_NAME: augmentos-cloud-dev
+          PORTER_APP_NAME: cloud-dev
           PORTER_NAMESPACE: dev
           NODE_ENV: development
           PORTER_CLUSTER: "4689"         # Adjust if needed
