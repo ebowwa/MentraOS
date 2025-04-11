@@ -377,7 +377,7 @@ struct ViewState {
       let useGlassesMic = actuallyEnabled && !useBoardMic
       let useOnboardMic = actuallyEnabled && useBoardMic
 
-      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useBoardMic) glassesMic: \(glassesMic)")
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useBoardMic) useGlassesMic: \(useGlassesMic)")
 
       await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
       
