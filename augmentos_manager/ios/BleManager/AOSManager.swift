@@ -52,7 +52,7 @@ struct ViewState {
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "DASHBOARD_NOT_SET", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: ""),
   ]
   
   
@@ -497,6 +497,8 @@ struct ViewState {
       } else {
         placeholders["$GBATT$"] = "\(batteryLevel)%"
       }
+    
+      placeholders["$CONNECTION_STATUS$"] = serverComms.isWebSocketConnected() ? "Connected" : "Disconnected"
       
       var result = text
       for (key, value) in placeholders {
