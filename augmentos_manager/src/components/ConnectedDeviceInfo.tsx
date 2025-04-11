@@ -7,8 +7,8 @@ import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { NavigationProps } from '../components/types';
 import { useNavigation } from '@react-navigation/native';
 import { getGlassesImage } from '../logic/getGlassesImage';
-import GlobalEventEmitter from '../logic/GlobalEventEmitter.tsx';
-import { getBatteryColor, getBatteryIcon } from '../logic/getBatteryIcon.tsx';
+import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { getBatteryColor, getBatteryIcon } from '../logic/getBatteryIcon';
 
 
 interface ConnectedDeviceInfoProps {
@@ -86,7 +86,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
   };
 
   const connectGlasses = async () => {
-    if (status.core_info.default_wearable === undefined || status.core_info.default_wearable === '') {
+    if (!status.core_info.default_wearable) {
       navigation.navigate('SelectGlassesModelScreen');
       return;
     }
@@ -165,7 +165,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
   };
 
   return (
-    <View style={[styles.deviceInfoContainer, { backgroundColor: themeStyles.backgroundColor }]}>
+    <View style={[styles.deviceInfoContainer]}>
       {microphoneActive && (
         <View style={styles.microphoneContainer}>
           <Icon name="microphone" size={20} color="#4CAF50" />

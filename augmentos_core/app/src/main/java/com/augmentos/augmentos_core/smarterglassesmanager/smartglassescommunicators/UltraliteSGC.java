@@ -183,6 +183,11 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
         // TODO: Implement this method
     }
 
+    @Override
+    public void updateGlassesAutoBrightness(boolean autoBrightness) {
+        // TODO: Implement this method
+    }
+
     private void onUltraliteConnectedChange(boolean isConnected) {
         Log.d(TAG, "Ultralite CONNECT changed to: " + isConnected);
         if (isConnected) {
@@ -266,7 +271,7 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
         goHomeHandler.removeCallbacksAndMessages(null);
         goHomeHandler.removeCallbacksAndMessages(goHomeRunnable);
 
-        Log.d(TAG, "Ultralite is doing text wall");
+//        Log.d(TAG, "Ultralite is doing text wall");
 
         // Cut text wall down to the largest number of lines possible to display
         String[] lines = cleanedText.split("\n");
@@ -286,7 +291,10 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
 //        int textId = ultraliteCanvas.createText(text, ultraliteAlignment, UltraliteColor.WHITE, ultraliteAnchor, ultraliteLeftSidePixelBuffer, 0, 640 - ultraliteLeftSidePixelBuffer, -1, TextWrapMode.WRAP, true);
 ////        ultraliteCanvas.createText(title, TextAlignment.AUTO, UltraliteColor.WHITE, Anchor.TOP_LEFT, ultraliteLeftSidePixelBuffer, 120, 640 - ultraliteLeftSidePixelBuffer, -1, TextWrapMode.WRAP, true);
 //        Log.d(TAG, "VUZIX TEXT ID: " + textId);
-        ultraliteCanvas.commit();
+
+        if (ultraliteCanvas != null) {
+            ultraliteCanvas.commit();
+        }
         screenIsClear = false;
     }
 
@@ -366,7 +374,9 @@ public class UltraliteSGC extends SmartGlassesCommunicator {
         if (ultraliteCanvas != null) {
             ultraliteCanvas = ultraliteSdk.getCanvas();
         }
-        ultraliteCanvas.commit();
+        if (ultraliteCanvas != null) {
+            ultraliteCanvas.commit();
+        }
 
         screenIsClear = false;
     }

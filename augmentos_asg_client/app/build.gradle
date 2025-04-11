@@ -61,10 +61,10 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     implementation 'com.google.android.material:material:1.8.0'
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'androidx.preference:preference:1.2.0'
+    implementation 'androidx.core:core:1.10.1'
     implementation 'com.google.api.grpc:grpc-google-cloud-speech-v1p1beta1:2.6.0'
     implementation 'com.google.flogger:flogger:0.7.4'
     implementation 'com.google.flogger:flogger-system-backend:0.7.4'
@@ -114,7 +114,6 @@ dependencies {
     implementation "org.java-websocket:Java-WebSocket:1.5.2"
 
     // For demo
-    //implementation 'org.nanohttpd:nanohttpd:2.3.3'
     implementation 'org.nanohttpd:nanohttpd:2.3.1'
 
 }

@@ -8,23 +8,26 @@ export type RootStackParamList = {
   SettingsPage: undefined;
   AppStore: undefined;
   AppStoreNative: undefined;
-  AppStoreWeb: undefined;
+  AppStoreWeb: { packageName?: string };
   PairPuckScreen: undefined;
   SplashScreen: undefined;
   VerifyEmailScreen: undefined;
   WelcomePage: undefined;
   Onboarding: undefined;
+  Testing: undefined;
   AppDetails: { app: AppStoreItem };
   ProfileSettings: undefined;
   GlassesMirror: undefined;
+  GlassesMirrorFullscreen: undefined;
   Reviews: { appId: string; appName: string };
   ConnectingToPuck: undefined;
   PhoneNotificationSettings: undefined;
   PrivacySettingsScreen: undefined;
   GrantPermissionsScreen: undefined;
   SelectGlassesModelScreen: undefined;
-  DashboardSettingsScreen: { isDarkTheme: boolean; toggleTheme: () => void };
+  DashboardSettingsScreen: { isDarkTheme: boolean };
   DeveloperSettingsScreen: undefined;
+  ScreenSettingsScreen: { isDarkTheme: boolean; toggleTheme: () => void };
   VersionUpdateScreen: {
     isDarkTheme: boolean;
     connectionError?: boolean;
@@ -34,7 +37,8 @@ export type RootStackParamList = {
   SelectGlassesBluetoothScreen: { glassesModelName: string };
   GlassesPairingGuideScreen: { glassesModelName: string };
   GlassesPairingGuidePreparationScreen: { glassesModelName: string };
-  AppSettings: { packageName: string, appName: string };
+  AppSettings: { packageName: string, appName: string, fromWebView?: boolean };
+  AppWebView: { webviewURL: string, appName: string, packageName?: string, fromSettings?: boolean };
   ErrorReportScreen: undefined;
 };
 
@@ -62,4 +66,3 @@ export type AppStoreItem = {
 };
 
 export type NavigationProps = NativeStackNavigationProp<RootStackParamList>;
-

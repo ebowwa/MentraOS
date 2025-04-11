@@ -31,20 +31,22 @@ import {
  * ```
  */
 export interface TpaServerConfig {
-  /** 📦 Unique identifier for your TPA (e.g., 'org.company.appname') */
+  /** 📦 Unique identifier for your TPA (e.g., 'org.company.appname') must match what you specified at https://console.augmentos.org */
   packageName: string;
   /** 🔑 API key for authentication with AugmentOS Cloud */
   apiKey: string;
   /** 🌐 Port number for the server (default: 7010) */
   port?: number;
-  /** 🛣️ Custom path for the webhook endpoint (default: '/webhook') */
+
+  /** 🛣️ [DEPRECATED] do not set: The SDK will automatically expose an endpoint at '/webhook' */
   webhookPath?: string;
   /** 
    * 📂 Directory for serving static files (e.g., images, logos)
    * Set to false to disable static file serving
    */
   publicDir?: string | false;
-  /** 🔌 WebSocket server URL for AugmentOS Cloud (default: 'wss://staging.augmentos.org/tpa-ws') */
+
+  /** 🔌 [DEPRECATED] No need to set this value */
   augmentOSWebsocketUrl?: string;
   /** ❤️ Enable health check endpoint at /health (default: true) */
   healthCheck?: boolean;
@@ -73,7 +75,8 @@ export interface TpaServerConfig {
  * 
  * const server = new MyAppServer({
  *   packageName: 'org.example.myapp',
- *   apiKey: 'your_api_key'
+ *   apiKey: 'your_api_key',
+ *   publicDir: "/public",
  * });
  * 
  * await server.start();
@@ -104,6 +107,7 @@ export class TpaServer {
 
     // Setup server features
     this.setupWebhook();
+    this.setupSettingsEndpoint();
     this.setupHealthCheck();
     this.setupPublicDir();
     this.setupShutdown();
@@ -325,6 +329,67 @@ export class TpaServer {
         });
       });
     }
+  }
+
+  /**
+   * ⚙️ Setup Settings Endpoint
+   * Creates a /settings endpoint that the AugmentOS Cloud can use to update settings.
+   */
+  private setupSettingsEndpoint(): void {
+    this.app.post('/settings', async (req, res) => {
+      try {
+        const { userIdForSettings, settings } = req.body;
+        
+        if (!userIdForSettings || !Array.isArray(settings)) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Missing userId or settings array in request body'
+          });
+        }
+        
+        console.log(`📝 Received settings update for user ${userIdForSettings}`);
+        
+        // Find all active sessions for this user
+        const userSessions: TpaSession[] = [];
+        
+        // Look through all active sessions
+        this.activeSessions.forEach((session, sessionId) => {
+          // Check if the session has this userId (not directly accessible)
+          // We're relying on the webhook handler to have already verified this
+          if (sessionId.includes(userIdForSettings)) {
+            userSessions.push(session);
+          }
+        });
+        
+        if (userSessions.length === 0) {
+          console.log(`⚠️ No active sessions found for user ${userIdForSettings}`);
+        } else {
+          console.log(`🔄 Updating settings for ${userSessions.length} active sessions`);
+        }
+        
+        // Update settings for all of the user's sessions
+        for (const session of userSessions) {
+          session.updateSettingsForTesting(settings);
+        }
+        
+        // Allow subclasses to handle settings updates if they implement the method
+        if (typeof (this as any).onSettingsUpdate === 'function') {
+          await (this as any).onSettingsUpdate(userIdForSettings, settings);
+        }
+        
+        res.json({
+          status: 'success',
+          message: 'Settings updated successfully',
+          sessionsUpdated: userSessions.length
+        });
+      } catch (error) {
+        console.error('❌ Error handling settings update:', error);
+        res.status(500).json({
+          status: 'error',
+          message: 'Internal server error processing settings update'
+        });
+      }
+    });
   }
 
   /**

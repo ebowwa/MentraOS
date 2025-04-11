@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // import "./instrument";
-import "./sentry";
+// import "./sentry";
 
 import express from 'express';
 import { Server } from 'http';
@@ -17,6 +17,7 @@ import helmet from 'helmet';
 
 // Import services
 import { webSocketService } from './services/core/websocket.service';
+import { healthMonitorService } from './services/core/health-monitor.service';
 
 // Import routes
 import appRoutes from './routes/apps.routes';
@@ -25,7 +26,9 @@ import transcriptRoutes from './routes/transcripts.routes';
 import tpaSettingsRoutes from './routes/tpa-settings.routes';
 import errorReportRoutes from './routes/error-report.routes';
 import devRoutes from './routes/developer.routes';
+import serverRoutes from './routes/server.routes';
 import adminRoutes from './routes/admin.routes';
+import tpaServerRoutes from './routes/tpa-server.routes';
 
 import path from 'path';
 
@@ -103,6 +106,9 @@ app.use(cors({
 
     "https://appstore.augmentos.org",
     "https://console.augmentos.org",
+
+    "https://augmentos.pages.dev",
+    "https://augmentos-appstore-2.pages.dev",
   ]
 }));
 
@@ -118,6 +124,8 @@ app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/tpa-server', tpaServerRoutes);
+app.use('/api/server', serverRoutes);
 
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);

@@ -14,110 +14,125 @@ import App from '../../models/app.model';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 
-
+const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 const APPSTORE_ENABLED = true;
+export const PRE_INSTALLED = ["cloud.augmentos.live-captions", "cloud.augmentos.notify", "cloud.augmentos.mira"];
 
 /**
  * System TPAs that are always available.
  * These are core applications provided by the platform.
  * @Param developerId - leaving this undefined indicates a system app.
  */
-export const LOCAL_APPS: AppI[] = [
-  {
-    packageName: systemApps.captions.packageName,
-    name: systemApps.captions.name,
-    tpaType: TpaType.STANDARD,
-    webhookURL: `http://${systemApps.captions.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
-    description: systemApps.captions.description
-  },
-  {
-    packageName: systemApps.notify.packageName,
-    name: systemApps.notify.name,
-    tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.notify.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
-    description: systemApps.notify.description,
-  },
-  {
-    packageName: systemApps.mira.packageName,
-    name: systemApps.mira.name,
-    tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.mira.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
-    description: systemApps.mira.description,
-  },
-  {
-    packageName: systemApps.merge.packageName,
-    name: systemApps.merge.name,
-    tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.merge.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
-    description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
-  },
-  {
-    packageName: systemApps.liveTranslation.packageName,
-    name: systemApps.liveTranslation.name,
-    tpaType: TpaType.STANDARD,
-    webhookURL: `http://${systemApps.liveTranslation.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
-    description: systemApps.liveTranslation.description,
-  },
-  // {
-  //   packageName: systemApps.teleprompter.packageName,
-  //   name: "Teleprompt",
-  //   tpaType: TpaType.STANDARD,
-  //   webhookURL: `http://${systemApps.teleprompter.host}/webhook`,
-  //   logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
-  //   description: systemApps.teleprompter.description,
-  // }
-];
+export const LOCAL_APPS: AppI[] = [];
 
-// if we are not in production, add the dashboard to the app 
-if (process.env.NODE_ENV !== 'production') {
-  LOCAL_APPS.push({
-    packageName: systemApps.flash.packageName,
-    name: "Navigation",
-    description: systemApps.flash.description,
-    tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.flash.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
+// String list of packageNames to preinstall / make uninstallable.
+
+// Fetch from appstore and populate LOCAL_APPS.
+(async function loadPreinstalledApps() {
+  // Fetch all apps from the app store that are preinstalled.
+  const preinstalledApps = await App.find({ packageName: { $in: PRE_INSTALLED } }) as AppI[];
+
+  // Add them to the LOCAL_APPS array.
+  preinstalledApps.forEach(app => {
+    app.uninstallable = true;
+    LOCAL_APPS.push(app);
   });
-  LOCAL_APPS.push({
-    packageName: "com.augmentos.screenmirror",
-    name: "Screen Mirror",
-    description: systemApps.flash.description,
-    tpaType: TpaType.BACKGROUND,
-    webhookURL: `http://${systemApps.flash.host}/webhook`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.flash.packageName}.png`,
-  });
-}
+})();
+
+// export const LOCAL_APPS: AppI[] = [
+//   // {
+//   //   packageName: systemApps.captions.packageName,
+//   //   name: systemApps.captions.name,
+//   //   tpaType: TpaType.STANDARD,
+//   //   publicUrl: `http://${systemApps.captions.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.captions.packageName}.png`,
+//   //   description: systemApps.captions.description
+//   // },
+//   // {
+//   //   packageName: systemApps.notify.packageName,
+//   //   name: systemApps.notify.name,
+//   //   tpaType: TpaType.BACKGROUND,
+//   //   publicUrl: `http://${systemApps.notify.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.notify.packageName}.png`,
+//   //   description: systemApps.notify.description,
+//   // },
+//   // {
+//   //   packageName: systemApps.mira.packageName,
+//   //   name: systemApps.mira.name,
+//   //   tpaType: TpaType.BACKGROUND,
+//   //   publicUrl: `http://${systemApps.mira.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.mira.packageName}.png`,
+//   //   description: systemApps.mira.description,
+//   // },
+//   // {
+//   //   packageName: systemApps.merge.packageName,
+//   //   name: systemApps.merge.name,
+//   //   tpaType: TpaType.BACKGROUND,
+//   //   publicUrl: `http://${systemApps.merge.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.merge.packageName}.png`,
+//   //   description: "Proactive AI that helps you during conversations. Turn it on, have a conversation, and let Merge agents enhance your convo.",
+//   // },
+//   // {
+//   //   packageName: systemApps.liveTranslation.packageName,
+//   //   name: systemApps.liveTranslation.name,
+//   //   tpaType: TpaType.STANDARD,
+//   //   publicUrl: `http://${systemApps.liveTranslation.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.liveTranslation.packageName}.png`,
+//   //   description: systemApps.liveTranslation.description,
+//   // },
+//   // {
+//   //   packageName: systemApps.teleprompter.packageName,
+//   //   name: "Teleprompt",
+//   //   tpaType: TpaType.STANDARD,
+//   //   publicUrl: `http://${systemApps.teleprompter.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.teleprompter.packageName}.png`,
+//   //   description: systemApps.teleprompter.description,
+//   // },
+//   // {
+//   //   packageName: systemApps.xstats.packageName,
+//   //   name: systemApps.xstats.name,
+//   //   tpaType: TpaType.BACKGROUND,
+//   //   publicUrl: `http://${systemApps.xstats.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.xstats.packageName}.png`,
+//   //   description: systemApps.xstats.description,
+//   // },
+//   // {
+//   //   packageName: systemApps.calendarreminder.packageName,
+//   //   name: systemApps.calendarreminder.name,
+//   //   tpaType: TpaType.BACKGROUND,
+//   //   publicUrl: `http://${systemApps.calendarreminder.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.calendarreminder.packageName}.png`,
+//   //   description: systemApps.calendarreminder.description,
+//   // },
+//   // {
+//   //   packageName: systemApps.tictactoe.packageName,
+//   //   name: systemApps.tictactoe.name,
+//   //   tpaType: TpaType.STANDARD,
+//   //   publicUrl: `http://${systemApps.tictactoe.host}`,
+//   //   logoURL: `https://cloud.augmentos.org/${systemApps.tictactoe.packageName}.png`,
+//   //   description: systemApps.tictactoe.description,
+//   // }
+// ];
+
 
 /**
  * System TPAs that are always available.
  * These are core applications provided by the platform.
  * @Param developerId - leaving this undefined indicates a system app.
  */
-export const SYSTEM_TPAS: AppI[] = [
+export const SYSTEM_APPS: AppI[] = [
   {
     packageName: systemApps.dashboard.packageName,
     name: systemApps.dashboard.name,
-    tpaType: TpaType.BACKGROUND,
+    tpaType: TpaType.SYSTEM_DASHBOARD,
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    webhookURL: `http:/${systemApps.dashboard.host}/webhook`,
+    publicUrl: `http://${systemApps.dashboard.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
   },
 ];
 
-/**
- * Interface for webhook payloads sent to TPAs.
- */
-interface WebhookPayload {
-  type: 'session_request' | 'app_update' | 'system_event';
-  sessionId?: string;
-  userId?: string;
-  timestamp: string;
-  data?: any;
+export function isUninstallable(packageName: string) {
+  return !PRE_INSTALLED.includes(packageName);
 }
 
 /**
@@ -138,7 +153,7 @@ export class AppService {
    * @returns Promise resolving to array of all apps
    */
   async getAllApps(userId?: string): Promise<AppI[]> {
-    const usersApps: AppI[] = [];
+    let usersApps: AppI[] = [];
 
     if (APPSTORE_ENABLED && userId) {
       // Find apps the developer made.
@@ -158,9 +173,11 @@ export class AppService {
       const _appMap = new Map<string, AppI>();
       _allApps.forEach(app => {
         _appMap.set(app.packageName, app);
-      }
-      );
+      });
+      
       usersApps.push(..._appMap.values());
+      // Filter out any that are already in the LOCAL_APPS map since those would have already been fetched.
+      usersApps = usersApps.filter(app => !LOCAL_APPS.some(localApp => localApp.packageName === app.packageName));
     }
     const allApps = [...LOCAL_APPS, ...usersApps];
     return allApps;
@@ -171,7 +188,7 @@ export class AppService {
   //  * @returns array of system apps.
   //  */
   getSystemApps(): AppI[] {
-    return SYSTEM_TPAS;
+    return SYSTEM_APPS;
   }
 
   /**
@@ -181,11 +198,13 @@ export class AppService {
    */
   async getApp(packageName: string): Promise<AppI | undefined> {
     // return [...SYSTEM_TPAS, ...APP_STORE].find(app => app.packageName === packageName);
-    let app: AppI | undefined = [...SYSTEM_TPAS, ...LOCAL_APPS].find(app => app.packageName === packageName);
+    let app: AppI | undefined = [...SYSTEM_APPS, ...LOCAL_APPS].find(app => app.packageName === packageName);
     // if we can't find the app, try checking the appstore via the App Mongodb model.
 
     if (APPSTORE_ENABLED) {
       if (!app) {
+        // Check if the app is in the app store
+        console.log('Checking app store for app:', packageName);
         app = await App.findOne({
           packageName: packageName
         }) as AppI;
@@ -245,30 +264,97 @@ export class AppService {
  * @param payload - Data to send
  * @throws If stop webhook fails
  */
-  async triggerStopWebhook(webhookUrl: string, payload: StopWebhookRequest): Promise<{
+  async triggerStopWebhook(publicUrl: string, payload: StopWebhookRequest): Promise<{
     status: number;
     data: WebhookResponse;
   }> {
-    const response = await axios.post(`${webhookUrl}/stop`, payload);
+    // Construct the stop webhook URL from the app's public URL
+    const webhookUrl = `${publicUrl}/webhook`;
+    const response = await axios.post(webhookUrl, payload);
     return {
       status: response.status,
       data: response.data
     };
   }
 
+  isSystemApp(packageName: string, apiKey?: string): boolean {
+    // Check if the app is in the system apps list
+    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_APPS].some(app => app.packageName === packageName);
+    // or if the xxx.yyy.zzz if the xxx == "system" or "local"
+    const _isSystemApp = packageName.split('.').length > 2 && (packageName.split('.')[0] === 'system' || packageName.split('.')[0] === 'local');
+
+    return isSystemApp || (_isSystemApp && apiKey === AUGMENTOS_AUTH_JWT_SECRET);
+  }
+
   /**
    * Validates a TPA's API key.
    * @param packageName - TPA identifier
    * @param apiKey - API key to validate
+   * @param clientIp - Optional IP address of the client for system app validation
    * @returns Promise resolving to validation result
    */
-  async validateApiKey(packageName: string, apiKey: string): Promise<boolean> {
+  async validateApiKey(packageName: string, apiKey: string, clientIp?: string): Promise<boolean> {
     const app = await this.getApp(packageName);
-    if (!app) return false;
+    if (!app) {
+      console.warn(`App ${packageName} not found`);
+      return false;
+    }
 
-    // TODO: Implement proper API key validation
-    // For now, accept all keys for development
-    return true;
+    if (this.isSystemApp(packageName, apiKey)) {
+      return true;
+    }
+
+    // Additional verification for system apps
+    // If a system app, verify it's coming from the internal cluster network. note: for some reason this doesn't work in porter. but does work if running the cloud from docker-compose on the azure vm.
+    if (clientIp) {
+      // Check if IP is from the internal network
+      // Docker networks typically use 172.x.x.x, 10.x.x.x, or 192.168.x.x
+      // Kubernetes pod IPs depend on your cluster configuration
+      // Handle IPv6-mapped IPv4 addresses (::ffff:a.b.c.d)
+      const ipv4 = clientIp.startsWith('::ffff:') ? clientIp.substring(7) : clientIp;
+
+      const isInternalIp = ipv4.startsWith('10.') ||
+        ipv4.startsWith('172.') ||
+        ipv4.startsWith('192.168.') ||
+        // For Kubernetes cluster IPs (adjust based on your actual cluster IP range)
+        ipv4.includes('.svc.cluster.local') ||
+        clientIp === '::ffff:127.0.0.1' ||
+        ipv4 === '127.0.0.1' ||
+        ipv4 === 'localhost';
+
+      console.log(`System app ${packageName} connection IP check: ${clientIp} (IPv4: ${ipv4}), isInternal: ${isInternalIp}`);
+
+      if (isInternalIp) {
+        // Reject connection if not from internal network
+        console.warn(`System app ${packageName} connection is an internal IP: ${clientIp} (IPv4: ${ipv4}) - allowing access`);
+        return true;
+      }
+    }
+
+    // For regular apps, validate API key as normal
+    // Get the MongoDB app document to access hashedApiKey
+    const appDoc = await App.findOne({ packageName });
+
+    if (!appDoc) {
+      console.warn(`App ${packageName} not found in database`);
+      return false;
+    }
+
+    // Check if the app has a hashed API key
+    // If the app is a system app, we don't need to validate the API key
+
+    if (!appDoc?.hashedApiKey) {
+      console.warn(`App ${packageName} does not have a hashed API key`);
+      return false;
+    }
+
+    // Hash the provided API key and compare with stored hash
+    const hashedKey = this.hashApiKey(apiKey);
+
+    console.log(`Validating API key for ${packageName}: ${hashedKey} === ${appDoc.hashedApiKey}`);
+    // Compare the hashed API key with the stored hashed API key
+
+    return hashedKey === appDoc.hashedApiKey;
   }
 
   /**
@@ -331,13 +417,13 @@ export class AppService {
       // Make sure only valid fields are included
       const validFields = ['company', 'website', 'contactEmail', 'description'];
       const sanitizedDeveloperInfo: any = {};
-      
+
       for (const field of validFields) {
         if (appData.developerInfo[field] !== undefined) {
           sanitizedDeveloperInfo[field] = appData.developerInfo[field];
         }
       }
-      
+
       // Replace with sanitized version
       appData.developerInfo = sanitizedDeveloperInfo;
     }
@@ -351,7 +437,7 @@ export class AppService {
 
     return updatedApp!;
   }
-  
+
   /**
    * Publish an app to the app store
    */

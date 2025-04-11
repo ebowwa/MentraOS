@@ -1,11 +1,11 @@
 // src/AppSettings.tsx
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, ImageBackground, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useMemo, useLayoutEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, ImageBackground, TouchableOpacity, Alert } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../components/types';
 import NavigationBar from '../components/NavigationBar';
 import coreCommunicator from '../bridge/CoreCommunicator';
-import { MOCK_CONNECTION } from '../consts';
+import { MOCK_CONNECTION, SETTINGS_KEYS } from '../consts';
 import GroupTitle from '../components/settings/GroupTitle';
 import ToggleSetting from '../components/settings/ToggleSetting';
 import TextSetting from '../components/settings/TextSetting';
@@ -13,20 +13,19 @@ import SliderSetting from '../components/settings/SliderSetting';
 import SelectSetting from '../components/settings/SelectSetting';
 import MultiSelectSetting from '../components/settings/MultiSelectSetting';
 import TitleValueSetting from '../components/settings/TitleValueSetting';
-import LoadingComponent from '../components/LoadingComponent';
+import LoadingOverlay from '../components/LoadingOverlay';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import BackendServerComms from '../backend_comms/BackendServerComms';
-import { AppInfo } from '../AugmentOSStatusParser';
-import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { getAppImage } from '../logic/getAppImage';
+import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 
 type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
   toggleTheme: () => void;
 };
 
-const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleTheme }) => {
+const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkTheme, toggleTheme }) => {
   const { packageName, appName } = route.params;
   const backendServerComms = BackendServerComms.getInstance();
 
@@ -52,8 +51,77 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleThe
 
   const handleUninstallApp = () => {
     console.log(`Uninstalling app: ${packageName}`);
-    // This would be implemented with actual functionality to uninstall the app
+    
+    Alert.alert(
+      "Uninstall App",
+      `Are you sure you want to uninstall ${appInfo?.name || appName}?`,
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        { 
+          text: "Uninstall", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // First stop the app if it's running
+              if (appInfo?.is_running) {
+                await backendServerComms.stopApp(packageName);
+              }
+              
+              // Then uninstall it
+              await backendServerComms.uninstallApp(packageName);
+              
+              // Show success message
+              GlobalEventEmitter.emit('SHOW_BANNER', { 
+                message: `${appInfo?.name || appName} has been uninstalled successfully`, 
+                type: "success" 
+              });
+              
+              // Navigate back to the previous screen
+              navigation.goBack();
+            } catch (error: any) {
+              console.error('Error uninstalling app:', error);
+              GlobalEventEmitter.emit('SHOW_BANNER', { 
+                message: `Error uninstalling app: ${error.message || 'Unknown error'}`, 
+                type: "error" 
+              });
+            }
+          }
+        }
+      ]
+    );
   };
+
+  // Add header button when webviewURL exists
+  useLayoutEffect(() => {
+    if (serverAppInfo?.webviewURL) {
+      navigation.setOptions({
+        headerRight: () => (
+          <View style={{ marginRight: 8 }}>
+            <FontAwesome.Button
+              name="globe"
+              size={22}
+              color={isDarkTheme ? '#FFFFFF' : '#000000'}
+              backgroundColor="transparent"
+              underlayColor="transparent"
+              onPress={() => {
+                navigation.replace('AppWebView', {
+                  webviewURL: serverAppInfo.webviewURL,
+                  appName: appName,
+                  packageName: packageName,
+                  fromSettings: true
+                });
+              }}
+              style={{ padding: 0, margin: 0 }}
+              iconStyle={{ marginRight: 0 }}
+            />
+          </View>
+        )
+      });
+    }
+  }, [serverAppInfo, navigation, isDarkTheme, packageName, appName]);
 
   // Fetch TPA settings on mount or when packageName/status change.
   useEffect(() => {
@@ -78,6 +146,19 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleThe
           }
         });
         setSettingsState(initialState);
+      }
+      
+      // Check if we should auto-redirect to webview
+      // Only redirect if webviewURL exists AND we're not coming from the webview already
+      const fromWebView = route.params.fromWebView === true;
+      if (data.webviewURL && !fromWebView) {
+        navigation.replace('AppWebView', {
+          webviewURL: data.webviewURL,
+          appName: appName,
+          packageName: packageName,
+          // We'll use this flag in the webview to show the Settings button
+          fromSettings: true
+        });
       }
     } catch (err) {
       console.error('Error fetching TPA settings:', err);
@@ -197,7 +278,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleThe
   };
 
   if (!serverAppInfo || !appInfo) {
-    return <LoadingComponent message="Loading App Settings..." theme={theme} />;
+    return (
+      <View style={{ flex: 1, backgroundColor: theme.backgroundColor }}>
+        <LoadingOverlay 
+          message={`Loading ${appName} settings...`} 
+          isDarkTheme={isDarkTheme} 
+        />
+      </View>
+    );
   }
 
   return (
@@ -266,21 +354,24 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, isDarkTheme, toggleThe
             <TouchableOpacity
               style={[
                 styles.actionButton,
-                styles.disabledButton,
-                { borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }
+                { borderColor: theme.borderColor, backgroundColor: theme.backgroundColor },
+                !serverAppInfo.uninstallable && styles.disabledButton
               ]}
               activeOpacity={0.7}
-              disabled={true}
+              onPress={handleUninstallApp}
+              disabled={!serverAppInfo.uninstallable}
             >
               <FontAwesome
                 name="trash"
                 size={16}
-                style={[styles.buttonIcon, { color: theme.secondaryTextColor }]}
+                style={[styles.buttonIcon, { color: '#ff3b30' }]}
               />
-              <Text style={[styles.buttonText, { color: theme.secondaryTextColor }]}>Uninstall</Text>
+              <Text style={[styles.buttonText, { color: '#ff3b30' }]}>Uninstall</Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Removed the Open Website section - now in the header */}
 
         {/* App Instructions Section */}
         {(serverAppInfo.instructions || appInfo.instructions) && (
@@ -441,6 +532,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
+  // websiteButton style removed - now using header button
   startButton: {
     // Light background for Android-style
   },
