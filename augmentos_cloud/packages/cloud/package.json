@@ -7,14 +7,16 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.json",
+    "build": "rm -rf dist && bun x tsc -p tsconfig.json",
     "postbuild": "cp -r src/public dist/public",
-    "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
+    "start": "bun dist/index.js",
+    "dev": "bun --watch src/index.ts",
     "staging": "NODE_ENV=staging tsx watch src/index.ts",
     "deploy": "bun run build && bun run start",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "bun test",
+    "test:visual": "bun run ./src/services/layout/tests/run-visual-tests.ts",
+    "test:display": "bun run ./src/services/layout/tests/run-visual-tests.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org pierce-50 --project augmentos-cloud-dev ./dist && sentry-cli sourcemaps upload --org pierce-50 --project augmentos-cloud-dev ./dist",
     "use-linked": "bun link @augmentos/utils @augmentos/sdk @augmentos/agents"
   },
@@ -33,6 +35,7 @@
     "@types/ws": "^8.5.14",
     "@typescript-eslint/eslint-plugin": "^5.9.1",
     "@typescript-eslint/parser": "^5.9.1",
+    "chalk": "^5.3.0",
     "eslint": "^7.32.0",
     "eslint-config-prettier": "^8.3.0",
     "eslint-plugin-import": "^2.24.0",

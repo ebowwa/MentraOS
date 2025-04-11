@@ -174,7 +174,7 @@ export class HealthMonitorService {
   private checkConnectionTimeouts(): void {
     const now = Date.now();
     const timeoutThreshold = now - CONNECTION_TIMEOUT_MS;
-    
+    logger.debug(`[health-monitor.service] Checking for timed out connections (threshold: ${timeoutThreshold})`);
     // Check glasses connections
     for (const [ws, lastSeen] of this.glassesLastSeen.entries()) {
       if (lastSeen < timeoutThreshold && ws.readyState === WebSocket.OPEN) {

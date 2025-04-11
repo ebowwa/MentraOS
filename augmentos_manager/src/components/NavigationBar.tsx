@@ -2,18 +2,18 @@ import React from 'react';
 import {View, StyleSheet, TouchableOpacity} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {NavigationProps} from '../components/types';
+import {NavigationProps, RootStackParamList} from '../components/types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface NavigationBarProps {
-  toggleTheme: () => void;
-  isDarkTheme: boolean;
+  toggleTheme?: () => void;
+  isDarkTheme?: boolean;
   // Add variant prop to switch between different icon sets
   variant?: 'v1' | 'v2' | 'v3' | 'v4';
 }
 
 const NavigationBar: React.FC<NavigationBarProps> = ({
-  isDarkTheme,
+  isDarkTheme = false,
   variant = 'v1',
 }) => {
   const navigation = useNavigation<NavigationProps>();
@@ -57,7 +57,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
     <View style={[styles.navBarContainer, {backgroundColor}]}>
       {/* Home Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('Home')}
+        onPress={() => navigation.navigate({name: 'Home', params: undefined})}
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
           name={icons.home}
@@ -68,7 +68,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
       {/* Glasses Mirror Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('GlassesMirror')}
+        onPress={() => navigation.navigate({name: 'GlassesMirror', params: undefined})}
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
           name={icons.mirror}
@@ -79,7 +79,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
       {/* App Store Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('AppStoreWeb')}
+        onPress={() => navigation.navigate({name: 'AppStoreWeb', params: {packageName: undefined}})}
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
           name={icons.apps}
@@ -90,8 +90,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
       {/* Settings Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('SettingsPage')}
-        onLongPress={() => navigation.navigate('Testing')}// super secret testing page
+        onPress={() => navigation.navigate({name: 'SettingsPage', params: undefined})}
+        onLongPress={() => navigation.navigate({name: 'Testing', params: undefined})}// super secret testing page
         style={styles.iconWrapper}>
         <MaterialCommunityIcons
           name={icons.settings}

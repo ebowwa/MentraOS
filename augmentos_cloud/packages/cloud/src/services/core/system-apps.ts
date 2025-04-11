@@ -1,41 +1,27 @@
 import { AppI } from "@augmentos/sdk";
 
 const systemApps = {
-  captions: {
-    host: "live-captions",
-    packageName: "com.augmentos.livecaptions",
-    name: "Live Captions",
-    description: "Live closed captions.",
-    isSystemApp: true,
-  },
-  flash: {
-    host: "flash",
-    packageName: 'org.augmentos.flash',
-    name: 'Flash ⚡️',
-    description: "⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️",
-    isSystemApp: true,
-  },
   dashboard: {
     host: "dashboard-manager",
-    packageName: 'com.augmentos.dashboard',
+    packageName: 'system.augmentos.dashboard',
     name: 'Dashboard',
     description: "Dashboard",
     isSystemApp: true,
   },
-  notify: {
-    host: "notify",
-    packageName: 'com.augmentos.notify',
-    name: 'Notify',
-    description: "See your phone notifications on your smart glasses",
-    isSystemApp: true,
-  },
-  mira: {
-    host: "mira",
-    packageName: 'com.augmentos.miraai',
-    name: 'Mira AI',
-    description: "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command.",
-    isSystemApp: true,
-  },
+  // notify: {
+  //   host: "notify",
+  //   packageName: 'com.augmentos.notify',
+  //   name: 'Notify',
+  //   description: "See your phone notifications on your smart glasses",
+  //   isSystemApp: true,
+  // },
+  // mira: {
+  //   host: "mira",
+  //   packageName: 'com.augmentos.miraai',
+  //   name: 'Mira AI',
+  //   description: "The AugmentOS AI Assistant. Say 'Hey Mira...' followed by a question or command.",
+  //   isSystemApp: true,
+  // },
   // teleprompter: {
   //   host: `teleprompter`,
   //   packageName: 'com.augmentos.teleprompter',

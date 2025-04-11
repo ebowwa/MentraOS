@@ -340,7 +340,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             onPress={() => {
               navigation.navigate('DashboardSettingsScreen', {
                 isDarkTheme,
-                toggleTheme,
               });
             }}>
             <View style={styles.settingTextContainer}>

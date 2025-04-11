@@ -107,6 +107,7 @@ export class TpaServer {
 
     // Setup server features
     this.setupWebhook();
+    this.setupSettingsEndpoint();
     this.setupHealthCheck();
     this.setupPublicDir();
     this.setupShutdown();
@@ -328,6 +329,67 @@ export class TpaServer {
         });
       });
     }
+  }
+
+  /**
+   * ⚙️ Setup Settings Endpoint
+   * Creates a /settings endpoint that the AugmentOS Cloud can use to update settings.
+   */
+  private setupSettingsEndpoint(): void {
+    this.app.post('/settings', async (req, res) => {
+      try {
+        const { userIdForSettings, settings } = req.body;
+        
+        if (!userIdForSettings || !Array.isArray(settings)) {
+          return res.status(400).json({
+            status: 'error',
+            message: 'Missing userId or settings array in request body'
+          });
+        }
+        
+        console.log(`📝 Received settings update for user ${userIdForSettings}`);
+        
+        // Find all active sessions for this user
+        const userSessions: TpaSession[] = [];
+        
+        // Look through all active sessions
+        this.activeSessions.forEach((session, sessionId) => {
+          // Check if the session has this userId (not directly accessible)
+          // We're relying on the webhook handler to have already verified this
+          if (sessionId.includes(userIdForSettings)) {
+            userSessions.push(session);
+          }
+        });
+        
+        if (userSessions.length === 0) {
+          console.log(`⚠️ No active sessions found for user ${userIdForSettings}`);
+        } else {
+          console.log(`🔄 Updating settings for ${userSessions.length} active sessions`);
+        }
+        
+        // Update settings for all of the user's sessions
+        for (const session of userSessions) {
+          session.updateSettingsForTesting(settings);
+        }
+        
+        // Allow subclasses to handle settings updates if they implement the method
+        if (typeof (this as any).onSettingsUpdate === 'function') {
+          await (this as any).onSettingsUpdate(userIdForSettings, settings);
+        }
+        
+        res.json({
+          status: 'success',
+          message: 'Settings updated successfully',
+          sessionsUpdated: userSessions.length
+        });
+      } catch (error) {
+        console.error('❌ Error handling settings update:', error);
+        res.status(500).json({
+          status: 'error',
+          message: 'Internal server error processing settings update'
+        });
+      }
+    });
   }
 
   /**

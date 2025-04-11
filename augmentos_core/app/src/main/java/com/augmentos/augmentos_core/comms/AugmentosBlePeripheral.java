@@ -428,7 +428,7 @@ public class AugmentosBlePeripheral {
     }
 
     public void sendNotifyManager(String message, String type) {
-        Log.d(TAG, "sendNotifyManager");
+//        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
         JSONObject messageObj = new JSONObject();
         try{
@@ -450,7 +450,7 @@ public class AugmentosBlePeripheral {
             return;
         }
 
-        Log.d(TAG, "sendNotifyManager");
+//        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
         try{
             data.put("glasses_display_event", displayEvent);
@@ -461,7 +461,7 @@ public class AugmentosBlePeripheral {
     }
 
     public void sendAppInfoToManager(ThirdPartyEdgeApp tpa) {
-        Log.d(TAG, "sendNotifyManager");
+//        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
         try{
             data.put("app_info", tpa.toJson(true));
