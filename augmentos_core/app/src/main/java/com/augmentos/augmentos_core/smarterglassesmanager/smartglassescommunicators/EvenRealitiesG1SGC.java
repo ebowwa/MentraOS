@@ -30,7 +30,6 @@ import androidx.preference.PreferenceManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 //BMP
 import java.util.ArrayList;
@@ -40,15 +39,12 @@ import java.util.zip.CRC32;
 import java.nio.ByteBuffer;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.LC3AudioChunkNewEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.hci.AudioProcessingCallback;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.G1FontLoader;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 import com.google.gson.Gson;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AudioChunkNewEvent;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
@@ -194,7 +190,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     private Runnable leftConnectionTimeoutRunnable;
     private Runnable rightConnectionTimeoutRunnable;
     private boolean isBondingReceiverRegistered = false;
-    private boolean shouldRunOnboardMic;
+    private boolean shouldUseGlassesMic;
     private boolean lastThingDisplayedWasAnImage = false;
 
     // lock writing until the last write is successful
@@ -215,7 +211,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         brightnessValue = getSavedBrightnessValue(context);
         shouldUseAutoBrightness = getSavedAutoBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        this.shouldRunOnboardMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
+        this.shouldUseGlassesMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
 
         //setup LC3 decoder
         if (lc3DecoderPtr == 0) {
@@ -491,7 +487,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                                 if (lc3DecoderPtr != 0) {
                                     byte[] pcmData = L3cCpp.decodeLC3(lc3DecoderPtr, lc3);
                                     //send the PCM out
-                                    if (shouldRunOnboardMic) {
+                                    if (shouldUseGlassesMic) {
                                         if (audioProcessingCallback != null) {
                                             if (pcmData != null && pcmData.length > 0) {
                                                 audioProcessingCallback.onAudioDataAvailable(pcmData);
@@ -502,7 +498,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                                         }
                                     }
 
-//                                    if (shouldRunOnboardMic) { TODO: add this back if needed
+//                                    if (shouldUseGlassesMic) { TODO: add this back if needed
 //                                        EventBus.getDefault().post(new AudioChunkNewEvent(pcmData));
 //                                    } else {
 //                                        Log.e(TAG, "Failed to decode LC3 frame, got null or empty result");
@@ -650,7 +646,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 sendBrightnessCommandHandler.postDelayed(() -> sendBrightnessCommand(brightnessValue, shouldUseAutoBrightness), 10);
 
                 // Maybe start MIC streaming
-                setMicEnabled(shouldRunOnboardMic, 10); // Enable the MIC
+//                setMicEnabled(shouldUseGlassesMic, 10); // Enable the MIC
 
                 //enable our AugmentOS notification key
                 sendWhiteListCommand(10);
@@ -659,7 +655,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 startHeartbeat(10000);
 
                 //start mic beat
-                startMicBeat(30000);
+//                startMicBeat(30000);
 
                 showHomeScreen(); //turn on the g1 display
 
@@ -1900,7 +1896,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
             @Override
             public void run() {
                 Log.d(TAG, "SENDING MIC BEAT");
-                setMicEnabled(shouldRunOnboardMic, 1);
+                setMicEnabled(shouldUseGlassesMic, 1);
                 micBeatHandler.postDelayed(this, MICBEAT_INTERVAL_MS);
             }
         };
