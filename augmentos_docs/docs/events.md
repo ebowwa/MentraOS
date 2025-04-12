@@ -133,6 +133,7 @@ interface TranscriptionData {
   text: string;
   isFinal: boolean;
   transcribeLanguage?: string;
+  detectedLanguage?: string;
   startTime: number;
   endTime: number;
   speakerId?: string;
@@ -145,6 +146,7 @@ interface TranscriptionData {
 interface TranslationData {
   type: StreamType.TRANSLATION;
   text: string;
+  originalText?: string;
   isFinal: boolean;
   startTime: number;
   endTime: number;
@@ -152,6 +154,7 @@ interface TranslationData {
   duration?: number;
   transcribeLanguage?: string;
   translateLanguage?: string;
+  detectedLanguage?: string;
 }
 ```
 
