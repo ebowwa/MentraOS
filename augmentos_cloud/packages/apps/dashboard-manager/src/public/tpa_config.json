@@ -11,15 +11,15 @@
         "key": "dashboard_content",
         "type": "select",
         "label": "Dashboard content",
-        "defaultValue": "notification_summary",
+        "defaultValue": "none",
         "options": [
           {
-            "label": "Notification Summary",
-            "value": "Notification Summary"
+            "label": "None",
+            "value": "none"
           },
           {
             "label": "Weather",
-            "value": "Weather"
+            "value": "weather"
           }
         ]
       }

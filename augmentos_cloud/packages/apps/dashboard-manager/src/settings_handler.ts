@@ -11,7 +11,7 @@ interface UserSettings {
 
 // Default settings
 const DEFAULT_SETTINGS: UserSettings = {
-  dashboardContent: 'notification_summary'
+  dashboardContent: 'none'
 };
 
 // Store user settings in memory

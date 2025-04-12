@@ -345,6 +345,7 @@ export class TpaSession {
         // Message handler with comprehensive error recovery
         const messageHandler = async (data: Buffer | string, isBinary: boolean) => {
           try {
+            // console.log(`🔌🔌🔌 [${this.config.packageName}] Message received: ${data}`);
             // Handle binary messages (typically audio data)
             if (isBinary && Buffer.isBuffer(data)) {
               try {
