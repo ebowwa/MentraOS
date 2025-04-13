@@ -51,7 +51,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null);
 
   const dashboardContentOptions = [
-    { label: 'Notification Summary', value: 'notification_summary' },
+    { label: 'None', value: 'none' },
     { label: 'Fun Facts', value: 'fun_facts' },
     { label: 'Famous Quotes', value: 'famous_quotes' },
     { label: "Trash Talk", value: "trash_talk" },

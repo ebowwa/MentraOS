@@ -73,6 +73,11 @@ const sidebars: SidebarsConfig = {
         'reference/utilities',
       ],
     },
+    {
+      type: 'doc',
+      id: 'contributing',
+      label: '👥 Contributing Guide',
+    },
   ],
 };
 
