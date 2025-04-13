@@ -646,7 +646,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 sendBrightnessCommandHandler.postDelayed(() -> sendBrightnessCommand(brightnessValue, shouldUseAutoBrightness), 10);
 
                 // Maybe start MIC streaming
-//                setMicEnabled(shouldUseGlassesMic, 10); // Enable the MIC
+                setMicEnabled(false, 10); // Disable the MIC
 
                 //enable our AugmentOS notification key
                 sendWhiteListCommand(10);
