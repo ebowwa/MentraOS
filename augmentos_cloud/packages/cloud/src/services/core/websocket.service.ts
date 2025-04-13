@@ -14,7 +14,6 @@
  * wsService.setupWebSocketServers(httpServer);
  */
 
-
 // import { WebSocketServer, WebSocket } from 'ws';
 import WebSocket from 'ws';
 import { IncomingMessage, Server } from 'http';
@@ -49,6 +48,7 @@ import {
   TpaConnectionInit,
   TpaSubscriptionUpdate,
   TpaToCloudMessage,
+  TpaType,
   UserSession,
   Vad,
   WebhookRequestType
@@ -61,13 +61,26 @@ import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
 import tpaRegistrationService from './tpa-registration.service';
 import healthMonitorService from './health-monitor.service';
+import axios from 'axios';
 
-export const PUBLIC_HOST_NAME = process.env.PUBLIC_HOST_NAME || "cloud.augmentos.org";
-export let LOCAL_HOST_NAME = process.env.CLOUD_HOST_NAME || "cloud"
+export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
+export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
-logger.info(`🔥🔥🔥 [websocket.service]: PUBLIC_HOST_NAME: ${PUBLIC_HOST_NAME}`);
-logger.info(`🔥🔥🔥 [websocket.service]: LOCAL_HOST_NAME: ${LOCAL_HOST_NAME}`);
+if (!CLOUD_PUBLIC_HOST_NAME) {
+  logger.error("CLOUD_PUBLIC_HOST_NAME is not set. Please set it in your environment variables.");
+}
+
+if (!CLOUD_LOCAL_HOST_NAME) {
+  logger.error("CLOUD_LOCAL_HOST_NAME is not set. Please set it in your environment variables.");
+}
+
+if (!AUGMENTOS_AUTH_JWT_SECRET) {
+  logger.error("AUGMENTOS_AUTH_JWT_SECRET is not set. Please set it in your environment variables.");
+}
+
+logger.info(`🔥🔥🔥 [websocket.service]: CLOUD_PUBLIC_HOST_NAME: ${CLOUD_PUBLIC_HOST_NAME}`);
+logger.info(`🔥🔥🔥 [websocket.service]: CLOUD_LOCAL_HOST_NAME: ${CLOUD_LOCAL_HOST_NAME}`);
 
 const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 
@@ -399,6 +412,41 @@ export class WebSocketService {
 
     userSession.logger.info(`[websocket.service]: ⚡️ Loading app ${packageName} for user ${userSession.userId}\n`);
 
+    // If this is a STANDARD app, we need to stop any other STANDARD apps that are running
+    if (app.tpaType === TpaType.STANDARD) {
+      userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
+      
+      // Find all active STANDARD apps
+      const runningStandardApps = [];
+      
+      for (const activeAppName of userSession.activeAppSessions) {
+        // Skip if this is the app we're trying to start
+        if (activeAppName === packageName) continue;
+        
+        // Get the app details to check its type
+        try {
+          const activeApp = await appService.getApp(activeAppName);
+          if (activeApp && activeApp.tpaType === TpaType.STANDARD) {
+            runningStandardApps.push(activeAppName);
+          }
+        } catch (error) {
+          userSession.logger.error(`[websocket.service]: Error checking app type for ${activeAppName}:`, error);
+          // Continue with the next app even if there's an error
+        }
+      }
+      
+      // Stop any running STANDARD apps
+      for (const standardAppToStop of runningStandardApps) {
+        userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
+        try {
+          await this.stopAppSession(userSession, standardAppToStop);
+        } catch (error) {
+          userSession.logger.error(`[websocket.service]: Error stopping STANDARD app ${standardAppToStop}:`, error);
+          // Continue with the next app even if there's an error
+        }
+      }
+    }
+
     // Store pending session.
     userSession.loadingApps.add(packageName);
     userSession.logger.debug(`[websocket.service]: Current Loading Apps:`, userSession.loadingApps);
@@ -433,7 +481,7 @@ export class WebSocketService {
         }
       } else {
         // For non-system apps, use the public host
-        augmentOSWebsocketUrl = `wss://${PUBLIC_HOST_NAME}/tpa-ws`;
+        augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
         userSession.logger.info(`Using public URL for app ${packageName}`);
       }
 
@@ -524,7 +572,6 @@ export class WebSocketService {
         (appName) => appName !== packageName
       );
 
-      
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
         await appService.triggerStopWebhook(
@@ -1224,6 +1271,7 @@ export class WebSocketService {
     ws.on('ping', () => {
       // Update activity whenever a ping is received
       healthMonitorService.updateTpaActivity(ws);
+      console.log("🔥🔥🔥: Received ping from TPA");
       // Send pong response
       try {
         ws.pong();
@@ -1357,10 +1405,51 @@ export class WebSocketService {
       }
     }
 
-    // Send acknowledgment
+    // Get user settings for this TPA
+    let userSettings = [];
+    try {
+      const user = await User.findOrCreateUser(userSession.userId);
+      userSettings = user.getAppSettings(initMessage.packageName) || [];
+      
+      // If no settings found, try to fetch and create default settings
+      if (!userSettings || userSettings.length === 0) {
+        try {
+          // Try to fetch TPA config to get default settings
+          const app = await appService.getApp(initMessage.packageName);
+          if (app && app.publicUrl) {
+            const tpaConfigResponse = await axios.get(`${app.publicUrl}/tpa_config.json`);
+            const tpaConfig = tpaConfigResponse.data;
+            
+            if (tpaConfig && tpaConfig.settings) {
+              const defaultSettings = tpaConfig.settings
+                .filter((setting: any) => setting.type !== 'group')
+                .map((setting: any) => ({
+                  key: setting.key,
+                  value: setting.defaultValue,
+                  defaultValue: setting.defaultValue,
+                  type: setting.type,
+                  label: setting.label,
+                  options: setting.options || []
+                }));
+                
+              await user.updateAppSettings(initMessage.packageName, defaultSettings);
+              userSettings = defaultSettings;
+              userSession.logger.info(`Created default settings for ${initMessage.packageName}`);
+            }
+          }
+        } catch (error) {
+          userSession.logger.error(`Error fetching TPA config for default settings: ${error}`);
+        }
+      }
+    } catch (error) {
+      userSession.logger.error(`Error retrieving settings for ${initMessage.packageName}: ${error}`);
+    }
+    
+    // Send acknowledgment with settings
     const ackMessage: TpaConnectionAck = {
       type: CloudToTpaMessageType.CONNECTION_ACK,
       sessionId: initMessage.sessionId,
+      settings: userSettings, // Include user settings in the response
       timestamp: new Date()
     };
     ws.send(JSON.stringify(ackMessage));

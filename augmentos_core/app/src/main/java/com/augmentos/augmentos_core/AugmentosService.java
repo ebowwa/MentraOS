@@ -1361,7 +1361,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         
         // Log the new microphone status
         PhoneMicrophoneManager.MicStatus status = event.getStatus();
-        blePeripheral.sendNotifyManager(status.name(), "success");
+        //blePeripheral.sendNotifyManager(status.name(), "success");
         switch (status) {
             case SCO_MODE:
                 Log.d(TAG, "Microphone using Bluetooth SCO mode");

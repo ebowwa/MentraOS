@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const PACKAGE_NAME = 'com.augmentos.dashboard';
+const PACKAGE_NAME = 'system.augmentos.dashboard';
 const CLOUD_URL = process.env.CLOUD_HOST_NAME || 'cloud';
 
 // Define the settings interface
@@ -11,7 +11,7 @@ interface UserSettings {
 
 // Default settings
 const DEFAULT_SETTINGS: UserSettings = {
-  dashboardContent: 'notification_summary'
+  dashboardContent: 'none'
 };
 
 // Store user settings in memory

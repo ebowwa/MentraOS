@@ -52,9 +52,10 @@ import GlobalEventEmitter from './logic/GlobalEventEmitter';
 const linking = {
   prefixes: [
     'https://augmentos.org', 
-    'https://appstore.augmentos.org', 
+    // Temporarily commented out until token exchange flow is fixed
+    // 'https://appstore.augmentos.org', 
     'com.augmentos://',
-    'augmentosappstore://'
+    // 'augmentosappstore://'
   ],
   config: {
     screens: {

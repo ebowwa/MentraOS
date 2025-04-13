@@ -204,6 +204,29 @@
    - Dynamic content formatting
    - Automatic cleanup
 
+## Recent Improvements (7 April 2025)
+
+1. **Boot Queue Processing**
+   - Display requests during boot are now queued rather than rejected
+   - Ensures developers' initial display content is shown after boot
+   - Preserves the intended first-time experience for users
+
+2. **Per-App Throttling System**
+   - Each app has its own throttling queue
+   - One app's rapid updates don't interfere with other apps
+   - Most recent request per app is always displayed eventually
+
+3. **Fixed Throttle Recovery Logic**
+   - Apps can now update their own display content through throttling
+   - Prevents "stuck" displays when apps send multiple updates
+   - Ensures the most recent content is always shown
+
+4. **Improved Testing Framework**
+   - Comprehensive test scenarios for throttling and boot behavior
+   - Time-controlled testing environment for consistent results
+   - Display history tracking for verifying correct behavior
+   - See `tests/README.md` for details on testing the DisplayManager
+
 ## Future Considerations
 
 1. **Performance Monitoring**
