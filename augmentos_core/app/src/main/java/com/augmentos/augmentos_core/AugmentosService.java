@@ -62,6 +62,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesNeedWifiCredentialsEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
@@ -162,6 +163,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private Integer brightnessLevel;
     private Boolean autoBrightness;
     private Integer headUpAngle;
+    
+    // WiFi status for glasses that require WiFi (e.g., Mentra Live)
+    private boolean glassesNeedWifiCredentials = false;
+    private boolean glassesWifiConnected = false;
+    private String glassesWifiSsid = "";
 
     private final boolean showingDashboardNow = false;
     private boolean contextualDashboardEnabled;
@@ -643,6 +649,42 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             );
         }
     }
+    
+    @Subscribe
+    public void onGlassesNeedWifiCredentialsEvent(GlassesNeedWifiCredentialsEvent event) {
+        // Update WiFi status for glasses
+        glassesNeedWifiCredentials = event.needsCredentials;
+        glassesWifiConnected = event.isWifiConnected;
+        glassesWifiSsid = event.currentSsid;
+        
+        // Log the event
+        Log.d(TAG, "Received GlassesNeedWifiCredentialsEvent: device=" + event.deviceModel + 
+              ", needsCredentials=" + event.needsCredentials + 
+              ", wifiConnected=" + event.isWifiConnected + 
+              ", SSID=" + event.currentSsid);
+        
+        // Send status update to the manager
+        sendStatusToAugmentOsManager();
+        
+        // If glasses need WiFi credentials, trigger the credentials input UI in the Manager app
+        // and show a message on the glasses
+        if (event.needsCredentials && smartGlassesManager != null && 
+            smartGlassesManager.getConnectedSmartGlasses() != null) {
+            
+            // Send a specific notification to trigger the WiFi setup UI in the Manager app
+            if (blePeripheral != null) {
+                blePeripheral.sendWifiCredentialsRequestToManager(event.deviceModel);
+            }
+            
+            // Show a message on the glasses to inform the user
+            smartGlassesManager.windowManager.showAppLayer(
+                "system",
+                () -> smartGlassesManager.sendReferenceCard("WiFi Required", 
+                                                           "Please set up WiFi in the AugmentOS Manager app"),
+                10
+            );
+        }
+    }
 
     private static final String[] ARROW_FRAMES = {
            // "↑", "↗", "–", "↘", "↓", "↙", "–", "↖"
@@ -1105,6 +1147,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     headUpAngle = 20;
                 }
                 connectedGlasses.put("headUp_angle", headUpAngle);
+                
+                // Add WiFi status information for glasses that need WiFi (e.g., Mentra Live)
+                String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+                // Check if these are glasses that support WiFi (currently Mentra Live)
+                if (deviceModel != null && deviceModel.contains("Mentra Live")) {
+                    connectedGlasses.put("glasses_needs_wifi_credentials", glassesNeedWifiCredentials);
+                    connectedGlasses.put("glasses_wifi_connected", glassesWifiConnected);
+                    connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
+                }
             }
             else {
                 connectedGlasses.put("is_searching", getIsSearchingForGlasses());
@@ -1548,6 +1599,53 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
+        }
+    }
+    
+    @Override
+    public void setGlassesWifiCredentials(String ssid, String password) {
+        Log.d(TAG, "Setting WiFi credentials for glasses, SSID: " + ssid);
+        
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to set WiFi credentials", "error");
+            return;
+        }
+        
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support WiFi", "error");
+            return;
+        }
+        
+        try {
+            // Send WiFi credentials to glasses
+            JSONObject wifiCredentials = new JSONObject();
+            wifiCredentials.put("type", "wifi_credentials");
+            wifiCredentials.put("ssid", ssid);
+            wifiCredentials.put("password", password);
+            
+            // We use the smartGlassesManager to send the credentials to the glasses
+            // This will be captured by the Bluetooth handler in MentraLiveSGC
+            smartGlassesManager.sendCustomCommand(wifiCredentials.toString());
+            
+            // Show a message on the glasses
+            smartGlassesManager.windowManager.showAppLayer(
+                "system",
+                () -> smartGlassesManager.sendReferenceCard("WiFi Setup", 
+                                                          "Connecting to: " + ssid),
+                8
+            );
+            
+            // Notify manager app
+            blePeripheral.sendNotifyManager("WiFi credentials sent to glasses", "success");
+            
+            // Mark that we've sent credentials (will be updated when connection status changes)
+            glassesNeedWifiCredentials = false;
+            sendStatusToAugmentOsManager();
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi credentials JSON", e);
+            blePeripheral.sendNotifyManager("Error setting WiFi credentials", "error");
         }
     }
 

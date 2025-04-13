@@ -146,6 +146,12 @@ public class AugmentOsManagerMessageParser {
                     int headUpAngle = commandObject.getJSONObject("params").getInt("headUpAngle");
                     callback.updateGlassesHeadUpAngle(headUpAngle);
                     break;
+                    
+                case "set_glasses_wifi_credentials":
+                    String ssid = commandObject.getJSONObject("params").getString("ssid");
+                    String password = commandObject.getJSONObject("params").getString("password");
+                    callback.setGlassesWifiCredentials(ssid, password);
+                    break;
 
                 default:
                     Log.w(TAG, "Unknown command: " + command);
