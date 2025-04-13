@@ -21,7 +21,7 @@ When generating words, follow these rules:
    "汉字 (pinyin) - English translation"
 3. Keep entries concise and clear
 4. Do not repeat any previously shared content
-5. Include a variety of parts of speech:
+5. IMPORTANT: For each response, output ONE random word from any of these parts of speech:
    - Nouns (名词): 专业 (zhuān yè) - Profession
    - Verbs (动词): 发展 (fā zhǎn) - To develop
    - Adjectives (形容词): 重要 (zhòng yào) - Important
@@ -41,10 +41,10 @@ Example format:
 - 重要 (zhòng yào) - Important
 - 逐渐 (zhú jiàn) - Gradually
 
-Question: Generate a new Chinese word entry.
+Question: Generate a new Chinese word entry. Choose ONE random word from any part of speech (noun, verb, adjective, or adverb).
 
 When you have a word to share, output your final answer on a new line prefixed by "Final Answer:" followed immediately by a JSON object exactly like:
-Final Answer: {{"insight": "<word entry>"}}
+Final Answer: {{"insight": "<single word entry>"}}
 
 {agent_scratchpad}`;
 
@@ -86,7 +86,27 @@ export class ChineseWordAgent implements Agent {
         "philosophy", "literature", "technology", "social", "professional"
       ];
       const randomCategory = randomCategories[Math.floor(Math.random() * randomCategories.length)];
-      
+
+      // Weighted random selection for parts of speech
+      const partsOfSpeech = [
+        { type: "nouns", weight: 0.3 },
+        { type: "verbs", weight: 0.3 },
+        { type: "adjectives", weight: 0.3 },
+        { type: "adverbs", weight: 0.1 }
+      ];
+
+      const random = Math.random();
+      let selectedPartOfSpeech = partsOfSpeech[0].type;
+      let cumulativeWeight = 0;
+
+      for (const part of partsOfSpeech) {
+        cumulativeWeight += part.weight;
+        if (random <= cumulativeWeight) {
+          selectedPartOfSpeech = part.type;
+          break;
+        }
+      }
+
       // Get shared history from userContext
       const agentHistory = userContext.agentHistory || [];
       
@@ -96,7 +116,7 @@ export class ChineseWordAgent implements Agent {
         : '';
       
       const prompt = new PromptTemplate({
-        template: this.agentPrompt + `\nConsider focusing on ${randomCategory} for variety.${historyContext}`,
+        template: this.agentPrompt + `\nConsider focusing on ${randomCategory} for variety and generate a ${selectedPartOfSpeech} word.${historyContext}`,
         inputVariables: ["agent_scratchpad", "tools", "tool_names"],
       });
 

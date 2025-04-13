@@ -39,6 +39,11 @@ const sidebars: SidebarsConfig = {
         },
       ],
     },
+    {
+      type: 'doc',
+      id: 'contributing',
+      label: '👥 Contributing Guide',
+    },
   ],
 };
 

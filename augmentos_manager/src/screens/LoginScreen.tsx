@@ -430,6 +430,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                         keyboardType="email-address"
                         autoCapitalize="none"
                         placeholderTextColor="#9CA3AF"
+                        autoCorrect={false}
                       />
                     </View>
                   </View>
