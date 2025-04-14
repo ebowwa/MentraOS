@@ -2,6 +2,8 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { Config } from 'react-native-config';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { loadSetting } from '../logic/SettingsHelper';
+import { SETTINGS_KEYS } from '../consts';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -11,24 +13,27 @@ interface Callback {
 export default class BackendServerComms {
   private static instance: BackendServerComms;
   private TAG = 'MXT2_BackendServerComms';
-  private serverUrl;
   private coreToken: string | null = null;
 
-  public getServerUrl(): string {
+  public async getServerUrl(): Promise<string> {
+    const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null);
+
+    if (customUrl && typeof customUrl === 'string' && customUrl.trim() !== '') {
+      console.log(`${this.TAG}: Using custom backend URL: ${customUrl}`);
+      return customUrl;
+    }
+
     const secure = Config.AUGMENTOS_SECURE === 'true';
     const host = Config.AUGMENTOS_HOST;
     const port = Config.AUGMENTOS_PORT;
     const protocol = secure ? 'https' : 'http';
-    const serverUrl = `${protocol}://${host}:${port}`;
-    console.log("Got a new server url: ");
-    console.log(serverUrl);
-    //console.log('React Native Config:', Config);
-    //console.log("\n\n\n");
-    return serverUrl;
+    const defaultServerUrl = `${protocol}://${host}:${port}`;
+    console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`);
+    return defaultServerUrl;
   }
 
   private constructor() {
-    this.serverUrl = this.getServerUrl();
+    // No need to set serverUrl here anymore
   }
 
   public static getInstance(): BackendServerComms {
@@ -50,7 +55,8 @@ export default class BackendServerComms {
 
   public async restRequest(endpoint: string, data: any, callback: Callback): Promise<void> {
     try {
-      const url = this.serverUrl + endpoint;
+      const baseUrl = await this.getServerUrl();
+      const url = baseUrl + endpoint;
 
       // Axios request configuration
       const config: AxiosRequestConfig = {
@@ -92,7 +98,8 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/app/error-report`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/app/error-report`;
     console.log('Sending error report to:', url);
 
     const config: AxiosRequestConfig = {
@@ -119,7 +126,8 @@ export default class BackendServerComms {
   }
 
   public async exchangeToken(supabaseToken: string): Promise<string> {
-    const url = `${this.serverUrl}/auth/exchange-token`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/auth/exchange-token`;
     const config: AxiosRequestConfig = {
       method: 'POST',
       url,
@@ -150,7 +158,8 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/tpasettings/${tpaName}`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/tpasettings/${tpaName}`;
     console.log('Fetching TPA settings from:', url);
 
     const config: AxiosRequestConfig = {
@@ -182,7 +191,8 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/tpasettings/${tpaName}`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/tpasettings/${tpaName}`;
     console.log('Updating TPA settings via:', url);
 
     const config: AxiosRequestConfig = {
@@ -219,7 +229,8 @@ export default class BackendServerComms {
         throw new Error('No core token available for authentication');
       }
 
-      const url = `${this.serverUrl}/apps/${packageName}/start`;
+      const baseUrl = await this.getServerUrl();
+      const url = `${baseUrl}/apps/${packageName}/start`;
       console.log('Starting app:', packageName);
   
       const config: AxiosRequestConfig = {
@@ -257,7 +268,8 @@ export default class BackendServerComms {
         throw new Error('No core token available for authentication');
       }
 
-      const url = `${this.serverUrl}/apps/${packageName}/stop`;
+      const baseUrl = await this.getServerUrl();
+      const url = `${baseUrl}/apps/${packageName}/stop`;
       console.log('Stopping app:', packageName);
   
       const config: AxiosRequestConfig = {
@@ -293,7 +305,8 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/apps/${packageName}/uninstall`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/apps/${packageName}/uninstall`;
     console.log('Uninstalling app:', packageName);
 
     const config: AxiosRequestConfig = {
