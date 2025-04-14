@@ -186,7 +186,6 @@ export class SessionService {
       }
     }
 
-
     const partialUserSession = {
       sessionId: userSession.sessionId,
       userId: userSession.userId,
@@ -213,6 +212,11 @@ export class SessionService {
     }
 
     try {
+      // Fetch installed apps (they may have potentially changed).
+      const installedApps = await appService.getAllApps(userSession.userId); // Fetch apps first.
+      userSession.installedApps = installedApps; // Update installed apps in the session.
+      userSession.logger.info(`Updated installed apps for ${userId}:`, installedApps);
+
       const clientResponse: AppStateChange = {
         type: CloudToGlassesMessageType.APP_STATE_CHANGE,
         sessionId: userSession.sessionId,
