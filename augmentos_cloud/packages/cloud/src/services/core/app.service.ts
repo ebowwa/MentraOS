@@ -10,7 +10,7 @@
 import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
-import App from '../../models/app.model';
+import App, { CommandParameterSchema, CommandSchema } from '../../models/app.model';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 
@@ -371,13 +371,81 @@ export class AppService {
   }
 
   /**
+   * Validates command definitions against the schema requirements
+   * @param commands Array of command definitions to validate
+   * @returns Validated and sanitized commands array or throws error if invalid
+   */
+  private validateCommandDefinitions(commands: any[]): CommandSchema[] {
+    if (!Array.isArray(commands)) {
+      throw new Error('Commands must be an array');
+    }
+    
+    return commands.map(command => {
+      // Validate required fields
+      if (!command.id || typeof command.id !== 'string') {
+        throw new Error('Command id is required and must be a string');
+      }
+      
+      if (!command.description || typeof command.description !== 'string') {
+        throw new Error('Command description is required and must be a string');
+      }
+      
+      if (!Array.isArray(command.phrases) || command.phrases.length === 0) {
+        throw new Error('Command phrases must be a non-empty array');
+      }
+      
+      // Validate parameters if they exist
+      const validatedParameters: Record<string, CommandParameterSchema> = {};
+      
+      if (command.parameters) {
+        Object.entries(command.parameters).forEach(([key, param]: [string, any]) => {
+          if (!param.type || !['string', 'number', 'boolean'].includes(param.type)) {
+            throw new Error(`Parameter ${key} has invalid type. Must be string, number, or boolean`);
+          }
+          
+          if (!param.description || typeof param.description !== 'string') {
+            throw new Error(`Parameter ${key} requires a description`);
+          }
+          
+          validatedParameters[key] = {
+            type: param.type as 'string' | 'number' | 'boolean',
+            description: param.description,
+            required: !!param.required
+          };
+          
+          // Add enum values if present
+          if (param.enum && Array.isArray(param.enum)) {
+            validatedParameters[key].enum = param.enum;
+          }
+        });
+      }
+      
+      return {
+        id: command.id,
+        description: command.description,
+        phrases: command.phrases.map((p: string) => p.trim()),
+        parameters: Object.keys(validatedParameters).length > 0 ? validatedParameters : undefined
+      };
+    });
+  }
+
+  /**
    * Create a new app
    */
   async createApp(appData: any, developerId: string): Promise<{ app: AppI, apiKey: string }> {
     // Generate API key
     const apiKey = crypto.randomBytes(32).toString('hex');
     const hashedApiKey = this.hashApiKey(apiKey);
-
+    
+    // Parse and validate commands if present
+    if (appData.commands) {
+      try {
+        appData.commands = this.validateCommandDefinitions(appData.commands);
+      } catch (error: any) {
+        throw new Error(`Invalid command definitions: ${error.message}`);
+      }
+    }
+    
     // Create app
     const app = await App.create({
       ...appData,
@@ -411,7 +479,16 @@ export class AppService {
     if (app.developerId.toString() !== developerId) {
       throw new Error('You do not have permission to update this app');
     }
-
+    
+    // Parse and validate commands if present
+    if (appData.commands) {
+      try {
+        appData.commands = this.validateCommandDefinitions(appData.commands);
+      } catch (error: any) {
+        throw new Error(`Invalid command definitions: ${error.message}`);
+      }
+    }
+    
     // If developerInfo is provided, ensure it's properly structured
     if (appData.developerInfo) {
       // Make sure only valid fields are included
@@ -604,6 +681,131 @@ export class AppService {
     return App.find({ appStoreStatus: 'PUBLISHED' });
   }
 
+  /**
+   * Triggers the TPA command webhook for Mira AI integration
+   * @param packageName - The package name of the TPA to send the command to
+   * @param payload - The command webhook payload containing command details
+   * @returns Promise resolving to the webhook response or error
+   */
+  async triggerTpaCommandWebhook(packageName: string, payload: any): Promise<{
+    status: number;
+    data: any;
+  }> {
+    // Look up the TPA by packageName
+    const app = await this.getApp(packageName);
+    
+    if (!app) {
+      throw new Error(`App ${packageName} not found`);
+    }
+    
+    if (!app.publicUrl) {
+      throw new Error(`App ${packageName} does not have a public URL`);
+    }
+    
+    // Get the app document from MongoDB
+    const appDoc = await App.findOne({ packageName });
+    if (!appDoc) {
+      throw new Error(`App ${packageName} not found in database`);
+    }
+    
+    // For security reasons, we can't retrieve the original API key
+    // Instead, we'll use a special header that identifies this as a system request
+    // The TPA server will need to validate this using the hashedApiKey
+    
+    // Construct the webhook URL from the app's public URL
+    const webhookUrl = `${app.publicUrl}/command`;
+    
+    // Set up retry configuration
+    const maxRetries = 2;
+    const baseDelay = 1000; // 1 second
+    
+    // Attempt to send the webhook with retries
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        const response = await axios.post(webhookUrl, payload, {
+          headers: {
+            'Content-Type': 'application/json',
+            'X-TPA-API-Key': appDoc.hashedApiKey, // Use the hashed API key for authentication
+          },
+          timeout: 10000 // 10 second timeout
+        });
+        
+        // Return successful response
+        return {
+          status: response.status,
+          data: response.data
+        };
+      } catch (error: unknown) {
+        // If this is the last retry attempt, throw an error
+        if (attempt === maxRetries - 1) {
+          if (axios.isAxiosError(error)) {
+            const axiosError = error as AxiosError;
+            console.error(`Command webhook failed for ${packageName}: ${axiosError.message}`);
+            console.error(`URL: ${webhookUrl}`);
+            console.error(`Response: ${axiosError.response?.data}`);
+            console.error(`Status: ${axiosError.response?.status}`);
+            
+            // Return a standardized error response
+            return {
+              status: axiosError.response?.status || 500,
+              data: {
+                error: true,
+                message: `Webhook failed: ${axiosError.message}`,
+                details: axiosError.response?.data || {}
+              }
+            };
+          } else {
+            // Handle non-Axios errors
+            const genericError = error as Error;
+            return {
+              status: 500,
+              data: {
+                error: true,
+                message: `Webhook failed: ${genericError.message || 'Unknown error'}`
+              }
+            };
+          }
+        }
+        
+        // Exponential backoff before retry
+        await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
+      }
+    }
+    
+    // This should never be reached due to the error handling above,
+    // but TypeScript requires a return value
+    return {
+      status: 500,
+      data: {
+        error: true,
+        message: 'Unknown error occurred'
+      }
+    };
+  }
+
+  /**
+   * Gets all command definitions for a TPA
+   * Used by Mira AI to discover available commands
+   * @param packageName - The package name of the TPA
+   * @returns Array of command definitions
+   */
+  async getTpaCommands(packageName: string): Promise<CommandSchema[]> {
+    // Look up the TPA by packageName
+    const app = await this.getApp(packageName);
+    
+    if (!app) {
+      throw new Error(`App ${packageName} not found`);
+    }
+    
+    // Get the app document from MongoDB to access the commands array
+    const appDoc = await App.findOne({ packageName });
+    if (!appDoc) {
+      throw new Error(`App ${packageName} not found in database`);
+    }
+    
+    // Return the commands array or empty array if no commands defined
+    return appDoc.commands || [];
+  }
 
 }
 

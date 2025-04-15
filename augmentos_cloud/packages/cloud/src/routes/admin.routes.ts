@@ -4,6 +4,7 @@ import { validateAdminEmail } from '../middleware/admin-auth.middleware';
 import App from '../models/app.model';
 import { logger } from '@augmentos/utils';
 import { Exception } from '@sentry/node';
+import appService from '../services/core/app.service';
 
 const router = Router();
 
@@ -86,6 +87,65 @@ const getAppDetail = async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error fetching app detail:', error);
     res.status(500).json({ error: 'Failed to fetch app detail' });
+  }
+};
+
+/**
+ * Trigger a command webhook to a TPA
+ * Used by Mira AI to send commands to TPAs
+ */
+const triggerCommand = async (req: Request, res: Response) => {
+  try {
+    const { packageName } = req.params;
+    const payload = req.body;
+    
+    // Validate the payload has the required fields
+    if (!payload.command_id) {
+      return res.status(400).json({ 
+        error: true, 
+        message: 'Missing required field: command_id' 
+      });
+    }
+    
+    // Log the command request
+    logger.info(`Triggering command webhook for app ${packageName}`, {
+      command_id: payload.command_id,
+      user_id: payload.user_id
+    });
+    
+    // Call the service method to trigger the webhook
+    const result = await appService.triggerTpaCommandWebhook(packageName, payload);
+    
+    // Return the response from the TPA
+    return res.status(result.status).json(result.data);
+  } catch (error) {
+    logger.error('Error triggering command webhook:', error);
+    return res.status(500).json({ 
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred' 
+    });
+  }
+};
+
+/**
+ * Get all commands for a specific TPA
+ * Used by Mira AI to discover available commands
+ */
+const getTpaCommands = async (req: Request, res: Response) => {
+  try {
+    const { packageName } = req.params;
+    
+    // Call the service method to get the commands
+    const commands = await appService.getTpaCommands(packageName);
+    
+    // Return the commands array
+    res.json(commands);
+  } catch (error) {
+    logger.error('Error fetching TPA commands:', error);
+    res.status(500).json({ 
+      error: true,
+      message: error instanceof Error ? error.message : 'Unknown error occurred' 
+    });
   }
 };
 
@@ -257,5 +317,9 @@ router.get('/apps/submitted', validateAdminEmail, getSubmittedApps);
 router.get('/apps/:packageName', validateAdminEmail, getAppDetail);
 router.post('/apps/:packageName/approve', validateAdminEmail, approveApp);
 router.post('/apps/:packageName/reject', validateAdminEmail, rejectApp);
+
+// Command webhook routes - Used by Mira AI
+router.post('/apps/:packageName/command', triggerCommand);
+router.get('/apps/:packageName/commands', getTpaCommands);
 
 export default router;
