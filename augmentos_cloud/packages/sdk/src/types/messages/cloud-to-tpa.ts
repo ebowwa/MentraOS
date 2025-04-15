@@ -61,7 +61,6 @@ export interface TranscriptionData extends BaseMessage {
   text: string;  // The transcribed text
   isFinal: boolean;  // Whether this is a final transcription
   transcribeLanguage?: string;  // Detected language code
-  detectedLanguage?: string; // The language code detected by the speech service for this segment (e.g., "en-US")
   startTime: number;  // Start time in milliseconds
   endTime: number;  // End time in milliseconds
   speakerId?: string;  // ID of the speaker if available

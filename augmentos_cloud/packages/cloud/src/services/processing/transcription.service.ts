@@ -185,21 +185,16 @@ export class TranscriptionService {
       // Translation branch: use recognizing and recognized.
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognizing = (_sender: any, event: any) => {
         if (!event.result.translations) return;
-
-        // Capture detected language and original text
-        const originalText = event.result.text;
-
-        // TODO: Find a better way to handle this
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
-        const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? originalText : event.result.translations.get(translateLanguage);
-        console.log(`🎤 TRANSLATION [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
-
-        const didTranslate = translatedText !== originalText;
+        const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
+        const didTranslate = translatedText !== event.result.text;
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
+
+        console.log(`🎤 TRANSLATION from ${detectedSourceLang} to ${languageInfo.translateLanguage} [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           text: translatedText,
-          originalText: originalText,
+          originalText: event.result.text,
           startTime: this.calculateRelativeTime(event.result.offset),
           endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
           isFinal: false,
@@ -214,20 +209,16 @@ export class TranscriptionService {
 
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognized = (_sender: any, event: any) => {
         if (!event.result.translations) return;
-
-        const originalText = event.result.text;
-
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
-        const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? originalText : event.result.translations.get(translateLanguage);
-
-        const didTranslate = translatedText !== originalText;
+        const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
+        const didTranslate = translatedText !== event.result.text;
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           isFinal: true,
           text: translatedText,
-          originalText: originalText,
+          originalText: event.result.text,
           startTime: this.calculateRelativeTime(event.result.offset),
           endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
           speakerId: event.result.speakerId,
@@ -243,7 +234,6 @@ export class TranscriptionService {
       // Transcription branch.
       (instance.recognizer as ConversationTranscriber).transcribing = (_sender: any, event: ConversationTranscriptionEventArgs) => {
         if (!event.result.text) return;
-
         console.log(`🎤 TRANSCRIPTION [Interim][${userSession.userId}][${subscription}]: ${event.result.text}`);
         const transcriptionData: TranscriptionData = {
           type: StreamType.TRANSCRIPTION,
@@ -263,7 +253,6 @@ export class TranscriptionService {
 
       (instance.recognizer as ConversationTranscriber).transcribed = (_sender: any, event: ConversationTranscriptionEventArgs) => {
         if (!event.result.text) return;
-
         console.log(`✅ TRANSCRIPTION [Final][${userSession.userId}][${subscription}]: ${event.result.text}`);
         const transcriptionData: TranscriptionData = {
           type: StreamType.TRANSCRIPTION,

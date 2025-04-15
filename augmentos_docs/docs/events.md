@@ -133,7 +133,6 @@ interface TranscriptionData {
   text: string;
   isFinal: boolean;
   transcribeLanguage?: string;
-  detectedLanguage?: string;
   startTime: number;
   endTime: number;
   speakerId?: string;
