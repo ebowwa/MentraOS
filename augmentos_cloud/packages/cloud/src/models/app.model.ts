@@ -4,20 +4,20 @@ import { AppI as _AppI, TpaType } from '@augmentos/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 
-// Command parameter type definition
-export interface CommandParameterSchema {
+// Tool parameter type definition
+export interface ToolParameterSchema {
   type: 'string' | 'number' | 'boolean';
   description: string;
   enum?: string[];
   required?: boolean;
 }
 
-// Command schema definition for TPAs
-export interface CommandSchema {
+// Tool schema definition for TPAs
+export interface ToolSchema {
   id: string;
   description: string;
-  phrases: string[];
-  parameters?: Record<string, CommandParameterSchema>;
+  activationPhrases?: string[];
+  parameters?: Record<string, ToolParameterSchema>;
 }
 
 // Extend the AppI interface for our MongoDB document
@@ -31,7 +31,7 @@ export interface AppI extends _AppI, Document {
   reviewNotes?: string;
   reviewedBy?: string;
   reviewedAt?: Date;
-  commands?: CommandSchema[];
+  tools?: ToolSchema[];
 }
 
 // Using existing schema with flexible access
@@ -61,8 +61,8 @@ const AppSchema = new Schema({
     type: Date
   },
   
-  // TPA Spoken Commands
-  commands: [{
+  // TPA AI Tools
+  tools: [{
     id: {
       type: String,
       required: true
@@ -71,9 +71,9 @@ const AppSchema = new Schema({
       type: String,
       required: true
     },
-    phrases: {
+    activationPhrases: {
       type: [String],
-      required: true
+      required: false
     },
     parameters: {
       type: Map,

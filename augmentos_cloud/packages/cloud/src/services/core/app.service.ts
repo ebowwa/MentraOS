@@ -10,7 +10,7 @@
 import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
-import App, { CommandParameterSchema, CommandSchema } from '../../models/app.model';
+import App, { ToolParameterSchema, ToolSchema } from '../../models/app.model';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 
@@ -371,34 +371,36 @@ export class AppService {
   }
 
   /**
-   * Validates command definitions against the schema requirements
-   * @param commands Array of command definitions to validate
-   * @returns Validated and sanitized commands array or throws error if invalid
+   * Validates tool definitions against the schema requirements
+   * @param tools Array of tool definitions to validate
+   * @returns Validated and sanitized tools array or throws error if invalid
    */
-  private validateCommandDefinitions(commands: any[]): CommandSchema[] {
-    if (!Array.isArray(commands)) {
-      throw new Error('Commands must be an array');
+  private validateToolDefinitions(tools: any[]): ToolSchema[] {
+    if (!Array.isArray(tools)) {
+      throw new Error('Tools must be an array');
     }
     
-    return commands.map(command => {
+    return tools.map(tool => {
       // Validate required fields
-      if (!command.id || typeof command.id !== 'string') {
-        throw new Error('Command id is required and must be a string');
+      if (!tool.id || typeof tool.id !== 'string') {
+        throw new Error('Tool id is required and must be a string');
       }
       
-      if (!command.description || typeof command.description !== 'string') {
-        throw new Error('Command description is required and must be a string');
+      if (!tool.description || typeof tool.description !== 'string') {
+        throw new Error('Tool description is required and must be a string');
       }
       
-      if (!Array.isArray(command.phrases) || command.phrases.length === 0) {
-        throw new Error('Command phrases must be a non-empty array');
+      // Activation phrases can be null or empty, no validation needed
+      // We'll just ensure it's an array if provided
+      if (tool.activationPhrases && !Array.isArray(tool.activationPhrases)) {
+        throw new Error('Tool activationPhrases must be an array if provided');
       }
       
       // Validate parameters if they exist
-      const validatedParameters: Record<string, CommandParameterSchema> = {};
+      const validatedParameters: Record<string, ToolParameterSchema> = {};
       
-      if (command.parameters) {
-        Object.entries(command.parameters).forEach(([key, param]: [string, any]) => {
+      if (tool.parameters) {
+        Object.entries(tool.parameters).forEach(([key, param]: [string, any]) => {
           if (!param.type || !['string', 'number', 'boolean'].includes(param.type)) {
             throw new Error(`Parameter ${key} has invalid type. Must be string, number, or boolean`);
           }
@@ -421,9 +423,9 @@ export class AppService {
       }
       
       return {
-        id: command.id,
-        description: command.description,
-        phrases: command.phrases.map((p: string) => p.trim()),
+        id: tool.id,
+        description: tool.description,
+        activationPhrases: tool.activationPhrases.map((p: string) => p.trim()),
         parameters: Object.keys(validatedParameters).length > 0 ? validatedParameters : undefined
       };
     });
@@ -437,12 +439,12 @@ export class AppService {
     const apiKey = crypto.randomBytes(32).toString('hex');
     const hashedApiKey = this.hashApiKey(apiKey);
     
-    // Parse and validate commands if present
-    if (appData.commands) {
+    // Parse and validate tools if present
+    if (appData.tools) {
       try {
-        appData.commands = this.validateCommandDefinitions(appData.commands);
+        appData.tools = this.validateToolDefinitions(appData.tools);
       } catch (error: any) {
-        throw new Error(`Invalid command definitions: ${error.message}`);
+        throw new Error(`Invalid tool definitions: ${error.message}`);
       }
     }
     
@@ -480,12 +482,12 @@ export class AppService {
       throw new Error('You do not have permission to update this app');
     }
     
-    // Parse and validate commands if present
-    if (appData.commands) {
+    // Parse and validate tools if present
+    if (appData.tools) {
       try {
-        appData.commands = this.validateCommandDefinitions(appData.commands);
+        appData.tools = this.validateToolDefinitions(appData.tools);
       } catch (error: any) {
-        throw new Error(`Invalid command definitions: ${error.message}`);
+        throw new Error(`Invalid tool definitions: ${error.message}`);
       }
     }
     
@@ -682,12 +684,12 @@ export class AppService {
   }
 
   /**
-   * Triggers the TPA command webhook for Mira AI integration
-   * @param packageName - The package name of the TPA to send the command to
-   * @param payload - The command webhook payload containing command details
+   * Triggers the TPA tool webhook for Mira AI integration
+   * @param packageName - The package name of the TPA to send the tool to
+   * @param payload - The tool webhook payload containing tool details
    * @returns Promise resolving to the webhook response or error
    */
-  async triggerTpaCommandWebhook(packageName: string, payload: any): Promise<{
+  async triggerTpaToolWebhook(packageName: string, payload: any): Promise<{
     status: number;
     data: any;
   }> {
@@ -713,7 +715,7 @@ export class AppService {
     // The TPA server will need to validate this using the hashedApiKey
     
     // Construct the webhook URL from the app's public URL
-    const webhookUrl = `${app.publicUrl}/command`;
+    const webhookUrl = `${app.publicUrl}/tool`;
     
     // Set up retry configuration
     const maxRetries = 2;
@@ -740,7 +742,7 @@ export class AppService {
         if (attempt === maxRetries - 1) {
           if (axios.isAxiosError(error)) {
             const axiosError = error as AxiosError;
-            console.error(`Command webhook failed for ${packageName}: ${axiosError.message}`);
+            console.error(`Tool webhook failed for ${packageName}: ${axiosError.message}`);
             console.error(`URL: ${webhookUrl}`);
             console.error(`Response: ${axiosError.response?.data}`);
             console.error(`Status: ${axiosError.response?.status}`);
@@ -784,12 +786,12 @@ export class AppService {
   }
 
   /**
-   * Gets all command definitions for a TPA
-   * Used by Mira AI to discover available commands
+   * Gets all tool definitions for a TPA
+   * Used by Mira AI to discover available tools
    * @param packageName - The package name of the TPA
-   * @returns Array of command definitions
+   * @returns Array of tool definitions
    */
-  async getTpaCommands(packageName: string): Promise<CommandSchema[]> {
+  async getTpaTools(packageName: string): Promise<ToolSchema[]> {
     // Look up the TPA by packageName
     const app = await this.getApp(packageName);
     
@@ -797,14 +799,14 @@ export class AppService {
       throw new Error(`App ${packageName} not found`);
     }
     
-    // Get the app document from MongoDB to access the commands array
+    // Get the app document from MongoDB to access the tools array
     const appDoc = await App.findOne({ packageName });
     if (!appDoc) {
       throw new Error(`App ${packageName} not found in database`);
     }
     
-    // Return the commands array or empty array if no commands defined
-    return appDoc.commands || [];
+    // Return the tools array or empty array if no tools defined
+    return appDoc.tools || [];
   }
 
 }

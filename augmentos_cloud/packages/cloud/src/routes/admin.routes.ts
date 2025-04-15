@@ -91,35 +91,35 @@ const getAppDetail = async (req: Request, res: Response) => {
 };
 
 /**
- * Trigger a command webhook to a TPA
- * Used by Mira AI to send commands to TPAs
+ * Trigger a tool webhook to a TPA
+ * Used by Mira AI to send tools to TPAs
  */
-const triggerCommand = async (req: Request, res: Response) => {
+const triggerTool = async (req: Request, res: Response) => {
   try {
     const { packageName } = req.params;
     const payload = req.body;
     
     // Validate the payload has the required fields
-    if (!payload.command_id) {
+    if (!payload.tool_id) {
       return res.status(400).json({ 
         error: true, 
-        message: 'Missing required field: command_id' 
+        message: 'Missing required field: tool_id' 
       });
     }
     
-    // Log the command request
-    logger.info(`Triggering command webhook for app ${packageName}`, {
-      command_id: payload.command_id,
+    // Log the tool request
+    logger.info(`Triggering tool webhook for app ${packageName}`, {
+      tool_id: payload.tool_id,
       user_id: payload.user_id
     });
     
     // Call the service method to trigger the webhook
-    const result = await appService.triggerTpaCommandWebhook(packageName, payload);
+    const result = await appService.triggerTpaToolWebhook(packageName, payload);
     
     // Return the response from the TPA
     return res.status(result.status).json(result.data);
   } catch (error) {
-    logger.error('Error triggering command webhook:', error);
+    logger.error('Error triggering tool webhook:', error);
     return res.status(500).json({ 
       error: true,
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
@@ -128,20 +128,20 @@ const triggerCommand = async (req: Request, res: Response) => {
 };
 
 /**
- * Get all commands for a specific TPA
- * Used by Mira AI to discover available commands
+ * Get all tools for a specific TPA
+ * Used by Mira AI to discover available tools
  */
-const getTpaCommands = async (req: Request, res: Response) => {
+const getTpaTools = async (req: Request, res: Response) => {
   try {
     const { packageName } = req.params;
     
-    // Call the service method to get the commands
-    const commands = await appService.getTpaCommands(packageName);
+    // Call the service method to get the tools
+    const tools = await appService.getTpaTools(packageName);
     
-    // Return the commands array
-    res.json(commands);
+    // Return the tools array
+    res.json(tools);
   } catch (error) {
-    logger.error('Error fetching TPA commands:', error);
+    logger.error('Error fetching TPA tools:', error);
     res.status(500).json({ 
       error: true,
       message: error instanceof Error ? error.message : 'Unknown error occurred' 
@@ -318,8 +318,8 @@ router.get('/apps/:packageName', validateAdminEmail, getAppDetail);
 router.post('/apps/:packageName/approve', validateAdminEmail, approveApp);
 router.post('/apps/:packageName/reject', validateAdminEmail, rejectApp);
 
-// Command webhook routes - Used by Mira AI
-router.post('/apps/:packageName/command', triggerCommand);
-router.get('/apps/:packageName/commands', getTpaCommands);
+// Tool webhook routes - Used by Mira AI
+router.post('/apps/:packageName/tool', triggerTool);
+router.get('/apps/:packageName/tools', getTpaTools);
 
 export default router;
