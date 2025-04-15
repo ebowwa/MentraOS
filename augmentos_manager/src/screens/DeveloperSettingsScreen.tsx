@@ -70,7 +70,7 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
 
   // Modified handler for Custom URL
   const handleSaveUrl = async () => {
-    const urlToTest = customUrlInput.trim();
+    const urlToTest = customUrlInput.trim().replace(/\/+$/, '');
 
     // Basic validation
     if (!urlToTest) {
