@@ -156,4 +156,27 @@ public abstract class SmartGlassesCommunicator {
         // Device-specific communicators should override this method
         // e.g., MentraLiveSGC will handle WiFi credentials commands
     }
+    
+    /**
+     * Requests the smart glasses to take a photo
+     * Default implementation does nothing - specific communicators should override
+     * 
+     * @param requestId The unique ID for this photo request
+     * @param appId The ID of the app requesting the photo
+     */
+    public void requestPhoto(String requestId, String appId) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Photo request not implemented for this device");
+    }
+    
+    /**
+     * Requests the smart glasses to start a video stream
+     * Default implementation does nothing - specific communicators should override
+     * 
+     * @param appId The ID of the app requesting the video stream
+     */
+    public void requestVideoStream(String appId) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "Video stream request not implemented for this device");
+    }
 }

@@ -40,10 +40,10 @@ import java.util.UUID;
 public class StandardBluetoothManager extends BaseBluetoothManager {
     private static final String TAG = "StandardBluetoothManager";
     
-    // UUIDs for our service and characteristics (these are made-up UUIDs)
-    private static final UUID SERVICE_UUID = UUID.fromString("795090c7-420d-4048-a24e-18e60180e23c");
-    private static final UUID TX_CHAR_UUID = UUID.fromString("795090c8-420d-4048-a24e-18e60180e23c");
-    private static final UUID RX_CHAR_UUID = UUID.fromString("795090c9-420d-4048-a24e-18e60180e23c");
+    // UUIDs for our service and characteristics - updated to match K900 BES2800 MCU UUIDs for compatibility
+    private static final UUID SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
+    private static final UUID TX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
+    private static final UUID RX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
     
     // Device name for advertising
     private static final String DEVICE_NAME = "Xy_A";
@@ -684,18 +684,18 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             boolean isLc3AudioPacket = false;
             if (data.length > 0 && (data[0] == (byte)0xA0 || (data[0] & 0xFF) == 0xA0 || data[0] == -96)) {
                 isLc3AudioPacket = true;
-                Log.e(TAG, "Thread-" + threadId + ": 🎵 LC3 AUDIO PACKET DETECTED!");
-                Log.e(TAG, "Thread-" + threadId + ": 🔍 Packet size (" + data.length + " bytes) exceeds MTU (" + effectiveMtu + " bytes)");
+                //Log.e(TAG, "Thread-" + threadId + ": 🎵 LC3 AUDIO PACKET DETECTED!");
+                //Log.e(TAG, "Thread-" + threadId + ": 🔍 Packet size (" + data.length + " bytes) exceeds MTU (" + effectiveMtu + " bytes)");
                 
                 StringBuilder hexDump = new StringBuilder();
                 for (int i = 0; i < Math.min(data.length, 32); i++) {
                     hexDump.append(String.format("%02X ", data[i]));
                 }
-                Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
+                //Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
                 
                 // Request higher MTU if needed for LC3 audio
                 if (currentMtu < 100 && connectedDevice != null) {
-                    Log.d(TAG, "Thread-" + threadId + ": 🔄 Requesting higher MTU for LC3 audio");
+                    //Log.d(TAG, "Thread-" + threadId + ": 🔄 Requesting higher MTU for LC3 audio");
                     // This is a peripheral, so we can't directly request MTU, but we'll log it
                     // so the central device knows it should increase the MTU
                 }
@@ -717,12 +717,12 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             }
             
             // Enhanced debugging for MTU issues
-            Log.d(TAG, "Thread-" + threadId + ": 📊 Detailed MTU diagnostic:");
-            Log.d(TAG, "Thread-" + threadId + ": 📊 Current MTU: " + currentMtu + " bytes");
-            Log.d(TAG, "Thread-" + threadId + ": 📊 Effective payload: " + effectiveMtu + " bytes");
-            Log.d(TAG, "Thread-" + threadId + ": 📊 Packet size: " + data.length + " bytes");
-            Log.d(TAG, "Thread-" + threadId + ": 📊 Packet type: " + (isLc3AudioPacket ? "LC3 Audio" : "Other"));
-            Log.d(TAG, "Thread-" + threadId + ": 📊 Will attempt to send anyway");
+//            Log.d(TAG, "Thread-" + threadId + ": 📊 Detailed MTU diagnostic:");
+//            Log.d(TAG, "Thread-" + threadId + ": 📊 Current MTU: " + currentMtu + " bytes");
+//            Log.d(TAG, "Thread-" + threadId + ": 📊 Effective payload: " + effectiveMtu + " bytes");
+//            Log.d(TAG, "Thread-" + threadId + ": 📊 Packet size: " + data.length + " bytes");
+//            Log.d(TAG, "Thread-" + threadId + ": 📊 Packet type: " + (isLc3AudioPacket ? "LC3 Audio" : "Other"));
+//            Log.d(TAG, "Thread-" + threadId + ": 📊 Will attempt to send anyway");
             
             // Try to send it anyway and hope the BLE stack handles it
             return sendDataPacket(data);
@@ -739,13 +739,13 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         long threadId = Thread.currentThread().getId();
         
         // Log detailed info about current state
-        Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - data size: " + data.length + " bytes");
-        Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - connectedDevice: " + 
-              (connectedDevice != null ? connectedDevice.getAddress() : "null"));
-        Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - txCharacteristic: " + 
-              (txCharacteristic != null ? txCharacteristic.getUuid() : "null"));
-        Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - gattServer: " + 
-              (gattServer != null ? "initialized" : "null"));
+        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - data size: " + data.length + " bytes");
+        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - connectedDevice: " +
+        //      (connectedDevice != null ? connectedDevice.getAddress() : "null"));
+        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - txCharacteristic: " +
+        //      (txCharacteristic != null ? txCharacteristic.getUuid() : "null"));
+        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - gattServer: " +
+        //      (gattServer != null ? "initialized" : "null"));
         
         // Double-check if we can actually send data
         if (connectedDevice == null) {
@@ -770,7 +770,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         boolean success = false;
         if (checkPermission()) {
             try {
-                Log.d(TAG, "Thread-" + threadId + ": Attempting to send data via BLE characteristic");
+                //Log.d(TAG, "Thread-" + threadId + ": Attempting to send data via BLE characteristic");
                 
                 // Critical check right before sending
                 if (connectedDevice == null) {
@@ -781,13 +781,13 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 success = gattServer.notifyCharacteristicChanged(connectedDevice, txCharacteristic, false);
                 
                 if (success) {
-                    Log.d(TAG, "Thread-" + threadId + ": ✅ Sent " + data.length + " bytes via BLE characteristic");
+                    //Log.d(TAG, "Thread-" + threadId + ": ✅ Sent " + data.length + " bytes via BLE characteristic");
                     
                     // Only show notification for larger data packets to avoid spam
-                    if (data.length > 10) {
-                        notificationManager.showDebugNotification("Bluetooth Data", 
-                            "Sent " + data.length + " bytes via BLE");
-                    }
+//                    if (data.length > 10) {
+//                        notificationManager.showDebugNotification("Bluetooth Data",
+//                            "Sent " + data.length + " bytes via BLE");
+//                    }
                 } else {
                     Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to send data via BLE characteristic");
                 }

@@ -635,6 +635,51 @@ public class SmartGlassesManager {
         }
     }
     
+    /**
+     * Request a photo from the connected smart glasses
+     * 
+     * @param requestId The unique ID for this photo request
+     * @param appId The ID of the app requesting the photo
+     * @return true if request was sent, false if glasses not connected
+     */
+    public boolean requestPhoto(String requestId, String appId) {
+        if (smartGlassesRepresentative != null && 
+            smartGlassesRepresentative.smartGlassesCommunicator != null && 
+            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+            
+            Log.d(TAG, "Requesting photo from glasses, requestId: " + requestId + ", appId: " + appId);
+            
+            // Pass the request to the smart glasses communicator
+            smartGlassesRepresentative.smartGlassesCommunicator.requestPhoto(requestId, appId);
+            return true;
+        } else {
+            Log.e(TAG, "Cannot request photo - glasses not connected");
+            return false;
+        }
+    }
+    
+    /**
+     * Request a video stream from the connected smart glasses
+     * 
+     * @param appId The ID of the app requesting the video stream
+     * @return true if request was sent, false if glasses not connected
+     */
+    public boolean requestVideoStream(String appId) {
+        if (smartGlassesRepresentative != null && 
+            smartGlassesRepresentative.smartGlassesCommunicator != null && 
+            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+            
+            Log.d(TAG, "Requesting video stream from glasses for appId: " + appId);
+            
+            // Pass the request to the smart glasses communicator
+            smartGlassesRepresentative.smartGlassesCommunicator.requestVideoStream(appId);
+            return true;
+        } else {
+            Log.e(TAG, "Cannot request video stream - glasses not connected");
+            return false;
+        }
+    }
+    
     @Subscribe
     public void handleNewAsrLanguagesEvent(NewAsrLanguagesEvent event) {
         Log.d(TAG, "NewAsrLanguages: " + event.languages.toString());

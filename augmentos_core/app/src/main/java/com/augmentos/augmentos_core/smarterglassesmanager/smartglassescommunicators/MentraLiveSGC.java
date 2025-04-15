@@ -60,14 +60,14 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
 public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final String TAG = "WearableAi_MentraLiveSGC";
     
-    // BLE UUIDs - match these with the peripheral implementation
+    // BLE UUIDs - updated to match K900 BES2800 MCU UUIDs for compatibility with both glass types
     // CRITICAL FIX: Swapped TX and RX UUIDs to match actual usage from central device perspective
     // In BLE, characteristic names are from the perspective of the device that owns them:
     // - From peripheral's perspective: TX is for sending, RX is for receiving
     // - From central's perspective: RX is peripheral's TX, TX is peripheral's RX
-    private static final UUID SERVICE_UUID = UUID.fromString("795090c7-420d-4048-a24e-18e60180e23c");
-    private static final UUID RX_CHAR_UUID = UUID.fromString("795090c8-420d-4048-a24e-18e60180e23c"); // Central receives on peripheral's TX
-    private static final UUID TX_CHAR_UUID = UUID.fromString("795090c9-420d-4048-a24e-18e60180e23c"); // Central transmits on peripheral's RX
+    private static final UUID SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
+    private static final UUID RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb"); // Central receives on peripheral's TX
+    private static final UUID TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb"); // Central transmits on peripheral's RX
     private static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
     
     // Reconnection parameters
@@ -83,6 +83,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // Device settings
     private static final String PREFS_NAME = "MentraLivePrefs";
     private static final String PREF_DEVICE_ADDRESS = "LastConnectedDeviceAddress";
+    
+    // Auth settings
+    private static final String AUTH_PREFS_NAME = "augmentos_auth_prefs";
+    private static final String KEY_CORE_TOKEN = "core_token";
     
     // State tracking
     private Context context;
@@ -172,12 +176,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
                 .build();
         
-        // Set up filters for the device name pattern "Xy_A"
+        // Set up filters for both standard "Xy_A" and K900 "XyBLE_" device names
         List<ScanFilter> filters = new ArrayList<>();
-        ScanFilter filter = new ScanFilter.Builder()
-                .setDeviceName("Xy_A") // Name advertised by our BLE peripheral
+        
+        // Standard glasses filter
+        ScanFilter standardFilter = new ScanFilter.Builder()
+                .setDeviceName("Xy_A") // Name for standard glasses BLE peripheral
                 .build();
-        filters.add(filter);
+        filters.add(standardFilter);
+        
+        // K900/Mentra Live glasses filter
+        ScanFilter k900Filter = new ScanFilter.Builder()
+                .setDeviceName("XyBLE_") // Name for K900/Mentra Live glasses
+                .build();
+        filters.add(k900Filter);
         
         // Start scanning
         try {
@@ -185,19 +197,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             isScanning = true;
             bluetoothScanner.startScan(filters, settings, scanCallback);
             
-            // Set a timeout to stop scanning after 30 seconds
+            // Set a timeout to stop scanning after 60 seconds (increased from 30 seconds)
+            // After timeout, just stop scanning but DON'T automatically try to connect
             handler.postDelayed(new Runnable() {
                 @Override
                 public void run() {
                     if (isScanning) {
+                        Log.d(TAG, "Scan timeout reached - stopping BLE scan");
                         stopScan();
-                        if (!isConnected && !isConnecting) {
-                            // If we haven't connected yet, try to reconnect to last known device
-                            reconnectToLastKnownDevice();
-                        }
+                        // NOTE: Removed automatic reconnection to last device
+                        // Now waits for explicit connection request from UI
                     }
                 }
-            }, 30000);
+            }, 60000); // 60 seconds (increased from 30)
         } catch (Exception e) {
             Log.e(TAG, "Error starting BLE scan", e);
             isScanning = false;
@@ -237,14 +249,24 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             Log.d(TAG, "Found BLE device: " + deviceName + " (" + deviceAddress + ")");
             
-            // Post the discovered device to the event bus
-            EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
-                    smartGlassesDevice.deviceModelName, deviceAddress));
+            // Check if this device matches the saved device address
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            String savedDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
             
-            // Connect to the first matching device
-            if (deviceName.equals("Xy_A") && !isConnected && !isConnecting) {
-                stopScan();
-                connectToDevice(result.getDevice());
+            // Post the discovered device to the event bus ONLY 
+            // Don't automatically connect - wait for explicit connect request from UI
+            if (deviceName.equals("Xy_A") || deviceName.startsWith("XyBLE_")) {
+                String glassType = deviceName.equals("Xy_A") ? "Standard" : "K900";
+                Log.d(TAG, "Found compatible " + glassType + " glasses device: " + deviceAddress);
+                EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
+                        smartGlassesDevice.deviceModelName, deviceAddress));
+                
+                // If this is the specific device we want to connect to, connect to it
+                if (savedDeviceAddress != null && savedDeviceAddress.equals(deviceAddress)) {
+                    Log.d(TAG, "Found our specific device, connecting: " + deviceAddress);
+                    stopScan();
+                    connectToDevice(result.getDevice());
+                }
             }
         }
         
@@ -317,13 +339,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
         
         if (lastDeviceAddress != null && bluetoothAdapter != null) {
-            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-            if (device != null) {
-                Log.d(TAG, "Attempting to reconnect to last known device: " + lastDeviceAddress);
-                connectToDevice(device);
+            Log.d(TAG, "Attempting to reconnect to last known device: " + lastDeviceAddress);
+            try {
+                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
+                if (device != null) {
+                    Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
+                    connectToDevice(device);
+                } else {
+                    Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
+                    connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                    startScan(); // Fallback to scanning
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
+                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                startScan(); // Fallback to scanning
             }
         } else {
             // No last device to connect to, start scanning
+            Log.d(TAG, "No last known device, starting scan");
             startScan();
         }
     }
@@ -351,8 +385,30 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             @Override
             public void run() {
                 if (!isConnected && !isConnecting && !isKilled) {
-                    // Try last known device first
-                    reconnectToLastKnownDevice();
+                    // Try last known device first, but don't start scanning automatically
+                    SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                    String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+                    
+                    if (lastDeviceAddress != null && bluetoothAdapter != null) {
+                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - trying last known device: " + lastDeviceAddress);
+                        try {
+                            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
+                            if (device != null) {
+                                Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
+                                connectToDevice(device);
+                            } else {
+                                Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
+                                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
+                            connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                        }
+                    } else {
+                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - no last device available");
+                        // Note: We don't start scanning here anymore to avoid unexpected behavior
+                        // Instead, let the user explicitly trigger a new scan when needed
+                    }
                 }
             }
         }, delay);
@@ -462,6 +518,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         // Request battery and WiFi status
                         requestBatteryStatus();
                         requestWifiStatus();
+                        
+                        // Send the coreToken to the ASG client
+                        sendCoreTokenToAsgClient();
                     } else {
                         Log.e(TAG, "Required BLE characteristics not found");
                         if (rxCharacteristic == null) {
@@ -510,21 +569,22 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             // Get thread ID for tracking thread issues
             long threadId = Thread.currentThread().getId();
             
-            Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + characteristic.getUuid());
+            //Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + characteristic.getUuid());
             
             // With the fixed UUID definitions, we should now be receiving notifications on RX_CHAR_UUID
             // (peripheral's TX characteristic that we receive on)
             boolean isCorrectCharacteristic = false;
             if (characteristic.getUuid().equals(RX_CHAR_UUID)) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RX CHARACTERISTIC NOTIFICATION RECEIVED! (Peripheral's TX)");
+                //Log.e(TAG, "Thread-" + threadId + ": 🎯 RX CHARACTERISTIC NOTIFICATION RECEIVED! (Peripheral's TX)");
                 isCorrectCharacteristic = true;
-            } else if (characteristic.getUuid().equals(TX_CHAR_UUID)) {
-                // This shouldn't happen normally, but we'll keep it for robustness
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 TX CHARACTERISTIC NOTIFICATION RECEIVED! (Should be rare)");
-                isCorrectCharacteristic = true;
-            } else {
-                Log.e(TAG, "Thread-" + threadId + ": ⚠️ UNKNOWN CHARACTERISTIC NOTIFICATION: " + characteristic.getUuid());
             }
+//            else if (characteristic.getUuid().equals(TX_CHAR_UUID)) {
+//                // This shouldn't happen normally, but we'll keep it for robustness
+//                Log.e(TAG, "Thread-" + threadId + ": 🎯 TX CHARACTERISTIC NOTIFICATION RECEIVED! (Should be rare)");
+//                isCorrectCharacteristic = true;
+//            } else {
+//                Log.e(TAG, "Thread-" + threadId + ": ⚠️ UNKNOWN CHARACTERISTIC NOTIFICATION: " + characteristic.getUuid());
+//            }
             
             if (isCorrectCharacteristic) {
                 byte[] data = characteristic.getValue();
@@ -550,10 +610,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Combined result
                     isLc3Command = method1 || method2 || method3;
                     
-                    Log.e(TAG, "Thread-" + threadId + ": 🎤 BLE PACKET RECEIVED - " + data.length + " bytes");
-                    Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 Detection - Method1: " + method1 + ", Method2: " + method2 + ", Method3: " + method3);
-                    Log.e(TAG, "Thread-" + threadId + ": 🔍 Command byte: 0x" + String.format("%02X", data[0]) + " (" + (int)(data[0] & 0xFF) + ")");
-                    Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
+//                    Log.e(TAG, "Thread-" + threadId + ": 🎤 BLE PACKET RECEIVED - " + data.length + " bytes");
+//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 Detection - Method1: " + method1 + ", Method2: " + method2 + ", Method3: " + method3);
+//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 Command byte: 0x" + String.format("%02X", data[0]) + " (" + (int)(data[0] & 0xFF) + ")");
+//                    Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
                     
                     // Log MTU information with packet
                     int mtuSize = -1;
@@ -561,7 +621,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         try {
                             // Calculate effective MTU (current MTU - 3 bytes BLE overhead)
                             int effectiveMtu = currentMtu - 3;
-                            Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + data.length + " bytes, MTU limit: " + effectiveMtu + " bytes");
+                            //Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + data.length + " bytes, MTU limit: " + effectiveMtu + " bytes");
                             
                             if (data.length > effectiveMtu) {
                                 Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
@@ -573,16 +633,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     
                     // Check if this looks like LC3 audio data based on combined detection
                     if (isLc3Command && data.length >= 20) {
-                        Log.e(TAG, "Thread-" + threadId + ": 🎵 LC3 AUDIO PACKET CONFIRMED! Length: " + data.length + " bytes");
+                        //Log.e(TAG, "Thread-" + threadId + ": 🎵 LC3 AUDIO PACKET CONFIRMED! Length: " + data.length + " bytes");
                         
                         // Additional debugging: Check LC3 packet structure
                         if (data.length > 2) {
                             int packetLength = data.length;
-                            Log.e(TAG, "Thread-" + threadId + ": 📦 LC3 packet structure analysis:");
-                            Log.e(TAG, "Thread-" + threadId + ": 📦 Command: 0x" + String.format("%02X", data[0]));
+                            //Log.e(TAG, "Thread-" + threadId + ": 📦 LC3 packet structure analysis:");
+                            //Log.e(TAG, "Thread-" + threadId + ": 📦 Command: 0x" + String.format("%02X", data[0]));
                             
                             if (packetLength >= 60) {
-                                Log.e(TAG, "Thread-" + threadId + ": ✅ LC3 packet size looks good for audio data");
+                                //Log.e(TAG, "Thread-" + threadId + ": ✅ LC3 packet size looks good for audio data");
                             } else {
                                 Log.e(TAG, "Thread-" + threadId + ": ⚠️ LC3 packet size may be truncated");
                                 if (mtuSize > 0 && packetLength >= mtuSize) {
@@ -591,7 +651,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             }
                             
                             // Check if audioProcessingCallback is registered
-                            Log.e(TAG, "Thread-" + threadId + ": ⭐ Audio callback registered: " + (audioProcessingCallback != null ? "YES" : "NO"));
+                            //Log.e(TAG, "Thread-" + threadId + ": ⭐ Audio callback registered: " + (audioProcessingCallback != null ? "YES" : "NO"));
                         }
                     }
                     
@@ -997,6 +1057,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 updateWifiStatus(wifiConnected, ssid);
                 break;
                 
+            case "token_status":
+                // Process coreToken acknowledgment
+                boolean success = json.optBoolean("success", false);
+                Log.d(TAG, "Received token status from ASG client: " + (success ? "SUCCESS" : "FAILED"));
+                break;
+                
             case "button_press":
                 // Process button press event
                 // ...
@@ -1013,6 +1079,37 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     dataObservable.onNext(json);
                 }
                 break;
+        }
+    }
+    
+    /**
+     * Send the coreToken to the ASG client for direct backend authentication
+     */
+    private void sendCoreTokenToAsgClient() {
+        Log.d(TAG, "Preparing to send coreToken to ASG client");
+        
+        // Get the coreToken from SharedPreferences
+        SharedPreferences prefs = context.getSharedPreferences(AUTH_PREFS_NAME, Context.MODE_PRIVATE);
+        String coreToken = prefs.getString(KEY_CORE_TOKEN, null);
+        
+        if (coreToken == null || coreToken.isEmpty()) {
+            Log.e(TAG, "No coreToken available to send to ASG client");
+            return;
+        }
+        
+        try {
+            // Create a JSON object with the token
+            JSONObject tokenMsg = new JSONObject();
+            tokenMsg.put("type", "auth_token");
+            tokenMsg.put("coreToken", coreToken);
+            tokenMsg.put("timestamp", System.currentTimeMillis());
+            
+            // Send the JSON object
+            Log.d(TAG, "Sending coreToken to ASG client");
+            sendJson(tokenMsg);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating coreToken JSON message", e);
         }
     }
     
@@ -1132,6 +1229,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         startScan();
     }
     
+
     @Override
     public void connectToSmartGlasses() {
         Log.d(TAG, "Connecting to Mentra Live glasses");
@@ -1154,8 +1252,33 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             return;
         }
         
-        // Try to connect to last known device, or start scanning
-        reconnectToLastKnownDevice();
+        // Get last known device address
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+        
+        if (lastDeviceAddress != null) {
+            // Connect to last known device if available
+            Log.d(TAG, "Attempting to connect to last known device: " + lastDeviceAddress);
+            try {
+                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
+                if (device != null) {
+                    Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
+                    connectToDevice(device);
+                } else {
+                    Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
+                    connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                    startScan(); // Fallback to scanning
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
+                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
+                startScan(); // Fallback to scanning
+            }
+        } else {
+            // If no last known device, start scanning for devices
+            Log.d(TAG, "No last known device, starting scan");
+            startScan();
+        }
     }
     
     @Override
@@ -1170,6 +1293,39 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating microphone command", e);
+        }
+    }
+    
+    @Override
+    public void requestPhoto(String requestId, String appId) {
+        Log.d(TAG, "Requesting photo: " + requestId + " for app: " + appId);
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "command");
+            json.put("command", "camera");
+            json.put("action", "take_photo");
+            json.put("requestId", requestId);
+            json.put("appId", appId);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating photo request JSON", e);
+        }
+    }
+    
+    @Override
+    public void requestVideoStream(String appId) {
+        Log.d(TAG, "Requesting video stream for app: " + appId);
+        
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "command");
+            json.put("command", "camera");
+            json.put("action", "start_video_stream");
+            json.put("appId", appId);
+            sendJson(json);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating video stream request JSON", e);
         }
     }
     

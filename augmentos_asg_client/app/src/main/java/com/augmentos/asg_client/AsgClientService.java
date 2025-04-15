@@ -17,7 +17,9 @@ import android.content.ServiceConnection;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
@@ -70,7 +72,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Network management
     private static final int WIFI_SETUP_PORT = 8088;
     private INetworkManager networkManager;
-    private CameraWebServer webServer;
     
     // Bluetooth management
     private IBluetoothManager bluetoothManager;
@@ -78,6 +79,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Microphone management for non-K900 devices
     private com.augmentos.asg_client.audio.GlassesMicrophoneManager glassesMicrophoneManager;
     private boolean isK900Device = false;
+    
+    // DEBUG: Timer and handler for VPS photo uploads
+    private Handler debugVpsPhotoHandler;
+    private Runnable debugVpsPhotoRunnable;
     
 
     // ---------------------------------------------
@@ -140,6 +145,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         
         // Recording test code (kept from original)
         // this.recordFor5Seconds();
+        
+        // DEBUG: Start the debug photo upload timer for VPS
+        startDebugVpsPhotoUploadTimer();
     }
     
     /**
@@ -182,7 +190,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         
         // If not a K900 device, initialize the glasses microphone manager
         if (!isK900Device) {
-            initializeGlassesMicrophoneManager();
+            //initializeGlassesMicrophoneManager();
         }
         
         // Add a listener for bluetooth state changes (using the service itself as the listener)
@@ -310,7 +318,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     private void recordFor5Seconds(){
         CameraRecordingService.startLocalRecording(getApplicationContext());
-        new android.os.Handler().postDelayed(new Runnable() {
+        new Handler().postDelayed(new Runnable() {
             @Override
             public void run() {
                 CameraRecordingService.stopLocalRecording(getApplicationContext());
@@ -379,10 +387,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             isAugmentosBound = false;
         }
 
-        // Stop the web server if it's running
-        if (webServer != null) {
-            webServer.stopServer();
-        }
+        // No web server to stop
+        
+        // Stop debug VPS photo timer
+        stopDebugVpsPhotoUploadTimer();
         
         // Shutdown the network manager if it's initialized
         if (networkManager != null) {
@@ -657,12 +665,329 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         Log.d(TAG, "Bluetooth data: " + hexData.toString());
         
-        // Determine the packet type from the first byte
+        // Check if this is a JSON message (starts with '{')
+        if (data.length > 0 && data[0] == '{') {
+            try {
+                String jsonStr = new String(data, "UTF-8");
+                Log.d(TAG, "Received JSON data: " + jsonStr);
+                JSONObject jsonObject = new JSONObject(jsonStr);
+                processJsonCommand(jsonObject);
+                return;
+            } catch (Exception e) {
+                Log.e(TAG, "Error parsing JSON data", e);
+                // Fall through to binary command processing
+            }
+        }
+        
+        // Determine the packet type from the first byte (binary command format)
         if (data.length > 0) {
             // The first byte could be a command identifier
             byte command = data[0];
             // Process according to the command type
             executeCommand(command, data);
+        }
+    }
+    
+    /**
+     * Process JSON commands received via Bluetooth
+     */
+    private void processJsonCommand(JSONObject json) {
+        try {
+            String type = json.optString("type", "");
+            
+            if ("auth_token".equals(type)) {
+                // Handle authentication token
+                String coreToken = json.optString("coreToken", "");
+                if (!coreToken.isEmpty()) {
+                    Log.d(TAG, "Received coreToken from AugmentOS Core");
+                    saveCoreToken(coreToken);
+                    
+                    // Send acknowledgment
+                    sendTokenStatusResponse(true);
+                } else {
+                    Log.e(TAG, "Received empty coreToken");
+                    sendTokenStatusResponse(false);
+                }
+            }
+            else if ("command".equals(type)) {
+                String command = json.optString("command", "");
+                Log.d(TAG, "Processing JSON command: " + command);
+                
+                switch (command) {
+                    case "camera":
+                        processCameraCommand(json);
+                        break;
+                        
+                    case "set_wifi":
+                        // Handle WiFi configuration command if needed
+                        String ssid = json.optString("ssid", "");
+                        String password = json.optString("password", "");
+                        if (!ssid.isEmpty()) {
+                            Log.d(TAG, "Connecting to WiFi network: " + ssid);
+                            if (networkManager != null) {
+                                networkManager.connectToWifi(ssid, password);
+                            }
+                        }
+                        break;
+                        
+                    default:
+                        Log.w(TAG, "Unknown JSON command: " + command);
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing JSON command", e);
+        }
+    }
+    
+    /**
+     * Save the coreToken to SharedPreferences
+     * This allows the ASG client to authenticate directly with the backend
+     */
+    private void saveCoreToken(String coreToken) {
+        Log.d(TAG, "Saving coreToken to SharedPreferences");
+        try {
+            // Save to default SharedPreferences so it's accessible by all components
+            android.content.SharedPreferences preferences = android.preference.PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            android.content.SharedPreferences.Editor editor = preferences.edit();
+            editor.putString("core_token", coreToken);
+            editor.apply();
+            
+            Log.d(TAG, "CoreToken saved successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving coreToken", e);
+        }
+    }
+    
+    /**
+     * Send a token status response back to AugmentOS Core
+     */
+    private void sendTokenStatusResponse(boolean success) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "token_status");
+                response.put("success", success);
+                response.put("timestamp", System.currentTimeMillis());
+                
+                // Send the JSON response
+                String jsonString = response.toString();
+                bluetoothManager.sendData(jsonString.getBytes());
+                
+                Log.d(TAG, "Sent token status response: " + (success ? "SUCCESS" : "FAILED"));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating token status response", e);
+            }
+        }
+    }
+    
+    /**
+     * Process camera-related commands
+     */
+    private void processCameraCommand(JSONObject json) {
+        String action = json.optString("action", "");
+        Log.d(TAG, "Processing camera command: " + action);
+        
+        try {
+            switch (action) {
+                case "take_photo":
+                    String requestId = json.optString("requestId", "");
+                    String appId = json.optString("appId", "");
+                    
+                    if (requestId.isEmpty()) {
+                        Log.e(TAG, "Cannot take photo - missing requestId");
+                        return;
+                    }
+                    
+                    // Generate a temporary file path for the photo
+                    String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+                    String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
+                    
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", appId: " + appId);
+                    Log.d(TAG, "Photo will be saved to: " + photoFilePath);
+                    
+                    // Take the photo using CameraRecordingService
+                    takePhotoAndUpload(photoFilePath, requestId, appId);
+                    break;
+                    
+                case "start_video_stream":
+                    // This would be implemented in a future version
+                    String videoAppId = json.optString("appId", "");
+                    Log.d(TAG, "Video streaming requested by appId: " + videoAppId);
+                    Log.d(TAG, "Video streaming not yet implemented");
+                    
+                    // Send response indicating video streaming is not supported yet
+                    JSONObject videoResponse = new JSONObject();
+                    videoResponse.put("type", "response");
+                    videoResponse.put("command", "camera");
+                    videoResponse.put("action", "start_video_stream");
+                    videoResponse.put("success", false);
+                    videoResponse.put("appId", videoAppId);
+                    videoResponse.put("message", "Video streaming not supported yet");
+                    
+                    // Send the response back
+                    if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                        bluetoothManager.sendData(videoResponse.toString().getBytes());
+                    }
+                    break;
+                    
+                default:
+                    Log.w(TAG, "Unknown camera action: " + action);
+                    break;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error processing camera command", e);
+        }
+    }
+    
+    /**
+     * Take a photo and upload it to AugmentOS Cloud
+     */
+    /**
+     * Interface for listening to photo capture and upload events
+     */
+    public interface PhotoCaptureListener {
+        void onPhotoCapturing(String requestId);
+        void onPhotoCaptured(String requestId, String filePath);
+        void onPhotoUploading(String requestId);
+        void onPhotoUploaded(String requestId, String url);
+        void onPhotoError(String requestId, String error);
+    }
+    
+    private PhotoCaptureListener photoCaptureListener;
+    
+    /**
+     * Set a listener for photo capture events
+     */
+    public void setPhotoCaptureListener(PhotoCaptureListener listener) {
+        this.photoCaptureListener = listener;
+    }
+    
+    private void takePhotoAndUpload(String photoFilePath, String requestId, String appId) {
+        // Notify that we're about to take a photo
+        if (photoCaptureListener != null) {
+            photoCaptureListener.onPhotoCapturing(requestId);
+        }
+        
+        try {
+            // Use the new callback-based photo capture method
+            com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.takePictureWithCallback(
+                getApplicationContext(),
+                photoFilePath,
+                new com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.PhotoCaptureCallback() {
+                    @Override
+                    public void onPhotoCaptured(String filePath) {
+                        Log.d(TAG, "Photo captured successfully at: " + filePath);
+                        
+                        // Notify that we've captured the photo
+                        if (photoCaptureListener != null) {
+                            photoCaptureListener.onPhotoCaptured(requestId, filePath);
+                            photoCaptureListener.onPhotoUploading(requestId);
+                        }
+                        
+                        // Upload the photo to AugmentOS Cloud
+                        uploadPhotoToCloud(filePath, requestId, appId);
+                    }
+                    
+                    @Override
+                    public void onPhotoError(String errorMessage) {
+                        Log.e(TAG, "Failed to capture photo: " + errorMessage);
+                        sendPhotoErrorResponse(requestId, appId, errorMessage);
+                        
+                        if (photoCaptureListener != null) {
+                            photoCaptureListener.onPhotoError(requestId, errorMessage);
+                        }
+                    }
+                }
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error taking photo", e);
+            sendPhotoErrorResponse(requestId, appId, "Error taking photo: " + e.getMessage());
+            
+            if (photoCaptureListener != null) {
+                photoCaptureListener.onPhotoError(requestId, "Error taking photo: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * Upload photo to AugmentOS Cloud
+     */
+    private void uploadPhotoToCloud(String photoFilePath, String requestId, String appId) {
+        // Upload the photo to AugmentOS Cloud
+        com.augmentos.augmentos_core.smarterglassesmanager.camera.PhotoUploadService.uploadPhoto(
+            getApplicationContext(),
+            photoFilePath,
+            requestId,
+            new com.augmentos.augmentos_core.smarterglassesmanager.camera.PhotoUploadService.UploadCallback() {
+                @Override
+                public void onSuccess(String url) {
+                    Log.d(TAG, "Photo uploaded successfully: " + url);
+                    sendPhotoSuccessResponse(requestId, appId, url);
+                    
+                    // Notify listener about successful upload
+                    if (photoCaptureListener != null) {
+                        photoCaptureListener.onPhotoUploaded(requestId, url);
+                    }
+                }
+                
+                @Override
+                public void onFailure(String errorMessage) {
+                    Log.e(TAG, "Photo upload failed: " + errorMessage);
+                    sendPhotoErrorResponse(requestId, appId, errorMessage);
+                    
+                    // Notify listener about error
+                    if (photoCaptureListener != null) {
+                        photoCaptureListener.onPhotoError(requestId, "Upload failed: " + errorMessage);
+                    }
+                }
+            }
+        );
+    }
+    
+    /**
+     * Send a success response for a photo request
+     */
+    private void sendPhotoSuccessResponse(String requestId, String appId, String photoUrl) {
+        try {
+            JSONObject response = new JSONObject();
+            response.put("type", "response");
+            response.put("command", "camera");
+            response.put("action", "take_photo");
+            response.put("requestId", requestId);
+            response.put("appId", appId);
+            response.put("success", true);
+            response.put("photoUrl", photoUrl);
+            
+            // Send the response back
+            if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                bluetoothManager.sendData(response.toString().getBytes());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating photo success response", e);
+        }
+    }
+    
+    /**
+     * Send an error response for a photo request
+     */
+    private void sendPhotoErrorResponse(String requestId, String appId, String errorMessage) {
+        try {
+            JSONObject response = new JSONObject();
+            response.put("type", "response");
+            response.put("command", "camera");
+            response.put("action", "take_photo");
+            response.put("requestId", requestId);
+            response.put("appId", appId);
+            response.put("success", false);
+            response.put("error", errorMessage);
+            
+            // Send the response back
+            if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                bluetoothManager.sendData(response.toString().getBytes());
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating photo error response", e);
         }
     }
     
@@ -704,7 +1029,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 break;
         }
     }
-    
+
     /**
      * Example method to send status data back to the connected device
      */
@@ -735,5 +1060,201 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 manager.createNotificationChannel(channel);
             }
         }
+    }
+    
+    /**
+     * DEBUG FUNCTION: Starts a timer to take photos and upload them to the VPS server every 10 seconds.
+     * This is only for debugging purposes and should not be enabled in production.
+     */
+    private void startDebugVpsPhotoUploadTimer() {
+        Log.d(TAG, "DEBUG: Starting VPS photo upload debug timer");
+        
+        // Create a new Handler associated with the main thread
+        debugVpsPhotoHandler = new Handler(Looper.getMainLooper());
+        
+        // Create a Runnable that will take and upload a photo
+        debugVpsPhotoRunnable = new Runnable() {
+            @Override
+            public void run() {
+                // Take a photo and upload it to the VPS server
+                takeDebugVpsPhotoAndUpload();
+                
+                // Schedule the next execution
+                debugVpsPhotoHandler.postDelayed(this, 10000); // 10 seconds
+            }
+        };
+        
+        // Start the timer
+        debugVpsPhotoHandler.post(debugVpsPhotoRunnable);
+    }
+    
+    /**
+     * Stop the debug VPS photo upload timer
+     */
+    private void stopDebugVpsPhotoUploadTimer() {
+        Log.d(TAG, "DEBUG: Stopping VPS photo upload debug timer");
+        if (debugVpsPhotoHandler != null && debugVpsPhotoRunnable != null) {
+            debugVpsPhotoHandler.removeCallbacks(debugVpsPhotoRunnable);
+            debugVpsPhotoRunnable = null;
+            debugVpsPhotoHandler = null;
+        }
+    }
+    
+    /**
+     * DEBUG FUNCTION: Takes a photo and uploads it to the VPS server at 192.168.9.124/vps
+     * This is for debugging purposes only.
+     */
+    private void takeDebugVpsPhotoAndUpload() {
+        Log.d(TAG, "DEBUG: Taking photo for VPS debug upload");
+        
+        // Generate a timestamp for the photo filename
+        String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+        String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "DEBUG_VPS_" + timeStamp + ".jpg";
+        String requestId = "debug_vps_" + timeStamp;
+        String appId = "debug_vps_app";
+        
+        // Notify that we're about to take a photo (if there's a listener)
+        if (photoCaptureListener != null) {
+            photoCaptureListener.onPhotoCapturing(requestId);
+        }
+        
+        try {
+            // Use the callback-based photo capture method from CameraRecordingService
+            com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.takePictureWithCallback(
+                getApplicationContext(),
+                photoFilePath,
+                new com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.PhotoCaptureCallback() {
+                    @Override
+                    public void onPhotoCaptured(String filePath) {
+                        Log.d(TAG, "DEBUG: VPS photo captured successfully at: " + filePath);
+                        
+                        // Notify that we've captured the photo
+                        if (photoCaptureListener != null) {
+                            photoCaptureListener.onPhotoCaptured(requestId, filePath);
+                            photoCaptureListener.onPhotoUploading(requestId);
+                        }
+                        
+                        // Upload the photo to VPS debug server
+                        uploadPhotoToVpsServer(filePath, requestId, appId);
+                    }
+                    
+                    @Override
+                    public void onPhotoError(String errorMessage) {
+                        Log.e(TAG, "DEBUG: Failed to capture VPS photo: " + errorMessage);
+                        
+                        if (photoCaptureListener != null) {
+                            photoCaptureListener.onPhotoError(requestId, errorMessage);
+                        }
+                    }
+                }
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "DEBUG: Error taking VPS photo", e);
+            
+            if (photoCaptureListener != null) {
+                photoCaptureListener.onPhotoError(requestId, "Error taking VPS photo: " + e.getMessage());
+            }
+        }
+    }
+    
+    /**
+     * DEBUG FUNCTION: Upload photo to VPS server at 192.168.9.124/vps
+     * This is for debugging purposes only.
+     */
+    private void uploadPhotoToVpsServer(String photoFilePath, String requestId, String appId) {
+        // Upload the photo to the VPS server
+        new Thread(() -> {
+            try {
+                Log.d(TAG, "DEBUG: Uploading photo to VPS server");
+                
+                // Set up OkHttpClient with timeouts
+                okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
+                    .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+                    .build();
+                
+                // Create the file object
+                java.io.File photoFile = new java.io.File(photoFilePath);
+                if (!photoFile.exists()) {
+                    Log.e(TAG, "DEBUG: VPS photo file does not exist: " + photoFilePath);
+                    return;
+                }
+                
+                // VPS server URL
+                String uploadUrl = "http://54.67.15.233:5555/vps";
+                
+                // Create multipart request with proper field name 'file' as expected by the server
+                okhttp3.RequestBody requestBody = new okhttp3.MultipartBody.Builder()
+                    .setType(okhttp3.MultipartBody.FORM)
+                    .addFormDataPart("file", photoFile.getName(),
+                        okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), photoFile))
+                    .build();
+                    
+                // Build the request
+                okhttp3.Request request = new okhttp3.Request.Builder()
+                    .url(uploadUrl)
+                    .post(requestBody)
+                    .build();
+                    
+                // Execute the request
+                okhttp3.Response response = client.newCall(request).execute();
+                
+                // Process the response
+                if (!response.isSuccessful()) {
+                    Log.e(TAG, "DEBUG: VPS upload failed with status: " + response.code());
+                    return;
+                }
+                
+                // Get response body - this will be the pose information
+                String responseBody = response.body().string();
+                Log.d(TAG, "DEBUG: VPS upload successful. Response (pose): " + responseBody);
+                
+                // Parse the pose information from the response (JSON format)
+                try {
+                    org.json.JSONObject poseData = new org.json.JSONObject(responseBody);
+                    
+                    // Extract position and orientation
+                    float x = (float) poseData.getDouble("x");
+                    float y = (float) poseData.getDouble("y");
+                    float z = (float) poseData.getDouble("z");
+                    float qx = (float) poseData.getDouble("qx");
+                    float qy = (float) poseData.getDouble("qy");
+                    float qz = (float) poseData.getDouble("qz");
+                    float qw = (float) poseData.getDouble("qw");
+                    float confidence = (float) poseData.getDouble("confidence");
+                    
+                    // Log pose information
+                    Log.d(TAG, String.format("DEBUG: VPS pose - Position: (%.2f, %.2f, %.2f)", x, y, z));
+                    Log.d(TAG, String.format("DEBUG: VPS pose - Orientation (quat): (%.2f, %.2f, %.2f, %.2f)", qx, qy, qz, qw));
+                    Log.d(TAG, String.format("DEBUG: VPS pose - Confidence: %.2f", confidence));
+                    
+                    // TODO: You could do something with this pose information here
+                    // For example, display it on the glasses or send it to another application
+                    
+                } catch (org.json.JSONException e) {
+                    Log.e(TAG, "DEBUG: Error parsing VPS pose data: " + e.getMessage());
+                }
+                
+                // Notify through listener
+                if (photoCaptureListener != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        photoCaptureListener.onPhotoUploaded(requestId, uploadUrl);
+                    });
+                }
+                
+                // Clean up - delete the temporary file
+                photoFile.delete();
+                
+            } catch (Exception e) {
+                Log.e(TAG, "DEBUG: Error uploading photo to VPS server", e);
+                // Notify through listener
+                if (photoCaptureListener != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        photoCaptureListener.onPhotoError(requestId, "DEBUG VPS upload failed: " + e.getMessage());
+                    });
+                }
+            }
+        }).start();
     }
 }

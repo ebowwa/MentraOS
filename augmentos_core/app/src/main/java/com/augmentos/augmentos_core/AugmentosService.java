@@ -1309,6 +1309,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         break;
                 }
             }
+            
+            @Override
+            public void onPhotoRequest(String requestId, String appId) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId);
+                
+                // Forward the request to the smart glasses manager
+                if (smartGlassesManager != null) {
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId);
+                    if (!requestSent) {
+                        Log.e(TAG, "Failed to send photo request to glasses");
+                    }
+                } else {
+                    Log.e(TAG, "Cannot process photo request: smartGlassesManager is null");
+                }
+            }
+            
+            @Override
+            public void onVideoStreamRequest(String appId) {
+                Log.d(TAG, "Video stream request received: appId=" + appId);
+                
+                // Forward the request to the smart glasses manager
+                if (smartGlassesManager != null) {
+                    boolean requestSent = smartGlassesManager.requestVideoStream(appId);
+                    if (!requestSent) {
+                        Log.e(TAG, "Failed to send video stream request to glasses");
+                    }
+                } else {
+                    Log.e(TAG, "Cannot process video stream request: smartGlassesManager is null");
+                }
+            }
         });
     }
 
@@ -1388,10 +1418,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             return;
         }
 
-        // TODO: Good lord this is hacky
-        // TODO: Find a good way to conditionally send a glasses bt device name to SGC
-        if (!deviceName.isEmpty() && modelName.contains("Even Realities"))
-            savePreferredG1DeviceId(this, deviceName);
+        // Save device address for specific glasses types (just like Even)
+        if (!deviceName.isEmpty()) {
+            if (modelName.contains("Even Realities")) {
+                savePreferredG1DeviceId(this, deviceName);
+            } 
+            else if (modelName.equals("Mentra Live")) {
+                // Save Mentra Live device ID in its preferences
+                SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
+                mentraPrefs.edit().putString("LastConnectedDeviceAddress", deviceName).apply();
+                Log.d("AugmentOsService", "Saved Mentra Live device address: " + deviceName);
+            }
+        }
 
         executeOnceSmartGlassesManagerReady(this, () -> {
             smartGlassesManager.connectToSmartGlasses(device);
@@ -1414,6 +1452,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Forgetting wearable");
         SmartGlassesManager.savePreferredWearable(this, "");
         deleteEvenSharedPreferences(this);
+        
+        // Clear MentraLive device address preference
+        SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
+        mentraPrefs.edit().remove("LastConnectedDeviceAddress").apply();
+        Log.d("AugmentOsService", "Cleared MentraLive stored device address");
+        
         brightnessLevel = null;
         batteryLevel = null;
         

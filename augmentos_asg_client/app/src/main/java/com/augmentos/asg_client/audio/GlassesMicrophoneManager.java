@@ -331,8 +331,8 @@ public class GlassesMicrophoneManager {
                 
                 // Log the size of the encoded LC3 data for debugging
                 if (i == 0) { // Only log for first frame to avoid spam
-                    Log.d(TAG, "LC3 encoding: " + FRAME_DURATION_US/1000 + "ms frame → " + 
-                          frameData.length + " PCM bytes → " + lc3Data.length + " LC3 bytes");
+//                    Log.d(TAG, "LC3 encoding: " + FRAME_DURATION_US/1000 + "ms frame → " +
+//                          frameData.length + " PCM bytes → " + lc3Data.length + " LC3 bytes");
                 }
                 
                 // Send the LC3 data via callbacks
@@ -356,9 +356,9 @@ public class GlassesMicrophoneManager {
                                 // Send the data with command byte
                                 // Log this attempt with thread ID to track race conditions
                                 long threadId = Thread.currentThread().getId();
-                                Log.d(TAG, "Thread-" + threadId + ": Sending LC3 audio packet (" + 
-                                      packetWithCommand.length + " bytes) via BluetoothManager - LC3 frame size: " + 
-                                      lc3Data.length + " bytes");
+                                //Log.d(TAG, "Thread-" + threadId + ": Sending LC3 audio packet (" +
+                                //      packetWithCommand.length + " bytes) via BluetoothManager - LC3 frame size: " +
+                                //      lc3Data.length + " bytes");
                                 
                                 boolean sendResult = bluetoothManager.sendData(packetWithCommand);
                                 

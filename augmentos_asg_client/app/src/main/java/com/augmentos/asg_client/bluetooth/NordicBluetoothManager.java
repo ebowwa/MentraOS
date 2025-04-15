@@ -41,10 +41,10 @@ import no.nordicsemi.android.ble.observer.ServerObserver;
 public class NordicBluetoothManager extends BaseBluetoothManager {
     private static final String TAG = "NordicBluetoothManager";
     
-    // Same UUIDs as the current implementation
-    private static final UUID SERVICE_UUID = UUID.fromString("795090c7-420d-4048-a24e-18e60180e23c");
-    private static final UUID TX_CHAR_UUID = UUID.fromString("795090c8-420d-4048-a24e-18e60180e23c");
-    private static final UUID RX_CHAR_UUID = UUID.fromString("795090c9-420d-4048-a24e-18e60180e23c");
+    // Updated UUIDs to match K900 BES2800 MCU for compatibility
+    private static final UUID SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
+    private static final UUID TX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
+    private static final UUID RX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
     
     // Device name for advertising
     private static final String DEVICE_NAME = "Xy_A";
@@ -449,8 +449,8 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
             long threadId = Thread.currentThread().getId();
             
             // Log sending attempt
-            Log.e(TAG, "Thread-" + threadId + ": 📤 Sending " + data.length + " bytes to " + 
-                  connectedDevices.size() + " devices");
+            //Log.e(TAG, "Thread-" + threadId + ": 📤 Sending " + data.length + " bytes to " +
+            //      connectedDevices.size() + " devices");
             
             // Log first bytes for debugging
             if (data.length > 0) {
@@ -458,7 +458,7 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
                 for (int i = 0; i < Math.min(data.length, 16); i++) {
                     hexDump.append(String.format("%02X ", data[i]));
                 }
-                Log.e(TAG, "Thread-" + threadId + ": 📤 First 16 bytes: " + hexDump.toString());
+                //Log.e(TAG, "Thread-" + threadId + ": 📤 First 16 bytes: " + hexDump.toString());
             }
             
             // Get the GATT server from BleManager's parent class
@@ -489,7 +489,7 @@ public class NordicBluetoothManager extends BaseBluetoothManager {
                         
                         // Log detailed notification status
                         if (notifyResult) {
-                            Log.d(TAG, "Thread-" + threadId + ": ✅ Notification sent to device " + device.getAddress());
+                            //Log.d(TAG, "Thread-" + threadId + ": ✅ Notification sent to device " + device.getAddress());
                         } else {
                             Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to send notification to device: " + device.getAddress());
                             success = false;
