@@ -185,6 +185,9 @@ export class TranscriptionService {
       // Translation branch: use recognizing and recognized.
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognizing = (_sender: any, event: any) => {
         if (!event.result.translations) return;
+
+        // TODO: Find a better way to handle this
+
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
         const didTranslate = translatedText !== event.result.text;
