@@ -26,7 +26,7 @@ interface YourAppsListProps {
 }
 
 const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
-    const { status } = useStatus();
+    const { status, updateAppStatus, startAppOperation, endAppOperation, isAppOperationPending } = useStatus();
     const [_isLoading, setIsLoading] = React.useState(false);
     const [showOnboardingTip, setShowOnboardingTip] = useState(false);
     const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
@@ -133,9 +133,25 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             }
         }
         
+        // Check if there's a pending operation for this app
+        if (isAppOperationPending(packageName)) {
+            console.log(`Cannot start app ${packageName}: operation already in progress`);
+            return;
+        }
+        
+        // Register the start operation
+        if (!startAppOperation(packageName, 'start')) {
+            console.log(`Cannot start app ${packageName}: operation rejected`);
+            return;
+        }
+        
         setIsLoading(true);
         try {
-            BackendServerComms.getInstance().startApp(packageName);
+            // Immediately update the app status locally to show it as running
+            updateAppStatus(packageName, true, true);
+            
+            // Then request the backend to start the app
+            await BackendServerComms.getInstance().startApp(packageName);
             
             // Display a special message for Live Captions when starting the app
             if (!onboardingCompleted && packageName === 'com.augmentos.livecaptions') {
@@ -155,9 +171,13 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 }, 500);
             }
         } catch (error) {
+            // Revert the app status change if there was an error
+            updateAppStatus(packageName, false, false);
             console.error('start app error:', error);
         } finally {
             setIsLoading(false);
+            // End the operation regardless of success or failure
+            endAppOperation(packageName);
         }
     };
 

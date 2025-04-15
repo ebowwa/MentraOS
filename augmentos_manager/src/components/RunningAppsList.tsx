@@ -10,7 +10,7 @@ interface RunningAppsListProps {
 }
 
 const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
-  const {status} = useStatus();
+  const {status, updateAppStatus, startAppOperation, endAppOperation, isAppOperationPending} = useStatus();
   const [_isLoading, setIsLoading] = useState(false);
   const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
   const gradientColors = isDarkTheme
@@ -19,13 +19,34 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
 
   const stopApp = async (packageName: string) => {
     console.log('STOP APP');
+    
+    // Check if there's a pending operation for this app
+    if (isAppOperationPending(packageName)) {
+      console.log(`Cannot stop app ${packageName}: operation already in progress`);
+      return;
+    }
+    
+    // Register the stop operation
+    if (!startAppOperation(packageName, 'stop')) {
+      console.log(`Cannot stop app ${packageName}: operation rejected`);
+      return;
+    }
+    
     setIsLoading(true);
     try {
+      // Immediately update the app status locally
+      updateAppStatus(packageName, false, false);
+      
+      // Then request the server to stop the app
       await coreCommunicator.stopAppByPackageName(packageName);
     } catch (error) {
+      // Revert the status change if there was an error
+      updateAppStatus(packageName, true, true);
       console.error('Stop app error:', error);
     } finally {
       setIsLoading(false);
+      // End the operation regardless of success or failure
+      endAppOperation(packageName);
     }
   };
 

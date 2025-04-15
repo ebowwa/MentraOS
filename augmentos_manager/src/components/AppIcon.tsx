@@ -59,7 +59,8 @@ const AppIcon: React.FC<AppIconProps> = ({
             accessibilityRole="button"
         >
             <LinearGradient
-                colors={isForegroundApp ? ['#ADE7FF', '#FFB2F9', '#FFE396'] : ['transparent', 'transparent']}
+                colors={['transparent', 'transparent']}
+                // colors={isForegroundApp ? ['#ADE7FF', '#FFB2F9', '#FFE396'] : ['transparent', 'transparent']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.linearGradient}
@@ -79,11 +80,11 @@ const AppIcon: React.FC<AppIconProps> = ({
                 </View>
             </LinearGradient>
 
-            {isForegroundApp && (
+            {/* {isForegroundApp && (
                 <View style={styles.squareBadge}>
                     <FontAwesome name="star" size={12} color="#FFFFFF" />
                 </View>
-            )}
+            )} */}
 
             <Text
                 style={[
