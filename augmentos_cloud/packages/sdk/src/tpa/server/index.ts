@@ -14,7 +14,8 @@ import {
   SessionWebhookRequest,
   StopWebhookRequest,
   isSessionWebhookRequest,
-  isStopWebhookRequest
+  isStopWebhookRequest,
+  ToolCall
 } from '../../types';
 
 /**
@@ -109,6 +110,7 @@ export class TpaServer {
     this.setupWebhook();
     this.setupSettingsEndpoint();
     this.setupHealthCheck();
+    this.setupToolCallEndpoint();
     this.setupPublicDir();
     this.setupShutdown();
   }
@@ -150,6 +152,21 @@ export class TpaServer {
       session.disconnect();
       this.activeSessions.delete(sessionId);
     }
+  }
+
+  /**
+   * 🛠️ Tool Call Handler
+   * Override this method to handle tool calls from AugmentOS Cloud.
+   * This is where you implement your app's tool functionality.
+   * 
+   * @param toolCall - The tool call request containing tool details and parameters
+   * @returns Optional string response that will be sent back to AugmentOS Cloud
+   */
+  protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
+    console.log(`Tool call received: ${toolCall.toolName} (${toolCall.toolId})`);
+    console.log(`Parameters: ${JSON.stringify(toolCall.toolParameters)}`);
+    console.log(`Full transcript: ${toolCall.fullTranscript}`);
+    return undefined;
   }
 
   /**
@@ -251,6 +268,34 @@ export class TpaServer {
           status: 'error',
           message: 'Internal server error'
         } as WebhookResponse);
+      }
+    });
+  }
+
+  /**
+   * 🛠️ Setup Tool Call Endpoint
+   * Creates a /tool endpoint for handling tool calls from AugmentOS Cloud.
+   */
+  private setupToolCallEndpoint(): void {
+    this.app.post('/tool', async (req, res) => {
+      try {
+        const toolCall = req.body as ToolCall;
+        console.log(`\n\n🔧 Received tool call: ${toolCall.toolName} (${toolCall.toolId})\n\n`);
+        // Call the onToolCall handler and get the response
+        const response = await this.onToolCall(toolCall);
+        
+        // Send back the response if one was provided
+        if (response !== undefined) {
+          res.json({ status: 'success', reply: response });
+        } else {
+          res.json({ status: 'success', reply: null });
+        }
+      } catch (error) {
+        console.error('❌ Error handling tool call:', error);
+        res.status(500).json({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'Unknown error occurred calling tool'
+        });
       }
     });
   }
