@@ -21,7 +21,7 @@ export default class BackendServerComms {
     const port = Config.AUGMENTOS_PORT;
     const protocol = secure ? 'https' : 'http';
     this.serverUrl = `${protocol}://${host}:${port}`;
-    this.appStoreUrl = Config.AUGMENTOS_APPSTORE_URL || `${protocol}://${host}:${port}/appstore`;
+    this.appStoreUrl = `https://prod.augmentos.cloud`;
   }
 
   public getServerUrl(): string {
