@@ -298,3 +298,9 @@ server/helpers/token.json
 server/word_freq_lists/
 server/glove.6B/glove.6B.50d.txt
 server/auth/serviceAccountKey.json
+
+# Environment variables
+.env
+.env.development
+.env.production
+.env.staging

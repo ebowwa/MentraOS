@@ -120,25 +120,25 @@ public class AsgClientService extends Service {
         NetworkSetupManager.NetworkSetupCallback cb = createNetworkSetupCallback();
         //networkSetupManager = new NetworkSetupManager(getApplicationContext(), cb);
         //networkSetupManager.connectToWifi("Mentra", "interface4");
-
+        this.recordFor5Seconds();
         //CameraRecordingService.startStreaming(getApplicationContext(), "rtmp://10.0.0.193:1935/live/SkaIT7MiJg");
         //CameraRecordingService.takePicture(getApplicationContext(), null);
         //CameraRecordingService.stopLocalRecording(getApplicationContext());
         // FOR THE DEMO APP
         // Create the server on port 8089
-        webServer = new CameraWebServer(getApplicationContext(), 8089);
-        // Set a callback for the "take-picture" route
-        webServer.setOnPictureRequestListener(new CameraWebServer.OnPictureRequestListener() {
-            @Override
-            public void onPictureRequest() {
-                // This is called when the user clicks "Take a Picture" on the webpage
-                Log.d("MainActivity", "User requested a picture!");
-                // TODO: trigger your camera capture logic here
-                CameraRecordingService.takePicture(getApplicationContext(), null);
-            }
-        });
-        // Start the server
-        webServer.startServer();
+//        webServer = new CameraWebServer(getApplicationContext(), 8089);
+//        // Set a callback for the "take-picture" route
+//        webServer.setOnPictureRequestListener(new CameraWebServer.OnPictureRequestListener() {
+//            @Override
+//            public void onPictureRequest() {
+//                // This is called when the user clicks "Take a Picture" on the webpage
+//                Log.d("MainActivity", "User requested a picture!");
+//                // TODO: trigger your camera capture logic here
+//                CameraRecordingService.takePicture(getApplicationContext(), null);
+//            }
+//        });
+//        // Start the server
+//        webServer.startServer();
     }
 
     /**
@@ -210,7 +210,7 @@ public class AsgClientService extends Service {
             public void run() {
                 CameraRecordingService.stopLocalRecording(getApplicationContext());
             }
-        }, 5000); // 5000ms = 5 seconds
+        }, 60000); // 5000ms = 5 seconds
     }
     /**
      * Creates or updates our foreground notification channel and returns the

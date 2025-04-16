@@ -19,6 +19,15 @@ export interface AppI extends _AppI, Document {
 
 // Using existing schema with flexible access
 const AppSchema = new Schema({
+
+  // Type of app "background" | "standard" | "system_dashboard". "background by default"
+  tpaType: {
+    type: String,
+    enum: Object.values(TpaType),
+    default: TpaType.BACKGROUND
+  },
+
+  // Appstore / Developer properties
   appStoreStatus: {
     type: String,
     enum: ['DEVELOPMENT', 'SUBMITTED', 'REJECTED', 'PUBLISHED'],

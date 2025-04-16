@@ -52,70 +52,83 @@ services:
       - augmentos-network
     depends_on:
       - shared-packages
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "cloud", "service": "cloud"}]'
 
-  # Live Captions service
+  # Live Captions service - using local app files
   live-captions:
-    stop_grace_period: 5s
-    init: true
     build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
+      context: ../../AugmentApps/Live-Captions  # Path relative to this docker-compose file
+      dockerfile: Dockerfile.dev
+    container_name: live-captions
     ports:
       - target: 80
         published: ${LIVE_CAPTIONS_PORT:-7010}
         protocol: tcp
     environment:
+      - PORT=80
+      - CLOUD_HOST_NAME=cloud
       - NODE_ENV=production
-      - HOST=0.0.0.0
-      - SERVICE_NAME=live-captions
-    env_file:
-      - .env
-      - .env.production
     volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - ./logs:/app/logs
-    command: bash -c "bun install && cd packages/apps/livecaptions && bun run build && bun run start"
+      - ../../AugmentApps/Live-Captions/src:/app/src:delegated
+      - ../../AugmentApps/Live-Captions/tsconfig.json:/app/tsconfig.json:delegated
+      - ../../AugmentApps/Live-Captions/dev.sh:/app/dev.sh:delegated
+      - ../../AugmentApps/Live-Captions/entrypoint.sh:/entrypoint.sh:delegated
+      # Don't sync node_modules back to host
+      - /app/node_modules
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - augmentos-network
     depends_on:
-      - shared-packages
       - cloud
-
-  # Flash service
-  flash:
-    stop_grace_period: 10s
-    init: true
+      
+  # MentraMerge service - using local app files
+  merge:
     build:
-      context: .
-      dockerfile: Dockerfile
-    restart: unless-stopped
+      context: ../../AugmentApps/MentraMerge  # Path relative to this docker-compose file
+      dockerfile: Dockerfile.dev
+    container_name: merge
     ports:
       - target: 80
-        published: ${FLASH_PORT:-7011}
+        published: ${MERGE_PORT:-7016}
         protocol: tcp
     environment:
+      - PORT=80
+      - CLOUD_HOST_NAME=cloud
       - NODE_ENV=production
-      - HOST=0.0.0.0
-      - SERVICE_NAME=flash
-    env_file:
-      - .env
-      - .env.production
+      - MERGE_API_KEY=${MERGE_API_KEY:-test_key}
     volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - ./logs:/app/logs
-    command: bash -c "bun install && cd packages/apps/flash && bun run build && bun run start"
+      - ../../AugmentApps/MentraMerge/src:/app/src:delegated
+      - ../../AugmentApps/MentraMerge/tsconfig.json:/app/tsconfig.json:delegated
+      - ../../AugmentApps/MentraMerge/dev.sh:/app/dev.sh:delegated
+      - ../../AugmentApps/MentraMerge/entrypoint.sh:/entrypoint.sh:delegated
+      # Don't sync node_modules back to host
+      - /app/node_modules
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - augmentos-network
     depends_on:
-      - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "flash", "service": "flash"}]'
 
   # Dashboard Manager service
   dashboard-manager:
@@ -146,9 +159,7 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "dashboard-manager", "service": "dashboard-manager"}]'
-
+  
   # Notifications service
   notify:
     stop_grace_period: 10s
@@ -178,8 +189,6 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "notify", "service": "notify"}]'
 
   # Mira AI service
   mira:
@@ -210,9 +219,7 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "mira", "service": "mira"}]'
-
+ 
   live-translation:
     stop_grace_period: 10s
     init: true
@@ -241,8 +248,6 @@ services:
     depends_on:
       - shared-packages
       - cloud
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "live-translation", "service": "live-translation"}]'
 
 networks:
   augmentos-network:

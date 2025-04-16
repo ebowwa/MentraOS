@@ -17,11 +17,11 @@ COPY . .
 RUN echo "🚀 Starting build process..." && \
     bun install && \
     echo "📦 Dependencies installed successfully" && \
+    echo "⚙️ Building packages/sdk..." && \
+    cd ../sdk && bun run build && \
     echo "⚙️ Building packages/utils..." && \
     cd packages/utils && bun run build && \
     echo "✅ utils built successfully" && \
-    echo "⚙️ Building packages/sdk..." && \
-    cd ../sdk && bun run build && \
     echo "✅ sdk built successfully" && \
     echo "⚙️ Building packages/agents..." && \
     cd ../agents && bun run build && \

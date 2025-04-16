@@ -12,7 +12,7 @@
     "paths": {
       "@augmentos/sdk": ["../sdk/dist"],
       "@augmentos/utils": ["../utils/dist"],
-      "@augmentos/agents": ["../agents/dist"],
+      "@augmentos/agents": ["../agents/dist"]
     }
   },
   "include": ["src/**/*"],

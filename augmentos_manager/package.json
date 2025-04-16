@@ -10,7 +10,10 @@
     "test": "jest",
     "build-android": "cd android && ./gradlew assembleDebug && adb install -r ./app/build/outputs/apk/debug/app-debug.apk",
     "build-android-release": "cd android && ./gradlew assembleRelease && adb install -r ./app/build/outputs/apk/release/app-release.apk",
-    "deploy:ios": "cd ios && fastlane beta"
+    "deploy:ios": "cd ios && fastlane beta",
+    "android:install": "adb install -r ./android/app/build/outputs/apk/release/app-release.apk",
+    "android:install:release": "adb install -r ./android/app/build/outputs/apk/release/app-release.apk",
+    "android:install:debug": "adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",

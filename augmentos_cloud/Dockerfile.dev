@@ -1,15 +1,8 @@
-FROM node:18-slim
+FROM oven/bun:latest
 
-# Install required tools
-RUN apt-get update && apt-get install -y curl unzip git python3 make g++ tini && \
-    curl -fsSL https://bun.sh/install | bash && \
-    npm install -g typescript tsx ws && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-ENV PATH="/root/.bun/bin:${PATH}"
 ENV NODE_ENV=development
 ENV CONTAINER_ENVIRONMENT=true
+
 # Bun specific optimizations
 ENV BUN_INSTALL_CACHE_DIR=/root/.bun/.cache
 ENV BUN_INSTALL_GLOBAL_DIR=/root/.bun/install/global
@@ -20,7 +13,7 @@ WORKDIR /app
 # RUN groupadd -r bunuser && useradd -r -g bunuser bunuser
 # USER bunuser
 
-# Use tini as an init system to handle signals properly
-ENTRYPOINT ["/usr/bin/tini", "--"]
+# Install dependencies
+CMD ["bun", "install"]
 
 CMD ["echo", "Ready to run services"]

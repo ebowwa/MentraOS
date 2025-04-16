@@ -52,7 +52,7 @@ struct ViewState {
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
-    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "DASHBOARD_NOT_SET", eventStr: ""),
+    ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: ""),
   ]
   
   
@@ -372,22 +372,16 @@ struct ViewState {
       // Only enable microphone if sensing is also enabled
       let actuallyEnabled = isEnabled && self.sensingEnabled
       
-      let glassesMic = actuallyEnabled && !self.useOnboardMic
-      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(self.useOnboardMic) glassesMic: \(glassesMic)")
-      //      await self.g1Manager.setMicEnabled(enabled: isEnabled)
+      // if the glasses dont have a mic, use the onboard mic anyways
+      let useBoardMic = self.useOnboardMic || (!getGlassesHasMic())
+      let useGlassesMic = actuallyEnabled && !useBoardMic
+      let useOnboardMic = actuallyEnabled && useBoardMic
+
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useBoardMic) useGlassesMic: \(useGlassesMic)")
+
+      await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
       
-      
-      let areGlassesConnected = self.g1Manager?.g1Ready ?? false
-      
-      if(areGlassesConnected){
-        await self.g1Manager?.setMicEnabled(enabled: glassesMic)
-        setOnboardMicEnabled(self.useOnboardMic && actuallyEnabled)
-      }else{
-        print("Glasses not connected, using onboardMic \(isEnabled)")
-        //If glasses aren't connected, default to phone mic always.
-        setOnboardMicEnabled(isEnabled)
-      }
-      
+      setOnboardMicEnabled(useOnboardMic)
     }
   }
   
@@ -503,6 +497,8 @@ struct ViewState {
       } else {
         placeholders["$GBATT$"] = "\(batteryLevel)%"
       }
+    
+      placeholders["$CONNECTION_STATUS$"] = serverComms.isWebSocketConnected() ? "Connected" : "Disconnected"
       
       var result = text
       for (key, value) in placeholders {
@@ -853,6 +849,13 @@ struct ViewState {
   private func handleDisconnectWearable() {
     self.g1Manager?.disconnect()
     handleRequestStatus()
+  }
+
+  private func getGlassesHasMic() -> Bool {
+    if self.deviceName.contains("G1") {
+      return true
+    }
+    return false
   }
   
   private func handleRequestStatus() {

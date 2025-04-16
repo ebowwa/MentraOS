@@ -9,6 +9,8 @@ import {
   ScrollView,
   Alert,
   Modal,
+  SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -18,20 +20,22 @@ import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import HeadUpAngleComponent from '../components/HeadUpAngleComponent.tsx';
 import NavigationBar from '../components/NavigationBar';
+import BackendServerComms from '../backend_comms/BackendServerComms';
 import { Slider } from 'react-native-elements';
 
 interface DashboardSettingsScreenProps {
+  navigation: any;
   isDarkTheme: boolean;
   toggleTheme: () => void;
-  navigation: any;
 }
 
 const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
+  navigation,
   isDarkTheme,
   toggleTheme,
-  navigation,
 }) => {
   const { status } = useStatus();
+  const backendServerComms = BackendServerComms.getInstance();
 
   // -- States --
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
@@ -39,8 +43,21 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   );
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false);
   const [headUpAngle, setHeadUpAngle] = useState<number | null>(null);
+  const [dashboardContent, setDashboardContent] = useState('');
+  const [showContentPicker, setShowContentPicker] = useState(false);
+  const [serverSettings, setServerSettings] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null);
 
+  const dashboardContentOptions = [
+    { label: 'None', value: 'none' },
+    { label: 'Fun Facts', value: 'fun_facts' },
+    { label: 'Famous Quotes', value: 'famous_quotes' },
+    { label: "Trash Talk", value: "trash_talk" },
+    { label: 'Chinese Words', value: 'chinese_words' },
+    { label: 'Gratitude Ping', value: 'gratitude_ping' }
+  ];
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
@@ -67,22 +84,45 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     setHeadUpAngleComponentVisible(false);
   };
 
-  const changeDashboardHeight = async (newDashboardHeight: number) => {
-    if (!status.glasses_info) {
-      Alert.alert('Glasses not connected', 'Please connect your smart glasses first.');
-      return;
-    }
+  // -- Effects --
+  useEffect(() => {
+    fetchDashboardSettings();
+  }, []);
 
-    if (newDashboardHeight == null) {
-      return;
+  const fetchDashboardSettings = async () => {
+    try {
+      setIsLoading(true);
+      const data = await backendServerComms.getTpaSettings('com.augmentos.dashboard');
+      setServerSettings(data);
+      const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
+      if (contentSetting) {
+        setDashboardContent(contentSetting.selected);
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard settings:', error);
+    } finally {
+      setIsLoading(false);
     }
-
-    // if (status.glasses_info.dashboard_height === -1) { return; } // or handle accordingly
-    await coreCommunicator.setGlassesDashboardHeight(newDashboardHeight);
-    setDashboardHeight(newDashboardHeight);
   };
 
-  // -- Effects --
+  const handleDashboardContentChange = async (value: string) => {
+    try {
+      setIsUpdating(true);
+      setDashboardContent(value);
+      await backendServerComms.updateTpaSetting('com.augmentos.dashboard', {
+        key: 'dashboard_content',
+        value: value
+      });
+    } catch (error) {
+      console.error('Error updating dashboard content:', error);
+      Alert.alert('Error', 'Failed to update dashboard content');
+      setDashboardContent(dashboardContent);
+    } finally {
+      setIsUpdating(false);
+      setShowContentPicker(false);
+    }
+  };
+
   useEffect(() => {
     if (status.glasses_info) {
       if (status.glasses_info?.headUp_angle != null) {
@@ -94,12 +134,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   // Switch track colors
   const switchColors = {
     trackColor: {
-      false: isDarkTheme ? '#666666' : '#D1D1D6',
+      false: '#D1D1D6',
       true: '#2196F3',
     },
-    thumbColor:
-      Platform.OS === 'ios' ? undefined : isDarkTheme ? '#FFFFFF' : '#FFFFFF',
-    ios_backgroundColor: isDarkTheme ? '#666666' : '#D1D1D6',
+    thumbColor: Platform.OS === 'ios' ? undefined : '#FFFFFF',
+    ios_backgroundColor: '#D1D1D6',
   };
 
   // Condition to disable HeadUp Angle setting
@@ -108,131 +147,174 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     status.glasses_info?.brightness === '-' ||
     !status.glasses_info.model_name.toLowerCase().includes('even');
 
-  const dashboardHeightSliderProps = {
-    disabled: !status.glasses_info?.model_name ||
-      !status.glasses_info.model_name.toLowerCase().includes('even'),
-    style: styles.slider,
-    minimumValue: 0,
-    maximumValue: 8,
-    step: 1,
-    onSlidingComplete: (value: number) => changeDashboardHeight(value),
-    value: status.glasses_info?.dashboard_height ?? 4,
-    minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: isDarkTheme
-      ? styles.maximumTrackTintColorDark.color
-      : styles.maximumTrackTintColorLight.color,
-    thumbTintColor: styles.thumbTintColor.color,
-    // Using inline objects instead of defaultProps
-    thumbTouchSize: { width: 40, height: 40 },
-    trackStyle: { height: 5 },
-    thumbStyle: { height: 20, width: 20 }
-  };
+  // ContentPicker Modal
+  const renderContentPicker = () => (
+    <Modal
+      visible={showContentPicker}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={() => !isUpdating && setShowContentPicker(false)}
+    >
+      <View style={[styles.modalOverlay]}>
+        <View style={[styles.pickerContainer]}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>
+              Select Dashboard Content
+            </Text>
+            <TouchableOpacity 
+              onPress={() => !isUpdating && setShowContentPicker(false)}
+              style={[styles.closeButton, isUpdating && styles.disabledButton]}
+              disabled={isUpdating}
+            >
+              <Text style={styles.closeButtonText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.pickerOptionsContainer}>
+            {dashboardContentOptions.map((option) => (
+              <TouchableOpacity
+                key={option.value}
+                style={[
+                  styles.pickerOption,
+                  dashboardContent === option.value && styles.selectedOption,
+                  isUpdating && styles.disabledItem
+                ]}
+                onPress={() => !isUpdating && handleDashboardContentChange(option.value)}
+                disabled={isUpdating}
+              >
+                <View style={styles.optionContent}>
+                  <Text style={[
+                    styles.pickerOptionText,
+                    dashboardContent === option.value && styles.selectedOptionText
+                  ]}>
+                    {option.label}
+                  </Text>
+                  {dashboardContent === option.value && (
+                    isUpdating ? (
+                      <ActivityIndicator size="small" color="#FFFFFF" />
+                    ) : (
+                      <Icon name="check" size={20} color="#FFFFFF" />
+                    )
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
-    <View
-      style={[
-        styles.container,
-        isDarkTheme ? styles.darkBackground : styles.lightBackground,
-      ]}
-    >
-      <ScrollView style={styles.scrollViewContainer}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>
+          Dashboard Settings
+        </Text>
+      </View>
+      <ScrollView 
+        style={styles.scrollViewContainer}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Contextual Dashboard */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Contextual Dashboard
-            </Text>
-            {status.glasses_info?.model_name && (
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                ]}
-              >
-                {`Show a summary of your phone notifications when you ${status.glasses_info?.model_name
-                    .toLowerCase()
-                    .includes('even')
-                    ? 'look up'
-                    : 'tap your smart glasses'
-                  }.`}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            General Settings
+          </Text>
+          <View style={[styles.settingItem, styles.elevatedCard]}>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.label}>
+                Contextual Dashboard
               </Text>
-            )}
-          </View>
-          <Switch
-            value={isContextualDashboardEnabled}
-            onValueChange={toggleContextualDashboard}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
-
-        {/* HEADUP ANGLE SETTING (Button that opens the modal) */}
-        <TouchableOpacity
-          style={[
-            styles.settingItem,
-            disableHeadUpAngle && styles.disabledItem,
-          ]}
-          disabled={disableHeadUpAngle}
-          onPress={() => setHeadUpAngleComponentVisible(true)}
-        >
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-              ]}
-            >
-              Adjust Head-Up Angle
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                disableHeadUpAngle && styles.disabledItem,
-              ]}
-            >
-              Adjust the angle at which the contextual dashboard appears when you look up.
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Dashboard Height */}
-        {/* <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text
-              style={[
-                styles.label,
-                isDarkTheme ? styles.lightText : styles.darkText,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                styles.disabledItem,
-              ]}
-            >
-              Dashboard Height
-            </Text>
-            <Text
-              style={[
-                styles.value,
-                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                styles.disabledItem,
-              ]}
-            >
-              Adjust the height of the dashboard.
-            </Text>
-            <Slider
-              {...dashboardHeightSliderProps}
+              {status.glasses_info?.model_name && (
+                <Text style={styles.value}>
+                  {`Show a summary of your phone notifications when you ${
+                    status.glasses_info?.model_name
+                      .toLowerCase()
+                      .includes('even')
+                      ? 'look up'
+                      : 'tap your smart glasses'
+                  }.`}
+                </Text>
+              )}
+            </View>
+            <Switch
+              value={isContextualDashboardEnabled}
+              onValueChange={toggleContextualDashboard}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
             />
           </View>
-        </View> */}
+        </View>
+
+        {/* Dashboard Content Selection */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Content Settings
+          </Text>
+          <TouchableOpacity
+            style={[styles.settingItem, styles.elevatedCard]}
+            onPress={() => !isLoading && setShowContentPicker(true)}
+            disabled={isLoading}
+          >
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.label}>
+                Dashboard Content
+              </Text>
+              <Text style={styles.value}>
+                Choose what to display in your dashboard
+              </Text>
+            </View>
+            <View style={styles.selectedValueContainer}>
+              {isLoading ? (
+                <ActivityIndicator size="small" color="#007AFF" />
+              ) : (
+                <>
+                  <Text style={styles.selectedValue}>
+                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label || 'Notification Summary'}
+                  </Text>
+                  <Icon name="chevron-right" size={16} color="#000000" />
+                </>
+              )}
+            </View>
+            {isUpdating && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="small" color="#007AFF" />
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Display Settings Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>
+            Display Settings
+          </Text>
+          
+          {/* Head-Up Angle Setting */}
+          <TouchableOpacity
+            style={[
+              styles.settingItem,
+              styles.elevatedCard,
+              disableHeadUpAngle && styles.disabledItem,
+            ]}
+            disabled={disableHeadUpAngle}
+            onPress={() => setHeadUpAngleComponentVisible(true)}
+          >
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.label}>
+                Adjust Head-Up Angle
+              </Text>
+              <Text style={[styles.value, disableHeadUpAngle && styles.disabledItem]}>
+                Adjust the angle at which the contextual dashboard appears when you look up.
+              </Text>
+            </View>
+            <Icon name="chevron-right" size={16} color="#000000" />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
 
-      {/* HEADUP ANGLE MODAL */}
+      {renderContentPicker()}
       {headUpAngle !== null && (
         <HeadUpAngleComponent
           visible={headUpAngleComponentVisible}
@@ -242,116 +324,166 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
         />
       )}
 
-      {/* Your app's bottom navigation bar */}
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
-    </View>
+      <NavigationBar />
+    </SafeAreaView>
   );
 };
 
 export default DashboardSettingsScreen;
 
 const styles = StyleSheet.create({
-  scrollViewContainer: {
-    marginBottom: 55,
-  },
   container: {
     flex: 1,
+  },
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f9f9f9',
+  },
+  header: {
     padding: 20,
+    paddingTop: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
   },
-  titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    marginHorizontal: -20,
-    marginTop: -20,
-    marginBottom: 10,
-  },
-  titleContainerDark: {
-    backgroundColor: '#333333',
-  },
-  titleContainerLight: {
-    backgroundColor: '#ffffff',
-  },
-  title: {
-    fontSize: 24,
+  headerTitle: {
+    fontSize: 28,
     fontWeight: 'bold',
     fontFamily: 'Montserrat-Bold',
-    textAlign: 'left',
-    color: '#FFFFFF',
-    marginBottom: 5,
-  },
-  darkBackground: {
-    backgroundColor: '#1c1c1c',
-  },
-  lightBackground: {
-    backgroundColor: '#f0f0f0',
-  },
-  darkText: {
-    color: 'black',
-  },
-  lightText: {
-    color: 'white',
-  },
-  darkSubtext: {
-    color: '#666666',
-  },
-  lightSubtext: {
-    color: '#999999',
-  },
-  darkIcon: {
     color: '#333333',
   },
-  lightIcon: {
-    color: '#666666',
+  scrollViewContainer: {
+    flex: 1,
+    padding: 16,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    marginLeft: 4,
+    color: '#333333',
+  },
+  elevatedCard: {
+    borderRadius: 12,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 20,
-    borderBottomColor: '#333',
-    borderBottomWidth: 1,
+    padding: 16,
   },
   settingTextContainer: {
     flex: 1,
-    paddingRight: 10,
+    paddingRight: 12,
   },
   label: {
     fontSize: 16,
-    flexWrap: 'wrap',
+    fontWeight: '500',
+    marginBottom: 4,
+    color: '#333333',
   },
   value: {
-    fontSize: 12,
-    marginTop: 5,
-    flexWrap: 'wrap',
-  },
-  disabledItem: {
-    opacity: 0.4,
-  },
-  slider: {
-    width: '100%',
-    height: 40,
-  },
-  thumbTouchSize: {
-    width: 40,
-    height: 40,
-  },
-  trackStyle: {
-    height: 5,
-  },
-  thumbStyle: {
-    height: 20,
-    width: 20,
-  },
-  minimumTrackTintColor: {
-    color: '#2196F3',
-  },
-  maximumTrackTintColorDark: {
+    fontSize: 14,
+    lineHeight: 20,
     color: '#666666',
   },
-  maximumTrackTintColorLight: {
-    color: '#D1D1D6',
+  selectedValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  thumbTintColor: {
+  selectedValue: {
+    fontSize: 16,
+    marginRight: 4,
+    color: '#333333',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  pickerContainer: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  closeButton: {
+    padding: 8,
+  },
+  closeButtonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  pickerOptionsContainer: {
+    maxHeight: 400,
+  },
+  pickerOption: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  optionContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pickerOptionText: {
+    fontSize: 16,
+    flex: 1,
+    color: '#333333',
+  },
+  selectedOption: {
+    backgroundColor: '#007AFF',
+  },
+  selectedOptionText: {
     color: '#FFFFFF',
+  },
+  disabledItem: {
+    opacity: 0.5,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+  },
+  pickerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  disabledButton: {
+    opacity: 0.5,
   },
 });
