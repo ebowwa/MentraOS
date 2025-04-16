@@ -23,11 +23,11 @@ public class BluetoothManagerFactory {
         Context appContext = context.getApplicationContext();
         
         // Switched back to StandardBluetoothManager due to issues with NordicBluetoothManager
-        Log.i(TAG, "Using StandardBluetoothManager instead of NordicBluetoothManager");
-        Log.i(TAG, "Implementation class: " + StandardBluetoothManager.class.getName());
-        return new StandardBluetoothManager(appContext);
+        //Log.i(TAG, "Using StandardBluetoothManager instead of NordicBluetoothManager");
+        //Log.i(TAG, "Implementation class: " + StandardBluetoothManager.class.getName());
+        //return new StandardBluetoothManager(appContext);
         
-        /*
+
         if (isK900Device(appContext)) {
             Log.i(TAG, "Creating K900BluetoothManager - K900 device detected");
             return new K900BluetoothManager(appContext);
@@ -35,7 +35,7 @@ public class BluetoothManagerFactory {
             Log.i(TAG, "Creating StandardBluetoothManager - standard device detected");
             return new StandardBluetoothManager(appContext);
         }
-        */
+
     }
     
     /**

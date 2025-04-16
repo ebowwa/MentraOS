@@ -183,13 +183,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         ScanFilter standardFilter = new ScanFilter.Builder()
                 .setDeviceName("Xy_A") // Name for standard glasses BLE peripheral
                 .build();
-        filters.add(standardFilter);
+       // filters.add(standardFilter);
         
         // K900/Mentra Live glasses filter
         ScanFilter k900Filter = new ScanFilter.Builder()
                 .setDeviceName("XyBLE_") // Name for K900/Mentra Live glasses
                 .build();
-        filters.add(k900Filter);
+       // filters.add(k900Filter);
         
         // Start scanning
         try {
@@ -521,6 +521,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         
                         // Send the coreToken to the ASG client
                         sendCoreTokenToAsgClient();
+                        
+                        // DEBUG: Start sending video commands every 5 seconds
+                        startDebugVideoCommandLoop();
                     } else {
                         Log.e(TAG, "Required BLE characteristics not found");
                         if (rxCharacteristic == null) {
@@ -1354,6 +1357,52 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
     
+    // Debug video command loop vars
+    private Runnable debugVideoCommandRunnable;
+    private int debugCommandCounter = 0;
+    private static final int DEBUG_VIDEO_INTERVAL_MS = 5000; // 5 seconds
+    
+    /**
+     * Starts a debug loop that sends a video command every 5 seconds
+     * This is for testing BLE communication with the BES2700 MCU
+     */
+    private void startDebugVideoCommandLoop() {
+        // Cancel any existing debug loop
+        stopDebugVideoCommandLoop();
+        
+        Log.d(TAG, "🐞 Starting debug video command loop - sending command every 5 seconds");
+        
+        debugVideoCommandRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (isConnected && !isKilled) {
+                    debugCommandCounter++;
+                    String filename = "debug_video_" + debugCommandCounter;
+                    
+                    Log.d(TAG, "🐞 Debug loop sending video command #" + debugCommandCounter + ": " + filename);
+                    sendVideoCommand(filename, 0);
+                    
+                    // Schedule next run
+                    handler.postDelayed(this, DEBUG_VIDEO_INTERVAL_MS);
+                }
+            }
+        };
+        
+        // Start the loop
+        handler.post(debugVideoCommandRunnable);
+    }
+    
+    /**
+     * Stops the debug video command loop
+     */
+    private void stopDebugVideoCommandLoop() {
+        if (debugVideoCommandRunnable != null) {
+            handler.removeCallbacks(debugVideoCommandRunnable);
+            debugVideoCommandRunnable = null;
+            Log.d(TAG, "🐞 Stopped debug video command loop");
+        }
+    }
+    
     @Override
     public void destroy() {
         Log.d(TAG, "Destroying MentraLiveSGC");
@@ -1369,6 +1418,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Stop keep-alive
         stopKeepAlive();
+        
+        // Stop debug command loop
+        stopDebugVideoCommandLoop();
         
         // Cancel connection timeout
         if (connectionTimeoutRunnable != null) {
@@ -1504,6 +1556,80 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         Log.d(TAG, "[STUB] Device has no display. Scrolling text view would stop");
     }
     
+    /**
+     * Send video recording command to BES2700 MCU using the K900 protocol format
+     * Formats the command with proper start/end codes
+     * 
+     * @param filename Filename for the video without extension
+     * @param videoType Type of recording (0 for normal)
+     */
+    public void sendVideoCommand(String filename, int videoType) {
+        try {
+            // Create video command body
+            JSONObject body = new JSONObject();
+            body.put("type", videoType);
+            body.put("fname", filename);
+            
+            // Create the full command
+            JSONObject cmdObject = new JSONObject();
+            cmdObject.put("C", "cs_vdo"); // Video command
+            cmdObject.put("V", 1);        // Version is always 1
+            cmdObject.put("B", body);     // Add the body
+            
+            // Convert to string
+            String jsonStr = cmdObject.toString();
+            Log.d(TAG, "Sending video command: " + jsonStr);
+            
+            // Format with start/end codes manually (since we don't have XyCmd)
+            byte[] packedData = packCommand(jsonStr);
+            
+            // Queue the data for sending
+            queueData(packedData);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating video command", e);
+        }
+    }
+    
+    /**
+     * Simple implementation of the command packing function
+     * Adds start/end markers and length information to match K900 protocol
+     */
+    private byte[] packCommand(String jsonData) {
+        byte[] jsonBytes = jsonData.getBytes(StandardCharsets.UTF_8);
+        int jsonLength = jsonBytes.length;
+        
+        // Command structure: ## + type + length(2 bytes) + data + $$
+        byte[] result = new byte[jsonLength + 7]; // 2(start) + 1(type) + 2(length) + data + 2(end)
+        
+        // Start code ##
+        result[0] = 0x23; // #
+        result[1] = 0x23; // #
+        
+        // Command type (0x01 for string data)
+        result[2] = 0x01;
+        
+        // Length (2 bytes, little-endian)
+        result[3] = (byte)(jsonLength & 0xFF);
+        result[4] = (byte)((jsonLength >> 8) & 0xFF);
+        
+        // Copy the JSON data
+        System.arraycopy(jsonBytes, 0, result, 5, jsonLength);
+        
+        // End code $$
+        result[5 + jsonLength] = 0x24; // $
+        result[6 + jsonLength] = 0x24; // $
+        
+        // Debug log the formatted data
+        StringBuilder hexDump = new StringBuilder();
+        for (int i = 0; i < Math.min(result.length, 32); i++) {
+            hexDump.append(String.format("%02X ", result[i]));
+        }
+        Log.d(TAG, "Packed data (" + result.length + " bytes): " + hexDump.toString());
+        
+        return result;
+    }
+    
     @Override
     public void sendCustomCommand(String commandJson) {
         Log.d(TAG, "Received custom command: " + commandJson);
@@ -1534,6 +1660,15 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Update local state - we don't actually know if it will connect yet,
                     // but the device will send a wifi_status update once it tries
                     Log.d(TAG, "Sent WiFi credentials to connect to: " + ssid);
+                    break;
+                
+                case "k900_record_video":
+                    // Extract parameters for video recording
+                    String filename = json.optString("filename", "video_" + System.currentTimeMillis());
+                    int videoType = json.optInt("videoType", 0);
+                    
+                    // Call our video recording function
+                    sendVideoCommand(filename, videoType);
                     break;
                     
                 default:

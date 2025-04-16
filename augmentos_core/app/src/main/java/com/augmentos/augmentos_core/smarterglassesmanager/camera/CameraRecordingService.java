@@ -69,10 +69,10 @@ public class CameraRecordingService extends Service implements ConnectCheckerRtm
      private static final int INITIAL_RETRY_DELAY_MS = 6000;
      private static final int BACKOFF_FACTOR = 2;
 
-     private int videoWidth = 640;
-     private int videoHeight = 480;
-     private int videoFps = 10;
-     private int videoBitrate = 500 * 1024; // (2 Mbps)
+     private int videoWidth = 120;//640;
+     private int videoHeight = 720;//480;
+     private int videoFps = 24;
+     private int videoBitrate = 2000 * 1024; // (2 Mbps)
     private int videoRotation = 90;
     private int audioBitrate = 128 * 1024;
     private int audioSampleRate = 44100;

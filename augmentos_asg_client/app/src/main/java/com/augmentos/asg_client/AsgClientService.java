@@ -34,7 +34,8 @@ import com.augmentos.asg_client.bluetooth.IBluetoothManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
-import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
+// Import CameraNeo instead of CameraRecordingService
+import com.augmentos.asg_client.camera.CameraNeo;
 
 /**
  * This is the FULL AsgClientService code that:
@@ -147,7 +148,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // this.recordFor5Seconds();
         
         // DEBUG: Start the debug photo upload timer for VPS
-        startDebugVpsPhotoUploadTimer();
+        //startDebugVpsPhotoUploadTimer();
     }
     
     /**
@@ -317,13 +318,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     private void recordFor5Seconds(){
-        CameraRecordingService.startLocalRecording(getApplicationContext());
-        new Handler().postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                CameraRecordingService.stopLocalRecording(getApplicationContext());
-            }
-        }, 60000); // 5000ms = 5 seconds
+        // This method is no longer used, but kept for reference
+        // Would need to implement using CameraNeo if needed
     }
     /**
      * Creates or updates our foreground notification channel and returns the
@@ -1119,11 +1115,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         
         try {
-            // Use the callback-based photo capture method from CameraRecordingService
-            com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.takePictureWithCallback(
+            // Use the new CameraNeo service for higher quality photos
+            com.augmentos.asg_client.camera.CameraNeo.takePictureWithCallback(
                 getApplicationContext(),
                 photoFilePath,
-                new com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.PhotoCaptureCallback() {
+                new com.augmentos.asg_client.camera.CameraNeo.PhotoCaptureCallback() {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "DEBUG: VPS photo captured successfully at: " + filePath);

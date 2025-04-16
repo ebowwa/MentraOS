@@ -65,13 +65,13 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
-                Log.d(TAG, "Starting to load page: " + url);
+                //Log.d(TAG, "Starting to load page: " + url);
             }
             
             @Override
             public void onLoadResource(WebView view, String url) {
                 super.onLoadResource(view, url);
-                Log.d(TAG, "Loading resource: " + url);
+                //Log.d(TAG, "Loading resource: " + url);
             }
             
             @Override
@@ -107,7 +107,7 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(@NonNull WebView view, @NonNull WebResourceRequest request, @NonNull WebResourceError error) {
                 super.onReceivedError(view, request, error);
-                Log.e(TAG, "Failed to load page. URL: " + request.getUrl() + ", Error: " + error.getDescription());
+                //Log.e(TAG, "Failed to load page. URL: " + request.getUrl() + ", Error: " + error.getDescription());
                 isPageLoadedSuccessfully = false; // Mark as failed to load
                 
                 // Show error in WebView so we can visually confirm it's working
@@ -120,7 +120,7 @@ public class WebViewActivity extends AppCompatActivity {
                 
                 // Delay reload by 5 seconds to avoid spamming
                 handler.postDelayed(() -> {
-                    Log.d(TAG, "Retrying to load the page after an error...");
+                    //Log.d(TAG, "Retrying to load the page after an error...");
                     webView.loadUrl(publicWebUrl);
                 }, 5000); // 5-second delay
             }
@@ -130,7 +130,7 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 super.onReceivedError(view, errorCode, description, failingUrl);
-                Log.e(TAG, "Failed to load page. URL: " + failingUrl + ", Error: " + description + ", Code: " + errorCode);
+                //Log.e(TAG, "Failed to load page. URL: " + failingUrl + ", Error: " + description + ", Code: " + errorCode);
                 isPageLoadedSuccessfully = false;
                 
                 // Show error in WebView so we can visually confirm it's working
@@ -143,14 +143,14 @@ public class WebViewActivity extends AppCompatActivity {
                 
                 // Delay reload by 5 seconds to avoid spamming
                 handler.postDelayed(() -> {
-                    Log.d(TAG, "Retrying to load the page after an error...");
+                    //Log.d(TAG, "Retrying to load the page after an error...");
                     webView.loadUrl(publicWebUrl);
                 }, 5000); // 5-second delay
             }
         });
 
         // Log URL being loaded
-        Log.d(TAG, "Loading URL: " + publicWebUrl);
+        //Log.d(TAG, "Loading URL: " + publicWebUrl);
         
         // Load the desired URL
         webView.loadUrl(publicWebUrl);

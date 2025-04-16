@@ -80,6 +80,12 @@
         android:exported="true"
         android:foregroundServiceType="microphone"
         />
+        
+    <service
+        android:name=".camera.CameraNeo"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="camera" />
 
     <activity
         android:name="com.augmentos.asg_client.MainActivity"

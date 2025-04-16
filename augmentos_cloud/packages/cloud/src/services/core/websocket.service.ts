@@ -746,6 +746,15 @@ export class WebSocketService {
   }
   
   /**
+   * Checks if a photo request with the specified ID is pending
+   * @param requestId The ID of the photo request to check
+   * @returns True if a pending request with this ID exists, false otherwise
+   */
+  hasPendingPhotoRequest(requestId: string): boolean {
+    return this.pendingPhotoRequests.has(requestId);
+  }
+  
+  /**
    * Forward a video stream response to the requesting TPA
    * @param appId The ID of the app requesting the stream
    * @param streamUrl The URL of the video stream

@@ -6,6 +6,8 @@ import android.util.Log;
 import com.augmentos.asg_client.bluetooth.serial.ComManager;
 import com.augmentos.asg_client.bluetooth.serial.SerialListener;
 
+import java.util.Arrays;
+
 /**
  * Implementation of IBluetoothManager for K900 devices.
  * Uses the K900's serial port to communicate with the BES2700 Bluetooth module.
@@ -161,6 +163,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             System.arraycopy(data, 0, dataCopy, 0, size);
             
             // Notify listeners of the received data
+            Log.d(TAG, "GOT SUM DATA? " + Arrays.toString(dataCopy));
             notifyDataReceived(dataCopy);
             
             // Show notification for debugging (only for larger data packets to avoid spam)

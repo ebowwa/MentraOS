@@ -5,9 +5,12 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '@augmentos/utils';
 import sessionService from '../services/core/session.service';
+import jwt from 'jsonwebtoken';
+import { config } from '@augmentos/config';
+import websocketService from '../services/core/websocket.service';
 
 /**
- * Validates the glasses authentication token
+ * Validates the glasses authentication token and request
  */
 export const validateGlassesAuth = (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -30,15 +33,39 @@ export const validateGlassesAuth = (req: Request, res: Response, next: NextFunct
       return res.status(401).json({ error: 'No authorization token provided' });
     }
 
-    // For now, we'll just check if the token is non-empty
-    // In a production implementation, you would validate the token properly
-    // Attach the token to the request for use in the route handler
-    (req as any).coreToken = token;
+    // Get the JWT secret
+    const jwtSecret = config.cloud.env.AUGMENTOS_AUTH_JWT_SECRET;
+    if (!jwtSecret) {
+      logger.error('JWT secret not configured');
+      return res.status(500).json({ error: 'Server authentication configuration error' });
+    }
+
+    // Verify the token
+    try {
+      const decoded = jwt.verify(token, jwtSecret);
+      // If we get here, the token is valid
+      logger.debug('Valid core token provided');
+      (req as any).coreToken = token;
+      (req as any).decodedToken = decoded;
+    } catch (jwtError) {
+      logger.error('Invalid JWT token:', jwtError);
+      return res.status(401).json({ error: 'Invalid authorization token' });
+    }
     
-    // For now, we're bypassing actual token validation
-    // In production, you would implement proper validation
+    // For photo uploads, also verify the requestId corresponds to a pending request
+    if (req.path.includes('/photos/upload') && req.body && req.body.requestId) {
+      const requestId = req.body.requestId;
+      
+      // Check if this requestId exists in pending requests
+      if (!websocketService.hasPendingPhotoRequest(requestId)) {
+        logger.warn(`Attempted upload with unknown requestId: ${requestId}`);
+        return res.status(400).json({ error: 'Invalid or expired requestId' });
+      }
+      
+      logger.debug(`Valid requestId provided: ${requestId}`);
+    }
     
-    // Token is "valid", proceed
+    // Token is valid and request is valid, proceed
     next();
   } catch (error) {
     logger.error('Error validating glasses auth token:', error);
