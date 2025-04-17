@@ -54,7 +54,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     { label: 'None', value: 'none' },
     { label: 'Fun Facts', value: 'fun_facts' },
     { label: 'Famous Quotes', value: 'famous_quotes' },
-    { label: "Trash Talk", value: "trash_talk" },
+    // { label: "Trash Talk", value: "trash_talk" },
     { label: 'Chinese Words', value: 'chinese_words' },
     { label: 'Gratitude Ping', value: 'gratitude_ping' }
   ];
