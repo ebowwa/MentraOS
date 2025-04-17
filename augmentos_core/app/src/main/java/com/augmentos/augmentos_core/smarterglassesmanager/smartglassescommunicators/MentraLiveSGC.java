@@ -1606,8 +1606,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         result[0] = 0x23; // #
         result[1] = 0x23; // #
         
-        // Command type (0x01 for string data)
-        result[2] = 0x01;
+        // Command type (0x30 for string data - FIXED based on K900Server code)
+        result[2] = 0x30; // Changed from 0x01 to 0x30 to match expected value
         
         // Length (2 bytes, little-endian)
         result[3] = (byte)(jsonLength & 0xFF);

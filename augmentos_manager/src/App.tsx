@@ -10,6 +10,8 @@ import RegisterScreen from './screens/RegisterScreen';
 import ProfileSettingsPage from './screens/ProfileSettingsPage';
 import GlassesMirror from './screens/GlassesMirror';
 import GlassesMirrorFullscreen from './screens/GlassesMirrorFullscreen';
+import GlassesRecordingsGallery from './screens/GlassesRecordingsGallery';
+import VideoPlayerScreen from './screens/VideoPlayerScreen';
 import NotificationListener from './components/NotificationListener';
 import AppStore from './screens/AppStore';
 import AppStoreNative from './screens/AppStoreNative';
@@ -344,6 +346,34 @@ const App: React.FC = () => {
                           gestureEnabled: false,
                         }}>
                         {() => <GlassesMirrorFullscreen isDarkTheme={isDarkTheme} />}
+                      </Stack.Screen>
+                      <Stack.Screen
+                        name="GlassesRecordingsGallery"
+                        options={{
+                          headerShown: true,
+                          title: 'Gallery',
+                          headerStyle: {
+                            backgroundColor: isDarkTheme ? '#121212' : '#f0f0f0',
+                          },
+                          headerTintColor: isDarkTheme ? '#ffffff' : '#000000',
+                          headerTitleStyle: {
+                            fontFamily: 'Montserrat-Bold',
+                            fontSize: 18,
+                          },
+                          headerShadowVisible: false,
+                          headerBackTitle: 'Back',
+                        }}>
+                        {() => <GlassesRecordingsGallery isDarkTheme={isDarkTheme} />}
+                      </Stack.Screen>
+                      <Stack.Screen
+                        name="VideoPlayerScreen"
+                        options={{
+                          headerShown: false,
+                          presentation: 'fullScreenModal',
+                          gestureEnabled: true,
+                          animationEnabled: true,
+                        }}>
+                        {(props) => <VideoPlayerScreen {...props} isDarkTheme={isDarkTheme} />}
                       </Stack.Screen>
                       <Stack.Screen name="AppSettings"
                         options={({ route }) => ({

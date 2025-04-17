@@ -19,6 +19,8 @@ export type RootStackParamList = {
   ProfileSettings: undefined;
   GlassesMirror: undefined;
   GlassesMirrorFullscreen: undefined;
+  GlassesRecordingsGallery: undefined;
+  VideoPlayerScreen: { filePath: string; fileName?: string };
   Reviews: { appId: string; appName: string };
   ConnectingToPuck: undefined;
   PhoneNotificationSettings: undefined;
