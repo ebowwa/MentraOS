@@ -42,6 +42,14 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const formScale = useRef(new Animated.Value(0)).current;
   const authOverlayOpacity = useRef(new Animated.Value(0)).current;
 
+  //pswd visibility
+  const [showPassword, setShowPassword] = useState(false);
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(opacity, {
@@ -453,9 +461,16 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
                           placeholder="Enter your password"
                           value={password}
                           onChangeText={setPassword}
-                          secureTextEntry
+                          secureTextEntry={!showPassword}
                           placeholderTextColor="#9CA3AF"
                         />
+                        <TouchableOpacity onPress={togglePasswordVisibility}>
+                          <Icon
+                            name={showPassword ? "eye" : "eye-slash"}
+                            size={18}
+                            color="#6B7280"
+                          />
+                        </TouchableOpacity>
                       </View>
                     </View>
 
@@ -832,7 +847,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    
+
   },
 });
 
