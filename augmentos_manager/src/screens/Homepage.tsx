@@ -5,7 +5,7 @@ import React, {
   useState,
   useEffect,
 } from 'react';
-import { View, StyleSheet, Animated, Text, Platform } from 'react-native';
+import { View, StyleSheet, Animated, Text, Platform, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -50,7 +50,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
       setIsInitialLoading(true);
       const timer = setTimeout(() => {
         setIsInitialLoading(false);
-      }, 5000);
+      }, 10000);
       return () => clearTimeout(timer);
     }
   }, [status.core_info.cloud_connection_status]);
@@ -240,16 +240,19 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
               ) : status.core_info.cloud_connection_status === 'CONNECTED' ? (
                 isInitialLoading ? (
                   <AnimatedSection>
-                    <Text style={currentThemeStyles.noAppsText}>
-                      Loading your apps...
-                    </Text>
+                    <View style={currentThemeStyles.loadingContainer}>
+                      <Text style={currentThemeStyles.loadingText}>
+                        Loading your apps...
+                      </Text>
+                    </View>
                   </AnimatedSection>
                 ) : (
                   <AnimatedSection>
-                    <Text style={currentThemeStyles.noAppsText}>
-                      No apps found. Visit the AugmentOS App Store to explore and
-                      download apps for your device.
-                    </Text>
+                    <View style={currentThemeStyles.noAppsContainer}>
+                      <Text style={currentThemeStyles.noAppsText}>
+                        Unable to load your apps.{'\n'}Please check your internet connection and try again.
+                      </Text>
+                    </View>
                   </AnimatedSection>
                 )
               ) : (
@@ -276,10 +279,18 @@ const lightThemeStyles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
   },
+  noAppsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
   noAppsText: {
-    marginTop: 10,
     color: '#000000',
     fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   brightnessContainer: {
     marginTop: 15,
@@ -298,6 +309,16 @@ const lightThemeStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    color: '#000000',
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+  },
 });
 
 const darkThemeStyles = StyleSheet.create({
@@ -310,9 +331,18 @@ const darkThemeStyles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 55,
   },
+  noAppsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
   noAppsText: {
     color: '#ffffff',
     fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   brightnessContainer: {
     marginTop: 15,
@@ -330,6 +360,16 @@ const darkThemeStyles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    color: '#ffffff',
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
   },
 });
 
