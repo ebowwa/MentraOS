@@ -408,6 +408,7 @@ enum GlassesError: Error {
       attempts += 1
       if !result && (attempts >= maxAttempts) {
         semaphore.signal()// increment the count
+        startReconnectionTimer()
         break
       }
     }
@@ -1189,19 +1190,26 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       // Create a new timer on a background queue
       let queue = DispatchQueue(label: "com.sample.reconnectionTimerQueue", qos: .background)
       queue.async { [weak self] in
-          self?.reconnectionTimer = Timer.scheduledTimer(
-              timeInterval: self?.reconnectionInterval ?? 5.0,
-              target: self ?? ERG1Manager(),
-              selector: #selector(self?.attemptReconnection),
+          guard let self = self else {
+            return
+          }
+          self.reconnectionTimer = Timer.scheduledTimer(
+              timeInterval: self.reconnectionInterval,
+              target: self,
+              selector: #selector(self.attemptReconnection),
               userInfo: nil,
               repeats: true
           )
+        
+          guard let recon = reconnectionTimer else {
+            return
+          }
           
           // Fire immediately for first attempt
-          self?.reconnectionTimer?.fire()
+          recon.fire()
           
           // Add timer to the run loop
-          RunLoop.current.add(self!.reconnectionTimer!, forMode: .default)
+          RunLoop.current.add(recon, forMode: .default)
           RunLoop.current.run()
       }
   }
