@@ -28,6 +28,7 @@ type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'
 const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkTheme, toggleTheme }) => {
   const { packageName, appName } = route.params;
   const backendServerComms = BackendServerComms.getInstance();
+  const [isUninstalling, setIsUninstalling] = useState(false);
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null);
@@ -101,6 +102,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
           style: "destructive",
           onPress: async () => {
             try {
+              setIsUninstalling(true);
               // First stop the app if it's running
               if (appInfo?.is_running) {
                 await backendServerComms.stopApp(packageName);
@@ -123,6 +125,8 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
                 message: `Error uninstalling app: ${error.message || 'Unknown error'}`, 
                 type: "error" 
               });
+            } finally {
+              setIsUninstalling(false);
             }
           }
         }
@@ -326,6 +330,12 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.backgroundColor }]}>
+      {isUninstalling && (
+        <LoadingOverlay 
+          message={`Uninstalling ${appInfo?.name || appName}...`} 
+          isDarkTheme={isDarkTheme} 
+        />
+      )}
       <ScrollView contentContainerStyle={styles.mainContainer}>
         {/* App Info Header Section */}
         <View style={[styles.appInfoHeader, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}>
