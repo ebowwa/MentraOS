@@ -113,8 +113,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
         // If onboarding is not completed, only allow starting Live Captions
         if (!onboardingCompleted) {
             console.log("STARTAPP: ONBOARDING NOT COMPLETED")
-            if (packageName !== 'com.augmentos.livecaptions') {
-                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME NOT CAPTIONS")
+            if (packageName !== 'com.augmentos.livecaptions' && packageName !== "cloud.augmentos.live-captions") {
+                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME NOT CAPTIONS IT IS INSTEAD: " + packageName)
                 showAlert(
                     "Complete Onboarding",
                     "Please tap the Live Captions app to complete the onboarding process.",
@@ -165,8 +165,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
 
     const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
     // const backgroundColor = isDarkTheme ? '#1E1E1E' : '#F5F5F5';
-
-    // console.log('status.apps', status.apps);
 
     // Optional: Filter out duplicate apps
     const uniqueApps = React.useMemo(() => {
