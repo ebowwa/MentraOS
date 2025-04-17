@@ -39,9 +39,28 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const { status, startBluetoothAndCore } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
+
+  // Reset loading state when connection status changes
+  useEffect(() => {
+    if (status.core_info.cloud_connection_status === 'CONNECTED') {
+      setIsInitialLoading(true);
+      const timer = setTimeout(() => {
+        setIsInitialLoading(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status.core_info.cloud_connection_status]);
+
+  // Clear loading state if apps are loaded
+  useEffect(() => {
+    if (status.apps.length > 0) {
+      setIsInitialLoading(false);
+    }
+  }, [status.apps.length]);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -218,11 +237,25 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
                     />
                   </AnimatedSection>
                 </>
+              ) : status.core_info.cloud_connection_status === 'CONNECTED' ? (
+                isInitialLoading ? (
+                  <AnimatedSection>
+                    <Text style={currentThemeStyles.noAppsText}>
+                      Loading your apps...
+                    </Text>
+                  </AnimatedSection>
+                ) : (
+                  <AnimatedSection>
+                    <Text style={currentThemeStyles.noAppsText}>
+                      No apps found. Visit the AugmentOS App Store to explore and
+                      download apps for your device.
+                    </Text>
+                  </AnimatedSection>
+                )
               ) : (
                 <AnimatedSection>
                   <Text style={currentThemeStyles.noAppsText}>
-                    No apps found. Visit the AugmentOS App Store to explore and
-                    download apps for your device.
+                    Unable to load apps. Please check your cloud connection to view and manage your apps.
                   </Text>
                 </AnimatedSection>
               )}
