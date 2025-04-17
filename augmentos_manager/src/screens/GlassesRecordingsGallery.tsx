@@ -21,6 +21,7 @@ import { NavigationProps } from '../components/types';
 import RNFS from 'react-native-fs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { shareFile } from '../utils/FileUtils';
+import VideoThumbnail from '../components/VideoThumbnail';
 
 interface GlassesRecordingsGalleryProps {
   isDarkTheme: boolean;
@@ -269,53 +270,80 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
             const filename = videoPath.split('/').pop() || '';
             // Convert timestamp in filename to readable date
             let dateString = "Unknown date";
+            let timestamp = 0;
             const match = filename.match(/glasses-recording-(\d+)\.mp4/);
             if (match && match[1]) {
-              const timestamp = parseInt(match[1]);
+              timestamp = parseInt(match[1]);
               dateString = new Date(timestamp).toLocaleString();
             }
             
             return (
-              <View 
-                key={index} 
+              <TouchableOpacity
+                key={index}
                 style={[
                   styles.videoItem,
                   isDarkTheme ? styles.videoItemDark : styles.videoItemLight
                 ]}
+                onPress={() => playVideo(videoPath)}
+                activeOpacity={0.7}
               >
-                <Text style={[
-                  styles.videoName,
-                  isDarkTheme ? styles.lightText : styles.darkText
-                ]}>
-                  Recording {index + 1}
-                </Text>
-                <Text style={[
-                  styles.videoDate,
-                  isDarkTheme ? styles.lightText : styles.darkText
-                ]}>
-                  {dateString}
-                </Text>
-                <View style={styles.videoActions}>
-                  <TouchableOpacity 
-                    style={[styles.videoActionButton, styles.playButton]}
-                    onPress={() => playVideo(videoPath)}
-                  >
-                    <Icon name="play-arrow" size={22} color="white" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.videoActionButton, styles.shareButton]}
-                    onPress={() => shareVideo(videoPath)}
-                  >
-                    <Icon name="share" size={22} color="white" />
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.videoActionButton, styles.deleteButton]}
-                    onPress={() => deleteVideo(videoPath)}
-                  >
-                    <Icon name="delete" size={22} color="white" />
-                  </TouchableOpacity>
+                <View style={styles.videoItemContent}>
+                  {/* Left: Video Thumbnail */}
+                  <View style={styles.thumbnailContainer}>
+                    <VideoThumbnail
+                      videoPath={videoPath}
+                      isDarkTheme={isDarkTheme}
+                    />
+                  </View>
+                  
+                  {/* Right: Info and Actions */}
+                  <View style={styles.videoInfoContainer}>
+                    {/* Date and Time */}
+                    <Text style={[
+                      styles.videoDate,
+                      isDarkTheme ? styles.lightText : styles.darkText
+                    ]}>
+                      {timestamp ? new Date(timestamp).toLocaleString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      }) : "Unknown date"}
+                    </Text>
+                    
+                    <Text style={[
+                      styles.videoTime,
+                      isDarkTheme ? styles.lightText : styles.darkText
+                    ]}>
+                      {timestamp ? new Date(timestamp).toLocaleTimeString(undefined, {
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      }) : ""}
+                    </Text>
+                    
+                    {/* Action Buttons */}
+                    <View style={styles.videoActions}>
+                      <TouchableOpacity 
+                        style={[styles.videoActionButton, styles.shareButton]}
+                        onPress={(e) => {
+                          e.stopPropagation(); // Prevent triggering the card's onPress
+                          shareVideo(videoPath);
+                        }}
+                      >
+                        <Icon name="share" size={16} color="white" />
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.videoActionButton, styles.deleteButton]}
+                        onPress={(e) => {
+                          e.stopPropagation(); // Prevent triggering the card's onPress
+                          deleteVideo(videoPath);
+                        }}
+                      >
+                        <Icon name="delete" size={16} color="white" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </View>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
@@ -389,9 +417,8 @@ const styles = StyleSheet.create({
     paddingTop: 10, // Reduced top padding since we have the native header now
   },
   videoItem: {
-    marginBottom: 15,
+    marginBottom: 12,
     borderRadius: 12,
-    padding: 15,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -399,6 +426,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     borderWidth: 0.5,
     borderColor: 'rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
   },
   videoItemDark: {
     backgroundColor: '#2a2a2a',
@@ -406,40 +434,48 @@ const styles = StyleSheet.create({
   videoItemLight: {
     backgroundColor: '#ffffff',
   },
-  videoName: {
-    fontSize: 18,
-    fontFamily: 'Montserrat-Bold',
-    fontWeight: 'bold',
-    marginBottom: 5,
+  videoItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  thumbnailContainer: {
+    padding: 8,
+  },
+  videoInfoContainer: {
+    flex: 1,
+    padding: 12,
+    justifyContent: 'center',
   },
   videoDate: {
     fontSize: 14,
+    fontFamily: 'Montserrat-Bold',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  videoTime: {
+    fontSize: 13,
     fontFamily: 'Montserrat-Regular',
-    marginBottom: 15,
-    opacity: 0.8,
+    marginBottom: 10,
+    opacity: 0.7,
   },
   videoActions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end', // Align buttons to the right
-    marginTop: 10, // Increased margin for better spacing
-    gap: 8, // Add gap between buttons
+    alignItems: 'center',
+    gap: 10, // Gap between buttons
   },
   videoActionButton: {
-    width: 44, // Fixed width for all buttons
-    height: 44, // Fixed height for all buttons
-    borderRadius: 8,
+    width: 36, // Smaller buttons
+    height: 36, // Smaller buttons
+    borderRadius: 18, // Circular buttons
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 5,
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
-  playButton: {
-    backgroundColor: '#4CAF50', // Green
-  },
+  // playButton removed as requested
   shareButton: {
     backgroundColor: '#2196F3', // Blue
   },
