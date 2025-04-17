@@ -1,6 +1,6 @@
 import RNFS from 'react-native-fs';
 import { Platform, Image } from 'react-native';
-// Remove dependency on react-native-video-thumbnail which is causing issues
+import { createThumbnail } from 'react-native-create-thumbnail';
 
 /**
  * Cache for video thumbnails to improve performance

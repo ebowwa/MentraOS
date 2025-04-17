@@ -33,6 +33,7 @@
     "react-native-bluetooth-classic": "^1.73.0-rc.12",
     "react-native-camera": "^4.2.1",
     "react-native-config": "^1.5.5",
+    "react-native-create-thumbnail": "^2.1.1",
     "react-native-elements": "^3.4.3",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.20.1",
@@ -50,6 +51,7 @@
     "react-native-vector-icons": "^10.2.0",
     "react-native-video": "^6.3.0",
     "react-native-video-thumbnail": "^1.0.1",
+    "react-native-view-shot": "^4.0.3",
     "react-native-webview": "^13.13.2",
     "text-encoding": "^0.7.0"
   },

@@ -138,6 +138,8 @@ dependencies {
     
     // Add react-native-video
     implementation project(':react-native-video')
+    implementation project(':react-native-view-shot')
+    implementation project(':react-native-create-thumbnail')
 }
 
 // Include custom vector icons fonts from react-native-vector-icons
