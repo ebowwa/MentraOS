@@ -15,7 +15,7 @@ import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
 import TpaSuccessDialog from "../components/dialogs/TpaSuccessDialog";
 import api, { AppResponse } from '@/services/api.service';
 import { AppI } from '@augmentos/sdk';
-import { normalizeUrl } from '@/lib/utils';
+import { normalizeUrl } from '@/libs/utils';
 import { toast } from 'sonner';
 // import { TPA } from '@/types/tpa';
 

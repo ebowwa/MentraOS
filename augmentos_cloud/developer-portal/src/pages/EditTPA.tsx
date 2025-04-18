@@ -16,7 +16,7 @@ import ApiKeyDialog from '../components/dialogs/ApiKeyDialog';
 import SharingDialog from '../components/dialogs/SharingDialog';
 import PublishDialog from '../components/dialogs/PublishDialog';
 import { TpaType } from '@augmentos/sdk';
-import { normalizeUrl } from '@/lib/utils';
+import { normalizeUrl } from '@/libs/utils';
 
 const EditTPA: React.FC = () => {
   const navigate = useNavigate();
