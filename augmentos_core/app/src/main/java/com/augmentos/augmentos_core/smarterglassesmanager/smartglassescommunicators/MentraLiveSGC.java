@@ -35,6 +35,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.Smart
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 
 import org.greenrobot.eventbus.EventBus;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -455,6 +456,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     stopKeepAlive();
                     handler.removeCallbacks(processSendQueueRunnable);
                     
+                    // Stop the readiness check loop
+                    stopReadinessCheckLoop();
+                    
                     // Clean up GATT resources
                     if (bluetoothGatt != null) {
                         bluetoothGatt.close();
@@ -494,10 +498,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     rxCharacteristic = service.getCharacteristic(RX_CHAR_UUID);
                     
                     if (rxCharacteristic != null && txCharacteristic != null) {
-                        // CRITICAL FIX: Update connection state FIRST
-                        // This ensures notifications can be enabled AFTER connection is established
-                        Log.d(TAG, "✅ Both TX and RX characteristics found - connection ready");
-                        connectionEvent(SmartGlassesConnectionState.CONNECTED);
+                        // BLE connection established, but we still need to wait for glasses SOC
+                        Log.d(TAG, "✅ Both TX and RX characteristics found - BLE connection ready");
+                        Log.d(TAG, "🔄 Waiting for glasses SOC to become ready...");
+                        
+                        // Keep the state as CONNECTING until the glasses SOC responds
+                        connectionEvent(SmartGlassesConnectionState.CONNECTING);
                         
                         // CRITICAL FIX: Request MTU size ONCE - don't schedule delayed retries
                         // This avoids BLE operations during active data flow
@@ -506,7 +512,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                             Log.d(TAG, "🔄 Requested MTU size 512, success: " + mtuRequested);
                         }
                         
-                        // Enable notifications AFTER connection is established
+                        // Enable notifications AFTER BLE connection is established
                         enableNotifications();
                         
                         // Start queue processing for sending data
@@ -515,15 +521,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         // Start keep-alive mechanism
                         startKeepAlive();
                         
-                        // Request battery and WiFi status
-                        requestBatteryStatus();
-                        requestWifiStatus();
-                        
-                        // Send the coreToken to the ASG client
-                        sendCoreTokenToAsgClient();
-                        
-                        // DEBUG: Start sending video commands every 5 seconds
-                        startDebugVideoCommandLoop();
+                        // Start SOC readiness check loop - this will keep trying until
+                        // the glasses SOC boots and responds with a "glasses_ready" message
+                        // All other initialization will happen after receiving glasses_ready
+                        startReadinessCheckLoop();
                     } else {
                         Log.e(TAG, "Required BLE characteristics not found");
                         if (rxCharacteristic == null) {
@@ -1043,6 +1044,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Process a JSON message
      */
     private void processJsonMessage(JSONObject json) {
+        Log.d(TAG, "Got some JSON from glasses: " + json.toString());
         String type = json.optString("type", "");
         
         switch (type) {
@@ -1074,6 +1076,29 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             case "sensor_data":
                 // Process sensor data
                 // ...
+                break;
+                
+            case "glasses_ready":
+                // Glasses SOC has booted and is ready for communication
+                Log.d(TAG, "🎉 Received glasses_ready message - SOC is booted and ready!");
+                
+                // Stop the readiness check loop since we got confirmation
+                stopReadinessCheckLoop();
+                
+                // Now we can perform all SOC-dependent initialization
+                Log.d(TAG, "🔄 Requesting battery and WiFi status from glasses");
+                requestBatteryStatus();
+                requestWifiStatus();
+                
+                Log.d(TAG, "🔄 Sending coreToken to ASG client");
+                sendCoreTokenToAsgClient();
+                
+                Log.d(TAG, "🔄 Starting debug video command loop");
+                startDebugVideoCommandLoop();
+                
+                // Finally, mark the connection as fully established
+                Log.d(TAG, "✅ Glasses connection is now fully established!");
+                connectionEvent(SmartGlassesConnectionState.CONNECTED);
                 break;
                 
             default:
@@ -1362,6 +1387,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private int debugCommandCounter = 0;
     private static final int DEBUG_VIDEO_INTERVAL_MS = 5000; // 5 seconds
     
+    // SOC readiness check parameters
+    private static final int READINESS_CHECK_INTERVAL_MS = 5000; // 5 seconds
+    private Runnable readinessCheckRunnable;
+    private int readinessCheckCounter = 0;
+    
     /**
      * Starts a debug loop that sends a video command every 5 seconds
      * This is for testing BLE communication with the BES2700 MCU
@@ -1370,17 +1400,28 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         // Cancel any existing debug loop
         stopDebugVideoCommandLoop();
         
-        Log.d(TAG, "🐞 Starting debug video command loop - sending command every 5 seconds");
+        Log.d(TAG, "🐞 Starting debug command loop - sending command every 5 seconds");
         
         debugVideoCommandRunnable = new Runnable() {
             @Override
             public void run() {
                 if (isConnected && !isKilled) {
                     debugCommandCounter++;
-                    String filename = "debug_video_" + debugCommandCounter;
                     
-                    Log.d(TAG, "🐞 Debug loop sending video command #" + debugCommandCounter + ": " + filename);
-                    sendVideoCommand(filename, 0);
+                    Log.d(TAG, "🐞 Debug loop sending test data #" + debugCommandCounter);
+                    
+                    // Test options - uncomment the one you want to use:
+                    
+                    // Option 1: Use the video command (original implementation)
+                    // sendVideoCommand("debug_video_" + debugCommandCounter, 0);
+                    
+                    // Option 2: Use the arbitrary command (JSON in C/V/B format)
+                    // String testId = "test_command_" + debugCommandCounter;
+                    // sendArbitraryCommand(testId, "This is a test message #" + debugCommandCounter);
+                    
+                    // Option 3: Use the new direct data sending method
+                    String testData = "HELLO FROM CORE #" + debugCommandCounter + " - Testing direct data transmission";
+                    sendDataToGlasses(testData);
                     
                     // Schedule next run
                     handler.postDelayed(this, DEBUG_VIDEO_INTERVAL_MS);
@@ -1403,6 +1444,61 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
     
+    /**
+     * Starts the glasses SOC readiness check loop
+     * This sends a "phone_ready" message every 5 seconds until
+     * we receive a "glasses_ready" response, indicating the SOC is booted
+     */
+    private void startReadinessCheckLoop() {
+        // Stop any existing readiness check
+        stopReadinessCheckLoop();
+        
+        // Reset counter
+        readinessCheckCounter = 0;
+        
+        Log.d(TAG, "🔄 Starting glasses SOC readiness check loop");
+        
+        readinessCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (isConnected && !isKilled) {
+                    readinessCheckCounter++;
+                    
+                    Log.d(TAG, "🔄 Readiness check #" + readinessCheckCounter + ": waiting for glasses SOC to boot");
+                    
+                    try {
+                        // Create a simple phone_ready message
+                        JSONObject readyMsg = new JSONObject();
+                        readyMsg.put("type", "phone_ready");
+                        readyMsg.put("timestamp", System.currentTimeMillis());
+                        
+                        // Send it through our data channel
+                        sendDataToGlasses(readyMsg.toString());
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating phone_ready message", e);
+                    }
+                    
+                    // Schedule next check
+                    handler.postDelayed(this, READINESS_CHECK_INTERVAL_MS);
+                }
+            }
+        };
+        
+        // Start the loop
+        handler.post(readinessCheckRunnable);
+    }
+    
+    /**
+     * Stops the glasses SOC readiness check loop
+     */
+    private void stopReadinessCheckLoop() {
+        if (readinessCheckRunnable != null) {
+            handler.removeCallbacks(readinessCheckRunnable);
+            readinessCheckRunnable = null;
+            Log.d(TAG, "🔄 Stopped glasses SOC readiness check loop");
+        }
+    }
+    
     @Override
     public void destroy() {
         Log.d(TAG, "Destroying MentraLiveSGC");
@@ -1421,6 +1517,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Stop debug command loop
         stopDebugVideoCommandLoop();
+        
+        // Stop readiness check loop
+        stopReadinessCheckLoop();
         
         // Cancel connection timeout
         if (connectionTimeoutRunnable != null) {
@@ -1592,6 +1691,47 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     /**
+     * Send arbitrary command to test JSON format compatibility
+     * Uses the cs_syvr command (Query Version) but with custom data in the B field
+     * 
+     * @param id Test identifier
+     * @param message Test message content
+     */
+    public void sendArbitraryCommand(String id, String message) {
+        try {
+            // Create the custom data we want to send in the B field
+            String customData = "Hello from MentraLiveSGC! ID: " + id + ", Message: " + message;
+            
+            // Create the full command object in C/V/B format
+            JSONObject cmdObject = new JSONObject();
+            cmdObject.put("C", "HELLOOO HOWS IT GOING YO?? HOW LONG CAN THIS MESSAGE BE? I HOPE IT CAN BE VERY LONG");  // Query Version command
+            //cmdObject.put("V", 1);          // Version is always 1
+            //cmdObject.put("B", ""); // Normally empty, but we'll use it for our data
+            
+            // Convert to string - this follows the C/V/B format but with our data in B
+            String jsonStr = cmdObject.toString();
+            Log.d(TAG, "Sending cs_syvr command with custom data: " + jsonStr);
+            
+            // Log the UTF-8 bytes of the original string for comparison
+            byte[] jsonBytes = jsonStr.getBytes(StandardCharsets.UTF_8);
+            StringBuilder bytesHex = new StringBuilder();
+            for (byte b : jsonBytes) {
+                bytesHex.append(String.format("%02X ", b));
+            }
+            Log.d(TAG, "JSON string as bytes (" + jsonBytes.length + " bytes): " + bytesHex.toString());
+            
+            // Format with start/end codes using the same packing function
+            byte[] packedData = packCommand(jsonStr);
+            
+            // Queue the data for sending
+            queueData(packedData);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating cs_syvr command", e);
+        }
+    }
+    
+    /**
      * Simple implementation of the command packing function
      * Adds start/end markers and length information to match K900 protocol
      */
@@ -1620,14 +1760,55 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         result[5 + jsonLength] = 0x24; // $
         result[6 + jsonLength] = 0x24; // $
         
-        // Debug log the formatted data
+        // Debug log the formatted data (FULL output)
         StringBuilder hexDump = new StringBuilder();
-        for (int i = 0; i < Math.min(result.length, 32); i++) {
+        for (int i = 0; i < result.length; i++) {
             hexDump.append(String.format("%02X ", result[i]));
         }
-        Log.d(TAG, "Packed data (" + result.length + " bytes): " + hexDump.toString());
+        Log.d(TAG, "Packed data (" + result.length + " bytes) FULL HEX: " + hexDump.toString());
         
         return result;
+    }
+    
+    /**
+     * Send data directly to the glasses using the C field of JSON
+     * This method provides a simple way to transmit arbitrary data through the BLE connection
+     * utilizing the discovery that the BES2700 MCU passes messages with C field to the SOC
+     * 
+     * @param data The string data to be sent to the glasses
+     */
+    public void sendDataToGlasses(String data) {
+        if (data == null || data.isEmpty()) {
+            Log.e(TAG, "Cannot send empty data to glasses");
+            return;
+        }
+        
+        try {
+            // Create a simple JSON object with just the C field containing our data
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("C", data);  // The C field is used to carry our data payload
+            
+            // Convert to string
+            String jsonStr = jsonObject.toString();
+            Log.d(TAG, "Sending data to glasses: " + jsonStr);
+            
+            // Log the UTF-8 bytes of the original string for comparison
+            byte[] jsonBytes = jsonStr.getBytes(StandardCharsets.UTF_8);
+            StringBuilder bytesHex = new StringBuilder();
+            for (byte b : jsonBytes) {
+                bytesHex.append(String.format("%02X ", b));
+            }
+            Log.d(TAG, "Data JSON as bytes (" + jsonBytes.length + " bytes): " + bytesHex.toString());
+            
+            // Format with start/end codes using the same packing function
+            byte[] packedData = packCommand(jsonStr);
+            
+            // Queue the data for sending
+            queueData(packedData);
+            
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating data JSON", e);
+        }
     }
     
     @Override

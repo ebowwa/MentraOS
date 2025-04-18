@@ -645,21 +645,80 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         
         Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
         
-        // Process the received data
-        processBluetoothData(data);
-    }
-    
-    /**
-     * Process data received from Bluetooth
-     * This method handles data from both K900 and standard implementations
-     */
-    private void processBluetoothData(byte[] data) {
+        // Process the data
+
         // First, log the data for debugging (only in development)
         StringBuilder hexData = new StringBuilder();
         for (byte b : data) {
             hexData.append(String.format("%02X ", b));
         }
         Log.d(TAG, "Bluetooth data: " + hexData.toString());
+        
+        // Check if this is a message with ##...## format (K900 BES2700 protocol)
+        if (data.length > 4 && data[0] == 0x23 && data[1] == 0x23) {
+            Log.d(TAG, "🔍 Detected ##...## protocol formatted message");
+            
+            // Look for end marker ($$)
+            int endMarkerPos = -1;
+            for (int i = 4; i < data.length - 1; i++) {
+                if (data[i] == 0x24 && data[i+1] == 0x24) {
+                    endMarkerPos = i;
+                    break;
+                }
+            }
+            
+            if (endMarkerPos > 0) {
+                Log.d(TAG, "🔍 Found end marker at position: " + endMarkerPos);
+                
+                // Extract the command code and log it
+                byte commandType = data[2];
+                Log.d(TAG, "🔍 Command type byte: 0x" + String.format("%02X", commandType));
+                
+                // Extract length (assuming little-endian 2 bytes)
+                int length = (data[3] & 0xFF);
+                if (data.length > 4) {
+                    length |= ((data[4] & 0xFF) << 8);
+                }
+                Log.d(TAG, "🔍 Payload length from header: " + length);
+                
+                // Extract payload (assuming it starts at position 5)
+                int payloadStart = 5;
+                int payloadLength = endMarkerPos - payloadStart;
+                Log.d(TAG, "🔍 Actual payload length: " + payloadLength);
+                
+                // Only process if payload length looks correct
+                if (payloadLength > 0) {
+                    // Check if payload is JSON (starts with '{')
+                    if (data[payloadStart] == '{') {
+                        try {
+                            // Extract the JSON string
+                            String jsonStr = new String(data, payloadStart, payloadLength, "UTF-8");
+                            Log.d(TAG, "✅ Extracted JSON from ##...$$: " + jsonStr);
+                            
+                            // Parse the JSON
+                            JSONObject jsonObject = new JSONObject(jsonStr);
+                            
+                            // Extract the "C" field value, which we'll pass to the JSON processor
+                            // This simplifies our approach - we just use the C field regardless
+                            // of whether it's part of a command or our direct data
+                            processJsonCommand(jsonObject);
+                            return;
+                        } catch (Exception e) {
+                            Log.e(TAG, "❌ Error parsing JSON from ##...$$: " + e.getMessage());
+                        }
+                    } else {
+                        Log.d(TAG, "⚠️ Payload doesn't start with '{': 0x" + String.format("%02X", data[payloadStart]));
+                    }
+                } else {
+                    Log.e(TAG, "❌ Invalid payload length: " + payloadLength);
+                }
+            } else {
+                Log.e(TAG, "❌ End marker not found in ##...## message");
+            }
+            
+            // If extraction failed, fall through to standard processing
+            Log.d(TAG, "⚠️ Failed to extract JSON from ##...## message, trying standard processing");
+        }
         
         // Check if this is a JSON message (starts with '{')
         if (data.length > 0 && data[0] == '{') {
@@ -674,14 +733,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 // Fall through to binary command processing
             }
         }
-        
-        // Determine the packet type from the first byte (binary command format)
-        if (data.length > 0) {
-            // The first byte could be a command identifier
-            byte command = data[0];
-            // Process according to the command type
-            executeCommand(command, data);
-        }
     }
     
     /**
@@ -689,47 +740,110 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     private void processJsonCommand(JSONObject json) {
         try {
-            String type = json.optString("type", "");
-            
-            if ("auth_token".equals(type)) {
-                // Handle authentication token
-                String coreToken = json.optString("coreToken", "");
-                if (!coreToken.isEmpty()) {
-                    Log.d(TAG, "Received coreToken from AugmentOS Core");
-                    saveCoreToken(coreToken);
-                    
-                    // Send acknowledgment
-                    sendTokenStatusResponse(true);
-                } else {
-                    Log.e(TAG, "Received empty coreToken");
-                    sendTokenStatusResponse(false);
+            // If this is our direct data format (only C field), extract the JSON from it
+            JSONObject dataToProcess = json;
+            if (json.has("C") && json.length() == 1) {
+                String dataPayload = json.optString("C", "");
+                Log.d(TAG, "📦 Detected direct data format! Payload: " + dataPayload);
+                
+                // Try to parse the payload as JSON
+                try {
+                    dataToProcess = new JSONObject(dataPayload);
+                    Log.d(TAG, "📦 Successfully parsed payload as JSON");
+                } catch (JSONException e) {
+                    Log.d(TAG, "📦 Payload is not valid JSON, using as-is");
+                    // If not valid JSON, continue with original json object
                 }
             }
-            else if ("command".equals(type)) {
-                String command = json.optString("command", "");
-                Log.d(TAG, "Processing JSON command: " + command);
-                
-                switch (command) {
-                    case "camera":
-                        processCameraCommand(json);
-                        break;
+            
+            // Process the data (either original or extracted from C field)
+            String type = dataToProcess.optString("type", "");
+            Log.d(TAG, "Processing JSON message type: " + type);
+            
+            switch (type) {
+                case "phone_ready":
+                    // Phone is connected and ready - respond that we're also ready
+                    Log.d(TAG, "📱 Received phone_ready message - sending glasses_ready response");
+                    
+                    try {
+                        // Create a glasses_ready response
+                        JSONObject response = new JSONObject();
+                        response.put("type", "glasses_ready");
+                        response.put("timestamp", System.currentTimeMillis());
                         
-                    case "set_wifi":
-                        // Handle WiFi configuration command if needed
-                        String ssid = json.optString("ssid", "");
-                        String password = json.optString("password", "");
-                        if (!ssid.isEmpty()) {
-                            Log.d(TAG, "Connecting to WiFi network: " + ssid);
-                            if (networkManager != null) {
-                                networkManager.connectToWifi(ssid, password);
-                            }
+                        // Send the response back
+                        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                            bluetoothManager.sendData(response.toString().getBytes());
+                            Log.d(TAG, "✅ Sent glasses_ready response to phone");
                         }
-                        break;
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating glasses_ready response", e);
+                    }
+                    break;
+                    
+                case "auth_token":
+                    // Handle authentication token
+                    String coreToken = dataToProcess.optString("coreToken", "");
+                    if (!coreToken.isEmpty()) {
+                        Log.d(TAG, "Received coreToken from AugmentOS Core");
+                        saveCoreToken(coreToken);
                         
-                    default:
-                        Log.w(TAG, "Unknown JSON command: " + command);
-                        break;
-                }
+                        // Send acknowledgment
+                        sendTokenStatusResponse(true);
+                    } else {
+                        Log.e(TAG, "Received empty coreToken");
+                        sendTokenStatusResponse(false);
+                    }
+                    break;
+                    
+                case "take_photo":
+                    String requestId = dataToProcess.optString("requestId", "");
+                    String appId = dataToProcess.optString("appId", "");
+                    
+                    if (requestId.isEmpty()) {
+                        Log.e(TAG, "Cannot take photo - missing requestId");
+                        return;
+                    }
+                    
+                    // Generate a temporary file path for the photo
+                    String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+                    String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
+                    
+                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", appId: " + appId);
+                    Log.d(TAG, "Photo will be saved to: " + photoFilePath);
+                    
+                    // Take the photo using CameraRecordingService
+                    takePhotoAndUpload(photoFilePath, requestId, appId);
+                    break;
+                    
+                case "start_video_stream":
+                    // This would be implemented in a future version
+                    String videoAppId = dataToProcess.optString("appId", "");
+                    Log.d(TAG, "Video streaming requested by appId: " + videoAppId);
+                    Log.d(TAG, "Video streaming not yet implemented");
+                    break;
+                    
+                case "set_wifi":
+                    // Handle WiFi configuration command if needed
+                    String ssid = dataToProcess.optString("ssid", "");
+                    String password = dataToProcess.optString("password", "");
+                    if (!ssid.isEmpty()) {
+                        Log.d(TAG, "Connecting to WiFi network: " + ssid);
+                        if (networkManager != null) {
+                            networkManager.connectToWifi(ssid, password);
+                        }
+                    }
+                    break;
+                
+                // Add more types as needed
+                
+                case "":
+                    Log.d(TAG, "Received data with no type field: " + dataToProcess);
+                    break;
+                    
+                default:
+                    Log.w(TAG, "Unknown message type: " + type);
+                    break;
             }
         } catch (Exception e) {
             Log.e(TAG, "Error processing JSON command", e);
@@ -774,65 +888,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating token status response", e);
             }
-        }
-    }
-    
-    /**
-     * Process camera-related commands
-     */
-    private void processCameraCommand(JSONObject json) {
-        String action = json.optString("action", "");
-        Log.d(TAG, "Processing camera command: " + action);
-        
-        try {
-            switch (action) {
-                case "take_photo":
-                    String requestId = json.optString("requestId", "");
-                    String appId = json.optString("appId", "");
-                    
-                    if (requestId.isEmpty()) {
-                        Log.e(TAG, "Cannot take photo - missing requestId");
-                        return;
-                    }
-                    
-                    // Generate a temporary file path for the photo
-                    String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
-                    String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
-                    
-                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", appId: " + appId);
-                    Log.d(TAG, "Photo will be saved to: " + photoFilePath);
-                    
-                    // Take the photo using CameraRecordingService
-                    takePhotoAndUpload(photoFilePath, requestId, appId);
-                    break;
-                    
-                case "start_video_stream":
-                    // This would be implemented in a future version
-                    String videoAppId = json.optString("appId", "");
-                    Log.d(TAG, "Video streaming requested by appId: " + videoAppId);
-                    Log.d(TAG, "Video streaming not yet implemented");
-                    
-                    // Send response indicating video streaming is not supported yet
-                    JSONObject videoResponse = new JSONObject();
-                    videoResponse.put("type", "response");
-                    videoResponse.put("command", "camera");
-                    videoResponse.put("action", "start_video_stream");
-                    videoResponse.put("success", false);
-                    videoResponse.put("appId", videoAppId);
-                    videoResponse.put("message", "Video streaming not supported yet");
-                    
-                    // Send the response back
-                    if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                        bluetoothManager.sendData(videoResponse.toString().getBytes());
-                    }
-                    break;
-                    
-                default:
-                    Log.w(TAG, "Unknown camera action: " + action);
-                    break;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error processing camera command", e);
         }
     }
     
@@ -947,9 +1002,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void sendPhotoSuccessResponse(String requestId, String appId, String photoUrl) {
         try {
             JSONObject response = new JSONObject();
-            response.put("type", "response");
-            response.put("command", "camera");
-            response.put("action", "take_photo");
+            response.put("type", "photo_response");
             response.put("requestId", requestId);
             response.put("appId", appId);
             response.put("success", true);
@@ -970,9 +1023,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void sendPhotoErrorResponse(String requestId, String appId, String errorMessage) {
         try {
             JSONObject response = new JSONObject();
-            response.put("type", "response");
-            response.put("command", "camera");
-            response.put("action", "take_photo");
+            response.put("type", "photo_response");
             response.put("requestId", requestId);
             response.put("appId", appId);
             response.put("success", false);
@@ -987,44 +1038,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
     
-    /**
-     * Execute a command based on the command byte and data
-     */
-    private void executeCommand(byte command, byte[] data) {
-        switch (command) {
-            case 0x01: // Example: Connection status command
-                Log.d(TAG, "Processing connection status command");
-                // Handle connection status
-                break;
-                
-            case 0x02: // Example: Data transfer command
-                Log.d(TAG, "Processing data transfer command");
-                // Extract and process the actual data
-                // Example: triggerCoreFunction(Arrays.copyOfRange(data, 1, data.length));
-                break;
-                
-            case 0x03: // Example: Request current status
-                Log.d(TAG, "Processing status request command");
-                // Prepare and send status data
-                sendStatusData();
-                break;
-
-            case (byte)0xA1: // LC3 audio data from phone (0xA1 = 161 decimal)
-                Log.d(TAG, "Received LC3 audio data from phone");
-                // For now, just log it - in the future this would be played through the glasses speakers
-                if (data.length > 1) {
-                    byte[] audioData = java.util.Arrays.copyOfRange(data, 1, data.length);
-                    Log.d(TAG, "LC3 audio data length: " + audioData.length + " bytes");
-                    // In a future implementation, decode and play this audio on the glasses
-                    // For example: playAudioOnGlasses(audioData);
-                }
-                break;
-                
-            default:
-                Log.w(TAG, "Unknown command received: " + String.format("0x%02X", command));
-                break;
-        }
-    }
 
     /**
      * Example method to send status data back to the connected device

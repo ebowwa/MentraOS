@@ -77,7 +77,7 @@ public class WebViewActivity extends AppCompatActivity {
             @Override
             public void onPageFinished(@NonNull WebView view, @NonNull String url) {
                 super.onPageFinished(view, url);
-                Log.d(TAG, "Page loaded successfully: " + url);
+                //Log.d(TAG, "Page loaded successfully: " + url);
                 isPageLoadedSuccessfully = true;
                 
                 // Make WebView visible to verify it exists
