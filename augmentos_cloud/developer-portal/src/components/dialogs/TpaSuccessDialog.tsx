@@ -25,7 +25,7 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
   const navigate = useNavigate();
   const [isCopied, setIsCopied] = useState(false);
 
-  const handleCopyApiKey = () => {
+  const handleCopyApiKey = React.useCallback(() => {
     if (!apiKey) return;
     
     navigator.clipboard.writeText(apiKey).then(() => {
@@ -33,14 +33,14 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
       toast.success('API key copied to clipboard');
       setTimeout(() => setIsCopied(false), 2000);
     });
-  };
+  }, [apiKey]);
   
   // Auto-copy API key when dialog opens
   React.useEffect(() => {
     if (open && apiKey) {
       handleCopyApiKey();
     }
-  }, [open, apiKey]);
+  }, [open, apiKey, handleCopyApiKey]);
 
   const handleGoToTpas = () => {
     onOpenChange(false);
@@ -61,7 +61,7 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
         </DialogHeader>
 
         <div className="py-4 space-y-4">
-          <div className="bg-green-50 border-l-4 border-green-500 border-t border-r border-b border-green-200 rounded-md p-4 text-green-800 shadow-sm">
+          <div className="bg-green-50 border-l-4 border-green-500 border-t border-r border-b rounded-md p-4 text-green-800 shadow-sm">
             <p className="text-sm font-medium">Your app is now ready! 🎉</p>
             <p className="text-sm mt-1">Your API key has been automatically copied to your clipboard.</p>
           </div>

@@ -82,7 +82,7 @@ const api = {
     },
     
     // Update developer profile
-    updateProfile: async (profileData: any): Promise<DeveloperUser> => {
+    updateProfile: async (profileData: unknown): Promise<DeveloperUser> => {
       const response = await axios.put("/api/dev/auth/profile", profileData);
       return response.data;
     },

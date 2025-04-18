@@ -97,7 +97,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
   // Complete reset of dialog state when TPA changes
   useEffect(() => {
     if (tpa) {
-      const tpaId = tpa.id || tpa.packageName;
+      const tpaId = tpa.packageName;
       
       // Only reset state if TPA has changed
       if (currentTpaId !== tpaId) {
