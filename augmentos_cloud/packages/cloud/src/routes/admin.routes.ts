@@ -4,6 +4,8 @@ import { validateAdminEmail } from '../middleware/admin-auth.middleware';
 import App from '../models/app.model';
 import { logger } from '@augmentos/utils';
 import { Exception } from '@sentry/node';
+import appService from '../services/core/app.service';
+import { User } from '../models/user.model';
 
 const router = Router();
 
@@ -88,6 +90,7 @@ const getAppDetail = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Failed to fetch app detail' });
   }
 };
+
 
 // Admin check route - just verifies that the user's email is in the admin list
 router.get('/check', validateAdminEmail, (req, res) => {
@@ -257,5 +260,7 @@ router.get('/apps/submitted', validateAdminEmail, getSubmittedApps);
 router.get('/apps/:packageName', validateAdminEmail, getAppDetail);
 router.post('/apps/:packageName/approve', validateAdminEmail, approveApp);
 router.post('/apps/:packageName/reject', validateAdminEmail, rejectApp);
+
+
 
 export default router;
