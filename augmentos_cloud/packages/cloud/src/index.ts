@@ -29,7 +29,6 @@ import devRoutes from './routes/developer.routes';
 import serverRoutes from './routes/server.routes';
 import adminRoutes from './routes/admin.routes';
 import tpaServerRoutes from './routes/tpa-server.routes';
-import toolsRoutes from './routes/tools.routes';
 
 import path from 'path';
 
@@ -129,7 +128,7 @@ app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/tpa-server', tpaServerRoutes);
 app.use('/api/server', serverRoutes);
-app.use('/api/tools', toolsRoutes);
+
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 
