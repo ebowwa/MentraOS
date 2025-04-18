@@ -5,6 +5,7 @@ import App from '../models/app.model';
 import { logger } from '@augmentos/utils';
 import { Exception } from '@sentry/node';
 import appService from '../services/core/app.service';
+import { User } from '../models/user.model';
 
 const router = Router();
 
@@ -90,64 +91,6 @@ const getAppDetail = async (req: Request, res: Response) => {
   }
 };
 
-/**
- * Trigger a tool webhook to a TPA
- * Used by Mira AI to send tools to TPAs
- */
-const triggerTool = async (req: Request, res: Response) => {
-  try {
-    const { packageName } = req.params;
-    const payload = req.body;
-    
-    // Validate the payload has the required fields
-    if (!payload.tool_id) {
-      return res.status(400).json({ 
-        error: true, 
-        message: 'Missing required field: tool_id' 
-      });
-    }
-    
-    // Log the tool request
-    logger.info(`Triggering tool webhook for app ${packageName}`, {
-      tool_id: payload.tool_id,
-      user_id: payload.user_id
-    });
-    
-    // Call the service method to trigger the webhook
-    const result = await appService.triggerTpaToolWebhook(packageName, payload);
-    
-    // Return the response from the TPA
-    return res.status(result.status).json(result.data);
-  } catch (error) {
-    logger.error('Error triggering tool webhook:', error);
-    return res.status(500).json({ 
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred' 
-    });
-  }
-};
-
-/**
- * Get all tools for a specific TPA
- * Used by Mira AI to discover available tools
- */
-const getTpaTools = async (req: Request, res: Response) => {
-  try {
-    const { packageName } = req.params;
-    
-    // Call the service method to get the tools
-    const tools = await appService.getTpaTools(packageName);
-    
-    // Return the tools array
-    res.json(tools);
-  } catch (error) {
-    logger.error('Error fetching TPA tools:', error);
-    res.status(500).json({ 
-      error: true,
-      message: error instanceof Error ? error.message : 'Unknown error occurred' 
-    });
-  }
-};
 
 // Admin check route - just verifies that the user's email is in the admin list
 router.get('/check', validateAdminEmail, (req, res) => {
@@ -318,8 +261,6 @@ router.get('/apps/:packageName', validateAdminEmail, getAppDetail);
 router.post('/apps/:packageName/approve', validateAdminEmail, approveApp);
 router.post('/apps/:packageName/reject', validateAdminEmail, rejectApp);
 
-// Tool webhook routes - Used by Mira AI
-router.post('/apps/:packageName/tool', triggerTool);
-router.get('/apps/:packageName/tools', getTpaTools);
+
 
 export default router;

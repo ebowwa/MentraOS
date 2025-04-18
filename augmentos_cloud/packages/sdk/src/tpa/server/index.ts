@@ -163,9 +163,8 @@ export class TpaServer {
    * @returns Optional string response that will be sent back to AugmentOS Cloud
    */
   protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
-    console.log(`Tool call received: ${toolCall.toolName} (${toolCall.toolId})`);
+    console.log(`Tool call received: ${toolCall.toolId}`);
     console.log(`Parameters: ${JSON.stringify(toolCall.toolParameters)}`);
-    console.log(`Full transcript: ${toolCall.fullTranscript}`);
     return undefined;
   }
 
@@ -279,8 +278,9 @@ export class TpaServer {
   private setupToolCallEndpoint(): void {
     this.app.post('/tool', async (req, res) => {
       try {
+        console.log(`\n\n🔧 Received tool call: ${JSON.stringify(req.body)}\n\n`);
         const toolCall = req.body as ToolCall;
-        console.log(`\n\n🔧 Received tool call: ${toolCall.toolName} (${toolCall.toolId})\n\n`);
+        console.log(`\n\n🔧 Received tool call: ${toolCall.toolId}\n\n`);
         // Call the onToolCall handler and get the response
         const response = await this.onToolCall(toolCall);
         
@@ -297,6 +297,9 @@ export class TpaServer {
           message: error instanceof Error ? error.message : 'Unknown error occurred calling tool'
         });
       }
+    });
+    this.app.get('/tool', async (req, res) => {
+      res.json({ status: 'success', reply: 'Hello, world!' });
     });
   }
 

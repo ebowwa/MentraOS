@@ -97,12 +97,9 @@ export interface AudioChunk extends BaseMessage {
  */
 export interface ToolCall {
   toolId: string; // The ID of the tool that was called
-  toolName: string; // The name of the tool that was called
   toolParameters: Record<string, string | number | boolean>; // The parameters of the tool that was called
-  fullTranscript: string; // The complete transcript that triggered this tool call
   timestamp: Date; // Timestamp when the tool was called
   userId: string; // ID of the user who triggered the tool call
-  parameterValues: Record<string, string | number | boolean>; // The actual parameter values filled in for this tool call
 }
 
 //===========================================================
@@ -131,8 +128,7 @@ export type CloudToTpaMessage =
   | AudioChunk
   | LocationUpdate
   | CalendarEvent
-  | DataStream
-  | ToolCall;
+  | DataStream;
 
 //===========================================================
 // Type guards

@@ -7,10 +7,11 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
-import App, { ToolParameterSchema, ToolSchema } from '../../models/app.model';
+import App from '../../models/app.model';
+import { ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 
@@ -376,6 +377,7 @@ export class AppService {
    * @returns Validated and sanitized tools array or throws error if invalid
    */
   private validateToolDefinitions(tools: any[]): ToolSchema[] {
+    console.log('Validating tool definitions:', tools);
     if (!Array.isArray(tools)) {
       throw new Error('Tools must be an array');
     }
@@ -689,12 +691,14 @@ export class AppService {
    * @param payload - The tool webhook payload containing tool details
    * @returns Promise resolving to the webhook response or error
    */
-  async triggerTpaToolWebhook(packageName: string, payload: any): Promise<{
+  async triggerTpaToolWebhook(packageName: string, payload: ToolCall): Promise<{
     status: number;
     data: any;
   }> {
     // Look up the TPA by packageName
     const app = await this.getApp(packageName);
+
+    console.log('🔨 Triggering tool webhook for:', packageName);
     
     if (!app) {
       throw new Error(`App ${packageName} not found`);
@@ -720,6 +724,9 @@ export class AppService {
     // Set up retry configuration
     const maxRetries = 2;
     const baseDelay = 1000; // 1 second
+
+    console.log('🔨 Sending tool webhook to:', webhookUrl);
+    console.log('🔨 Payload:', payload);
     
     // Attempt to send the webhook with retries
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -799,14 +806,39 @@ export class AppService {
       throw new Error(`App ${packageName} not found`);
     }
     
-    // Get the app document from MongoDB to access the tools array
-    const appDoc = await App.findOne({ packageName });
-    if (!appDoc) {
-      throw new Error(`App ${packageName} not found in database`);
+    if (!app.publicUrl) {
+      throw new Error(`App ${packageName} does not have a public URL`);
     }
+
+    console.log('Getting TPA tools for:', packageName);
     
-    // Return the tools array or empty array if no tools defined
-    return appDoc.tools || [];
+    try {
+      // Fetch the tpa_config.json from the app's publicUrl
+      const configUrl = `${app.publicUrl}/tpa_config.json`;
+      const response = await axios.get(configUrl, { timeout: 5000 });
+
+      // Check if the response contains a tools array
+      const config = response.data;
+      if (config && Array.isArray(config.tools)) {
+        // Validate the tools before returning them
+        console.log(`Found ${config.tools.length} tools in ${packageName}, validating...`);
+        return this.validateToolDefinitions(config.tools);
+      }
+      
+      // If no tools found, return empty array
+      return [];
+    } catch (error) {
+      // Check if error is a 404 (file not found) and silently ignore
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        // Config file doesn't exist, silently return empty array
+        console.log(`No tpa_config.json found for app ${packageName} (404)`);
+        return [];
+      }
+      
+      // Log other errors but still return empty array
+      //console.error(`Failed to fetch tpa_config.json for app ${packageName}:`, error);
+      return [];
+    }
   }
 
 }

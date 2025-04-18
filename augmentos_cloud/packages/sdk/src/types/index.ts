@@ -129,7 +129,9 @@ export {
   BaseAppSetting,
   GroupSetting,
   TpaConfig,
-  validateTpaConfig
+  validateTpaConfig,
+  ToolSchema,
+  ToolParameterSchema
 } from './models';
 
 

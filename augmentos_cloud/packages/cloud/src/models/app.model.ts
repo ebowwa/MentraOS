@@ -1,24 +1,10 @@
 // cloud/server/src/models/app.model.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AppI as _AppI, TpaType } from '@augmentos/sdk';
+import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 
-// Tool parameter type definition
-export interface ToolParameterSchema {
-  type: 'string' | 'number' | 'boolean';
-  description: string;
-  enum?: string[];
-  required?: boolean;
-}
 
-// Tool schema definition for TPAs
-export interface ToolSchema {
-  id: string;
-  description: string;
-  activationPhrases?: string[];
-  parameters?: Record<string, ToolParameterSchema>;
-}
 
 // Extend the AppI interface for our MongoDB document
 export interface AppI extends _AppI, Document {
