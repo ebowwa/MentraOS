@@ -92,7 +92,7 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
                   <TouchableOpacity 
                     onPress={() => openAppSettings(app)}
                     style={styles.settingsButton}>
-                    <Icon name="cog" size={24} color="#000000" />
+                    <Icon name="cog-outline" size={24} color="#000000" />
                   </TouchableOpacity>
                 </View>
               </LinearGradient>

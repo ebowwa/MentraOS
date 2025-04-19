@@ -165,7 +165,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                                 style={styles.settingsButton}
                                 disabled={isAppOperationPending(app.packageName)}
                             >
-                                <Icon name="cog" size={24} color={textColor} />
+                                <Icon name="cog-outline" size={24} color={textColor} />
                             </TouchableOpacity>
                         </View>
                     </TouchableOpacity>
