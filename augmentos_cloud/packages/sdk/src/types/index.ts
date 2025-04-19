@@ -83,7 +83,8 @@ export {
   SettingsUpdate,
   DataStream,
   CloudToTpaMessage,
-  TranslationData
+  TranslationData,
+  ToolCall
 } from './messages/cloud-to-tpa';
 
 // From layout.ts
@@ -129,7 +130,9 @@ export {
   BaseAppSetting,
   GroupSetting,
   TpaConfig,
-  validateTpaConfig
+  validateTpaConfig,
+  ToolSchema,
+  ToolParameterSchema
 } from './models';
 
 
