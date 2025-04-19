@@ -138,10 +138,12 @@ const styles = StyleSheet.create({
   },
   appItemWrapper: {
     marginBottom: 0.5,
+    borderRadius: 12,
   },
   appItem: {
     borderRadius: 12,
     padding: 9,
+    overflow: 'hidden',
   },
   appContent: {
     flexDirection: 'row',
@@ -150,7 +152,7 @@ const styles = StyleSheet.create({
   },
   appName: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '500',
     color: '#000000',
     marginLeft: 8,

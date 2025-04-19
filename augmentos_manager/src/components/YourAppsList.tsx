@@ -118,16 +118,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     };
 
     // Filter out duplicate apps and running apps
-    const availableApps = React.useMemo(() => {
-        const seen = new Set();
-        return status.apps.filter(app => {
-            if (seen.has(app.packageName) || app.is_running) {
-                return false;
-            }
-            seen.add(app.packageName);
-            return true;
-        });
-    }, [status.apps]);
+    const availableApps = status.apps.filter(app => {
+        if (app.is_running) {
+            return false;
+        }
+        // Check if this is the first occurrence of this package name
+        const firstIndex = status.apps.findIndex(a => a.packageName === app.packageName);
+        return firstIndex === status.apps.indexOf(app);
+    });
 
     return (
         <View style={styles.appsContainer}>
@@ -217,17 +215,17 @@ const styles = StyleSheet.create({
     appItem: {
         backgroundColor: '#E8E8E8',
         borderRadius: 12,
-        padding: 12,
-        marginBottom: 10,
+        padding: 10,
+        marginBottom: 9,
     },
     appContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: 40,
+        minHeight: 44,
     },
     appTextContainer: {
         flex: 1,
-        marginLeft: 12,
+        marginLeft: 8,
     },
     appName: {
         fontSize: 16,
@@ -237,8 +235,8 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     appIconStyle: {
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
     },
 });
 

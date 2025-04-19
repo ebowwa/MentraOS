@@ -13,7 +13,6 @@ import ConnectedDeviceInfo from '../components/ConnectedDeviceInfo';
 import ConnectedSimulatedGlassesInfo from '../components/ConnectedSimulatedGlassesInfo';
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
-import NavigationBar from '../components/NavigationBar';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import { ScrollView } from 'react-native-gesture-handler';
 import BackendServerComms from '../backend_comms/BackendServerComms';
@@ -266,7 +265,6 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           )}
         </ScrollView>
       </View>
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </SafeAreaView>
   );
 };
