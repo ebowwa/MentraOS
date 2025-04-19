@@ -146,6 +146,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                         onLongPress={() => openAppSettings(app)}
                         delayLongPress={500}
                         style={styles.appItem}
+                        disabled={isAppOperationPending(app.packageName)}
                     >
                         <View style={styles.appContent}>
                             <AppIcon
@@ -162,6 +163,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                             <TouchableOpacity 
                                 onPress={() => openAppSettings(app)}
                                 style={styles.settingsButton}
+                                disabled={isAppOperationPending(app.packageName)}
                             >
                                 <Icon name="cog" size={24} color={textColor} />
                             </TouchableOpacity>

@@ -240,7 +240,7 @@ export default class BackendServerComms {
         //console.error('Error starting app:', error.message || error);
         //GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Error starting app: ' + error.message || error, type: 'error' })
         GlobalEventEmitter.emit('SHOW_BANNER', { message: `Could not connect to ${packageName}`, type: "error" });
-        //throw error;
+        throw error;
       }
     }
   

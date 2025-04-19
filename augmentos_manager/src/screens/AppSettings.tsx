@@ -176,6 +176,19 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
       console.log("\n\n\nGOT TPA SETTING INFO:");
       console.log(JSON.stringify(data));
       console.log("\n\n\n");
+      
+      // If no data is returned from the server, create a minimal app info object
+      if (!data) {
+        setServerAppInfo({
+          name: appInfo?.name || appName,
+          description: appInfo?.description || 'No description available.',
+          instructions: appInfo?.instructions || null,
+          settings: [],
+          uninstallable: true
+        });
+        return;
+      }
+      
       setServerAppInfo(data);
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
@@ -202,6 +215,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
       }
     } catch (err) {
       console.error('Error fetching TPA settings:', err);
+      // If there's an error, create a minimal app info object
+      setServerAppInfo({
+        name: appInfo?.name || appName,
+        description: appInfo?.description || 'No description available.',
+        instructions: appInfo?.instructions || null,
+        settings: [],
+        uninstallable: true
+      });
     }
   }
 
