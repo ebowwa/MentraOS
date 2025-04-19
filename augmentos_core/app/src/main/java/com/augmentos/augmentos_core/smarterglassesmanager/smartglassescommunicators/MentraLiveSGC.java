@@ -67,6 +67,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     // - From peripheral's perspective: TX is for sending, RX is for receiving
     // - From central's perspective: RX is peripheral's TX, TX is peripheral's RX
     private static final UUID SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
+    //000070FF-0000-1000-8000-00805f9b34fb
     private static final UUID RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb"); // Central receives on peripheral's TX
     private static final UUID TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb"); // Central transmits on peripheral's RX
     private static final UUID CLIENT_CHARACTERISTIC_CONFIG_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
@@ -520,7 +521,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         
                         // Start keep-alive mechanism
                         startKeepAlive();
-                        
+
+                        openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
                         // Start SOC readiness check loop - this will keep trying until
                         // the glasses SOC boots and responds with a "glasses_ready" message
                         // All other initialization will happen after receiving glasses_ready
@@ -572,32 +574,38 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
             // Get thread ID for tracking thread issues
             long threadId = Thread.currentThread().getId();
+            UUID uuid = characteristic.getUuid();
             
-            //Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + characteristic.getUuid());
+            Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + uuid);
             
-            // With the fixed UUID definitions, we should now be receiving notifications on RX_CHAR_UUID
-            // (peripheral's TX characteristic that we receive on)
-            boolean isCorrectCharacteristic = false;
-            if (characteristic.getUuid().equals(RX_CHAR_UUID)) {
-                //Log.e(TAG, "Thread-" + threadId + ": 🎯 RX CHARACTERISTIC NOTIFICATION RECEIVED! (Peripheral's TX)");
-                isCorrectCharacteristic = true;
+            // Process data from ANY characteristic that sends notifications
+            // This way we'll catch data even if it's coming on an unexpected characteristic
+            boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
+            boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
+            
+            if (isRxCharacteristic) {
+                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)");
+            } else if (isTxCharacteristic) {
+                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)");
+            } else {
+                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON UNKNOWN CHARACTERISTIC: " + uuid);
             }
-//            else if (characteristic.getUuid().equals(TX_CHAR_UUID)) {
-//                // This shouldn't happen normally, but we'll keep it for robustness
-//                Log.e(TAG, "Thread-" + threadId + ": 🎯 TX CHARACTERISTIC NOTIFICATION RECEIVED! (Should be rare)");
-//                isCorrectCharacteristic = true;
-//            } else {
-//                Log.e(TAG, "Thread-" + threadId + ": ⚠️ UNKNOWN CHARACTERISTIC NOTIFICATION: " + characteristic.getUuid());
-//            }
             
-            if (isCorrectCharacteristic) {
+            // Process ALL data regardless of which characteristic it came from
+            {
+                Log.e(TAG, "Thread-" + threadId + ": 🔍 Processing received data");
                 byte[] data = characteristic.getValue();
+                
+                // Convert first few bytes to hex for better viewing
+                StringBuilder hexDump = new StringBuilder();
+                for (int i = 0; i < Math.min(data.length, 40); i++) {
+                    hexDump.append(String.format("%02X ", data[i]));
+                }
+                Log.e(TAG, "Thread-" + threadId + ": 🔍 First 40 bytes: " + hexDump);
+                Log.e(TAG, "Thread-" + threadId + ": 🔍 Total data length: " + data.length + " bytes");
+                
                 if (data != null && data.length > 0) {
                     // Critical debugging for LC3 audio issue - dump ALL received data
-                    StringBuilder hexDump = new StringBuilder();
-                    for (int i = 0; i < Math.min(data.length, 32); i++) {
-                        hexDump.append(String.format("%02X ", data[i]));
-                    }
                     
                     // Check for LC3 audio data multiple ways
                     boolean isLc3Command = false;
@@ -661,15 +669,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     
                     // Process the received data
                     processReceivedData(data, data.length);
-                }
-            } else {
-                Log.e(TAG, "Thread-" + threadId + ": ⚠️ Received notification for unrecognized characteristic: " + characteristic.getUuid());
-                Log.e(TAG, "Thread-" + threadId + ": ⚠️ Expected TX_CHAR_UUID: " + TX_CHAR_UUID + " or RX_CHAR_UUID: " + RX_CHAR_UUID);
-                
-                // Try to get the service to debug
-                BluetoothGattService service = characteristic.getService();
-                if (service != null) {
-                    Log.e(TAG, "Thread-" + threadId + ": ⚠️ Service UUID: " + service.getUuid() + ", expected: " + SERVICE_UUID);
                 }
             }
         }
@@ -753,7 +752,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     };
     
     /**
-     * Enable notifications for the RX characteristic
+     * Enable notifications for all characteristics to ensure we catch data from any endpoint
      */
     private void enableNotifications() {
         long threadId = Thread.currentThread().getId();
@@ -769,49 +768,92 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             return;
         }
         
-        // CRITICAL FIX: Only use setCharacteristicNotification - SKIP ALL DESCRIPTOR OPERATIONS
-        // The descriptor writes are causing the connection to crash during active data flow
+        // Find our service
+        BluetoothGattService service = bluetoothGatt.getService(SERVICE_UUID);
+        if (service == null) {
+            Log.e(TAG, "Thread-" + threadId + ": ❌ Service not found: " + SERVICE_UUID);
+            return;
+        }
+        
+        // Get all characteristics
+        List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
+        Log.e(TAG, "Thread-" + threadId + ": 🔍 Found " + characteristics.size() + " characteristics in service " + SERVICE_UUID);
         
         boolean notificationSuccess = false;
         
-        // Enable only local notifications for RX characteristic - NO DESCRIPTOR WRITES!
-        if (rxCharacteristic != null) {
-            try {
-                Log.e(TAG, "Thread-" + threadId + ": 📱 Setting up local notifications for RX characteristic: " + RX_CHAR_UUID);
-                boolean rxNotificationSuccess = bluetoothGatt.setCharacteristicNotification(rxCharacteristic, true);
-                Log.e(TAG, "Thread-" + threadId + ": 📱 RX characteristic notifications enabled: " + rxNotificationSuccess);
-                notificationSuccess = rxNotificationSuccess;
-            } catch (Exception e) {
-                Log.e(TAG, "Thread-" + threadId + ": ❌ Exception enabling RX notifications: " + e.getMessage());
+        // Enable notifications for each characteristic
+        for (BluetoothGattCharacteristic characteristic : characteristics) {
+            UUID uuid = characteristic.getUuid();
+            Log.e(TAG, "Thread-" + threadId + ": 🔍 Examining characteristic: " + uuid);
+            
+            int properties = characteristic.getProperties();
+            boolean hasNotify = (properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+            boolean hasIndicate = (properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0;
+            boolean hasRead = (properties & BluetoothGattCharacteristic.PROPERTY_READ) != 0;
+            boolean hasWrite = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
+            boolean hasWriteNoResponse = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
+            
+            Log.e(TAG, "Thread-" + threadId + ": 🔍 Characteristic " + uuid + " properties: " + 
+                   (hasNotify ? "NOTIFY " : "") + 
+                   (hasIndicate ? "INDICATE " : "") +
+                   (hasRead ? "READ " : "") +
+                   (hasWrite ? "WRITE " : "") +
+                   (hasWriteNoResponse ? "WRITE_NO_RESPONSE " : ""));
+            
+            // Store references to our main characteristics
+            if (uuid.equals(RX_CHAR_UUID)) {
+                rxCharacteristic = characteristic;
+                Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored RX characteristic");
+            } else if (uuid.equals(TX_CHAR_UUID)) {
+                txCharacteristic = characteristic;
+                Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored TX characteristic");
             }
-        } else {
-            Log.e(TAG, "Thread-" + threadId + ": ⚠️ RX characteristic is null");
-        }
-        
-        // Also enable TX characteristic since we may need it as fallback
-        if (txCharacteristic != null) {
-            try {
-                Log.e(TAG, "Thread-" + threadId + ": 📱 Setting up local notifications for TX characteristic: " + TX_CHAR_UUID);
-                boolean txNotificationSuccess = bluetoothGatt.setCharacteristicNotification(txCharacteristic, true);
-                Log.e(TAG, "Thread-" + threadId + ": 📱 TX characteristic notifications enabled: " + txNotificationSuccess);
-                notificationSuccess = notificationSuccess || txNotificationSuccess;
-            } catch (Exception e) {
-                Log.e(TAG, "Thread-" + threadId + ": ❌ Exception enabling TX notifications: " + e.getMessage());
+            
+            // Enable notifications for any characteristic that supports it
+            if (hasNotify || hasIndicate) {
+                try {
+                    // Enable local notifications
+                    boolean success = bluetoothGatt.setCharacteristicNotification(characteristic, true);
+                    Log.e(TAG, "Thread-" + threadId + ": 📱 Set local notification for " + uuid + ": " + success);
+                    notificationSuccess = notificationSuccess || success;
+                    
+                    // Try to enable remote notifications by writing to descriptor
+                    // We'll do this despite previous issues, since it's required for some devices
+                    BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+                        CLIENT_CHARACTERISTIC_CONFIG_UUID);
+                    
+                    if (descriptor != null) {
+                        try {
+                            byte[] value;
+                            if (hasNotify) {
+                                value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
+                            } else {
+                                value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                            }
+                            
+                            descriptor.setValue(value);
+                            boolean writeSuccess = bluetoothGatt.writeDescriptor(descriptor);
+                            Log.e(TAG, "Thread-" + threadId + ": 📱 Write descriptor for " + uuid + ": " + writeSuccess);
+                        } catch (Exception e) {
+                            // Just log the error and continue - doesn't stop us from trying other characteristics
+                            Log.e(TAG, "Thread-" + threadId + ": ⚠️ Error writing descriptor for " + uuid + ": " + e.getMessage());
+                        }
+                    } else {
+                        Log.e(TAG, "Thread-" + threadId + ": ⚠️ No notification descriptor found for " + uuid);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Thread-" + threadId + ": ❌ Exception enabling notifications for " + uuid + ": " + e.getMessage());
+                }
             }
-        } else {
-            Log.e(TAG, "Thread-" + threadId + ": ⚠️ TX characteristic is null");
         }
         
         // Log notification status but AVOID any delayed operations!
         if (notificationSuccess) {
-            Log.e(TAG, "Thread-" + threadId + ": 🎯 Local notification registration SUCCESS");
-            Log.e(TAG, "Thread-" + threadId + ": 🔔 Ready to receive LC3 audio data via onCharacteristicChanged()");
+            Log.e(TAG, "Thread-" + threadId + ": 🎯 Local notification registration SUCCESS for at least one characteristic");
+            Log.e(TAG, "Thread-" + threadId + ": 🔔 Ready to receive data via onCharacteristicChanged()");
         } else {
-            Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to enable notifications");
+            Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to enable notifications on any characteristic");
         }
-        
-        // REMOVED: All scheduled/delayed operations and service rediscovery
-        // These can cause threading issues that lead to descriptor write failures
     }
     
     /**
@@ -927,12 +969,84 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
         Log.d(TAG, "Processing data packet, first " + Math.min(size, 16) + " bytes: " + hexData.toString());
         
-        // Check the first byte to determine the packet type
-        byte commandByte = data[0];
-        Log.d(TAG, "Command byte: 0x" + String.format("%02X", commandByte) + " (" + (int)(commandByte & 0xFF) + ")");
-        
         // Get thread ID for consistent logging
         long threadId = Thread.currentThread().getId();
+        
+        // First check if this looks like a K900 protocol formatted message (starts with ##)
+        if (size >= 7 && data[0] == 0x23 && data[1] == 0x23) {
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 DETECTED K900 PROTOCOL FORMAT (## prefix)");
+            
+            // Extract the command type and length
+            byte commandType = data[2];
+            // Fix: Read length as big-endian format to match actual protocol
+            int payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+            
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type: 0x" + String.format("%02X", commandType) + 
+                  ", Payload length: " + payloadLength);
+            
+            // Verify expected message format
+            if (commandType == 0x30) { // 0x30 is the command type for string/JSON data
+                Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type 0x30 indicates JSON data");
+                
+                // Extract the payload
+                if (size >= payloadLength + 7) { // Make sure we have enough data
+                    // Check for end markers
+                    if (data[5 + payloadLength] == 0x24 && data[6 + payloadLength] == 0x24) {
+                        // Extract the payload
+                        byte[] payload = Arrays.copyOfRange(data, 5, 5 + payloadLength);
+                        
+                        // Convert to string
+                        String payloadStr = new String(payload, StandardCharsets.UTF_8);
+                        Log.d(TAG, "Thread-" + threadId + ": 🔍 Extracted payload: " + payloadStr);
+                        
+                        // Check if it's JSON
+                        if (payloadStr.startsWith("{") && payloadStr.endsWith("}")) {
+                            Log.d(TAG, "Thread-" + threadId + ": 🔍 Payload is valid JSON");
+                            try {
+                                JSONObject json = new JSONObject(payloadStr);
+                                
+                                // Check if this is C-wrapped format {"C": "..."}
+                                if (json.has("C") && json.length() == 1) {
+                                    String innerContent = json.optString("C", "");
+                                    Log.d(TAG, "Thread-" + threadId + ": 🔍 Detected C-wrapped format, inner content: " + innerContent);
+                                    
+                                    // Try to parse the inner content as JSON
+                                    try {
+                                        JSONObject innerJson = new JSONObject(innerContent);
+                                        processJsonMessage(innerJson);
+                                    } catch (JSONException e) {
+                                        Log.d(TAG, "Thread-" + threadId + ": Inner content is not JSON, processing raw inner content");
+                                        // If inner content is not JSON, process the outer JSON
+                                        processJsonMessage(json);
+                                    }
+                                } else {
+                                    // Not C-wrapped, process the JSON directly
+                                    processJsonMessage(json);
+                                }
+                            } catch (JSONException e) {
+                                Log.e(TAG, "Thread-" + threadId + ": ❌ Error parsing JSON payload: " + e.getMessage());
+                            }
+                        } else {
+                            Log.w(TAG, "Thread-" + threadId + ": ⚠️ Payload is not valid JSON: " + payloadStr);
+                        }
+                    } else {
+                        Log.e(TAG, "Thread-" + threadId + ": ❌ End markers ($$) not found where expected");
+                    }
+                } else {
+                    Log.e(TAG, "Thread-" + threadId + ": ❌ Received data size (" + size + 
+                         ") is less than expected size (" + (payloadLength + 7) + ")");
+                }
+            } else {
+                // Handle other command types if needed
+                Log.d(TAG, "Thread-" + threadId + ": 🔍 Non-JSON command type: 0x" + String.format("%02X", commandType));
+            }
+            
+            return; // Exit after processing K900 protocol format
+        }
+        
+        // Check the first byte to determine the packet type for non-protocol formatted data
+        byte commandByte = data[0];
+        Log.d(TAG, "Command byte: 0x" + String.format("%02X", commandByte) + " (" + (int)(commandByte & 0xFF) + ")");
         
         // CRITICAL DEBUG: Try multiple ways to detect LC3 audio data
         boolean isLc3Audio = false;
@@ -1465,7 +1579,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     readinessCheckCounter++;
                     
                     Log.d(TAG, "🔄 Readiness check #" + readinessCheckCounter + ": waiting for glasses SOC to boot");
-                    
+                    openhotspot();
                     try {
                         // Create a simple phone_ready message
                         JSONObject readyMsg = new JSONObject();
@@ -1689,45 +1803,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating video command", e);
         }
     }
-    
-    /**
-     * Send arbitrary command to test JSON format compatibility
-     * Uses the cs_syvr command (Query Version) but with custom data in the B field
-     * 
-     * @param id Test identifier
-     * @param message Test message content
-     */
-    public void sendArbitraryCommand(String id, String message) {
+
+    public void openhotspot() {
         try {
-            // Create the custom data we want to send in the B field
-            String customData = "Hello from MentraLiveSGC! ID: " + id + ", Message: " + message;
-            
-            // Create the full command object in C/V/B format
             JSONObject cmdObject = new JSONObject();
-            cmdObject.put("C", "HELLOOO HOWS IT GOING YO?? HOW LONG CAN THIS MESSAGE BE? I HOPE IT CAN BE VERY LONG");  // Query Version command
-            //cmdObject.put("V", 1);          // Version is always 1
-            //cmdObject.put("B", ""); // Normally empty, but we'll use it for our data
-            
-            // Convert to string - this follows the C/V/B format but with our data in B
+            cmdObject.put("C", "cs_batv"); // Video command
+            cmdObject.put("V", 1);        // Version is always 1
+            cmdObject.put("B", "");     // Add the body
             String jsonStr = cmdObject.toString();
-            Log.d(TAG, "Sending cs_syvr command with custom data: " + jsonStr);
-            
-            // Log the UTF-8 bytes of the original string for comparison
-            byte[] jsonBytes = jsonStr.getBytes(StandardCharsets.UTF_8);
-            StringBuilder bytesHex = new StringBuilder();
-            for (byte b : jsonBytes) {
-                bytesHex.append(String.format("%02X ", b));
-            }
-            Log.d(TAG, "JSON string as bytes (" + jsonBytes.length + " bytes): " + bytesHex.toString());
-            
-            // Format with start/end codes using the same packing function
+            Log.d(TAG, "Sending hotspot command: " + jsonStr);
             byte[] packedData = packCommand(jsonStr);
-            
-            // Queue the data for sending
             queueData(packedData);
-            
+
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating cs_syvr command", e);
+            Log.e(TAG, "Error creating video command", e);
         }
     }
     

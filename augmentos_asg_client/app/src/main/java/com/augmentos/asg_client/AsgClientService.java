@@ -37,6 +37,8 @@ import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this 
 // Import CameraNeo instead of CameraRecordingService
 import com.augmentos.asg_client.camera.CameraNeo;
 
+import java.nio.charset.StandardCharsets;
+
 /**
  * This is the FULL AsgClientService code that:
  * 1) Runs in the foreground.
@@ -581,11 +583,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     wifiStatus.put("ssid", "");
                 }
                 
-                // Convert JSON to bytes and send
+                // Convert to string
                 String jsonString = wifiStatus.toString();
+                Log.d(TAG, "Formatted WiFi status message: " + jsonString);
+                
+                // Convert JSON to bytes and send
                 bluetoothManager.sendData(jsonString.getBytes());
                 
-                Log.d(TAG, "Sent WiFi status via BLE: " + jsonString);
+                Log.d(TAG, "Sent WiFi status via BLE");
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating WiFi status JSON", e);
             }
@@ -771,9 +776,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         response.put("type", "glasses_ready");
                         response.put("timestamp", System.currentTimeMillis());
                         
+                        // Convert to string
+                        String jsonResponse = response.toString();
+                        Log.d(TAG, "Formatted glasses_ready response: " + jsonResponse);
+                        
                         // Send the response back
                         if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                            bluetoothManager.sendData(response.toString().getBytes());
+                            bluetoothManager.sendData(jsonResponse.getBytes());
                             Log.d(TAG, "✅ Sent glasses_ready response to phone");
                         }
                     } catch (JSONException e) {
@@ -880,8 +889,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 response.put("success", success);
                 response.put("timestamp", System.currentTimeMillis());
                 
-                // Send the JSON response
+                // Convert to string
                 String jsonString = response.toString();
+                Log.d(TAG, "Formatted token status response: " + jsonString);
+                
+                // Send the JSON response
                 bluetoothManager.sendData(jsonString.getBytes());
                 
                 Log.d(TAG, "Sent token status response: " + (success ? "SUCCESS" : "FAILED"));
@@ -1008,9 +1020,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             response.put("success", true);
             response.put("photoUrl", photoUrl);
             
+            // Convert to string
+            String jsonString = response.toString();
+            Log.d(TAG, "Formatted photo success response: " + jsonString);
+            
             // Send the response back
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                bluetoothManager.sendData(response.toString().getBytes());
+                bluetoothManager.sendData(jsonString.getBytes());
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo success response", e);
@@ -1029,9 +1045,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             response.put("success", false);
             response.put("error", errorMessage);
             
+            // Convert to string
+            String jsonString = response.toString();
+            Log.d(TAG, "Formatted photo error response: " + jsonString);
+            
             // Send the response back
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                bluetoothManager.sendData(response.toString().getBytes());
+                bluetoothManager.sendData(jsonString.getBytes());
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo error response", e);

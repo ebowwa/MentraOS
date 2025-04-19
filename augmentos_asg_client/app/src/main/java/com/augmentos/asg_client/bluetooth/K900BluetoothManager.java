@@ -100,6 +100,42 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             return false;
         }
         
+        // First check if it's already in protocol format
+        if (!com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isK900ProtocolFormat(data)) {
+            // Try to interpret as a JSON string that needs C-wrapping and protocol formatting
+            try {
+                // Convert to string for processing
+                String originalData = new String(data, "UTF-8");
+                
+                // If looks like JSON but not C-wrapped, use the full formatting function
+                if (originalData.startsWith("{") &&
+                    !com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isCWrappedJson(originalData)) {
+                    
+                    Log.e(TAG, "📦 JSON DATA BEFORE C-WRAPPING: " + originalData);
+                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.formatMessageForTransmission(originalData);
+                    
+                    // Log the first 100 chars of the hex representation
+                    StringBuilder hexDump = new StringBuilder();
+                    for (int i = 0; i < Math.min(data.length, 50); i++) {
+                        hexDump.append(String.format("%02X ", data[i]));
+                    }
+                    Log.e(TAG, "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
+                    Log.e(TAG, "📦 Total formatted length: " + data.length + " bytes");
+                } else {
+                    // Otherwise just apply protocol formatting
+                    Log.e(TAG, "📦 Data already C-wrapped or not JSON: " + originalData);
+                    Log.d(TAG, "Formatting data with K900 protocol (adding ##...)");
+                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
+                        data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
+                }
+            } catch (Exception e) {
+                // If we can't interpret as string, just apply protocol formatting to raw bytes
+                Log.d(TAG, "Applying protocol format to raw bytes");
+                data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
+                    data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
+            }
+        }
+        
         // Send the data via the serial port
         comManager.send(data);
         

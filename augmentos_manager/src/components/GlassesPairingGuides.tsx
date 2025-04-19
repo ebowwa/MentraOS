@@ -85,13 +85,7 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({
         1. Make sure your Mentra Live is fully charged and turned on.
       </Text>
       <Text style={[styles.guideStep, { color: textColor }]}>
-        2. Enable Bluetooth on your phone and make sure it's discoverable.
-      </Text>
-      <Text style={[styles.guideStep, { color: textColor }]}>
-        3. When the glasses appear in the list, select them to pair.
-      </Text>
-      <Text style={[styles.guideStep, { color: textColor }]}>
-        4. AugmentOS will establish a communication channel with your Mentra Live glasses.
+        2. Make sure your Mentra Live is not already paired to a different device.
       </Text>
     </View>
   );
