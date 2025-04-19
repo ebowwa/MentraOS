@@ -153,7 +153,7 @@ interface TranslationData {
   duration?: number;
   transcribeLanguage?: string;
   translateLanguage?: string;
-  detectedLanguage?: string;
+  didTranslate?: boolean;
 }
 ```
 
