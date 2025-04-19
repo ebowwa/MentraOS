@@ -187,7 +187,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
 
 const styles = StyleSheet.create({
     appsContainer: {
-        marginTop: -10,
+        marginTop: -8,
         marginBottom: 0,
         width: '100%',
         paddingHorizontal: 0,
@@ -235,8 +235,8 @@ const styles = StyleSheet.create({
         padding: 4,
     },
     appIconStyle: {
-        width: 44,
-        height: 44,
+        width: 48,
+        height: 48,
     },
 });
 

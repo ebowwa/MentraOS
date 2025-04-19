@@ -122,11 +122,11 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
 const styles = StyleSheet.create({
   appsContainer: {
     justifyContent: 'flex-start',
-    marginTop: 10,
+    marginTop: 12,
     marginBottom: 10,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     fontFamily: 'Montserrat-Bold',
     lineHeight: 22,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   },
   appItem: {
     borderRadius: 12,
-    padding: 9,
+    padding: 11,
     overflow: 'hidden',
   },
   appContent: {
