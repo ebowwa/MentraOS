@@ -82,7 +82,8 @@ export {
   AppStopped,
   SettingsUpdate,
   DataStream,
-  CloudToTpaMessage
+  CloudToTpaMessage,
+  TranslationData
 } from './messages/cloud-to-tpa';
 
 // From layout.ts

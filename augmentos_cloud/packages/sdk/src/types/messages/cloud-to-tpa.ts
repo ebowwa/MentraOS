@@ -81,7 +81,7 @@ export interface TranslationData extends BaseMessage {
   duration?: number;  // Audio duration in milliseconds
   transcribeLanguage?: string;  // The language code of the transcribed text
   translateLanguage?: string;  // The language code of the translated text
-  detectedLanguage?: string; // The language code detected by the speech service for this segment (e.g., "en-US")
+  didTranslate?: boolean;  // Whether the text was translated
 }
 
 /**

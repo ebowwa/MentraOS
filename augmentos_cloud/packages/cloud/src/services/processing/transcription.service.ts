@@ -190,7 +190,7 @@ export class TranscriptionService {
 
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
-        const didTranslate = translatedText !== event.result.text;
+        const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
         console.log(`🎤 TRANSLATION from ${detectedSourceLang} to ${languageInfo.translateLanguage} [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
@@ -204,7 +204,7 @@ export class TranscriptionService {
           speakerId: event.result.speakerId,
           transcribeLanguage: languageInfo.transcribeLanguage,
           translateLanguage: languageInfo.translateLanguage,
-          detectedLanguage: detectedSourceLang
+          didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
         this.updateTranscriptHistory(userSession, event, false);
@@ -214,7 +214,8 @@ export class TranscriptionService {
         if (!event.result.translations) return;
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
-        const didTranslate = translatedText !== event.result.text;
+        // Compare normalized text to determine if translation occurred
+        const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
         const translationData: TranslationData = {
@@ -228,7 +229,7 @@ export class TranscriptionService {
           duration: event.result.duration,
           transcribeLanguage: languageInfo.transcribeLanguage,
           translateLanguage: languageInfo.translateLanguage,
-          detectedLanguage: detectedSourceLang
+          didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
         this.updateTranscriptHistory(userSession, event, true);
