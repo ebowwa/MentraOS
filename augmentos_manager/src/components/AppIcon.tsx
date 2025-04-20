@@ -98,7 +98,7 @@ const styles = StyleSheet.create({
         resizeMode: 'cover',
     },
     appIconRounded: {
-        borderRadius: 8,
+        borderRadius: 12,
     },
     appName: {
         marginTop: 5,

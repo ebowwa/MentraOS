@@ -23,7 +23,7 @@ interface YourAppsListProps {
 }
 
 const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
-    const { status, updateAppStatus, startAppOperation, endAppOperation, isAppOperationPending } = useStatus();
+    const { status, updateAppStatus } = useStatus();
     const [_isLoading, setIsLoading] = React.useState(false);
     const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
     const [onboardingCompleted, setOnboardingCompleted] = useState(true);
@@ -64,16 +64,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             }
         }
         
-        if (isAppOperationPending(packageName)) {
-            console.log(`Cannot start app ${packageName}: operation already in progress`);
-            return;
-        }
-        
-        if (!startAppOperation(packageName, 'start')) {
-            console.log(`Cannot start app ${packageName}: operation rejected`);
-            return;
-        }
-        
         // Update UI immediately
         updateAppStatus(packageName, true, true);
         
@@ -101,7 +91,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             console.error('start app error:', error);
         } finally {
             setIsLoading(false);
-            endAppOperation(packageName);
         }
     };
 
@@ -146,7 +135,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                         onLongPress={() => openAppSettings(app)}
                         delayLongPress={500}
                         style={styles.appItem}
-                        disabled={isAppOperationPending(app.packageName)}
                     >
                         <View style={styles.appContent}>
                             <AppIcon
@@ -163,7 +151,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                             <TouchableOpacity 
                                 onPress={() => openAppSettings(app)}
                                 style={styles.settingsButton}
-                                disabled={isAppOperationPending(app.packageName)}
                             >
                                 <Icon name="cog-outline" size={24} color={textColor} />
                             </TouchableOpacity>

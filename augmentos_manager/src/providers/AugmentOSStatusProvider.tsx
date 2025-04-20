@@ -7,68 +7,51 @@ import BackendServerComms from '../backend_comms/BackendServerComms';
 import { useAuth } from '../AuthContext';
 import coreCommunicator from '../bridge/CoreCommunicator';
 
-// Track pending app operations
-interface PendingOperation {
+// Define the base AppInfo type
+interface AppInfo {
     packageName: string;
-    operation: 'start' | 'stop';
-    timestamp: number;
+    name: string;
+    is_running: boolean;
+    is_foreground: boolean;
+}
+
+// Extend AppInfo with timestamp
+interface AppWithTimestamp extends AppInfo {
+    lastUpdated?: number;
+}
+
+// Define the status type with timestamped apps
+interface AugmentOSMainStatusWithTimestamps {
+    core_info: AugmentOSMainStatus['core_info'];
+    glasses_info: AugmentOSMainStatus['glasses_info'];
+    wifi: AugmentOSMainStatus['wifi'];
+    gsm: AugmentOSMainStatus['gsm'];
+    apps: AppWithTimestamp[];
+    auth: AugmentOSMainStatus['auth'];
 }
 
 interface AugmentOSStatusContextType {
-    status: AugmentOSMainStatus;
+    status: AugmentOSMainStatusWithTimestamps;
     initializeCoreConnection: () => void;
     refreshStatus: (data: any) => void;
     screenMirrorItems: { id: string; name: string }[]
     getCoreToken: () => string | null;
     updateAppStatus: (packageName: string, isRunning: boolean, isForeground?: boolean) => void;
-    isAppOperationPending: (packageName: string) => boolean;
-    startAppOperation: (packageName: string, operation: 'start' | 'stop') => boolean;
-    endAppOperation: (packageName: string) => void;
 }
 
 const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefined>(undefined);
 
 export const StatusProvider = ({ children }: { children: ReactNode }) => {
-    const [status, setStatus] = useState(AugmentOSParser.parseStatus({}));
+    const [status, setStatus] = useState<AugmentOSMainStatusWithTimestamps>(() => {
+        const initialStatus = AugmentOSParser.parseStatus({});
+        return {
+            ...initialStatus,
+            apps: initialStatus.apps.map(app => ({ ...app, lastUpdated: undefined }))
+        };
+    });
     const [isInitialized, setIsInitialized] = useState(false);
     const [screenMirrorItems, setScreenMirrorItems] = useState<{ id: string; name: string }[]>([]);
-    // Track pending app operations to prevent race conditions
-    const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
     
-    // Minimum time between operations on the same app (milliseconds)
-    const MIN_OPERATION_INTERVAL = 800;
-
-    // Check if an app has a pending operation
-    const isAppOperationPending = useCallback((packageName: string) => {
-        return pendingOperations.some(op => op.packageName === packageName);
-    }, [pendingOperations]);
-
-    // Start an app operation (returns false if operation can't be started)
-    const startAppOperation = useCallback((packageName: string, operation: 'start' | 'stop') => {
-        // Check if there's already an operation in progress for this app
-        const existingOp = pendingOperations.find(op => op.packageName === packageName);
-        const now = Date.now();
-        
-        // If there's an existing operation and it's too recent, don't allow a new one
-        if (existingOp && (now - existingOp.timestamp < MIN_OPERATION_INTERVAL)) {
-            console.log(`Operation ${operation} rejected: Previous operation ${existingOp.operation} still pending`);
-            return false;
-        }
-        
-        // Add the new operation
-        setPendingOperations(prev => [
-            ...prev.filter(op => op.packageName !== packageName), // Remove any existing operation for this app
-            { packageName, operation, timestamp: now }
-        ]);
-        
-        return true;
-    }, [pendingOperations, MIN_OPERATION_INTERVAL]);
-
-    // End an app operation
-    const endAppOperation = useCallback((packageName: string) => {
-        setPendingOperations(prev => prev.filter(op => op.packageName !== packageName));
-    }, []);
-
     const refreshStatus = useCallback((data: any) => {
         if (!(data && 'status' in data)) {return;}
 
@@ -76,7 +59,32 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         if (INTENSE_LOGGING)
             console.log('Parsed status:', parsedStatus);
         
-        setStatus(parsedStatus);
+        setStatus(prevStatus => {
+            // Create a new status object that preserves optimistic updates
+            const newStatus: AugmentOSMainStatusWithTimestamps = {
+                ...parsedStatus,
+                apps: parsedStatus.apps.map(app => ({ ...app, lastUpdated: undefined }))
+            };
+            
+            // For each app in the current status, check if it has a more recent update
+            prevStatus.apps.forEach(prevApp => {
+                const newAppIndex = newStatus.apps.findIndex(a => a.packageName === prevApp.packageName);
+                if (newAppIndex !== -1) {
+                    const newApp = newStatus.apps[newAppIndex];
+                    // If the current app has a more recent update, preserve its state
+                    if (prevApp.lastUpdated && (!newApp.lastUpdated || prevApp.lastUpdated > newApp.lastUpdated)) {
+                        newStatus.apps[newAppIndex] = {
+                            ...newApp,
+                            is_running: prevApp.is_running,
+                            is_foreground: prevApp.is_foreground,
+                            lastUpdated: prevApp.lastUpdated
+                        };
+                    }
+                }
+            });
+            
+            return newStatus;
+        });
     }, []);
 
     // Add user as a dependency to trigger re-initialization after login
@@ -145,17 +153,27 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         return BackendServerComms.getInstance().getCoreToken();
     }, []);
 
-    // Add a method to update app status locally
+    // Update the updateAppStatus function to include timestamps
     const updateAppStatus = useCallback((packageName: string, isRunning: boolean, isForeground: boolean = true) => {
         setStatus(prevStatus => {
+            const now = Date.now();
             // Create a new copy of the apps array with the updated app
             const updatedApps = prevStatus.apps.map(app => {
                 if (app.packageName === packageName) {
-                    return { ...app, is_running: isRunning, is_foreground: isForeground };
+                    return { 
+                        ...app, 
+                        is_running: isRunning, 
+                        is_foreground: isForeground,
+                        lastUpdated: now
+                    };
                 }
                 // If setting a new foreground app, make sure other apps aren't foreground
                 if (isForeground && isRunning && app.is_foreground) {
-                    return { ...app, is_foreground: false };
+                    return { 
+                        ...app, 
+                        is_foreground: false,
+                        lastUpdated: now
+                    };
                 }
                 return app;
             });
@@ -172,10 +190,7 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
             status, 
             refreshStatus,
             getCoreToken,
-            updateAppStatus,
-            isAppOperationPending,
-            startAppOperation,
-            endAppOperation
+            updateAppStatus
         }}>
             {children}
         </AugmentOSStatusContext.Provider>

@@ -13,7 +13,7 @@ interface RunningAppsListProps {
 }
 
 const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
-  const {status, updateAppStatus, startAppOperation, endAppOperation, isAppOperationPending} = useStatus();
+  const {status, updateAppStatus} = useStatus();
   const [_isLoading, setIsLoading] = useState(false);
   const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
   const navigation = useNavigation<NavigationProps>();
@@ -21,16 +21,6 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
 
   const stopApp = async (packageName: string) => {
     console.log('STOP APP');
-    
-    if (isAppOperationPending(packageName)) {
-      console.log(`Cannot stop app ${packageName}: operation already in progress`);
-      return;
-    }
-    
-    if (!startAppOperation(packageName, 'stop')) {
-      console.log(`Cannot stop app ${packageName}: operation rejected`);
-      return;
-    }
     
     updateAppStatus(packageName, false, false);
     
@@ -42,7 +32,6 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
       console.error('Stop app error:', error);
     } finally {
       setIsLoading(false);
-      endAppOperation(packageName);
     }
   };
 
