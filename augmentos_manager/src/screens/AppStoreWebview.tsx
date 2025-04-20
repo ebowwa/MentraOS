@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { View, StyleSheet, Text, ActivityIndicator } from 'react-native';
+import React, { useRef, useState, useCallback } from 'react';
+import { View, StyleSheet, Text, ActivityIndicator, BackHandler } from 'react-native';
 import { WebView } from 'react-native-webview';
 import Config from 'react-native-config';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
@@ -7,7 +7,7 @@ import LoadingComponent from '../components/LoadingComponent';
 import InternetConnectionFallbackComponent from '../components/InternetConnectionFallbackComponent';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../AuthContext';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../components/types';
 
 interface AppStoreWebProps {
@@ -22,6 +22,8 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
   const [hasError, setHasError] = useState(false);
   const { user, session, loading } = useAuth();
   const packageName = route?.params?.packageName;
+  const webViewRef = useRef<WebView>(null);
+  const [canGoBack, setCanGoBack] = useState(false);
 
   // Theme colors
   const theme = {
@@ -39,16 +41,15 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
   const baseUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org/webview';
   // Add package name if provided
   const appStoreUrl = packageName ? `${baseUrl}/package/${packageName}` : baseUrl;
-  const webViewRef = useRef(null);
 
   // Handle WebView loading events
   const handleLoadStart = () => setIsLoading(true);
   const handleLoadEnd = () => {
     const supabaseToken = session?.access_token;
-      if (!supabaseToken) {
-        console.log('No Supabase token found');
-        return;
-      }
+    if (!supabaseToken) {
+      console.log('No Supabase token found');
+      return;
+    }
 
     setIsLoading(false);
     webViewRef.current.injectJavaScript(`
@@ -68,11 +69,28 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
     setHasError(true);
   };
 
+  // Handle Android back button press
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (webViewRef.current && canGoBack) {
+          webViewRef.current.goBack();
+          return true; // Prevent default back action
+        }
+        return false; // Allow default back action (close screen)
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove(); // Cleanup listener on blur
+    }, [canGoBack]) // Re-run effect if canGoBack changes
+  );
+
   return (
     <SafeAreaView style={{ flex: 1 }}>
       {hasError ? (
         <InternetConnectionFallbackComponent 
-          retry={() => setHasError(false)} isDarkTheme={false}         />
+          retry={() => setHasError(false)} isDarkTheme={false} />
       ) : (
         <View style={styles.webViewContainer}>
           <WebView
@@ -84,6 +102,7 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
             onLoadStart={handleLoadStart}
             onLoadEnd={handleLoadEnd}
             onError={handleError}
+            onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
