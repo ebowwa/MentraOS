@@ -36,6 +36,8 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
         value={value}
         onChangeText={onChangeText}
         multiline
+        maxLength={1000}
+        numberOfLines={5}
         onContentSizeChange={handleContentSizeChange}
         textAlignVertical="top"
       />
