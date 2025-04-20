@@ -128,6 +128,9 @@ class DashboardServer extends TpaServer {
     // Initialize dashboard content and state
     this.initializeDashboard(session, sessionId);
     
+    // Set up settings handlers
+    this.setupSettingsHandlers(session, sessionId);
+    
     // Start dashboard update interval
     const updateInterval = setInterval(() => {
       this.updateDashboardSections(session, sessionId);
@@ -138,6 +141,23 @@ class DashboardServer extends TpaServer {
     if (sessionInfo) {
       sessionInfo.updateInterval = updateInterval;
     }
+  }
+  
+  /**
+   * Set up handlers for settings changes
+   */
+  private setupSettingsHandlers(session: TpaSession, sessionId: string): void {
+    // Listen for specific setting changes
+    session.settings.onValueChange('dashboard_content', (newValue, oldValue) => {
+      logger.info(`Dashboard content setting changed from ${oldValue} to ${newValue} for session ${sessionId}`);
+      
+      // Apply the setting change immediately
+      this.updateDashboardSections(session, sessionId);
+    });
+    
+    // Get and log current settings
+    const dashboardContent = session.settings.get('dashboard_content', 'none');
+    logger.info(`Current dashboard content setting: ${dashboardContent} for session ${sessionId}`);
   }
 
   /**
@@ -235,17 +255,17 @@ class DashboardServer extends TpaServer {
     const batteryText = this.formatBatterySection(sessionInfo);
     const topLeftText = `${timeText}, ${batteryText}`;
     session.dashboard.system?.setTopLeft(topLeftText);
-    
-    // Clear top right since we're not using it in the original format
-    session.dashboard.system?.setTopRight("");
-    
+
+    // Format status section (weather, calendar, etc.)
+    const statusText = this.formatStatusSection(sessionInfo);
+    session.dashboard.system?.setTopRight(statusText);
+
     // Format notification section
     const notificationText = this.formatNotificationSection(sessionInfo);
     session.dashboard.system?.setBottomLeft(notificationText);
-    
-    // Format status section (weather, calendar, etc.)
-    const statusText = this.formatStatusSection(sessionInfo);
-    session.dashboard.system?.setBottomRight(statusText);
+
+    // Don't send bottom right since we're not using it in the original format
+    // session.dashboard.system?.setBottomRight("");
   }
   
   /**
@@ -525,21 +545,28 @@ class DashboardServer extends TpaServer {
   }
   
   /**
-   * Update settings for a specific user's sessions
+   * Handle settings updates - called by TpaServer when settings change
+   * This is the proper SDK method for receiving settings updates
    */
-  public updateUserSettings(userId: string, settings: any): void {
+  protected async onSettingsUpdate(userId: string, settings: any): Promise<void> {
+    logger.info(`Settings updated for user ${userId}`, settings);
+    
     // Find all sessions for this user
     for (const [sessionId, sessionInfo] of this._activeSessions.entries()) {
       if (sessionInfo.userId === userId) {
         const session = this.getExpressApp().get(`tpa-session-${sessionId}`);
         if (session) {
+          // Handle dashboard content setting if it exists
+          if (settings.find((s: any) => s.key === 'dashboard_content')) {
+            const dashboardContent = settings.find((s: any) => s.key === 'dashboard_content').value;
+            logger.info(`Dashboard content setting changed to ${dashboardContent} for user ${userId}`);
+          }
+          
           // Apply settings and update dashboard
           this.updateDashboardSections(session, sessionId);
         }
       }
     }
-    
-    logger.info(`Updated settings for user ${userId}`);
   }
   
   /**
@@ -586,45 +613,30 @@ expressApp.post('/mode', (req, res) => {
   }
 });
 
-// Settings endpoint
-expressApp.post('/settings', (req, res) => {
-  try {
-    const { userIdForSettings } = req.body;
-    logger.info('Received settings update for dashboard:', req.body);
-    
-    if (!userIdForSettings) {
-      return res.status(400).json({ error: 'Missing userIdForSettings' });
-    }
-    
-    dashboardServer.updateUserSettings(userIdForSettings, req.body);
-    res.status(200).json({ status: 'settings updated' });
-  } catch (error) {
-    logger.error('Error updating settings', error);
-    res.status(500).json({ error: 'Internal server error updating settings' });
-  }
-});
+// NOTE: We don't need to manually implement the settings endpoint.
+// TpaServer already handles /settings and will call our onSettingsUpdate method
 
 // Force update all dashboards
-expressApp.post('/admin/update-all', (req, res) => {
-  try {
-    dashboardServer.updateAllDashboards();
-    res.status(200).json({ status: 'all dashboards updated' });
-  } catch (error) {
-    logger.error('Error updating all dashboards', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// expressApp.post('/admin/update-all', (req, res) => {
+//   try {
+//     dashboardServer.updateAllDashboards();
+//     res.status(200).json({ status: 'all dashboards updated' });
+//   } catch (error) {
+//     logger.error('Error updating all dashboards', error);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
 
-// Get all active sessions
-expressApp.get('/admin/sessions', (req, res) => {
-  try {
-    const sessions = dashboardServer.getActiveSessions();
-    res.status(200).json({ sessions, count: sessions.length });
-  } catch (error) {
-    logger.error('Error getting sessions', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+// // Get all active sessions
+// expressApp.get('/admin/sessions', (req, res) => {
+//   try {
+//     const sessions = dashboardServer.getActiveSessions();
+//     res.status(200).json({ sessions, count: sessions.length });
+//   } catch (error) {
+//     logger.error('Error getting sessions', error);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
 
 // Start the server
 dashboardServer.start().then(() => {
