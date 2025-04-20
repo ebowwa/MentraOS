@@ -4,6 +4,7 @@
  * Type definitions for the dashboard functionality in the SDK.
  */
 import { Layout } from '../layouts';
+import { TpaToCloudMessageType } from '../message-types';
 
 /**
  * Dashboard modes supported by the system
@@ -124,7 +125,7 @@ export interface DashboardAPI {
  * Message to update dashboard content
  */
 export interface DashboardContentUpdate {
-  type: 'dashboard_content_update';
+  type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
   packageName: string;
   content: string | Layout;
   modes: DashboardMode[];
@@ -135,7 +136,7 @@ export interface DashboardContentUpdate {
  * Message for dashboard mode change
  */
 export interface DashboardModeChange {
-  type: 'dashboard_mode_change';
+  type: TpaToCloudMessageType.DASHBOARD_MODE_CHANGE;
   packageName: string;
   mode: DashboardMode;
   timestamp: Date;
@@ -145,7 +146,7 @@ export interface DashboardModeChange {
  * Message to update system dashboard content
  */
 export interface DashboardSystemUpdate {
-  type: 'dashboard_system_update';
+  type: TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE;
   packageName: string;
   section: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
   content: string;

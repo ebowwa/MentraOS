@@ -10,7 +10,6 @@
 import { 
   DashboardMode, 
   Layout, 
-  systemApps,
   DashboardContentUpdate,
   DashboardModeChange,
   DashboardSystemUpdate,
@@ -18,11 +17,14 @@ import {
   CloudToGlassesMessageType,
   CloudToTpaMessageType,
   LayoutType,
-  ViewType
+  ViewType,
+  DisplayRequest,
+  TpaToCloudMessage,
+  UserSession
 } from '@augmentos/sdk';
 import { logger } from '@augmentos/utils';
-import { DisplayManager } from '../display/DisplayManager';
-import { WebSocketService } from '../core/websocket.service';
+import { systemApps } from '../core/system-apps';
+import { ExtendedUserSession } from '../core/session.service';
 
 /**
  * Dashboard content from a TPA
@@ -53,7 +55,7 @@ interface DashboardConfig {
 }
 
 /**
- * Dashboard manager implementation
+ * Dashboard manager implementation for a single user session
  */
 export class DashboardManager {
   // Dashboard state
@@ -78,17 +80,18 @@ export class DashboardManager {
   private updateIntervalMs: number;
   private updateInterval: NodeJS.Timeout | null = null;
   
+  // Reference to the user session this dashboard belongs to
+  private userSession: ExtendedUserSession;
+  
   /**
-   * Create a new DashboardManager
-   * @param wsService WebSocketService for message passing
-   * @param displayManager DisplayManager for rendering layouts
+   * Create a new DashboardManager for a specific user session
+   * @param userSession The user session this dashboard belongs to
    * @param config Dashboard configuration options
    */
-  constructor(
-    private wsService: WebSocketService,
-    private displayManager: DisplayManager,
-    config: DashboardConfig = {}
-  ) {
+  constructor(userSession: ExtendedUserSession, config: DashboardConfig = {}) {
+    // Store reference to user session
+    this.userSession = userSession;
+    
     // Set configuration with defaults
     this.queueSize = config.queueSize || 5;
     this.updateIntervalMs = config.updateIntervalMs || 500;
@@ -97,10 +100,7 @@ export class DashboardManager {
     // Start update interval
     this.startUpdateInterval();
     
-    // Register message handlers
-    this.registerMessageHandlers();
-    
-    logger.info('Dashboard Manager initialized');
+    userSession.logger.info(`Dashboard Manager initialized for user ${userSession.userId}`);
   }
   
   /**
@@ -119,41 +119,55 @@ export class DashboardManager {
   }
   
   /**
-   * Register handlers for dashboard-related messages
+   * Process TPA message and route to the appropriate handler
+   * This function will be called from WebSocketService
+   * @param message TPA message
+   * @returns True if the message was handled, false otherwise
    */
-  private registerMessageHandlers(): void {
-    // Register TPA message handler
-    this.wsService.registerTpaMessageHandler(
-      TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
-      this.handleDashboardContentUpdate.bind(this)
-    );
-    
-    this.wsService.registerTpaMessageHandler(
-      TpaToCloudMessageType.DASHBOARD_MODE_CHANGE,
-      this.handleDashboardModeChange.bind(this)
-    );
-    
-    this.wsService.registerTpaMessageHandler(
-      TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
-      this.handleDashboardSystemUpdate.bind(this)
-    );
-    
-    // Handle app stop events to clean up dashboard content
-    this.wsService.onTpaDisconnected((packageName: string) => {
-      this.cleanupAppContent(packageName);
-    });
+  public handleTpaMessage(message: TpaToCloudMessage): boolean {
+    try {
+      switch (message.type) {
+        case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
+          this.handleDashboardContentUpdate(message as DashboardContentUpdate);
+          return true;
+          
+        case TpaToCloudMessageType.DASHBOARD_MODE_CHANGE:
+          this.handleDashboardModeChange(message as DashboardModeChange);
+          return true;
+          
+        case TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE:
+          this.handleDashboardSystemUpdate(message as DashboardSystemUpdate);
+          return true;
+          
+        default:
+          return false; // Not a dashboard message
+      }
+    } catch (error) {
+      this.userSession.logger.error('Error handling dashboard message', error);
+      return false;
+    }
+  }
+  
+  /**
+   * Handle TPA disconnection to clean up dashboard content
+   * @param packageName TPA package name
+   */
+  public handleTpaDisconnected(packageName: string): void {
+    // Clean up content when a TPA disconnects
+    this.cleanupAppContent(packageName);
+    logger.info(`Cleaned up dashboard content for disconnected TPA: ${packageName}`);
   }
   
   /**
    * Handle dashboard content update from a TPA
    * @param message Content update message
    */
-  private handleDashboardContentUpdate(message: DashboardContentUpdate): void {
+  public handleDashboardContentUpdate(message: DashboardContentUpdate): void {
     const { packageName, content, modes, timestamp } = message;
     
-    logger.debug(`Dashboard content update from ${packageName}`, { 
+    this.userSession.logger.debug(`Dashboard content update from ${packageName}`, { 
       modes,
-      timestamp: timestamp.toISOString()
+      timestamp: new Date(timestamp).toISOString()
     });
     
     // Add content to each requested mode's queue
@@ -171,7 +185,7 @@ export class DashboardManager {
       }
     });
     
-    // Update the dashboard
+    // Update the dashboard immediately
     this.updateDashboard();
   }
   
@@ -179,16 +193,16 @@ export class DashboardManager {
    * Handle dashboard mode change from system dashboard TPA
    * @param message Mode change message
    */
-  private handleDashboardModeChange(message: DashboardModeChange): void {
+  public handleDashboardModeChange(message: DashboardModeChange): void {
     const { packageName, mode } = message;
     
     // Only allow system dashboard to change mode
     if (packageName !== systemApps.dashboard.packageName) {
-      logger.warn(`Unauthorized dashboard mode change from ${packageName}`);
+      this.userSession.logger.warn(`Unauthorized dashboard mode change from ${packageName}`);
       return;
     }
     
-    logger.info(`Dashboard mode changed to ${mode}`);
+    this.userSession.logger.info(`Dashboard mode changed to ${mode}`);
     
     // Update mode
     this.setDashboardMode(mode);
@@ -198,16 +212,16 @@ export class DashboardManager {
    * Handle system dashboard content update
    * @param message System dashboard update message
    */
-  private handleDashboardSystemUpdate(message: DashboardSystemUpdate): void {
+  public handleDashboardSystemUpdate(message: DashboardSystemUpdate): void {
     const { packageName, section, content } = message;
     
     // Only allow system dashboard to update system sections
     if (packageName !== systemApps.dashboard.packageName) {
-      logger.warn(`Unauthorized system dashboard update from ${packageName}`);
+      this.userSession.logger.warn(`Unauthorized system dashboard update from ${packageName}`);
       return;
     }
     
-    logger.debug(`System dashboard update for ${section}`);
+    this.userSession.logger.debug(`System dashboard update for ${section} from ${packageName}`);
     
     // Update the appropriate section
     this.systemContent[section] = content;
@@ -241,21 +255,33 @@ export class DashboardManager {
           break;
       }
       
-      // Send layout to display manager
-      // Use ViewType.DASHBOARD to ensure it appears in the dashboard area
-      this.displayManager.show(
-        systemApps.dashboard.packageName, 
-        layout, 
-        { view: ViewType.DASHBOARD }
-      );
+      // Create a display request
+      const displayRequest: DisplayRequest = {
+        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        packageName: systemApps.dashboard.packageName,
+        view: ViewType.DASHBOARD,
+        layout,
+        timestamp: new Date(),
+        // We don't set a durationMs to keep it displayed indefinitely
+      };
       
-      // Notes on always-on functionality:
-      // Since the current DisplayManager might not support overlay functionality,
-      // we're not implementing the always-on overlay here.
-      // The system dashboard TPA will need to toggle between modes instead.
-      // For future enhancement: implement overlay capability in DisplayManager
+      // Send the display request using the session's DisplayManager
+      this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      logger.error('Error updating dashboard', error);
+      this.userSession.logger.error('Error updating dashboard', error);
+    }
+  }
+  
+  /**
+   * Send display request to the associated user session
+   * @param displayRequest Display request to send
+   */
+  private sendDisplayRequest(displayRequest: DisplayRequest): void {
+    try {
+      // Use the DisplayManager to send the display request
+      this.userSession.displayManager.handleDisplayEvent(displayRequest, this.userSession);
+    } catch (error) {
+      this.userSession.logger.error(`Error sending dashboard display request`, error);
     }
   }
   
@@ -377,9 +403,21 @@ export class DashboardManager {
         if (typeof item.content === 'string') {
           return item.content;
         } else {
-          // For more complex layouts, we would need a better conversion strategy
-          // For now, just extract text from layout sections
-          return Object.values(item.content.sections || {}).join(' | ');
+          // For Layout content, extract the text based on the layout type
+          switch (item.content.layoutType) {
+            case LayoutType.TEXT_WALL:
+              return item.content.text || '';
+            case LayoutType.DOUBLE_TEXT_WALL:
+              return [item.content.topText, item.content.bottomText]
+                .filter(Boolean)
+                .join('\n');
+            case LayoutType.DASHBOARD_CARD:
+              return [item.content.leftText, item.content.rightText]
+                .filter(Boolean)
+                .join(' | ');
+            default:
+              return ''; 
+          }
         }
       })
       .join('\n\n');
@@ -389,13 +427,13 @@ export class DashboardManager {
    * Clean up content from a specific TPA
    * @param packageName TPA package name
    */
-  private cleanupAppContent(packageName: string): void {
+  public cleanupAppContent(packageName: string): void {
     // Remove from all content queues
     this.mainContent.delete(packageName);
     this.expandedContent.delete(packageName);
     this.alwaysOnContent.delete(packageName);
     
-    // Update the dashboard
+    // Update the dashboard for all users
     this.updateDashboard();
   }
   
@@ -407,19 +445,15 @@ export class DashboardManager {
     // Update current mode
     this.currentMode = mode;
     
-    // Notify glasses of mode change
-    this.wsService.broadcastToGlasses({
-      type: CloudToGlassesMessageType.DASHBOARD_MODE_CHANGE,
-      mode,
-      timestamp: new Date()
-    });
-    
     // Notify TPAs of mode change
-    this.wsService.broadcastToTpas({
+    const modeChangeMessage = {
       type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED,
       mode,
       timestamp: new Date()
-    });
+    };
+    
+    // Broadcast mode change to all connected TPAs
+    this.broadcastToAllTpas(modeChangeMessage);
     
     // Update the dashboard
     this.updateDashboard();
@@ -433,22 +467,43 @@ export class DashboardManager {
     // Update state
     this.alwaysOnEnabled = enabled;
     
-    // Notify glasses of state change
-    this.wsService.broadcastToGlasses({
-      type: CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE,
-      enabled,
-      timestamp: new Date()
-    });
-    
     // Notify TPAs of state change
-    this.wsService.broadcastToTpas({
+    const alwaysOnMessage = {
       type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED,
       enabled,
       timestamp: new Date()
-    });
+    };
+    
+    // Broadcast always-on state change to all connected TPAs
+    this.broadcastToAllTpas(alwaysOnMessage);
     
     // Update the dashboard
     this.updateDashboard();
+  }
+  
+  /**
+   * Broadcast a message to all TPAs connected to this user session
+   * @param message Message to broadcast
+   */
+  private broadcastToAllTpas(message: any): void {
+    try {
+      // Use the appConnections map to send to all connected TPAs
+      this.userSession.appConnections.forEach((ws, packageName) => {
+        try {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            const tpaMessage = {
+              ...message,
+              sessionId: `${this.userSession.sessionId}-${packageName}`
+            };
+            ws.send(JSON.stringify(tpaMessage));
+          }
+        } catch (error) {
+          this.userSession.logger.error(`Error sending dashboard message to TPA ${packageName}`, error);
+        }
+      });
+    } catch (error) {
+      this.userSession.logger.error(`Error broadcasting dashboard message`, error);
+    }
   }
   
   /**

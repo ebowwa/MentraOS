@@ -11,16 +11,16 @@ The dashboard system provides contextual information to users through different 
 | SDK Dashboard Types | ✅ Complete | Basic types and interfaces for dashboard functionality |
 | SDK Dashboard API | ✅ Complete | Implementation of dashboard API for TPAs |
 | TpaSession Integration | ✅ Complete | Dashboard API added to TpaSession class |
-| DashboardManager | ✅ Complete | Core manager for handling dashboard content and modes |
+| DashboardManager | ⚠️ In Progress | Core structure implemented, but needs WebSocket and Session integration |
 | Dashboard Test Harness | ✅ Complete | Testing framework for validating dashboard functionality |
 | Dashboard Documentation | ✅ Complete | Design, testing, and codebase documentation |
 | Layout Compatibility | ✅ Complete | Updated layout generation for backward compatibility |
-| WebSocket Integration | ✅ Complete | Integrated with WebSocketService for messaging |
-| DisplayManager Integration | ✅ Complete | Connected to existing display system with proper formats |
+| WebSocket Integration | ❌ Incomplete | Need to implement TPA message handling with WebSocketService |
+| DisplayManager Integration | ⚠️ In Progress | Display request structure created but lacks UserSession integration |
 | Dashboard SDK Guidelines | ✅ Complete | Added best practices for using the SDK |
 | Dashboard-Manager TPA | ✅ Complete | Fully reimplemented TPA using TpaServer and Dashboard API |
 | SDK Type Definitions | ✅ Complete | Fixed type definitions for dashboard message types |
-| System Integration | ⚠️ In Progress | Need to deploy and connect all components |
+| System Integration | ❌ Incomplete | Need to integrate with SessionService to access user sessions |
 | Individual Content TPAs | ✅ Complete | Created separate TPAs for Fun Facts, Quotes, and Gratitude |
 
 ## Dashboard Modes
@@ -131,8 +131,10 @@ Dashboard communication uses the following message types:
 The dashboard manager integrates with:
 
 1. **WebSocket Service**: For message handling and broadcasting updates
-2. **Display Manager**: For rendering dashboard layouts on the glasses
+2. **Display Manager**: For sending dashboard layouts to the glasses (acting as a thin wrapper for display requests)
 3. **TPA Session Lifecycle**: For cleaning up dashboard content when TPAs stop
+
+> **Architectural Note**: In the new design, the cloud DashboardManager takes over all dashboard-specific logic, including content collection, layout formatting, and display request generation. The DisplayManager's role is simplified to handling the actual sending of display requests to the client without any dashboard-specific logic.
 
 ## Implementation Details
 
@@ -143,6 +145,33 @@ The dashboard manager maintains:
 3. Current dashboard mode and always-on state
 4. Update interval for throttling display updates
 5. Message handlers for dashboard-related messages
+
+## Architectural Flow
+
+The overall dashboard content flow follows these steps:
+
+1. **Dashboard-Manager TPA**:
+   - Collects system information (time, battery, notifications)
+   - Formats system information for different sections
+   - Sends system section updates to the cloud DashboardManager
+   - Controls dashboard mode changes
+
+2. **Content TPAs** (Fun Facts, Quotes, etc.):
+   - Generate content relevant to their domain
+   - Send content to the cloud DashboardManager
+   - Can target specific dashboard modes
+
+3. **Cloud DashboardManager**:
+   - Receives system section updates from Dashboard-Manager TPA
+   - Receives content from various TPAs
+   - Maintains queues of content for each dashboard mode
+   - Formats combined layouts based on current mode
+   - Sends complete dashboard layout via DisplayManager to the glasses
+   
+4. **DisplayManager**:
+   - Handles the technical aspects of sending display requests
+   - No longer contains any dashboard-specific logic
+   - Acts as a thin wrapper for communication with the glasses
 
 ## SDK Usage Guidelines
 
