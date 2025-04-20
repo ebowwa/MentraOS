@@ -52,6 +52,7 @@ interface DashboardConfig {
   queueSize?: number;
   updateIntervalMs?: number;
   alwaysOnEnabled?: boolean;
+  initialMode?: DashboardMode; // Add initial mode option
 }
 
 /**
@@ -96,11 +97,14 @@ export class DashboardManager {
     this.queueSize = config.queueSize || 5;
     this.updateIntervalMs = config.updateIntervalMs || 500;
     this.alwaysOnEnabled = config.alwaysOnEnabled || false;
+    
+    // Initialize mode to the provided value or default to MAIN
+    this.currentMode = config.initialMode || DashboardMode.MAIN;
 
     // Start update interval
     this.startUpdateInterval();
 
-    userSession.logger.info(`Dashboard Manager initialized for user ${userSession.userId}`);
+    userSession.logger.info(`Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
   }
 
   /**
@@ -234,8 +238,17 @@ export class DashboardManager {
    * Update dashboard display based on current mode and content
    */
   private updateDashboard(): void {
+    this.userSession.logger.info(`🔄 Dashboard update triggered for session ${this.userSession.sessionId}`, {
+      currentMode: this.currentMode,
+      alwaysOnEnabled: this.alwaysOnEnabled,
+      mainContentCount: this.mainContent.size,
+      expandedContentCount: this.expandedContent.size,
+      alwaysOnContentCount: this.alwaysOnContent.size
+    });
+    
     // Skip if mode is none
     if (this.currentMode === 'none') {
+      this.userSession.logger.info(`⏭️ Dashboard update skipped - mode is 'none'`);
       return;
     }
 
@@ -245,12 +258,15 @@ export class DashboardManager {
 
       switch (this.currentMode) {
         case DashboardMode.MAIN:
+          this.userSession.logger.info(`📊 Generating MAIN dashboard layout`);
           layout = this.generateMainLayout();
           break;
         case DashboardMode.EXPANDED:
+          this.userSession.logger.info(`📊 Generating EXPANDED dashboard layout`);
           layout = this.generateExpandedLayout();
           break;
         case DashboardMode.ALWAYS_ON:
+          this.userSession.logger.info(`📊 Generating ALWAYS_ON dashboard layout`);
           layout = this.generateAlwaysOnLayout();
           break;
       }
@@ -268,7 +284,17 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      this.userSession.logger.error('Error updating dashboard', error);
+      this.userSession.logger.error('❌ Error updating dashboard', error);
+      
+      // Log more details about the current state to help with debugging
+      this.userSession.logger.error('Dashboard state during error:', {
+        currentMode: this.currentMode,
+        systemContentIsEmpty: Object.values(this.systemContent).every(v => !v),
+        systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
+        systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
+        mainContentCount: this.mainContent.size,
+        expandedContentCount: this.expandedContent.size
+      });
     }
   }
 
@@ -278,10 +304,38 @@ export class DashboardManager {
    */
   private sendDisplayRequest(displayRequest: DisplayRequest): void {
     try {
+      // Add detailed logging to track what we're sending
+      this.userSession.logger.info(`🔍 Sending dashboard display request to session ${this.userSession.sessionId}`, {
+        layoutType: displayRequest.layout.layoutType,
+        mode: this.currentMode,
+        timestamp: displayRequest.timestamp ? displayRequest.timestamp.toISOString() : 'undefined'
+      });
+      
+      // Log the actual content being sent
+      if (displayRequest.layout.layoutType === LayoutType.DOUBLE_TEXT_WALL) {
+        const layout = displayRequest.layout as any;
+        this.userSession.logger.info(`📋 Content for DoubleTextWall:`, {
+          leftSide: layout.topText?.substring(0, 50) + (layout.topText?.length > 50 ? '...' : ''),
+          rightSide: layout.bottomText?.substring(0, 50) + (layout.bottomText?.length > 50 ? '...' : '')
+        });
+      } else if (displayRequest.layout.layoutType === LayoutType.TEXT_WALL) {
+        const layout = displayRequest.layout as any;
+        this.userSession.logger.info(`📋 Content for TextWall:`, {
+          text: layout.text?.substring(0, 100) + (layout.text?.length > 100 ? '...' : '')
+        });
+      } else if (displayRequest.layout.layoutType === LayoutType.DASHBOARD_CARD) {
+        const layout = displayRequest.layout as any;
+        this.userSession.logger.info(`📋 Content for DashboardCard:`, {
+          leftText: layout.leftText?.substring(0, 50) + (layout.leftText?.length > 50 ? '...' : ''),
+          rightText: layout.rightText?.substring(0, 50) + (layout.rightText?.length > 50 ? '...' : '')
+        });
+      }
+      
       // Use the DisplayManager to send the display request
       this.userSession.displayManager.handleDisplayEvent(displayRequest, this.userSession);
+      this.userSession.logger.info(`✅ Successfully sent dashboard display request`);
     } catch (error) {
-      this.userSession.logger.error(`Error sending dashboard display request`, error);
+      this.userSession.logger.error(`❌ Error sending dashboard display request`, error);
     }
   }
 

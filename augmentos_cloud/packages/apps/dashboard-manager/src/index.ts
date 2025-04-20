@@ -113,7 +113,11 @@ class DashboardServer extends TpaServer {
    * Called by TpaServer when a new session is created
    */
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
-    logger.info(`New dashboard session started for user ${userId}`);
+    logger.info(`🚀 New dashboard session started for user ${userId}`, {
+      sessionId,
+      userId,
+      timestamp: new Date().toISOString()
+    });
     
     // Initialize session metadata
     this._activeSessions.set(sessionId, {
@@ -121,18 +125,24 @@ class DashboardServer extends TpaServer {
       phoneNotificationCache: [],
       dashboardMode: DashboardMode.MAIN
     });
+    
+    logger.info(`📊 Dashboard session initialized with mode: ${DashboardMode.MAIN}`);
 
     // Set up event handlers for this session
     this.setupEventHandlers(session, sessionId);
+    logger.info(`✅ Event handlers set up for session ${sessionId}`);
     
     // Initialize dashboard content and state
     this.initializeDashboard(session, sessionId);
+    logger.info(`✅ Dashboard initialized for session ${sessionId}`);
     
     // Set up settings handlers
     this.setupSettingsHandlers(session, sessionId);
+    logger.info(`✅ Settings handlers set up for session ${sessionId}`);
     
     // Start dashboard update interval
     const updateInterval = setInterval(() => {
+      logger.info(`⏰ Scheduled dashboard update triggered for session ${sessionId}`);
       this.updateDashboardSections(session, sessionId);
     }, 60000); // Update every minute
     
@@ -140,7 +150,13 @@ class DashboardServer extends TpaServer {
     const sessionInfo = this._activeSessions.get(sessionId);
     if (sessionInfo) {
       sessionInfo.updateInterval = updateInterval;
+      logger.info(`✅ Dashboard update interval scheduled for session ${sessionId}`);
     }
+    
+    logger.info(`✅ Dashboard session setup completed for user ${userId}`, {
+      sessionId,
+      activeSessionCount: this._activeSessions.size
+    });
   }
   
   /**
@@ -233,39 +249,86 @@ class DashboardServer extends TpaServer {
    */
   private initializeDashboard(session: TpaSession, sessionId: string): void {
     const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) return;
+    if (!sessionInfo) {
+      logger.error(`❌ Failed to initialize dashboard: session info not found for ${sessionId}`);
+      return;
+    }
+    
+    logger.info(`🛠️ Initializing dashboard for session ${sessionId}`);
     
     // Set dashboard to main mode
-    session.dashboard.system?.setViewMode(DashboardMode.MAIN);
-    sessionInfo.dashboardMode = DashboardMode.MAIN;
+    try {
+      logger.info(`🔄 Setting dashboard mode to ${DashboardMode.MAIN} for session ${sessionId}`);
+      session.dashboard.system?.setViewMode(DashboardMode.MAIN);
+      sessionInfo.dashboardMode = DashboardMode.MAIN;
+      logger.info(`✅ Dashboard mode set to ${DashboardMode.MAIN} for session ${sessionId}`);
+    } catch (error) {
+      logger.error(`❌ Error setting dashboard mode: ${error}`);
+    }
     
     // Initialize dashboard sections
-    this.updateDashboardSections(session, sessionId);
+    try {
+      logger.info(`🔄 Initializing dashboard sections for session ${sessionId}`);
+      this.updateDashboardSections(session, sessionId);
+      logger.info(`✅ Dashboard sections initialized for session ${sessionId}`);
+    } catch (error) {
+      logger.error(`❌ Error initializing dashboard sections: ${error}`);
+    }
   }
   
   /**
    * Update all dashboard sections with current data
    */
   private updateDashboardSections(session: TpaSession, sessionId: string): void {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) return;
+    logger.info(`🔄 Updating dashboard sections for session ${sessionId}`);
     
-    // Format time and battery together for top left (to match original format)
-    const timeText = this.formatTimeSection(sessionInfo);
-    const batteryText = this.formatBatterySection(sessionInfo);
-    const topLeftText = `${timeText}, ${batteryText}`;
-    session.dashboard.system?.setTopLeft(topLeftText);
+    const sessionInfo = this._activeSessions.get(sessionId);
+    if (!sessionInfo) {
+      logger.error(`❌ Failed to update dashboard: session info not found for ${sessionId}`);
+      return;
+    }
+    
+    try {
+      // Format time and battery together for top left (to match original format)
+      const timeText = this.formatTimeSection(sessionInfo);
+      const batteryText = this.formatBatterySection(sessionInfo);
+      const topLeftText = `${timeText}, ${batteryText}`;
+      
+      logger.info(`📊 Setting top-left dashboard section for session ${sessionId}`, {
+        timeText: timeText,
+        batteryText: batteryText
+      });
+      
+      session.dashboard.system?.setTopLeft(topLeftText);
+      logger.info(`✅ Top-left section updated for session ${sessionId}`);
 
-    // Format status section (weather, calendar, etc.)
-    const statusText = this.formatStatusSection(sessionInfo);
-    session.dashboard.system?.setTopRight(statusText);
+      // Format status section (weather, calendar, etc.)
+      const statusText = this.formatStatusSection(sessionInfo);
+      logger.info(`📊 Setting top-right dashboard section for session ${sessionId}`, {
+        statusText: statusText.substring(0, 30) + (statusText.length > 30 ? '...' : '')
+      });
+      
+      session.dashboard.system?.setTopRight(statusText);
+      logger.info(`✅ Top-right section updated for session ${sessionId}`);
 
-    // Format notification section
-    const notificationText = this.formatNotificationSection(sessionInfo);
-    session.dashboard.system?.setBottomLeft(notificationText);
+      // Format notification section
+      const notificationText = this.formatNotificationSection(sessionInfo);
+      logger.info(`📊 Setting bottom-left dashboard section for session ${sessionId}`, {
+        notificationText: notificationText ? 
+          notificationText.substring(0, 30) + (notificationText.length > 30 ? '...' : '') : 
+          'empty'
+      });
+      
+      session.dashboard.system?.setBottomLeft(notificationText);
+      logger.info(`✅ Bottom-left section updated for session ${sessionId}`);
 
-    // Don't send bottom right since we're not using it in the original format
-    // session.dashboard.system?.setBottomRight("");
+      // Don't send bottom right since we're not using it in the original format
+      // session.dashboard.system?.setBottomRight("");
+      
+      logger.info(`✅ All dashboard sections updated successfully for session ${sessionId}`);
+    } catch (error) {
+      logger.error(`❌ Error updating dashboard sections for session ${sessionId}:`, error);
+    }
   }
   
   /**
