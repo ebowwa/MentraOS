@@ -42,11 +42,22 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
     
     // UUIDs for our service and characteristics - updated to match K900 BES2800 MCU UUIDs for compatibility
     private static final UUID SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
+
     private static final UUID TX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
     private static final UUID RX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
     
-    // Device name for advertising
-    private static final String DEVICE_NAME = "Xy_A";
+    // Base device name for advertising
+    private static final String BASE_DEVICE_NAME = "Xy_A";
+    
+    // SharedPreferences constants
+    private static final String PREFS_NAME = "augmentos_device_prefs";
+    private static final String KEY_DEVICE_ID = "device_id";
+    
+    // Full device name with ID
+    private String deviceName;
+    
+    // Device ID
+    private String deviceId;
     
     // MTU parameters
     private static final int DEFAULT_MTU = 23; // BLE default
@@ -84,6 +95,13 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
     private BluetoothGattCharacteristic txCharacteristic;
     private boolean isAdvertising = false;
     private boolean isNotifiedConnected = false; // Track if we've notified listeners of connection
+    private boolean waitingForBluetoothEnabled = false; // Track if we're waiting for Bluetooth to be enabled
+    
+    // Connection readiness tracking
+    private boolean isMtuNegotiated = false;
+    private boolean isPhyUpdated = false;
+    private int currentTxPhy = BluetoothDevice.PHY_LE_1M; // Default PHY
+    private int currentRxPhy = BluetoothDevice.PHY_LE_1M; // Default PHY
     
     // Debug notification manager
     private DebugNotificationManager notificationManager;
@@ -97,7 +115,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         public void onStartSuccess(AdvertiseSettings settingsInEffect) {
             Log.d(TAG, "BLE advertising started successfully");
             isAdvertising = true;
-            notificationManager.showAdvertisingNotification(DEVICE_NAME);
+            notificationManager.showAdvertisingNotification(deviceName);
         }
 
         @Override
@@ -120,12 +138,24 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 connectedDevice = device;
                 Log.d(TAG, "Thread-" + threadId + ": connectedDevice after = " + (connectedDevice != null ? connectedDevice.getAddress() : "null"));
                 
-                // Immediately notify connection state - don't wait for MTU negotiation
-                // The central device will initiate MTU negotiation after connection
-                notifyConnectionStateChanged(true);
+                // Reset connection setup flags
+                isMtuNegotiated = false;
+                isPhyUpdated = false;
                 
-                // Show notification for UI feedback
+                // We don't notify connection right away anymore - 
+                // we'll wait until all negotiation steps are complete or until a timeout
+                
+                // Still show UI notification that physical connection is established
                 notificationManager.showBluetoothStateNotification(true);
+                
+                // Start a timer to notify connected state after a timeout even if not all
+                // negotiation steps complete - this ensures we don't get stuck
+                handler.postDelayed(() -> {
+                    if (connectedDevice != null && !isNotifiedConnected) {
+                        Log.d(TAG, "Connection setup timeout - notifying connection anyway");
+                        notifyConnectionStateChanged(true);
+                    }
+                }, 4000); // 2 second grace period for negotiation
                 
                 // Ensure we stop advertising and remove its notification
                 stopAdvertising();
@@ -144,6 +174,12 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 
                 // Reset the MTU to default on disconnection
                 currentMtu = DEFAULT_MTU;
+                
+                // Reset all connection state tracking
+                isMtuNegotiated = false;
+                isPhyUpdated = false;
+                currentTxPhy = BluetoothDevice.PHY_LE_1M;
+                currentRxPhy = BluetoothDevice.PHY_LE_1M;
                 
                 connectedDevice = null;
                 Log.d(TAG, "Thread-" + threadId + ": Set connectedDevice = null");
@@ -172,27 +208,55 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             int effectivePayloadSize = Math.max(0, mtu - 3);
             Log.d(TAG, "🔵 MTU negotiation complete - effective payload size: " + effectivePayloadSize + " bytes");
             
-            // We don't need to notify connection state change here anymore
-            // Since we're doing it immediately upon connection
+            // Mark MTU negotiation as complete
+            isMtuNegotiated = true;
+            
+            // Check if we have all required negotiation steps complete
+            checkConnectionSetupComplete();
         }
         
         @Override
         public void onPhyUpdate(BluetoothDevice device, int txPhy, int rxPhy, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                String phyString = getPhyString(txPhy);
-                Log.d(TAG, "PHY updated - TX: " + phyString + ", RX: " + phyString);
+                String txPhyString = getPhyString(txPhy);
+                String rxPhyString = getPhyString(rxPhy);
+                Log.d(TAG, "PHY updated - TX: " + txPhyString + ", RX: " + rxPhyString);
+                
+                // Store the current PHY values
+                currentTxPhy = txPhy;
+                currentRxPhy = rxPhy;
+                
+                // Mark PHY update as complete
+                isPhyUpdated = true;
+                
+                // Check if we have all required negotiation steps complete
+                checkConnectionSetupComplete();
             } else {
                 Log.e(TAG, "PHY update failed with status: " + status);
+                
+                // We still consider this step "complete" even if it failed
+                // because not all devices support PHY update
+                isPhyUpdated = true;
+                checkConnectionSetupComplete();
             }
         }
         
         @Override
         public void onPhyRead(BluetoothDevice device, int txPhy, int rxPhy, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                String phyString = getPhyString(txPhy);
-                Log.d(TAG, "PHY read - TX: " + phyString + ", RX: " + phyString);
+                String txPhyString = getPhyString(txPhy);
+                String rxPhyString = getPhyString(rxPhy);
+                Log.d(TAG, "PHY read - TX: " + txPhyString + ", RX: " + rxPhyString);
+                
+                // Store the current PHY values
+                currentTxPhy = txPhy;
+                currentRxPhy = rxPhy;
             }
         }
+        
+        // Note: onConnectionUpdated is not part of BluetoothGattServerCallback
+        // but we'll handle connection parameter updates using a different mechanism
+        // This method may be called by a custom event or from client-side operations
         
         @Override
         public void onExecuteWrite(BluetoothDevice device, int requestId, boolean execute) {
@@ -224,7 +288,31 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                                                BluetoothGattCharacteristic characteristic, 
                                                boolean preparedWrite, boolean responseNeeded,
                                                int offset, byte[] value) {
-            Log.d(TAG, "Write request for characteristic: " + characteristic.getUuid());
+            long threadId = Thread.currentThread().getId();
+            Log.d(TAG, "Thread-" + threadId + ": 📝 WRITE REQUEST RECEIVED for characteristic: " + characteristic.getUuid());
+            
+            // Check if this is our RX characteristic
+            boolean isRxChar = RX_CHAR_UUID.equals(characteristic.getUuid());
+            Log.d(TAG, "Thread-" + threadId + ": 📝 Is this our RX characteristic? " + (isRxChar ? "YES" : "NO"));
+            
+            // Log basic info about the request
+            Log.d(TAG, "Thread-" + threadId + ": 📝 Request details - Device: " + device.getAddress() + 
+                  ", PreparedWrite: " + preparedWrite + 
+                  ", ResponseNeeded: " + responseNeeded);
+                  
+            // Log value details if available
+            if (value != null) {
+                Log.d(TAG, "Thread-" + threadId + ": 📝 Value length: " + value.length + " bytes");
+                if (value.length > 0) {
+                    StringBuilder hexDump = new StringBuilder();
+                    for (int i = 0; i < Math.min(value.length, 20); i++) {
+                        hexDump.append(String.format("%02X ", value[i]));
+                    }
+                    Log.d(TAG, "Thread-" + threadId + ": 📝 First 20 bytes: " + hexDump);
+                }
+            } else {
+                Log.d(TAG, "Thread-" + threadId + ": 📝 Value is NULL");
+            }
             
             if (RX_CHAR_UUID.equals(characteristic.getUuid())) {
                 if (value != null) {
@@ -330,9 +418,20 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                         
                     case BluetoothAdapter.STATE_ON:
                         Log.d(TAG, "Bluetooth adapter turned ON");
-                        // If we were in the middle of pairing when Bluetooth was turned off and on,
-                        // we might need to restart advertising
-                        if (!isConnected() && !isAdvertising) {
+                        
+                        // If we were waiting for Bluetooth to be enabled, continue initialization
+                        if (waitingForBluetoothEnabled) {
+                            Log.d(TAG, "Bluetooth is now enabled - continuing initialization");
+                            notificationManager.showDebugNotification("Bluetooth", 
+                                "Bluetooth enabled - continuing initialization");
+                                
+                            // Continue initialization on the main thread
+                            handler.post(() -> {
+                                initialize();
+                            });
+                        }
+                        // Otherwise, just restart advertising if needed
+                        else if (!isConnected() && !isAdvertising) {
                             handler.postDelayed(() -> {
                                 if (!isConnected() && !isAdvertising) {
                                     startAdvertising();
@@ -401,6 +500,9 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         notificationManager = new DebugNotificationManager(context);
         notificationManager.showDeviceTypeNotification(false);
         
+        // Initialize device ID and name
+        initializeDeviceId();
+        
         // Get the bluetooth manager and adapter
         bluetoothManager = (BluetoothManager) context.getSystemService(Context.BLUETOOTH_SERVICE);
         if (bluetoothManager != null) {
@@ -442,17 +544,38 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             return;
         }
         
-        // Make sure Bluetooth is enabled
+        // Make sure Bluetooth is enabled - use our utility class
         if (!bluetoothAdapter.isEnabled()) {
-            Log.d(TAG, "Bluetooth is not enabled");
-            notificationManager.showDebugNotification("Bluetooth Warning", 
-                "Please enable Bluetooth for proper operation");
-            return;
+            Log.d(TAG, "Bluetooth is not enabled - attempting to enable it");
+            
+            // Try to enable Bluetooth
+            boolean success = com.augmentos.asg_client.bluetooth.util.BTUtil.openBluetooth(context);
+            
+            if (!success || !bluetoothAdapter.isEnabled()) {
+                Log.e(TAG, "Failed to enable Bluetooth");
+                notificationManager.showDebugNotification("Bluetooth Error", 
+                    "Failed to enable Bluetooth. Waiting for it to be enabled.");
+                    
+                // Set flag to indicate we're waiting for Bluetooth to be enabled
+                waitingForBluetoothEnabled = true;
+                
+                // We'll return here, but our broadcast receiver will detect when Bluetooth is enabled
+                // and will continue initialization
+                return;
+            } else {
+                Log.d(TAG, "Successfully enabled Bluetooth");
+                notificationManager.showDebugNotification("Bluetooth", 
+                    "Bluetooth enabled successfully");
+            }
         }
         
-        // Set the device name to Xy_A
+        // Reset waiting flag
+        waitingForBluetoothEnabled = false;
+        
+        // Set the device name using our device ID
         if (checkPermission()) {
-            bluetoothAdapter.setName(DEVICE_NAME);
+            bluetoothAdapter.setName(deviceName);
+            Log.d(TAG, "Set Bluetooth adapter name to: " + deviceName + " (ID: " + deviceId + ")");
         }
         
         // Set up the GATT server
@@ -503,6 +626,10 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                     BluetoothGattCharacteristic.PROPERTY_WRITE | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
                     BluetoothGattCharacteristic.PERMISSION_WRITE);
                 
+                Log.d(TAG, "🔍 CREATED RX CHARACTERISTIC: UUID=" + RX_CHAR_UUID + 
+                       ", Properties=" + rxCharacteristic.getProperties() + 
+                       ", Permissions=" + rxCharacteristic.getPermissions());
+                
                 // Add characteristics to service
                 service.addCharacteristic(txCharacteristic);
                 service.addCharacteristic(rxCharacteristic);
@@ -511,9 +638,28 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 boolean success = gattServer.addService(service);
                 
                 if (success) {
-                    Log.d(TAG, "GATT service added successfully");
+                    // Log detailed service info for debugging
+                    Log.d(TAG, "✅ GATT service added successfully with UUID: " + SERVICE_UUID);
+                    Log.d(TAG, "🔍 Service contains characteristics:");
+                    for (BluetoothGattCharacteristic chr : service.getCharacteristics()) {
+                        UUID uuid = chr.getUuid();
+                        String name = uuid.equals(TX_CHAR_UUID) ? "TX" : 
+                                      uuid.equals(RX_CHAR_UUID) ? "RX" : "Unknown";
+                        
+                        int props = chr.getProperties();
+                        String propsStr = "";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_READ) != 0) propsStr += "READ ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) propsStr += "WRITE ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) propsStr += "WRITE_NO_RESP ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) propsStr += "NOTIFY ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) propsStr += "INDICATE ";
+                        
+                        Log.d(TAG, "  - " + name + " Characteristic: " + uuid + 
+                              ", Properties: " + propsStr + 
+                              ", Permissions: " + chr.getPermissions());
+                    }
                 } else {
-                    Log.e(TAG, "Failed to add GATT service");
+                    Log.e(TAG, "❌ Failed to add GATT service");
                     notificationManager.showDebugNotification("Bluetooth Error", 
                         "Failed to add GATT service");
                 }
@@ -527,6 +673,14 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
     
     @Override
     public void startAdvertising() {
+        // Log detailed BLE info before advertising
+        Log.d(TAG, "📡 BLE DEBUG INFO:");
+        Log.d(TAG, "  Service UUID: " + SERVICE_UUID);
+        Log.d(TAG, "  TX Char UUID: " + TX_CHAR_UUID);
+        Log.d(TAG, "  RX Char UUID: " + RX_CHAR_UUID);
+        Log.d(TAG, "  Device Name: " + deviceName);
+        Log.d(TAG, "  GATT Server: " + (gattServer != null ? "initialized" : "NULL"));
+        
         if (bluetoothAdapter == null) {
             Log.e(TAG, "Cannot start advertising - Bluetooth adapter is null");
             notificationManager.showDebugNotification("Bluetooth Error", 
@@ -664,41 +818,8 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             return false;
         }
         
-        // First check if it's already in protocol format
-        if (!com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isK900ProtocolFormat(data)) {
-            // Try to interpret as a JSON string that needs C-wrapping and protocol formatting
-            try {
-                // Convert to string for processing
-                String originalData = new String(data, "UTF-8");
-                
-                // If looks like JSON but not C-wrapped, use the full formatting function
-                if (originalData.startsWith("{") && 
-                    !com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isCWrappedJson(originalData)) {
-                    
-                    Log.e(TAG, "📦 JSON DATA BEFORE C-WRAPPING: " + originalData);
-                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.formatMessageForTransmission(originalData);
-                    
-                    // Log the first 100 chars of the hex representation
-                    StringBuilder hexDump = new StringBuilder();
-                    for (int i = 0; i < Math.min(data.length, 50); i++) {
-                        hexDump.append(String.format("%02X ", data[i]));
-                    }
-                    Log.e(TAG, "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
-                    Log.e(TAG, "📦 Total formatted length: " + data.length + " bytes");
-                } else {
-                    // Otherwise just apply protocol formatting
-                    Log.e(TAG, "📦 Data already C-wrapped or not JSON: " + originalData);
-                    Log.d(TAG, "Formatting data with K900 protocol (adding ##...)");
-                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
-                        data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
-                }
-            } catch (Exception e) {
-                // If we can't interpret as string, just apply protocol formatting to raw bytes
-                Log.d(TAG, "Applying protocol format to raw bytes");
-                data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
-                    data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
-            }
-        }
+        // Format the data using the unified utility method
+        data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.prepareDataForTransmission(data);
         
         // We're no longer checking isNotifiedConnected since we notify immediately on connection
         // Instead, we'll just check the packet size against the current MTU value
@@ -840,6 +961,9 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
     @Override
     public void shutdown() {
         super.shutdown();
+        
+        // Reset the waiting flag
+        waitingForBluetoothEnabled = false;
         
         if (isAdvertising) {
             stopAdvertising();
@@ -1165,6 +1289,89 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
      * Helper to check for Bluetooth permissions
      * @return true if permissions granted, false otherwise
      */
+    /**
+     * Initializes or retrieves the device ID and sets up the device name
+     */
+    private void initializeDeviceId() {
+        // Get the SharedPreferences
+        android.content.SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        
+        // Check if we already have a device ID
+        deviceId = prefs.getString(KEY_DEVICE_ID, null);
+        
+        // If no device ID exists, generate a new one
+        if (deviceId == null) {
+            // Generate a random 2-digit number (10-99)
+            int randomId = 10 + new java.util.Random().nextInt(90);
+            deviceId = String.format("%02d", randomId);
+            
+            // Save to SharedPreferences
+            android.content.SharedPreferences.Editor editor = prefs.edit();
+            editor.putString(KEY_DEVICE_ID, deviceId);
+            editor.apply();
+            
+            Log.d(TAG, "Generated new device ID: " + deviceId);
+        } else {
+            Log.d(TAG, "Retrieved existing device ID: " + deviceId);
+        }
+        
+        // Set the full device name with ID
+        deviceName = BASE_DEVICE_NAME + deviceId;
+        Log.d(TAG, "Device name set to: " + deviceName);
+    }
+    
+    /**
+     * Gets the device ID
+     * @return The 2-digit device ID as a string
+     */
+    public String getDeviceId() {
+        return deviceId;
+    }
+    
+    /**
+     * Gets the full device name including the ID
+     * @return The full device name (e.g., "Xy_A22")
+     */
+    public String getDeviceName() {
+        return deviceName;
+    }
+    
+    
+    /**
+     * Checks if all connection setup steps are complete and notifies listeners if ready
+     */
+    private void checkConnectionSetupComplete() {
+        // Only proceed if we haven't notified listeners yet and we're still connected
+        if (isNotifiedConnected || connectedDevice == null) {
+            return;
+        }
+        
+        // Log the current state of each negotiation step
+        Log.d(TAG, "Connection setup progress:");
+        Log.d(TAG, "- MTU negotiated: " + (isMtuNegotiated ? "YES (" + currentMtu + ")" : "NO"));
+        Log.d(TAG, "- PHY updated: " + (isPhyUpdated ? "YES" : "NO"));
+        
+        // We no longer track connection parameter updates via override (not supported in server callback)
+        // Log.d(TAG, "- Connection parameters updated: " + (isConnectionParamsUpdated ? "YES" : "NO"));
+        
+        // The most critical step is MTU negotiation - we require it to be complete
+        // Other steps are optional depending on device capabilities
+        boolean isReady = isMtuNegotiated;
+        
+        if (isReady) {
+            Log.d(TAG, "✅ Connection setup complete - notifying listeners");
+            
+            // Log the final connection parameters
+            int effectivePayloadSize = Math.max(0, currentMtu - 3);
+            Log.d(TAG, "Final connection parameters:");
+            Log.d(TAG, "- MTU: " + currentMtu + " bytes (effective payload: " + effectivePayloadSize + " bytes)");
+            Log.d(TAG, "- PHY: TX=" + getPhyString(currentTxPhy) + ", RX=" + getPhyString(currentRxPhy));
+            
+            // Notify listeners that connection is ready
+            notifyConnectionStateChanged(true);
+        }
+    }
+    
     private boolean checkPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             return ActivityCompat.checkSelfPermission(context, Manifest.permission.BLUETOOTH_CONNECT) 

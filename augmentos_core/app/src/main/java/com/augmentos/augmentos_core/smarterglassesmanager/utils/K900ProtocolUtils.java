@@ -166,13 +166,28 @@ public class K900ProtocolUtils {
     }
     
     /**
-     * Check if a JSON string is already wrapped with the C field
-     * @return true if already wrapped, false otherwise
+     * Check if a JSON string is already properly formatted for K900 protocol
+     * This can either be:
+     * 1. Simple C-wrapped format: {"C": "content"} 
+     * 2. Full K900 format: {"C": "command", "V": value, "B": body}
+     * 
+     * @return true if already in proper format, false otherwise
      */
     public static boolean isCWrappedJson(String jsonStr) {
         try {
             JSONObject json = new JSONObject(jsonStr);
-            return json.has(FIELD_C) && json.length() == 1;
+            
+            // Check for simple C-wrapping {"C": "content"} - only one field
+            if (json.has(FIELD_C) && json.length() == 1) {
+                return true;
+            }
+            
+            // Check for full K900 format {"C": "command", "V": val, "B": body}
+            if (json.has(FIELD_C) && json.has(FIELD_V) && json.has(FIELD_B)) {
+                return true;
+            }
+            
+            return false;
         } catch (JSONException e) {
             return false;
         }
@@ -198,5 +213,59 @@ public class K900ProtocolUtils {
         byte[] payload = new byte[length];
         System.arraycopy(protocolData, 5, payload, 0, length);
         return payload;
+    }
+    
+    /**
+     * Unified method to prepare data for transmission according to K900 protocol
+     * This handles all formatting cases:
+     * 1. Data already in protocol format
+     * 2. JSON data that needs C-wrapping
+     * 3. Raw data that needs protocol packaging
+     * 
+     * @param data The raw data to prepare for transmission
+     * @return Properly formatted data according to K900 protocol
+     */
+    public static byte[] prepareDataForTransmission(byte[] data) {
+        if (data == null || data.length == 0) {
+            return null;
+        }
+        
+        // If already in protocol format, don't modify
+        if (isK900ProtocolFormat(data)) {
+            return data;
+        }
+        
+        // Try to interpret as a JSON string that needs C-wrapping and protocol formatting
+        try {
+            // Convert to string for processing
+            String originalData = new String(data, "UTF-8");
+            
+            // If looks like JSON but not C-wrapped, use the full formatting function
+            if (originalData.startsWith("{") && !isCWrappedJson(originalData)) {
+                android.util.Log.d("K900ProtocolUtils", "📦 JSON DATA BEFORE C-WRAPPING: " + originalData);
+                byte[] formattedData = formatMessageForTransmission(originalData);
+                
+                // Debug log the formatting results if needed
+                if (android.util.Log.isLoggable("K900ProtocolUtils", android.util.Log.DEBUG)) {
+                    StringBuilder hexDump = new StringBuilder();
+                    for (int i = 0; i < Math.min(formattedData.length, 50); i++) {
+                        hexDump.append(String.format("%02X ", formattedData[i]));
+                    }
+                    android.util.Log.d("K900ProtocolUtils", "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
+                    android.util.Log.d("K900ProtocolUtils", "📦 Total formatted length: " + formattedData.length + " bytes");
+                }
+                
+                return formattedData;
+            } else {
+                // Otherwise just apply protocol formatting
+                android.util.Log.d("K900ProtocolUtils", "📦 Data already C-wrapped or not JSON: " + originalData);
+                android.util.Log.d("K900ProtocolUtils", "Formatting data with K900 protocol (adding ##...)");
+                return packDataCommand(data, CMD_TYPE_STRING);
+            }
+        } catch (Exception e) {
+            // If we can't interpret as string, just apply protocol formatting to raw bytes
+            android.util.Log.d("K900ProtocolUtils", "Applying protocol format to raw bytes");
+            return packDataCommand(data, CMD_TYPE_STRING);
+        }
     }
 }

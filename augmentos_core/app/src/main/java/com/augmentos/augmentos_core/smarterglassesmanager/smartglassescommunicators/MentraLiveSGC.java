@@ -35,7 +35,6 @@ import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.Smart
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 
 import org.greenrobot.eventbus.EventBus;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -84,7 +83,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     
     // Device settings
     private static final String PREFS_NAME = "MentraLivePrefs";
-    private static final String PREF_DEVICE_ADDRESS = "LastConnectedDeviceAddress";
+    private static final String PREF_MENTRA_LIVE_NAME = "LastConnectedDeviceAddress";
     
     // Auth settings
     private static final String AUTH_PREFS_NAME = "augmentos_auth_prefs";
@@ -253,19 +252,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             // Check if this device matches the saved device address
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            String savedDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+            String savedMentraLiveName = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
             
             // Post the discovered device to the event bus ONLY 
             // Don't automatically connect - wait for explicit connect request from UI
-            if (deviceName.equals("Xy_A") || deviceName.startsWith("XyBLE_")) {
-                String glassType = deviceName.equals("Xy_A") ? "Standard" : "K900";
+            if (deviceName.startsWith("Xy_A")){// || deviceName.startsWith("XyBLE_")) {
+                String glassType = deviceName.startsWith("Xy_A") ? "Standard" : "K900";
                 Log.d(TAG, "Found compatible " + glassType + " glasses device: " + deviceAddress);
                 EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
-                        smartGlassesDevice.deviceModelName, deviceAddress));
+                        smartGlassesDevice.deviceModelName, deviceName));
                 
                 // If this is the specific device we want to connect to, connect to it
-                if (savedDeviceAddress != null && savedDeviceAddress.equals(deviceAddress)) {
-                    Log.d(TAG, "Found our specific device, connecting: " + deviceAddress);
+                if (savedMentraLiveName != null && savedMentraLiveName.equals(deviceName)) {
+                    Log.d(TAG, "Found our specific device, connecting: " + deviceName);
                     stopScan();
                     connectToDevice(result.getDevice());
                 }
@@ -338,7 +337,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void reconnectToLastKnownDevice() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+        String lastDeviceAddress = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
         
         if (lastDeviceAddress != null && bluetoothAdapter != null) {
             Log.d(TAG, "Attempting to reconnect to last known device: " + lastDeviceAddress);
@@ -389,7 +388,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 if (!isConnected && !isConnecting && !isKilled) {
                     // Try last known device first, but don't start scanning automatically
                     SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                    String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+                    String lastDeviceAddress = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
                     
                     if (lastDeviceAddress != null && bluetoothAdapter != null) {
                         Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - trying last known device: " + lastDeviceAddress);
@@ -438,7 +437,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Save the connected device address for future reconnections
                     if (connectedDevice != null) {
                         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                        prefs.edit().putString(PREF_DEVICE_ADDRESS, connectedDevice.getAddress()).apply();
+                        prefs.edit().putString(PREF_MENTRA_LIVE_NAME, connectedDevice.getAddress()).apply();
                     }
                     
                     // Discover services
@@ -922,6 +921,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
         
         try {
+            // Simple approach: just set the value and write without changing the write type
+            // This matches the working implementation from commit 1f45e1bc
             txCharacteristic.setValue(data);
             bluetoothGatt.writeCharacteristic(txCharacteristic);
         } catch (Exception e) {
@@ -1044,113 +1045,55 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             return; // Exit after processing K900 protocol format
         }
         
-        // Check the first byte to determine the packet type for non-protocol formatted data
-        byte commandByte = data[0];
-        Log.d(TAG, "Command byte: 0x" + String.format("%02X", commandByte) + " (" + (int)(commandByte & 0xFF) + ")");
-        
-        // CRITICAL DEBUG: Try multiple ways to detect LC3 audio data
-        boolean isLc3Audio = false;
-        
-        // Method 1: Check using switch case (what we were doing)
-        if (commandByte == (byte)0xA0) {
-            isLc3Audio = true;
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): MATCH");
-        } else {
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 1 (switch): NO MATCH");
-        }
-        
-        // Method 2: Check by comparing integer values
-        int cmdByteInt = commandByte & 0xFF; // Convert signed byte to unsigned int
-        if (cmdByteInt == 0xA0) {
-            isLc3Audio = true;
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): MATCH");
-        } else {
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 2 (int compare): NO MATCH - Value: " + cmdByteInt);
-        }
-        
-        // Method 3: Explicit check against -96 (0xA0 as signed byte)
-        if (commandByte == -96) {
-            isLc3Audio = true;
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): MATCH");
-        } else {
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 DETECTION METHOD 3 (signed byte): NO MATCH - Value: " + (int)commandByte);
-        }
-        
-        // Process based on detection results
-        if (isLc3Audio) {
-            Log.e(TAG, "Thread-" + threadId + ": ✅ DETECTED LC3 AUDIO PACKET!");
-            
-            // Report packet size vs. MTU diagnostic
-            if (bluetoothGatt != null) {
-                try {
-                    int effectiveMtu = currentMtu - 3;
-                    Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + size + " bytes, MTU limit: " + effectiveMtu + " bytes");
-                    
-                    if (size > effectiveMtu) {
-                        Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Thread-" + threadId + ": ❌ Error getting MTU size: " + e.getMessage());
+        // Check if this is a JSON message (starts with '{')
+        if (data.length > 0 && data[0] == '{') {
+            try {
+                String jsonStr = new String(data, 0, size, StandardCharsets.UTF_8);
+                if (jsonStr.startsWith("{") && jsonStr.endsWith("}")) {
+                    JSONObject json = new JSONObject(jsonStr);
+                    processJsonMessage(json);
+                } else {
+                    Log.w(TAG, "Received data that starts with '{' but is not valid JSON");
                 }
+            } catch (JSONException e) {
+                Log.e(TAG, "Error parsing received JSON data", e);
             }
+            return;
+        }
+        
+        // For backward compatibility, check for binary LC3 audio data
+        // This block can be removed once all clients are updated to use the JSON format
+        byte commandByte = data[0];
+        
+        // Check if this is binary LC3 audio data (0xA0)
+        if (commandByte == (byte)0xA0) {
+            Log.d(TAG, "Thread-" + threadId + ": ⚠️ Detected legacy binary LC3 audio packet");
             
             if (size > 1) {
                 // Extract the LC3 audio data (skip the command byte)
                 byte[] lc3AudioData = Arrays.copyOfRange(data, 1, data.length);
                 
-                // Log callback status
-                Log.e(TAG, "Thread-" + threadId + ": ⭐ Audio callback registered: " + (audioProcessingCallback != null ? "YES" : "NO"));
-                
                 // Forward to the audio processing system
                 if (audioProcessingCallback != null) {
                     try {
-                        Log.e(TAG, "Thread-" + threadId + ": ⏩ Forwarding LC3 audio data (" + lc3AudioData.length + " bytes) to processing system");
+                        Log.d(TAG, "Thread-" + threadId + ": ⏩ Forwarding legacy LC3 audio data (" + lc3AudioData.length + " bytes)");
                         audioProcessingCallback.onLC3AudioDataAvailable(lc3AudioData);
-                        Log.e(TAG, "Thread-" + threadId + ": ✅ LC3 audio data forwarded successfully");
                     } catch (Exception e) {
-                        //Log.e(TAG, "Thread-" + threadId + ": ❌ EXCEPTION during audio data forwarding: " + e.getMessage(), e);
+                        Log.e(TAG, "Thread-" + threadId + ": ❌ Error forwarding legacy LC3 audio: " + e.getMessage());
                     }
                 } else {
-                    Log.e(TAG, "Thread-" + threadId + ": ❌ Received LC3 audio data but no processing callback is registered");
-                    
-                    // Fire a warning event that we're receiving audio but not processing it
-                    // This will help the user understand why audio isn't working
-                    handler.post(() -> {
-                        Log.e(TAG, "Thread-" + threadId + ": 📢 Posting warning about missing audio callback");
-                        // TODO: Consider adding a specific event for missing audio callback
-                    });
+                    Log.e(TAG, "Thread-" + threadId + ": ❌ Received legacy LC3 audio data but no callback registered");
                 }
-            } else {
-                Log.e(TAG, "Thread-" + threadId + ": ⚠️ Received audio packet with no data");
             }
+            return;
+        }
+        
+        // Unknown packet type
+        Log.w(TAG, "Received unknown packet type: " + String.format("0x%02X", commandByte));
+        if (size > 10) { 
+            Log.d(TAG, "First 10 bytes: " + bytesToHex(Arrays.copyOfRange(data, 0, 10)));
         } else {
-            // Not LC3 audio, continue with regular switch statement
-            switch (commandByte) {
-                
-            case '{': // Likely a JSON message (starts with '{')
-                try {
-                    String jsonStr = new String(data, 0, size, StandardCharsets.UTF_8);
-                    if (jsonStr.startsWith("{") && jsonStr.endsWith("}")) {
-                        JSONObject json = new JSONObject(jsonStr);
-                        processJsonMessage(json);
-                    } else {
-                        Log.w(TAG, "Received data that starts with '{' but is not valid JSON");
-                    }
-                } catch (JSONException e) {
-                    Log.e(TAG, "Error parsing received JSON data", e);
-                }
-                break;
-                
-            default:
-                // Unknown packet type
-                Log.w(TAG, "Received unknown packet type: " + String.format("0x%02X", commandByte));
-                if (size > 10) { 
-                    Log.d(TAG, "First 10 bytes: " + bytesToHex(Arrays.copyOfRange(data, 0, 10)));
-                } else {
-                    Log.d(TAG, "Data: " + bytesToHex(data));
-                }
-                break;
-            }
+            Log.d(TAG, "Data: " + bytesToHex(data));
         }
     }
     
@@ -1192,6 +1135,34 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // ...
                 break;
                 
+            case "lc3_audio":
+                // Extract the Base64-encoded audio data
+                String encodedData = json.optString("data", "");
+                if (encodedData.isEmpty()) {
+                    Log.e(TAG, "❌ LC3 audio JSON received but data field is empty");
+                    return;
+                }
+                
+                try {
+                    // Decode the Base64 data
+                    byte[] lc3AudioData = android.util.Base64.decode(
+                        encodedData, android.util.Base64.DEFAULT);
+                    // Forward to the audio processing system
+                    if (audioProcessingCallback != null) {
+                        try {
+                            Log.d(TAG, "⏩ Forwarding LC3 audio data to processing system");
+                            audioProcessingCallback.onLC3AudioDataAvailable(lc3AudioData);
+                        } catch (Exception e) {
+                            Log.e(TAG, "❌ Error forwarding LC3 audio: " + e.getMessage());
+                        }
+                    } else {
+                        Log.e(TAG, "❌ Received LC3 audio data but no callback registered");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "❌ Error decoding Base64 LC3 audio data: " + e.getMessage());
+                }
+                break;
+                
             case "glasses_ready":
                 // Glasses SOC has booted and is ready for communication
                 Log.d(TAG, "🎉 Received glasses_ready message - SOC is booted and ready!");
@@ -1208,7 +1179,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 sendCoreTokenToAsgClient();
                 
                 Log.d(TAG, "🔄 Starting debug video command loop");
-                startDebugVideoCommandLoop();
+                //startDebugVideoCommandLoop();
                 
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
@@ -1325,8 +1296,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void requestWifiStatus() {
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "request");
-            json.put("request", "wifi_status");
+            json.put("type", "request_wifi_status");
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi status request", e);
@@ -1396,18 +1366,19 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Get last known device address
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+        String lastMentraLiveName = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
         
-        if (lastDeviceAddress != null) {
+        if (lastMentraLiveName != null) {
             // Connect to last known device if available
-            Log.d(TAG, "Attempting to connect to last known device: " + lastDeviceAddress);
+            Log.d(TAG, "Attempting to connect to last known device: " + lastMentraLiveName);
             try {
-                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
+                // TODO: HOW TO GET A DEVICE ADDRESS FROM A NAME???
+                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastMentraLiveName);
                 if (device != null) {
-                    Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
+                    Log.d(TAG, "Found saved device, connecting directly: " + lastMentraLiveName);
                     connectToDevice(device);
                 } else {
-                    Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
+                    Log.e(TAG, "Could not create device from name: " + lastMentraLiveName);
                     connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
                     startScan(); // Fallback to scanning
                 }
