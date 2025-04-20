@@ -18,7 +18,7 @@ The dashboard system provides contextual information to users through different 
 | WebSocket Integration | ✅ Complete | Integrated with WebSocketService for messaging |
 | DisplayManager Integration | ✅ Complete | Connected to existing display system with proper formats |
 | Dashboard SDK Guidelines | ✅ Complete | Added best practices for using the SDK |
-| Dashboard-Manager TPA | ✅ Complete | Fully reimplemented TPA using the SDK's Dashboard API |
+| Dashboard-Manager TPA | ✅ Complete | Fully reimplemented TPA using TpaServer and Dashboard API |
 | SDK Type Definitions | ✅ Complete | Fixed type definitions for dashboard message types |
 | System Integration | ⚠️ In Progress | Need to deploy and connect all components |
 | Individual Content TPAs | ✅ Complete | Created separate TPAs for Fun Facts, Quotes, and Gratitude |

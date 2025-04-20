@@ -12,7 +12,8 @@
   "dependencies": {
     "@augmentos/sdk": "workspace:*",
     "@augmentos/utils": "workspace:*",
-    "@augmentos/agents": "workspace:*"
+    "@augmentos/agents": "workspace:*",
+    "axios": "^1.6.7"
   },
 
   "devDependencies": {
