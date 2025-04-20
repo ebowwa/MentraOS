@@ -9,6 +9,7 @@ import { MOCK_CONNECTION, SETTINGS_KEYS } from '../consts';
 import GroupTitle from '../components/settings/GroupTitle';
 import ToggleSetting from '../components/settings/ToggleSetting';
 import TextSetting from '../components/settings/TextSetting';
+import TextSettingNoSave from '../components/settings/TextSettingNoSave';
 import SliderSetting from '../components/settings/SliderSetting';
 import SelectSetting from '../components/settings/SelectSetting';
 import MultiSelectSetting from '../components/settings/MultiSelectSetting';
@@ -277,6 +278,16 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
       case 'text':
         return (
           <TextSetting
+            key={index}
+            label={setting.label}
+            value={settingsState[setting.key]}
+            onChangeText={(text) => handleSettingChange(setting.key, text)}
+            theme={theme}
+          />
+        );
+      case 'text_no_save_button':
+        return (
+          <TextSettingNoSave
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
