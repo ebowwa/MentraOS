@@ -325,8 +325,9 @@ export class DashboardManager {
    * @returns Formatted bottom section text
    */
   private formatSystemBottomSection(): string {
-    // Start with TPA content
-    const tpaContent = this.getCombinedTpaContent(this.mainContent);
+    // Get just the most recent TPA content item for the main dashboard
+    // We only want to show one item at a time, not multiple
+    const tpaContent = this.getCombinedTpaContent(this.mainContent, 1);
     
     // If there's system content for the bottom right, add it after TPA content
     if (this.systemContent.bottomRight) {
@@ -341,18 +342,40 @@ export class DashboardManager {
    * @returns Layout for expanded dashboard
    */
   private generateExpandedLayout(): Layout {
-    // Format the top section (condensed system info)
-    const topText = `${this.systemContent.topLeft} | ${this.systemContent.topRight}`;
+    // For expanded view we use TextWall with manual formatting
     
-    // Format the bottom section (TPA content with more space)
-    // For expanded mode, we want to give more space to TPA content
-    const bottomText = this.getCombinedTpaContent(this.expandedContent);
+    // Create first line with system info (top-left and top-right)
+    const systemInfoLine = `${this.systemContent.topLeft} | ${this.systemContent.topRight}`;
     
-    // Return a DoubleTextWall layout for expanded mode
+    // Get TPA content from expanded content queue (only the most recent item)
+    const content = Array.from(this.expandedContent.values())
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 1)[0];
+    
+    let tpaContent = '';
+    
+    // Extract text content from whatever format it's in
+    if (content) {
+      if (typeof content.content === 'string') {
+        tpaContent = content.content;
+      } else if (content.content.layoutType === LayoutType.TEXT_WALL) {
+        tpaContent = content.content.text;
+      } else if (content.content.layoutType === LayoutType.DOUBLE_TEXT_WALL) {
+        tpaContent = `${content.content.topText}\n${content.content.bottomText}`.trim();
+      } else if (content.content.layoutType === LayoutType.DASHBOARD_CARD) {
+        tpaContent = `${content.content.leftText}\n${content.content.rightText}`.trim();
+      }
+    }
+    
+    // Combine system info and TPA content with a line break
+    const fullText = tpaContent 
+      ? `${systemInfoLine}\n${tpaContent}`
+      : `${systemInfoLine}\nNo expanded content available`;
+    
+    // Return a TextWall layout for expanded mode
     return {
-      layoutType: LayoutType.DOUBLE_TEXT_WALL,
-      topText,
-      bottomText
+      layoutType: LayoutType.TEXT_WALL,
+      text: fullText
     };
   }
   
@@ -397,7 +420,35 @@ export class DashboardManager {
       return '';
     }
     
-    // Join content with separator
+    // For the main dashboard and other cases where we only need one item
+    if (limit === 1 && sortedContent.length === 1) {
+      const item = sortedContent[0];
+      
+      // Extract text content from whatever format it's in
+      if (typeof item.content === 'string') {
+        return item.content;
+      } else {
+        // For Layout content, extract the text based on the layout type
+        switch (item.content.layoutType) {
+          case LayoutType.TEXT_WALL:
+            return item.content.text || '';
+          case LayoutType.DOUBLE_TEXT_WALL:
+            return [item.content.topText, item.content.bottomText]
+              .filter(Boolean)
+              .join('\n');
+          case LayoutType.DASHBOARD_CARD:
+            return [item.content.leftText, item.content.rightText]
+              .filter(Boolean)
+              .join(' | ');
+          case LayoutType.REFERENCE_CARD:
+            return `${item.content.title}\n${item.content.text}`;
+          default:
+            return ''; 
+        }
+      }
+    }
+    
+    // For multiple items, join them with separators
     return sortedContent
       .map(item => {
         if (typeof item.content === 'string') {
@@ -415,6 +466,8 @@ export class DashboardManager {
               return [item.content.leftText, item.content.rightText]
                 .filter(Boolean)
                 .join(' | ');
+            case LayoutType.REFERENCE_CARD:
+              return `${item.content.title}\n${item.content.text}`;
             default:
               return ''; 
           }
