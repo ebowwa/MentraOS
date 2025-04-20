@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  dashboard-manager:
+    build:
+      context: ./dashboard-manager
+      dockerfile: Dockerfile
+    container_name: dashboard-manager
+    ports:
+      - "3000:80"
+    environment:
+      - PORT=80
+      - CLOUD_LOCAL_HOST_NAME=cloud
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    volumes:
+      - ./dashboard-manager:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - augmentos-network
+
+  fun-facts-tpa:
+    build:
+      context: ./fun-facts-tpa
+      dockerfile: Dockerfile
+    container_name: fun-facts-tpa
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - CLOUD_LOCAL_HOST_NAME=cloud
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    volumes:
+      - ./fun-facts-tpa:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - augmentos-network
+
+  quotes-tpa:
+    build:
+      context: ./quotes-tpa
+      dockerfile: Dockerfile
+    container_name: quotes-tpa
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - CLOUD_LOCAL_HOST_NAME=cloud
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    volumes:
+      - ./quotes-tpa:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - augmentos-network
+
+  gratitude-tpa:
+    build:
+      context: ./gratitude-tpa
+      dockerfile: Dockerfile
+    container_name: gratitude-tpa
+    ports:
+      - "3003:3003"
+    environment:
+      - PORT=3003
+      - CLOUD_LOCAL_HOST_NAME=cloud
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    volumes:
+      - ./gratitude-tpa:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - augmentos-network
+
+networks:
+  augmentos-network:
+    external: true

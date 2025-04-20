@@ -8,6 +8,7 @@ import WebSocket from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
+import { createDashboardAPI } from './dashboard';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -33,6 +34,8 @@ import {
   isDataStream,
   isAppStopped,
   isSettingsUpdate,
+  isDashboardModeChanged,
+  isDashboardAlwaysOnChanged,
 
   // Other types
   AppSettings,
@@ -44,6 +47,7 @@ import {
   createTranscriptionStream,
   createTranslationStream
 } from '../../types';
+import { DashboardAPI } from '../../types/dashboard';
 
 /**
  * ⚙️ Configuration options for TPA Session
@@ -126,6 +130,8 @@ export class TpaSession {
   public readonly layouts: LayoutManager;
   /** ⚙️ Settings management interface */
   public readonly settings: SettingsManager;
+  /** 📊 Dashboard management interface */
+  public readonly dashboard: DashboardAPI;
 
   constructor(private config: TpaSessionConfig) {
     // Set defaults and merge with provided config
@@ -178,6 +184,13 @@ export class TpaSession {
     // Initialize settings manager without API client configuration
     // We'll configure it once we have the session ID and server URL
     this.settings = new SettingsManager();
+    
+    // Initialize dashboard API
+    this.dashboard = createDashboardAPI(
+      config.packageName,
+      this.send.bind(this),
+      this.events
+    );
   }
 
   // =====================================
@@ -808,6 +821,34 @@ export class TpaSession {
           const reason = message.reason || 'unknown';
           const displayReason = `App stopped: ${reason}`;
           this.events.emit('disconnected', displayReason);
+        }
+        // Handle dashboard mode changes
+        else if (isDashboardModeChanged(message)) {
+          try {
+            // Use proper type
+            const mode = message.mode || 'none';
+            
+            // Update dashboard state in the API
+            if (this.dashboard && 'content' in this.dashboard) {
+              (this.dashboard.content as any).setCurrentMode(mode);
+            }
+          } catch (error) {
+            console.error('Error handling dashboard mode change:', error);
+          }
+        }
+        // Handle always-on dashboard state changes
+        else if (isDashboardAlwaysOnChanged(message)) {
+          try {
+            // Use proper type
+            const enabled = !!message.enabled;
+            
+            // Update dashboard state in the API
+            if (this.dashboard && 'content' in this.dashboard) {
+              (this.dashboard.content as any).setAlwaysOnEnabled(enabled);
+            }
+          } catch (error) {
+            console.error('Error handling dashboard always-on change:', error);
+          }
         }
         // Handle unrecognized message types gracefully
         else {
