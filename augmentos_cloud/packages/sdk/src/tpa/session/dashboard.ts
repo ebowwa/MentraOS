@@ -19,6 +19,28 @@ import { Layout } from '../../types/layouts';
 import { EventManager } from './events';
 
 /**
+ * Mock implementation of TpaSession needed for sessionId
+ */
+class TpaSession {
+  private static sessionId: string = '';
+  
+  /**
+   * Get the current TPA session ID
+   * This is a workaround to avoid circular dependencies
+   */
+  public static getSessionId(): string {
+    return TpaSession.sessionId || 'unknown-session-id';
+  }
+  
+  /**
+   * Set the TPA session ID - called from index.ts
+   */
+  public static setSessionId(id: string): void {
+    TpaSession.sessionId = id;
+  }
+}
+
+/**
  * Implementation of DashboardSystemAPI interface for system dashboard TPA
  */
 class DashboardSystemManager implements DashboardSystemAPI {
@@ -47,6 +69,7 @@ class DashboardSystemManager implements DashboardSystemAPI {
     const message: DashboardModeChange = {
       type: TpaToCloudMessageType.DASHBOARD_MODE_CHANGE,
       packageName: this.packageName,
+      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
       mode,
       timestamp: new Date()
     };
@@ -57,6 +80,7 @@ class DashboardSystemManager implements DashboardSystemAPI {
     const message: DashboardSystemUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
       packageName: this.packageName,
+      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
       section,
       content,
       timestamp: new Date()
@@ -82,6 +106,7 @@ class DashboardContentManager implements DashboardContentAPI {
     const message: DashboardContentUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
       packageName: this.packageName,
+      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
       content,
       modes: targets,
       timestamp: new Date()
@@ -97,6 +122,7 @@ class DashboardContentManager implements DashboardContentAPI {
     const message: DashboardContentUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
       packageName: this.packageName,
+      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
       content,
       modes: [DashboardMode.EXPANDED],
       timestamp: new Date()
@@ -172,3 +198,6 @@ export function createDashboardAPI(
   
   return api;
 }
+
+// Export TpaSession class for sessionId management
+export { TpaSession };

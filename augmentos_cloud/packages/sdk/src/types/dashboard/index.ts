@@ -127,6 +127,7 @@ export interface DashboardAPI {
 export interface DashboardContentUpdate {
   type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
   packageName: string;
+  sessionId: string;
   content: string | Layout;
   modes: DashboardMode[];
   timestamp: Date;
@@ -138,6 +139,7 @@ export interface DashboardContentUpdate {
 export interface DashboardModeChange {
   type: TpaToCloudMessageType.DASHBOARD_MODE_CHANGE;
   packageName: string;
+  sessionId: string;
   mode: DashboardMode;
   timestamp: Date;
 }
@@ -148,6 +150,7 @@ export interface DashboardModeChange {
 export interface DashboardSystemUpdate {
   type: TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE;
   packageName: string;
+  sessionId: string;
   section: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight';
   content: string;
   timestamp: Date;

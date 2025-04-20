@@ -304,6 +304,17 @@ export class TpaSession {
   async connect(sessionId: string): Promise<void> {
     this.sessionId = sessionId;
     
+    // Set sessionId for dashboard module to use
+    try {
+      // Dynamically import to avoid circular dependencies
+      const dashboard = require('./dashboard'); 
+      if (dashboard.TpaSession && typeof dashboard.TpaSession.setSessionId === 'function') {
+        dashboard.TpaSession.setSessionId(sessionId);
+      }
+    } catch (error) {
+      console.warn('Failed to set session ID for dashboard module:', error);
+    }
+    
     // Configure settings API client with the WebSocket URL and session ID
     // This allows settings to be fetched from the correct server
     this.settings.configureApiClient(
