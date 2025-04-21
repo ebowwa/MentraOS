@@ -612,10 +612,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "Bluetooth device connected - ready for data exchange");
             
             // When Bluetooth connects, send the current WiFi status
-//            if (networkManager != null) {
-//                boolean wifiConnected = networkManager.isConnectedToWifi();
-//                sendWifiStatusOverBle(wifiConnected);
-//            }
+            if (networkManager != null) {
+                boolean wifiConnected = networkManager.isConnectedToWifi();
+                sendWifiStatusOverBle(wifiConnected);
+            }
             
             // For non-K900 devices, start the microphone to stream audio
             if (!isK900Device && glassesMicrophoneManager != null) {
@@ -641,10 +641,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     /**
      * Called when data is received over Bluetooth (from either K900 or standard implementation)
      */
-    // Add a flag to track if we've sent boot ready message
-    private boolean hasReceivedFirstMessage = false;
-    private boolean hasSetBootReady = false;
-
     @Override
     public void onDataReceived(byte[] data) {
         if (data == null || data.length == 0) {
@@ -653,15 +649,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         
         Log.d(TAG, "Received " + data.length + " bytes from Bluetooth");
-        
-        // Check if this is the first message and we haven't sent boot ready yet
-        if (!hasSetBootReady) {
-            hasSetBootReady = true;
-            // Schedule the boot ready message to be sent after this message is processed
-            new Handler(Looper.getMainLooper()).post(() -> {
-                sendBootReadyWithVersionInfo();
-            });
-        }
         
         // Process the data
 
@@ -783,31 +770,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     // Phone is connected and ready - respond that we're also ready
                     Log.d(TAG, "📱 Received phone_ready message - sending glasses_ready response");
                     
-                    // Also ensure we send the boot ready message as part of the proper initialization
-                    if (!hasSetBootReady) {
-                        hasSetBootReady = true;
-                        sendBootReadyWithVersionInfo();
-                    }
-                    
                     try {
-                        // Create a glasses_ready response with version info
+                        // Create a glasses_ready response
                         JSONObject response = new JSONObject();
                         response.put("type", "glasses_ready");
                         response.put("timestamp", System.currentTimeMillis());
-                        
-                        // Add version information
-                        String appVersion = "1.0.0";
-                        try {
-                            appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error getting app version", e);
-                        }
-                        
-                        JSONObject versionInfo = new JSONObject();
-                        versionInfo.put("app_version", appVersion);
-                        versionInfo.put("device_model", android.os.Build.MODEL);
-                        versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
-                        response.put("version_info", versionInfo);
                         
                         // Convert to string
                         String jsonResponse = response.toString();
@@ -864,15 +831,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "Video streaming requested by appId: " + videoAppId);
                     Log.d(TAG, "Video streaming not yet implemented");
                     break;
-                case "request_wifi_status":
-                    Log.d(TAG, "Got a request for wifi status");
-                    if (networkManager != null) {
-                        Log.d(TAG, "requesting wifi status");
-                        boolean wifiConnected = networkManager.isConnectedToWifi();
-                        sendWifiStatusOverBle(wifiConnected);
-                    }
-                    break;
-
+                    
                 case "set_wifi":
                     // Handle WiFi configuration command if needed
                     String ssid = dataToProcess.optString("ssid", "");
@@ -883,22 +842,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             networkManager.connectToWifi(ssid, password);
                         }
                     }
-                    break;
-                case "ping":
-                    break;
-                case "request_battery_state":
-                    break;
-                case "set_mic_state":
-
-                    break;
-                case "set_mic_vad_state":
-
-                    break;
-                case "request_version":
-                case "cs_syvr":  // K900 version request command
-                    // Handle version request
-                    Log.d(TAG, "📊 Received version request - sending version info");
-                    sendVersionInfo();
                     break;
                 
                 // Add more types as needed
@@ -1145,115 +1088,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             if (manager != null) {
                 manager.createNotificationChannel(channel);
             }
-        }
-    }
-    
-    /**
-     * Sends the boot ready message with version information using the K900 protocol format
-     * This follows the special "S_command" format expected by the BES2700 MCU
-     */
-    private void sendBootReadyWithVersionInfo() {
-        Log.d(TAG, "🚀 Sending boot ready message with version information");
-        
-        try {
-            // Create the K900 formatted boot ready command
-            // {"C":"sc_btcp","V":1,"B":""}
-            JSONObject command = new JSONObject();
-            command.put("C", "sc_btcp"); // SC_BOOT_READY
-            command.put("V", 1);         // Version is always 1
-            
-            // Add additional version information as the body
-            JSONObject body = new JSONObject();
-            
-            // Get app version information
-            String appVersion = "1.0.0";
-            String buildNumber = "1";
-            try {
-                appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                buildNumber = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).versionCode);
-            } catch (Exception e) {
-                Log.e(TAG, "Error getting app version", e);
-            }
-            
-            // Add device and version info
-            body.put("app", appVersion);
-            body.put("sys", android.os.Build.VERSION.RELEASE);
-            body.put("dpj", buildNumber);
-            
-            // Add body to command
-            command.put("B", body.toString());
-            
-            // Convert to string
-            String jsonCommand = command.toString();
-            Log.d(TAG, "🚀 Formatted boot ready command: " + jsonCommand);
-            
-            // Send the command using our existing bluetoothManager
-            // which will handle the K900 protocol formatting (##...$$)
-            if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                bluetoothManager.sendData(jsonCommand.getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "✅ Sent boot ready command to phone");
-                
-                // Also send version info separately for compatibility
-                sendVersionInfo();
-            } else {
-                Log.e(TAG, "❌ Cannot send boot ready - bluetooth not connected");
-            }
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating boot ready command", e);
-        }
-    }
-    
-    /**
-     * Sends version information separately for better compatibility
-     */
-    private void sendVersionInfo() {
-        Log.d(TAG, "📊 Sending version information");
-        
-        try {
-            // Create a version_info response in standard JSON format
-            JSONObject versionInfo = new JSONObject();
-            versionInfo.put("type", "version_info");
-            versionInfo.put("timestamp", System.currentTimeMillis());
-            
-            // Get app version information
-            String appVersion = "1.0.0";
-            String buildNumber = "1";
-            try {
-                appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
-                buildNumber = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).versionCode);
-            } catch (Exception e) {
-                Log.e(TAG, "Error getting app version", e);
-            }
-            
-            // Add device and version info
-            versionInfo.put("app_version", appVersion);
-            versionInfo.put("build_number", buildNumber);
-            versionInfo.put("device_model", android.os.Build.MODEL);
-            versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
-            
-            // Create command in K900 format
-            JSONObject command = new JSONObject();
-            command.put("C", "sr_syvr"); // SR_SYSVERSION
-            command.put("V", 1);
-            
-            // Add version info as body
-            JSONObject body = new JSONObject();
-            body.put("app", appVersion);
-            body.put("sys", android.os.Build.VERSION.RELEASE);
-            body.put("dpj", buildNumber);
-            command.put("B", body.toString());
-            
-            // Convert to string
-            String jsonCommand = command.toString();
-            Log.d(TAG, "📊 Formatted version info command: " + jsonCommand);
-            
-            // Send the command
-            if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                bluetoothManager.sendData(jsonCommand.getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "✅ Sent version info to phone");
-            }
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating version info", e);
         }
     }
     

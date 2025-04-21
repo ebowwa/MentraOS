@@ -1,16 +1,11 @@
 package com.augmentos.asg_client.bluetooth;
 
 import android.content.Context;
-import android.os.Handler;
-import android.os.Looper;
 import android.util.Log;
 
 import com.augmentos.asg_client.bluetooth.serial.ComManager;
 import com.augmentos.asg_client.bluetooth.serial.SerialListener;
 
-import org.json.JSONObject;
-
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 /**
@@ -23,10 +18,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     private ComManager comManager;
     private boolean isSerialOpen = false;
     private DebugNotificationManager notificationManager;
-    
-    // Heart beat timer for K900 BES2700 MCU
-    private Handler heartbeatHandler;
-    private final long HEARTBEAT_INTERVAL_MS = 10000; // 10 seconds, matching the SDK
     
     /**
      * Create a new K900BluetoothManager
@@ -58,63 +49,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                 "Failed to start serial communication");
         } else {
             Log.d(TAG, "Serial communication started successfully");
-        }
-    }
-    
-    /**
-     * Start the heart beat timer to keep the BES2700 active
-     * This sends regular heartbeats to maintain communication with the MCU
-     */
-    private void startHeartbeatTimer() {
-        if (heartbeatHandler == null) {
-            heartbeatHandler = new Handler(Looper.getMainLooper());
-        }
-        
-        Log.d(TAG, "🔄 Starting UART heart beat timer");
-        heartbeatHandler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
-                sendUartHeart();
-                heartbeatHandler.postDelayed(this, HEARTBEAT_INTERVAL_MS);
-            }
-        }, 3000); // First heartbeat after 3 seconds
-    }
-    
-    /**
-     * Stop the heart beat timer
-     */
-    private void stopHeartbeatTimer() {
-        Log.d(TAG, "🔄 Stopping UART heart beat timer");
-        if (heartbeatHandler != null) {
-            heartbeatHandler.removeCallbacksAndMessages(null);
-        }
-    }
-    
-    /**
-     * Send a heart beat to the BES2700 MCU
-     * This uses the same format as the K900 SDK
-     */
-    private void sendUartHeart() {
-        try {
-            // Create K900 format heart beat command
-            JSONObject command = new JSONObject();
-            command.put("C", "u_heart"); // UART_HEART from the SDK
-            command.put("V", 1);
-            command.put("B", "");
-            
-            // Convert to string
-            String jsonString = command.toString();
-            Log.d(TAG, "🔄 Sending UART heart beat: " + jsonString);
-            
-            // Send via serial port
-            if (isSerialOpen) {
-                sendData(jsonString.getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "✅ Sent heart beat to BES2700");
-            } else {
-                Log.d(TAG, "❌ Cannot send heart beat - serial port not open");
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error sending heart beat", e);
         }
     }
     
@@ -166,8 +100,41 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             return false;
         }
         
-        // Format the data using the unified utility method
-        data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.prepareDataForTransmission(data);
+        // First check if it's already in protocol format
+        if (!com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isK900ProtocolFormat(data)) {
+            // Try to interpret as a JSON string that needs C-wrapping and protocol formatting
+            try {
+                // Convert to string for processing
+                String originalData = new String(data, "UTF-8");
+                
+                // If looks like JSON but not C-wrapped, use the full formatting function
+                if (originalData.startsWith("{") &&
+                    !com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isCWrappedJson(originalData)) {
+                    
+                    Log.e(TAG, "📦 JSON DATA BEFORE C-WRAPPING: " + originalData);
+                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.formatMessageForTransmission(originalData);
+                    
+                    // Log the first 100 chars of the hex representation
+                    StringBuilder hexDump = new StringBuilder();
+                    for (int i = 0; i < Math.min(data.length, 50); i++) {
+                        hexDump.append(String.format("%02X ", data[i]));
+                    }
+                    Log.e(TAG, "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
+                    Log.e(TAG, "📦 Total formatted length: " + data.length + " bytes");
+                } else {
+                    // Otherwise just apply protocol formatting
+                    Log.e(TAG, "📦 Data already C-wrapped or not JSON: " + originalData);
+                    Log.d(TAG, "Formatting data with K900 protocol (adding ##...)");
+                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
+                        data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
+                }
+            } catch (Exception e) {
+                // If we can't interpret as string, just apply protocol formatting to raw bytes
+                Log.d(TAG, "Applying protocol format to raw bytes");
+                data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
+                    data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
+            }
+        }
         
         // Send the data via the serial port
         comManager.send(data);
@@ -184,9 +151,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     @Override
     public void shutdown() {
         super.shutdown();
-        
-        // Stop the heartbeat timer
-        stopHeartbeatTimer();
         
         // Stop the serial communication
         comManager.registerListener(null);
@@ -219,9 +183,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         Log.d(TAG, "Serial port ready: " + serialPath);
         isSerialOpen = true;
         
-        // Start the heartbeat timer to maintain communication with BES2700
-        startHeartbeatTimer();
-        
         // For K900, when the serial port is ready, we consider ourselves "connected"
         // to the BT module
         notifyConnectionStateChanged(true);
@@ -252,9 +213,6 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     public void onSerialClose(String serialPath) {
         Log.d(TAG, "Serial port closed: " + serialPath);
         isSerialOpen = false;
-        
-        // Stop the heartbeat timer
-        stopHeartbeatTimer();
         
         // When the serial port closes, we consider ourselves disconnected
         notifyConnectionStateChanged(false);

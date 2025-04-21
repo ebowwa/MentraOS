@@ -28,7 +28,7 @@ public class BluetoothManagerFactory {
         //return new StandardBluetoothManager(appContext);
         
 
-        if (false && isK900Device(appContext)) {
+        if (isK900Device(appContext)) {
             Log.i(TAG, "Creating K900BluetoothManager - K900 device detected");
             return new K900BluetoothManager(appContext);
         } else {
