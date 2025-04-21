@@ -96,7 +96,7 @@ export class DashboardManager {
     // Set configuration with defaults
     this.queueSize = config.queueSize || 5;
     this.updateIntervalMs = config.updateIntervalMs || 500;
-    this.alwaysOnEnabled = config.alwaysOnEnabled || false;
+    this.alwaysOnEnabled = config.alwaysOnEnabled || true;
     
     // Initialize mode to the provided value or default to MAIN
     this.currentMode = config.initialMode || DashboardMode.MAIN;
