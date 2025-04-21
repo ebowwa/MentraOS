@@ -126,17 +126,9 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
                             styles.settingItem,
                             {
                                 backgroundColor: theme.cardBg,
-                                borderColor: (isOnboarding && glasses.modelName === 'Simulated Glasses')
-                                    ? '#2196F3'
-                                    : theme.borderColor,
+                                borderColor: theme.borderColor,
                                 borderWidth: 1,
                             },
-                            (isOnboarding && glasses.modelName === 'Simulated Glasses')
-                                ? {
-                                    borderWidth: 2,
-                                    backgroundColor: isDarkTheme ? '#2c2c2c' : '#f0f7ff'
-                                }
-                                : {}
                         ]}
                         onPress={() => {
                             triggerGlassesPairingGuide(glasses.modelName)
@@ -151,36 +143,14 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
                                 style={[
                                     styles.label,
                                     {
-                                        color: (isOnboarding && glasses.modelName === 'Simulated Glasses')
-                                            ? '#2196F3'
-                                            : theme.textColor,
-                                        fontWeight: (isOnboarding && glasses.modelName === 'Simulated Glasses')
-                                            ? '800'
-                                            : '600',
+                                        color: theme.textColor,
+                                        fontWeight: '600',
                                     },
                                 ]}
                             >
                                 {glasses.modelName}
                             </Text>
                         </View>
-                        {isOnboarding && glasses.modelName === 'Simulated Glasses' ? (
-                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                <Text style={{ color: '#2196F3', marginRight: 5, fontWeight: 'bold' }}>
-                                    Select
-                                </Text>
-                                <Icon
-                                    name="angle-right"
-                                    size={24}
-                                    color="#2196F3"
-                                />
-                            </View>
-                        ) : (
-                            <Icon
-                                name="angle-right"
-                                size={24}
-                                color={theme.textColor}
-                            />
-                        )}
                     </TouchableOpacity>
                 ))}
             </ScrollView>

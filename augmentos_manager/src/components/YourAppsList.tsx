@@ -32,6 +32,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false);
     const [showSettingsHint, setShowSettingsHint] = useState(false);
     const [showOnboardingTip, setShowOnboardingTip] = useState(false);
+    const bounceAnim = React.useRef(new Animated.Value(0)).current;
+    const pulseAnim = React.useRef(new Animated.Value(0)).current;
 
     const [containerWidth, setContainerWidth] = React.useState(0);
     const arrowAnimation = React.useRef(new Animated.Value(0)).current;
@@ -90,6 +92,46 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
 
         checkOnboardingStatus();
     }, []);
+
+    // Add animation effect when onboarding tip is shown
+    useEffect(() => {
+        if (showOnboardingTip) {
+            // Bounce animation with reduced movement
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(bounceAnim, {
+                        toValue: 1,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(bounceAnim, {
+                        toValue: 0,
+                        duration: 1200,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+
+            // Pulse animation
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(pulseAnim, {
+                        toValue: 1,
+                        duration: 1500,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(pulseAnim, {
+                        toValue: 0,
+                        duration: 1500,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ).start();
+        } else {
+            bounceAnim.setValue(0);
+            pulseAnim.setValue(0);
+        }
+    }, [showOnboardingTip]);
 
     const completeOnboarding = () => {
         saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
@@ -212,29 +254,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                     </TouchableOpacity>
                 </View>
             )}
-
-            {/* Settings hint - only shown after onboarding and if settings accessed count < 3 */}
-            {showSettingsHint && (
-                <View
-                    style={[
-                        styles.settingsHintContainer,
-                        {
-                            backgroundColor: isDarkTheme ? '#1A2733' : '#E3F2FD',
-                            borderColor: isDarkTheme ? '#1E88E5' : '#BBDEFB'
-                        }
-                    ]}
-                >
-                    <View style={styles.hintContent}>
-                        <Icon name="gesture-tap-hold" size={22} color="#2196F3" />
-                        <Text style={[
-                            styles.hintText,
-                            { color: isDarkTheme ? '#FFFFFF' : '#0D47A1' }
-                        ]}>
-                            Long-press any app to access its settings
-                        </Text>
-                    </View>
-                </View>
-            )}
             
             <ScrollView 
                 style={styles.listContainer}
@@ -251,22 +270,78 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                         {showOnboardingTip && app.packageName === 'com.augmentos.livecaptions' && (
                             <View style={styles.arrowContainer}>
                                 <View style={styles.arrowWrapper}>
-                                    <View style={styles.arrowBubble}>
-                                        <Text style={styles.arrowBubbleText}>
+                                    <Animated.View 
+                                        style={[
+                                            styles.arrowBubble,
+                                            {
+                                                transform: [{
+                                                    scale: pulseAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [1, 1.03]
+                                                    })
+                                                }],
+                                                backgroundColor: '#00B0FF',
+                                                borderColor: '#0288D1',
+                                                shadowColor: '#0288D1',
+                                                shadowOpacity: 0.4,
+                                            }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            styles.arrowBubbleText,
+                                            {
+                                                textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                                                textShadowOffset: { width: 0, height: 1 },
+                                                textShadowRadius: 2,
+                                            }
+                                        ]}>
                                             Tap to start
                                         </Text>
                                         <Icon
                                             name="gesture-tap"
                                             size={20}
                                             color="#FFFFFF"
-                                            style={styles.bubbleIcon}
+                                            style={[
+                                                styles.bubbleIcon,
+                                                {
+                                                    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                                                    textShadowOffset: { width: 0, height: 1 },
+                                                    textShadowRadius: 2,
+                                                }
+                                            ]}
                                         />
-                                    </View>
-                                    <View style={[
-                                        styles.arrowIconContainer,
-                                        isDarkTheme ? styles.arrowIconContainerDark : styles.arrowIconContainerLight
-                                    ]}>
-                                        <View style={styles.glowEffect} />
+                                    </Animated.View>
+                                    <Animated.View 
+                                        style={[
+                                            styles.arrowIconContainer,
+                                            isDarkTheme ? styles.arrowIconContainerDark : styles.arrowIconContainerLight,
+                                            {
+                                                transform: [{
+                                                    translateY: bounceAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0, -5]
+                                                    })
+                                                }],
+                                                backgroundColor: '#00B0FF',
+                                                borderColor: '#0288D1',
+                                                marginTop: 5,
+                                                shadowColor: '#0288D1',
+                                                shadowOpacity: 0.4,
+                                            }
+                                        ]}
+                                    >
+                                        <Animated.View 
+                                            style={[
+                                                styles.glowEffect,
+                                                {
+                                                    opacity: pulseAnim.interpolate({
+                                                        inputRange: [0, 1],
+                                                        outputRange: [0.3, 0.5]
+                                                    }),
+                                                    backgroundColor: 'rgba(0, 176, 255, 0.3)',
+                                                }
+                                            ]} 
+                                        />
                                         <Icon
                                             name="arrow-down-bold"
                                             size={30}
@@ -277,7 +352,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                                                 textShadowRadius: 3,
                                             }}
                                         />
-                                    </View>
+                                    </Animated.View>
                                 </View>
                             </View>
                         )}
@@ -396,7 +471,8 @@ const styles = StyleSheet.create({
         textAlignVertical: 'center',
     },
     settingsButton: {
-        padding: 4,
+        padding: 50,
+        margin: -46,
     },
     appIconStyle: {
         width: 48,
@@ -407,33 +483,34 @@ const styles = StyleSheet.create({
         top: -90,
         zIndex: 10,
         alignItems: 'center',
+        marginLeft: 20,
     },
     arrowWrapper: {
         alignItems: 'center',
         justifyContent: 'center',
     },
     arrowBubble: {
-        backgroundColor: '#2196F3',
+        backgroundColor: '#00B0FF',
         borderRadius: 16,
         paddingHorizontal: 12,
         paddingVertical: 6,
         marginBottom: 8,
         flexDirection: 'row',
         alignItems: 'center',
-        shadowColor: '#000',
+        shadowColor: '#0288D1',
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.5,
         shadowRadius: 8,
         elevation: 10,
         borderWidth: 1,
-        borderColor: '#1E88E5',
+        borderColor: '#0288D1',
     },
     arrowBubbleText: {
         color: '#FFFFFF',
         fontWeight: 'bold',
         fontSize: 15,
         marginRight: 6,
-        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowColor: 'rgba(0, 0, 0, 0.2)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 2,
     },
@@ -446,7 +523,7 @@ const styles = StyleSheet.create({
         borderRadius: 23,
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#000',
+        shadowColor: '#0288D1',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.6,
         shadowRadius: 8,
@@ -454,21 +531,20 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         position: 'relative',
         borderWidth: 2,
-        borderColor: '#1E88E5',
+        borderColor: '#0288D1',
     },
     arrowIconContainerLight: {
-        backgroundColor: '#2196F3', // Match the bubble color
+        backgroundColor: '#00B0FF',
     },
     arrowIconContainerDark: {
-        backgroundColor: '#2196F3', // Add this style for dark theme
+        backgroundColor: '#00B0FF',
     },
     glowEffect: {
-        // Missing in the original code, but referenced
         position: 'absolute',
         width: '100%',
         height: '100%',
         borderRadius: 23,
-        backgroundColor: 'rgba(33, 150, 243, 0.3)',
+        backgroundColor: 'rgba(0, 176, 255, 0.3)',
     },
     settingsHintContainer: {
         padding: 12,
