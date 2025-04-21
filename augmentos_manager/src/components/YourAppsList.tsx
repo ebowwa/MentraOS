@@ -5,35 +5,33 @@ import {
     Text,
     StyleSheet,
     TouchableOpacity,
-    Alert,
+    ScrollView,
     Animated,
-    Easing,
-    Modal,
 } from 'react-native';
 import showAlert from '../utils/AlertUtils';
 import MessageModal from './MessageModal';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
-import AppIcon from './AppIcon';
-import coreCommunicator from '../bridge/CoreCommunicator';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import AppIcon from './AppIcon';
+import { NavigationProps } from './types';
 
 interface YourAppsListProps {
     isDarkTheme: boolean;
-    navigation: any;
 }
 
-const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) => {
-    const { status } = useStatus();
+const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
+    const { status, updateAppStatus } = useStatus();
+    const navigation = useNavigation<NavigationProps>();
     const [_isLoading, setIsLoading] = React.useState(false);
-    const [showOnboardingTip, setShowOnboardingTip] = useState(false);
     const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
     const [onboardingCompleted, setOnboardingCompleted] = useState(true);
     const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false);
     const [showSettingsHint, setShowSettingsHint] = useState(false);
+    const [showOnboardingTip, setShowOnboardingTip] = useState(false);
 
     const [containerWidth, setContainerWidth] = React.useState(0);
     const arrowAnimation = React.useRef(new Animated.Value(0)).current;
@@ -44,6 +42,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
 
     // Calculate the item width based on container width and margins
     const itemWidth = containerWidth > 0 ? (containerWidth - (GRID_MARGIN * numColumns)) / numColumns : 0;
+    
+    const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
 
     // Check onboarding status whenever the screen comes into focus
     useFocusEffect(
@@ -53,10 +53,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
                 setOnboardingCompleted(completed);
 
                 if (!completed) {
-                    // Always show the tip to tap Live Captions
-                    setShowOnboardingTip(true);
                     setOnboardingModalVisible(true);
                     setShowSettingsHint(false); // Hide settings hint during onboarding
+                    setShowOnboardingTip(true);
                 } else {
                     setShowOnboardingTip(false);
 
@@ -92,7 +91,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
         checkOnboardingStatus();
     }, []);
 
-    // Mark onboarding as completed and ensure all UI elements are updated
     const completeOnboarding = () => {
         saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
         setOnboardingCompleted(true);
@@ -109,12 +107,8 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
     };
 
     const startApp = async (packageName: string) => {
-        console.log("STARTAPP: ECHECK ONBOARDING??")
-        // If onboarding is not completed, only allow starting Live Captions
         if (!onboardingCompleted) {
-            console.log("STARTAPP: ONBOARDING NOT COMPLETED")
             if (packageName !== 'com.augmentos.livecaptions' && packageName !== "cloud.augmentos.live-captions") {
-                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME NOT CAPTIONS IT IS INSTEAD: " + packageName)
                 showAlert(
                     "Complete Onboarding",
                     "Please tap the Live Captions app to complete the onboarding process.",
@@ -126,24 +120,22 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
                 );
                 return;
             } else {
-                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME === cAPTIONS!!!")
-                // Mark onboarding as completed and immediately hide the onboarding tip
-                // when they start Live Captions
                 completeOnboarding();
-                setShowOnboardingTip(false); // Immediately hide the tip
             }
         }
-
+        
+        // Update UI immediately
+        updateAppStatus(packageName, true, true);
+        
+        // Start the operation in the background
         setIsLoading(true);
         try {
-            BackendServerComms.getInstance().startApp(packageName);
-
-            // Display a special message for Live Captions when starting the app
+            await BackendServerComms.getInstance().startApp(packageName);
+            
             if (!onboardingCompleted && packageName === 'com.augmentos.livecaptions') {
-                console.log("STARTAPP: ONBOARDING NOT COMPLETED: PKGNAME === cAPTIONS!!!")
                 // If this is the Live Captions app, make sure we've hidden the tip
                 setShowOnboardingTip(false);
-
+                
                 setTimeout(() => {
                     showAlert(
                         "Try Live Captions!",
@@ -157,26 +149,20 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
                 }, 500);
             }
         } catch (error) {
+            // Only revert the status if the operation failed
+            updateAppStatus(packageName, false, false);
             console.error('start app error:', error);
         } finally {
             setIsLoading(false);
         }
     };
 
-    const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
-    // const backgroundColor = isDarkTheme ? '#1E1E1E' : '#F5F5F5';
-
-    // Optional: Filter out duplicate apps
-    const uniqueApps = React.useMemo(() => {
-        const seen = new Set();
-        return status.apps.filter(app => {
-            if (seen.has(app.packageName)) {
-                return false;
-            }
-            seen.add(app.packageName);
-            return true;
+    const openAppSettings = (app: any) => {
+        navigation.navigate('AppSettings', {
+            packageName: app.packageName,
+            appName: app.name
         });
-    }, [status.apps]);
+    };
 
     const [isSensingEnabled, setIsSensingEnabled] = React.useState(
         status.core_info.sensing_enabled,
@@ -185,29 +171,21 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
         setIsSensingEnabled(status.core_info.sensing_enabled);
     }, [status.core_info.sensing_enabled]);
 
-
-
-    // Remove all animations - we're keeping animation reference for compatibility
+    // Filter out duplicate apps and running apps
+    const availableApps = status.apps.filter(app => {
+        if (app.is_running) {
+            return false;
+        }
+        // Check if this is the first occurrence of this package name
+        const firstIndex = status.apps.findIndex(a => a.packageName === app.packageName);
+        return firstIndex === status.apps.indexOf(app);
+    });
 
     return (
-        <View
-            style={[styles.appsContainer]}
-            onLayout={(event) => {
-                const { width } = event.nativeEvent.layout;
-                setContainerWidth(width);
-            }}
-        >
+        <View style={styles.appsContainer}>
             <View style={styles.titleContainer}>
-                <Text
-                    style={[
-                        styles.sectionTitle,
-                        { color: textColor },
-                        styles.adjustableText,
-                    ]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                >
-                    Your Apps
+                <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    Inactive Apps ({availableApps.length})
                 </Text>
             </View>
 
@@ -235,7 +213,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
                 </View>
             )}
 
-
             {/* Settings hint - only shown after onboarding and if settings accessed count < 3 */}
             {showSettingsHint && (
                 <View
@@ -258,18 +235,18 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
                     </View>
                 </View>
             )}
-
-            <View style={styles.gridContainer}>
-                {uniqueApps.map((app, index) => (
-                    <View
+            
+            <ScrollView 
+                style={styles.listContainer}
+                showsVerticalScrollIndicator={false}
+            >
+                {availableApps.map((app, index) => (
+                    <TouchableOpacity
                         key={app.packageName}
-                        style={[
-                            styles.itemContainer,
-                            {
-                                width: itemWidth,
-                                margin: GRID_MARGIN / 2,
-                            },
-                        ]}
+                        onPress={() => startApp(app.packageName)}
+                        onLongPress={() => openAppSettings(app)}
+                        delayLongPress={500}
+                        style={styles.appItem}
                     >
                         {showOnboardingTip && app.packageName === 'com.augmentos.livecaptions' && (
                             <View style={styles.arrowContainer}>
@@ -304,19 +281,31 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
                                 </View>
                             </View>
                         )}
-                        <AppIcon
-                            app={app}
-                            isDarkTheme={isDarkTheme}
-                            onClick={() => startApp(app.packageName)}
-                        // size={itemWidth * 0.8} // Adjust size relative to itemWidth
-                        />
-                    </View>
+                        <View style={styles.appContent}>
+                            <AppIcon
+                                app={app}
+                                isDarkTheme={isDarkTheme}
+                                onClick={() => startApp(app.packageName)}
+                                style={styles.appIconStyle}
+                            />
+                            <View style={styles.appTextContainer}>
+                                <Text style={[styles.appName, {color: textColor}]}>
+                                    {app.name || 'Convoscope'}
+                                </Text>
+                            </View>
+                            <TouchableOpacity 
+                                onPress={() => openAppSettings(app)}
+                                style={styles.settingsButton}
+                            >
+                                <Icon name="cog-outline" size={24} color={textColor} />
+                            </TouchableOpacity>
+                        </View>
+                    </TouchableOpacity>
                 ))}
-            </View>
+            </ScrollView>
 
-            {/* Modal overlay to prevent interaction until onboarding is completed */}
             <MessageModal
-                visible={onboardingModalVisible && uniqueApps.length > 0}
+                visible={onboardingModalVisible && availableApps.length > 0}
                 title="Start Live Captions"
                 message="To continue, start the Live Captions app."
                 buttons={[
@@ -332,7 +321,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme, navigation }) 
 
 const styles = StyleSheet.create({
     appsContainer: {
-        marginTop: -10,
+        marginTop: -8,
         marginBottom: 0,
         width: '100%',
         paddingHorizontal: 0,
@@ -362,6 +351,20 @@ const styles = StyleSheet.create({
         flexWrap: 'wrap',
         justifyContent: 'flex-start',
     },
+    listContainer: {
+        gap: 4,
+    },
+    appItem: {
+        backgroundColor: '#E8E8E8',
+        borderRadius: 12,
+        padding: 10,
+        marginBottom: 9,
+    },
+    appContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        minHeight: 44,
+    },
     itemContainer: {
         alignItems: 'center',
         justifyContent: 'center',
@@ -380,68 +383,24 @@ const styles = StyleSheet.create({
     tipText: {
         marginLeft: 5,
         fontSize: 14,
-        fontWeight: '600',
     },
-    onboardingTip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        borderRadius: 10,
-        marginBottom: 15,
-    },
-    onboardingTipLight: {
-        backgroundColor: '#E3F2FD',
-        borderColor: '#BBDEFB',
-        borderWidth: 1,
-    },
-    onboardingTipDark: {
-        backgroundColor: '#1A2733',
-        borderColor: '#1E88E5',
-        borderWidth: 1,
-    },
-    onboardingTipText: {
+    appTextContainer: {
         flex: 1,
-        marginLeft: 10,
-        fontSize: 14,
-        lineHeight: 20,
+        marginLeft: 8,
+        justifyContent: 'center',
     },
-    onboardingTipTextLight: {
-        color: '#0D47A1',
-    },
-    onboardingTipTextDark: {
-        color: '#FFFFFF',
-    },
-    gotItButton: {
-        backgroundColor: '#2196F3',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 15,
-        marginLeft: 10,
-    },
-    gotItButtonText: {
-        color: '#FFFFFF',
-        fontSize: 12,
-        fontWeight: 'bold',
-    },
-    settingsHintContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: 12,
-        borderRadius: 8,
-        borderWidth: 1,
-        marginBottom: 12,
-    },
-    hintContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    hintText: {
-        marginLeft: 10,
-        fontSize: 14,
+    appName: {
+        fontSize: 16,
         fontWeight: '500',
         flex: 1,
+        textAlignVertical: 'center',
+    },
+    settingsButton: {
+        padding: 4,
+    },
+    appIconStyle: {
+        width: 48,
+        height: 48,
     },
     arrowContainer: {
         position: 'absolute',
@@ -501,17 +460,30 @@ const styles = StyleSheet.create({
         backgroundColor: '#2196F3', // Match the bubble color
     },
     arrowIconContainerDark: {
-        backgroundColor: '#2196F3', // Keep consistent color in both themes
+        backgroundColor: '#2196F3', // Add this style for dark theme
     },
     glowEffect: {
+        // Missing in the original code, but referenced
         position: 'absolute',
-        width: 70,
-        height: 70,
-        borderRadius: 35,
-        backgroundColor: '#FFFFFF',
-        top: -15,
-        left: -15,
-        opacity: 0, // Remove glow effect completely
+        width: '100%',
+        height: '100%',
+        borderRadius: 23,
+        backgroundColor: 'rgba(33, 150, 243, 0.3)',
+    },
+    settingsHintContainer: {
+        padding: 12,
+        borderRadius: 8,
+        borderWidth: 1,
+        marginBottom: 12,
+    },
+    hintContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    hintText: {
+        marginLeft: 10,
+        fontSize: 14,
+        fontWeight: '500',
     },
     sensingWarningContainer: {
         flexDirection: 'row',
@@ -533,13 +505,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         color: '#E65100',
         flex: 1,
-    },
-    settingsButton: {
-        backgroundColor: '#FF9800',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 6,
-        marginLeft: 8,
     },
     settingsButtonText: {
         color: '#FFFFFF',

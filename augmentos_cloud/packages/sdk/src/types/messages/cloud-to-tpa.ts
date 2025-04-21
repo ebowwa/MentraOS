@@ -73,6 +73,7 @@ export interface TranscriptionData extends BaseMessage {
 export interface TranslationData extends BaseMessage {
   type: StreamType.TRANSLATION;
   text: string;  // The transcribed text
+  originalText?: string; // The original transcribed text before translation
   isFinal: boolean;  // Whether this is a final transcription
   startTime: number;  // Start time in milliseconds
   endTime: number;  // End time in milliseconds
@@ -80,6 +81,7 @@ export interface TranslationData extends BaseMessage {
   duration?: number;  // Audio duration in milliseconds
   transcribeLanguage?: string;  // The language code of the transcribed text
   translateLanguage?: string;  // The language code of the translated text
+  didTranslate?: boolean;  // Whether the text was translated
 }
 
 /**
@@ -89,6 +91,17 @@ export interface AudioChunk extends BaseMessage {
   type: StreamType.AUDIO_CHUNK;
   arrayBuffer: ArrayBufferLike;  // The audio data
   sampleRate?: number;  // Audio sample rate (e.g., 16000 Hz)
+}
+
+/**
+ * Tool call from cloud to TPA
+ * Represents a tool invocation with filled parameters
+ */
+export interface ToolCall {
+  toolId: string; // The ID of the tool that was called
+  toolParameters: Record<string, string | number | boolean>; // The parameters of the tool that was called
+  timestamp: Date; // Timestamp when the tool was called
+  userId: string; // ID of the user who triggered the tool call
 }
 
 //===========================================================
