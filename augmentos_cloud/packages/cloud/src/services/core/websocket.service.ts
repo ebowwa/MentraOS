@@ -102,11 +102,12 @@ export class WebSocketService {
   // Global counter for generating sequential audio chunk numbers
   private globalAudioSequence: number = 0;
   
-  // Map to track pending photo requests: requestId -> { appId, ws }
+  // Map to track pending photo requests: requestId -> { appId, ws, saveToGallery }
   private pendingPhotoRequests = new Map<string, { 
     appId: string,
     ws: WebSocket,
-    timestamp: number
+    timestamp: number,
+    saveToGallery?: boolean
   }>();
 
   constructor() {
@@ -1377,6 +1378,7 @@ export class WebSocketService {
               // Check if app has permission to request photos
               const photoRequestMessage = message as PhotoRequest;
               const appId = photoRequestMessage.packageName;
+              const saveToGallery = photoRequestMessage.saveToGallery || false;
               
               // Check if the app is currently running
               if (!userSession.activeAppSessions || !userSession.activeAppSessions[appId]) {
@@ -1390,11 +1392,12 @@ export class WebSocketService {
               // Generate a unique request ID
               const requestId = crypto.randomUUID();
               
-              // Store pending request
+              // Store pending request with saveToGallery flag
               this.pendingPhotoRequests.set(requestId, {
                 appId,
                 ws,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                saveToGallery
               });
               
               // Build request to glasses
@@ -1406,6 +1409,7 @@ export class WebSocketService {
                 },
                 requestId,
                 appId,
+                saveToGallery,
                 timestamp: new Date()
               };
               

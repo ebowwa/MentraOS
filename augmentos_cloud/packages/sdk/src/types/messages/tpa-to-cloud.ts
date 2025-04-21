@@ -30,6 +30,7 @@ export interface TpaSubscriptionUpdate extends BaseMessage {
 export interface PhotoRequest extends BaseMessage {
   type: TpaToCloudMessageType.PHOTO_REQUEST;
   packageName: string;
+  saveToGallery?: boolean;
 }
 
 /**

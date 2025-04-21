@@ -73,6 +73,7 @@ export interface PhotoRequestToGlasses extends BaseMessage {
   userSession: Partial<UserSession>;
   requestId: string;
   appId: string;
+  saveToGallery?: boolean;
 }
 
 /**
