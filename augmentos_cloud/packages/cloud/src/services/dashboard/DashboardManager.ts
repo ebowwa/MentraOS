@@ -95,8 +95,8 @@ export class DashboardManager {
 
     // Set configuration with defaults
     this.queueSize = config.queueSize || 5;
-    this.updateIntervalMs = config.updateIntervalMs || 500;
-    this.alwaysOnEnabled = config.alwaysOnEnabled || true;
+    this.updateIntervalMs = config.updateIntervalMs || 5000;
+    this.alwaysOnEnabled = config.alwaysOnEnabled || false;
     
     // Initialize mode to the provided value or default to MAIN
     this.currentMode = config.initialMode || DashboardMode.MAIN;
@@ -343,9 +343,14 @@ export class DashboardManager {
         // We don't set a durationMs to keep it displayed indefinitely
       };
 
+      // TODO: if we send this now, it would constantly clear screen an override what the display manager is sending.
+      // The client should take this always on dashboard, and combine it with the main view display requests from the display manaer.
+      // To build what the user sees.
+
       // Send the display request using the session's DisplayManager
-      this.sendDisplayRequest(displayRequest);
-      this.userSession.logger.info(`✅ Always-on dashboard updated successfully`);
+      // this.sendDisplayRequest(displayRequest);
+      // this.userSession.logger.info(`✅ Always-on dashboard updated successfully`);
+      this.userSession.logger.warn('\n\n⚠️⚠️⚠️⚠️ Always-on dashboard update is not yet implemented in the client. Not sending display request. ⚠️⚠️⚠️⚠️\n\n');
     } catch (error) {
       this.userSession.logger.error('❌ Error updating always-on dashboard', error);
       
@@ -494,7 +499,8 @@ export class DashboardManager {
     // This is more compact and suited for persistent display
 
     // Left side shows essential system info (time)
-    // const leftText = this.systemContent.topLeft; // currently it seems the client alreay ads this info.
+    // const leftText = this.systemContent.topLeft; // currently it seems the client already ads this info.
+    // TODO: or if it doesn't we should add the time and battery info before the tpa content.
 
     // Right side combines battery status and a single TPA content item
     const tpaContent = this.getCombinedTpaContent(this.alwaysOnContent, 1);
@@ -683,7 +689,7 @@ export class DashboardManager {
         timestamp: new Date(),
         durationMs: 0  // Clear immediately
       };
-      
+
       this.sendDisplayRequest(clearRequest);
     }
   }
