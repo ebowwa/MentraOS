@@ -2,30 +2,66 @@
 
 ## 1. Server-Side Gallery Storage
 
-### 1.1 Database Schema
+### 1.1 Database Schema (MongoDB/Mongoose)
 ```typescript
-// Gallery Photo Schema
-interface GalleryPhoto {
-  id: string;               // Unique identifier
-  user_id: string;          // User who owns the photo
-  photo_url: string;        // URL to the photo in storage
-  request_id: string;       // Original request ID from capture
-  app_id: string;           // TPA that captured the photo
-  timestamp: Date;          // When the photo was taken
-  metadata: {               // Additional metadata
-    width: number;
-    height: number;
-    format: string;
-    size_bytes: number;
-    device_info?: string;   // Optional device information
-  }
+// gallery-photo.model.ts
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface GalleryPhotoI extends Document {
+  userId: string;
+  photoUrl: string;
+  requestId: string;
+  appId: string;
+  timestamp: Date;
+  metadata: {
+    width?: number;
+    height?: number;
+    format?: string;
+    size_bytes?: number;
+    device_info?: string;
+  };
 }
+
+const GalleryPhotoSchema = new Schema({
+  userId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  photoUrl: {
+    type: String,
+    required: true
+  },
+  requestId: {
+    type: String,
+    required: true
+  },
+  appId: {
+    type: String,
+    required: true
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now
+  },
+  metadata: {
+    width: Number,
+    height: Number,
+    format: String,
+    size_bytes: Number,
+    device_info: String
+  }
+}, { 
+  timestamps: true 
+});
+
+export default mongoose.model<GalleryPhotoI>('GalleryPhoto', GalleryPhotoSchema);
 ```
 
 ### 1.2 Storage System Integration
-- Use existing CloudFlare R2 storage for photo files
-- Set appropriate CORS and access policies
-- Generate signed URLs with expiration for security
+- Continue using local file system for initial implementation
+- Maintain existing structure from `/augmentos_cloud/packages/cloud/src/routes/photos.routes.ts`
+- Add the gallery photo model to database when `save_to_gallery` is true
 
 ## 2. SDK Enhancement
 
@@ -437,7 +473,58 @@ const CloudGallery = ({ photos, isLoading }) => {
 
 ## 7. Version 2.0 Features (Future)
 
-### 7.1 Pagination for Gallery Endpoint
+### 7.1 CloudFlare R2 Storage Integration
+```typescript
+// storage/cloudflare-r2.ts
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import fs from 'fs';
+
+// Initialize R2 client
+const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT,
+  credentials: {
+    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  }
+});
+
+// Upload file to R2
+export async function uploadToR2(filePath: string, key: string, contentType: string): Promise<string> {
+  const fileBuffer = fs.readFileSync(filePath);
+  
+  await r2Client.send(new PutObjectCommand({
+    Bucket: process.env.CLOUDFLARE_R2_BUCKET,
+    Key: key,
+    Body: fileBuffer,
+    ContentType: contentType
+  }));
+  
+  // Return public URL
+  return `${process.env.CLOUDFLARE_R2_PUBLIC_URL}/${key}`;
+}
+
+// Generate signed URL for temporary access
+export async function generateSignedUrl(key: string, expiresIn = 3600): Promise<string> {
+  const command = new PutObjectCommand({
+    Bucket: process.env.CLOUDFLARE_R2_BUCKET,
+    Key: key
+  });
+  
+  return getSignedUrl(r2Client, command, { expiresIn });
+}
+
+// Delete file from R2
+export async function deleteFromR2(key: string): Promise<void> {
+  await r2Client.send(new DeleteObjectCommand({
+    Bucket: process.env.CLOUDFLARE_R2_BUCKET,
+    Key: key
+  }));
+}
+```
+
+### 7.2 Pagination for Gallery Endpoint
 ```typescript
 // For V2.0
 app.get('/api/gallery', authenticateCoreToken, async (req, res) => {

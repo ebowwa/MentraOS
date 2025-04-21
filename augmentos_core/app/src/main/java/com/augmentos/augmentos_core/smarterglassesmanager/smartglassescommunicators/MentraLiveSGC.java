@@ -82,8 +82,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final int CONNECTION_TIMEOUT_MS = 10000; // 10 seconds
     
     // Device settings
-    private static final String PREFS_NAME = "MentraLivePrefs";
-    private static final String PREF_MENTRA_LIVE_NAME = "LastConnectedDeviceAddress";
+    public static final String PREFS_NAME = "MentraLivePrefs";
+    public static final String PREF_DEVICE_NAME = "LastConnectedDeviceName"; // Store device NAME, not address, since address rotates
     
     // Auth settings
     private static final String AUTH_PREFS_NAME = "augmentos_auth_prefs";
@@ -250,24 +250,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             Log.d(TAG, "Found BLE device: " + deviceName + " (" + deviceAddress + ")");
             
-            // Check if this device matches the saved device address
-            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            String savedMentraLiveName = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
-            
-            // Post the discovered device to the event bus ONLY 
-            // Don't automatically connect - wait for explicit connect request from UI
-            if (deviceName.startsWith("Xy_A")){// || deviceName.startsWith("XyBLE_")) {
-                String glassType = deviceName.startsWith("Xy_A") ? "Standard" : "K900";
+            // Since StandardBluetoothManager addresses rotate, we look for the name pattern instead
+            if (deviceName.startsWith("Xy_A")) { // Pattern for standard glasses
+                String glassType = "Standard";
                 Log.d(TAG, "Found compatible " + glassType + " glasses device: " + deviceAddress);
+                
+                // Post the discovered device to the event bus
                 EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
                         smartGlassesDevice.deviceModelName, deviceName));
                 
-                // If this is the specific device we want to connect to, connect to it
-                if (savedMentraLiveName != null && savedMentraLiveName.equals(deviceName)) {
-                    Log.d(TAG, "Found our specific device, connecting: " + deviceName);
-                    stopScan();
-                    connectToDevice(result.getDevice());
-                }
+                // Save this device NAME (not address) for potential future use
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                prefs.edit().putString(PREF_DEVICE_NAME, deviceName).apply();
+                Log.d(TAG, "Saved device name for future reference: " + deviceName);
+                
+                // Connect immediately since this is the device we're looking for
+                stopScan();
+                connectToDevice(result.getDevice());
             }
         }
         
@@ -337,7 +336,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void reconnectToLastKnownDevice() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
+        String lastDeviceAddress = prefs.getString(PREF_DEVICE_NAME, null);
         
         if (lastDeviceAddress != null && bluetoothAdapter != null) {
             Log.d(TAG, "Attempting to reconnect to last known device: " + lastDeviceAddress);
@@ -386,30 +385,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             @Override
             public void run() {
                 if (!isConnected && !isConnecting && !isKilled) {
-                    // Try last known device first, but don't start scanning automatically
-                    SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                    String lastDeviceAddress = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
-                    
-                    if (lastDeviceAddress != null && bluetoothAdapter != null) {
-                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - trying last known device: " + lastDeviceAddress);
-                        try {
-                            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-                            if (device != null) {
-                                Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
-                                connectToDevice(device);
-                            } else {
-                                Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
-                                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
-                            connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                        }
-                    } else {
-                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - no last device available");
-                        // Note: We don't start scanning here anymore to avoid unexpected behavior
-                        // Instead, let the user explicitly trigger a new scan when needed
-                    }
+                    // For reconnection, we need to start scanning again
+                    // since the device address likely changed due to rotation
+                    Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - starting scan to find glasses");
+                    startScan();
                 }
             }
         }, delay);
@@ -434,10 +413,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     isConnected = true;
                     connectedDevice = gatt.getDevice();
                     
-                    // Save the connected device address for future reconnections
-                    if (connectedDevice != null) {
+                    // Save the connected device NAME for future reference
+                    if (connectedDevice != null && connectedDevice.getName() != null) {
                         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                        prefs.edit().putString(PREF_MENTRA_LIVE_NAME, connectedDevice.getAddress()).apply();
+                        prefs.edit().putString(PREF_DEVICE_NAME, connectedDevice.getName()).apply();
+                        Log.d(TAG, "Saved connected device name: " + connectedDevice.getName());
                     }
                     
                     // Discover services
@@ -491,11 +471,56 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "GATT services discovered");
                 
+                // Log all available services and characteristics for debugging
+                Log.d(TAG, "🔍 Discovered Services:");
+                for (BluetoothGattService svc : gatt.getServices()) {
+                    Log.d(TAG, "  - Service: " + svc.getUuid());
+                    for (BluetoothGattCharacteristic chr : svc.getCharacteristics()) {
+                        int props = chr.getProperties();
+                        String propStr = "";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_READ) != 0) propStr += "READ ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) propStr += "WRITE ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) propStr += "WRITE_NO_RESP ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) propStr += "NOTIFY ";
+                        if ((props & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0) propStr += "INDICATE ";
+                        
+                        Log.d(TAG, "    - Characteristic: " + chr.getUuid() + 
+                              " (Props: " + propStr + ")");
+                    }
+                }
+                
                 // Find our service and characteristics
                 BluetoothGattService service = gatt.getService(SERVICE_UUID);
                 if (service != null) {
+                    // Get our characteristics by UUID
                     txCharacteristic = service.getCharacteristic(TX_CHAR_UUID);
                     rxCharacteristic = service.getCharacteristic(RX_CHAR_UUID);
+                    
+                    Log.d(TAG, "🔍 Our service found, checking characteristics:");
+                    Log.d(TAG, "  - Looking for TX characteristic: " + TX_CHAR_UUID);
+                    Log.d(TAG, "  - Looking for RX characteristic: " + RX_CHAR_UUID);
+                    
+                    if (txCharacteristic != null) {
+                        int txProps = txCharacteristic.getProperties();
+                        Log.d(TAG, "  - TX characteristic found with properties: " + txProps + 
+                              " (WRITE=" + ((txProps & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) + 
+                              ", WRITE_NO_RESP=" + ((txProps & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) + 
+                              ", READ=" + ((txProps & BluetoothGattCharacteristic.PROPERTY_READ) != 0) + 
+                              ", NOTIFY=" + ((txProps & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) + ")");
+                    } else {
+                        Log.e(TAG, "  - TX characteristic NOT found!");
+                    }
+                    
+                    if (rxCharacteristic != null) {
+                        int rxProps = rxCharacteristic.getProperties();
+                        Log.d(TAG, "  - RX characteristic found with properties: " + rxProps + 
+                              " (WRITE=" + ((rxProps & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0) + 
+                              ", WRITE_NO_RESP=" + ((rxProps & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0) + 
+                              ", READ=" + ((rxProps & BluetoothGattCharacteristic.PROPERTY_READ) != 0) + 
+                              ", NOTIFY=" + ((rxProps & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) + ")");
+                    } else {
+                        Log.e(TAG, "  - RX characteristic NOT found!");
+                    }
                     
                     if (rxCharacteristic != null && txCharacteristic != null) {
                         // BLE connection established, but we still need to wait for glasses SOC
@@ -538,7 +563,61 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     }
                 } else {
                     Log.e(TAG, "Required BLE service not found: " + SERVICE_UUID);
-                    gatt.disconnect();
+                    
+                    // Try to find any service that MIGHT have our characteristics as a fallback
+                    boolean foundAlternative = false;
+                    Log.d(TAG, "🔍 Attempting to find alternative service with our characteristics...");
+                    
+                    for (BluetoothGattService svc : gatt.getServices()) {
+                        BluetoothGattCharacteristic potentialTx = null;
+                        BluetoothGattCharacteristic potentialRx = null;
+                        
+                        for (BluetoothGattCharacteristic chr : svc.getCharacteristics()) {
+                            if (TX_CHAR_UUID.equals(chr.getUuid())) {
+                                potentialTx = chr;
+                                Log.d(TAG, "🔍 Found TX characteristic in alternative service: " + svc.getUuid());
+                            } else if (RX_CHAR_UUID.equals(chr.getUuid())) {
+                                potentialRx = chr;
+                                Log.d(TAG, "🔍 Found RX characteristic in alternative service: " + svc.getUuid());
+                            }
+                        }
+                        
+                        if (potentialTx != null && potentialRx != null) {
+                            // Found alternative service with our characteristics
+                            txCharacteristic = potentialTx;
+                            rxCharacteristic = potentialRx;
+                            foundAlternative = true;
+                            Log.d(TAG, "✅ Found alternative service with both characteristics: " + svc.getUuid());
+                            break;
+                        }
+                    }
+                    
+                    if (!foundAlternative) {
+                        gatt.disconnect();
+                    } else {
+                        // Continue with the alternative service
+                        // Keep the state as CONNECTING until the glasses SOC responds
+                        connectionEvent(SmartGlassesConnectionState.CONNECTING);
+                        
+                        // Request MTU size
+                        if (checkPermission()) {
+                            boolean mtuRequested = gatt.requestMtu(512);
+                            Log.d(TAG, "🔄 Requested MTU size 512, success: " + mtuRequested);
+                        }
+                        
+                        // Enable notifications
+                        enableNotifications();
+                        
+                        // Start queue processing for sending data
+                        handler.post(processSendQueueRunnable);
+                        
+                        // Start keep-alive mechanism
+                        startKeepAlive();
+                        
+                        openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
+                        // Start SOC readiness check loop
+                        startReadinessCheckLoop();
+                    }
                 }
             } else {
                 Log.e(TAG, "Service discovery failed with status: " + status);
@@ -576,6 +655,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             UUID uuid = characteristic.getUuid();
             
             Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + uuid);
+            Log.e(TAG, "Thread-" + threadId + ": 📝 OUR RX_CHAR_UUID: " + RX_CHAR_UUID);
+            Log.e(TAG, "Thread-" + threadId + ": 📝 OUR TX_CHAR_UUID: " + TX_CHAR_UUID);
             
             // Process data from ANY characteristic that sends notifications
             // This way we'll catch data even if it's coming on an unexpected characteristic
@@ -583,9 +664,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
             
             if (isRxCharacteristic) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX)");
+                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON RX CHARACTERISTIC (Peripheral's TX = 71FF)");
             } else if (isTxCharacteristic) {
-                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX)");
+                Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON TX CHARACTERISTIC (Peripheral's RX = 70FF)");
             } else {
                 Log.e(TAG, "Thread-" + threadId + ": 🎯 RECEIVED DATA ON UNKNOWN CHARACTERISTIC: " + uuid);
             }
@@ -602,6 +683,34 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 }
                 Log.e(TAG, "Thread-" + threadId + ": 🔍 First 40 bytes: " + hexDump);
                 Log.e(TAG, "Thread-" + threadId + ": 🔍 Total data length: " + data.length + " bytes");
+                
+                // NEW: Try to interpret as a string if the data looks like text
+                try {
+                    if (data.length > 0 && data[0] == '{') {
+                        String textData = new String(data, StandardCharsets.UTF_8);
+                        Log.e(TAG, "Thread-" + threadId + ": 📥 RECEIVED TEXT DATA: " + textData);
+                        
+                        // Try to parse as JSON
+                        try {
+                            JSONObject json = new JSONObject(textData);
+                            Log.e(TAG, "Thread-" + threadId + ": 📥 PARSED JSON: type=" + 
+                                  json.optString("type", "unknown"));
+                            
+                            // Send a reply to test bidirectional communication
+                            if (json.optString("type", "").equals("test_message")) {
+                                Log.e(TAG, "Thread-" + threadId + ": 📤 SENDING REPLY TO TEST MESSAGE");
+                                JSONObject reply = new JSONObject();
+                                reply.put("type", "test_reply");
+                                reply.put("message", "Hello from central device!");
+                                sendJson(reply);
+                            }
+                        } catch (JSONException e) {
+                            Log.e(TAG, "Thread-" + threadId + ": ❌ Not valid JSON: " + e.getMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Thread-" + threadId + ": ❌ Error processing text data: " + e.getMessage());
+                }
                 
                 if (data != null && data.length > 0) {
                     // Critical debugging for LC3 audio issue - dump ALL received data
@@ -751,11 +860,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     };
     
     /**
-     * Enable notifications for all characteristics to ensure we catch data from any endpoint
+     * Enable notifications for both RX and TX characteristics
+     * This ensures we receive data regardless of which characteristic the peripheral uses to send notifications
      */
     private void enableNotifications() {
         long threadId = Thread.currentThread().getId();
-        Log.e(TAG, "Thread-" + threadId + ": 🔵 enableNotifications() called");
+        Log.d(TAG, "Thread-" + threadId + ": 🔵 enableNotifications() called");
         
         if (bluetoothGatt == null) {
             Log.e(TAG, "Thread-" + threadId + ": ❌ Cannot enable notifications - bluetoothGatt is null");
@@ -767,92 +877,159 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             return;
         }
         
-        // Find our service
-        BluetoothGattService service = bluetoothGatt.getService(SERVICE_UUID);
-        if (service == null) {
-            Log.e(TAG, "Thread-" + threadId + ": ❌ Service not found: " + SERVICE_UUID);
-            return;
+        // Use the characteristics we already discovered and stored
+        if (rxCharacteristic == null) {
+            Log.e(TAG, "Thread-" + threadId + ": ❌ RX characteristic not available");
+        } else {
+            Log.d(TAG, "Thread-" + threadId + ": ✅ Using existing RX characteristic: " + rxCharacteristic.getUuid());
         }
         
-        // Get all characteristics
-        List<BluetoothGattCharacteristic> characteristics = service.getCharacteristics();
-        Log.e(TAG, "Thread-" + threadId + ": 🔍 Found " + characteristics.size() + " characteristics in service " + SERVICE_UUID);
+        if (txCharacteristic == null) {
+            Log.e(TAG, "Thread-" + threadId + ": ❌ TX characteristic not available");
+        } else {
+            Log.d(TAG, "Thread-" + threadId + ": ✅ Using existing TX characteristic: " + txCharacteristic.getUuid());
+        }
         
-        boolean notificationSuccess = false;
+        // SUBSCRIBE TO BOTH CHARACTERISTICS FOR MAXIMUM COMPATIBILITY
         
-        // Enable notifications for each characteristic
-        for (BluetoothGattCharacteristic characteristic : characteristics) {
-            UUID uuid = characteristic.getUuid();
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 Examining characteristic: " + uuid);
-            
-            int properties = characteristic.getProperties();
+        // 1. First enable notifications for the RX characteristic (peripheral's TX - 70FF)
+        if (rxCharacteristic != null) {
+            int properties = rxCharacteristic.getProperties();
             boolean hasNotify = (properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
             boolean hasIndicate = (properties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0;
             boolean hasRead = (properties & BluetoothGattCharacteristic.PROPERTY_READ) != 0;
-            boolean hasWrite = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
-            boolean hasWriteNoResponse = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
             
-            Log.e(TAG, "Thread-" + threadId + ": 🔍 Characteristic " + uuid + " properties: " + 
-                   (hasNotify ? "NOTIFY " : "") + 
-                   (hasIndicate ? "INDICATE " : "") +
-                   (hasRead ? "READ " : "") +
-                   (hasWrite ? "WRITE " : "") +
-                   (hasWriteNoResponse ? "WRITE_NO_RESPONSE " : ""));
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 RX characteristic properties - READ: " + hasRead + 
+                  ", NOTIFY: " + hasNotify + ", INDICATE: " + hasIndicate);
             
-            // Store references to our main characteristics
-            if (uuid.equals(RX_CHAR_UUID)) {
-                rxCharacteristic = characteristic;
-                Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored RX characteristic");
-            } else if (uuid.equals(TX_CHAR_UUID)) {
-                txCharacteristic = characteristic;
-                Log.e(TAG, "Thread-" + threadId + ": ✅ Found and stored TX characteristic");
-            }
-            
-            // Enable notifications for any characteristic that supports it
-            if (hasNotify || hasIndicate) {
-                try {
-                    // Enable local notifications
-                    boolean success = bluetoothGatt.setCharacteristicNotification(characteristic, true);
-                    Log.e(TAG, "Thread-" + threadId + ": 📱 Set local notification for " + uuid + ": " + success);
-                    notificationSuccess = notificationSuccess || success;
-                    
-                    // Try to enable remote notifications by writing to descriptor
-                    // We'll do this despite previous issues, since it's required for some devices
-                    BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
+            try {
+                // Always enable local notifications anyway - will fail silently if not supported
+                boolean success = bluetoothGatt.setCharacteristicNotification(rxCharacteristic, true);
+                Log.d(TAG, "Thread-" + threadId + ": 📱 Set local notification for RX characteristic: " + success);
+                
+                // Check for the notification/indication properties
+                if (hasNotify || hasIndicate) {
+                    // Write to descriptor to enable remote notifications
+                    BluetoothGattDescriptor descriptor = rxCharacteristic.getDescriptor(
                         CLIENT_CHARACTERISTIC_CONFIG_UUID);
                     
                     if (descriptor != null) {
-                        try {
-                            byte[] value;
-                            if (hasNotify) {
-                                value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
-                            } else {
-                                value = BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
-                            }
-                            
-                            descriptor.setValue(value);
-                            boolean writeSuccess = bluetoothGatt.writeDescriptor(descriptor);
-                            Log.e(TAG, "Thread-" + threadId + ": 📱 Write descriptor for " + uuid + ": " + writeSuccess);
-                        } catch (Exception e) {
-                            // Just log the error and continue - doesn't stop us from trying other characteristics
-                            Log.e(TAG, "Thread-" + threadId + ": ⚠️ Error writing descriptor for " + uuid + ": " + e.getMessage());
-                        }
+                        byte[] value = hasNotify ? 
+                            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : 
+                            BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                        
+                        descriptor.setValue(value);
+                        boolean writeSuccess = bluetoothGatt.writeDescriptor(descriptor);
+                        Log.d(TAG, "Thread-" + threadId + ": 📱 Write descriptor for RX characteristic: " + writeSuccess);
                     } else {
-                        Log.e(TAG, "Thread-" + threadId + ": ⚠️ No notification descriptor found for " + uuid);
+                        Log.e(TAG, "Thread-" + threadId + ": ⚠️ No notification descriptor found for RX characteristic");
+                        
+                        // Try the alternative approach - look for a descriptor that might work
+                        for (BluetoothGattDescriptor desc : rxCharacteristic.getDescriptors()) {
+                            Log.d(TAG, "Thread-" + threadId + ": 🔍 Found descriptor: " + desc.getUuid());
+                            
+                            // Try to enable notifications on this descriptor
+                            try {
+                                byte[] value = hasNotify ? 
+                                    BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : 
+                                    BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                                
+                                desc.setValue(value);
+                                boolean alternativeSuccess = bluetoothGatt.writeDescriptor(desc);
+                                Log.d(TAG, "Thread-" + threadId + ": 📱 Write alternative descriptor: " + alternativeSuccess);
+                                
+                                // Only try one descriptor
+                                break;
+                            } catch (Exception e) {
+                                Log.e(TAG, "Thread-" + threadId + ": ❌ Error writing to alternative descriptor: " + e.getMessage());
+                            }
+                        }
                     }
-                } catch (Exception e) {
-                    Log.e(TAG, "Thread-" + threadId + ": ❌ Exception enabling notifications for " + uuid + ": " + e.getMessage());
+                } else {
+                    Log.d(TAG, "Thread-" + threadId + ": ⚠️ RX characteristic does not support notifications or indications");
+                    
+                    // If notification is not supported, but READ is supported, we'll use polling
+                    if (hasRead) {
+                        Log.d(TAG, "Thread-" + threadId + ": 🔄 READ is supported - will use polling as fallback");
+                    }
                 }
+            } catch (Exception e) {
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Exception enabling notifications for RX characteristic: " + e.getMessage());
             }
         }
         
-        // Log notification status but AVOID any delayed operations!
-        if (notificationSuccess) {
-            Log.e(TAG, "Thread-" + threadId + ": 🎯 Local notification registration SUCCESS for at least one characteristic");
-            Log.e(TAG, "Thread-" + threadId + ": 🔔 Ready to receive data via onCharacteristicChanged()");
-        } else {
-            Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to enable notifications on any characteristic");
+        // 2. Now also enable notifications for the TX characteristic (peripheral's RX - 71FF)
+        if (txCharacteristic != null) {
+            // Check TX characteristic properties for notification capability
+            int txProperties = txCharacteristic.getProperties();
+            boolean hasWrite = (txProperties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
+            boolean hasWriteNoResponse = (txProperties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
+            boolean hasTxNotify = (txProperties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+            boolean hasTxIndicate = (txProperties & BluetoothGattCharacteristic.PROPERTY_INDICATE) != 0;
+            boolean hasTxRead = (txProperties & BluetoothGattCharacteristic.PROPERTY_READ) != 0;
+            
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 TX characteristic properties - WRITE: " + hasWrite + 
+                  ", WRITE_NO_RESPONSE: " + hasWriteNoResponse +
+                  ", READ: " + hasTxRead +
+                  ", NOTIFY: " + hasTxNotify +
+                  ", INDICATE: " + hasTxIndicate);
+            
+            // Check write capabilities first
+            if (!hasWrite && !hasWriteNoResponse) {
+                Log.e(TAG, "Thread-" + threadId + ": ⚠️ TX characteristic does not support any write operations!");
+                Log.e(TAG, "Thread-" + threadId + ": ⚠️ This will prevent us from sending data to the peripheral!");
+            }
+            
+            // Also enable notifications on TX characteristic - this is the fix for the one-way communication issue
+            try {
+                boolean success = bluetoothGatt.setCharacteristicNotification(txCharacteristic, true);
+                Log.d(TAG, "Thread-" + threadId + ": 📱 Set local notification for TX characteristic: " + success);
+                
+                // If the TX characteristic has notify or indicate, enable remote notifications
+                if (hasTxNotify || hasTxIndicate) {
+                    BluetoothGattDescriptor txDescriptor = txCharacteristic.getDescriptor(
+                        CLIENT_CHARACTERISTIC_CONFIG_UUID);
+                        
+                    if (txDescriptor != null) {
+                        byte[] value = hasTxNotify ? 
+                            BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : 
+                            BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                        
+                        txDescriptor.setValue(value);
+                        boolean writeSuccess = bluetoothGatt.writeDescriptor(txDescriptor);
+                        Log.d(TAG, "Thread-" + threadId + ": 📱 Write descriptor for TX characteristic: " + writeSuccess);
+                    } else {
+                        Log.e(TAG, "Thread-" + threadId + ": ⚠️ No notification descriptor found for TX characteristic");
+                        
+                        // Try the alternative approach for TX characteristic too
+                        for (BluetoothGattDescriptor desc : txCharacteristic.getDescriptors()) {
+                            Log.d(TAG, "Thread-" + threadId + ": 🔍 Found TX descriptor: " + desc.getUuid());
+                            
+                            try {
+                                byte[] value = hasTxNotify ? 
+                                    BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE : 
+                                    BluetoothGattDescriptor.ENABLE_INDICATION_VALUE;
+                                
+                                desc.setValue(value);
+                                boolean alternativeSuccess = bluetoothGatt.writeDescriptor(desc);
+                                Log.d(TAG, "Thread-" + threadId + ": 📱 Write alternative TX descriptor: " + alternativeSuccess);
+                                
+                                // Only try one descriptor
+                                break;
+                            } catch (Exception e) {
+                                Log.e(TAG, "Thread-" + threadId + ": ❌ Error writing to alternative TX descriptor: " + e.getMessage());
+                            }
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "Thread-" + threadId + ": ℹ️ TX characteristic does not support notifications or indications");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Exception enabling notifications for TX characteristic: " + e.getMessage());
+            }
         }
+        
+        Log.d(TAG, "Thread-" + threadId + ": 🔔 Notification setup complete - subscribed to both characteristics for maximum compatibility");
     }
     
     /**
@@ -916,17 +1093,92 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Send data through BLE
      */
     private void sendDataInternal(byte[] data) {
-        if (!isConnected || bluetoothGatt == null || txCharacteristic == null || data == null) {
+        if (!isConnected || bluetoothGatt == null || data == null) {
             return;
         }
         
         try {
-            // Simple approach: just set the value and write without changing the write type
-            // This matches the working implementation from commit 1f45e1bc
-            txCharacteristic.setValue(data);
-            bluetoothGatt.writeCharacteristic(txCharacteristic);
+            // Enhanced logging to debug data transmission
+            long threadId = Thread.currentThread().getId();
+            StringBuilder hexData = new StringBuilder();
+            for (int i = 0; i < Math.min(data.length, 16); i++) {
+                hexData.append(String.format("%02X ", data[i]));
+            }
+            
+            Log.d(TAG, "Thread-" + threadId + ": 📤 Sending data: " + data.length + " bytes, first 16 bytes: " + hexData);
+            
+            // CRITICAL FIX: We need to use rxCharacteristic (70FF), not txCharacteristic (71FF), for writing data
+            // In BLE communication with a peripheral:
+            // - Central's RX characteristic (70FF) is for receiving data (peripheral's TX)
+            // - Central's TX characteristic (71FF) is for sending data (peripheral's RX)
+            
+            // Need to use the peripheral's RX characteristic for sending data
+            BluetoothGattCharacteristic writeChar = rxCharacteristic;
+            
+            if (writeChar == null) {
+                Log.e(TAG, "Thread-" + threadId + ": ❌ RX characteristic is null - cannot write data");
+                return;
+            }
+            
+            Log.d(TAG, "Thread-" + threadId + ": 📤 Writing to characteristic UUID: " + writeChar.getUuid());
+            Log.d(TAG, "Thread-" + threadId + ": 📤 BluetoothGatt status: " + (bluetoothGatt != null ? "Valid" : "NULL"));
+            
+            // Check properties for debugging
+            int properties = writeChar.getProperties();
+            Log.d(TAG, "Thread-" + threadId + ": 📤 Characteristic properties: " + properties);
+            
+            // CRITICAL FIX: Explicitly set the write type based on available properties
+            boolean hasWriteNoResponse = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
+            boolean hasWrite = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
+            
+            Log.d(TAG, "Thread-" + threadId + ": 📤 Characteristic supports WRITE: " + hasWrite + 
+                  ", WRITE_NO_RESPONSE: " + hasWriteNoResponse);
+            
+            if (!hasWrite && !hasWriteNoResponse) {
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Selected characteristic doesn't support any write operations");
+                return;
+            }
+            
+            // Set the appropriate write type based on the available properties
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // For Android 13+ use the new method to set properties
+                if (hasWriteNoResponse) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_NO_RESPONSE for Android 13+");
+                    writeChar.setValue(data);
+                    // In Android 13+ writeCharacteristic returns an int status code instead of boolean
+                    int writeStatus = bluetoothGatt.writeCharacteristic(writeChar, data, 
+                        BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                    boolean success = (writeStatus == BluetoothGatt.GATT_SUCCESS);
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic (API 33+) returned status: " + 
+                          writeStatus + " (" + (success ? "SUCCESS" : "FAILED") + ")");
+                } else if (hasWrite) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_DEFAULT for Android 13+");
+                    writeChar.setValue(data);
+                    int writeStatus = bluetoothGatt.writeCharacteristic(writeChar, data, 
+                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                    boolean success = (writeStatus == BluetoothGatt.GATT_SUCCESS);
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic (API 33+) returned status: " + 
+                          writeStatus + " (" + (success ? "SUCCESS" : "FAILED") + ")");
+                }
+            } else {
+                // For older Android versions use the traditional method
+                writeChar.setValue(data);
+                
+                if (hasWriteNoResponse) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_NO_RESPONSE for pre-Android 13");
+                    writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+                } else if (hasWrite) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_DEFAULT for pre-Android 13");
+                    writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+                }
+                
+                // Perform the write operation
+                boolean success = bluetoothGatt.writeCharacteristic(writeChar);
+                Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic returned: " + 
+                      (success ? "SUCCESS" : "FAILED"));
+            }
         } catch (Exception e) {
-            Log.e(TAG, "Error sending data via BLE", e);
+            Log.e(TAG, "Error sending data via BLE: " + e.getMessage(), e);
         }
     }
     
@@ -1364,34 +1616,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             return;
         }
         
-        // Get last known device address
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastMentraLiveName = prefs.getString(PREF_MENTRA_LIVE_NAME, null);
+        // We don't use the saved device name here since we're scanning anyway
+        // The scan callback will match devices with the right naming pattern
         
-        if (lastMentraLiveName != null) {
-            // Connect to last known device if available
-            Log.d(TAG, "Attempting to connect to last known device: " + lastMentraLiveName);
-            try {
-                // TODO: HOW TO GET A DEVICE ADDRESS FROM A NAME???
-                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastMentraLiveName);
-                if (device != null) {
-                    Log.d(TAG, "Found saved device, connecting directly: " + lastMentraLiveName);
-                    connectToDevice(device);
-                } else {
-                    Log.e(TAG, "Could not create device from name: " + lastMentraLiveName);
-                    connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                    startScan(); // Fallback to scanning
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
-                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                startScan(); // Fallback to scanning
-            }
-        } else {
-            // If no last known device, start scanning for devices
-            Log.d(TAG, "No last known device, starting scan");
-            startScan();
-        }
+        // For StandardBluetoothManager, the address rotates, so we can't connect directly by address
+        // We need to start scanning and match by the device name pattern
+        Log.d(TAG, "Starting scan to find glasses with appropriate naming pattern");
+        startScan();
     }
     
     @Override
@@ -1550,7 +1781,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     readinessCheckCounter++;
                     
                     Log.d(TAG, "🔄 Readiness check #" + readinessCheckCounter + ": waiting for glasses SOC to boot");
-                    openhotspot();
+                    //openhotspot();
                     try {
                         // Create a simple phone_ready message
                         JSONObject readyMsg = new JSONObject();

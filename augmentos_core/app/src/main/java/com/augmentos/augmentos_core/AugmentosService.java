@@ -65,6 +65,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesNeedWifiCredentialsEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraLiveSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -1425,8 +1426,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             } 
             else if (modelName.equals("Mentra Live")) {
                 // Save Mentra Live device ID in its preferences
-                SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
-                mentraPrefs.edit().putString("LastConnectedDeviceAddress", deviceName).apply();
+                SharedPreferences mentraPrefs = getSharedPreferences(MentraLiveSGC.PREFS_NAME, Context.MODE_PRIVATE);
+                mentraPrefs.edit().putString(MentraLiveSGC.PREF_DEVICE_NAME, deviceName).apply();
                 Log.d("AugmentOsService", "Saved Mentra Live device address: " + deviceName);
             }
         }
