@@ -279,6 +279,7 @@ enum GlassesError: Error {
   
   @objc func disconnect() {
     self.isDisconnecting = true
+    stopReconnectionTimer()
     if let left = leftPeripheral {
       centralManager.cancelPeripheralConnection(left)
     }
@@ -392,6 +393,10 @@ enum GlassesError: Error {
     while attempts < maxAttempts && !result {
       if (attempts > 0) {
         print("trying again to send to left: \(attempts)")
+      }
+      if self.isDisconnecting {
+        // forget whatever we were doing since we're disconnecting:
+        break
       }
       
       for i in 0..<chunks.count-1 {

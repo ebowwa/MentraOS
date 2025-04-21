@@ -49,6 +49,7 @@ struct ViewState {
   private var bypassAudioEncoding: Bool = false;
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
+  private var connectTask: Task<Void, Never>?
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
@@ -843,6 +844,7 @@ struct ViewState {
   }
   
   private func handleDisconnectWearable() {
+    connectTask?.cancel()
     self.g1Manager?.disconnect()
     handleRequestStatus()
   }
@@ -1068,9 +1070,10 @@ struct ViewState {
       }
     }
     
-//    // wait for the g1's to be fully ready:
-    Task {
-      while !Task.isCancelled {
+    // wait for the g1's to be fully ready:
+    connectTask?.cancel()
+    connectTask = Task {
+      while !(connectTask?.isCancelled ?? true) {
         print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
         print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
         if self.g1Manager?.g1Ready ?? false {
