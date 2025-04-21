@@ -18,6 +18,21 @@ interface UserDocument extends Document {
   email: string;
   runningApps: string[];
   appSettings: Map<string, AppSetting[]>;
+  augmentosSettings: {
+    defaultWearable?: string;
+    deviceName?: string;
+    useOnboardMic: boolean;
+    contextualDashboard: boolean;
+    headUpAngle: number;
+    brightness: number;
+    autoBrightness: boolean;
+    sensingEnabled: boolean;
+    alwaysOnStatusBar: boolean;
+    bypassVad: boolean;
+    bypassAudioEncoding: boolean;
+    enablePhoneNotifications: boolean;
+    onboardingCompleted: boolean;
+  };
   location?: Location;
   installedApps?: Array<{
     packageName: string;
@@ -43,6 +58,9 @@ interface UserDocument extends Document {
   installApp(packageName: string): Promise<void>;
   uninstallApp(packageName: string): Promise<void>;
   isAppInstalled(packageName: string): boolean;
+
+  updateAugmentosSettings(settings: Partial<UserDocument['augmentosSettings']>): Promise<void>;
+  getAugmentosSettings(): UserDocument['augmentosSettings'];
 }
 
 const InstalledAppSchema = new Schema({
@@ -96,6 +114,24 @@ const UserSchema = new Schema<UserDocument>({
       },
       message: 'Invalid email format'
     }
+  },
+  augmentosSettings: {
+    type: {
+      defaultWearable: { type: String },
+      deviceName: { type: String },
+      useOnboardMic: { type: Boolean, default: false },
+      contextualDashboard: { type: Boolean, default: false },
+      headUpAngle: { type: Number, default: 20 },
+      brightness: { type: Number, default: 50 },
+      autoBrightness: { type: Boolean, default: false },
+      sensingEnabled: { type: Boolean, default: true },
+      alwaysOnStatusBar: { type: Boolean, default: false },
+      bypassVad: { type: Boolean, default: false },
+      bypassAudioEncoding: { type: Boolean, default: false },
+      enablePhoneNotifications: { type: Boolean, default: true },
+      onboardingCompleted: { type: Boolean, default: false }
+    },
+    default: {}
   },
   // Cache location so timezones can be calculated by dashboard manager immediately.
   location: {
@@ -288,6 +324,24 @@ UserSchema.methods.getAppSettings = function (this: UserDocument, appName: strin
 
 UserSchema.methods.isAppRunning = function (this: UserDocument, appName: string): boolean {
   return this.runningApps.includes(appName);
+};
+
+UserSchema.methods.updateAugmentosSettings = async function(
+  this: UserDocument,
+  settings: Partial<UserDocument['augmentosSettings']>
+): Promise<void> {
+  // Merge the new settings with existing ones
+  this.augmentosSettings = {
+    ...this.augmentosSettings,
+    ...settings
+  };
+  await this.save();
+};
+
+UserSchema.methods.getAugmentosSettings = function(
+  this: UserDocument
+): UserDocument['augmentosSettings'] {
+  return this.augmentosSettings;
 };
 
 // --- Static Methods ---
