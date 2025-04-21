@@ -1,7 +1,7 @@
 // AppIcon.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { AppInfo } from '../AugmentOSStatusParser';
+import { AppInfo } from '../providers/AugmentOSStatusProvider';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';

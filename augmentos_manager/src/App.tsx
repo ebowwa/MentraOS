@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { StatusProvider } from './providers/AugmentOSStatusProvider';
 import Homepage from './screens/Homepage';
@@ -74,6 +74,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 const App: React.FC = () => {
   const [isDarkTheme, setIsDarkTheme] = useState(false);
+  const [currentRouteName, setCurrentRouteName] = useState<string>('');
+  const navigationRef = useNavigationContainerRef();
 
   // Reset ignoreVersionCheck setting on app start
   useEffect(() => {
@@ -85,6 +87,16 @@ const App: React.FC = () => {
     setIsDarkTheme(prevTheme => !prevTheme);
   };
 
+  // Screens where the navbar should be hidden
+  const hideNavbarScreens = [
+    'Login', 
+    'SplashScreen', 
+    'VerifyEmailScreen', 
+    'VersionUpdateScreen',
+    'WelcomePage',
+    'ConnectingToPuck'
+  ];
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
@@ -95,7 +107,14 @@ const App: React.FC = () => {
                 <GlassesMirrorProvider>
                   <MessageBanner />
                   <ModalProvider isDarkTheme={isDarkTheme} />
-                  <NavigationContainer linking={linking}>
+                  <NavigationContainer 
+                    linking={linking}
+                    ref={navigationRef}
+                    onStateChange={() => {
+                      const currentRoute = navigationRef.getCurrentRoute();
+                      setCurrentRouteName(currentRoute?.name || '');
+                    }}
+                  >
                     <View style={styles.mainContainer}>
                       <View style={styles.contentContainer}>
                         <Stack.Navigator initialRouteName="SplashScreen">
@@ -417,7 +436,9 @@ const App: React.FC = () => {
 
                                 </Stack.Navigator>
                               </View>
-                              <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
+                              {!hideNavbarScreens.includes(currentRouteName) && (
+                                <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
+                              )}
                             </View>
                           </NavigationContainer>
                         </GlassesMirrorProvider>

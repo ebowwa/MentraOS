@@ -8,7 +8,7 @@ import { useAuth } from '../AuthContext';
 import coreCommunicator from '../bridge/CoreCommunicator';
 
 // Define the base AppInfo type
-interface AppInfo {
+export interface AppInfo {
     packageName: string;
     name: string;
     is_running: boolean;

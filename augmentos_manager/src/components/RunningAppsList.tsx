@@ -147,7 +147,8 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   settingsButton: {
-    padding: 4,
+    padding: 50,
+    margin: -46,
   },
   noAppsContainer: {
     marginBottom: 8,
