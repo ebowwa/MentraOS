@@ -102,7 +102,7 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
     useEffect(() => {
       // If pairing successful, return to home
       if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-        console.log("RETURN HOME FROM PAIR SCREEN: GOT MODEL NAME: " + status.glasses_info?.model_name);
+        // console.log("RETURN HOME FROM PAIR SCREEN: GOT MODEL NAME: " + status.glasses_info?.model_name);
         // Clear any pending timers when pairing succeeds
         if (timerRef.current) {
           clearTimeout(timerRef.current);

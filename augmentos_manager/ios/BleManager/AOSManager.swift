@@ -803,6 +803,14 @@ struct ViewState {
           // Update microphone state when sensing is toggled
           onMicrophoneStateChange(self.micEnabled)
           handleRequestStatus()// to update the UI
+
+
+
+
+          //Stop recording!!
+          if !enabled {
+            self.micManager.stopRecording()
+          }
           break
         case .enableAlwaysOnStatusBar:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
@@ -1171,6 +1179,13 @@ struct ViewState {
       brightness = defaults.integer(forKey: SettingsKeys.brightness)
     }
     
+    if defaults.object(forKey: SettingsKeys.sensingEnabled) != nil {
+       sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+     } else {
+       print("Settings loaded: Sensing key did not exist, defaulting to true!")
+       sensingEnabled = true
+     }
+  
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
     self.settingsLoadedSemaphore.signal()
