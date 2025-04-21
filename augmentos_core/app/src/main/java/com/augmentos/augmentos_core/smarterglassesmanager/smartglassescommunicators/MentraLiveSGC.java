@@ -21,6 +21,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.util.Log;
 
@@ -99,14 +100,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private BluetoothDevice connectedDevice;
     private BluetoothGattCharacteristic txCharacteristic;
     private BluetoothGattCharacteristic rxCharacteristic;
-    private Handler handler = new Handler(Looper.getMainLooper());
+    // Use a dedicated background thread for BLE operations
+    private HandlerThread bleThread = new HandlerThread("BLEThread");
+    private Handler handler;
     private ScheduledExecutorService scheduler;
     private boolean isScanning = false;
     private boolean isConnecting = false;
     private boolean isKilled = false;
     private ConcurrentLinkedQueue<byte[]> sendQueue = new ConcurrentLinkedQueue<>();
     private Runnable connectionTimeoutRunnable;
-    private Handler connectionTimeoutHandler = new Handler(Looper.getMainLooper());
+    // Also use the background thread for connection timeout handling
+    private Handler connectionTimeoutHandler;
     private Runnable processSendQueueRunnable;
     // Current MTU size
     private int currentMtu = 23; // Default BLE MTU
@@ -131,6 +135,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (bluetoothManager != null) {
             bluetoothAdapter = bluetoothManager.getAdapter();
         }
+        
+        // Start the BLE thread and create handlers
+        bleThread.start();
+        handler = new Handler(bleThread.getLooper());
+        connectionTimeoutHandler = new Handler(bleThread.getLooper());
         
         // Initialize connection state
         mConnectState = SmartGlassesConnectionState.DISCONNECTED;
@@ -1186,23 +1195,44 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     Log.e(TAG, "Thread-" + threadId + ": ❌ Error on second write attempt: " + e.getMessage());
                 }
                 
-                // If second attempt also failed, try one more time after a small delay
+                // If second attempt also failed, schedule a retry after delay rather than blocking
                 if (!success) {
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 Adding small delay and trying one more time");
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 Scheduling delayed retry");
                     
-                    try {
-                        // Increased sleep time to help with timing issues
-                        // Use an exponential delay if we've had consecutive failures
-                        int delayMs = 150 + (consecutiveWriteFailures * 50);
-                        Log.d(TAG, "Thread-" + threadId + ": ⏱️ Using retry delay of " + delayMs + "ms");
-                        Thread.sleep(delayMs);
-                        
-                        // Third attempt
-                        success = bluetoothGatt.writeCharacteristic(writeChar);
-                        Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic attempt 3 returned: " + (success ? "SUCCESS" : "FAILED"));
-                    } catch (Exception e) {
-                        Log.e(TAG, "Thread-" + threadId + ": ❌ Error on third write attempt: " + e.getMessage());
-                    }
+                    // Use an exponential delay if we've had consecutive failures
+                    final int delayMs = 150 + (consecutiveWriteFailures * 50);
+                    Log.d(TAG, "Thread-" + threadId + ": ⏱️ Scheduling retry after " + delayMs + "ms");
+                    
+                    // Instead of Thread.sleep, use the handler for non-blocking delay
+                    // Store characteristics in final variables for the runnable
+                    final BluetoothGattCharacteristic finalWriteChar = writeChar;
+                    final BluetoothGatt finalGatt = bluetoothGatt;
+                    final long finalThreadId = threadId;
+                    
+                    handler.postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                // Third attempt in a separate scheduled task
+                                boolean retrySuccess = finalGatt.writeCharacteristic(finalWriteChar);
+                                Log.d(TAG, "Thread-" + finalThreadId + ": 📤 Delayed writeCharacteristic attempt returned: " + 
+                                    (retrySuccess ? "SUCCESS" : "FAILED"));
+                                
+                                // Update consecutive failures counter based on result
+                                if (retrySuccess) {
+                                    consecutiveWriteFailures = 0;
+                                } else {
+                                    consecutiveWriteFailures++;
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Thread-" + finalThreadId + ": ❌ Error on delayed write attempt: " + e.getMessage());
+                                consecutiveWriteFailures++;
+                            }
+                        }
+                    }, delayMs);
+                    
+                    // We'll exit this method now, the retry will happen asynchronously
+                    return;
                 }
             }
             
@@ -1216,16 +1246,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 consecutiveWriteFailures++;
                 Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to queue data for transmission after multiple attempts (failures: " + consecutiveWriteFailures + ")");
                 
-                // If we've had many consecutive failures, add an extra cooling off period
-                // before attempting more transmissions
+                // If we've had many consecutive failures, log it but don't block with sleep
+                // The adaptive delay in queueData will naturally add more delay between operations
                 if (consecutiveWriteFailures > 3) {
-                    try {
-                        // Add a longer cooling off period after multiple failures
-                        Thread.sleep(consecutiveWriteFailures * 100);
-                        Log.d(TAG, "Thread-" + threadId + ": ⏱️ Added cooling off period of " + (consecutiveWriteFailures * 100) + "ms");
-                    } catch (InterruptedException e) {
-                        // Ignore
-                    }
+                    Log.d(TAG, "Thread-" + threadId + ": ⚠️ Multiple consecutive failures detected: " + consecutiveWriteFailures);
                 }
             }
         } catch (Exception e) {
@@ -1916,8 +1940,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             connectionTimeoutHandler.removeCallbacks(connectionTimeoutRunnable);
         }
         
-        // Cancel any pending handlers
+        // Cancel any pending handlers and cleanup resources
         handler.removeCallbacksAndMessages(null);
+        connectionTimeoutHandler.removeCallbacksAndMessages(null);
+        
+        // Quit the background thread properly
+        if (bleThread != null) {
+            bleThread.quitSafely();
+            try {
+                // Wait for thread to terminate
+                bleThread.join(1000);
+            } catch (InterruptedException e) {
+                Log.w(TAG, "Interrupted while waiting for BLE thread to quit", e);
+            }
+            Log.d(TAG, "Background BLE thread shutdown complete");
+        }
         
         // Disconnect from GATT if connected
         if (bluetoothGatt != null) {
