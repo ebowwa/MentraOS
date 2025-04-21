@@ -1231,20 +1231,45 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             // Extract the command type and length
             byte commandType = data[2];
-            // Fix: Read length as big-endian format to match actual protocol
-            int payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+            
+            // Determine endianness based on device name pattern
+            boolean isStandardBTManager = false;
+            if (connectedDevice != null && connectedDevice.getName() != null) {
+                String deviceName = connectedDevice.getName();
+                isStandardBTManager = deviceName.startsWith("Xy_A"); // Standard BT Manager uses "Xy_A" prefix
+                Log.d(TAG, "Thread-" + threadId + ": 🔍 Device name: " + deviceName + 
+                      ", using " + (isStandardBTManager ? "little" : "big") + "-endian format");
+            }
+            
+            // Use the appropriate endianness based on device type
+            int payloadLength;
+            if (isStandardBTManager) {
+                // Little-endian for StandardBluetoothManager
+                payloadLength = ((data[3] & 0xFF)) | ((data[4] & 0xFF) << 8);
+            } else {
+                // Big-endian for original K900BluetoothManager
+                payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+            }
             
             Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type: 0x" + String.format("%02X", commandType) + 
-                  ", Payload length: " + payloadLength);
+                  ", Payload length: " + payloadLength + " (" + (isStandardBTManager ? "little" : "big") + "-endian)");
             
             // Verify expected message format
             if (commandType == 0x30) { // 0x30 is the command type for string/JSON data
                 Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type 0x30 indicates JSON data");
                 
+                // Safety check for payload length
+                if (payloadLength > size - 7) {
+                    Log.e(TAG, "Thread-" + threadId + ": ❌ Calculated payload length (" + payloadLength + 
+                         ") is too large for packet size (" + size + ")");
+                    return;
+                }
+                
                 // Extract the payload
                 if (size >= payloadLength + 7) { // Make sure we have enough data
                     // Check for end markers
-                    if (data[5 + payloadLength] == 0x24 && data[6 + payloadLength] == 0x24) {
+                    if (5 + payloadLength + 1 < size && 
+                        data[5 + payloadLength] == 0x24 && data[5 + payloadLength + 1] == 0x24) {
                         // Extract the payload
                         byte[] payload = Arrays.copyOfRange(data, 5, 5 + payloadLength);
                         
