@@ -88,7 +88,14 @@ const App: React.FC = () => {
   };
 
   // Screens where the navbar should be hidden
-  const hideNavbarScreens = ['Login', 'SplashScreen', 'VerifyEmailScreen', 'VersionUpdateScreen'];
+  const hideNavbarScreens = [
+    'Login', 
+    'SplashScreen', 
+    'VerifyEmailScreen', 
+    'VersionUpdateScreen',
+    'WelcomePage',
+    'ConnectingToPuck'
+  ];
 
   return (
     <GestureHandlerRootView style={styles.container}>
