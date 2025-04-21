@@ -1,9 +1,9 @@
 import React from 'react';
-import {View, StyleSheet, TouchableOpacity} from 'react-native';
+import {View, StyleSheet, TouchableOpacity, Platform} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {NavigationProps, RootStackParamList} from '../components/types';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface NavigationBarProps {
   toggleTheme?: () => void;
@@ -17,6 +17,7 @@ const NavigationBar: React.FC<NavigationBarProps> = React.memo(({
   variant = 'v1',
 }) => {
   const navigation = useNavigation<NavigationProps>();
+  const insets = useSafeAreaInsets();
   const iconColor = isDarkTheme ? '#FFFFFF' : '#000000';
   const backgroundColor = isDarkTheme ? '#000000' : '#F2F2F7';
   const disabledColor = isDarkTheme ? '#666666' : '#CCCCCC';
@@ -53,57 +54,73 @@ const NavigationBar: React.FC<NavigationBarProps> = React.memo(({
   // Get current icon set
   const icons = iconSets[variant];
 
+  // Handle iOS safe area insets for the navigation bar
+  const isIOS = Platform.OS === 'ios';
+  
   return (
-    <View style={[styles.navBarContainer, {backgroundColor}]}>
-      {/* Home Icon */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate({name: 'Home', params: undefined})}
-        style={styles.iconWrapper}>
-        <MaterialCommunityIcons
-          name={icons.home}
-          size={iconSize}
-          color={iconColor}
-        />
-      </TouchableOpacity>
+    <View style={styles.container}>
+      <View style={[
+        styles.navBarContainer, 
+        {backgroundColor}
+      ]}>
+        {/* Home Icon */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate({name: 'Home', params: undefined})}
+          style={styles.iconWrapper}>
+          <MaterialCommunityIcons
+            name={icons.home}
+            size={iconSize}
+            color={iconColor}
+          />
+        </TouchableOpacity>
 
-      {/* Glasses Mirror Icon */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate({name: 'GlassesMirror', params: undefined})}
-        style={styles.iconWrapper}>
-        <MaterialCommunityIcons
-          name={icons.mirror}
-          size={iconSize}
-          color={iconColor}
-        />
-      </TouchableOpacity>
+        {/* Glasses Mirror Icon */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate({name: 'GlassesMirror', params: undefined})}
+          style={styles.iconWrapper}>
+          <MaterialCommunityIcons
+            name={icons.mirror}
+            size={iconSize}
+            color={iconColor}
+          />
+        </TouchableOpacity>
 
-      {/* App Store Icon */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate({name: 'AppStoreWeb', params: {packageName: undefined}})}
-        style={styles.iconWrapper}>
-        <MaterialCommunityIcons
-          name={icons.apps}
-          size={iconSize}
-          color={iconColor}
-        />
-      </TouchableOpacity>
+        {/* App Store Icon */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate({name: 'AppStoreWeb', params: {packageName: undefined}})}
+          style={styles.iconWrapper}>
+          <MaterialCommunityIcons
+            name={icons.apps}
+            size={iconSize}
+            color={iconColor}
+          />
+        </TouchableOpacity>
 
-      {/* Settings Icon */}
-      <TouchableOpacity
-        onPress={() => navigation.navigate({name: 'SettingsPage', params: undefined})}
-        onLongPress={() => navigation.navigate({name: 'Testing', params: undefined})}// super secret testing page
-        style={styles.iconWrapper}>
-        <MaterialCommunityIcons
-          name={icons.settings}
-          size={iconSize}
-          color={iconColor}
-        />
-      </TouchableOpacity>
+        {/* Settings Icon */}
+        <TouchableOpacity
+          onPress={() => navigation.navigate({name: 'SettingsPage', params: undefined})}
+          onLongPress={() => navigation.navigate({name: 'Testing', params: undefined})}// super secret testing page
+          style={styles.iconWrapper}>
+          <MaterialCommunityIcons
+            name={icons.settings}
+            size={iconSize}
+            color={iconColor}
+          />
+        </TouchableOpacity>
+      </View>
+      {/* Bottom padding for iOS home indicator */}
+      {Platform.OS === 'ios' && <View style={[styles.bottomPadding, {backgroundColor}]} />}
     </View>
   );
 });
 
 const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    backgroundColor: 'transparent',
+    marginTop: 0,
+    paddingTop: 0,
+  },
   navBarContainer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -111,7 +128,7 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 0,
     margin: 0,
-    height: 64,
+    height: Platform.OS === 'ios' ? 50 : 64, // Slightly shorter on iOS
     borderTopWidth: 0.5,
     borderTopColor: '#E5E5EA',
   },
@@ -120,6 +137,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 48,
     height: 48,
+  },
+  bottomPadding: {
+    height: 34, // Height for iOS home indicator area
+    width: '100%',
   },
 });
 

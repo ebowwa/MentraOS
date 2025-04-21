@@ -231,29 +231,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 </Text>
             </View>
 
-            {/* Sensing Disabled Warning */}
-            {!isSensingEnabled && (
-                <View style={[
-                    styles.sensingWarningContainer, 
-                    { backgroundColor: '#FFF3E0', borderColor: '#FFB74D' }
-                ]}>
-                    <View style={styles.warningContent}>
-                        <Icon name="microphone-off" size={22} color="#FF9800" />
-                        <Text style={styles.warningText}>
-                            Sensing is disabled. Microphone and sensors won't work in apps.
-                        </Text>
-                    </View>
-                    <TouchableOpacity 
-                        style={styles.settingsButton}
-                        onPress={() => {
-                            // Navigate to the Settings page
-                            navigation.navigate('PrivacySettingsScreen');
-                        }}
-                    >
-                        <Text style={styles.settingsButtonText}>Settings</Text>
-                    </TouchableOpacity>
-                </View>
-            )}
             
             <ScrollView 
                 style={styles.listContainer}
@@ -363,11 +340,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                                 onClick={() => startApp(app.packageName)}
                                 style={styles.appIconStyle}
                             />
-                            <View style={styles.appTextContainer}>
-                                <Text style={[styles.appName, {color: textColor}]}>
-                                    {app.name || 'Convoscope'}
-                                </Text>
-                            </View>
+                            <Text style={[styles.appName, {color: textColor}]}>
+                                {app.name || 'Convoscope'}
+                            </Text>
                             <TouchableOpacity 
                                 onPress={() => openAppSettings(app)}
                                 style={styles.settingsButton}
@@ -432,13 +407,13 @@ const styles = StyleSheet.create({
     appItem: {
         backgroundColor: '#E8E8E8',
         borderRadius: 12,
-        padding: 10,
+        padding: 11, // Match RunningAppsList padding
         marginBottom: 9,
     },
     appContent: {
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: 44,
+        minHeight: 40, // Match RunningAppsList minHeight
     },
     itemContainer: {
         alignItems: 'center',
@@ -465,18 +440,18 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     appName: {
-        fontSize: 16,
-        fontWeight: '500',
         flex: 1,
-        textAlignVertical: 'center',
+        fontSize: 17, // Match RunningAppsList fontSize
+        fontWeight: '500',
+        marginLeft: 8,
     },
     settingsButton: {
         padding: 50,
         margin: -46,
     },
     appIconStyle: {
-        width: 48,
-        height: 48,
+        width: 50, // Match RunningAppsList icon size
+        height: 50, // Match RunningAppsList icon size
     },
     arrowContainer: {
         position: 'absolute',
@@ -585,6 +560,18 @@ const styles = StyleSheet.create({
     settingsButtonText: {
         color: '#FFFFFF',
         fontSize: 13,
+        fontWeight: 'bold',
+    },
+    settingsButtonBlue: {
+        backgroundColor: '#007AFF',
+        borderRadius: 5,
+        paddingVertical: 5,
+        paddingHorizontal: 10,
+        margin: 0,
+    },
+    settingsButtonTextBlue: {
+        color: '#007AFF',
+        fontSize: 14,
         fontWeight: 'bold',
     },
 });
