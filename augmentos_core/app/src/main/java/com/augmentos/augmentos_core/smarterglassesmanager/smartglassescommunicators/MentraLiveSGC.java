@@ -546,7 +546,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         // Start keep-alive mechanism
                         startKeepAlive();
 
-                        openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
+                        //openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
                         // Start SOC readiness check loop - this will keep trying until
                         // the glasses SOC boots and responds with a "glasses_ready" message
                         // All other initialization will happen after receiving glasses_ready
@@ -1443,7 +1443,47 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     private void processJsonMessage(JSONObject json) {
         Log.d(TAG, "Got some JSON from glasses: " + json.toString());
+        
+        // ENHANCED PARSING: Handle nested JSON inside C field
+        if (json.has("C")) {
+            try {
+                // This is likely the C-wrapped format from StandardBluetoothManager
+                // Extract and parse the C field which contains the actual message
+                String innerContent = json.optString("C", "");
+                Log.d(TAG, "Detected special format with C field. Inner content: " + innerContent);
+                
+                // Check if inner content is JSON
+                if (innerContent.startsWith("{") && innerContent.endsWith("}")) {
+                    try {
+                        // Parse the inner JSON message
+                        JSONObject innerJson = new JSONObject(innerContent);
+                        Log.d(TAG, "Successfully parsed inner JSON: " + innerJson.toString());
+                        
+                        // Process the inner JSON instead
+                        processInnerJsonMessage(innerJson);
+                        return;
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error parsing inner JSON content: " + e.getMessage());
+                        // Fall through to normal processing
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error processing C-wrapped format: " + e.getMessage());
+                // Fall through to normal processing
+            }
+        }
+        
+        // Regular processing for non-nested JSON
+        processInnerJsonMessage(json);
+    }
+    
+    /**
+     * Process the actual JSON message content after unwrapping from any container format
+     */
+    private void processInnerJsonMessage(JSONObject json) {
+        // Extract the message type
         String type = json.optString("type", "");
+        Log.d(TAG, "Processing JSON message type: " + type);
         
         switch (type) {
             case "battery_status":
@@ -1793,61 +1833,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final int DEBUG_VIDEO_INTERVAL_MS = 5000; // 5 seconds
     
     // SOC readiness check parameters
-    private static final int READINESS_CHECK_INTERVAL_MS = 5000; // 5 seconds
+    private static final int READINESS_CHECK_INTERVAL_MS = 7000; // 7 seconds
     private Runnable readinessCheckRunnable;
     private int readinessCheckCounter = 0;
-    
-    /**
-     * Starts a debug loop that sends a video command every 5 seconds
-     * This is for testing BLE communication with the BES2700 MCU
-     */
-    private void startDebugVideoCommandLoop() {
-        // Cancel any existing debug loop
-        stopDebugVideoCommandLoop();
-        
-        Log.d(TAG, "🐞 Starting debug command loop - sending command every 5 seconds");
-        
-        debugVideoCommandRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (isConnected && !isKilled) {
-                    debugCommandCounter++;
-                    
-                    Log.d(TAG, "🐞 Debug loop sending test data #" + debugCommandCounter);
-                    
-                    // Test options - uncomment the one you want to use:
-                    
-                    // Option 1: Use the video command (original implementation)
-                    // sendVideoCommand("debug_video_" + debugCommandCounter, 0);
-                    
-                    // Option 2: Use the arbitrary command (JSON in C/V/B format)
-                    // String testId = "test_command_" + debugCommandCounter;
-                    // sendArbitraryCommand(testId, "This is a test message #" + debugCommandCounter);
-                    
-                    // Option 3: Use the new direct data sending method
-                    String testData = "HELLO FROM CORE #" + debugCommandCounter + " - Testing direct data transmission";
-                    sendDataToGlasses(testData);
-                    
-                    // Schedule next run
-                    handler.postDelayed(this, DEBUG_VIDEO_INTERVAL_MS);
-                }
-            }
-        };
-        
-        // Start the loop
-        handler.post(debugVideoCommandRunnable);
-    }
-    
-    /**
-     * Stops the debug video command loop
-     */
-    private void stopDebugVideoCommandLoop() {
-        if (debugVideoCommandRunnable != null) {
-            handler.removeCallbacks(debugVideoCommandRunnable);
-            debugVideoCommandRunnable = null;
-            Log.d(TAG, "🐞 Stopped debug video command loop");
-        }
-    }
     
     /**
      * Starts the glasses SOC readiness check loop
@@ -1919,9 +1907,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Stop keep-alive
         stopKeepAlive();
-        
-        // Stop debug command loop
-        stopDebugVideoCommandLoop();
         
         // Stop readiness check loop
         stopReadinessCheckLoop();
