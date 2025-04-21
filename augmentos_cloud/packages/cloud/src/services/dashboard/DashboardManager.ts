@@ -494,15 +494,15 @@ export class DashboardManager {
     // This is more compact and suited for persistent display
 
     // Left side shows essential system info (time)
-    const leftText = this.systemContent.topLeft;
+    // const leftText = this.systemContent.topLeft; // currently it seems the client alreay ads this info.
 
     // Right side combines battery status and a single TPA content item
     const tpaContent = this.getCombinedTpaContent(this.alwaysOnContent, 1);
 
     return {
-      layoutType: LayoutType.REFERENCE_CARD,
-      title: `${leftText} | ${tpaContent}`,
-      text: `2 ${leftText} | ${tpaContent}`
+      layoutType: LayoutType.TEXT_WALL,
+      text: tpaContent
+      // title: `${leftText} | ${tpaContent}`,
     };
   }
 
