@@ -315,4 +315,46 @@ export default class BackendServerComms {
       throw error;
     }
   }
+
+  /**
+   * Requests a temporary, single-use token for webview authentication.
+   * @param packageName The package name of the TPA the token is for.
+   * @returns Promise resolving to the temporary token string.
+   * @throws Error if the request fails or no core token is available.
+   */
+  public async generateWebviewToken(packageName: string): Promise<string> {
+    if (!this.coreToken) {
+      throw new Error('Authentication required: No core token available.');
+    }
+
+    const url = `${this.serverUrl}/api/auth/generate-webview-token`;
+    console.log('Requesting webview token for:', packageName, 'at URL:', url);
+
+    const config: AxiosRequestConfig = {
+      method: 'POST',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.coreToken}`, // Use the stored coreToken
+      },
+      data: { packageName }, // Send the target package name in the body
+    };
+
+    try {
+      const response = await axios(config);
+      if (response.status === 200 && response.data.success && response.data.token) {
+        console.log(`Received temporary webview token for ${packageName}`);
+        return response.data.token;
+      } else {
+        throw new Error(`Failed to generate webview token: ${response.data.error || response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error(`${this.TAG}: Error generating webview token -`, error.message || error);
+      // Consider more specific error handling based on response status if available
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(`Failed to generate webview token: ${error.response.data?.error || error.message}`);
+      }
+      throw error; // Re-throw the original error or a new one
+    }
+  }
 }

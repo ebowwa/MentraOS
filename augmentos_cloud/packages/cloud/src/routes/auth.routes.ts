@@ -3,6 +3,10 @@ import express from 'express';
 
 import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
+import { validateCoreToken } from '../middleware/supabaseMiddleware';
+import { tokenService } from '../services/core/temp-token.service';
+import { validateTpaApiKey } from '../middleware/validateApiKey';
+import { logger } from '@augmentos/utils';
 
 const router = express.Router();
 
@@ -35,6 +39,49 @@ router.post('/exchange-token', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Token verification error:', error);
     return res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// Generate a temporary token for webview authentication
+router.post('/generate-webview-token', validateCoreToken, async (req: Request, res: Response) => {
+  const userId = (req as any).userId; // Assuming middleware adds userId to req
+  const { packageName } = req.body;
+
+  if (!packageName) {
+    return res.status(400).json({ success: false, error: 'packageName is required' });
+  }
+
+  try {
+    const tempToken = await tokenService.generateTemporaryToken(userId, packageName);
+    res.json({ success: true, token: tempToken });
+  } catch (error) {
+    logger.error(`Error generating webview token for user ${userId}, package ${packageName}:`, error);
+    res.status(500).json({ success: false, error: 'Failed to generate token' });
+  }
+});
+
+// Exchange a temporary token for user details (called by TPA backend)
+router.post('/exchange-user-token', validateTpaApiKey, async (req: Request, res: Response) => {
+  const { aos_temp_token } = req.body;
+  const requestingPackageName = (req as any).app.packageName; // Assuming middleware adds app info
+
+  if (!aos_temp_token) {
+    return res.status(400).json({ success: false, error: 'Missing aos_temp_token' });
+  }
+
+  try {
+    const result = await tokenService.exchangeTemporaryToken(aos_temp_token, requestingPackageName);
+
+    if (result) {
+      res.json({ success: true, userId: result.userId });
+    } else {
+      // Determine specific error based on logs or tokenService implementation
+      // For simplicity now, returning 401 for any failure
+      res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    }
+  } catch (error) {
+    logger.error(`Error exchanging webview token ${aos_temp_token} for ${requestingPackageName}:`, error);
+    res.status(500).json({ success: false, error: 'Failed to exchange token' });
   }
 });
 
