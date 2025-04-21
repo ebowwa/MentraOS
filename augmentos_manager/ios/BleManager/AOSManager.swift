@@ -803,6 +803,14 @@ struct ViewState {
           // Update microphone state when sensing is toggled
           onMicrophoneStateChange(self.micEnabled)
           handleRequestStatus()// to update the UI
+
+
+
+
+          //Stop recording!!
+          if !enabled {
+            self.micManager.stopRecording()
+          }
           break
         case .enableAlwaysOnStatusBar:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
