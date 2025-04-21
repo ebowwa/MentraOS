@@ -7,6 +7,7 @@
 import express, { type Express } from 'express';
 import path from 'path';
 import { TpaSession } from '../session';
+import { createAuthMiddleware } from '../webview';
 import {
   WebhookRequest,
   WebhookRequestType,
@@ -51,6 +52,24 @@ export interface TpaServerConfig {
   augmentOSWebsocketUrl?: string;
   /** ❤️ Enable health check endpoint at /health (default: true) */
   healthCheck?: boolean;
+  /** 
+   * 🌐 Custom cloud hostname for connecting to a specific AugmentOS Cloud instance
+   * Only needed when connecting to a non-default cloud environment
+   */
+  cloudHostName?: string;
+  
+  /** 
+   * 🔗 Custom cloud URL for API endpoints
+   * Only needed when connecting to a non-default cloud environment or for testing
+   * If not provided, the SDK will use the default production URL
+   */
+  cloudUrl?: string;
+
+  /**
+   * 🔐 Secret key used to sign session cookies
+   * This must be a strong, unique secret
+   */
+  cookieSecret?: string;
 }
 
 /**
@@ -99,12 +118,25 @@ export class TpaServer {
       augmentOSWebsocketUrl: "wss://staging.augmentos.org/tpa-ws",
       publicDir: false,
       healthCheck: true,
+      cloudHostName: 'prod.augmentos.org',
       ...config
     };
 
     // Initialize Express app
     this.app = express();
     this.app.use(express.json());
+
+    const cookieParser = require('cookie-parser');
+    this.app.use(cookieParser(this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`));
+    
+    // Apply authentication middleware
+    this.app.use(createAuthMiddleware({
+      cloudApiUrl: this.config.cloudUrl || `https://${this.config.cloudHostName}`,
+      apiKey: this.config.apiKey,
+      packageName: this.config.packageName,
+      cookieSecret: this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`
+    }));
+    
 
     // Setup server features
     this.setupWebhook();

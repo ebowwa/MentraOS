@@ -44,7 +44,7 @@ router.post('/exchange-token', async (req: Request, res: Response) => {
 
 // Generate a temporary token for webview authentication
 router.post('/generate-webview-token', validateCoreToken, async (req: Request, res: Response) => {
-  const userId = (req as any).userId; // Assuming middleware adds userId to req
+  const userId = (req as any).email; // Use the email property set by validateCoreToken
   const { packageName } = req.body;
 
   if (!packageName) {
@@ -62,15 +62,14 @@ router.post('/generate-webview-token', validateCoreToken, async (req: Request, r
 
 // Exchange a temporary token for user details (called by TPA backend)
 router.post('/exchange-user-token', validateTpaApiKey, async (req: Request, res: Response) => {
-  const { aos_temp_token } = req.body;
-  const requestingPackageName = (req as any).app.packageName; // Assuming middleware adds app info
+  const { aos_temp_token, packageName } = req.body;
 
   if (!aos_temp_token) {
     return res.status(400).json({ success: false, error: 'Missing aos_temp_token' });
   }
 
   try {
-    const result = await tokenService.exchangeTemporaryToken(aos_temp_token, requestingPackageName);
+    const result = await tokenService.exchangeTemporaryToken(aos_temp_token, packageName);
 
     if (result) {
       res.json({ success: true, userId: result.userId });
@@ -80,7 +79,7 @@ router.post('/exchange-user-token', validateTpaApiKey, async (req: Request, res:
       res.status(401).json({ success: false, error: 'Invalid or expired token' });
     }
   } catch (error) {
-    logger.error(`Error exchanging webview token ${aos_temp_token} for ${requestingPackageName}:`, error);
+    logger.error(`Error exchanging webview token ${aos_temp_token} for ${packageName}:`, error);
     res.status(500).json({ success: false, error: 'Failed to exchange token' });
   }
 });
