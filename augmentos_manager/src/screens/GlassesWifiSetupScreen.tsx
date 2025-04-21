@@ -165,6 +165,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     marginTop: 10,
+    alignItems: 'center',
   },
 });
 

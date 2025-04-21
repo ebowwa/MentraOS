@@ -756,6 +756,35 @@ export class WebSocketService {
   }
   
   /**
+   * Get the pending photo request with the given ID
+   * @param requestId Request ID to look up
+   * @returns The pending photo request info, or undefined if not found
+   */
+  getPendingPhotoRequest(requestId: string): { 
+    appId: string, 
+    userId: string,
+    saveToGallery?: boolean 
+  } | undefined {
+    const pendingRequest = this.pendingPhotoRequests.get(requestId);
+    if (!pendingRequest) return undefined;
+    
+    // Find the user ID from session info
+    let userId = 'unknown';
+    for (const [sessionId, session] of this.userSessions.entries()) {
+      if (session.activeAppSessions && session.activeAppSessions[pendingRequest.appId]) {
+        userId = session.userId;
+        break;
+      }
+    }
+    
+    return {
+      appId: pendingRequest.appId,
+      userId,
+      saveToGallery: pendingRequest.saveToGallery
+    };
+  }
+  
+  /**
    * Forward a video stream response to the requesting TPA
    * @param appId The ID of the app requesting the stream
    * @param streamUrl The URL of the video stream

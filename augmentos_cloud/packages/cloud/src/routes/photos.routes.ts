@@ -71,21 +71,62 @@ router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: 
     const baseUrl = process.env.CLOUD_PUBLIC_URL || `http://localhost:${process.env.PORT || 80}`;
     const photoUrl = `${baseUrl}/uploads/${file.filename}`;
 
-    // Forward the photo URL to the requesting TPA via WebSocket
-    const forwarded = webSocketService.forwardPhotoResponse(requestId, photoUrl);
-
-    if (!forwarded) {
+    // Get the pending request to check saveToGallery flag
+    const pendingRequest = webSocketService.getPendingPhotoRequest(requestId);
+    
+    if (!pendingRequest) {
       logger.warn(`No pending request found for photo requestId: ${requestId}`);
       // Clean up the file if no pending request
       fs.unlinkSync(file.path);
       return res.status(404).json({ error: 'Photo request not found or expired' });
+    }
+    
+    // Save photo to gallery if flag is set
+    if (pendingRequest.saveToGallery) {
+      try {
+        // Import GalleryPhoto model
+        const { GalleryPhoto } = await import('../models/gallery-photo.model');
+        
+        // Save to gallery
+        await GalleryPhoto.create({
+          userId: pendingRequest.userId, // We get this from the request
+          filename: file.filename,
+          photoUrl,
+          requestId,
+          appId: pendingRequest.appId,
+          metadata: {
+            originalFilename: file.originalname,
+            size: file.size,
+            mimeType: file.mimetype
+          }
+        });
+        
+        logger.info(`Photo saved to gallery for user ${pendingRequest.userId}, requestId: ${requestId}`);
+      } catch (error) {
+        // Just log error but continue processing - don't fail the request
+        logger.error('Error saving photo to gallery:', error);
+      }
+    }
+
+    // Forward the photo URL to the requesting TPA via WebSocket
+    const forwarded = webSocketService.forwardPhotoResponse(requestId, photoUrl);
+
+    if (!forwarded) {
+      logger.warn(`TPA connection closed for photo requestId: ${requestId}`);
+      // We still keep the photo since it might be in the gallery
+      // Only delete if we didn't save to gallery
+      if (!pendingRequest.saveToGallery) {
+        fs.unlinkSync(file.path);
+      }
+      return res.status(404).json({ error: 'TPA connection closed or request expired' });
     }
 
     // Return success response
     res.status(200).json({
       success: true,
       requestId,
-      photoUrl
+      photoUrl,
+      savedToGallery: pendingRequest.saveToGallery || false
     });
   } catch (error) {
     logger.error('Error handling photo upload:', error);

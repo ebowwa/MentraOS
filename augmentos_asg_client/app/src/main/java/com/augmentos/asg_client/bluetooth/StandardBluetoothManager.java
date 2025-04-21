@@ -42,8 +42,11 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
     
     // UUIDs for our service and characteristics - updated to match K900 BES2800 MCU UUIDs for compatibility
     private static final UUID SERVICE_UUID = UUID.fromString("00004860-0000-1000-8000-00805f9b34fb");
-    private static final UUID TX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
-    private static final UUID RX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
+    
+    // Swapped TX/RX UUIDs to match MentraLiveSGC's expectations
+    // In BLE, TX of one device connects to RX of the other
+    private static final UUID TX_CHAR_UUID = UUID.fromString("000071FF-0000-1000-8000-00805f9b34fb");
+    private static final UUID RX_CHAR_UUID = UUID.fromString("000070FF-0000-1000-8000-00805f9b34fb");
     
     // Device name for advertising
     private static final String DEVICE_NAME = "Xy_A";
@@ -224,9 +227,21 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                                                BluetoothGattCharacteristic characteristic, 
                                                boolean preparedWrite, boolean responseNeeded,
                                                int offset, byte[] value) {
-            Log.d(TAG, "Write request for characteristic: " + characteristic.getUuid());
+            long threadId = Thread.currentThread().getId();
+            Log.d(TAG, "Thread-" + threadId + ": 📝 WRITE REQUEST RECEIVED for characteristic: " + characteristic.getUuid());
             
-            if (RX_CHAR_UUID.equals(characteristic.getUuid())) {
+            // Enhanced debugging: Print all UUIDs for comparison
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 Our RX UUID: " + RX_CHAR_UUID);
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 Our TX UUID: " + TX_CHAR_UUID);
+            Log.d(TAG, "Thread-" + threadId + ": 🔍 Incoming char UUID: " + characteristic.getUuid());
+            
+            // Check which characteristic is being written to
+            boolean isRxChar = RX_CHAR_UUID.equals(characteristic.getUuid());
+            boolean isTxChar = TX_CHAR_UUID.equals(characteristic.getUuid());
+            Log.d(TAG, "Thread-" + threadId + ": 📝 Characteristic identified: RX=" + isRxChar + ", TX=" + isTxChar);
+            
+            // IMPORTANT: Accept writes to BOTH characteristics for maximum compatibility
+            if (isRxChar || isTxChar) {
                 if (value != null) {
                     // Notify our listeners of the received data
                     notifyDataReceived(value);
@@ -237,12 +252,17 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                     }
                 }
                 
+                // Always send success response if needed
                 if (responseNeeded && checkPermission()) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
+                    Log.d(TAG, "Thread-" + threadId + ": ✅ Sent success response");
                 }
             } else {
+                // Unknown characteristic
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Unknown characteristic UUID: " + characteristic.getUuid());
                 if (responseNeeded && checkPermission()) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, 0, null);
+                    Log.d(TAG, "Thread-" + threadId + ": ❌ Sent failure response");
                 }
             }
         }
@@ -664,41 +684,8 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             return false;
         }
         
-        // First check if it's already in protocol format
-        if (!com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isK900ProtocolFormat(data)) {
-            // Try to interpret as a JSON string that needs C-wrapping and protocol formatting
-            try {
-                // Convert to string for processing
-                String originalData = new String(data, "UTF-8");
-                
-                // If looks like JSON but not C-wrapped, use the full formatting function
-                if (originalData.startsWith("{") && 
-                    !com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isCWrappedJson(originalData)) {
-                    
-                    Log.e(TAG, "📦 JSON DATA BEFORE C-WRAPPING: " + originalData);
-                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.formatMessageForTransmission(originalData);
-                    
-                    // Log the first 100 chars of the hex representation
-                    StringBuilder hexDump = new StringBuilder();
-                    for (int i = 0; i < Math.min(data.length, 50); i++) {
-                        hexDump.append(String.format("%02X ", data[i]));
-                    }
-                    Log.e(TAG, "📦 AFTER C-WRAPPING & PROTOCOL FORMATTING (first 50 bytes): " + hexDump.toString());
-                    Log.e(TAG, "📦 Total formatted length: " + data.length + " bytes");
-                } else {
-                    // Otherwise just apply protocol formatting
-                    Log.e(TAG, "📦 Data already C-wrapped or not JSON: " + originalData);
-                    Log.d(TAG, "Formatting data with K900 protocol (adding ##...)");
-                    data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
-                        data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
-                }
-            } catch (Exception e) {
-                // If we can't interpret as string, just apply protocol formatting to raw bytes
-                Log.d(TAG, "Applying protocol format to raw bytes");
-                data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.packDataCommand(
-                    data, com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.CMD_TYPE_STRING);
-            }
-        }
+        // Format the data using the unified utility method
+        data = com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.prepareDataForTransmission(data);
         
         // We're no longer checking isNotifiedConnected since we notify immediately on connection
         // Instead, we'll just check the packet size against the current MTU value
@@ -774,14 +761,23 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
     private boolean sendDataPacket(byte[] data) {
         long threadId = Thread.currentThread().getId();
         
-        // Log detailed info about current state
-        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - data size: " + data.length + " bytes");
-        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - connectedDevice: " +
-        //      (connectedDevice != null ? connectedDevice.getAddress() : "null"));
-        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - txCharacteristic: " +
-        //      (txCharacteristic != null ? txCharacteristic.getUuid() : "null"));
-        //Log.d(TAG, "Thread-" + threadId + ": sendDataPacket - gattServer: " +
-        //      (gattServer != null ? "initialized" : "null"));
+        // Always log detailed info about current state for debugging
+        Log.d(TAG, "Thread-" + threadId + ": 📤 sendDataPacket - data size: " + data.length + " bytes");
+        Log.d(TAG, "Thread-" + threadId + ": 📤 sendDataPacket - connectedDevice: " +
+              (connectedDevice != null ? connectedDevice.getAddress() : "null"));
+        Log.d(TAG, "Thread-" + threadId + ": 📤 sendDataPacket - txCharacteristic: " +
+              (txCharacteristic != null ? txCharacteristic.getUuid() : "null"));
+        Log.d(TAG, "Thread-" + threadId + ": 📤 sendDataPacket - gattServer: " +
+              (gattServer != null ? "initialized" : "null"));
+        
+        // Log some sample data
+        if (data.length > 0) {
+            StringBuilder hexData = new StringBuilder();
+            for (int i = 0; i < Math.min(data.length, 16); i++) {
+                hexData.append(String.format("%02X ", data[i]));
+            }
+            Log.d(TAG, "Thread-" + threadId + ": 📤 First 16 bytes: " + hexData);
+        }
         
         // Double-check if we can actually send data
         if (connectedDevice == null) {
@@ -799,6 +795,12 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             return false;
         }
         
+        // Check TX characteristic properties
+        int properties = txCharacteristic.getProperties();
+        Log.d(TAG, "Thread-" + threadId + ": 📤 TX characteristic properties: " + properties);
+        boolean hasNotify = (properties & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0;
+        Log.d(TAG, "Thread-" + threadId + ": 📤 TX characteristic has NOTIFY property: " + hasNotify);
+        
         // Set the data in the TX characteristic
         txCharacteristic.setValue(data);
         
@@ -806,7 +808,7 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
         boolean success = false;
         if (checkPermission()) {
             try {
-                //Log.d(TAG, "Thread-" + threadId + ": Attempting to send data via BLE characteristic");
+                Log.d(TAG, "Thread-" + threadId + ": 📤 Attempting to send data via BLE characteristic");
                 
                 // Critical check right before sending
                 if (connectedDevice == null) {
@@ -817,13 +819,13 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 success = gattServer.notifyCharacteristicChanged(connectedDevice, txCharacteristic, false);
                 
                 if (success) {
-                    //Log.d(TAG, "Thread-" + threadId + ": ✅ Sent " + data.length + " bytes via BLE characteristic");
+                    Log.d(TAG, "Thread-" + threadId + ": ✅ Sent " + data.length + " bytes via BLE characteristic");
                     
-                    // Only show notification for larger data packets to avoid spam
-//                    if (data.length > 10) {
-//                        notificationManager.showDebugNotification("Bluetooth Data",
-//                            "Sent " + data.length + " bytes via BLE");
-//                    }
+                    // Show notification for larger data packets
+                    if (data.length > 10) {
+                        notificationManager.showDebugNotification("Bluetooth Data",
+                            "Sent " + data.length + " bytes via BLE");
+                    }
                 } else {
                     Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to send data via BLE characteristic");
                 }

@@ -612,9 +612,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.d(TAG, "Bluetooth device connected - ready for data exchange");
             
             // When Bluetooth connects, send the current WiFi status
+            // Adding a 3 second delay before sending WiFi status
             if (networkManager != null) {
-                boolean wifiConnected = networkManager.isConnectedToWifi();
-                sendWifiStatusOverBle(wifiConnected);
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    boolean wifiConnected = networkManager.isConnectedToWifi();
+                    sendWifiStatusOverBle(wifiConnected);
+                    Log.d(TAG, "Sent WiFi status after 3s delay: " + (wifiConnected ? "CONNECTED" : "DISCONNECTED"));
+                }, 3000); // 3 second delay
             }
             
             // For non-K900 devices, start the microphone to stream audio

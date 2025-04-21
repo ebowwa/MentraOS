@@ -10,8 +10,8 @@ import {
   ToastAndroid,
   ActivityIndicator,
   SafeAreaView,
-  Linking,
-  Share,
+  Image,
+  Modal,
   RefreshControl,
   StatusBar,
 } from 'react-native';
@@ -21,22 +21,45 @@ import { NavigationProps } from '../components/types';
 import RNFS from 'react-native-fs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { shareFile } from '../utils/FileUtils';
-import VideoThumbnail from '../components/VideoThumbnail';
+import VideoItem from '../components/VideoItem';
+import PhotoItem from '../components/PhotoItem';
+import BackendServerComms from '../backend_comms/BackendServerComms';
 
 interface GlassesRecordingsGalleryProps {
   isDarkTheme: boolean;
 }
 
+interface GalleryPhoto {
+  id: string;
+  photoUrl: string;
+  uploadDate: string;
+  appId: string;
+  userId: string;
+}
+
+type GalleryTab = 'device' | 'cloud';
+
 const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
   isDarkTheme,
 }) => {
+  // State variables
+  const [activeTab, setActiveTab] = useState<GalleryTab>('device');
   const [recordedVideos, setRecordedVideos] = useState<string[]>([]);
+  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  
   const navigation = useNavigation<NavigationProps>();
+  const backend = BackendServerComms.getInstance();
 
   useEffect(() => {
-    loadRecordings();
+    if (activeTab === 'device') {
+      loadRecordings();
+    } else {
+      loadGalleryPhotos();
+    }
     
     // Ensure status bar is visible
     StatusBar.setHidden(false);
@@ -46,15 +69,19 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
     return () => {
       // No cleanup needed for status bar, let the next screen handle it
     };
-  }, [isDarkTheme]);
+  }, [isDarkTheme, activeTab]);
   
   // Pull to refresh handler
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadRecordings().then(() => setRefreshing(false));
-  }, []);
+    if (activeTab === 'device') {
+      loadRecordings().then(() => setRefreshing(false));
+    } else {
+      loadGalleryPhotos().then(() => setRefreshing(false));
+    }
+  }, [activeTab]);
 
-  // Load recorded videos
+  // Load recorded videos from device
   const loadRecordings = async () => {
     try {
       setIsLoading(true);
@@ -88,6 +115,28 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
     } catch (error) {
       console.error('Error loading recordings:', error);
       Alert.alert('Error', 'Failed to load recordings');
+    } finally {
+      setIsLoading(false);
+    }
+    // Return a resolved promise for chaining with refresh
+    return Promise.resolve();
+  };
+  
+  // Load gallery photos from cloud
+  const loadGalleryPhotos = async () => {
+    try {
+      setIsLoading(true);
+      
+      const response = await backend.getGalleryPhotos();
+      if (response && response.success && response.photos) {
+        setGalleryPhotos(response.photos);
+      } else {
+        console.error('Error in gallery response:', response);
+        Alert.alert('Error', 'Failed to load gallery photos');
+      }
+    } catch (error) {
+      console.error('Error loading gallery photos:', error);
+      Alert.alert('Error', 'Failed to connect to gallery service');
     } finally {
       setIsLoading(false);
     }
@@ -207,31 +256,68 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
       });
     }
   };
+  
+  // View a photo in full screen modal
+  const viewPhoto = (photo: GalleryPhoto) => {
+    setSelectedPhoto(photo);
+    setPhotoModalVisible(true);
+  };
+  
+  // Delete a photo from the gallery
+  const deletePhoto = async (photoId: string) => {
+    try {
+      // Confirm before deleting
+      showAlert(
+        'Delete Photo',
+        'Are you sure you want to delete this photo?',
+        [
+          { 
+            text: 'Cancel', 
+            style: 'cancel' 
+          },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                await backend.deleteGalleryPhoto(photoId);
+                await loadGalleryPhotos();
+                if (Platform.OS === 'android') {
+                  ToastAndroid.show('Photo deleted', ToastAndroid.SHORT);
+                } else {
+                  showAlert('Success', 'Photo deleted successfully', undefined, {
+                    iconName: 'check-circle',
+                    iconColor: '#4CAF50'
+                  });
+                }
+              } catch (error) {
+                console.error('Error deleting photo:', error);
+                showAlert('Error', 'Failed to delete the photo', undefined, {
+                  iconName: 'error',
+                  iconColor: '#FF3B30'
+                });
+              }
+            } 
+          },
+        ],
+        {
+          iconName: 'delete',
+          iconColor: '#FF3B30'
+        }
+      );
+    } catch (error) {
+      console.error('Error deleting photo:', error);
+      showAlert('Delete Error', 'Failed to delete the photo', undefined, {
+        iconName: 'error',
+        iconColor: '#FF3B30'
+      });
+    }
+  };
 
-  return (
-    <SafeAreaView style={[
-      styles.container,
-      isDarkTheme ? styles.darkBackground : styles.lightBackground
-    ]}>
-      {/* Explicitly show status bar with appropriate styling */}
-      <StatusBar 
-        hidden={false}
-        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
-        backgroundColor={isDarkTheme ? '#121212' : '#f0f0f0'}
-        translucent={false}
-      />
-
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4c8bf5" />
-          <Text style={[
-            styles.loadingText,
-            isDarkTheme ? styles.lightText : styles.darkText
-          ]}>
-            Loading recordings...
-          </Text>
-        </View>
-      ) : recordedVideos.length === 0 ? (
+  // Render empty state content
+  const renderEmptyState = () => {
+    if (activeTab === 'device') {
+      return (
         <View style={styles.emptyContainer}>
           <Text style={[
             styles.emptyText,
@@ -254,100 +340,161 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
             </Text>
           </TouchableOpacity>
         </View>
+      );
+    } else {
+      return (
+        <View style={styles.emptyContainer}>
+          <Text style={[
+            styles.emptyText,
+            isDarkTheme ? styles.lightText : styles.darkText
+          ]}>
+            No gallery photos found
+          </Text>
+          <Text style={[
+            styles.emptySubtext,
+            isDarkTheme ? styles.lightText : styles.darkText
+          ]}>
+            Photos from apps will appear here when they use the save_to_gallery option
+          </Text>
+        </View>
+      );
+    }
+  };
+
+  // Main component render
+  return (
+    <SafeAreaView style={[
+      styles.container,
+      isDarkTheme ? styles.darkBackground : styles.lightBackground
+    ]}>
+      {/* Explicitly show status bar with appropriate styling */}
+      <StatusBar 
+        hidden={false}
+        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
+        backgroundColor={isDarkTheme ? '#121212' : '#f0f0f0'}
+        translucent={false}
+      />
+      
+      {/* Tab selector */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[
+            styles.tabButton, 
+            activeTab === 'device' && styles.activeTabButton,
+            isDarkTheme ? styles.tabButtonDark : styles.tabButtonLight
+          ]}
+          onPress={() => setActiveTab('device')}
+        >
+          <Text style={[
+            styles.tabText,
+            activeTab === 'device' && styles.activeTabText,
+            isDarkTheme ? styles.lightText : styles.darkText
+          ]}>Device</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[
+            styles.tabButton,
+            activeTab === 'cloud' && styles.activeTabButton,
+            isDarkTheme ? styles.tabButtonDark : styles.tabButtonLight
+          ]}
+          onPress={() => setActiveTab('cloud')}
+        >
+          <Text style={[
+            styles.tabText,
+            activeTab === 'cloud' && styles.activeTabText,
+            isDarkTheme ? styles.lightText : styles.darkText
+          ]}>Cloud</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Loading indicator */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4c8bf5" />
+          <Text style={[
+            styles.loadingText,
+            isDarkTheme ? styles.lightText : styles.darkText
+          ]}>
+            Loading {activeTab === 'device' ? 'recordings' : 'photos'}...
+          </Text>
+        </View>
       ) : (
-        <ScrollView 
-          style={styles.recordingsList}
-          refreshControl={
-            <RefreshControl 
-              refreshing={refreshing} 
-              onRefresh={onRefresh}
-              colors={['#4c8bf5']}
-              tintColor={isDarkTheme ? '#ffffff' : '#000000'}
-            />
-          }>
-          {recordedVideos.map((videoPath, index) => {
-            // Extract filename from path
-            const filename = videoPath.split('/').pop() || '';
-            // Convert timestamp in filename to readable date
-            let dateString = "Unknown date";
-            let timestamp = 0;
-            const match = filename.match(/glasses-recording-(\d+)\.mp4/);
-            if (match && match[1]) {
-              timestamp = parseInt(match[1]);
-              dateString = new Date(timestamp).toLocaleString();
-            }
-            
-            return (
-              <TouchableOpacity
+        // Content based on active tab and data availability
+        activeTab === 'device' && recordedVideos.length === 0 ||
+        activeTab === 'cloud' && galleryPhotos.length === 0 ? (
+          renderEmptyState()
+        ) : (
+          <ScrollView 
+            style={styles.contentList}
+            refreshControl={
+              <RefreshControl 
+                refreshing={refreshing} 
+                onRefresh={onRefresh}
+                colors={['#4c8bf5']}
+                tintColor={isDarkTheme ? '#ffffff' : '#000000'}
+              />
+            }>
+            {/* Device recordings tab content */}
+            {activeTab === 'device' && recordedVideos.map((videoPath, index) => (
+              <VideoItem
                 key={index}
-                style={[
-                  styles.videoItem,
-                  isDarkTheme ? styles.videoItemDark : styles.videoItemLight
-                ]}
-                onPress={() => playVideo(videoPath)}
-                activeOpacity={0.7}
-              >
-                <View style={styles.videoItemContent}>
-                  {/* Left: Video Thumbnail */}
-                  <View style={styles.thumbnailContainer}>
-                    <VideoThumbnail
-                      videoPath={videoPath}
-                      isDarkTheme={isDarkTheme}
-                    />
-                  </View>
-                  
-                  {/* Right: Info and Actions */}
-                  <View style={styles.videoInfoContainer}>
-                    {/* Date and Time */}
-                    <Text style={[
-                      styles.videoDate,
-                      isDarkTheme ? styles.lightText : styles.darkText
-                    ]}>
-                      {timestamp ? new Date(timestamp).toLocaleString(undefined, {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      }) : "Unknown date"}
-                    </Text>
-                    
-                    <Text style={[
-                      styles.videoTime,
-                      isDarkTheme ? styles.lightText : styles.darkText
-                    ]}>
-                      {timestamp ? new Date(timestamp).toLocaleTimeString(undefined, {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      }) : ""}
-                    </Text>
-                    
-                    {/* Action Buttons */}
-                    <View style={styles.videoActions}>
-                      <TouchableOpacity 
-                        style={[styles.videoActionButton, styles.shareButton]}
-                        onPress={(e) => {
-                          e.stopPropagation(); // Prevent triggering the card's onPress
-                          shareVideo(videoPath);
-                        }}
-                      >
-                        <Icon name="share" size={16} color="white" />
-                      </TouchableOpacity>
-                      <TouchableOpacity 
-                        style={[styles.videoActionButton, styles.deleteButton]}
-                        onPress={(e) => {
-                          e.stopPropagation(); // Prevent triggering the card's onPress
-                          deleteVideo(videoPath);
-                        }}
-                      >
-                        <Icon name="delete" size={16} color="white" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+                videoPath={videoPath}
+                isDarkTheme={isDarkTheme}
+                onPlayVideo={playVideo}
+                onShareVideo={shareVideo}
+                onDeleteVideo={deleteVideo}
+              />
+            ))}
+            
+            {/* Cloud photos tab content */}
+            {activeTab === 'cloud' && galleryPhotos.map((photo, index) => (
+              <PhotoItem
+                key={index}
+                photo={photo}
+                isDarkTheme={isDarkTheme}
+                onViewPhoto={viewPhoto}
+                onDeletePhoto={deletePhoto}
+              />
+            ))}
+          </ScrollView>
+        )
       )}
+      
+      {/* Photo viewer modal */}
+      <Modal
+        visible={photoModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setPhotoModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setPhotoModalVisible(false)}
+          >
+            <Icon name="close" size={24} color="white" />
+          </TouchableOpacity>
+          
+          {selectedPhoto && (
+            <View style={styles.modalImageContainer}>
+              <Image
+                source={{ uri: selectedPhoto.photoUrl }}
+                style={styles.fullscreenImage}
+                resizeMode="contain"
+              />
+              <View style={styles.photoDetails}>
+                <Text style={styles.photoDetailText}>
+                  {new Date(selectedPhoto.uploadDate).toLocaleString()}
+                </Text>
+                <Text style={styles.photoDetailText}>
+                  From app: {selectedPhoto.appId}
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -369,7 +516,38 @@ const styles = StyleSheet.create({
   lightText: {
     color: '#ffffff',
   },
-  // Header styles removed as we're using native header
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginVertical: 10,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabButtonDark: {
+    backgroundColor: '#333',
+  },
+  tabButtonLight: {
+    backgroundColor: '#e0e0e0',
+  },
+  activeTabButton: {
+    backgroundColor: '#4c8bf5',
+  },
+  tabText: {
+    fontSize: 16,
+    fontFamily: 'Montserrat-Medium',
+  },
+  activeTabText: {
+    color: 'white',
+    fontFamily: 'Montserrat-Bold',
+  },
+  // Loading state
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -380,6 +558,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Montserrat-Regular',
   },
+  // Empty state
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -411,11 +590,58 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Montserrat-Bold',
   },
-  recordingsList: {
+  // Content list
+  contentList: {
     flex: 1,
     padding: 15,
     paddingTop: 10, // Reduced top padding since we have the native header now
   },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  modalImageContainer: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullscreenImage: {
+    width: '90%',
+    height: '70%',
+    borderRadius: 8,
+  },
+  photoDetails: {
+    position: 'absolute',
+    bottom: 40,
+    left: 0,
+    right: 0,
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    alignItems: 'center',
+  },
+  photoDetailText: {
+    color: 'white',
+    fontSize: 14,
+    fontFamily: 'Montserrat-Medium',
+    marginBottom: 4,
+  },
+  // Old video item styles - kept for reference if needed
   videoItem: {
     marginBottom: 12,
     borderRadius: 12,
@@ -475,18 +701,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
-  // playButton removed as requested
   shareButton: {
     backgroundColor: '#2196F3', // Blue
   },
   deleteButton: {
     backgroundColor: '#FF5252', // Red
-  },
-  videoActionText: {
-    color: 'white',
-    fontSize: 14,
-    fontFamily: 'Montserrat-Bold',
-    fontWeight: 'bold',
   },
 });
 

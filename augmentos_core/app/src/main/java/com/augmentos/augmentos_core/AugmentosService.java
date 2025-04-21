@@ -1424,10 +1424,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 savePreferredG1DeviceId(this, deviceName);
             } 
             else if (modelName.equals("Mentra Live")) {
-                // Save Mentra Live device ID in its preferences
+                // Save Mentra Live device name in its preferences
                 SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
-                mentraPrefs.edit().putString("LastConnectedDeviceAddress", deviceName).apply();
-                Log.d("AugmentOsService", "Saved Mentra Live device address: " + deviceName);
+                mentraPrefs.edit().putString("LastConnectedDeviceName", deviceName).apply();
+                Log.d("AugmentOsService", "Saved Mentra Live device name: " + deviceName);
             }
         }
 
@@ -1453,10 +1453,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         SmartGlassesManager.savePreferredWearable(this, "");
         deleteEvenSharedPreferences(this);
         
-        // Clear MentraLive device address preference
+        // Clear MentraLive device name preference
         SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
-        mentraPrefs.edit().remove("LastConnectedDeviceAddress").apply();
-        Log.d("AugmentOsService", "Cleared MentraLive stored device address");
+        mentraPrefs.edit().remove("LastConnectedDeviceName").apply();
+        Log.d("AugmentOsService", "Cleared MentraLive stored device name");
         
         brightnessLevel = null;
         batteryLevel = null;

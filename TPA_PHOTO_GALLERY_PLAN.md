@@ -1,5 +1,21 @@
 # TPA Photo Gallery Implementation Plan
 
+## Implementation Status
+
+### Completed:
+- ✅ Created GalleryPhoto Mongoose model
+- ✅ Added saveToGallery flag to WebSocketService's pendingPhotoRequests
+- ✅ Added getPendingPhotoRequest method to WebSocketService to retrieve request details
+- ✅ Updated photo upload endpoint to save photos to gallery when flag is set
+- ✅ Created new API endpoints for retrieving and deleting gallery photos
+- ✅ Registered gallery routes in main application
+- ✅ Updated the SDK to expose the save_to_gallery flag
+- ✅ Updated the UI in the manager app to display the gallery photos
+
+### Next Steps:
+- Testing the complete implementation
+- Add CloudFlare R2 storage implementation in the future
+
 ## 1. Server-Side Gallery Storage
 
 ### 1.1 Database Schema (MongoDB/Mongoose)

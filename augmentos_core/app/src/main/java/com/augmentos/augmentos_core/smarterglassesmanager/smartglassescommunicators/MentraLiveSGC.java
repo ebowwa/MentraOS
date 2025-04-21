@@ -84,7 +84,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     
     // Device settings
     private static final String PREFS_NAME = "MentraLivePrefs";
-    private static final String PREF_DEVICE_ADDRESS = "LastConnectedDeviceAddress";
+    private static final String PREF_DEVICE_NAME = "LastConnectedDeviceName";
     
     // Auth settings
     private static final String AUTH_PREFS_NAME = "augmentos_auth_prefs";
@@ -251,21 +251,21 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             Log.d(TAG, "Found BLE device: " + deviceName + " (" + deviceAddress + ")");
             
-            // Check if this device matches the saved device address
+            // Check if this device matches the saved device name
             SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-            String savedDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+            String savedDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
             
             // Post the discovered device to the event bus ONLY 
             // Don't automatically connect - wait for explicit connect request from UI
             if (deviceName.equals("Xy_A") || deviceName.startsWith("XyBLE_")) {
                 String glassType = deviceName.equals("Xy_A") ? "Standard" : "K900";
-                Log.d(TAG, "Found compatible " + glassType + " glasses device: " + deviceAddress);
+                Log.d(TAG, "Found compatible " + glassType + " glasses device: " + deviceName);
                 EventBus.getDefault().post(new GlassesBluetoothSearchDiscoverEvent(
-                        smartGlassesDevice.deviceModelName, deviceAddress));
+                        smartGlassesDevice.deviceModelName, deviceName));
                 
-                // If this is the specific device we want to connect to, connect to it
-                if (savedDeviceAddress != null && savedDeviceAddress.equals(deviceAddress)) {
-                    Log.d(TAG, "Found our specific device, connecting: " + deviceAddress);
+                // If this is the specific device we want to connect to by name, connect to it
+                if (savedDeviceName != null && savedDeviceName.equals(deviceName)) {
+                    Log.d(TAG, "Found our remembered device by name, connecting: " + deviceName);
                     stopScan();
                     connectToDevice(result.getDevice());
                 }
@@ -334,32 +334,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     /**
-     * Try to reconnect to the last known device
+     * Try to reconnect to the last known device by starting a scan and looking for the saved name
      */
     private void reconnectToLastKnownDevice() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+        String lastDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
         
-        if (lastDeviceAddress != null && bluetoothAdapter != null) {
-            Log.d(TAG, "Attempting to reconnect to last known device: " + lastDeviceAddress);
-            try {
-                BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-                if (device != null) {
-                    Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
-                    connectToDevice(device);
-                } else {
-                    Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
-                    connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                    startScan(); // Fallback to scanning
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
-                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                startScan(); // Fallback to scanning
-            }
+        if (lastDeviceName != null && bluetoothAdapter != null) {
+            Log.d(TAG, "Attempting to reconnect to last known device by name: " + lastDeviceName);
+            
+            // We can't directly connect by name, we need to scan to find the device first
+            Log.d(TAG, "Starting scan to find device with name: " + lastDeviceName);
+            startScan();
+            
+            // The scan callback will automatically connect when it finds a device with this name
         } else {
             // No last device to connect to, start scanning
-            Log.d(TAG, "No last known device, starting scan");
+            Log.d(TAG, "No last known device name, starting scan");
             startScan();
         }
     }
@@ -387,29 +378,20 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             @Override
             public void run() {
                 if (!isConnected && !isConnecting && !isKilled) {
-                    // Try last known device first, but don't start scanning automatically
+                    // Check for last known device name to start scan
                     SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                    String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+                    String lastDeviceName = prefs.getString(PREF_DEVICE_NAME, null);
                     
-                    if (lastDeviceAddress != null && bluetoothAdapter != null) {
-                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - trying last known device: " + lastDeviceAddress);
-                        try {
-                            BluetoothDevice device = bluetoothAdapter.getRemoteDevice(lastDeviceAddress);
-                            if (device != null) {
-                                Log.d(TAG, "Found saved device, connecting directly: " + lastDeviceAddress);
-                                connectToDevice(device);
-                            } else {
-                                Log.e(TAG, "Could not create device from address: " + lastDeviceAddress);
-                                connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error connecting to saved device: " + e.getMessage());
-                            connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                        }
+                    if (lastDeviceName != null && bluetoothAdapter != null) {
+                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - looking for device with name: " + lastDeviceName);
+                        // Start scan to find this device
+                        startScan();
+                        // The scan will automatically connect if it finds a device with the saved name
                     } else {
-                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - no last device available");
-                        // Note: We don't start scanning here anymore to avoid unexpected behavior
+                        Log.d(TAG, "Reconnection attempt " + reconnectAttempts + " - no last device name available");
+                        // Note: We don't start scanning here without a name to avoid unexpected behavior
                         // Instead, let the user explicitly trigger a new scan when needed
+                        connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
                     }
                 }
             }
@@ -435,10 +417,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     isConnected = true;
                     connectedDevice = gatt.getDevice();
                     
-                    // Save the connected device address for future reconnections
-                    if (connectedDevice != null) {
+                    // Save the connected device name for future reconnections
+                    if (connectedDevice != null && connectedDevice.getName() != null) {
                         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                        prefs.edit().putString(PREF_DEVICE_ADDRESS, connectedDevice.getAddress()).apply();
+                        prefs.edit().putString(PREF_DEVICE_NAME, connectedDevice.getName()).apply();
+                        Log.d(TAG, "Saved device name for future reconnection: " + connectedDevice.getName());
                     }
                     
                     // Discover services
@@ -978,8 +961,25 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             // Extract the command type and length
             byte commandType = data[2];
-            // Fix: Read length as big-endian format to match actual protocol
-            int payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+            
+            // Dynamically choose endianness based on connected device name
+            int payloadLength;
+            if (connectedDevice != null && connectedDevice.getName() != null) {
+                String deviceName = connectedDevice.getName();
+                if (deviceName.startsWith("XyBLE_")) {
+                    // K900 device - use big-endian (most significant byte first)
+                    payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+                    Log.d(TAG, "Thread-" + threadId + ": 🔍 Using big-endian for K900 device: " + deviceName);
+                } else {
+                    // Standard device (Xy_A) - use little-endian (least significant byte first)
+                    payloadLength = ((data[4] & 0xFF) << 8) | (data[3] & 0xFF);
+                    Log.d(TAG, "Thread-" + threadId + ": 🔍 Using little-endian for Standard device: " + deviceName);
+                }
+            } else {
+                // Default to big-endian if we can't determine the device type
+                payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+                Log.d(TAG, "Thread-" + threadId + ": 🔍 Using big-endian (default) - no device name available");
+            }
             
             Log.d(TAG, "Thread-" + threadId + ": 🔍 Command type: 0x" + String.format("%02X", commandType) + 
                   ", Payload length: " + payloadLength);
@@ -1006,7 +1006,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                                 JSONObject json = new JSONObject(payloadStr);
                                 
                                 // Check if this is C-wrapped format {"C": "..."}
-                                if (json.has("C") && json.length() == 1) {
+                                if (json.has("C")){// && json.length() == 1) {
                                     String innerContent = json.optString("C", "");
                                     Log.d(TAG, "Thread-" + threadId + ": 🔍 Detected C-wrapped format, inner content: " + innerContent);
                                     
@@ -1396,7 +1396,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         // Get last known device address
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String lastDeviceAddress = prefs.getString(PREF_DEVICE_ADDRESS, null);
+        String lastDeviceAddress = prefs.getString(PREF_DEVICE_NAME, null);
         
         if (lastDeviceAddress != null) {
             // Connect to last known device if available
