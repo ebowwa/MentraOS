@@ -83,6 +83,7 @@ export {
   SettingsUpdate,
   DataStream,
   CloudToTpaMessage,
+  TranslationData,
   ToolCall
 } from './messages/cloud-to-tpa';
 

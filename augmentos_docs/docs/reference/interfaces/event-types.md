@@ -64,6 +64,9 @@ interface TranslationData extends BaseMessage {
   /** The translated text segment. */
   text: string;
   
+  /** The original transcribed text before translation. */
+  originalText?: string;
+  
   /** Indicates if this is the final translation result for this utterance. */
   isFinal: boolean;
   
@@ -84,6 +87,9 @@ interface TranslationData extends BaseMessage {
   
   /** Language code of the translated text (e.g., 'es-ES'). Optional. */
   translateLanguage?: string;
+  
+  /** Indicates whether the text was actually translated (true) or not (false). */
+  didTranslate?: boolean;
 }
 ```
 
