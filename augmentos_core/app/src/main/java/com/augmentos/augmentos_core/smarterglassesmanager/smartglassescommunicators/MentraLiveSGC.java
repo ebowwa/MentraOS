@@ -1107,13 +1107,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             Log.d(TAG, "Thread-" + threadId + ": 📤 Sending data: " + data.length + " bytes, first 16 bytes: " + hexData);
             
-            // CRITICAL FIX: We need to use rxCharacteristic (70FF), not txCharacteristic (71FF), for writing data
-            // In BLE communication with a peripheral:
-            // - Central's RX characteristic (70FF) is for receiving data (peripheral's TX)
-            // - Central's TX characteristic (71FF) is for sending data (peripheral's RX)
-            
-            // Need to use the peripheral's RX characteristic for sending data
-            BluetoothGattCharacteristic writeChar = rxCharacteristic;
+            // IMPORTANT: For writing data, we need to use the RX characteristic (70FF)
+            // This is because from the central device perspective:
+            // - RX (70FF) is for WRITING to the peripheral
+            // - TX (71FF) is for READING from the peripheral
+            BluetoothGattCharacteristic writeChar = rxCharacteristic; // Use RX for writing
             
             if (writeChar == null) {
                 Log.e(TAG, "Thread-" + threadId + ": ❌ RX characteristic is null - cannot write data");
@@ -1121,13 +1119,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             }
             
             Log.d(TAG, "Thread-" + threadId + ": 📤 Writing to characteristic UUID: " + writeChar.getUuid());
-            Log.d(TAG, "Thread-" + threadId + ": 📤 BluetoothGatt status: " + (bluetoothGatt != null ? "Valid" : "NULL"));
             
             // Check properties for debugging
             int properties = writeChar.getProperties();
-            Log.d(TAG, "Thread-" + threadId + ": 📤 Characteristic properties: " + properties);
-            
-            // CRITICAL FIX: Explicitly set the write type based on available properties
             boolean hasWriteNoResponse = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE) != 0;
             boolean hasWrite = (properties & BluetoothGattCharacteristic.PROPERTY_WRITE) != 0;
             
@@ -1136,46 +1130,103 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             if (!hasWrite && !hasWriteNoResponse) {
                 Log.e(TAG, "Thread-" + threadId + ": ❌ Selected characteristic doesn't support any write operations");
+                Log.e(TAG, "Thread-" + threadId + ": ❌ This would be a serious problem with the peripheral device configuration");
                 return;
             }
             
-            // Set the appropriate write type based on the available properties
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // For Android 13+ use the new method to set properties
-                if (hasWriteNoResponse) {
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_NO_RESPONSE for Android 13+");
-                    writeChar.setValue(data);
-                    // In Android 13+ writeCharacteristic returns an int status code instead of boolean
-                    int writeStatus = bluetoothGatt.writeCharacteristic(writeChar, data, 
-                        BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                    boolean success = (writeStatus == BluetoothGatt.GATT_SUCCESS);
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic (API 33+) returned status: " + 
-                          writeStatus + " (" + (success ? "SUCCESS" : "FAILED") + ")");
-                } else if (hasWrite) {
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_DEFAULT for Android 13+");
-                    writeChar.setValue(data);
-                    int writeStatus = bluetoothGatt.writeCharacteristic(writeChar, data, 
-                        BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
-                    boolean success = (writeStatus == BluetoothGatt.GATT_SUCCESS);
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic (API 33+) returned status: " + 
-                          writeStatus + " (" + (success ? "SUCCESS" : "FAILED") + ")");
-                }
-            } else {
-                // For older Android versions use the traditional method
-                writeChar.setValue(data);
-                
-                if (hasWriteNoResponse) {
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_NO_RESPONSE for pre-Android 13");
+            // Set the data payload
+            writeChar.setValue(data);
+            
+            // For StandardBluetoothManager, prefer WRITE_TYPE_DEFAULT if available
+            boolean isStandardBTManager = false;
+            if (connectedDevice != null && connectedDevice.getName() != null) {
+                isStandardBTManager = connectedDevice.getName().startsWith("Xy_A");
+            }
+            
+            if (isStandardBTManager && hasWrite) {
+                // Use DEFAULT for StandardBluetoothManager if possible
+                Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_DEFAULT for StandardBluetoothManager");
+                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            } else if (hasWriteNoResponse) {
+                // Otherwise prefer WRITE_NO_RESPONSE if available
+                Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_NO_RESPONSE");
+                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
+            } else if (hasWrite) {
+                // Fall back to WRITE_TYPE_DEFAULT as last option
+                Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_DEFAULT");
+                writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
+            }
+            
+            // Perform the write operation with a retry mechanism
+            boolean success = false;
+            
+            // First attempt
+            try {
+                success = bluetoothGatt.writeCharacteristic(writeChar);
+                Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic attempt 1 returned: " + (success ? "SUCCESS" : "FAILED"));
+            } catch (Exception e) {
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Error on first write attempt: " + e.getMessage());
+            }
+            
+            // If first attempt failed, try the other write type
+            if (!success) {
+                if (writeChar.getWriteType() == BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT && hasWriteNoResponse) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 DEFAULT write failed, trying NO_RESPONSE");
                     writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE);
-                } else if (hasWrite) {
-                    Log.d(TAG, "Thread-" + threadId + ": 📤 Using WRITE_TYPE_DEFAULT for pre-Android 13");
+                } else if (writeChar.getWriteType() == BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE && hasWrite) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 NO_RESPONSE write failed, trying DEFAULT");
                     writeChar.setWriteType(BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT);
                 }
                 
-                // Perform the write operation
-                boolean success = bluetoothGatt.writeCharacteristic(writeChar);
-                Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic returned: " + 
-                      (success ? "SUCCESS" : "FAILED"));
+                // Second attempt
+                try {
+                    success = bluetoothGatt.writeCharacteristic(writeChar);
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic attempt 2 returned: " + (success ? "SUCCESS" : "FAILED"));
+                } catch (Exception e) {
+                    Log.e(TAG, "Thread-" + threadId + ": ❌ Error on second write attempt: " + e.getMessage());
+                }
+                
+                // If second attempt also failed, try one more time after a small delay
+                if (!success) {
+                    Log.d(TAG, "Thread-" + threadId + ": 📤 Adding small delay and trying one more time");
+                    
+                    try {
+                        // Increased sleep time to help with timing issues
+                        // Use an exponential delay if we've had consecutive failures
+                        int delayMs = 150 + (consecutiveWriteFailures * 50);
+                        Log.d(TAG, "Thread-" + threadId + ": ⏱️ Using retry delay of " + delayMs + "ms");
+                        Thread.sleep(delayMs);
+                        
+                        // Third attempt
+                        success = bluetoothGatt.writeCharacteristic(writeChar);
+                        Log.d(TAG, "Thread-" + threadId + ": 📤 WriteCharacteristic attempt 3 returned: " + (success ? "SUCCESS" : "FAILED"));
+                    } catch (Exception e) {
+                        Log.e(TAG, "Thread-" + threadId + ": ❌ Error on third write attempt: " + e.getMessage());
+                    }
+                }
+            }
+            
+            // Log the final success/failure status and update consecutive failures counter
+            if (success) {
+                Log.d(TAG, "Thread-" + threadId + ": ✅ Successfully queued data for transmission");
+                // Reset consecutive failures on success
+                consecutiveWriteFailures = 0;
+            } else {
+                // Increment consecutive failures counter, for adaptive delay calculation
+                consecutiveWriteFailures++;
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Failed to queue data for transmission after multiple attempts (failures: " + consecutiveWriteFailures + ")");
+                
+                // If we've had many consecutive failures, add an extra cooling off period
+                // before attempting more transmissions
+                if (consecutiveWriteFailures > 3) {
+                    try {
+                        // Add a longer cooling off period after multiple failures
+                        Thread.sleep(consecutiveWriteFailures * 100);
+                        Log.d(TAG, "Thread-" + threadId + ": ⏱️ Added cooling off period of " + (consecutiveWriteFailures * 100) + "ms");
+                    } catch (InterruptedException e) {
+                        // Ignore
+                    }
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "Error sending data via BLE: " + e.getMessage(), e);
@@ -1185,13 +1236,26 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     /**
      * Queue data to be sent
      */
+    // Track consecutive write failures to implement adaptive delay
+    private int consecutiveWriteFailures = 0;
+    private static final int BASE_QUEUE_DELAY_MS = 200; // Increased from 50ms to 200ms
+    private static final int MAX_QUEUE_DELAY_MS = 500; // Maximum delay of 500ms
+    
     private void queueData(byte[] data) {
         if (data != null) {
             sendQueue.add(data);
             
-            // Trigger queue processing if not already running
+            // Calculate delay based on failure history - add 50ms per consecutive failure
+            int currentDelay = BASE_QUEUE_DELAY_MS + (consecutiveWriteFailures * 50);
+            // Cap at maximum delay
+            currentDelay = Math.min(currentDelay, MAX_QUEUE_DELAY_MS);
+            
+            // Add a delay before processing the queue to avoid transaction congestion
+            // This helps alleviate race conditions with multiple BLE operations
             handler.removeCallbacks(processSendQueueRunnable);
-            handler.post(processSendQueueRunnable);
+            handler.postDelayed(processSendQueueRunnable, currentDelay);
+            
+            Log.d(TAG, "Queued data with " + currentDelay + "ms delay (failures: " + consecutiveWriteFailures + ")");
         }
     }
     
