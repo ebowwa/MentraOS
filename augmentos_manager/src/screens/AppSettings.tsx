@@ -36,7 +36,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{ [key: string]: any }>({});
   // Get app info from status
-  const { status, updateAppStatus, startAppOperation, endAppOperation, isAppOperationPending } = useStatus();
+  const { status, updateAppStatus } = useStatus();
   const appInfo = useMemo(() => {
     return status.apps.find(app => app.packageName === packageName) || null;
   }, [status.apps, packageName]);
@@ -46,20 +46,6 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
     if (!appInfo) return;
     
     console.log(`${appInfo.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`);
-    
-    // Check if there's a pending operation for this app
-    if (isAppOperationPending(packageName)) {
-      console.log(`Cannot change app state for ${packageName}: operation already in progress`);
-      return;
-    }
-    
-    const operation = appInfo.is_running ? 'stop' : 'start';
-    
-    // Register the operation
-    if (!startAppOperation(packageName, operation)) {
-      console.log(`Cannot ${operation} app ${packageName}: operation rejected`);
-      return;
-    }
     
     try {
       if (appInfo.is_running) {
@@ -80,10 +66,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
       } else {
         updateAppStatus(packageName, false, false);
       }
-      console.error(`Error ${operation}ing app:`, error);
-    } finally {
-      // End the operation regardless of success or failure
-      endAppOperation(packageName);
+      console.error(`Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`, error);
     }
   };
 
