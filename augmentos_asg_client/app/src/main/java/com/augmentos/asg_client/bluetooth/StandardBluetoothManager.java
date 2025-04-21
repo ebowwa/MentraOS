@@ -30,6 +30,7 @@ import android.util.Log;
 import androidx.core.app.ActivityCompat;
 
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /**
@@ -210,6 +211,26 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             int effectivePayloadSize = Math.max(0, mtu - 3);
             Log.d(TAG, "🔵 MTU negotiation complete - effective payload size: " + effectivePayloadSize + " bytes");
             
+            // Explicitly notify the central device that MTU negotiation is complete
+            // by sending a small test message
+            if (txCharacteristic != null && connectedDevice != null && gattServer != null) {
+                try {
+                    // Create a JSON message to inform the central about the MTU
+                    String mtuInfoMsg = "{\"type\":\"mtu_info\",\"mtu\":" + mtu + 
+                                       ",\"effective_payload\":" + effectivePayloadSize + "}";
+                    
+                    byte[] data = mtuInfoMsg.getBytes();
+                    txCharacteristic.setValue(data);
+                    
+                    if (checkPermission()) {
+                        boolean success = gattServer.notifyCharacteristicChanged(connectedDevice, txCharacteristic, false);
+                        Log.d(TAG, "Sent MTU confirmation message: " + success);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to send MTU confirmation: " + e.getMessage());
+                }
+            }
+            
             // Mark MTU negotiation as complete
             isMtuNegotiated = true;
             
@@ -298,9 +319,10 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             Log.d(TAG, "Thread-" + threadId + ": 🔍 Our TX UUID: " + TX_CHAR_UUID);
             Log.d(TAG, "Thread-" + threadId + ": 🔍 Incoming char UUID: " + characteristic.getUuid());
             
-            // Check if this is our RX characteristic
+            // Check which characteristic is being written to
             boolean isRxChar = RX_CHAR_UUID.equals(characteristic.getUuid());
-            Log.d(TAG, "Thread-" + threadId + ": 📝 Is this our RX characteristic? " + (isRxChar ? "YES" : "NO"));
+            boolean isTxChar = TX_CHAR_UUID.equals(characteristic.getUuid());
+            Log.d(TAG, "Thread-" + threadId + ": 📝 Characteristic identified: RX=" + isRxChar + ", TX=" + isTxChar);
             
             // Log basic info about the request
             Log.d(TAG, "Thread-" + threadId + ": 📝 Request details - Device: " + device.getAddress() + 
@@ -316,12 +338,24 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                         hexDump.append(String.format("%02X ", value[i]));
                     }
                     Log.d(TAG, "Thread-" + threadId + ": 📝 First 20 bytes: " + hexDump);
+                    
+                    // Try to parse as JSON if it starts with {
+                    if (value[0] == '{') {
+                        try {
+                            String strValue = new String(value, StandardCharsets.UTF_8);
+                            Log.d(TAG, "Thread-" + threadId + ": 📝 Received JSON: " + strValue);
+                            // Could parse and process specific message types here if needed
+                        } catch (Exception e) {
+                            Log.e(TAG, "Thread-" + threadId + ": Error parsing JSON: " + e.getMessage());
+                        }
+                    }
                 }
             } else {
                 Log.d(TAG, "Thread-" + threadId + ": 📝 Value is NULL");
             }
             
-            if (RX_CHAR_UUID.equals(characteristic.getUuid())) {
+            // IMPORTANT: Accept writes to BOTH characteristics for maximum compatibility
+            if (isRxChar || isTxChar) {
                 if (value != null) {
                     // Notify our listeners of the received data
                     notifyDataReceived(value);
@@ -332,12 +366,17 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                     }
                 }
                 
+                // Always send success response if needed
                 if (responseNeeded && checkPermission()) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null);
+                    Log.d(TAG, "Thread-" + threadId + ": ✅ Sent success response");
                 }
             } else {
+                // Unknown characteristic
+                Log.e(TAG, "Thread-" + threadId + ": ❌ Unknown characteristic UUID: " + characteristic.getUuid());
                 if (responseNeeded && checkPermission()) {
                     gattServer.sendResponse(device, requestId, BluetoothGatt.GATT_FAILURE, 0, null);
+                    Log.d(TAG, "Thread-" + threadId + ": ❌ Sent failure response");
                 }
             }
         }
@@ -617,17 +656,31 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 // TX characteristic - for sending data to central (UUID 71FF - matching MentraLiveSGC's RX)
                 // NOTIFY property needed for TX to send notifications to central
                 // Also add READ property for compatibility with some central implementations
+                // CRITICAL FIX: Add WRITE permissions to TX characteristic so central can also write to it
                 txCharacteristic = new BluetoothGattCharacteristic(
                     TX_CHAR_UUID,
-                    BluetoothGattCharacteristic.PROPERTY_READ | BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                    BluetoothGattCharacteristic.PERMISSION_READ);
+                    BluetoothGattCharacteristic.PROPERTY_READ | 
+                    BluetoothGattCharacteristic.PROPERTY_NOTIFY | 
+                    BluetoothGattCharacteristic.PROPERTY_WRITE | 
+                    BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+                    BluetoothGattCharacteristic.PERMISSION_READ | 
+                    BluetoothGattCharacteristic.PERMISSION_WRITE);
                 
                 // Add descriptor to TX characteristic to enable notifications
                 BluetoothGattDescriptor txDescriptor = new BluetoothGattDescriptor(
                     UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"),  // Standard CCCD UUID
                     BluetoothGattDescriptor.PERMISSION_READ | BluetoothGattDescriptor.PERMISSION_WRITE);
+                // Explicitly set the initial value of the descriptor
+                txDescriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE); // Start disabled
                 txCharacteristic.addDescriptor(txDescriptor);
-                Log.d(TAG, "Added CCCD descriptor to TX characteristic with READ/WRITE permissions");
+                
+                // Also add a descriptor to RX for better compatibility
+                BluetoothGattDescriptor rxDescriptor = new BluetoothGattDescriptor(
+                    UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"),  // Standard CCCD UUID
+                    BluetoothGattDescriptor.PERMISSION_READ | BluetoothGattDescriptor.PERMISSION_WRITE);
+                rxDescriptor.setValue(BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE);
+                // Add the RX descriptor to the characteristic we'll create next
+                Log.d(TAG, "Added CCCD descriptors to both characteristics with READ/WRITE permissions");
                 
                 // RX characteristic - for receiving data from central (UUID 70FF - matching MentraLiveSGC's TX)
                 // CRITICAL FIX: Ensure RX characteristic has ALL necessary properties and permissions for write operations
@@ -644,6 +697,9 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
                 Log.d(TAG, "🔍 CREATED RX CHARACTERISTIC: UUID=" + RX_CHAR_UUID + 
                        ", Properties=" + rxCharacteristic.getProperties() + 
                        ", Permissions=" + rxCharacteristic.getPermissions());
+                
+                // Add the RX descriptor to RX characteristic
+                rxCharacteristic.addDescriptor(rxDescriptor);
                 
                 // Add characteristics to service
                 service.addCharacteristic(txCharacteristic);
@@ -1399,37 +1455,6 @@ public class StandardBluetoothManager extends BaseBluetoothManager {
             
             // Notify listeners that connection is ready
             notifyConnectionStateChanged(true);
-            
-            // TEST: Send a test packet after a slight delay to ensure everything is ready
-            handler.postDelayed(() -> {
-                try {
-                    Log.d(TAG, "🧪 SENDING TEST PACKET TO VERIFY COMMUNICATION CHANNEL");
-                    
-                    // Format a simple test message
-                    String testMessage = "{\"type\":\"test_message\",\"message\":\"Hello from peripheral!\"}";
-                    byte[] testData = testMessage.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                    
-                    // Send using our sendData method
-                    boolean success = sendData(testData);
-                    Log.d(TAG, "🧪 TEST PACKET SEND RESULT: " + (success ? "SUCCESS" : "FAILED"));
-                    
-                    // Schedule another test packet after 2 more seconds
-                    handler.postDelayed(() -> {
-                        try {
-                            Log.d(TAG, "🧪 SENDING FOLLOW-UP TEST PACKET");
-                            String followUpMessage = "{\"type\":\"follow_up\",\"message\":\"Second test message\"}";
-                            byte[] followUpData = followUpMessage.getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                            boolean followUpSuccess = sendData(followUpData);
-                            Log.d(TAG, "🧪 FOLLOW-UP TEST PACKET SEND RESULT: " + (followUpSuccess ? "SUCCESS" : "FAILED"));
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error sending follow-up test packet", e);
-                        }
-                    }, 2000);
-                    
-                } catch (Exception e) {
-                    Log.e(TAG, "Error sending test packet", e);
-                }
-            }, 1000);
         }
     }
     
