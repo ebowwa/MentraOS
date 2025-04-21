@@ -41,6 +41,8 @@ The dashboard supports three primary modes:
    - Shows minimal system information (time, battery)
    - Can display a single piece of TPA content
    - Designed to remain visible while using other TPAs
+   - Uses a separate ViewType (ALWAYS_ON) for client display
+   - Operates independently from main/expanded modes
 
 ## Dashboard Regions
 
@@ -105,7 +107,7 @@ Regular TPAs have a more limited API focused on contributing content:
 interface DashboardContentAPI {
   write(content: string, targets?: DashboardMode[]): void;
   writeToMain(content: string): void;
-  writeToExpanded(content: string | Layout): void;
+  writeToExpanded(content: string): void; // Only accepts text content for expanded mode
   writeToAlwaysOn(content: string): void;
   getCurrentMode(): Promise<DashboardMode | 'none'>;
   isAlwaysOnEnabled(): Promise<boolean>;
@@ -165,13 +167,17 @@ The overall dashboard content flow follows these steps:
    - Receives system section updates from Dashboard-Manager TPA
    - Receives content from various TPAs
    - Maintains queues of content for each dashboard mode
+   - Maintains separate, independent queue for always-on content
    - Formats combined layouts based on current mode
-   - Sends complete dashboard layout via DisplayManager to the glasses
+   - Processes always-on dashboard independently from main/expanded
+   - Sends dashboard layouts via DisplayManager to the glasses
+   - Uses different ViewType for always-on vs regular dashboard
    
 4. **DisplayManager**:
    - Handles the technical aspects of sending display requests
    - No longer contains any dashboard-specific logic
    - Acts as a thin wrapper for communication with the glasses
+   - Differentiates between dashboard types using the ViewType
 
 ## SDK Usage Guidelines
 

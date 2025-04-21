@@ -118,7 +118,7 @@ class DashboardContentManager implements DashboardContentAPI {
     this.write(content, [DashboardMode.MAIN]);
   }
 
-  writeToExpanded(content: string | Layout): void {
+  writeToExpanded(content: string): void {
     const message: DashboardContentUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
       packageName: this.packageName,

@@ -323,7 +323,7 @@ class DashboardServer extends TpaServer {
       logger.info(`✅ Bottom-left section updated for session ${sessionId}`);
 
       // Don't send bottom right since we're not using it in the original format
-      // session.dashboard.system?.setBottomRight("");
+      session.dashboard.system?.setBottomRight("");
       
       logger.info(`✅ All dashboard sections updated successfully for session ${sessionId}`);
     } catch (error) {

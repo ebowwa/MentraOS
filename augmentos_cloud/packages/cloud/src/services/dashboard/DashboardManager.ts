@@ -118,7 +118,13 @@ export class DashboardManager {
 
     // Create new interval for periodic updates
     this.updateInterval = setInterval(() => {
+      // Update regular dashboard (main/expanded)
       this.updateDashboard();
+      
+      // Always update the always-on dashboard if it's enabled
+      if (this.alwaysOnEnabled) {
+        this.updateAlwaysOnDashboard();
+      }
     }, this.updateIntervalMs);
   }
 
@@ -174,6 +180,9 @@ export class DashboardManager {
       timestamp: new Date(timestamp).toISOString()
     });
 
+    // Track if we need to update the always-on dashboard
+    let alwaysOnUpdated = false;
+
     // Add content to each requested mode's queue
     modes.forEach(mode => {
       switch (mode) {
@@ -185,12 +194,20 @@ export class DashboardManager {
           break;
         case DashboardMode.ALWAYS_ON:
           this.alwaysOnContent.set(packageName, { packageName, content, timestamp });
+          alwaysOnUpdated = true;
           break;
       }
     });
 
-    // Update the dashboard immediately
-    this.updateDashboard();
+    // Update regular dashboard if content for current mode was updated
+    if (modes.includes(this.currentMode as DashboardMode)) {
+      this.updateDashboard();
+    }
+    
+    // Update always-on dashboard separately if its content was updated and it's enabled
+    if (alwaysOnUpdated && this.alwaysOnEnabled) {
+      this.updateAlwaysOnDashboard();
+    }
   }
 
   /**
@@ -235,15 +252,13 @@ export class DashboardManager {
   }
 
   /**
-   * Update dashboard display based on current mode and content
+   * Update regular dashboard display based on current mode and content
    */
   private updateDashboard(): void {
     this.userSession.logger.info(`🔄 Dashboard update triggered for session ${this.userSession.sessionId}`, {
       currentMode: this.currentMode,
-      alwaysOnEnabled: this.alwaysOnEnabled,
       mainContentCount: this.mainContent.size,
-      expandedContentCount: this.expandedContent.size,
-      alwaysOnContentCount: this.alwaysOnContent.size
+      expandedContentCount: this.expandedContent.size
     });
     
     // Skip if mode is none
@@ -265,13 +280,12 @@ export class DashboardManager {
           this.userSession.logger.info(`📊 Generating EXPANDED dashboard layout`);
           layout = this.generateExpandedLayout();
           break;
-        case DashboardMode.ALWAYS_ON:
-          this.userSession.logger.info(`📊 Generating ALWAYS_ON dashboard layout`);
-          layout = this.generateAlwaysOnLayout();
-          break;
+        default:
+          this.userSession.logger.info(`⏭️ Unknown dashboard mode: ${this.currentMode}`);
+          return;
       }
 
-      // Create a display request
+      // Create a display request for regular dashboard
       const displayRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
         packageName: systemApps.dashboard.packageName,
@@ -294,6 +308,53 @@ export class DashboardManager {
         systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
         mainContentCount: this.mainContent.size,
         expandedContentCount: this.expandedContent.size
+      });
+    }
+  }
+  
+  /**
+   * Update the always-on dashboard overlay
+   * This runs independently of the regular dashboard views
+   */
+  private updateAlwaysOnDashboard(): void {
+    this.userSession.logger.info(`🔄 Always-on dashboard update triggered for session ${this.userSession.sessionId}`, {
+      alwaysOnEnabled: this.alwaysOnEnabled,
+      alwaysOnContentCount: this.alwaysOnContent.size
+    });
+    
+    // Skip if always-on is disabled
+    if (!this.alwaysOnEnabled) {
+      this.userSession.logger.info(`⏭️ Always-on dashboard update skipped - disabled`);
+      return;
+    }
+
+    try {
+      // Generate always-on layout
+      this.userSession.logger.info(`📊 Generating ALWAYS_ON dashboard layout`);
+      const layout = this.generateAlwaysOnLayout();
+
+      // Create a display request specifically for always-on with the new view type
+      const displayRequest: DisplayRequest = {
+        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        packageName: systemApps.dashboard.packageName,
+        view: ViewType.ALWAYS_ON,  // Use the new view type
+        layout,
+        timestamp: new Date(),
+        // We don't set a durationMs to keep it displayed indefinitely
+      };
+
+      // Send the display request using the session's DisplayManager
+      this.sendDisplayRequest(displayRequest);
+      this.userSession.logger.info(`✅ Always-on dashboard updated successfully`);
+    } catch (error) {
+      this.userSession.logger.error('❌ Error updating always-on dashboard', error);
+      
+      // Log more details about the always-on state to help with debugging
+      this.userSession.logger.error('Always-on dashboard state during error:', {
+        alwaysOnEnabled: this.alwaysOnEnabled,
+        systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
+        systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
+        alwaysOnContentCount: this.alwaysOnContent.size
       });
     }
   }
@@ -408,20 +469,8 @@ export class DashboardManager {
       .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
       .slice(0, 1)[0];
 
-    let tpaContent = '';
-
-    // Extract text content from whatever format it's in
-    if (content) {
-      if (typeof content.content === 'string') {
-        tpaContent = content.content;
-      } else if (content.content.layoutType === LayoutType.TEXT_WALL) {
-        tpaContent = content.content.text;
-      } else if (content.content.layoutType === LayoutType.DOUBLE_TEXT_WALL) {
-        tpaContent = `${content.content.topText}\n${content.content.bottomText}`.trim();
-      } else if (content.content.layoutType === LayoutType.DASHBOARD_CARD) {
-        tpaContent = `${content.content.leftText}\n${content.content.rightText}`.trim();
-      }
-    }
+    // Get text content (will always be a string now)
+    const tpaContent = content ? content.content as string : '';
 
     // Combine system info and TPA content with a line break
     const fullText = tpaContent
@@ -440,7 +489,8 @@ export class DashboardManager {
    * @returns Layout for always-on dashboard
    */
   private generateAlwaysOnLayout(): Layout {
-    // For always-on mode, we use a dashboard card layout
+    // For always-on mode, we use a LayoutType.REFERENCE_CARD
+    // I think just the title is used for the persistent display.
     // This is more compact and suited for persistent display
 
     // Left side shows essential system info (time)
@@ -448,14 +498,11 @@ export class DashboardManager {
 
     // Right side combines battery status and a single TPA content item
     const tpaContent = this.getCombinedTpaContent(this.alwaysOnContent, 1);
-    const rightText = tpaContent
-      ? `${this.systemContent.topRight}\n${tpaContent}`
-      : this.systemContent.topRight;
 
     return {
-      layoutType: LayoutType.DASHBOARD_CARD,
-      leftText,
-      rightText
+      layoutType: LayoutType.REFERENCE_CARD,
+      title: `${leftText} | ${tpaContent}`,
+      text: `2 ${leftText} | ${tpaContent}`
     };
   }
 
@@ -476,11 +523,17 @@ export class DashboardManager {
       return '';
     }
 
-    // For the main dashboard and other cases where we only need one item
+    // For expanded dashboard, content is now guaranteed to be a string
+    // For main or always-on, we'll still handle the legacy logic
     if (limit === 1 && sortedContent.length === 1) {
       const item = sortedContent[0];
 
-      // Extract text content from whatever format it's in
+      // For expanded content, it will always be a string
+      if (this.currentMode === DashboardMode.EXPANDED) {
+        return item.content as string;
+      }
+      
+      // For other modes, continue supporting existing format
       if (typeof item.content === 'string') {
         return item.content;
       } else {
@@ -505,6 +558,14 @@ export class DashboardManager {
     }
 
     // For multiple items, join them with separators
+    // For expanded dashboard, all content will be strings
+    if (this.currentMode === DashboardMode.EXPANDED) {
+      return sortedContent
+        .map(item => item.content as string)
+        .join('\n\n');
+    }
+    
+    // For other modes, continue supporting existing format
     return sortedContent
       .map(item => {
         if (typeof item.content === 'string') {
@@ -537,13 +598,23 @@ export class DashboardManager {
    * @param packageName TPA package name
    */
   public cleanupAppContent(packageName: string): void {
+    // Check if this TPA had always-on content
+    const hadAlwaysOnContent = this.alwaysOnContent.has(packageName);
+    
     // Remove from all content queues
     this.mainContent.delete(packageName);
     this.expandedContent.delete(packageName);
     this.alwaysOnContent.delete(packageName);
 
-    // Update the dashboard for all users
+    // Update the regular dashboard
     this.updateDashboard();
+    
+    // Update the always-on dashboard separately if needed
+    if (hadAlwaysOnContent && this.alwaysOnEnabled) {
+      this.updateAlwaysOnDashboard();
+    }
+    
+    this.userSession.logger.info(`Cleaned up dashboard content for TPA: ${packageName}`);
   }
 
   /**
@@ -575,6 +646,8 @@ export class DashboardManager {
   public setAlwaysOnEnabled(enabled: boolean): void {
     // Update state
     this.alwaysOnEnabled = enabled;
+    
+    this.userSession.logger.info(`Always-on dashboard ${enabled ? 'enabled' : 'disabled'} for session ${this.userSession.sessionId}`);
 
     // Notify TPAs of state change
     const alwaysOnMessage = {
@@ -586,8 +659,33 @@ export class DashboardManager {
     // Broadcast always-on state change to all connected TPAs
     this.broadcastToAllTpas(alwaysOnMessage);
 
-    // Update the dashboard
+    // Update the regular dashboard
     this.updateDashboard();
+    
+    // If enabled, update the always-on dashboard immediately
+    if (enabled) {
+      this.updateAlwaysOnDashboard();
+    } else {
+      // If disabled, send a clear command for the always-on view
+      // This ensures the always-on dashboard is removed from display
+      this.userSession.logger.info(`Clearing always-on dashboard for session ${this.userSession.sessionId}`);
+      
+      // Send an empty layout to clear the always-on view
+      const clearRequest: DisplayRequest = {
+        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        packageName: systemApps.dashboard.packageName,
+        view: ViewType.ALWAYS_ON,
+        layout: {
+          layoutType: LayoutType.DASHBOARD_CARD,
+          leftText: '',
+          rightText: ''
+        },
+        timestamp: new Date(),
+        durationMs: 0  // Clear immediately
+      };
+      
+      this.sendDisplayRequest(clearRequest);
+    }
   }
 
   /**

@@ -69,9 +69,9 @@ export interface DashboardContentAPI {
   
   /**
    * Write content to expanded dashboard mode
-   * @param content Content to display (can be string or layout)
+   * @param content Text content to display
    */
-  writeToExpanded(content: string | Layout): void;
+  writeToExpanded(content: string): void;
   
   /**
    * Write content to always-on dashboard mode
@@ -128,7 +128,7 @@ export interface DashboardContentUpdate {
   type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
   packageName: string;
   sessionId: string;
-  content: string | Layout;
+  content: string;
   modes: DashboardMode[];
   timestamp: Date;
 }
