@@ -67,13 +67,22 @@
         android:exported="true" />
 
     <receiver
-        android:name=".BootReceiver"
+        android:name=".AsgClientBootReceiver"
         android:enabled="true"
         android:exported="true">
       <intent-filter>
         <action android:name="android.intent.action.BOOT_COMPLETED" />
+        <action android:name="android.intent.action.QUICKBOOT_POWERON" />
       </intent-filter>
     </receiver>
+    
+    <!-- Transparent bootstrap activity that starts the service -->
+    <activity
+        android:name=".BootstrapActivity"
+        android:theme="@android:style/Theme.Translucent.NoTitleBar"
+        android:excludeFromRecents="true"
+        android:taskAffinity=""
+        android:exported="false" />
     <service
         android:name=".AsgClientService"
         android:enabled="true"

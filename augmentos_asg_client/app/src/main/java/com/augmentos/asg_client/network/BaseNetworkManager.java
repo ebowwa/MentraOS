@@ -192,6 +192,54 @@ public abstract class BaseNetworkManager implements INetworkManager {
     }
     
     /**
+     * Get a list of configured WiFi networks
+     * @return a list of configured WiFi network names (SSIDs)
+     */
+    @Override
+    public List<String> getConfiguredWifiNetworks() {
+        try {
+            // Check if we have WiFi Manager available
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager == null) {
+                Log.e(TAG, "WiFi manager is null");
+                return new ArrayList<>();
+            }
+            
+            // Since we can't access the configured networks without proper permissions,
+            // we just return an empty list in the base implementation
+            Log.d(TAG, "Base getConfiguredWifiNetworks implementation returning empty list");
+            return new ArrayList<>();
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting configured WiFi networks", e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * Scan for available WiFi networks
+     * @return a list of nearby WiFi network names (SSIDs)
+     */
+    @Override
+    public List<String> scanWifiNetworks() {
+        try {
+            // Check if we have WiFi Manager available
+            WifiManager wifiManager = (WifiManager) context.getSystemService(Context.WIFI_SERVICE);
+            if (wifiManager == null) {
+                Log.e(TAG, "WiFi manager is null");
+                return new ArrayList<>();
+            }
+            
+            // Base implementation returns empty list - specialized implementations
+            // will override this with actual scanning functionality
+            Log.d(TAG, "Base scanWifiNetworks implementation returning empty list");
+            return new ArrayList<>();
+        } catch (Exception e) {
+            Log.e(TAG, "Error scanning for WiFi networks", e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
      * Clean up resources
      */
     @Override

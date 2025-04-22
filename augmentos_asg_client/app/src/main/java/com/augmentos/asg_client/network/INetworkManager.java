@@ -1,5 +1,7 @@
 package com.augmentos.asg_client.network;
 
+import java.util.List;
+
 /**
  * Interface for network management operations across different device types.
  * This interface abstracts WiFi and hotspot operations to support different
@@ -63,6 +65,18 @@ public interface INetworkManager {
      * @param listener The listener to remove
      */
     void removeWifiListener(NetworkStateListener listener);
+    
+    /**
+     * Get a list of configured WiFi networks
+     * @return List of WiFi network names (SSIDs)
+     */
+    List<String> getConfiguredWifiNetworks();
+    
+    /**
+     * Scan for available WiFi networks
+     * @return List of nearby WiFi network names (SSIDs)
+     */
+    List<String> scanWifiNetworks();
     
     /**
      * Cleanup resources when the manager is no longer needed

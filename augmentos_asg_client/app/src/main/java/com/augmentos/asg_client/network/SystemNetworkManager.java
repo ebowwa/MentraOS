@@ -790,6 +790,70 @@ public class SystemNetworkManager extends BaseNetworkManager {
         }
     }
     
+    /**
+     * Get a list of configured WiFi networks
+     * @return a list of WiFi network names (SSIDs)
+     */
+    @SuppressLint("MissingPermission")
+    @Override
+    public List<String> getConfiguredWifiNetworks() {
+        List<String> networks = new ArrayList<>();
+        
+        try {
+            // Check if we have WiFi Manager available
+            if (wifiManager == null) {
+                Log.e(TAG, "WiFi manager is null");
+                return networks;
+            }
+            
+            // Try to get the list of configured networks
+            // This requires location permission on newer Android versions
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) { // Android 9 and below
+                // Legacy approach - get configured networks directly
+                List<WifiConfiguration> configs = wifiManager.getConfiguredNetworks();
+                if (configs != null) {
+                    for (WifiConfiguration config : configs) {
+                        String ssid = config.SSID;
+                        // Clean up the SSID (remove quotes)
+                        if (ssid != null && ssid.startsWith("\"") && ssid.endsWith("\"")) {
+                            ssid = ssid.substring(1, ssid.length() - 1);
+                        }
+                        
+                        if (ssid != null && !ssid.isEmpty() && !ssid.equals("<unknown ssid>")) {
+                            networks.add(ssid);
+                            Log.d(TAG, "Found configured network: " + ssid);
+                        }
+                    }
+                }
+            } else {
+                // For Android 10+ we need a different approach since we can't directly
+                // access configured networks
+                // Get the current network at minimum
+                String currentSsid = getCurrentWifiSsid();
+                if (!currentSsid.isEmpty()) {
+                    networks.add(currentSsid);
+                    Log.d(TAG, "Added current network to configured networks: " + currentSsid);
+                }
+                
+                // For a more complete list, we'd need to use the NetworkSpecifier/SuggestionInfo API
+                // but that's beyond the scope of this implementation
+                Log.d(TAG, "Limited access to configured networks on Android 10+");
+            }
+            
+            // Log the result
+            if (networks.isEmpty()) {
+                Log.d(TAG, "No configured networks found");
+            } else {
+                Log.d(TAG, "Found " + networks.size() + " configured networks");
+            }
+            
+            return networks;
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting configured WiFi networks", e);
+            return networks;
+        }
+    }
+    
     @Override
     public void shutdown() {
         super.shutdown();

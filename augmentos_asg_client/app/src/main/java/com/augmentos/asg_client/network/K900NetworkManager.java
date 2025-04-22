@@ -7,6 +7,9 @@ import android.content.IntentFilter;
 import android.net.wifi.WifiManager;
 import android.util.Log;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Implementation of INetworkManager for K900 devices.
  * Uses K900-specific broadcasts to control WiFi and hotspot functionality.
@@ -229,6 +232,97 @@ public class K900NetworkManager extends BaseNetworkManager {
             } catch (Exception e) {
                 Log.e(TAG, "Error unregistering WiFi receiver", e);
             }
+        }
+    }
+    
+    /**
+     * Get a list of configured WiFi networks
+     * @return a list of WiFi network names (SSIDs)
+     */
+    @Override
+    public List<String> getConfiguredWifiNetworks() {
+        List<String> networks = new ArrayList<>();
+        
+        try {
+            // If WiFi manager is not available, return empty list
+            if (wifiManager == null) {
+                Log.e(TAG, "WiFi manager not available");
+                return networks;
+            }
+            
+            Log.d(TAG, "K900 device: getting configured networks");
+            
+            final boolean[] receiverProcessed = {false};
+            
+            // Send a K900-specific broadcast to get configured networks
+            Intent intent = new Intent(K900_BROADCAST_ACTION);
+            intent.setPackage(K900_SYSTEM_UI_PACKAGE);
+            intent.putExtra("cmd", "get_wifi_list");
+            
+            // Register a receiver to get the response
+            BroadcastReceiver receiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (intent != null && intent.hasExtra("wifi_list")) {
+                        String[] wifiList = intent.getStringArrayExtra("wifi_list");
+                        if (wifiList != null) {
+                            for (String ssid : wifiList) {
+                                if (ssid != null && !ssid.isEmpty()) {
+                                    networks.add(ssid);
+                                    Log.d(TAG, "Found K900 configured network: " + ssid);
+                                }
+                            }
+                        }
+                    }
+                    receiverProcessed[0] = true;
+                }
+            };
+            
+            // Register the receiver temporarily
+            IntentFilter filter = new IntentFilter("com.xy.xsetting.wifi_list");
+            context.registerReceiver(receiver, filter);
+            
+            // Send the request
+            context.sendBroadcast(intent);
+            
+            // Wait for the response with timeout
+            long startTime = System.currentTimeMillis();
+            while (!receiverProcessed[0] && System.currentTimeMillis() - startTime < 1000) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            
+            // Unregister the receiver
+            try {
+                context.unregisterReceiver(receiver);
+            } catch (Exception e) {
+                Log.e(TAG, "Error unregistering receiver", e);
+            }
+            
+            // If we didn't get any networks from the K900 API, at least add the current network
+            if (networks.isEmpty()) {
+                String currentSsid = getCurrentWifiSsid();
+                if (!currentSsid.isEmpty()) {
+                    networks.add(currentSsid);
+                    Log.d(TAG, "Added current network to configured networks: " + currentSsid);
+                }
+            }
+            
+            // Log the result
+            if (networks.isEmpty()) {
+                Log.d(TAG, "No configured networks found on K900 device");
+            } else {
+                Log.d(TAG, "Found " + networks.size() + " networks on K900 device");
+            }
+            
+            return networks;
+        } catch (Exception e) {
+            Log.e(TAG, "Error getting configured WiFi networks", e);
+            return networks;
         }
     }
     

@@ -76,9 +76,13 @@ public class K900ProtocolUtils {
         // Command type
         result[2] = cmdType;
         
-        // Length (2 bytes, little-endian)
-        result[3] = (byte)(dataLength & 0xFF);
-        result[4] = (byte)((dataLength >> 8) & 0xFF);
+        // Length (2 bytes, big-endian)
+        result[3] = (byte)((dataLength >> 8) & 0xFF); // MSB first
+        result[4] = (byte)(dataLength & 0xFF);        // LSB second
+        
+        // Original little-endian implementation (commented out)
+        // result[3] = (byte)(dataLength & 0xFF);        // LSB first
+        // result[4] = (byte)((dataLength >> 8) & 0xFF); // MSB second
         
         // Copy the data
         System.arraycopy(data, 0, result, 5, dataLength);
@@ -202,8 +206,11 @@ public class K900ProtocolUtils {
             return null;
         }
         
-        // Extract length (little-endian)
-        int length = (protocolData[3] & 0xFF) | ((protocolData[4] & 0xFF) << 8);
+        // Extract length (big-endian)
+        int length = ((protocolData[3] & 0xFF) << 8) | (protocolData[4] & 0xFF);
+        
+        // Original little-endian implementation (commented out)
+        // int length = (protocolData[3] & 0xFF) | ((protocolData[4] & 0xFF) << 8);
         
         if (length + 7 > protocolData.length) {
             return null; // Invalid length
@@ -215,6 +222,104 @@ public class K900ProtocolUtils {
         return payload;
     }
     
+    /**
+     * Process received bytes from Bluetooth into a JSON object
+     * Handles K900 protocol format detection, payload extraction, and C-field unwrapping
+     *
+     * @param data The raw bytes received from Bluetooth
+     * @return Parsed JSON object or null if not valid protocol data or valid JSON
+     */
+    public static JSONObject processReceivedBytesToJson(byte[] data) {
+        android.util.Log.d("K900ProtocolUtils", "Processing received bytes for JSON extraction");
+        
+        // Check for null or too small data
+        if (data == null || data.length < 7) {
+            android.util.Log.d("K900ProtocolUtils", "Received data is null or too short to be valid protocol data");
+            return null;
+        }
+        
+        // Verify if this is K900 protocol format (starts with ##)
+        if (!isK900ProtocolFormat(data)) {
+            android.util.Log.d("K900ProtocolUtils", "Not in K900 protocol format (missing ## markers)");
+            return null;
+        }
+        
+        // Extract the command type
+        byte commandType = data[2];
+        
+        // Extract the length using big-endian format (MSB first)
+        int payloadLength = ((data[3] & 0xFF) << 8) | (data[4] & 0xFF);
+        
+        android.util.Log.d("K900ProtocolUtils", "Command type: 0x" + String.format("%02X", commandType) + 
+                         ", Payload length: " + payloadLength);
+        
+        // Verify we have enough data and the right command type
+        if (commandType != CMD_TYPE_STRING) {
+            android.util.Log.d("K900ProtocolUtils", "Not a JSON/string command type (0x30), got: 0x" + 
+                            String.format("%02X", commandType));
+            return null;
+        }
+        
+        if (data.length < payloadLength + 7) {
+            android.util.Log.d("K900ProtocolUtils", "Received data size (" + data.length + 
+                           ") is less than expected size (" + (payloadLength + 7) + ")");
+            return null;
+        }
+        
+        // Check for end markers ($$)
+        if (data[5 + payloadLength] != CMD_END_CODE[0] || data[6 + payloadLength] != CMD_END_CODE[1]) {
+            android.util.Log.d("K900ProtocolUtils", "End markers ($$) not found where expected");
+            return null;
+        }
+        
+        // Extract the payload
+        byte[] payload = new byte[payloadLength];
+        System.arraycopy(data, 5, payload, 0, payloadLength);
+        
+        // Convert to string
+        String payloadStr;
+        try {
+            payloadStr = new String(payload, StandardCharsets.UTF_8);
+            android.util.Log.d("K900ProtocolUtils", "Extracted payload: " + payloadStr);
+        } catch (Exception e) {
+            android.util.Log.e("K900ProtocolUtils", "Error converting payload to string", e);
+            return null;
+        }
+        
+        // Check if it's valid JSON
+        if (!payloadStr.startsWith("{") || !payloadStr.endsWith("}")) {
+            android.util.Log.d("K900ProtocolUtils", "Payload is not valid JSON: " + payloadStr);
+            return null;
+        }
+        
+        try {
+            // Parse the JSON payload
+            JSONObject json = new JSONObject(payloadStr);
+            
+            // Check if this is C-wrapped format {"C": "..."}
+            if (json.has(FIELD_C)) {
+                String innerContent = json.optString(FIELD_C, "");
+                android.util.Log.d("K900ProtocolUtils", "Detected C-wrapped format, inner content: " + innerContent);
+                
+                // Try to parse the inner content as JSON
+                try {
+                    JSONObject innerJson = new JSONObject(innerContent);
+                    return innerJson;
+                } catch (JSONException e) {
+                    android.util.Log.d("K900ProtocolUtils", "Inner content is not JSON, returning outer JSON object");
+                    // If inner content is not JSON, return the outer JSON
+                    return json;
+                }
+            } else {
+                // Not C-wrapped, return the JSON directly
+                return json;
+            }
+        } catch (JSONException e) {
+            android.util.Log.e("K900ProtocolUtils", "Error parsing JSON payload: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
     /**
      * Unified method to prepare data for transmission according to K900 protocol
      * This handles all formatting cases:

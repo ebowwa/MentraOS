@@ -751,7 +751,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             // If this is our direct data format (only C field), extract the JSON from it
             JSONObject dataToProcess = json;
-            if (json.has("C") && json.length() == 1) {
+            if (json.has("C")) {
                 String dataPayload = json.optString("C", "");
                 Log.d(TAG, "📦 Detected direct data format! Payload: " + dataPayload);
                 
@@ -847,9 +847,35 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         }
                     }
                     break;
-                
-                // Add more types as needed
-                
+
+                case "request_wifi_status":
+                    Log.d(TAG, "Got a request for wifi status");
+                    if (networkManager != null) {
+                        Log.d(TAG, "requesting wifi status");
+                        boolean wifiConnected = networkManager.isConnectedToWifi();
+                        sendWifiStatusOverBle(wifiConnected);
+                    }
+                    break;
+                case "ping":
+                    JSONObject pingResponse = new JSONObject();
+                    pingResponse.put("type", "pong");
+                    if(bluetoothManager != null && bluetoothManager.isConnected()) {
+                        bluetoothManager.sendData(pingResponse.toString().getBytes());
+                    }
+                    break;
+                case "request_battery_state":
+                    break;
+                case "set_mic_state":
+
+                    break;
+                case "set_mic_vad_state":
+
+                    break;
+                case "request_version":
+                case "cs_syvr":
+                    Log.d(TAG, "📊 Received version request - sending version info");
+                    sendVersionInfo();
+                    break;
                 case "":
                     Log.d(TAG, "Received data with no type field: " + dataToProcess);
                     break;
@@ -904,6 +930,35 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating token status response", e);
             }
+        }
+    }
+
+    private void sendVersionInfo() {
+        Log.d(TAG, "📊 Sending version information");
+
+        try {
+            JSONObject versionInfo = new JSONObject();
+            versionInfo.put("type", "version_info");
+            versionInfo.put("timestamp", System.currentTimeMillis());
+            String appVersion = "1.0.0";
+            String buildNumber = "1";
+            try {
+                appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+                buildNumber = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).versionCode);
+            } catch (Exception e) {
+                Log.e(TAG, "Error getting app version", e);
+            }
+            versionInfo.put("app_version", appVersion);
+            versionInfo.put("build_number", buildNumber);
+            versionInfo.put("device_model", android.os.Build.MODEL);
+            versionInfo.put("android_version", android.os.Build.VERSION.RELEASE);
+
+            if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                bluetoothManager.sendData(versionInfo.toString().getBytes(StandardCharsets.UTF_8));
+                Log.d(TAG, "✅ Sent version info to phone");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating version info", e);
         }
     }
     

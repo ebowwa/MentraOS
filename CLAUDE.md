@@ -38,3 +38,26 @@ AugmentOS is an open source operating system, app store, and development framewo
   - Context API for app-wide state
   - Feature-based organization under src/
   - Use try/catch with meaningful error messages
+
+## AugmentosService.java Update for WiFi Support
+To add WiFi support flag in AugmentosService.java, use this code in the generateStatusJson method:
+
+```java
+// In generateStatusJson method where glasses info is being populated
+// This is approximately at lines 1150-1160 in AugmentosService.java
+
+// Add WiFi status information for glasses that need WiFi
+String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+
+// Check if these are glasses that support WiFi
+boolean usesWifi = deviceModel != null && (deviceModel.contains("Mentra Live") || deviceModel.contains("Android Smart Glasses"));
+
+// Add the general WiFi support flag for all models
+connectedGlasses.put("glasses_use_wifi", usesWifi);
+
+// Add detailed WiFi status, but only for models that support it
+if (usesWifi) {
+    connectedGlasses.put("glasses_wifi_connected", glassesWifiConnected);
+    connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
+}
+```

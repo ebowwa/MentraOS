@@ -30,12 +30,11 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Batte
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 //import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesBatteryEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesNeedWifiCredentialsEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 
 import org.greenrobot.eventbus.EventBus;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -505,7 +504,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         // Start keep-alive mechanism
                         startKeepAlive();
 
-                        openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
+                        //openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
                         // Start SOC readiness check loop - this will keep trying until
                         // the glasses SOC boots and responds with a "glasses_ready" message
                         // All other initialization will happen after receiving glasses_ready
@@ -1173,7 +1172,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Process WiFi status information
                 boolean wifiConnected = json.optBoolean("connected", false);
                 String ssid = json.optString("ssid", "");
-                updateWifiStatus(wifiConnected, ssid);
+
+                EventBus.getDefault().post(new GlassesWifiStatusChange(
+                        smartGlassesDevice.deviceModelName,
+                        wifiConnected,
+                        ssid));
+
                 break;
                 
             case "token_status":
@@ -1207,8 +1211,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "🔄 Sending coreToken to ASG client");
                 sendCoreTokenToAsgClient();
                 
-                Log.d(TAG, "🔄 Starting debug video command loop");
-                startDebugVideoCommandLoop();
+                //startDebugVideoCommandLoop();
                 
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
@@ -1292,41 +1295,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     /**
-     * Update WiFi status and notify listeners
-     */
-    private void updateWifiStatus(boolean connected, String ssid) {
-        boolean wasConnected = isWifiConnected;
-        String previousSsid = wifiSsid;
-        
-        isWifiConnected = connected;
-        wifiSsid = ssid;
-        
-        Log.d(TAG, "ASG WiFi status: " + (connected ? "Connected" : "Disconnected") + 
-                  (connected ? " to " + ssid : ""));
-        
-        // Post WiFi status event to the event bus so AugmentosService and other components can react
-        boolean needsCredentials = !connected; // If not connected, credentials are needed
-        EventBus.getDefault().post(new GlassesNeedWifiCredentialsEvent(
-                smartGlassesDevice.deviceModelName, 
-                needsCredentials,
-                connected, 
-                ssid));
-        
-        // If WiFi connection status has changed, update the status
-        if (wasConnected != connected || !ssid.equals(previousSsid)) {
-            // This will trigger a status update that includes the new WiFi state
-            connectionEvent(mConnectState);
-        }
-    }
-    
-    /**
      * Request WiFi status from the glasses
      */
     private void requestWifiStatus() {
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "request");
-            json.put("request", "wifi_status");
+            json.put("type", "request_wifi_status");
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi status request", e);
@@ -1502,7 +1476,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final int DEBUG_VIDEO_INTERVAL_MS = 5000; // 5 seconds
     
     // SOC readiness check parameters
-    private static final int READINESS_CHECK_INTERVAL_MS = 5000; // 5 seconds
+    private static final int READINESS_CHECK_INTERVAL_MS = 2500; // every 2.5 seconds
     private Runnable readinessCheckRunnable;
     private int readinessCheckCounter = 0;
     
@@ -1513,7 +1487,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void startDebugVideoCommandLoop() {
         // Cancel any existing debug loop
         stopDebugVideoCommandLoop();
-        
+        Log.d(TAG, "🔄 Starting debug video command loop");
         Log.d(TAG, "🐞 Starting debug command loop - sending command every 5 seconds");
         
         debugVideoCommandRunnable = new Runnable() {
@@ -1579,7 +1553,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     readinessCheckCounter++;
                     
                     Log.d(TAG, "🔄 Readiness check #" + readinessCheckCounter + ": waiting for glasses SOC to boot");
-                    openhotspot();
+                    //openhotspot();
                     try {
                         // Create a simple phone_ready message
                         JSONObject readyMsg = new JSONObject();
@@ -1876,7 +1850,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             // Create a simple JSON object with just the C field containing our data
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("C", data);  // The C field is used to carry our data payload
-            
+            jsonObject.put("W", 1);
             // Convert to string
             String jsonStr = jsonObject.toString();
             Log.d(TAG, "Sending data to glasses: " + jsonStr);

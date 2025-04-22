@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Button from '../components/Button';
-import coreCommunicator from '../bridge/CoreCommunicator.ios';
+import coreCommunicator from '../bridge/CoreCommunicator';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 
 type GlassesWifiSetupScreenProps = {
