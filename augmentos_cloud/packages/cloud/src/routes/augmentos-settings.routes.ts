@@ -14,18 +14,25 @@ router.get('/', async (req, res) => {
 
   // Validate the Authorization header
   const authHeader = req.headers.authorization;
+  console.log('Request headers:', req.headers);
+  console.log('Authorization header:', authHeader);
+  
   if (!authHeader) {
-    return res.status(401).json({ error: 'Authorization header missing' });
+    console.log('No authorization header found');
+    return res.status(401).json({ error: 'No authorization header' });
   }
-  const authParts = authHeader.split(' ');
-  if (authParts.length !== 2 || authParts[0] !== 'Bearer') {
-    return res.status(401).json({ error: 'Invalid Authorization header format' });
+
+  const token = authHeader.split(' ')[1];
+  console.log('Extracted token:', token);
+  
+  if (!token) {
+    console.log('No token found in authorization header');
+    return res.status(401).json({ error: 'No token provided' });
   }
-  const coreToken = authParts[1];
 
   try {
     // Verify token
-    const decoded = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
+    const decoded = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
     const userId = decoded.email;
     if (!userId) {
       return res.status(400).json({ error: 'User ID missing in token' });
@@ -55,18 +62,25 @@ router.post('/', async (req, res) => {
 
   // Validate the Authorization header
   const authHeader = req.headers.authorization;
+  console.log('Request headers:', req.headers);
+  console.log('Authorization header:', authHeader);
+  
   if (!authHeader) {
-    return res.status(401).json({ error: 'Authorization header missing' });
+    console.log('No authorization header found');
+    return res.status(401).json({ error: 'No authorization header' });
   }
-  const authParts = authHeader.split(' ');
-  if (authParts.length !== 2 || authParts[0] !== 'Bearer') {
-    return res.status(401).json({ error: 'Invalid Authorization header format' });
+
+  const token = authHeader.split(' ')[1];
+  console.log('Extracted token:', token);
+  
+  if (!token) {
+    console.log('No token found in authorization header');
+    return res.status(401).json({ error: 'No token provided' });
   }
-  const coreToken = authParts[1];
 
   try {
     // Verify token
-    const decoded = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
+    const decoded = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
     const userId = decoded.email;
     if (!userId) {
       return res.status(400).json({ error: 'User ID missing in token' });
