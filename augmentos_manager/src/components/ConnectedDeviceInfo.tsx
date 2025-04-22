@@ -198,14 +198,10 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
                     {status.glasses_info.glasses_wifi_ssid}
                   </Text>
                 )}
-                <View style={styles.iconContainer}>
-                  <Icon name="wifi" size={20} color="#4CAF50" />
-                </View>
+                <Icon name="wifi" size={20} color="#4CAF50" />
               </>
             ) : (
-              <View style={styles.iconContainer}>
-                <MaterialIcon name="wifi-off" size={20} color="#E53935" />
-              </View>
+              <MaterialIcon name="wifi-off" size={20} color="#E53935" />
             )}
           </TouchableOpacity>
         )}
