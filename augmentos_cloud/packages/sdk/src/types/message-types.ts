@@ -8,6 +8,7 @@ import { StreamType } from "./streams";
 export enum GlassesToCloudMessageType {
   // Control actions
   CONNECTION_INIT = 'connection_init',
+  REQUEST_SETTINGS = 'request_settings',
   // START_APP = 'start_app',
   // STOP_APP = 'stop_app',
 
@@ -54,6 +55,7 @@ export enum CloudToGlassesMessageType {
   DISPLAY_EVENT = 'display_event',
   APP_STATE_CHANGE = 'app_state_change',
   MICROPHONE_STATE_CHANGE = 'microphone_state_change',
+  SETTINGS_UPDATE = 'settings_update',
 
   WEBSOCKET_ERROR = 'websocket_error'
 }
@@ -131,5 +133,6 @@ export const ResponseTypes = [
 export const UpdateTypes = [
   CloudToGlassesMessageType.DISPLAY_EVENT,
   CloudToGlassesMessageType.APP_STATE_CHANGE,
-  CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE
+  CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
+  CloudToGlassesMessageType.SETTINGS_UPDATE
 ] as const;

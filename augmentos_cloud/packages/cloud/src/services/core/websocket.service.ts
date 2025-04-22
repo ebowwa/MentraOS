@@ -52,7 +52,9 @@ import {
   UserSession,
   Vad,
   WebhookRequestType,
-  AugmentosSettingsUpdate
+  AugmentosSettingsUpdate,
+  SettingsUpdate,
+  RequestSettings
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -89,6 +91,20 @@ const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 const TPA_SESSION_TIMEOUT_MS = 5000;  // 30 seconds
 const LOG_AUDIO = false;               // Whether to log audio processing details
 type MicrophoneStateChangeDebouncer = { timer: ReturnType<typeof setTimeout> | null; lastState: boolean; lastSentState: boolean };
+
+const DEFAULT_AUGMENTOS_SETTINGS = {
+  useOnboardMic: false,
+  contextualDashboard: true,
+  headUpAngle: 20,
+  brightness: 50,
+  autoBrightness: false,
+  sensingEnabled: true,
+  alwaysOnStatusBar: false,
+  bypassVad: false,
+  bypassAudioEncoding: false,
+  enablePhoneNotifications: false,
+  onboardingCompleted: false
+} as const;
 
 /**
  * ⚡️🕸️🚀 Implementation of the WebSocket service.
@@ -959,6 +975,34 @@ export class WebSocketService {
             sessionId: userSession.sessionId,
             timestamp: new Date().toISOString()
           });
+          break;
+        }
+
+        case GlassesToCloudMessageType.REQUEST_SETTINGS: {
+          userSession.logger.info('Received settings request');
+          
+          try {
+            const user = await User.findByEmail(userSession.userId);
+            const userSettings = user?.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
+
+            const settingsMessage: CloudToGlassesMessage = {
+              type: CloudToGlassesMessageType.SETTINGS_UPDATE,
+              sessionId: userSession.sessionId,
+              settings: userSettings,
+              timestamp: new Date()
+            };
+
+            ws.send(JSON.stringify(settingsMessage));
+            userSession.logger.info('Sent settings update');
+          } catch (error) {
+            userSession.logger.error('Error sending settings:', error);
+            const errorMessage: ConnectionError = {
+              type: CloudToGlassesMessageType.CONNECTION_ERROR,
+              message: 'Error retrieving settings',
+              timestamp: new Date()
+            };
+            ws.send(JSON.stringify(errorMessage));
+          }
           break;
         }
 
