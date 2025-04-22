@@ -271,7 +271,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               {status.glasses_info?.model_name === "Simulated Glasses" && (
                 <View style={styles.flagContainer}>
                   <Text style={[styles.flagText, { color: '#ff6b6b' }]}>
-                    Changing this switch will have no effect on Simulated Glasses
+                    This setting has no effect when using Simulated Glasses
                   </Text>
                 </View>
               )}
@@ -583,7 +583,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 2,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    backgroundColor: 'rgba(255, 107, 107, 0.1)', // Returning to original red color
     alignSelf: 'flex-start',
   },
   flagText: {

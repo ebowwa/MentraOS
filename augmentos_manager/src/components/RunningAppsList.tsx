@@ -54,7 +54,7 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   return (
     <View style={styles.appsContainer}>
       <Text style={[styles.sectionTitle, {color: textColor}]}>
-        Active Apps
+        Active Apps ({runningApps.length})
       </Text>
       <View style={styles.listContainer}>
         {runningApps.length > 0 ? (
@@ -155,13 +155,13 @@ const styles = StyleSheet.create({
   },
   noAppsGradient: {
     borderRadius: 12,
-    padding: 12,
+    padding: 11, // Match padding with regular app items
     minHeight: 40,
   },
   noAppsContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 40,
+    minHeight: 50, // Added 2 more pixels for perfect height match
   },
   noAppsTitle: {
     fontSize: 18,

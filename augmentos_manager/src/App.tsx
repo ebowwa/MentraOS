@@ -115,8 +115,8 @@ const App: React.FC = () => {
                       setCurrentRouteName(currentRoute?.name || '');
                     }}
                   >
-                    <View style={styles.mainContainer}>
-                      <View style={styles.contentContainer}>
+                    <View style={[styles.mainContainer, {flexDirection: 'column', justifyContent: 'space-between'}]}>
+                      <View style={[styles.contentContainer, {flex: 1, marginBottom: -1}]}>
                         <Stack.Navigator initialRouteName="SplashScreen">
                           <Stack.Screen
                             name="SplashScreen"
@@ -437,7 +437,12 @@ const App: React.FC = () => {
                                 </Stack.Navigator>
                               </View>
                               {!hideNavbarScreens.includes(currentRouteName) && (
-                                <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
+                                <View style={{
+                                  marginTop: -30, // Adjusted to close gap
+                                  backgroundColor: isDarkTheme ? '#000000' : '#F2F2F7', // Match navbar color
+                                }}>
+                                  <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
+                                </View>
                               )}
                             </View>
                           </NavigationContainer>
@@ -458,6 +463,7 @@ const App: React.FC = () => {
           mainContainer: {
             flex: 1,
             flexDirection: 'column',
+            overflow: 'hidden',
           },
           contentContainer: {
             flex: 1,

@@ -23,6 +23,7 @@ import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import SensingDisabledWarning from '../components/SensingDisabledWarning';
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -204,12 +205,20 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
         <AnimatedSection>
           <Header isDarkTheme={isDarkTheme} navigation={navigation} />
         </AnimatedSection>
-        <ScrollView style={currentThemeStyles.contentContainer}>
+        <ScrollView 
+          style={currentThemeStyles.contentContainer}
+          contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
+        >
           {status.core_info.cloud_connection_status !== 'CONNECTED' &&
             <AnimatedSection>
               <CloudConnection isDarkTheme={isDarkTheme} />
             </AnimatedSection>
           }
+          
+          {/* Sensing Disabled Warning */}
+          <AnimatedSection>
+            <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
+          </AnimatedSection>
 
           <AnimatedSection>
             {/* Use the simulated version if we're connected to simulated glasses */}
@@ -277,6 +286,11 @@ const lightThemeStyles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 0, // Explicitly set to 0 to prevent space above navbar
+    marginBottom: -15, // Negative margin to help close the gap
+  },
+  warningContainer: {
+    paddingHorizontal: 20,
   },
   noAppsContainer: {
     alignItems: 'center',
@@ -328,7 +342,8 @@ const darkThemeStyles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 55,
+    paddingBottom: 0, // Remove bottom padding that causes space above navbar
+    marginBottom: -15, // Negative margin to help close the gap
   },
   noAppsContainer: {
     alignItems: 'center',
@@ -375,6 +390,11 @@ const darkThemeStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fullWidthItem: {
+    width: '100%',
+    paddingHorizontal: 0,
+    marginHorizontal: 0,
   },
 });
 
