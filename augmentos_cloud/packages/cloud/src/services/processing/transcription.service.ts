@@ -190,16 +190,21 @@ export class TranscriptionService {
 
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
-        console.log(`🎤 TRANSLATION [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
+        const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
+        const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
+
+        console.log(`🎤 TRANSLATION from ${detectedSourceLang} to ${languageInfo.translateLanguage} [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           text: translatedText,
+          originalText: event.result.text,
           startTime: this.calculateRelativeTime(event.result.offset),
           endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
           isFinal: false,
           speakerId: event.result.speakerId,
           transcribeLanguage: languageInfo.transcribeLanguage,
-          translateLanguage: languageInfo.translateLanguage
+          translateLanguage: languageInfo.translateLanguage,
+          didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
         this.updateTranscriptHistory(userSession, event, false);
@@ -209,17 +214,22 @@ export class TranscriptionService {
         if (!event.result.translations) return;
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
+        // Compare normalized text to determine if translation occurred
+        const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
+        const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           isFinal: true,
           text: translatedText,
+          originalText: event.result.text,
           startTime: this.calculateRelativeTime(event.result.offset),
           endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
           speakerId: event.result.speakerId,
           duration: event.result.duration,
           transcribeLanguage: languageInfo.transcribeLanguage,
-          translateLanguage: languageInfo.translateLanguage
+          translateLanguage: languageInfo.translateLanguage,
+          didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
         this.updateTranscriptHistory(userSession, event, true);
@@ -238,8 +248,6 @@ export class TranscriptionService {
           speakerId: event.result.speakerId,
           transcribeLanguage: languageInfo.transcribeLanguage
         };
-
-        console.log('\n\n\n#### transcriptionData:', event.result.language, "\n\n\n");
 
         if (languageInfo.transcribeLanguage === 'en-US') {
           this.updateTranscriptHistory(userSession, event, false);
@@ -260,8 +268,7 @@ export class TranscriptionService {
           duration: event.result.duration,
           transcribeLanguage: languageInfo.transcribeLanguage
         };
-        // console.log('\n\n\n#### result:', true, "\n\n\n");
-        // console.log('\n\n\n#### languageInfo.transcribeLanguage:', event.result.language, "\n\n\n");
+
         if (languageInfo.transcribeLanguage === 'en-US') {
           this.updateTranscriptHistory(userSession, event, true);
         }

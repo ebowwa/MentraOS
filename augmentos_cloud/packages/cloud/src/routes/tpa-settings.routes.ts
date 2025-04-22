@@ -141,10 +141,10 @@ router.get('/:tpaName', async (req, res) => {
 
 // GET /tpasettings/user/:tpaName
 router.get('/user/:tpaName', async (req, res) => {
-  logger.info('Received request for user-specific TPA settings' + JSON.stringify(req.params));
+  logger.info('Received request for user-specific TPA settings with params: ' + JSON.stringify(req.params));
 
   const authHeader = req.headers.authorization;
-  logger.info('Received request for user-specific TPA settings' + JSON.stringify(authHeader));
+  logger.info('Received request for user-specific TPA settings with auth header: ' + JSON.stringify(authHeader));
 
   if (!authHeader) {
     return res.status(400).json({ error: 'User ID missing in Authorization header' });

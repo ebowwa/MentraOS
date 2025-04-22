@@ -1,34 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, StyleSheet, LayoutChangeEvent, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, LayoutChangeEvent } from 'react-native';
 
-type TextSettingProps = {
+type TextSettingNoSaveProps = {
   label: string;
   value: string;
   onChangeText: (text: string) => void;
   theme: any;
 };
 
-const TextSetting: React.FC<TextSettingProps> = ({
+const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
   label,
   value,
   onChangeText,
   theme
 }) => {
-  const [localValue, setLocalValue] = useState(value);
   const [height, setHeight] = useState(100);
-
-  // Whenever the parent's value changes, update localValue
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
 
   const handleContentSizeChange = (event: { nativeEvent: { contentSize: { height: number } } }) => {
     const newHeight = Math.max(100, event.nativeEvent.contentSize.height + 20);
     setHeight(newHeight);
-  };
-
-  const handleSubmit = () => {
-    onChangeText(localValue);
   };
 
   return (
@@ -43,20 +33,14 @@ const TextSetting: React.FC<TextSettingProps> = ({
             height
           }
         ]}
-        value={localValue}
-        onChangeText={setLocalValue}
+        value={value}
+        onChangeText={onChangeText}
         multiline
         maxLength={1000}
         numberOfLines={5}
         onContentSizeChange={handleContentSizeChange}
         textAlignVertical="top"
       />
-      <TouchableOpacity 
-        style={[styles.submitButton, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}
-        onPress={handleSubmit}
-      >
-        <Text style={[styles.submitButtonText, { color: theme.textColor }]}>Save Changes</Text>
-      </TouchableOpacity>
     </View>
   );
 };
@@ -75,20 +59,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     fontSize: 16,
-    textAlignVertical: 'top',
-    marginBottom: 10
-  },
-  submitButton: {
-    padding: 10,
-    borderRadius: 5,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  submitButtonText: {
-    fontSize: 14,
-    fontWeight: '600'
+    textAlignVertical: 'top'
   }
 });
 
-export default TextSetting;
+export default TextSettingNoSave; 
