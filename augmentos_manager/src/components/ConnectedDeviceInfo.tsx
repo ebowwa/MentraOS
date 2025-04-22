@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     width: '100%',
     minHeight: 230,
     justifyContent: 'center',
-    marginTop: 15,
+    marginTop: 16, // Increased space above component
     backgroundColor: '#E5E5EA',
   },
   connectedContent: {
