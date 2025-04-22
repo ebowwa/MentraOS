@@ -2,6 +2,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { AppSettingType, type AppSetting } from '@augmentos/sdk';
 import { MongoSanitizer } from '../utils/mongoSanitizer';
+import { logger } from '@augmentos/utils';
 
 interface Location {
   lat: number;
@@ -19,8 +20,6 @@ interface UserDocument extends Document {
   runningApps: string[];
   appSettings: Map<string, AppSetting[]>;
   augmentosSettings: {
-    defaultWearable?: string;
-    deviceName?: string;
     useOnboardMic: boolean;
     contextualDashboard: boolean;
     headUpAngle: number;
@@ -117,10 +116,8 @@ const UserSchema = new Schema<UserDocument>({
   },
   augmentosSettings: {
     type: {
-      defaultWearable: { type: String },
-      deviceName: { type: String },
       useOnboardMic: { type: Boolean, default: false },
-      contextualDashboard: { type: Boolean, default: false },
+      contextualDashboard: { type: Boolean, default: true },
       headUpAngle: { type: Number, default: 20 },
       brightness: { type: Number, default: 50 },
       autoBrightness: { type: Boolean, default: false },
@@ -128,7 +125,7 @@ const UserSchema = new Schema<UserDocument>({
       alwaysOnStatusBar: { type: Boolean, default: false },
       bypassVad: { type: Boolean, default: false },
       bypassAudioEncoding: { type: Boolean, default: false },
-      enablePhoneNotifications: { type: Boolean, default: true },
+      enablePhoneNotifications: { type: Boolean, default: false },
       onboardingCompleted: { type: Boolean, default: false }
     },
     default: {}
@@ -185,7 +182,12 @@ const UserSchema = new Schema<UserDocument>({
       delete ret.__v;
       ret.id = ret._id;
       delete ret._id;
-      ret.appSettings = Object.fromEntries(ret.appSettings);
+      // Safely handle appSettings transformation
+      if (ret.appSettings && ret.appSettings instanceof Map) {
+        ret.appSettings = Object.fromEntries(ret.appSettings);
+      } else {
+        ret.appSettings = {};
+      }
       return ret;
     }
   }
@@ -330,12 +332,30 @@ UserSchema.methods.updateAugmentosSettings = async function(
   this: UserDocument,
   settings: Partial<UserDocument['augmentosSettings']>
 ): Promise<void> {
-  // Merge the new settings with existing ones
-  this.augmentosSettings = {
-    ...this.augmentosSettings,
-    ...settings
-  };
+  // Convert to plain objects for clean logging
+  const currentSettingsClean = JSON.parse(JSON.stringify(this.augmentosSettings));
+  const newSettingsClean = JSON.parse(JSON.stringify(settings));
+  
+  logger.info('Updating AugmentOS settings:', {
+    userId: this.email,
+    currentSettings: currentSettingsClean,
+    newSettings: newSettingsClean
+  });
+
+  // Directly apply each setting to ensure updates happen properly
+  Object.entries(settings).forEach(([key, value]) => {
+    if (value !== undefined) {
+      // @ts-ignore - We're dynamically updating the settings
+      this.augmentosSettings[key] = value;
+    }
+  });
+
+  // Convert to plain object for clean logging
+  const mergedSettingsClean = JSON.parse(JSON.stringify(this.augmentosSettings));
+  logger.info('Merged settings:', mergedSettingsClean);
+  
   await this.save();
+  logger.info('Settings saved successfully');
 };
 
 UserSchema.methods.getAugmentosSettings = function(

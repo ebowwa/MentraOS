@@ -43,6 +43,7 @@ router.get('/', async (req, res) => {
 
     // Get the settings
     const settings = user.getAugmentosSettings();
+    console.log("settings", settings)
 
     return res.json({
       success: true,
@@ -62,19 +63,17 @@ router.post('/', async (req, res) => {
 
   // Validate the Authorization header
   const authHeader = req.headers.authorization;
-  console.log('Request headers:', req.headers);
-  console.log('Authorization header:', authHeader);
   
   if (!authHeader) {
-    console.log('No authorization header found');
+    logger.warn('No authorization header found');
     return res.status(401).json({ error: 'No authorization header' });
   }
 
   const token = authHeader.split(' ')[1];
-  console.log('Extracted token:', token);
+  logger.debug('Extracted token from authorization header');
   
   if (!token) {
-    console.log('No token found in authorization header');
+    logger.warn('No token found in authorization header');
     return res.status(401).json({ error: 'No token provided' });
   }
 
@@ -83,26 +82,80 @@ router.post('/', async (req, res) => {
     const decoded = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET) as jwt.JwtPayload;
     const userId = decoded.email;
     if (!userId) {
+      logger.warn('User ID missing in token');
       return res.status(400).json({ error: 'User ID missing in token' });
     }
 
     // Validate request body
     const settings = req.body;
+    logger.info('Received settings update request:', { userId, settings });
+    
     if (!settings || typeof settings !== 'object') {
+      logger.warn('Invalid settings payload received');
       return res.status(400).json({ error: 'Invalid settings payload' });
     }
 
     // Find or create the user
     const user = await User.findOrCreateUser(userId);
+    logger.info(`Found/created user: ${userId}`);
+
+    // Get current settings before update
+    const currentSettings = JSON.parse(JSON.stringify(user.augmentosSettings));
+    logger.info('Current settings before update:', currentSettings);
+
+    // Check if anything actually changed
+    const hasChanges = Object.entries(settings).some(([key, value]) => {
+      // Also check for type differences (e.g., string "20" vs number 20)
+      return currentSettings[key] !== value || 
+             (typeof currentSettings[key] !== typeof value && 
+              currentSettings[key] != value); // loose comparison to catch numeric/string differences
+    });
+    
+    if (!hasChanges) {
+      logger.info('No changes detected in settings - values are the same');
+    } else {
+      logger.info('Changes detected in settings:', {
+        changedFields: Object.entries(settings)
+          .filter(([key, value]) => {
+            return currentSettings[key] !== value || 
+                  (typeof currentSettings[key] !== typeof value && 
+                   currentSettings[key] != value);
+          })
+          .map(([key, value]) => ({ 
+            key, 
+            from: `${currentSettings[key]} (${typeof currentSettings[key]})`, 
+            to: `${value} (${typeof value})` 
+          }))
+      });
+    }
 
     // Update the settings
     await user.updateAugmentosSettings(settings);
+    logger.info('Back in the route handler after updateAugmentosSettings');
 
-    logger.info(`Updated AugmentOS settings for user ${userId}`);
+    // Verify update worked in the current user object
+    logger.info('Current user object after update:', {
+      augmentosSettings: JSON.parse(JSON.stringify(user.augmentosSettings))
+    });
+
+    // Fetch updated user to verify changes
+    const updatedUser = await User.findOne({ email: userId });
+    logger.info('Fresh user retrieval after update:', {
+      email: userId,
+      found: !!updatedUser
+    });
+    const updatedSettings = updatedUser?.augmentosSettings 
+      ? JSON.parse(JSON.stringify(updatedUser.augmentosSettings))
+      : null;
+    
+    logger.info('Settings after update:', updatedSettings);
 
     return res.json({ 
       success: true, 
-      message: 'Settings updated successfully' 
+      message: hasChanges ? 'Settings updated successfully' : 'No changes needed',
+      previousSettings: currentSettings,
+      newSettings: updatedSettings,
+      changed: hasChanges
     });
   } catch (error) {
     logger.error('Error updating AugmentOS settings:', error);

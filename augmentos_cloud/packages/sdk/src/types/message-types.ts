@@ -37,7 +37,8 @@ export enum GlassesToCloudMessageType {
   VAD = StreamType.VAD,
   PHONE_NOTIFICATION = StreamType.PHONE_NOTIFICATION,
   NOTIFICATION_DISMISSED = StreamType.NOTIFICATION_DISMISSED,
-  CALENDAR_EVENT = StreamType.CALENDAR_EVENT
+  CALENDAR_EVENT = StreamType.CALENDAR_EVENT,
+  AUGMENTOS_SETTINGS_UPDATE = StreamType.AUGMENTOS_SETTINGS_UPDATE
 }
 
 /**
@@ -111,7 +112,8 @@ export const EventTypes = [
   GlassesToCloudMessageType.VAD,
   GlassesToCloudMessageType.PHONE_NOTIFICATION,
   GlassesToCloudMessageType.NOTIFICATION_DISMISSED,
-  GlassesToCloudMessageType.CALENDAR_EVENT
+  GlassesToCloudMessageType.CALENDAR_EVENT,
+  GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE
 ] as const;
 
 /**

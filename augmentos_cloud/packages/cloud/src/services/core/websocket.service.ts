@@ -51,7 +51,8 @@ import {
   TpaType,
   UserSession,
   Vad,
-  WebhookRequestType
+  WebhookRequestType,
+  AugmentosSettingsUpdate
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -1100,17 +1101,95 @@ export class WebSocketService {
           break;
         }
 
+        case GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE: {
+          const settingsUpdate = message as AugmentosSettingsUpdate;
+          userSession.logger.info('Received AugmentOS settings update via WebSocket');
+          
+          try {
+            // Validate message structure
+            if (!settingsUpdate.settings || typeof settingsUpdate.settings !== 'object') {
+              throw new Error('Invalid settings payload');
+            }
+            
+            // Find or create the user
+            const user = await User.findOrCreateUser(userSession.userId);
+            
+            // Get current settings before update for logging
+            const currentSettings = JSON.parse(JSON.stringify(user.augmentosSettings));
+            userSession.logger.info('Current settings before update:', currentSettings);
+            
+            // Check if anything actually changed
+            const hasChanges = Object.entries(settingsUpdate.settings).some(([key, value]) => {
+              return currentSettings[key] !== value || 
+                    (typeof currentSettings[key] !== typeof value && 
+                    currentSettings[key] != value);
+            });
+            
+            if (!hasChanges) {
+              userSession.logger.info('No changes detected in settings - values are the same');
+            } else {
+              userSession.logger.info('Changes detected in settings:', {
+                changedFields: Object.entries(settingsUpdate.settings)
+                  .filter(([key, value]) => {
+                    return currentSettings[key] !== value || 
+                          (typeof currentSettings[key] !== typeof value && 
+                          currentSettings[key] != value);
+                  })
+                  .map(([key, value]) => ({ 
+                    key, 
+                    from: `${currentSettings[key]} (${typeof currentSettings[key]})`, 
+                    to: `${value} (${typeof value})` 
+                  }))
+              });
+            }
+            
+            // Update the settings directly in the database
+            await user.updateAugmentosSettings(settingsUpdate.settings);
+            
+            // Fetch updated user to verify changes
+            const updatedUser = await User.findOne({ email: userSession.userId });
+            const updatedSettings = updatedUser?.augmentosSettings 
+              ? JSON.parse(JSON.stringify(updatedUser.augmentosSettings))
+              : null;
+              
+            userSession.logger.info('Settings after update:', updatedSettings);
+            
+            // Send a confirmation back to the client
+            const confirmationMessage = {
+              type: 'augmentos_settings_update_confirmation',
+              success: true,
+              changed: hasChanges,
+              message: hasChanges ? 'Settings updated successfully' : 'No changes needed',
+              settings: updatedSettings,
+              timestamp: new Date()
+            };
+            
+            ws.send(JSON.stringify(confirmationMessage));
+          } catch (error) {
+            userSession.logger.error('Error updating AugmentOS settings:', error);
+            
+            // Send error back to client
+            const errorMessage = {
+              type: 'augmentos_settings_update_error',
+              success: false,
+              message: error instanceof Error ? error.message : 'Error updating settings',
+              timestamp: new Date()
+            };
+            ws.send(JSON.stringify(errorMessage));
+          }
+          break;
+        }
+
         // All other message types are broadcast to TPAs.
         default: {
           userSession.logger.info(`[Session ${userSession.sessionId}] Catching and Sending message type:`, message.type);
-          // check if it's a type of Client to TPA message.
           this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
+          break;
         }
       }
     } catch (error) {
       userSession.logger.error(`[Session ${userSession.sessionId}] Error handling message:`, error);
       // Optionally send error to client
-      // const errorMessage: CloudConnectionErrorMessage = {
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
         message: error instanceof Error ? error.message : 'Error processing message',
@@ -1122,7 +1201,6 @@ export class WebSocketService {
         eventType: message.type,
         timestamp: new Date().toISOString(),
         error: error,
-        // message: message, // May contain sensitive data so let's not log it. just the event name cause i'm ethical like that 😇
       });
       ws.send(JSON.stringify(errorMessage));
     }

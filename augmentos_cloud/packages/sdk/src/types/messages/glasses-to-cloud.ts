@@ -146,6 +146,14 @@ export interface NotificationDismissed extends BaseMessage {
 }
 
 /**
+ * AugmentOS settings update from glasses
+ */
+export interface AugmentosSettingsUpdate extends BaseMessage {
+  type: GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE;
+  settings: Record<string, any>;
+}
+
+/**
  * Union type for all messages from glasses to cloud
  */
 export type GlassesToCloudMessage = 
@@ -163,7 +171,8 @@ export type GlassesToCloudMessage =
   | CalendarEvent
   | Vad
   | PhoneNotification
-  | NotificationDismissed;
+  | NotificationDismissed
+  | AugmentosSettingsUpdate;
 
 //===========================================================
 // Type guards

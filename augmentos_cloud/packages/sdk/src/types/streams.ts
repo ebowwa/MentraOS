@@ -36,7 +36,10 @@ export enum StreamType {
   
   // Special subscription types
   ALL = 'all',
-  WILDCARD = '*'
+  WILDCARD = '*',
+  
+  // New stream type
+  AUGMENTOS_SETTINGS_UPDATE = 'augmentos_settings_update'
 }
 
 /**
@@ -88,7 +91,9 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.VIDEO]: StreamCategory.HARDWARE,
   
   [StreamType.ALL]: StreamCategory.SYSTEM,
-  [StreamType.WILDCARD]: StreamCategory.SYSTEM
+  [StreamType.WILDCARD]: StreamCategory.SYSTEM,
+  
+  [StreamType.AUGMENTOS_SETTINGS_UPDATE]: StreamCategory.SYSTEM
 };
 
 /**
