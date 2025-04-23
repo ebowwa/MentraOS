@@ -70,6 +70,7 @@ public class CircleBuffer {
                 }
             }
             
+            // Keep this circle buffer log
             Log.d(TAG, "Added " + len + " bytes to buffer, now contains " + getDataLen() + " bytes");
             return true;
         } else {
@@ -156,6 +157,7 @@ public class CircleBuffer {
             }
         }
         
+        // Keep this circle buffer log
         Log.d(TAG, "Removed " + size + " bytes from buffer head, " + getDataLen() + " bytes remaining");
     }
     
@@ -167,6 +169,7 @@ public class CircleBuffer {
         for (int i = 0; i < mLen; i++) {
             mBuf[i] = 0;
         }
+        // Keep this circle buffer log
         Log.d(TAG, "Buffer cleared");
     }
     

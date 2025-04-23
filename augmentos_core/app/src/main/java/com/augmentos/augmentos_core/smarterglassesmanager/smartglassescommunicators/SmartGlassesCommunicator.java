@@ -173,10 +173,30 @@ public abstract class SmartGlassesCommunicator {
      * Requests the smart glasses to start a video stream
      * Default implementation does nothing - specific communicators should override
      * 
-     * @param appId The ID of the app requesting the video stream
      */
-    public void requestVideoStream(String appId) {
+    public void requestVideoStream() {
         // Default implementation does nothing
         Log.d("SmartGlassesCommunicator", "Video stream request not implemented for this device");
+    }
+    
+    /**
+     * Requests the smart glasses to scan for available WiFi networks
+     * Default implementation does nothing - specific communicators should override
+     */
+    public void requestWifiScan() {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "WiFi scan request not implemented for this device");
+    }
+    
+    /**
+     * Sends WiFi credentials to the smart glasses
+     * Default implementation does nothing - specific communicators should override
+     * 
+     * @param ssid The WiFi network name
+     * @param password The WiFi password
+     */
+    public void sendWifiCredentials(String ssid, String password) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "WiFi credential setting not implemented for this device");
     }
 }

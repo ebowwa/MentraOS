@@ -148,10 +148,14 @@ public class AugmentOsManagerMessageParser {
                     callback.updateGlassesHeadUpAngle(headUpAngle);
                     break;
                     
-                case "set_glasses_wifi_credentials":
+                case "send_wifi_credentials":
                     String ssid = commandObject.getJSONObject("params").getString("ssid");
                     String password = commandObject.getJSONObject("params").getString("password");
                     callback.setGlassesWifiCredentials(ssid, password);
+                    break;
+                    
+                case "request_wifi_scan":
+                    callback.requestWifiScan();
                     break;
 
                 default:

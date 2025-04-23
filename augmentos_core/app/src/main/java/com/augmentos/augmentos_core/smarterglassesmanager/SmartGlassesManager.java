@@ -536,6 +536,19 @@ public class SmartGlassesManager {
         }
     }
 
+    public void requestWifiScan() {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.requestWifiScan();
+        }
+    }
+
+    public void sendWifiCredentials(String ssid, String password) {
+        if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
+            smartGlassesRepresentative.smartGlassesCommunicator.sendWifiCredentials(ssid, password);
+        }
+    }
+
+
     public void changeMicrophoneState(boolean isMicrophoneEnabled) {
         Log.d(TAG, "Want to changing microphone state to " + isMicrophoneEnabled);
         Log.d(TAG, "Force core onboard mic: " + getForceCoreOnboardMic(this.context));
@@ -661,18 +674,17 @@ public class SmartGlassesManager {
     /**
      * Request a video stream from the connected smart glasses
      * 
-     * @param appId The ID of the app requesting the video stream
      * @return true if request was sent, false if glasses not connected
      */
-    public boolean requestVideoStream(String appId) {
+    public boolean requestVideoStream() {
         if (smartGlassesRepresentative != null && 
             smartGlassesRepresentative.smartGlassesCommunicator != null && 
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
             
-            Log.d(TAG, "Requesting video stream from glasses for appId: " + appId);
+            Log.d(TAG, "Requesting video stream from glasses");
             
             // Pass the request to the smart glasses communicator
-            smartGlassesRepresentative.smartGlassesCommunicator.requestVideoStream(appId);
+            smartGlassesRepresentative.smartGlassesCommunicator.requestVideoStream();
             return true;
         } else {
             Log.e(TAG, "Cannot request video stream - glasses not connected");

@@ -25,6 +25,7 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -39,6 +40,8 @@ import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this 
 import com.augmentos.asg_client.camera.CameraNeo;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * This is the FULL AsgClientService code that:
@@ -598,6 +601,36 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
     
+    /**
+     * Send WiFi scan results to AugmentOS Core via Bluetooth
+     */
+    private void sendWifiScanResultsOverBle(List<String> networks) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject scanResults = new JSONObject();
+                scanResults.put("type", "wifi_scan_result");
+                
+                // Add the networks as a JSON array
+                JSONArray networksArray = new JSONArray();
+                for (String network : networks) {
+                    networksArray.put(network);
+                }
+                scanResults.put("networks", networksArray);
+                
+                // Convert to string
+                String jsonString = scanResults.toString();
+                Log.d(TAG, "Formatted WiFi scan results: " + jsonString);
+                
+                // Convert JSON to bytes and send
+                bluetoothManager.sendData(jsonString.getBytes());
+                
+                Log.d(TAG, "Sent WiFi scan results via BLE. Found " + networks.size() + " networks.");
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating WiFi scan results JSON", e);
+            }
+        }
+    }
+    
     // ---------------------------------------------
     // BluetoothStateListener Interface Methods
     // ---------------------------------------------
@@ -832,12 +865,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     
                 case "start_video_stream":
                     // This would be implemented in a future version
-                    String videoAppId = dataToProcess.optString("appId", "");
-                    Log.d(TAG, "Video streaming requested by appId: " + videoAppId);
+                    Log.d(TAG, "Video streaming requested");
                     Log.d(TAG, "Video streaming not yet implemented");
                     break;
                     
-                case "set_wifi":
+                case "set_wifi_credentials":
                     // Handle WiFi configuration command if needed
                     String ssid = dataToProcess.optString("ssid", "");
                     String password = dataToProcess.optString("password", "");
@@ -855,6 +887,27 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         Log.d(TAG, "requesting wifi status");
                         boolean wifiConnected = networkManager.isConnectedToWifi();
                         sendWifiStatusOverBle(wifiConnected);
+                    }
+                    break;
+                    
+                case "request_wifi_scan":
+                    Log.d(TAG, "Got a request to scan for WiFi networks");
+                    if (networkManager != null) {
+                        Log.d(TAG, "Starting WiFi scan");
+                        // Perform WiFi scan in a background thread
+                        new Thread(() -> {
+                            try {
+                                List<String> networks = networkManager.scanWifiNetworks();
+                                sendWifiScanResultsOverBle(networks);
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error scanning for WiFi networks", e);
+                                // Send empty list in case of error
+                                sendWifiScanResultsOverBle(new ArrayList<>());
+                            }
+                        }).start();
+                    } else {
+                        Log.e(TAG, "Cannot scan for WiFi networks - networkManager is null");
+                        sendWifiScanResultsOverBle(new ArrayList<>());
                     }
                     break;
                 case "ping":

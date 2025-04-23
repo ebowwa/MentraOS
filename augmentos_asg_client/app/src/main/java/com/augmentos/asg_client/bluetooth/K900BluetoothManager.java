@@ -210,21 +210,13 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             byte[] dataCopy = new byte[size];
             System.arraycopy(data, 0, dataCopy, 0, size);
             
-            // Log the raw data received
-            Log.d(TAG, "GOT UART DATA: " + Arrays.toString(dataCopy));
-            
             // Add the data to our message parser
             if (messageParser.addData(dataCopy, size)) {
                 // Try to extract complete messages
                 List<byte[]> completeMessages = messageParser.parseMessages();
                 if (completeMessages != null && !completeMessages.isEmpty()) {
-                    Log.d(TAG, "Extracted " + completeMessages.size() + " complete message(s) from buffer");
-                    
                     // Process each complete message
                     for (byte[] message : completeMessages) {
-                        Log.d(TAG, "Complete message (full hex): " + ByteUtil.outputHexString(message, 0, message.length)); // Using space-separated hex format
-                        Log.d(TAG, "GOT COMPLETE MESSAGE: " + Arrays.toString(message));
-                        
                         // Notify listeners of the received message
                         notifyDataReceived(message);
                         
@@ -233,11 +225,9 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
                             notificationManager.showDataReceivedNotification(message.length);
                         }
                     }
-                } else {
-                    Log.d(TAG, "No complete messages extracted yet, waiting for more data");
                 }
             } else {
-                Log.e(TAG, "Failed to add data to message parser buffer - buffer may be full");
+                Log.e(TAG, "Failed to add data to message parser buffer");
             }
         }
     }

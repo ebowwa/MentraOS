@@ -52,6 +52,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
@@ -153,6 +154,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
     private String glassesWifiSsid = "";
+    
+    // WiFi scan results
+    private List<String> wifiNetworks = new ArrayList<>();
 
     private final boolean showingDashboardNow = false;
     private boolean contextualDashboardEnabled;
@@ -650,6 +654,31 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         
         // Send status update to the manager
         sendStatusToAugmentOsManager();
+    }
+    
+    @Subscribe
+    public void onGlassesWifiScanResultEvent(GlassesWifiScanResultEvent event) {
+        Log.d(TAG, "Received WiFi scan results from glasses: " + event.networks.size() + " networks");
+        
+        // Send a dedicated message for WiFi scan results (not part of status)
+        try {
+            JSONObject wifiScanResultObj = new JSONObject();
+            JSONArray networksArray = new JSONArray();
+            
+            for (String network : event.networks) {
+                networksArray.put(network);
+            }
+            
+            wifiScanResultObj.put("wifi_scan_results", networksArray);
+            
+            // Send to the manager app
+            if (blePeripheral != null) {
+                blePeripheral.sendDataToAugmentOsManager(wifiScanResultObj.toString());
+                blePeripheral.sendNotifyManager("Found " + event.networks.size() + " WiFi networks", "success");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi scan results JSON", e);
+        }
         
         // If glasses need WiFi credentials, trigger the credentials input UI in the Manager app
         // and show a message on the glasses
@@ -1322,7 +1351,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
-                    boolean requestSent = smartGlassesManager.requestVideoStream(appId);
+                    boolean requestSent = smartGlassesManager.requestVideoStream();
                     if (!requestSent) {
                         Log.e(TAG, "Failed to send video stream request to glasses");
                     }
@@ -1659,37 +1688,52 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             blePeripheral.sendNotifyManager("Connected glasses do not support WiFi", "error");
             return;
         }
+
+        // Send WiFi credentials to glasses
+        smartGlassesManager.sendWifiCredentials(ssid, password);
+
+        // Show a message on the glasses
+        smartGlassesManager.windowManager.showAppLayer(
+            "system",
+            () -> smartGlassesManager.sendReferenceCard("WiFi Setup",
+                                                      "Connecting to: " + ssid),
+            8
+        );
+
+        // Notify manager app
+        blePeripheral.sendNotifyManager("WiFi credentials sent to glasses", "success");
+
+        sendStatusToAugmentOsManager();
+
+    }
+    
+    @Override
+    public void requestWifiScan() {
+        Log.d(TAG, "Requesting WiFi scan from glasses");
         
-        try {
-            // Send WiFi credentials to glasses
-            JSONObject wifiCredentials = new JSONObject();
-            wifiCredentials.put("type", "wifi_credentials");
-            wifiCredentials.put("ssid", ssid);
-            wifiCredentials.put("password", password);
-            
-            // We use the smartGlassesManager to send the credentials to the glasses
-            // This will be captured by the Bluetooth handler in MentraLiveSGC
-            smartGlassesManager.sendCustomCommand(wifiCredentials.toString());
-            
-            // Show a message on the glasses
-            smartGlassesManager.windowManager.showAppLayer(
-                "system",
-                () -> smartGlassesManager.sendReferenceCard("WiFi Setup", 
-                                                          "Connecting to: " + ssid),
-                8
-            );
-            
-            // Notify manager app
-            blePeripheral.sendNotifyManager("WiFi credentials sent to glasses", "success");
-            
-            // Mark that we've sent credentials (will be updated when connection status changes)
-            glassesNeedWifiCredentials = false;
-            sendStatusToAugmentOsManager();
-            
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating WiFi credentials JSON", e);
-            blePeripheral.sendNotifyManager("Error setting WiFi credentials", "error");
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to scan for WiFi networks", "error");
+            return;
         }
+        
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support WiFi scanning", "error");
+            return;
+        }
+        
+        // Show a message on the glasses
+        smartGlassesManager.windowManager.showAppLayer(
+            "system",
+            () -> smartGlassesManager.sendReferenceCard("WiFi Setup", "Scanning for networks..."),
+            5
+        );
+        
+        // Send the scan request to the glasses
+        smartGlassesManager.requestWifiScan();
+        
+        // Notify manager app
+        blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
     }
 
     @Override

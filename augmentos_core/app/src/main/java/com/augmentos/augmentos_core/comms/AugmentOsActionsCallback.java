@@ -30,4 +30,5 @@ public interface AugmentOsActionsCallback {
     void updateGlassesAutoBrightness(boolean autoBrightness);
     void updateGlassesHeadUpAngle(int headUpAngle);
     void setGlassesWifiCredentials(String ssid, String password);
+    void requestWifiScan();
 }

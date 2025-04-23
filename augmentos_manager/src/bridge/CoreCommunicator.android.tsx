@@ -232,6 +232,11 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit('GLASSES_NEED_WIFI_CREDENTIALS', { 
           deviceModel: data.device_model 
         });
+      } else if ('wifi_scan_results' in data) {
+        console.log('Received WiFi scan results from Core');
+        GlobalEventEmitter.emit('WIFI_SCAN_RESULTS', { 
+          networks: data.wifi_scan_results
+        });
       }
     } catch (e) {
       console.error('Error parsing data from Core:', e);
@@ -557,13 +562,19 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
   
-  async setGlassesWifiCredentials(ssid: string, password: string) {
+  async sendWifiCredentials(ssid: string, password: string) {
     return await this.sendData({
-      command: 'set_glasses_wifi_credentials',
+      command: 'send_wifi_credentials',
       params: {
         ssid,
         password
       },
+    });
+  }
+  
+  async requestWifiScan() {
+    return await this.sendData({
+      command: 'request_wifi_scan'
     });
   }
   

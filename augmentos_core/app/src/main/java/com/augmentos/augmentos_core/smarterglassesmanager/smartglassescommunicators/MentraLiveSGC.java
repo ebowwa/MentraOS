@@ -29,6 +29,7 @@ import androidx.core.app.ActivityCompat;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 //import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesBatteryEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
@@ -110,6 +111,10 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private Runnable processSendQueueRunnable;
     // Current MTU size
     private int currentMtu = 23; // Default BLE MTU
+    
+    // Rate limiting - minimum delay between BLE characteristic writes
+    private static final long MIN_SEND_DELAY_MS = 100; // 100ms minimum delay
+    private long lastSendTimeMs = 0; // Timestamp of last send
     
     // Battery state tracking
     private int batteryLevel = 50; // Default until we get actual value
@@ -538,11 +543,26 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 Log.d(TAG, "Characteristic write successful");
-                // Continue processing the send queue if we have more items
-                handler.post(processSendQueueRunnable);
+                
+                // Calculate time since last send to enforce rate limiting
+                long currentTimeMs = System.currentTimeMillis();
+                long timeSinceLastSendMs = currentTimeMs - lastSendTimeMs;
+                long nextProcessDelayMs;
+                
+                if (timeSinceLastSendMs < MIN_SEND_DELAY_MS) {
+                    // Not enough time has elapsed, enforce minimum delay
+                    nextProcessDelayMs = MIN_SEND_DELAY_MS - timeSinceLastSendMs;
+                    Log.d(TAG, "Rate limiting: Next queue processing in " + nextProcessDelayMs + "ms");
+                } else {
+                    // Enough time has already passed
+                    nextProcessDelayMs = 0;
+                }
+                
+                // Schedule the next queue processing with appropriate delay
+                handler.postDelayed(processSendQueueRunnable, nextProcessDelayMs);
             } else {
                 Log.e(TAG, "Characteristic write failed with status: " + status);
-                // If write fails, try again later
+                // If write fails, try again with a longer delay
                 handler.postDelayed(processSendQueueRunnable, 500);
             }
         }
@@ -810,16 +830,31 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     /**
-     * Process the send queue
+     * Process the send queue with rate limiting
      */
     private void processSendQueue() {
         if (!isConnected || bluetoothGatt == null || txCharacteristic == null) {
             return;
         }
         
+        // Check if we need to enforce rate limiting
+        long currentTimeMs = System.currentTimeMillis();
+        long timeSinceLastSendMs = currentTimeMs - lastSendTimeMs;
+        
+        if (timeSinceLastSendMs < MIN_SEND_DELAY_MS) {
+            // Not enough time has elapsed since last send
+            // Reschedule processing after the remaining delay
+            long remainingDelayMs = MIN_SEND_DELAY_MS - timeSinceLastSendMs;
+            Log.d(TAG, "Rate limiting: Waiting " + remainingDelayMs + "ms before next BLE send");
+            handler.postDelayed(processSendQueueRunnable, remainingDelayMs);
+            return;
+        }
+        
         // Send the next item from the queue
         byte[] data = sendQueue.poll();
         if (data != null) {
+            // Update last send time before sending
+            lastSendTimeMs = currentTimeMs;
             sendDataInternal(data);
         }
     }
@@ -936,7 +971,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                                 JSONObject json = new JSONObject(payloadStr);
                                 
                                 // Check if this is C-wrapped format {"C": "..."}
-                                if (json.has("C")){// && json.length() == 1) {
+                                if (json.has("C")){
                                     String innerContent = json.optString("C", "");
                                     Log.d(TAG, "Thread-" + threadId + ": 🔍 Detected C-wrapped format, inner content: " + innerContent);
                                     
@@ -1111,6 +1146,50 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 break;
                 
+            case "wifi_scan_result":
+                // Process WiFi scan results
+                try {
+                    // Get the list of networks from the JSON
+                    List<String> networks = new ArrayList<>();
+                    
+                    if (json.has("networks")) {
+                        // Could be either a JSONArray or a comma-separated string
+                        if (json.get("networks") instanceof org.json.JSONArray) {
+                            org.json.JSONArray networksArray = json.getJSONArray("networks");
+                            for (int i = 0; i < networksArray.length(); i++) {
+                                networks.add(networksArray.getString(i));
+                            }
+                        } else {
+                            // Handle as comma-separated string
+                            String networksStr = json.getString("networks");
+                            String[] networksArray = networksStr.split(",");
+                            for (String network : networksArray) {
+                                networks.add(network.trim());
+                            }
+                        }
+                        
+                        // Log the found networks
+                        Log.d(TAG, "Received WiFi scan results: " + networks.size() + " networks found");
+                        for (String network : networks) {
+                            Log.d(TAG, "  WiFi network: " + network);
+                        }
+                        
+                        // Post event with the scan results
+                        EventBus.getDefault().post(new GlassesWifiScanResultEvent(
+                                smartGlassesDevice.deviceModelName,
+                                networks));
+                    } else {
+                        Log.w(TAG, "Received WiFi scan results without networks field");
+                        // Post empty list to notify that scan completed with no results
+                        EventBus.getDefault().post(new GlassesWifiScanResultEvent(
+                                smartGlassesDevice.deviceModelName,
+                                networks));
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing WiFi scan results", e);
+                }
+                break;
+                
             case "token_status":
                 // Process coreToken acknowledgment
                 boolean success = json.optBoolean("success", false);
@@ -1238,6 +1317,22 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     /**
+     * Request WiFi scan from the glasses
+     * This will ask the glasses to scan for available networks
+     */
+    @Override
+    public void requestWifiScan() {
+        try {
+            JSONObject json = new JSONObject();
+            json.put("type", "request_wifi_scan");
+            sendDataToGlasses(json.toString());
+            Log.d(TAG, "Sending WiFi scan request to glasses");
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi scan request", e);
+        }
+    }
+    
+    /**
      * Check if we have the necessary permissions
      */
     private boolean hasPermissions() {
@@ -1333,9 +1428,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "command");
-            json.put("command", "microphone");
-            json.put("enable", enable);
+            json.put("type", "set_mic_state");
+            json.put("enabled", enable);
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating microphone command", e);
@@ -1348,9 +1442,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "command");
-            json.put("command", "camera");
-            json.put("action", "take_photo");
+            json.put("type", "take_photo");
             json.put("requestId", requestId);
             json.put("appId", appId);
             sendJson(json);
@@ -1360,15 +1452,12 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     @Override
-    public void requestVideoStream(String appId) {
-        Log.d(TAG, "Requesting video stream for app: " + appId);
+    public void requestVideoStream() {
+        Log.d(TAG, "Requesting video stream");
         
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "command");
-            json.put("command", "camera");
-            json.put("action", "start_video_stream");
-            json.put("appId", appId);
+            json.put("type", "start_video_stream");
             sendJson(json);
         } catch (JSONException e) {
             Log.e(TAG, "Error creating video stream request JSON", e);
@@ -1751,6 +1840,34 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         }
     }
     
+    /**
+     * Sends WiFi credentials to the smart glasses
+     * 
+     * @param ssid The WiFi network name
+     * @param password The WiFi password
+     */
+    @Override
+    public void sendWifiCredentials(String ssid, String password) {
+        Log.d(TAG, "Sending WiFi credentials to glasses - SSID: " + ssid);
+        
+        // Validate inputs
+        if (ssid == null || ssid.isEmpty()) {
+            Log.e(TAG, "Cannot set WiFi credentials - SSID is empty");
+            return;
+        }
+        
+        try {
+            // Send WiFi credentials to the ASG client
+            JSONObject wifiCommand = new JSONObject();
+            wifiCommand.put("type", "set_wifi_credentials");
+            wifiCommand.put("ssid", ssid);
+            wifiCommand.put("password", password != null ? password : "");
+            sendJson(wifiCommand);
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi credentials JSON", e);
+        }
+    }
+    
     @Override
     public void sendCustomCommand(String commandJson) {
         Log.d(TAG, "Received custom command: " + commandJson);
@@ -1760,22 +1877,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             String type = json.optString("type", "");
             
             switch (type) {
-                case "wifi_credentials":
-                    String ssid = json.optString("ssid", "");
-                    String password = json.optString("password", "");
-                    
-                    // Validate inputs
-                    if (ssid.isEmpty()) {
-                        Log.e(TAG, "Cannot set WiFi credentials - SSID is empty");
-                        return;
-                    }
-                    
-                    // Send WiFi credentials to the ASG client
-                    JSONObject wifiCommand = new JSONObject();
-                    wifiCommand.put("type", "set_wifi_credentials");
-                    wifiCommand.put("ssid", ssid);
-                    wifiCommand.put("password", password);
-                    sendJson(wifiCommand);
+                case "request_wifi_scan":
+                    requestWifiScan();
                     break;
                 default:
                     Log.w(TAG, "Unknown custom command type: " + type);

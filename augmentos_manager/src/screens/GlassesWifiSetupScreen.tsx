@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, ScrollView, Platform, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Button from '../components/Button';
 import coreCommunicator from '../bridge/CoreCommunicator';
@@ -14,9 +14,30 @@ const GlassesWifiSetupScreen: React.FC<GlassesWifiSetupScreenProps> = ({ isDarkT
   const [ssid, setSsid] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
+  const [networks, setNetworks] = useState<string[]>([]);
+  const [showNetworksList, setShowNetworksList] = useState(false);
   const navigation = useNavigation();
   const route = useRoute();
   const { deviceModel } = route.params as { deviceModel: string };
+  
+  useEffect(() => {
+    // Listen for WiFi scan results
+    const wifiScanResultsListener = GlobalEventEmitter.addListener(
+      'WIFI_SCAN_RESULTS',
+      (data: { networks: string[] }) => {
+        console.log('WiFi scan results received:', data.networks);
+        setNetworks(data.networks);
+        setShowNetworksList(true);
+        setIsScanning(false);
+      }
+    );
+    
+    // Cleanup listener on unmount
+    return () => {
+      wifiScanResultsListener.remove();
+    };
+  }, []);
 
   const handleSubmit = async () => {
     if (!ssid) {
@@ -30,8 +51,8 @@ const GlassesWifiSetupScreen: React.FC<GlassesWifiSetupScreenProps> = ({ isDarkT
     setIsLoading(true);
     
     try {
-      // Send WiFi credentials to Core
-      await coreCommunicator.setGlassesWifiCredentials(ssid, password);
+      // Send WiFi credentials to Core using the updated method
+      await coreCommunicator.sendWifiCredentials(ssid, password);
       
       // Show success message
       GlobalEventEmitter.emit('SHOW_BANNER', { 
@@ -59,6 +80,36 @@ const GlassesWifiSetupScreen: React.FC<GlassesWifiSetupScreenProps> = ({ isDarkT
     });
     navigation.navigate('Home');
   };
+  
+  const handleScan = async () => {
+    try {
+      setIsScanning(true);
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: 'Scanning for WiFi networks...', 
+        type: 'info' 
+      });
+      
+      await coreCommunicator.requestWifiScan();
+      
+      // In a real implementation, we would listen for the scan results
+      // and update a list of available networks
+      
+    } catch (error) {
+      console.error('Error scanning for WiFi networks:', error);
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: 'Failed to scan for WiFi networks', 
+        type: 'error' 
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  // Function to handle network selection from the list
+  const handleNetworkSelect = (selectedNetwork: string) => {
+    setSsid(selectedNetwork);
+    setShowNetworksList(false);
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -76,18 +127,56 @@ const GlassesWifiSetupScreen: React.FC<GlassesWifiSetupScreenProps> = ({ isDarkT
         
         <View style={styles.form}>
           <Text style={[styles.label, { color: isDarkTheme ? '#fff' : '#000' }]}>WiFi Network Name (SSID)</Text>
-          <TextInput
-            style={[styles.input, { 
-              color: isDarkTheme ? '#fff' : '#000',
-              backgroundColor: isDarkTheme ? '#333' : '#f5f5f5',
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.input, { 
+                color: isDarkTheme ? '#fff' : '#000',
+                backgroundColor: isDarkTheme ? '#333' : '#f5f5f5',
+                borderColor: isDarkTheme ? '#444' : '#ddd'
+              }]}
+              value={ssid}
+              onChangeText={setSsid}
+              placeholder="Enter WiFi network name"
+              placeholderTextColor={isDarkTheme ? '#aaa' : '#999'}
+              autoCapitalize="none"
+            />
+            <Button
+              title={isScanning ? "Scanning..." : "Scan"}
+              onPress={handleScan}
+              type="secondary"
+              style={styles.scanButton}
+              disabled={isScanning}
+            />
+          </View>
+          
+          {/* Networks List */}
+          {showNetworksList && networks.length > 0 && (
+            <View style={[styles.networksContainer, { 
+              backgroundColor: isDarkTheme ? '#222' : '#f0f0f0',
               borderColor: isDarkTheme ? '#444' : '#ddd'
-            }]}
-            value={ssid}
-            onChangeText={setSsid}
-            placeholder="Enter WiFi network name"
-            placeholderTextColor={isDarkTheme ? '#aaa' : '#999'}
-            autoCapitalize="none"
-          />
+            }]}>
+              <Text style={[styles.networksTitle, { color: isDarkTheme ? '#fff' : '#000' }]}>
+                Available Networks
+              </Text>
+              <FlatList
+                data={networks}
+                keyExtractor={(item, index) => `network-${index}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={[styles.networkItem, {
+                      backgroundColor: isDarkTheme ? '#333' : '#fff'
+                    }]}
+                    onPress={() => handleNetworkSelect(item)}
+                  >
+                    <Text style={{ color: isDarkTheme ? '#fff' : '#000' }}>
+                      {item}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                style={styles.networksList}
+              />
+            </View>
+          )}
           
           <Text style={[styles.label, { color: isDarkTheme ? '#fff' : '#000' }]}>Password</Text>
           <TextInput
@@ -155,17 +244,47 @@ const styles = StyleSheet.create({
     marginBottom: 5,
     fontWeight: '500',
   },
+  inputContainer: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
   input: {
+    flex: 1,
     height: 50,
     borderWidth: 1,
     borderRadius: 8,
-    marginBottom: 20,
     padding: 10,
     fontSize: 16,
+  },
+  scanButton: {
+    marginLeft: 10,
+    height: 50,
+    justifyContent: 'center',
   },
   buttonContainer: {
     marginTop: 10,
     alignItems: 'center',
+  },
+  networksContainer: {
+    borderWidth: 1,
+    borderRadius: 8,
+    marginBottom: 20,
+    maxHeight: 200,
+  },
+  networksTitle: {
+    fontSize: 16,
+    fontWeight: '500',
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
+  },
+  networksList: {
+    maxHeight: 150,
+  },
+  networkItem: {
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ddd',
   },
 });
 

@@ -95,6 +95,15 @@ public class FallbackNetworkManager extends BaseNetworkManager {
         }
     }
     
+    /**
+     * Override isK900Device to return our cached value
+     * This connects the base implementation to our existing field
+     */
+    @Override
+    protected boolean isK900Device() {
+        return isK900Device;
+    }
+    
     @Override
     public void initialize() {
         super.initialize();
@@ -505,214 +514,7 @@ public class FallbackNetworkManager extends BaseNetworkManager {
         }
     }
     
-    /**
-     * Scan for available WiFi networks
-     * @return a list of nearby WiFi network names (SSIDs)
-     */
-    @Override
-    public List<String> scanWifiNetworks() {
-        final List<String> networks = new ArrayList<>();
-        
-        try {
-            // Check if WiFi is enabled
-            if (wifiManager == null) {
-                Log.e(TAG, "WiFi manager is null");
-                return networks;
-            }
-            
-            if (!wifiManager.isWifiEnabled()) {
-                Log.d(TAG, "WiFi is disabled, cannot scan for networks");
-                
-                // Prompt the user to enable WiFi
-                notificationManager.showDebugNotification(
-                        "WiFi Scan Failed",
-                        "WiFi is disabled. Please enable WiFi to scan for networks.");
-                
-                return networks;
-            }
-            
-            // For K900 devices, try to use the K900-specific broadcasts
-            if (isK900Device) {
-                Log.d(TAG, "K900 device detected, using K900-specific scan");
-                
-                try {
-                    final CountDownLatch latch = new CountDownLatch(1);
-                    final List<String> k900Networks = new ArrayList<>();
-                    
-                    // Register a receiver to get the scan results
-                    BroadcastReceiver receiver = new BroadcastReceiver() {
-                        @Override
-                        public void onReceive(Context context, Intent intent) {
-                            if (intent != null && intent.hasExtra("scan_list")) {
-                                String[] wifiList = intent.getStringArrayExtra("scan_list");
-                                if (wifiList != null) {
-                                    for (String ssid : wifiList) {
-                                        if (ssid != null && !ssid.isEmpty() && !k900Networks.contains(ssid)) {
-                                            k900Networks.add(ssid);
-                                            Log.d(TAG, "Found K900 scan network: " + ssid);
-                                        }
-                                    }
-                                }
-                            }
-                            latch.countDown();
-                        }
-                    };
-                    
-                    // Register the receiver
-                    IntentFilter filter = new IntentFilter("com.xy.xsetting.scan_list");
-                    context.registerReceiver(receiver, filter);
-                    
-                    // Send the request to start scan
-                    Intent intent = new Intent(K900_BROADCAST_ACTION);
-                    intent.setPackage(K900_SYSTEM_UI_PACKAGE);
-                    intent.putExtra("cmd", "scan_wifi");
-                    context.sendBroadcast(intent);
-                    
-                    // Wait for the scan results with a timeout
-                    try {
-                        if (latch.await(10, TimeUnit.SECONDS)) { // WiFi scan can take a while
-                            // Successfully got the networks
-                            networks.addAll(k900Networks);
-                        } else {
-                            Log.w(TAG, "Timeout waiting for K900 scan results");
-                        }
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        Log.e(TAG, "Interrupted waiting for K900 scan results", e);
-                    }
-                    
-                    // Unregister the receiver
-                    try {
-                        context.unregisterReceiver(receiver);
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error unregistering receiver", e);
-                    }
-                    
-                    // If K900 scan worked, return the results
-                    if (!networks.isEmpty()) {
-                        return networks;
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error getting K900 scan results", e);
-                }
-            }
-            
-            // Standard approach for all devices
-            try {
-                // Try to start a scan with regular Android APIs
-                final AtomicBoolean scanComplete = new AtomicBoolean(false);
-                final CountDownLatch scanLatch = new CountDownLatch(1);
-                
-                // Create a receiver for scan results
-                wifiScanReceiver = new BroadcastReceiver() {
-                    @Override
-                    public void onReceive(Context context, Intent intent) {
-                        if (WifiManager.SCAN_RESULTS_AVAILABLE_ACTION.equals(intent.getAction())) {
-                            boolean success = intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false);
-                            Log.d(TAG, "Scan completed, success=" + success);
-                            scanComplete.set(true);
-                            scanLatch.countDown();
-                        }
-                    }
-                };
-                
-                // Register the receiver
-                IntentFilter intentFilter = new IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION);
-                context.registerReceiver(wifiScanReceiver, intentFilter);
-                
-                // Start the scan
-                boolean scanStarted = wifiManager.startScan();
-                Log.d(TAG, "WiFi scan started, success=" + scanStarted);
-                
-                if (!scanStarted) {
-                    Log.e(TAG, "Failed to start WiFi scan");
-                    
-                    // Try to get the results anyway, maybe there's a recent scan
-                    List<ScanResult> scanResults = wifiManager.getScanResults();
-                    if (scanResults != null && !scanResults.isEmpty()) {
-                        for (ScanResult result : scanResults) {
-                            String ssid = result.SSID;
-                            if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
-                                networks.add(ssid);
-                                Log.d(TAG, "Found network from previous scan: " + ssid);
-                            }
-                        }
-                    }
-                    
-                    if (wifiScanReceiver != null) {
-                        try {
-                            context.unregisterReceiver(wifiScanReceiver);
-                            wifiScanReceiver = null;
-                        } catch (Exception e) {
-                            Log.e(TAG, "Error unregistering scan receiver", e);
-                        }
-                    }
-                    
-                    return networks;
-                }
-                
-                // Wait for the scan to complete, but with a timeout
-                try {
-                    boolean completed = scanLatch.await(15, TimeUnit.SECONDS);
-                    Log.d(TAG, "Scan await completed=" + completed + ", scanComplete=" + scanComplete.get());
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    Log.e(TAG, "Interrupted waiting for scan results", e);
-                }
-                
-                // Get the scan results
-                List<ScanResult> scanResults = wifiManager.getScanResults();
-                if (scanResults != null) {
-                    for (ScanResult result : scanResults) {
-                        String ssid = result.SSID;
-                        if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
-                            networks.add(ssid);
-                            Log.d(TAG, "Found network: " + ssid);
-                        }
-                    }
-                }
-                
-                // Unregister the receiver
-                if (wifiScanReceiver != null) {
-                    try {
-                        context.unregisterReceiver(wifiScanReceiver);
-                        wifiScanReceiver = null;
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error unregistering scan receiver", e);
-                    }
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error scanning for WiFi networks", e);
-                
-                // Fallback to manual approach
-                notificationManager.showDebugNotification(
-                        "WiFi Scan Failed",
-                        "Unable to scan for WiFi networks. Please check available networks manually.");
-                
-                // Try to open WiFi settings
-                try {
-                    Intent intent = new Intent(Settings.ACTION_WIFI_SETTINGS);
-                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    context.startActivity(intent);
-                } catch (Exception e2) {
-                    Log.e(TAG, "Error opening WiFi settings", e2);
-                }
-            }
-            
-            // Add the current network if not already in the list
-            String currentSsid = getCurrentWifiSsid();
-            if (!currentSsid.isEmpty() && !networks.contains(currentSsid)) {
-                networks.add(currentSsid);
-                Log.d(TAG, "Added current network to scan results: " + currentSsid);
-            }
-            
-            Log.d(TAG, "Found " + networks.size() + " networks with scan");
-            return networks;
-        } catch (Exception e) {
-            Log.e(TAG, "Error scanning for WiFi networks", e);
-            return networks;
-        }
-    }
+    // Remove the scanWifiNetworks method completely to use the base implementation
     
     @Override
     public void shutdown() {
