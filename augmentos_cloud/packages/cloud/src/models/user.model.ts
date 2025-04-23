@@ -30,7 +30,6 @@ interface UserDocument extends Document {
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
     enablePhoneNotifications: boolean;
-    onboardingCompleted: boolean;
   };
   location?: Location;
   installedApps?: Array<{
@@ -126,7 +125,6 @@ const UserSchema = new Schema<UserDocument>({
       bypassVad: { type: Boolean, default: false },
       bypassAudioEncoding: { type: Boolean, default: false },
       enablePhoneNotifications: { type: Boolean, default: false },
-      onboardingCompleted: { type: Boolean, default: false }
     },
     default: {}
   },

@@ -82,7 +82,6 @@ export interface SettingsUpdate extends BaseMessage {
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
     enablePhoneNotifications: boolean;
-    onboardingCompleted: boolean;
   };
 }
 

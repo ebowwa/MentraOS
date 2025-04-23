@@ -153,9 +153,17 @@ export interface NotificationDismissed extends BaseMessage {
 /**
  * AugmentOS settings update from glasses
  */
-export interface AugmentosSettingsUpdate extends BaseMessage {
-  type: GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE;
-  settings: Record<string, any>;
+export interface AugmentosSettingsUpdateRequest extends BaseMessage {
+  type: GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST;
+}
+
+/**
+ * Core status update from glasses
+ */
+export interface CoreStatusUpdate extends BaseMessage {
+  type: GlassesToCloudMessageType.CORE_STATUS_UPDATE;
+  status: string;
+  details?: Record<string, any>;
 }
 
 /**
@@ -178,7 +186,8 @@ export type GlassesToCloudMessage =
   | Vad
   | PhoneNotification
   | NotificationDismissed
-  | AugmentosSettingsUpdate;
+  | AugmentosSettingsUpdateRequest
+  | CoreStatusUpdate;
 
 //===========================================================
 // Type guards

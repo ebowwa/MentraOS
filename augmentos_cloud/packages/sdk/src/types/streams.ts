@@ -30,6 +30,7 @@ export enum StreamType {
   START_APP = 'start_app',
   STOP_APP = 'stop_app',
   OPEN_DASHBOARD = 'open_dashboard',
+  CORE_STATUS_UPDATE = 'core_status_update',
   
   // Video streams
   VIDEO = 'video',
@@ -39,7 +40,7 @@ export enum StreamType {
   WILDCARD = '*',
   
   // New stream type
-  AUGMENTOS_SETTINGS_UPDATE = 'augmentos_settings_update'
+  AUGMENTOS_SETTINGS_UPDATE_REQUEST = 'settings_update_request'
 }
 
 /**
@@ -87,13 +88,14 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.START_APP]: StreamCategory.SYSTEM,
   [StreamType.STOP_APP]: StreamCategory.SYSTEM,
   [StreamType.OPEN_DASHBOARD]: StreamCategory.SYSTEM,
+  [StreamType.CORE_STATUS_UPDATE]: StreamCategory.SYSTEM,
   
   [StreamType.VIDEO]: StreamCategory.HARDWARE,
   
   [StreamType.ALL]: StreamCategory.SYSTEM,
   [StreamType.WILDCARD]: StreamCategory.SYSTEM,
   
-  [StreamType.AUGMENTOS_SETTINGS_UPDATE]: StreamCategory.SYSTEM
+  [StreamType.AUGMENTOS_SETTINGS_UPDATE_REQUEST]: StreamCategory.SYSTEM
 };
 
 /**
