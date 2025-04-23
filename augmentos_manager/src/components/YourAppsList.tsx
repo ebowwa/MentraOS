@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Animated,
+    Platform,
 } from 'react-native';
 import showAlert from '../utils/AlertUtils';
 import MessageModal from './MessageModal';
@@ -235,6 +236,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             <ScrollView 
                 style={styles.listContainer}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollViewContent}
             >
                 {availableApps.map((app, index) => (
                     <TouchableOpacity
@@ -573,6 +575,9 @@ const styles = StyleSheet.create({
         color: '#007AFF',
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    scrollViewContent: {
+        paddingBottom: Platform.OS === 'ios' ? 24 : 38, // Account for nav bar height + iOS home indicator
     },
 });
 

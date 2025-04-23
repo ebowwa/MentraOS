@@ -111,8 +111,8 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
 const styles = StyleSheet.create({
   appsContainer: {
     justifyContent: 'flex-start',
-    marginTop: 12,
-    marginBottom: 10,
+    marginTop: 14,
+    marginBottom: 14,
   },
   sectionTitle: {
     fontSize: 20,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     margin: -46,
   },
   noAppsContainer: {
-    marginBottom: 8,
+    // marginBottom: 8, // Removing this to maintain consistent spacing
   },
   noAppsGradient: {
     borderRadius: 12,
