@@ -59,6 +59,7 @@ const AppWebView: React.FC<AppWebViewProps> = ({ route, navigation, isDarkTheme,
   function determineCloudUrl():string|undefined {
     const cloudHostName = process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.AUGMENTOS_HOST;
     if (cloudHostName && cloudHostName.trim() !== 'prod.augmentos.cloud' && cloudHostName.trim() !== 'cloud' && cloudHostName.includes('.')) {
+      console.log(`For TPA webview token verification, using cloud host name: ${cloudHostName}`);
       return `https://${cloudHostName}`;
     }
     return undefined;
