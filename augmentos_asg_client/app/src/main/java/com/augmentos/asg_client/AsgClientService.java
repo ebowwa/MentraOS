@@ -14,6 +14,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Binder;
 import android.os.Build;
 import android.os.Bundle;
@@ -1344,5 +1345,130 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 }
             }
         }).start();
+    }
+    
+    /**
+     * Track whether we've been initialized to avoid duplicate initialization
+     */
+    private boolean mIsInitialized = false;
+    
+    /**
+     * Check if the service has been initialized
+     */
+    private boolean isInitialized() {
+        return mIsInitialized;
+    }
+    
+    /**
+     * Safely initialize core components with proper error handling
+     */
+    private void safelyInitializeComponents() {
+        try {
+            Log.e(TAG, "Starting initialization of core components");
+            
+            // Initialize the network manager
+            try {
+                initializeNetworkManager();
+                Log.e(TAG, "Successfully initialized network manager");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize network manager: " + e.getMessage(), e);
+            }
+            
+            // Initialize the bluetooth manager
+            try {
+                initializeBluetoothManager();
+                Log.e(TAG, "Successfully initialized bluetooth manager");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize bluetooth manager: " + e.getMessage(), e);
+            }
+            
+            // Mark as initialized
+            mIsInitialized = true;
+            Log.e(TAG, "Core components initialization complete");
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Uncaught exception during initialization: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Log detailed information about service start
+     */
+    private void logServiceStartInfo(Intent intent, int startId) {
+        try {
+            Log.e(TAG, "==============================================");
+            Log.e(TAG, "SERVICE START INFO");
+            Log.e(TAG, "StartId: " + startId);
+            Log.e(TAG, "Android version: " + Build.VERSION.RELEASE + " (SDK " + Build.VERSION.SDK_INT + ")");
+            Log.e(TAG, "Device: " + Build.MANUFACTURER + " " + Build.MODEL);
+            Log.e(TAG, "Intent: " + (intent != null ? intent.toString() : "null"));
+            Log.e(TAG, "Action: " + (intent != null ? intent.getAction() : "null"));
+            if (intent != null && intent.getExtras() != null) {
+                for (String key : intent.getExtras().keySet()) {
+                    Log.e(TAG, "Extra: " + key + " = " + intent.getExtras().get(key));
+                }
+            }
+            Log.e(TAG, "Thread ID: " + Thread.currentThread().getId());
+            Log.e(TAG, "==============================================");
+        } catch (Exception e) {
+            Log.e(TAG, "Error logging service start info", e);
+        }
+    }
+    
+    /**
+     * Record service start in SharedPreferences
+     */
+    private void recordServiceStart(String action, Bundle extras) {
+        try {
+            SharedPreferences prefs = getSharedPreferences("boot_stats", MODE_PRIVATE);
+            SharedPreferences.Editor editor = prefs.edit();
+            
+            // Increment counter
+            int serviceStartCount = prefs.getInt("service_start_count", 0) + 1;
+            editor.putInt("service_start_count", serviceStartCount);
+            
+            // Record details
+            editor.putString("last_service_action", action);
+            editor.putLong("last_service_start_time", System.currentTimeMillis());
+            
+            // Extract any info from extras
+            if (extras != null) {
+                if (extras.containsKey("boot_source")) {
+                    editor.putString("last_service_boot_source", extras.getString("boot_source"));
+                }
+                if (extras.containsKey("boot_time")) {
+                    editor.putLong("last_service_boot_time", extras.getLong("boot_time"));
+                }
+            }
+            
+            editor.apply();
+            
+            Log.e(TAG, "Recorded service start #" + serviceStartCount + " with action: " + action);
+        } catch (Exception e) {
+            Log.e(TAG, "Error recording service start", e);
+        }
+    }
+    
+    /**
+     * Update the service notification with latest information
+     */
+    private void updateServiceNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            try {
+                // Create an updated notification
+                Notification notification = updateNotification();
+                
+                // Update the foreground notification
+                NotificationManager notificationManager = 
+                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                
+                if (notificationManager != null) {
+                    notificationManager.notify(asgServiceNotificationId, notification);
+                    Log.e(TAG, "Updated foreground notification");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error updating notification", e);
+            }
+        }
     }
 }

@@ -5,8 +5,11 @@ import android.util.Log;
 
 import com.augmentos.asg_client.bluetooth.serial.ComManager;
 import com.augmentos.asg_client.bluetooth.serial.SerialListener;
+import com.augmentos.asg_client.bluetooth.utils.K900MessageParser;
+import com.augmentos.asg_client.bluetooth.utils.ByteUtil;
 
 import java.util.Arrays;
+import java.util.List;
 
 /**
  * Implementation of IBluetoothManager for K900 devices.
@@ -18,6 +21,7 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
     private ComManager comManager;
     private boolean isSerialOpen = false;
     private DebugNotificationManager notificationManager;
+    private K900MessageParser messageParser;
     
     /**
      * Create a new K900BluetoothManager
@@ -32,6 +36,9 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         
         // Create the communication manager
         comManager = new ComManager(context);
+        
+        // Create the message parser to handle fragmented messages
+        messageParser = new K900MessageParser();
     }
     
     @Override
@@ -157,6 +164,11 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
         comManager.stop();
         isSerialOpen = false;
         
+        // Clear the message parser
+        if (messageParser != null) {
+            messageParser.clear();
+        }
+        
         Log.d(TAG, "K900BluetoothManager shut down");
     }
     
@@ -198,13 +210,34 @@ public class K900BluetoothManager extends BaseBluetoothManager implements Serial
             byte[] dataCopy = new byte[size];
             System.arraycopy(data, 0, dataCopy, 0, size);
             
-            // Notify listeners of the received data
-            Log.d(TAG, "GOT SUM DATA? " + Arrays.toString(dataCopy));
-            notifyDataReceived(dataCopy);
+            // Log the raw data received
+            Log.d(TAG, "GOT UART DATA: " + Arrays.toString(dataCopy));
             
-            // Show notification for debugging (only for larger data packets to avoid spam)
-            if (size > 10) {
-                notificationManager.showDataReceivedNotification(size);
+            // Add the data to our message parser
+            if (messageParser.addData(dataCopy, size)) {
+                // Try to extract complete messages
+                List<byte[]> completeMessages = messageParser.parseMessages();
+                if (completeMessages != null && !completeMessages.isEmpty()) {
+                    Log.d(TAG, "Extracted " + completeMessages.size() + " complete message(s) from buffer");
+                    
+                    // Process each complete message
+                    for (byte[] message : completeMessages) {
+                        Log.d(TAG, "Complete message (full hex): " + ByteUtil.outputHexString(message, 0, message.length)); // Using space-separated hex format
+                        Log.d(TAG, "GOT COMPLETE MESSAGE: " + Arrays.toString(message));
+                        
+                        // Notify listeners of the received message
+                        notifyDataReceived(message);
+                        
+                        // Show notification for debugging (only for larger messages to avoid spam)
+                        if (message.length > 10) {
+                            notificationManager.showDataReceivedNotification(message.length);
+                        }
+                    }
+                } else {
+                    Log.d(TAG, "No complete messages extracted yet, waiting for more data");
+                }
+            } else {
+                Log.e(TAG, "Failed to add data to message parser buffer - buffer may be full");
             }
         }
     }

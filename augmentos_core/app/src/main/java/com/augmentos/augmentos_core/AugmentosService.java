@@ -205,6 +205,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     asrPlanner.updateAsrLanguages();
                 } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
                     edgeTpaSystem.stopAllThirdPartyApps();
+                    
+                    // Reset WiFi status when glasses disconnect
+                    glassesWifiConnected = false;
+                    glassesWifiSsid = "";
                 }
 
                 sendStatusToAugmentOsManager();
@@ -1427,6 +1431,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void disconnectWearable(String wearableId) {
         Log.d("AugmentOsService", "Disconnecting from wearable: " + wearableId);
+        // Reset WiFi status
+        glassesWifiConnected = false;
+        glassesWifiSsid = "";
+        
         // Instead of stopping the service, reset the state
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
@@ -1447,6 +1455,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         
         brightnessLevel = null;
         batteryLevel = null;
+        
+        // Reset WiFi status
+        glassesWifiConnected = false;
+        glassesWifiSsid = "";
         
         // Reset instead of stopping
         if (smartGlassesManager != null) {
@@ -1816,6 +1828,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset cached data
         cachedThirdPartyAppList = new ArrayList<>();
         cachedDashboardDisplayObject = null;
+        
+        // Reset WiFi status
+        glassesWifiConnected = false;
+        glassesWifiSsid = "";
         
         // Disconnect websockets
         if (webSocketLifecycleManager != null) {

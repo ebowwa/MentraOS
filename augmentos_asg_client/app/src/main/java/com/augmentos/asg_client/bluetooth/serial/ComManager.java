@@ -8,6 +8,7 @@ import com.lhs.serialport.api.SerialManager;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 
 /**
  * Manager for serial communication with the BES2700 Bluetooth module in K900 devices.
@@ -136,8 +137,18 @@ public class ComManager {
             while(!mbStop) {
                 if(mIS != null) {
                     try {
+                        //Log.d(TAG, "About to read from UART...");
                         readSize = mIS.read(mReadBuf);
                         if(readSize > 0) {
+                            Log.d(TAG, "UART read completed, bytes received: " + readSize);
+                            if(readSize!=75 && readSize!=35) {
+                                Log.w(TAG, "^^^ THAT WAS A PARTIAL MESSAGE NOT A FULL MESSAGE");
+                            }
+                            Log.d(TAG, "UART raw data received: " + Arrays.toString(Arrays.copyOf(mReadBuf, readSize)));
+
+                            // Use ByteUtil for consistent hex formatting - log the entire message
+                            Log.d(TAG, "UART raw data received (full hex): " + com.augmentos.asg_client.bluetooth.utils.ByteUtil.outputHexString(mReadBuf, 0, readSize));
+
                             if(mListener != null)
                                 mListener.onSerialRead(COM_PATH, mReadBuf, readSize);
                         }
@@ -147,6 +158,7 @@ public class ComManager {
                 }
                 
                 try {
+                    // Keeping original 150ms sleep time to match K900_server_sdk
                     Thread.sleep(150);
                 } catch (InterruptedException e) {
                     Log.e(TAG, "RecvThread interrupted", e);

@@ -434,9 +434,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     isConnecting = false;
                     connectedDevice = null;
                     connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
-                    
-                    // Stop keep-alive and queue processing
-                    stopKeepAlive();
+
                     handler.removeCallbacks(processSendQueueRunnable);
                     
                     // Stop the readiness check loop
@@ -500,9 +498,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                         
                         // Start queue processing for sending data
                         handler.post(processSendQueueRunnable);
-                        
-                        // Start keep-alive mechanism
-                        startKeepAlive();
 
                         //openhotspot(); //TODO: REMOVE AFTER DONE DEVELOPING
                         // Start SOC readiness check loop - this will keep trying until
@@ -560,8 +555,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             
             Log.e(TAG, "Thread-" + threadId + ": 🎉 onCharacteristicChanged CALLBACK TRIGGERED! Characteristic: " + uuid);
             
-            // Process data from ANY characteristic that sends notifications
-            // This way we'll catch data even if it's coming on an unexpected characteristic
             boolean isRxCharacteristic = uuid.equals(RX_CHAR_UUID);
             boolean isTxCharacteristic = uuid.equals(TX_CHAR_UUID);
             
@@ -579,30 +572,30 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 byte[] data = characteristic.getValue();
                 
                 // Convert first few bytes to hex for better viewing
-                StringBuilder hexDump = new StringBuilder();
-                for (int i = 0; i < Math.min(data.length, 40); i++) {
-                    hexDump.append(String.format("%02X ", data[i]));
-                }
-                Log.e(TAG, "Thread-" + threadId + ": 🔍 First 40 bytes: " + hexDump);
-                Log.e(TAG, "Thread-" + threadId + ": 🔍 Total data length: " + data.length + " bytes");
+//                StringBuilder hexDump = new StringBuilder();
+//                for (int i = 0; i < Math.min(data.length, 40); i++) {
+//                    hexDump.append(String.format("%02X ", data[i]));
+//                }
+       //         Log.e(TAG, "Thread-" + threadId + ": 🔍 First 40 bytes: " + hexDump);
+     //           Log.e(TAG, "Thread-" + threadId + ": 🔍 Total data length: " + data.length + " bytes");
                 
                 if (data != null && data.length > 0) {
-                    // Critical debugging for LC3 audio issue - dump ALL received data
-                    
-                    // Check for LC3 audio data multiple ways
-                    boolean isLc3Command = false;
-                    
-                    // Method 1: Exact byte comparison
-                    boolean method1 = data[0] == (byte)0xA0;
-                    
-                    // Method 2: Unsigned integer comparison
-                    boolean method2 = (data[0] & 0xFF) == 0xA0;
-                    
-                    // Method 3: Comparison with signed value equivalent
-                    boolean method3 = data[0] == -96; // 0xA0 as signed byte is -96 decimal
-                    
+//                    // Critical debugging for LC3 audio issue - dump ALL received data
+//
+//                    // Check for LC3 audio data multiple ways
+//                    boolean isLc3Command = false;
+//
+//                    // Method 1: Exact byte comparison
+//                    boolean method1 = data[0] == (byte)0xA0;
+//
+//                    // Method 2: Unsigned integer comparison
+//                    boolean method2 = (data[0] & 0xFF) == 0xA0;
+//
+//                    // Method 3: Comparison with signed value equivalent
+//                    boolean method3 = data[0] == -96; // 0xA0 as signed byte is -96 decimal
+//
                     // Combined result
-                    isLc3Command = method1 || method2 || method3;
+       //             isLc3Command = method1 || method2 || method3;
                     
 //                    Log.e(TAG, "Thread-" + threadId + ": 🎤 BLE PACKET RECEIVED - " + data.length + " bytes");
 //                    Log.e(TAG, "Thread-" + threadId + ": 🔍 LC3 Detection - Method1: " + method1 + ", Method2: " + method2 + ", Method3: " + method3);
@@ -610,44 +603,22 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 //                    Log.e(TAG, "Thread-" + threadId + ": 🔍 First 32 bytes: " + hexDump);
                     
                     // Log MTU information with packet
-                    int mtuSize = -1;
-                    if (gatt != null) {
-                        try {
-                            // Calculate effective MTU (current MTU - 3 bytes BLE overhead)
-                            int effectiveMtu = currentMtu - 3;
-                            //Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + data.length + " bytes, MTU limit: " + effectiveMtu + " bytes");
-                            
-                            if (data.length > effectiveMtu) {
-                                Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "Thread-" + threadId + ": ❌ Error getting MTU size: " + e.getMessage());
-                        }
-                    }
-                    
-                    // Check if this looks like LC3 audio data based on combined detection
-                    if (isLc3Command && data.length >= 20) {
-                        //Log.e(TAG, "Thread-" + threadId + ": 🎵 LC3 AUDIO PACKET CONFIRMED! Length: " + data.length + " bytes");
-                        
-                        // Additional debugging: Check LC3 packet structure
-                        if (data.length > 2) {
-                            int packetLength = data.length;
-                            //Log.e(TAG, "Thread-" + threadId + ": 📦 LC3 packet structure analysis:");
-                            //Log.e(TAG, "Thread-" + threadId + ": 📦 Command: 0x" + String.format("%02X", data[0]));
-                            
-                            if (packetLength >= 60) {
-                                //Log.e(TAG, "Thread-" + threadId + ": ✅ LC3 packet size looks good for audio data");
-                            } else {
-                                Log.e(TAG, "Thread-" + threadId + ": ⚠️ LC3 packet size may be truncated");
-                                if (mtuSize > 0 && packetLength >= mtuSize) {
-                                    Log.e(TAG, "Thread-" + threadId + ": ❌ Packet size matches MTU limit - likely truncated!");
-                                }
-                            }
-                            
-                            // Check if audioProcessingCallback is registered
-                            //Log.e(TAG, "Thread-" + threadId + ": ⭐ Audio callback registered: " + (audioProcessingCallback != null ? "YES" : "NO"));
-                        }
-                    }
+//                    int mtuSize = -1;
+//                    if (gatt != null) {
+//                        try {
+//                            // Calculate effective MTU (current MTU - 3 bytes BLE overhead)
+//                            int effectiveMtu = currentMtu - 3;
+//                            //Log.e(TAG, "Thread-" + threadId + ": 📏 Packet size: " + data.length + " bytes, MTU limit: " + effectiveMtu + " bytes");
+//
+//                            if (data.length > effectiveMtu) {
+//                                Log.e(TAG, "Thread-" + threadId + ": ⚠️ WARNING: Packet size exceeds MTU limit - may be truncated!");
+//                            }
+//                        } catch (Exception e) {
+//                            Log.e(TAG, "Thread-" + threadId + ": ❌ Error getting MTU size: " + e.getMessage());
+//                        }
+//                    }
+//
+
                     
                     // Process the received data
                     processReceivedData(data, data.length);
@@ -839,48 +810,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     /**
-     * Start the keep-alive mechanism to maintain connection
-     */
-    private void startKeepAlive() {
-        if (scheduler == null) {
-            scheduler = Executors.newScheduledThreadPool(1);
-        }
-        
-        scheduler.scheduleAtFixedRate(new Runnable() {
-            @Override
-            public void run() {
-                if (isConnected) {
-                    // Send a keep-alive packet
-                    try {
-                        JSONObject keepAliveJson = new JSONObject();
-                        keepAliveJson.put("type", "keep_alive");
-                        keepAliveJson.put("timestamp", System.currentTimeMillis());
-                        sendJson(keepAliveJson);
-                    } catch (JSONException e) {
-                        Log.e(TAG, "Error creating keep-alive JSON", e);
-                    }
-                }
-            }
-        }, KEEP_ALIVE_INTERVAL_MS, KEEP_ALIVE_INTERVAL_MS, TimeUnit.MILLISECONDS);
-    }
-    
-    /**
-     * Stop the keep-alive mechanism
-     */
-    private void stopKeepAlive() {
-        if (scheduler != null && !scheduler.isShutdown()) {
-            scheduler.shutdown();
-            try {
-                if (!scheduler.awaitTermination(1000, TimeUnit.MILLISECONDS)) {
-                    scheduler.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                scheduler.shutdownNow();
-            }
-        }
-    }
-    
-    /**
      * Process the send queue
      */
     private void processSendQueue() {
@@ -930,7 +859,9 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void sendJson(JSONObject json) {
         if (json != null) {
             String jsonStr = json.toString();
-            queueData(jsonStr.getBytes(StandardCharsets.UTF_8));
+            sendDataToGlasses(jsonStr);
+        } else {
+            Log.d(TAG, "Cannot send JSON to ASG, JSON is null");
         }
     }
     
@@ -1275,9 +1206,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private void requestBatteryStatus() {
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "request");
-            json.put("request", "battery_status");
-            sendJson(json);
+            json.put("type", "request_battery_state");
+            sendDataToGlasses(json.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Error creating battery status request", e);
         }
@@ -1301,7 +1231,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         try {
             JSONObject json = new JSONObject();
             json.put("type", "request_wifi_status");
-            sendJson(json);
+            sendDataToGlasses(json.toString());
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi status request", e);
         }
@@ -1479,59 +1409,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final int READINESS_CHECK_INTERVAL_MS = 2500; // every 2.5 seconds
     private Runnable readinessCheckRunnable;
     private int readinessCheckCounter = 0;
-    
-    /**
-     * Starts a debug loop that sends a video command every 5 seconds
-     * This is for testing BLE communication with the BES2700 MCU
-     */
-    private void startDebugVideoCommandLoop() {
-        // Cancel any existing debug loop
-        stopDebugVideoCommandLoop();
-        Log.d(TAG, "🔄 Starting debug video command loop");
-        Log.d(TAG, "🐞 Starting debug command loop - sending command every 5 seconds");
-        
-        debugVideoCommandRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (isConnected && !isKilled) {
-                    debugCommandCounter++;
-                    
-                    Log.d(TAG, "🐞 Debug loop sending test data #" + debugCommandCounter);
-                    
-                    // Test options - uncomment the one you want to use:
-                    
-                    // Option 1: Use the video command (original implementation)
-                    // sendVideoCommand("debug_video_" + debugCommandCounter, 0);
-                    
-                    // Option 2: Use the arbitrary command (JSON in C/V/B format)
-                    // String testId = "test_command_" + debugCommandCounter;
-                    // sendArbitraryCommand(testId, "This is a test message #" + debugCommandCounter);
-                    
-                    // Option 3: Use the new direct data sending method
-                    String testData = "HELLO FROM CORE #" + debugCommandCounter + " - Testing direct data transmission";
-                    sendDataToGlasses(testData);
-                    
-                    // Schedule next run
-                    handler.postDelayed(this, DEBUG_VIDEO_INTERVAL_MS);
-                }
-            }
-        };
-        
-        // Start the loop
-        handler.post(debugVideoCommandRunnable);
-    }
-    
-    /**
-     * Stops the debug video command loop
-     */
-    private void stopDebugVideoCommandLoop() {
-        if (debugVideoCommandRunnable != null) {
-            handler.removeCallbacks(debugVideoCommandRunnable);
-            debugVideoCommandRunnable = null;
-            Log.d(TAG, "🐞 Stopped debug video command loop");
-        }
-    }
-    
+
     /**
      * Starts the glasses SOC readiness check loop
      * This sends a "phone_ready" message every 5 seconds until
@@ -1599,12 +1477,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (isScanning) {
             stopScan();
         }
-        
-        // Stop keep-alive
-        stopKeepAlive();
-        
-        // Stop debug command loop
-        stopDebugVideoCommandLoop();
         
         // Stop readiness check loop
         stopReadinessCheckLoop();
@@ -1742,41 +1614,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     public void stopScrollingTextViewMode() {
         Log.d(TAG, "[STUB] Device has no display. Scrolling text view would stop");
     }
-    
-    /**
-     * Send video recording command to BES2700 MCU using the K900 protocol format
-     * Formats the command with proper start/end codes
-     * 
-     * @param filename Filename for the video without extension
-     * @param videoType Type of recording (0 for normal)
-     */
-    public void sendVideoCommand(String filename, int videoType) {
-        try {
-            // Create video command body
-            JSONObject body = new JSONObject();
-            body.put("type", videoType);
-            body.put("fname", filename);
-            
-            // Create the full command
-            JSONObject cmdObject = new JSONObject();
-            cmdObject.put("C", "cs_vdo"); // Video command
-            cmdObject.put("V", 1);        // Version is always 1
-            cmdObject.put("B", body);     // Add the body
-            
-            // Convert to string
-            String jsonStr = cmdObject.toString();
-            Log.d(TAG, "Sending video command: " + jsonStr);
-            
-            // Format with start/end codes manually (since we don't have XyCmd)
-            byte[] packedData = packCommand(jsonStr);
-            
-            // Queue the data for sending
-            queueData(packedData);
-            
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating video command", e);
-        }
-    }
 
     public void openhotspot() {
         try {
@@ -1873,6 +1710,46 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
             Log.e(TAG, "Error creating data JSON", e);
         }
     }
+
+    public void sendStartRecordVideo(){
+        try {
+            JSONObject command = new JSONObject();
+            command.put("type", "start_record_video");
+            sendJson(command);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendStopRecordVideo(){
+        try {
+            JSONObject command = new JSONObject();
+            command.put("type", "stop_record_video");
+            sendJson(command);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendStartVideoStream(){
+        try {
+            JSONObject command = new JSONObject();
+            command.put("type", "start_video_stream");
+            sendJson(command);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void sendStopVideoStream(){
+        try {
+            JSONObject command = new JSONObject();
+            command.put("type", "stop_video_stream");
+            sendJson(command);
+        } catch (JSONException e) {
+            throw new RuntimeException(e);
+        }
+    }
     
     @Override
     public void sendCustomCommand(String commandJson) {
@@ -1895,26 +1772,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     
                     // Send WiFi credentials to the ASG client
                     JSONObject wifiCommand = new JSONObject();
-                    wifiCommand.put("type", "command");
-                    wifiCommand.put("command", "set_wifi");
+                    wifiCommand.put("type", "set_wifi_credentials");
                     wifiCommand.put("ssid", ssid);
                     wifiCommand.put("password", password);
                     sendJson(wifiCommand);
-                    
-                    // Update local state - we don't actually know if it will connect yet,
-                    // but the device will send a wifi_status update once it tries
-                    Log.d(TAG, "Sent WiFi credentials to connect to: " + ssid);
                     break;
-                
-                case "k900_record_video":
-                    // Extract parameters for video recording
-                    String filename = json.optString("filename", "video_" + System.currentTimeMillis());
-                    int videoType = json.optInt("videoType", 0);
-                    
-                    // Call our video recording function
-                    sendVideoCommand(filename, videoType);
-                    break;
-                    
                 default:
                     Log.w(TAG, "Unknown custom command type: " + type);
                     break;
