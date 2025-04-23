@@ -52,9 +52,10 @@ import {
   UserSession,
   Vad,
   WebhookRequestType,
-  AugmentosSettingsUpdate,
+  AugmentosSettingsUpdateRequest,
   SettingsUpdate,
-  RequestSettings
+  RequestSettings,
+  CoreStatusUpdate
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -102,8 +103,7 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
   alwaysOnStatusBar: false,
   bypassVad: false,
   bypassAudioEncoding: false,
-  enablePhoneNotifications: false,
-  onboardingCompleted: false
+  enablePhoneNotifications: false
 } as const;
 
 /**
@@ -747,6 +747,7 @@ export class WebSocketService {
   /**
    * 🥳🤓 Handles new glasses client connections.
    * @param ws - WebSocket connection
+   * @param request - Incoming message
    * @private
    */
   private async handleGlassesConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
@@ -1145,35 +1146,93 @@ export class WebSocketService {
           break;
         }
 
-        case GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE: {
-          const settingsUpdate = message as AugmentosSettingsUpdate;
-          userSession.logger.info('Received AugmentOS settings update via WebSocket');
+        case GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST: {
+          const settingsUpdate = message as AugmentosSettingsUpdateRequest;
+          userSession.logger.info('Received AugmentOS settings update request via WebSocket');
           
           try {
-            // Validate message structure
-            if (!settingsUpdate.settings || typeof settingsUpdate.settings !== 'object') {
-              throw new Error('Invalid settings payload');
-            }
-            
             // Find or create the user
             const user = await User.findOrCreateUser(userSession.userId);
+
+            // Get current settings from database
+            const currentSettings = user.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
+            userSession.logger.info('Current settings from database:', currentSettings);
+
+            // Send current settings back to the client
+            const responseMessage = {
+              type: 'settings_update',
+              success: true,
+              message: 'Current settings retrieved successfully',
+              settings: currentSettings,
+              timestamp: new Date()
+            };
+
+            ws.send(JSON.stringify(responseMessage));
+          } catch (error) {
+            userSession.logger.error('Error retrieving AugmentOS settings:', error);
             
-            // Get current settings before update for logging
+            // Send error back to client
+            const errorMessage = {
+              type: 'augmentos_settings_update_error',
+              success: false,
+              message: error instanceof Error ? error.message : 'Error retrieving settings',
+              timestamp: new Date()
+            };
+            ws.send(JSON.stringify(errorMessage));
+          }
+          break;
+        }
+
+        case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
+          const coreStatusUpdate = message as CoreStatusUpdate;
+          userSession.logger.info('Received core status update:', coreStatusUpdate);
+
+          try {
+            // The status is already an object, no need to parse
+            const statusObj = coreStatusUpdate.status as any;
+            const coreInfo = statusObj.status.core_info;
+            const connectedGlasses = statusObj.status.connected_glasses;
+
+            if (!coreInfo || !connectedGlasses) {
+              userSession.logger.error('Invalid core status update format - missing required fields');
+              break;
+            }
+
+            // Map core status fields to augmentos settings
+            const newSettings = {
+              useOnboardMic: coreInfo.force_core_onboard_mic,
+              contextualDashboard: coreInfo.contextual_dashboard_enabled,
+              headUpAngle: connectedGlasses.headUp_angle,
+              brightness: parseInt(connectedGlasses.brightness),
+              autoBrightness: connectedGlasses.auto_brightness_enabled,
+              sensingEnabled: coreInfo.sensing_enabled,
+              alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
+              bypassVad: coreInfo.bypass_vad_for_debugging,
+              bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
+              enablePhoneNotifications: coreInfo.enable_phone_notifications
+            };
+
+            console.log("🔥🔥🔥: newSettings:", newSettings);
+
+            // Find or create the user
+            const user = await User.findOrCreateUser(userSession.userId);
+
+            // Get current settings before update
             const currentSettings = JSON.parse(JSON.stringify(user.augmentosSettings));
             userSession.logger.info('Current settings before update:', currentSettings);
-            
+
             // Check if anything actually changed
-            const hasChanges = Object.entries(settingsUpdate.settings).some(([key, value]) => {
+            const hasChanges = Object.entries(newSettings).some(([key, value]) => {
               return currentSettings[key] !== value || 
                     (typeof currentSettings[key] !== typeof value && 
                     currentSettings[key] != value);
             });
-            
+
             if (!hasChanges) {
-              userSession.logger.info('No changes detected in settings - values are the same');
+              userSession.logger.info('No changes detected in settings from core status update');
             } else {
-              userSession.logger.info('Changes detected in settings:', {
-                changedFields: Object.entries(settingsUpdate.settings)
+              userSession.logger.info('Changes detected in settings from core status update:', {
+                changedFields: Object.entries(newSettings)
                   .filter(([key, value]) => {
                     return currentSettings[key] !== value || 
                           (typeof currentSettings[key] !== typeof value && 
@@ -1185,41 +1244,20 @@ export class WebSocketService {
                     to: `${value} (${typeof value})` 
                   }))
               });
-            }
-            
-            // Update the settings directly in the database
-            await user.updateAugmentosSettings(settingsUpdate.settings);
-            
-            // Fetch updated user to verify changes
-            const updatedUser = await User.findOne({ email: userSession.userId });
-            const updatedSettings = updatedUser?.augmentosSettings 
-              ? JSON.parse(JSON.stringify(updatedUser.augmentosSettings))
-              : null;
+
+              // Update the settings in the database
+              await user.updateAugmentosSettings(newSettings);
               
-            userSession.logger.info('Settings after update:', updatedSettings);
-            
-            // Send a confirmation back to the client
-            const confirmationMessage = {
-              type: 'augmentos_settings_update_confirmation',
-              success: true,
-              changed: hasChanges,
-              message: hasChanges ? 'Settings updated successfully' : 'No changes needed',
-              settings: updatedSettings,
-              timestamp: new Date()
-            };
-            
-            ws.send(JSON.stringify(confirmationMessage));
+              // Fetch updated user to verify changes
+              const updatedUser = await User.findOne({ email: userSession.userId });
+              const updatedSettings = updatedUser?.augmentosSettings 
+                ? JSON.parse(JSON.stringify(updatedUser.augmentosSettings))
+                : null;
+                
+              userSession.logger.info('Settings after update:', updatedSettings);
+            }
           } catch (error) {
-            userSession.logger.error('Error updating AugmentOS settings:', error);
-            
-            // Send error back to client
-            const errorMessage = {
-              type: 'augmentos_settings_update_error',
-              success: false,
-              message: error instanceof Error ? error.message : 'Error updating settings',
-              timestamp: new Date()
-            };
-            ws.send(JSON.stringify(errorMessage));
+            userSession.logger.error('Error updating settings from core status:', error);
           }
           break;
         }
