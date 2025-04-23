@@ -7,13 +7,30 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Normalize a URL by removing trailing slashes
+ * Normalize and enhance a URL by handling common issues:
+ * - Adds https:// if no protocol is specified
+ * - Upgrades http:// to https:// 
+ * - Removes trailing slashes
+ * 
  * @param url The URL to normalize
- * @returns The normalized URL without trailing slashes
+ * @returns The normalized and enhanced URL
  */
 export function normalizeUrl(url: string): string {
     if (!url) return url;
     
+    // Trim whitespace
+    let normalizedUrl = url.trim();
+    
+    // Add https:// if no protocol is specified
+    if (!normalizedUrl.includes('://')) {
+        normalizedUrl = 'https://' + normalizedUrl;
+    }
+    
+    // Replace http:// with https://
+    if (normalizedUrl.startsWith('http://')) {
+        normalizedUrl = 'https://' + normalizedUrl.substring(7);
+    }
+    
     // Remove trailing slashes
-    return url.replace(/\/+$/, "");
+    return normalizedUrl.replace(/\/+$/, "");
 }
