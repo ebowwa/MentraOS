@@ -593,7 +593,7 @@ async function updateDashboard(sessionId?: string) {
           const title = event.title.length > 10 ? event.title.substring(0, 10).trim() + '...' : event.title;
           return `${title} @ ${formattedTime}`;
         } else if (eventDate.toDateString() === tomorrow.toDateString()) {
-          const title = event.title.length > 6 ? event.title.substring(0, 6).trim() + '...' : event.title;
+          const title = event.title.length > 6 ? event.title.substring(0, 4).trim() + '...' : event.title;
           return `${title} tmr @ ${formattedTime}`;
         } else {
           return "";

@@ -422,23 +422,17 @@ async function installApp(req: Request, res: Response) {
 
     // Only attempt WebSocket notifications for full auth mode
     if (authMode === 'full' && !session.minimal) {
+      console.log(`✅✅✅ Sending real-time notification for user ${email} in ${authMode} auth mode ✅✅✅`);
       try {
-        // Generate app state change
-        const appStateChange = await webSocketService.generateAppStateStatus(session);
-        
-        // Send update to websocket if connected
-        if (session.websocket && session.websocket.readyState === 1) {
-          session.websocket.send(JSON.stringify(appStateChange));
-        } else {
-          // Fall back to session service if direct websocket not available
-          sessionService.triggerAppStateChange(email);
-        }
+        // TriggerAppStateChange which send's a appstate change notification to the client.
+        // By default we can just use sessionService.triggerAppStateChange(), because it handles all the logic for us.
+        sessionService.triggerAppStateChange(email);
       } catch (error) {
         console.error('Error sending app state notification:', error);
         // Non-critical error, installation succeeded
       }
     } else {
-      console.log(`Skipping real-time notification for user ${email} in ${authMode} auth mode`);
+      console.log(`⛔️⛔️⛔️ Skipping real-time notification for user ${email} in ${authMode} auth mode ⛔️⛔️⛔️`);
     }
   } catch (error) {
     console.error('Error installing app:', error);
@@ -497,16 +491,9 @@ async function uninstallApp(req: Request, res: Response) {
     // Only attempt WebSocket notifications for full auth mode
     if (authMode === 'full' && !session.minimal) {
       try {
-        // Generate app state change
-        const appStateChange = await webSocketService.generateAppStateStatus(session);
-        
-        // Send update to websocket if connected
-        if (session.websocket && session.websocket.readyState === 1) {
-          session.websocket.send(JSON.stringify(appStateChange));
-        } else {
-          // Fall back to session service if direct websocket not available
-          sessionService.triggerAppStateChange(email);
-        }
+        // TriggerAppStateChange which send's a appstate change notification to the client.
+        // By default we can just use sessionService.triggerAppStateChange(), because it handles all the logic for us.
+        sessionService.triggerAppStateChange(email);
       } catch (error) {
         console.error('Error sending app state notification:', error);
         // Non-critical error, uninstallation succeeded

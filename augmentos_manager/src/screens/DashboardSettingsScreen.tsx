@@ -19,7 +19,6 @@ import Icon from 'react-native-vector-icons/FontAwesome';
 import { useStatus } from '../providers/AugmentOSStatusProvider.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import HeadUpAngleComponent from '../components/HeadUpAngleComponent.tsx';
-import NavigationBar from '../components/NavigationBar';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { Slider } from 'react-native-elements';
 
@@ -54,7 +53,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     { label: 'None', value: 'none' },
     { label: 'Fun Facts', value: 'fun_facts' },
     { label: 'Famous Quotes', value: 'famous_quotes' },
-    { label: "Trash Talk", value: "trash_talk" },
+    // { label: "Trash Talk", value: "trash_talk" },
     { label: 'Chinese Words', value: 'chinese_words' },
     { label: 'Gratitude Ping', value: 'gratitude_ping' }
   ];
@@ -323,8 +322,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
           onSave={onSaveHeadUpAngle}
         />
       )}
-
-      <NavigationBar />
     </SafeAreaView>
   );
 };

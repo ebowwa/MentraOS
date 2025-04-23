@@ -396,13 +396,9 @@ struct ViewState {
           return
         }
         
-        if !micManager.isRecording {
-          micManager.startRecording()
-        }
+        micManager.startRecording()
       } else {
-        if micManager.isRecording {
-          micManager.stopRecording()
-        }
+        micManager.stopRecording()
       }
     }
   }
@@ -1171,6 +1167,13 @@ struct ViewState {
       brightness = defaults.integer(forKey: SettingsKeys.brightness)
     }
     
+    if defaults.object(forKey: SettingsKeys.sensingEnabled) != nil {
+       sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+     } else {
+       print("Settings loaded: Sensing key did not exist, defaulting to true!")
+       sensingEnabled = true
+     }
+  
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
     self.settingsLoadedSemaphore.signal()

@@ -31,6 +31,7 @@ import adminRoutes from './routes/admin.routes';
 import tpaServerRoutes from './routes/tpa-server.routes';
 import photoRoutes from './routes/photos.routes';
 import galleryRoutes from './routes/gallery.routes';
+import toolsRoutes from './routes/tools.routes';
 
 import path from 'path';
 
@@ -130,7 +131,7 @@ app.use('/api/tpa-server', tpaServerRoutes);
 app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/gallery', galleryRoutes);
-
+app.use('/api/tools', toolsRoutes);
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 

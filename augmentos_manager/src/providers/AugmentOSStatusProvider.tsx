@@ -7,21 +7,51 @@ import BackendServerComms from '../backend_comms/BackendServerComms';
 import { useAuth } from '../AuthContext';
 import coreCommunicator from '../bridge/CoreCommunicator';
 
+// Define the base AppInfo type
+export interface AppInfo {
+    packageName: string;
+    name: string;
+    is_running: boolean;
+    is_foreground: boolean;
+}
+
+// Extend AppInfo with timestamp
+interface AppWithTimestamp extends AppInfo {
+    lastUpdated?: number;
+}
+
+// Define the status type with timestamped apps
+interface AugmentOSMainStatusWithTimestamps {
+    core_info: AugmentOSMainStatus['core_info'];
+    glasses_info: AugmentOSMainStatus['glasses_info'];
+    wifi: AugmentOSMainStatus['wifi'];
+    gsm: AugmentOSMainStatus['gsm'];
+    apps: AppWithTimestamp[];
+    auth: AugmentOSMainStatus['auth'];
+}
+
 interface AugmentOSStatusContextType {
-    status: AugmentOSMainStatus;
+    status: AugmentOSMainStatusWithTimestamps;
     initializeCoreConnection: () => void;
     refreshStatus: (data: any) => void;
     screenMirrorItems: { id: string; name: string }[]
     getCoreToken: () => string | null;
+    updateAppStatus: (packageName: string, isRunning: boolean, isForeground?: boolean) => void;
 }
 
 const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefined>(undefined);
 
 export const StatusProvider = ({ children }: { children: ReactNode }) => {
-    const [status, setStatus] = useState(AugmentOSParser.parseStatus({}));
+    const [status, setStatus] = useState<AugmentOSMainStatusWithTimestamps>(() => {
+        const initialStatus = AugmentOSParser.parseStatus({});
+        return {
+            ...initialStatus,
+            apps: initialStatus.apps.map(app => ({ ...app, lastUpdated: undefined }))
+        };
+    });
     const [isInitialized, setIsInitialized] = useState(false);
     const [screenMirrorItems, setScreenMirrorItems] = useState<{ id: string; name: string }[]>([]);
-
+    
     const refreshStatus = useCallback((data: any) => {
         if (!(data && 'status' in data)) {return;}
 
@@ -29,7 +59,32 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         if (INTENSE_LOGGING)
             console.log('Parsed status:', parsedStatus);
         
-        setStatus(parsedStatus);
+        setStatus(prevStatus => {
+            // Create a new status object that preserves optimistic updates
+            const newStatus: AugmentOSMainStatusWithTimestamps = {
+                ...parsedStatus,
+                apps: parsedStatus.apps.map(app => ({ ...app, lastUpdated: undefined }))
+            };
+            
+            // For each app in the current status, check if it has a more recent update
+            prevStatus.apps.forEach(prevApp => {
+                const newAppIndex = newStatus.apps.findIndex(a => a.packageName === prevApp.packageName);
+                if (newAppIndex !== -1) {
+                    const newApp = newStatus.apps[newAppIndex];
+                    // If the current app has a more recent update, preserve its state
+                    if (prevApp.lastUpdated && (!newApp.lastUpdated || prevApp.lastUpdated > newApp.lastUpdated)) {
+                        newStatus.apps[newAppIndex] = {
+                            ...newApp,
+                            is_running: prevApp.is_running,
+                            is_foreground: prevApp.is_foreground,
+                            lastUpdated: prevApp.lastUpdated
+                        };
+                    }
+                }
+            });
+            
+            return newStatus;
+        });
     }, []);
 
     // Add user as a dependency to trigger re-initialization after login
@@ -98,13 +153,44 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         return BackendServerComms.getInstance().getCoreToken();
     }, []);
 
+    // Update the updateAppStatus function to include timestamps
+    const updateAppStatus = useCallback((packageName: string, isRunning: boolean, isForeground: boolean = true) => {
+        setStatus(prevStatus => {
+            const now = Date.now();
+            // Create a new copy of the apps array with the updated app
+            const updatedApps = prevStatus.apps.map(app => {
+                if (app.packageName === packageName) {
+                    return { 
+                        ...app, 
+                        is_running: isRunning, 
+                        is_foreground: isForeground,
+                        lastUpdated: now
+                    };
+                }
+                // If setting a new foreground app, make sure other apps aren't foreground
+                if (isForeground && isRunning && app.is_foreground) {
+                    return { 
+                        ...app, 
+                        is_foreground: false,
+                        lastUpdated: now
+                    };
+                }
+                return app;
+            });
+            
+            // Return a new status object with the updated apps
+            return { ...prevStatus, apps: updatedApps };
+        });
+    }, []);
+
     return (
         <AugmentOSStatusContext.Provider value={{ 
             initializeCoreConnection,
             screenMirrorItems, 
             status, 
             refreshStatus,
-            getCoreToken
+            getCoreToken,
+            updateAppStatus
         }}>
             {children}
         </AugmentOSStatusContext.Provider>
