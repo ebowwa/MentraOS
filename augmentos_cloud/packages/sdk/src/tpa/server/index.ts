@@ -7,6 +7,7 @@
 import express, { type Express } from 'express';
 import path from 'path';
 import { TpaSession } from '../session';
+import { createAuthMiddleware } from '../webview';
 import {
   WebhookRequest,
   WebhookRequestType,
@@ -51,6 +52,11 @@ export interface TpaServerConfig {
   augmentOSWebsocketUrl?: string;
   /** ❤️ Enable health check endpoint at /health (default: true) */
   healthCheck?: boolean;
+  /**
+   * 🔐 Secret key used to sign session cookies
+   * This must be a strong, unique secret
+   */
+  cookieSecret?: string;
 }
 
 /**
@@ -105,6 +111,17 @@ export class TpaServer {
     // Initialize Express app
     this.app = express();
     this.app.use(express.json());
+
+    const cookieParser = require('cookie-parser');
+    this.app.use(cookieParser(this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`));
+    
+    // Apply authentication middleware
+    this.app.use(createAuthMiddleware({
+      apiKey: this.config.apiKey,
+      packageName: this.config.packageName,
+      cookieSecret: this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`
+    }));
+    
 
     // Setup server features
     this.setupWebhook();
