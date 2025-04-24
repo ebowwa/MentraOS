@@ -176,7 +176,28 @@ const router = express.Router();
  */
 async function getAllApps(req: Request, res: Response) {
   try {
-    const apps = await appService.getAllApps();
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required. Please provide valid token or session ID.'
+      });
+    }
+
+    // Get the user ID from the token
+    const token = authHeader.substring(7);
+    const userId = await getUserIdFromToken(token);
+
+    if (!userId) {
+
+      return res.status(401).json({
+        success: false,
+        message: 'Error fetching user ID from token'
+      });
+    }
+
+    const apps = await appService.getAllApps(userId);
     res.json({
       success: true,
       data: apps
@@ -301,6 +322,8 @@ async function startApp(req: Request, res: Response) {
     await webSocketService.startAppSession(session, packageName);
     const appStateChange = await webSocketService.generateAppStateStatus(session);
 
+    // console.log("appStateChange: " + JSON.stringify(appStateChange));
+
     res.json({
       success: true,
       data: { 
@@ -311,6 +334,7 @@ async function startApp(req: Request, res: Response) {
     });
 
     if (session.websocket && session.websocket.readyState === 1) {
+      // console.log("🔥🔥🔥: Sending app state change to websocket:", appStateChange);
       session.websocket.send(JSON.stringify(appStateChange));
     }
   } catch (error) {

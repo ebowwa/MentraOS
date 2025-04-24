@@ -574,6 +574,9 @@ export class WebSocketService {
 
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+
+        // console.log("🔥🔥🔥: Triggering stop webhook for", app.publicUrl);
+        // console.log("🔥🔥🔥: TPA Session ID:", tpaSessionId);
         await appService.triggerStopWebhook(
           app.publicUrl,
           {
@@ -951,7 +954,7 @@ export class WebSocketService {
           };
 
           ws.send(JSON.stringify(ackMessage));
-          userSession.logger.info(`[websocket.service]\nSENDING connection_ack`);
+          // userSession.logger.info(`[websocket.service]\nSENDING connection_ack` + JSON.stringify(ackMessage));
 
           // Track connection event.
           PosthogService.trackEvent('connected', userSession.userId, {
@@ -971,6 +974,8 @@ export class WebSocketService {
 
             // Generate and send app state to the glasses
             const appStateChange = await this.generateAppStateStatus(userSession);
+
+            // console.log("🔥🔥🔥: Sending app state change:", appStateChange);
             ws.send(JSON.stringify(appStateChange));
 
             // Track event
