@@ -286,13 +286,18 @@ class DisplayManager implements DisplayManagerI {
       const activeDisplay = this.createActiveDisplay(displayRequest);
       this.displayState.coreAppDisplay = activeDisplay;
 
-      // Check if background app with lock is actually displaying
-      if (!this.displayState.backgroundLock ||
-        this.displayState.currentDisplay?.displayRequest.packageName !== this.displayState.backgroundLock.packageName) {
-        logger.info(`[DisplayManager] - [${userSession.userId}] ✅ Background not displaying, showing core app`);
+      // Fixed condition: check if a background app (different from the core app) has the lock and is displaying
+      const blockedByBackgroundApp = 
+        this.displayState.backgroundLock && 
+        this.displayState.backgroundLock?.packageName !== this.mainApp && 
+        this.displayState.currentDisplay?.displayRequest.packageName === this.displayState.backgroundLock?.packageName;
+      
+      if (!blockedByBackgroundApp) {
+        logger.info(`[DisplayManager] - [${userSession.userId}] ✅ Background not displaying or core app has the lock, showing core app`);
         return this.showDisplay(activeDisplay);
       }
-      logger.info(`[DisplayManager] - [${userSession.userId}] ❌ Background app is displaying, core app blocked by ${this.displayState.backgroundLock.packageName}`);
+      
+      logger.info(`[DisplayManager] - [${userSession.userId}] ❌ Background app is displaying, core app blocked by ${this.displayState.backgroundLock?.packageName}`);
       return false;
     }
 
@@ -547,6 +552,18 @@ class DisplayManager implements DisplayManagerI {
     // Check if there's no background lock yet
     if (!this.displayState.backgroundLock) {
       logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔒 Granting new background lock to ${packageName}`);
+      this.displayState.backgroundLock = {
+        packageName,
+        expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT),
+        lastActiveTime: Date.now()
+      };
+      return true;
+    }
+    
+    // Check if the current lock holder is the main app (core/standard app)
+    // Background apps should be able to display alongside the core app
+    if (this.displayState.backgroundLock.packageName === this.mainApp) {
+      logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔒 Core app has lock, but allowing background app ${packageName} to display`);
       this.displayState.backgroundLock = {
         packageName,
         expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT),
