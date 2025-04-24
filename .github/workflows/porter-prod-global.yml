@@ -24,7 +24,6 @@ jobs:
         run: exec porter apply -f ./augmentos_cloud/porter.yaml
         env:
           PORTER_APP_NAME: cloud-prod
-          PORTER_NAMESPACE: east-asia
           NODE_ENV: production
           PORTER_CLUSTER: "4754"         # Use your production cluster ID
           PORTER_PROJECT: "15081"          # Use your Porter project ID
