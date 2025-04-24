@@ -1,6 +1,6 @@
 // AppIcon.tsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
 import { AppInfo } from '../providers/AugmentOSStatusProvider';
 import LinearGradient from 'react-native-linear-gradient';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -10,12 +10,13 @@ import { getAppImage } from '../logic/getAppImage';
 import { FallbackImageBackground } from './FallbackImageBackground';
 import { saveSetting, loadSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
+import { AppInterface } from '../providers/AppStatusProvider';
 
 interface AppIconProps {
-    app: AppInfo;
+    app: AppInterface;
     isForegroundApp?: boolean;
     onClick?: () => void;
-    style?: object;
+    style?: ViewStyle;
     isDarkTheme?: boolean;
     showLabel?: boolean;
 }
@@ -56,17 +57,17 @@ const AppIcon: React.FC<AppIconProps> = ({
             onLongPress={openAppSettings}
             delayLongPress={500} // Make long press easier to trigger
             activeOpacity={0.7}
-            style={[styles.appWrapper, style]}
+            style={[styles.container, style]}
             accessibilityLabel={`Launch ${app.name}`}
             accessibilityRole="button"
         >
-            <View style={[styles.appIconWrapper, style]}>
-                <FallbackImageBackground
-                    source={getAppImage(app)}
-                    style={[styles.appIcon, style]}
-                    imageStyle={styles.appIconRounded}
-                />
-            </View>
+            <Image
+                source={{ uri: app.logoURL }}
+                style={[
+                    styles.icon,
+                    isForegroundApp && styles.foregroundIcon
+                ]}
+            />
 
             {showLabel && (
                 <Text
@@ -84,21 +85,20 @@ const AppIcon: React.FC<AppIconProps> = ({
 };
 
 const styles = StyleSheet.create({
-    appWrapper: {
-        alignItems: 'center',
-    },
-    appIconWrapper: {
-        alignItems: 'center',
-        justifyContent: 'center',
+    container: {
+        width: 50,
+        height: 50,
+        borderRadius: 12,
         overflow: 'hidden',
     },
-    appIcon: {
+    icon: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
     },
-    appIconRounded: {
-        borderRadius: 12,
+    foregroundIcon: {
+        borderWidth: 2,
+        borderColor: '#00B0FF',
     },
     appName: {
         marginTop: 5,

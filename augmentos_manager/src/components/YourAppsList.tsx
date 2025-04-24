@@ -19,13 +19,14 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AppIcon from './AppIcon';
 import { NavigationProps } from './types';
+import { useAppStatus } from '../providers/AppStatusProvider';
 
 interface YourAppsListProps {
     isDarkTheme: boolean;
 }
 
 const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
-    const { status, updateAppStatus } = useStatus();
+    const { appStatus, refreshAppStatus, optimisticallyStartApp, clearPendingOperation, isSensingEnabled } = useAppStatus();
     const navigation = useNavigation<NavigationProps>();
     const [_isLoading, setIsLoading] = React.useState(false);
     const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
@@ -47,6 +48,10 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const itemWidth = containerWidth > 0 ? (containerWidth - (GRID_MARGIN * numColumns)) / numColumns : 0;
     
     const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
+
+    const backendComms = BackendServerComms.getInstance();
+
+    // console.log('%%% appStatus', appStatus);
 
     // Check onboarding status whenever the screen comes into focus
     useFocusEffect(
@@ -167,14 +172,17 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             }
         }
         
-        // Update UI immediately
-        updateAppStatus(packageName, true, true);
+        // Optimistically update UI
+        optimisticallyStartApp(packageName);
         
         // Start the operation in the background
         setIsLoading(true);
         try {
-            await BackendServerComms.getInstance().startApp(packageName);
-            
+            console.log('%%% starting app', packageName);
+            await backendComms.startApp(packageName);
+            // Clear the pending operation since it completed successfully
+            clearPendingOperation(packageName);
+
             if (!onboardingCompleted && packageName === 'com.augmentos.livecaptions') {
                 // If this is the Live Captions app, make sure we've hidden the tip
                 setShowOnboardingTip(false);
@@ -193,7 +201,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             }
         } catch (error) {
             // Only revert the status if the operation failed
-            updateAppStatus(packageName, false, false);
+            refreshAppStatus();
             console.error('start app error:', error);
         } finally {
             setIsLoading(false);
@@ -207,21 +215,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         });
     };
 
-    const [isSensingEnabled, setIsSensingEnabled] = React.useState(
-        status.core_info.sensing_enabled,
-    );
-    useEffect(() => {
-        setIsSensingEnabled(status.core_info.sensing_enabled);
-    }, [status.core_info.sensing_enabled]);
-
     // Filter out duplicate apps and running apps
-    const availableApps = status.apps.filter(app => {
+    const availableApps = appStatus.filter(app => {
         if (app.is_running) {
             return false;
         }
         // Check if this is the first occurrence of this package name
-        const firstIndex = status.apps.findIndex(a => a.packageName === app.packageName);
-        return firstIndex === status.apps.indexOf(app);
+        const firstIndex = appStatus.findIndex(a => a.packageName === app.packageName);
+        return firstIndex === appStatus.indexOf(app);
     });
 
     return (

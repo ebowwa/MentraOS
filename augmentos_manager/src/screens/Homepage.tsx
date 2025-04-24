@@ -14,6 +14,7 @@ import ConnectedSimulatedGlassesInfo from '../components/ConnectedSimulatedGlass
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
+import { useAppStatus } from '../providers/AppStatusProvider';
 import { ScrollView } from 'react-native-gesture-handler';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import semver from 'semver';
@@ -36,7 +37,8 @@ interface AnimatedSectionProps extends PropsWithChildren {
 
 const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();
-  const { status, startBluetoothAndCore } = useStatus();
+  const { appStatus, refreshAppStatus } = useAppStatus();
+  const { status } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -57,10 +59,10 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   // Clear loading state if apps are loaded
   useEffect(() => {
-    if (status.apps.length > 0) {
+    if (appStatus.length > 0) {
       setIsInitialLoading(false);
     }
-  }, [status.apps.length]);
+  }, [appStatus.length]);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -232,7 +234,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
           {status.core_info.puck_connected && (
             <>
-              {status.apps.length > 0 ? (
+              {appStatus.length > 0 ? (
                 <>
                   <AnimatedSection>
                     <RunningAppsList isDarkTheme={isDarkTheme} />
@@ -240,9 +242,8 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
                   <AnimatedSection>
                     <YourAppsList
-                    navigation={navigation}
                       isDarkTheme={isDarkTheme}
-                      key={`apps-list-${status.apps.length}`}
+                      key={`apps-list-${appStatus.length}`}
                     />
                   </AnimatedSection>
                 </>

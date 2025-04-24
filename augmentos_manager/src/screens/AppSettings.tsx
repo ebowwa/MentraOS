@@ -20,6 +20,8 @@ import BackendServerComms from '../backend_comms/BackendServerComms';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { getAppImage } from '../logic/getAppImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { useAppStatus } from '../providers/AppStatusProvider';
+import AppIcon from '../components/AppIcon';
 
 type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
@@ -36,10 +38,11 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{ [key: string]: any }>({});
   // Get app info from status
-  const { status, updateAppStatus } = useStatus();
+  const { status } = useStatus();
+  const { appStatus, refreshAppStatus } = useAppStatus();
   const appInfo = useMemo(() => {
-    return status.apps.find(app => app.packageName === packageName) || null;
-  }, [status.apps, packageName]);
+    return appStatus.find(app => app.packageName === packageName) || null;
+  }, [appStatus, packageName]);
 
   // Handle app start/stop actions with debouncing
   const handleStartStopApp = async () => {
@@ -50,21 +53,21 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
     try {
       if (appInfo.is_running) {
         // Immediately update the app status locally
-        updateAppStatus(packageName, false, false);
+        refreshAppStatus();
         // Then request the server to stop the app
         await BackendServerComms.getInstance().stopApp(packageName);
       } else {
         // Immediately update the app status locally
-        updateAppStatus(packageName, true, true);
+        refreshAppStatus();
         // Then request the server to start the app
         await BackendServerComms.getInstance().startApp(packageName);
       }
     } catch (error) {
       // Revert the status change if there was an error
       if (appInfo.is_running) {
-        updateAppStatus(packageName, true, true);
+        refreshAppStatus();
       } else {
-        updateAppStatus(packageName, false, false);
+        refreshAppStatus();
       }
       console.error(`Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`, error);
     }
@@ -357,10 +360,11 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
           <View style={styles.appIconRow}>
             <View style={styles.appIconContainer}>
               <View style={styles.iconWrapper}>
-                <ImageBackground
-                  source={getAppImage(appInfo)}
+                <AppIcon
+                  app={appInfo}
+                  isDarkTheme={isDarkTheme}
+                  isForegroundApp={appInfo.is_foreground}
                   style={styles.appIconLarge}
-                  imageStyle={styles.appIconRounded}
                 />
               </View>
             </View>
@@ -508,9 +512,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   appIconLarge: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: 100,
+    height: 100,
+    borderRadius: 18,
   },
   appIconRounded: {
     borderRadius: 18,
