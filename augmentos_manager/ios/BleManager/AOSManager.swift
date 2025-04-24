@@ -852,7 +852,7 @@ struct ViewState {
   }
 
   private func getGlassesHasMic() -> Bool {
-    if self.defaultWearable.contains("G1") {
+    if self.defaultWearable?.contains("G1") ?? false {
       return true
     }
     return false
