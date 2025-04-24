@@ -54,7 +54,10 @@ export interface ExtendedUserSession extends UserSession {
   cleanupTimerId?: NodeJS.Timeout;
   websocket: WebSocket;
   displayManager: DisplayManager;
-  transcript: { segments: TranscriptSegment[] };
+  transcript: { 
+    segments: TranscriptSegment[];  // For backward compatibility (English)
+    languageSegments?: Map<string, TranscriptSegment[]>; // Language-indexed map for multi-language support
+  };
   bufferedAudio: ArrayBufferLike[]; // More specific type
   lastAudioTimestamp?: number;
   recognizer?: any; // Define type from MS SDK if possible
@@ -116,7 +119,10 @@ export class SessionService {
       appConnections: new Map<string, WebSocket | any>(),
       OSSettings: { brightness: 50, volume: 50 },
       displayManager: new DisplayManager(),
-      transcript: { segments: [] },
+      transcript: { 
+        segments: [],
+        languageSegments: new Map<string, TranscriptSegment[]>() 
+      },
       websocket: ws,
       bufferedAudio: [],
       disconnectedAt: null,
@@ -243,10 +249,41 @@ export class SessionService {
     }
   }
 
-  addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment): void {
-    if (userSession && userSession.transcript) { // Check transcript exists
+  addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment, language: string = 'en-US'): void {
+    if (!userSession || !userSession.transcript) return;
+    
+    // Initialize languageSegments if not exists
+    if (!userSession.transcript.languageSegments) {
+      userSession.transcript.languageSegments = new Map<string, TranscriptSegment[]>();
+    }
+    
+    // Ensure the language entry exists in the map
+    if (!userSession.transcript.languageSegments.has(language)) {
+      userSession.transcript.languageSegments.set(language, []);
+    }
+    
+    // Get the current segments for this language
+    const languageSpecificSegments = userSession.transcript.languageSegments.get(language)!;
+    
+    // Add the segment
+    languageSpecificSegments.push(segment);
+    
+    // For backward compatibility, also add to segments array if it's English
+    if (language === 'en-US') {
       userSession.transcript.segments.push(segment);
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    }
+    
+    // Prune old segments (older than 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    
+    // Clean up the language-specific segments
+    userSession.transcript.languageSegments.set(
+      language,
+      languageSpecificSegments.filter(seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo)
+    );
+    
+    // Clean up the legacy segments array for backward compatibility
+    if (language === 'en-US') {
       userSession.transcript.segments = userSession.transcript.segments.filter(
         seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
       );
@@ -418,7 +455,16 @@ export class SessionService {
 
     // SubscriptionManager is part of userSession, no specific cleanup needed here
 
-    if (userSession.transcript) userSession.transcript.segments = []; // Check exists
+    // Clear transcript data
+    if (userSession.transcript) {
+      userSession.transcript.segments = []; // Clear legacy segments
+      
+      // Clear language-specific segments if they exist
+      if (userSession.transcript.languageSegments) {
+        userSession.transcript.languageSegments.clear();
+      }
+    }
+    
     userSession.bufferedAudio = [];
 
     userSession.appConnections.forEach((ws, appName) => {
