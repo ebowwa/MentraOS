@@ -1,7 +1,5 @@
 # AI Tools
 
-*Last updated: August 3, 2023*
-
 AugmentOS provides a powerful way for TPAs to extend Mira AI's capabilities through custom tools. These tools allow Mira to take actions within your TPA, such as creating content, fetching data, or controlling features - all through natural language conversations with users.
 
 ```typescript
