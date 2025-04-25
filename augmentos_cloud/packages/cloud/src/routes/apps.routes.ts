@@ -1,7 +1,7 @@
 // cloud/src/routes/apps.routes.ts
 import express, { Request, Response, NextFunction } from 'express';
 import webSocketService from '../services/core/websocket.service';
-import sessionService from '../services/core/session.service';
+import sessionService, { ExtendedUserSession } from '../services/core/session.service';
 import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
@@ -11,6 +11,23 @@ import { DeveloperProfile } from '@augmentos/sdk';
 // Extended app interface for API responses that include developer profile
 interface AppWithDeveloperProfile extends AppI {
   developerProfile?: DeveloperProfile;
+}
+
+// Enhanced app interface with running state properties
+interface EnhancedAppI extends AppI {
+  is_running?: boolean;
+  is_foreground?: boolean;
+}
+
+// Enhanced app with both developer profile and running state
+interface EnhancedAppWithDeveloperProfile extends AppWithDeveloperProfile {
+  is_running?: boolean;
+  is_foreground?: boolean;
+}
+
+// Interface for Mongoose document with toObject method
+interface MongooseDocument {
+  toObject(): any;
 }
 
 export const CLOUD_VERSION = process.env.CLOUD_VERSION;
@@ -190,7 +207,6 @@ async function getAllApps(req: Request, res: Response) {
     const userId = await getUserIdFromToken(token);
 
     if (!userId) {
-
       return res.status(401).json({
         success: false,
         message: 'Error fetching user ID from token'
@@ -198,9 +214,57 @@ async function getAllApps(req: Request, res: Response) {
     }
 
     const apps = await appService.getAllApps(userId);
+    // console.log("🔥🔥🔥: Apps:", apps);
+    // Get active sessions for the user to determine running apps
+    const userSessions = sessionService.getSessionsForUser(userId);
+    
+    // Convert apps to plain objects before enhancing
+    const plainApps = apps.map(app => {
+      // Check if this is a Mongoose document with toObject method
+      return (app as unknown as MongooseDocument).toObject?.() || app;
+    });
+    
+    // Enhance apps with running status
+    const enhancedApps = plainApps.map(app => {
+      // Create a new plain object for the enhanced app
+      const enhancedApp: EnhancedAppI = {
+        ...app,
+        is_running: false,
+        is_foreground: false
+      };
+      
+      // Check if this app is running in any user session
+      if (userSessions && userSessions.length > 0) {
+        const isRunning = userSessions.some(session => 
+          session.activeAppSessions && session.activeAppSessions.includes(app.packageName)
+        );
+        enhancedApp.is_running = isRunning;
+        
+        // Check if it's a foreground app in any session
+        if (isRunning) {
+          // Try a few different possible properties for foreground status
+          // Different components of the system might use different property names
+          const isForeground = userSessions.some(session => {
+            // Check various possible properties for foreground app
+            return (
+              // Most likely property name
+              (session as any).foregroundAppPackageName === app.packageName || 
+              // Fallback checks
+              (session as any).foregroundApp === app.packageName
+            );
+          });
+          enhancedApp.is_foreground = isForeground;
+        }
+      }
+      
+      return enhancedApp;
+    });
+
+    console.log("🔥🔥🔥: Enhanced apps:");
+
     res.json({
       success: true,
-      data: apps
+      data: enhancedApps
     });
   } catch (error) {
     console.error('Error fetching apps:', error);
