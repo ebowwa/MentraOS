@@ -6,8 +6,10 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '@augmentos/utils';
 import sessionService from '../services/core/session.service';
 import jwt from 'jsonwebtoken';
-import { config } from '@augmentos/config';
 import websocketService from '../services/core/websocket.service';
+
+
+const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
 /**
  * Validates the glasses authentication token and request
@@ -34,7 +36,7 @@ export const validateGlassesAuth = (req: Request, res: Response, next: NextFunct
     }
 
     // Get the JWT secret
-    const jwtSecret = config.cloud.env.AUGMENTOS_AUTH_JWT_SECRET;
+    const jwtSecret = AUGMENTOS_AUTH_JWT_SECRET;
     if (!jwtSecret) {
       logger.error('JWT secret not configured');
       return res.status(500).json({ error: 'Server authentication configuration error' });

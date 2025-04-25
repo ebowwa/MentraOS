@@ -1,48 +1,78 @@
 package com.augmentos.asg_client.camera;
 
+import static com.augmentos.augmentos_core.smarterglassesmanager.utils.K900ProtocolUtils.isK900Device;
+
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.ImageFormat;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCaptureSession;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraDevice;
+import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CameraMetadata;
+import android.hardware.camera2.CaptureFailure;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
+import android.hardware.camera2.params.OutputConfiguration;
+import android.hardware.camera2.params.SessionConfiguration;
+import android.hardware.camera2.params.StreamConfigurationMap;
+import android.media.Image;
+import android.media.ImageReader;
 import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 
 import androidx.annotation.NonNull;
-import androidx.camera.camera2.interop.Camera2Interop;
-import androidx.camera.core.AspectRatio;
-import androidx.camera.core.Camera;
-import androidx.camera.core.CameraSelector;
-import androidx.camera.core.ImageCapture;
-import androidx.camera.core.ImageCaptureException;
-import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
 import androidx.lifecycle.LifecycleService;
 
 import com.augmentos.asg_client.R;
-import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 public class CameraNeo extends LifecycleService {
     private static final String TAG = "CameraNeo";
     private static final String CHANNEL_ID = "CameraNeoServiceChannel";
     private static final int NOTIFICATION_ID = 1;
     
-    private ProcessCameraProvider cameraProvider;
-    private Camera camera;
-    private ImageCapture imageCapture;
+    // Camera variables
+    private CameraDevice cameraDevice = null;
+    private CaptureRequest.Builder captureRequestBuilder;
+    private CameraCaptureSession cameraCaptureSession;
+    private ImageReader imageReader;
+    private HandlerThread backgroundThread;
+    private Handler backgroundHandler;
+    private Semaphore cameraOpenCloseLock = new Semaphore(1);
+    private Size jpegSize;
+    private String cameraId;
+    private boolean isK900Device = false;
+    
+    // Target photo resolution (4:3 landscape orientation)
+    private static final int TARGET_WIDTH = 1440;
+    private static final int TARGET_HEIGHT = 1080;
+    
+    // Callback and execution handling
     private final Executor executor = Executors.newSingleThreadExecutor();
     
     // Intent action definitions
@@ -58,77 +88,24 @@ public class CameraNeo extends LifecycleService {
     // Static callback for photo capture
     private static PhotoCaptureCallback sPhotoCallback;
     
+    // For compatibility with CameraRecordingService
+    private static String lastPhotoPath;
+    
+    /**
+     * Get the path to the most recently captured photo
+     * Added for compatibility with CameraRecordingService
+     */
+    public static String getLastPhotoPath() {
+        return lastPhotoPath;
+    }
+    
     @Override
     public void onCreate() {
         super.onCreate();
-        Log.d(TAG, "CameraNeo service created");
+        Log.d(TAG, "CameraNeo Camera2 service created");
         createNotificationChannel();
         showNotification("Camera Service", "Service is running");
-        setupCamera();
-    }
-    
-    private void setupCamera() {
-        ListenableFuture<ProcessCameraProvider> cameraProviderFuture = 
-            ProcessCameraProvider.getInstance(this);
-            
-        cameraProviderFuture.addListener(() -> {
-            try {
-                cameraProvider = cameraProviderFuture.get();
-                
-                // Set up the image capture use case with horizontal 4:3 (landscape orientation)
-                // Using 1440x1080 which is 4:3 in landscape orientation
-                ImageCapture.Builder builder = new ImageCapture.Builder()
-                    .setTargetResolution(new android.util.Size(1440, 1080)) // 4:3 landscape
-                    .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY) // Optimize for speed over quality
-                    .setBufferFormat(ImageFormat.JPEG)
-                    .setJpegQuality(90) // Good quality but not maximum
-                    .setFlashMode(ImageCapture.FLASH_MODE_AUTO)
-                    .setTargetRotation(Surface.ROTATION_270); // Rotate 90 degrees clockwise
-                
-                // Set up optimal quality settings
-                Camera2Interop.Extender<ImageCapture> extender = new Camera2Interop.Extender<>(builder);
-                
-                // Set AUTO control mode
-                extender.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-                
-                // Enable auto exposure and set exposure compensation to make images brighter
-                extender.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AE_MODE, CameraMetadata.CONTROL_AE_MODE_ON);
-                extender.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 1); // Slight brightness boost
-                
-                // Set auto white balance
-                extender.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_AWB_MODE, CameraMetadata.CONTROL_AWB_MODE_AUTO);
-                
-                // Add noise reduction and edge enhancement
-                extender.setCaptureRequestOption(
-                    CaptureRequest.NOISE_REDUCTION_MODE, CameraMetadata.NOISE_REDUCTION_MODE_HIGH_QUALITY);
-                extender.setCaptureRequestOption(
-                    CaptureRequest.EDGE_MODE, CameraMetadata.EDGE_MODE_HIGH_QUALITY);
-                
-                imageCapture = builder.build();
-                
-                // For smart glasses with only one camera, don't require specific lens facing
-                CameraSelector cameraSelector = new CameraSelector.Builder()
-                    // Use default camera selector without lens facing requirement
-                    .build();
-                
-                // Keep full field of view while maintaining lower resolution
-                extender.setCaptureRequestOption(
-                    CaptureRequest.CONTROL_ZOOM_RATIO, 1.0f); // Ensure no zoom is applied
-                
-                // Bind to lifecycle
-                camera = cameraProvider.bindToLifecycle(
-                    this, cameraSelector, imageCapture);
-                
-                Log.d(TAG, "Camera setup complete");
-                
-            } catch (ExecutionException | InterruptedException e) {
-                Log.e(TAG, "Error setting up camera", e);
-            }
-        }, ContextCompat.getMainExecutor(this));
+        startBackgroundThread();
     }
     
     /**
@@ -148,17 +125,6 @@ public class CameraNeo extends LifecycleService {
         context.startForegroundService(intent);
     }
     
-    // For compatibility with CameraRecordingService
-    private static String lastPhotoPath;
-    
-    /**
-     * Get the path to the most recently captured photo
-     * Added for compatibility with CameraRecordingService
-     */
-    public static String getLastPhotoPath() {
-        return lastPhotoPath;
-    }
-    
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
@@ -170,56 +136,471 @@ public class CameraNeo extends LifecycleService {
                 filePath = getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
             }
             
-            takePicture(filePath);
+            setupCameraAndTakePicture(filePath);
         }
         
         return START_STICKY;
     }
     
-    private void takePicture(String filePath) {
-        // Ensure camera is ready
-        if (imageCapture == null) {
-            Log.e(TAG, "Cannot take picture, camera not initialized");
-            if (sPhotoCallback != null) {
-                sPhotoCallback.onPhotoError("Camera not initialized");
-            }
+    private void setupCameraAndTakePicture(String filePath) {
+        // Check if we're on a K900 device
+        isK900Device = isK900Device(getApplicationContext());
+        Log.d(TAG, "Device is K900: " + isK900Device);
+        
+        // For all devices, use Camera2 API but with K900-specific adjustments if needed
+        setupCamera2(filePath);
+    }
+    
+    /**
+     * Set up Camera2 API for all devices
+     */
+    @SuppressLint("MissingPermission")
+    private void setupCamera2(String filePath) {
+        CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+        if (manager == null) {
+            Log.e(TAG, "Could not get camera manager");
+            notifyPhotoError("Camera service unavailable");
+            stopSelf();
             return;
         }
         
-        File photoFile = new File(filePath);
-        
-        ImageCapture.OutputFileOptions outputFileOptions = 
-            new ImageCapture.OutputFileOptions.Builder(photoFile).build();
+        try {
+            String[] cameraIds = manager.getCameraIdList();
             
-        imageCapture.takePicture(outputFileOptions, executor,
-            new ImageCapture.OnImageSavedCallback() {
-                @Override
-                public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
-                    Log.d(TAG, "Photo saved successfully at " + photoFile.getAbsolutePath());
-                    // Store the last photo path for getLastPhotoPath() compatibility
-                    lastPhotoPath = photoFile.getAbsolutePath();
-                    if (sPhotoCallback != null) {
-                        sPhotoCallback.onPhotoCaptured(photoFile.getAbsolutePath());
+            // Log available cameras
+            Log.d(TAG, "Available cameras: " + cameraIds.length);
+            for (String id : cameraIds) {
+                CameraCharacteristics characteristics = manager.getCameraCharacteristics(id);
+                Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                String facingStr = facing == null ? "unknown" : 
+                                   facing == CameraCharacteristics.LENS_FACING_BACK ? "back" :
+                                   facing == CameraCharacteristics.LENS_FACING_FRONT ? "front" : "external";
+                Log.d(TAG, "Camera " + id + ": facing=" + facingStr);
+            }
+            
+            // For K900, just use camera ID "0" directly instead of checking lens facing
+            if (isK900Device) {
+                if (cameraIds.length > 0) {
+                    this.cameraId = "0";  // Always use camera ID 0 for K900
+                    Log.d(TAG, "K900 device: Using camera ID 0 directly");
+                } else {
+                    notifyPhotoError("No cameras available on K900 device");
+                    stopSelf();
+                    return;
+                }
+            } else {
+                // For regular devices, find the back-facing camera
+                for (String id : cameraIds) {
+                    CameraCharacteristics characteristics = manager.getCameraCharacteristics(id);
+                    Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                    
+                    if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
+                        this.cameraId = id;
+                        break;
+                    }
+                }
+                
+                // If no back camera found, use the first available camera
+                if (this.cameraId == null && cameraIds.length > 0) {
+                    this.cameraId = cameraIds[0];
+                    Log.d(TAG, "No back camera found, using camera ID: " + this.cameraId);
+                }
+            }
+            
+            // Verify that we have a valid camera ID
+            if (this.cameraId == null) {
+                notifyPhotoError("No suitable camera found");
+                stopSelf();
+                return;
+            }
+            
+            // Get characteristics for the selected camera
+            CameraCharacteristics characteristics = manager.getCameraCharacteristics(this.cameraId);
+            
+            // Check if this camera supports JPEG format
+            StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+            if (map == null) {
+                notifyPhotoError("Camera " + this.cameraId + " doesn't support configuration maps");
+                stopSelf();
+                return;
+            }
+            
+            // Find the closest available JPEG size to our target
+            Size[] jpegSizes = map.getOutputSizes(ImageFormat.JPEG);
+            if (jpegSizes == null || jpegSizes.length == 0) {
+                notifyPhotoError("Camera doesn't support JPEG format");
+                stopSelf();
+                return;
+            }
+            
+            // Log available sizes
+            Log.d(TAG, "Available JPEG sizes for camera " + this.cameraId + ":");
+            for (Size size : jpegSizes) {
+                Log.d(TAG, "  " + size.getWidth() + "x" + size.getHeight());
+            }
+            
+            jpegSize = chooseBestSize(jpegSizes, TARGET_WIDTH, TARGET_HEIGHT);
+            Log.d(TAG, "Selected JPEG size: " + jpegSize.getWidth() + "x" + jpegSize.getHeight());
+            
+            // Setup ImageReader for JPEG data
+            imageReader = ImageReader.newInstance(
+                    jpegSize.getWidth(), jpegSize.getHeight(),
+                    ImageFormat.JPEG, 2);
+            
+            imageReader.setOnImageAvailableListener(reader -> {
+                // Process the captured JPEG
+                try (Image image = reader.acquireLatestImage()) {
+                    if (image == null) {
+                        Log.e(TAG, "Acquired image is null");
+                        notifyPhotoError("Failed to acquire image data");
+                        stopSelf();
+                        return;
                     }
                     
-                    // Release camera resources immediately after photo is taken
-                    // This is important for battery life on smart glasses
-                    releaseCamera();
+                    ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                    byte[] bytes = new byte[buffer.remaining()];
+                    buffer.get(bytes);
+                    
+                    // Save the image data to the file
+                    boolean success = saveImageDataToFile(bytes, filePath);
+                    
+                    if (success) {
+                        lastPhotoPath = filePath;
+                        notifyPhotoCaptured(filePath);
+                    } else {
+                        notifyPhotoError("Failed to save image");
+                    }
+                    
+                    // Clean up resources
+                    closeCamera();
                     stopSelf();
+                } catch (Exception e) {
+                    Log.e(TAG, "Error handling image data", e);
+                    notifyPhotoError("Error processing photo: " + e.getMessage());
+                    closeCamera();
+                    stopSelf();
+                }
+            }, backgroundHandler);
+            
+            // Open the camera
+            if (!cameraOpenCloseLock.tryAcquire(2500, TimeUnit.MILLISECONDS)) {
+                throw new RuntimeException("Time out waiting to lock camera opening.");
+            }
+            
+            Log.d(TAG, "Opening camera ID: " + this.cameraId);
+            manager.openCamera(this.cameraId, stateCallback, backgroundHandler);
+            
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "Camera access exception", e);
+            notifyPhotoError("Could not access camera: " + e.getMessage());
+            stopSelf();
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while trying to lock camera", e);
+            notifyPhotoError("Camera operation interrupted");
+            stopSelf();
+        } catch (Exception e) {
+            Log.e(TAG, "Error setting up camera", e);
+            notifyPhotoError("Error setting up camera: " + e.getMessage());
+            stopSelf();
+        }
+    }
+    
+    /**
+     * Save image data to file
+     */
+    private boolean saveImageDataToFile(byte[] data, String filePath) {
+        try {
+            File file = new File(filePath);
+            
+            // Ensure parent directory exists
+            File parentDir = file.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            
+            // Write image data to file
+            try (FileOutputStream output = new FileOutputStream(file)) {
+                output.write(data);
+            }
+            
+            Log.d(TAG, "Saved image to: " + filePath);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving image", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Camera state callback for Camera2 API
+     */
+    private final CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
+        @Override
+        public void onOpened(@NonNull CameraDevice camera) {
+            Log.d(TAG, "Camera device opened successfully");
+            cameraOpenCloseLock.release();
+            cameraDevice = camera;
+            createCameraPreviewSession();
+        }
+        
+        @Override
+        public void onDisconnected(@NonNull CameraDevice camera) {
+            Log.d(TAG, "Camera device disconnected");
+            cameraOpenCloseLock.release();
+            camera.close();
+            cameraDevice = null;
+            stopSelf();
+        }
+        
+        @Override
+        public void onError(@NonNull CameraDevice camera, int error) {
+            Log.e(TAG, "Camera device error: " + error);
+            cameraOpenCloseLock.release();
+            camera.close();
+            cameraDevice = null;
+            notifyPhotoError("Camera device error: " + error);
+            stopSelf();
+        }
+    };
+    
+    /**
+     * Create a capture session to take a photo
+     */
+    private void createCameraPreviewSession() {
+        try {
+            if (cameraDevice == null || imageReader == null) {
+                Log.e(TAG, "Camera device or image reader is null");
+                notifyPhotoError("Camera not properly initialized");
+                stopSelf();
+                return;
+            }
+            
+            // Configure captureRequestBuilder for still capture
+            captureRequestBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureRequestBuilder.addTarget(imageReader.getSurface());
+            
+            // Configure camera settings
+            captureRequestBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
+            
+            // Auto-focus config (skip for K900 if it causes issues)
+            if (!isK900Device) {
+                captureRequestBuilder.set(CaptureRequest.CONTROL_AF_MODE, CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE);
+            }
+            
+            // Auto exposure and white balance (works on all devices)
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 1); // Slight brightness boost
+            captureRequestBuilder.set(CaptureRequest.CONTROL_AWB_MODE, CaptureRequest.CONTROL_AWB_MODE_AUTO);
+            
+            // Image quality settings (works on all devices)
+            captureRequestBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
+            captureRequestBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
+            captureRequestBuilder.set(CaptureRequest.JPEG_QUALITY, (byte)90);
+            
+            // Set proper rotation
+            // For K900 devices, use 270-degree rotation
+            // For standard devices, derive from display rotation
+            captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, 270);
+            
+            // Create capture session
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // Use SessionConfiguration for Android 9.0+
+                List<OutputConfiguration> outputs = new ArrayList<>();
+                outputs.add(new OutputConfiguration(imageReader.getSurface()));
+                
+                SessionConfiguration config = new SessionConfiguration(
+                        SessionConfiguration.SESSION_REGULAR,
+                        outputs,
+                        Executors.newSingleThreadExecutor(),
+                        new CameraCaptureSession.StateCallback() {
+                            @Override
+                            public void onConfigured(@NonNull CameraCaptureSession session) {
+                                Log.d(TAG, "Camera capture session configured successfully");
+                                cameraCaptureSession = session;
+                                capture();
+                            }
+                            
+                            @Override
+                            public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                                Log.e(TAG, "Failed to configure camera session");
+                                notifyPhotoError("Failed to configure camera");
+                                stopSelf();
+                            }
+                        });
+                
+                cameraDevice.createCaptureSession(config);
+            } else {
+                // Use older API for pre-Android 9.0
+                cameraDevice.createCaptureSession(
+                        Collections.singletonList(imageReader.getSurface()),
+                        new CameraCaptureSession.StateCallback() {
+                            @Override
+                            public void onConfigured(@NonNull CameraCaptureSession session) {
+                                Log.d(TAG, "Camera capture session configured successfully");
+                                cameraCaptureSession = session;
+                                capture();
+                            }
+                            
+                            @Override
+                            public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+                                Log.e(TAG, "Failed to configure camera session");
+                                notifyPhotoError("Failed to configure camera");
+                                stopSelf();
+                            }
+                        },
+                        null);
+            }
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "Camera access exception", e);
+            notifyPhotoError("Camera access error: " + e.getMessage());
+            stopSelf();
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating camera preview session", e);
+            notifyPhotoError("Error preparing camera: " + e.getMessage());
+            stopSelf();
+        }
+    }
+    
+    /**
+     * Capture the image
+     */
+    private void capture() {
+        if (cameraDevice == null || cameraCaptureSession == null) {
+            Log.e(TAG, "Camera or session is null");
+            notifyPhotoError("Camera not ready");
+            stopSelf();
+            return;
+        }
+        
+        try {
+            Log.d(TAG, "Capturing image...");
+            
+            // This is where we finally take the picture
+            cameraCaptureSession.capture(captureRequestBuilder.build(), new CameraCaptureSession.CaptureCallback() {
+                @Override
+                public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                              @NonNull CaptureRequest request,
+                                              @NonNull TotalCaptureResult result) {
+                    Log.d(TAG, "Image capture completed");
+                    // Processing continues in ImageReader listener
                 }
                 
                 @Override
-                public void onError(@NonNull ImageCaptureException exception) {
-                    Log.e(TAG, "Error taking photo", exception);
-                    if (sPhotoCallback != null) {
-                        sPhotoCallback.onPhotoError("Failed to capture photo: " + exception.getMessage());
-                    }
-                    
-                    // Release camera resources after error too
-                    releaseCamera();
+                public void onCaptureFailed(@NonNull CameraCaptureSession session,
+                                           @NonNull CaptureRequest request,
+                                           @NonNull CaptureFailure failure) {
+                    Log.e(TAG, "Image capture failed: " + failure.getReason());
+                    notifyPhotoError("Capture failed: " + failure.getReason());
+                    closeCamera();
                     stopSelf();
                 }
-            });
+            }, backgroundHandler);
+        } catch (CameraAccessException e) {
+            Log.e(TAG, "Error during capture", e);
+            notifyPhotoError("Error capturing image: " + e.getMessage());
+            closeCamera();
+            stopSelf();
+        } catch (Exception e) {
+            Log.e(TAG, "Unexpected error during capture", e);
+            notifyPhotoError("Unexpected error: " + e.getMessage());
+            closeCamera();
+            stopSelf();
+        }
+    }
+    
+    /**
+     * Choose best size based on target dimensions
+     */
+    private Size chooseBestSize(Size[] choices, int targetWidth, int targetHeight) {
+        // Calculate target aspect ratio
+        float targetRatio = (float) targetWidth / targetHeight;
+        
+        // Find sizes with aspect ratios close to target
+        List<Size> goodSizes = new ArrayList<>();
+        for (Size size : choices) {
+            float ratio = (float) size.getWidth() / size.getHeight();
+            if (Math.abs(ratio - targetRatio) < 0.1f) {  // Within 10% of target ratio
+                goodSizes.add(size);
+            }
+        }
+        
+        if (goodSizes.isEmpty()) {
+            // If no sizes with good ratio, use all available
+            goodSizes.addAll(Arrays.asList(choices));
+        }
+        
+        // Sort by area (closest to target area first)
+        final int targetArea = targetWidth * targetHeight;
+        Collections.sort(goodSizes, (s1, s2) -> {
+            int area1 = s1.getWidth() * s1.getHeight();
+            int area2 = s2.getWidth() * s2.getHeight();
+            return Math.abs(area1 - targetArea) - Math.abs(area2 - targetArea);
+        });
+        
+        // Return best match (or first one if list is empty)
+        return goodSizes.isEmpty() ? choices[0] : goodSizes.get(0);
+    }
+    
+    private void notifyPhotoCaptured(String filePath) {
+        if (sPhotoCallback != null) {
+            executor.execute(() -> sPhotoCallback.onPhotoCaptured(filePath));
+        }
+    }
+    
+    private void notifyPhotoError(String errorMessage) {
+        if (sPhotoCallback != null) {
+            executor.execute(() -> sPhotoCallback.onPhotoError(errorMessage));
+        }
+    }
+    
+    /**
+     * Start background thread
+     */
+    private void startBackgroundThread() {
+        backgroundThread = new HandlerThread("CameraNeoBackground");
+        backgroundThread.start();
+        backgroundHandler = new Handler(backgroundThread.getLooper());
+    }
+    
+    /**
+     * Stop background thread
+     */
+    private void stopBackgroundThread() {
+        if (backgroundThread != null) {
+            backgroundThread.quitSafely();
+            try {
+                backgroundThread.join();
+                backgroundThread = null;
+                backgroundHandler = null;
+            } catch (InterruptedException e) {
+                Log.e(TAG, "Interrupted when stopping background thread", e);
+            }
+        }
+    }
+    
+    /**
+     * Close camera resources
+     */
+    private void closeCamera() {
+        try {
+            cameraOpenCloseLock.acquire();
+            if (cameraCaptureSession != null) {
+                cameraCaptureSession.close();
+                cameraCaptureSession = null;
+            }
+            if (cameraDevice != null) {
+                cameraDevice.close();
+                cameraDevice = null;
+            }
+            if (imageReader != null) {
+                imageReader.close();
+                imageReader = null;
+            }
+        } catch (InterruptedException e) {
+            Log.e(TAG, "Interrupted while closing camera", e);
+        } finally {
+            cameraOpenCloseLock.release();
+        }
     }
     
     // -----------------------------------------------------------------------------------
@@ -255,25 +636,7 @@ public class CameraNeo extends LifecycleService {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        releaseCamera();
-    }
-    
-    /**
-     * Release camera resources to prevent keeping the camera open
-     * This is important for battery life on glasses
-     */
-    private void releaseCamera() {
-        if (cameraProvider != null) {
-            // CameraX requires unbindAll to be called on main thread
-            ContextCompat.getMainExecutor(this).execute(() -> {
-                if (cameraProvider != null) {
-                    cameraProvider.unbindAll();
-                    cameraProvider = null;
-                    camera = null;
-                    imageCapture = null;
-                    Log.d(TAG, "Camera resources released");
-                }
-            });
-        }
+        closeCamera();
+        stopBackgroundThread();
     }
 }

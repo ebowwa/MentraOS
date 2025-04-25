@@ -136,11 +136,20 @@ export interface VideoStreamResponse extends BaseMessage {
 }
 
 /**
+ * Standard connection error (for server compatibility)
+ */
+export interface StandardConnectionError extends BaseMessage {
+  type: 'connection_error';
+  message: string;
+}
+
+/**
  * Union type for all messages from cloud to TPAs
  */
 export type CloudToTpaMessage =
   | TpaConnectionAck
   | TpaConnectionError
+  | StandardConnectionError
   | AppStopped
   | SettingsUpdate
   | TranscriptionData
@@ -161,7 +170,7 @@ export function isTpaConnectionAck(message: CloudToTpaMessage): message is TpaCo
 }
 
 export function isTpaConnectionError(message: CloudToTpaMessage): message is TpaConnectionError {
-  return message.type === CloudToTpaMessageType.CONNECTION_ERROR;
+  return message.type === CloudToTpaMessageType.CONNECTION_ERROR || message.type === 'connection_error';
 }
 
 export function isAppStopped(message: CloudToTpaMessage): message is AppStopped {

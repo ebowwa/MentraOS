@@ -4,7 +4,7 @@
 
 import express, { Request, Response } from 'express';
 import { logger } from '@augmentos/utils';
-import { authenticateUser } from '../middleware/auth.middleware';
+import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
 import fs from 'fs';
 import path from 'path';
 import { GalleryPhoto } from '../models/gallery-photo.model';
@@ -16,9 +16,9 @@ const router = express.Router();
  * @desc Get all photos in the user's gallery
  * @access Private (requires authentication)
  */
-router.get('/', authenticateUser, async (req: Request, res: Response) => {
+router.get('/', validateGlassesAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).decodedToken.userId;
     
     // Get all photos for this user
     const photos = await GalleryPhoto.findByUserId(userId);
@@ -38,9 +38,9 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
  * @desc Delete a photo from the user's gallery
  * @access Private (requires authentication)
  */
-router.delete('/:photoId', authenticateUser, async (req: Request, res: Response) => {
+router.delete('/:photoId', validateGlassesAuth, async (req: Request, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = (req as any).decodedToken.userId;
     const { photoId } = req.params;
     
     // Get the photo to find its filename

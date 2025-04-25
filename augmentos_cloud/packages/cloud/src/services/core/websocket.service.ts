@@ -492,7 +492,7 @@ export class WebSocketService {
         }
       } else {
         // For non-system apps, use the public host
-        augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
+        augmentOSWebsocketUrl = `ws://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
         userSession.logger.info(`Using public URL for app ${packageName}`);
       }
 
@@ -1410,7 +1410,18 @@ export class WebSocketService {
               const saveToGallery = photoRequestMessage.saveToGallery || false;
               
               // Check if the app is currently running
-              if (!userSession.activeAppSessions || !userSession.activeAppSessions[appId]) {
+              if (!userSession.activeAppSessions) {
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'No active app sessions available'
+                });
+                return;
+              }
+              
+              // Check if app is in the active sessions array (it's an array, not an object)
+              const isAppActive = userSession.activeAppSessions.includes(appId);
+              if (!isAppActive) {
+                userSession.logger.warn(`[websocket.service]: App ${appId} tried to request photo but is not in active sessions: ${JSON.stringify(userSession.activeAppSessions)}`);
                 this.sendError(ws, {
                   type: CloudToTpaMessageType.CONNECTION_ERROR,
                   message: 'App not currently running'
@@ -1477,7 +1488,18 @@ export class WebSocketService {
               const appId = videoStreamRequestMessage.packageName;
               
               // Check if the app is currently running
-              if (!userSession.activeAppSessions || !userSession.activeAppSessions[appId]) {
+              if (!userSession.activeAppSessions) {
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'No active app sessions available'
+                });
+                return;
+              }
+              
+              // Check if app is in the active sessions array (it's an array, not an object)
+              const isAppActive = userSession.activeAppSessions.includes(appId);
+              if (!isAppActive) {
+                userSession.logger.warn(`[websocket.service]: App ${appId} tried to request photo but is not in active sessions: ${JSON.stringify(userSession.activeAppSessions)}`);
                 this.sendError(ws, {
                   type: CloudToTpaMessageType.CONNECTION_ERROR,
                   message: 'App not currently running'

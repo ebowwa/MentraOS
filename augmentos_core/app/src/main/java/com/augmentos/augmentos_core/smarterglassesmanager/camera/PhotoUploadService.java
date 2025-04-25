@@ -6,6 +6,9 @@ import android.os.Looper;
 import android.preference.PreferenceManager;
 import android.util.Log;
 
+import com.augmentos.augmentos_core.BuildConfig;
+import com.augmentos.augmentos_core.augmentos_backend.OldBackendServerComms;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +38,16 @@ public class PhotoUploadService {
     public interface UploadCallback {
         void onSuccess(String url);
         void onFailure(String errorMessage);
+    }
+
+    private static String getServerUrl() {
+        String host = BuildConfig.AUGMENTOS_HOST;// EnvHelper.getEnv("AUGMENTOS_HOST");
+        String port = BuildConfig.AUGMENTOS_PORT;// EnvHelper.getEnv("AUGMENTOS_PORT");
+        boolean secureServer = Boolean.parseBoolean(BuildConfig.AUGMENTOS_SECURE);// Boolean.parseBoolean(EnvHelper.getEnv("AUGMENTOS_SECURE"));
+        if (host == null || port == null) {
+            throw new IllegalStateException("AugmentOS Server Config Not Found");
+        }
+        return String.format("%s://%s:%s", secureServer ? "https" : "http", host, port);
     }
     
     /**
@@ -66,8 +79,7 @@ public class PhotoUploadService {
                 }
                 
                 // Get cloud URL from preferences
-                String cloudBaseUrl = PreferenceManager.getDefaultSharedPreferences(context)
-                        .getString("cloud_url", "https://cloud.augmentos.org");
+                String cloudBaseUrl = getServerUrl();
                 
                 String uploadUrl = cloudBaseUrl + "/api/photos/upload";
                 

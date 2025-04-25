@@ -791,7 +791,8 @@ export class TpaSession {
             this.updateSubscriptionsFromSettings();
           }
         }
-        else if (isTpaConnectionError(message)) {
+        else if (isTpaConnectionError(message) || message.type === 'connection_error') {
+          // Handle both TPA-specific connection_error and standard connection_error
           const errorMessage = message.message || 'Unknown connection error';
           this.events.emit('error', new Error(errorMessage));
         }

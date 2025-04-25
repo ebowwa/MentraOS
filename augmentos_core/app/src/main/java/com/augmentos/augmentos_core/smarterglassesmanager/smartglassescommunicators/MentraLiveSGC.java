@@ -1454,7 +1454,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void requestVideoStream() {
         Log.d(TAG, "Requesting video stream");
-        
         try {
             JSONObject json = new JSONObject();
             json.put("type", "start_video_stream");

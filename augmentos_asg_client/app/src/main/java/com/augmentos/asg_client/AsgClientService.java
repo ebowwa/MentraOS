@@ -24,6 +24,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
+import androidx.preference.PreferenceManager;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -796,6 +797,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 } catch (JSONException e) {
                     Log.d(TAG, "📦 Payload is not valid JSON, using as-is");
                     // If not valid JSON, continue with original json object
+                    parseK900Command(dataPayload);
+                    return;
                 }
             }
             
@@ -859,7 +862,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "Taking photo with requestId: " + requestId + ", appId: " + appId);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
                     
-                    // Take the photo using CameraRecordingService
+                    // Take the photo using CameraNeo instead of CameraRecordingService
                     takePhotoAndUpload(photoFilePath, requestId, appId);
                     break;
                     
@@ -942,6 +945,29 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             Log.e(TAG, "Error processing JSON command", e);
         }
     }
+
+    // These are plain text commands from the K900's MCU, usually from button presses on the device
+    public void parseK900Command(String command){
+        switch (command) {
+            case "cs_pho":
+                Log.d(TAG, "📦 Payload is cs_pho");
+                String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+                String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
+                takePhotoAndUpload(photoFilePath, "1234", "123445555");
+                break;
+            case "hm_htsp":
+            case "mh_htsp":
+                Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
+                networkManager.startHotspot("Mentra Live", "MentraLive");
+                break;
+            case "cs_vdo":
+                Log.d(TAG, "📦 Payload is cs_vdo");
+                break;
+            default:
+                Log.d(TAG, "📦 Unknown payload: " + command);
+                break;
+        }
+    }
     
     /**
      * Save the coreToken to SharedPreferences
@@ -951,8 +977,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         Log.d(TAG, "Saving coreToken to SharedPreferences");
         try {
             // Save to default SharedPreferences so it's accessible by all components
-            android.content.SharedPreferences preferences = android.preference.PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            android.content.SharedPreferences.Editor editor = preferences.edit();
+            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            SharedPreferences.Editor editor = preferences.edit();
             editor.putString("core_token", coreToken);
             editor.apply();
             
@@ -1046,11 +1072,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
         
         try {
-            // Use the new callback-based photo capture method
-            com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.takePictureWithCallback(
+            // Use CameraNeo for photo capture instead of CameraRecordingService
+            com.augmentos.asg_client.camera.CameraNeo.takePictureWithCallback(
                 getApplicationContext(),
                 photoFilePath,
-                new com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService.PhotoCaptureCallback() {
+                new com.augmentos.asg_client.camera.CameraNeo.PhotoCaptureCallback() {
                     @Override
                     public void onPhotoCaptured(String filePath) {
                         Log.d(TAG, "Photo captured successfully at: " + filePath);
