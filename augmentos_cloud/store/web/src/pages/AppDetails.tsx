@@ -216,7 +216,7 @@ const AppDetails: React.FC = () => {
                             variant="destructive"
                             onClick={handleUninstall}
                             disabled={installingApp}
-                            className="w-full md:w-48"
+                            className="w-full md:w-48 bg-[#E24A24] hover:bg-[#E24A24]/90"
                           >
                             {installingApp ? (
                               <>
