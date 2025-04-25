@@ -1,13 +1,8 @@
 // AppIcon.tsx
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
-import { AppInfo } from '../providers/AugmentOSStatusProvider';
-import LinearGradient from 'react-native-linear-gradient';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
-import { getAppImage } from '../logic/getAppImage';
-import { FallbackImageBackground } from './FallbackImageBackground';
 import { saveSetting, loadSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import { AppInterface } from '../providers/AppStatusProvider';
@@ -63,10 +58,7 @@ const AppIcon: React.FC<AppIconProps> = ({
         >
             <Image
                 source={{ uri: app.logoURL }}
-                style={[
-                    styles.icon,
-                    isForegroundApp && styles.foregroundIcon
-                ]}
+                style={styles.icon}
             />
 
             {showLabel && (
@@ -95,10 +87,6 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
-    },
-    foregroundIcon: {
-        borderWidth: 2,
-        borderColor: '#00B0FF',
     },
     appName: {
         marginTop: 5,

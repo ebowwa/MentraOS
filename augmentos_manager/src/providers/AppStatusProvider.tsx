@@ -73,7 +73,7 @@ export const AppStatusProvider = ({ children }: { children: ReactNode }) => {
 
         setIsLoading(true);
         setError(null);
-        
+
         // Record the time of this refresh attempt
         const refreshStartTime = Date.now();
         lastRefreshTime.current = refreshStartTime;
@@ -88,27 +88,36 @@ export const AppStatusProvider = ({ children }: { children: ReactNode }) => {
             });
 
             const appsData = await BackendServerComms.getInstance().getApps();
-            
+
             // Only process this update if it's the most recent one
             if (refreshStartTime === lastRefreshTime.current) {
                 // Merge existing running states with new data
                 const updatedAppsData = appsData.map(app => {
+                    // Make a shallow copy of the app object
+                    const appCopy = { ...app };
+
                     // Check pending operations first
                     const pendingOp = pendingOperations.current[app.packageName];
                     if (pendingOp === 'start') {
-                        return { ...app, is_running: true };
+                        appCopy.is_running = true;
                     } else if (pendingOp === 'stop') {
-                        return { ...app, is_running: false };
+                        appCopy.is_running = false;
+                    } else if (app.is_running !== undefined) {
+                        // If the server provided is_running status, use it
+                        appCopy.is_running = Boolean(app.is_running);
+                    } else if (currentRunningStates[app.packageName]) {
+                        // Fallback to our local state if server didn't provide is_running
+                        appCopy.is_running = true;
+                    } else {
+                        // Default to not running if no information is available
+                        appCopy.is_running = false;
                     }
-                    
-                    // If no pending op, preserve running state from current state
-                    if (currentRunningStates[app.packageName]) {
-                        return { ...app, is_running: true };
-                    }
-                    
-                    return app;
+
+                    return appCopy;
                 });
-                
+
+                console.log('$$$ updatedAppsData', updatedAppsData);
+
                 setAppStatus(updatedAppsData);
             }
         } catch (err) {

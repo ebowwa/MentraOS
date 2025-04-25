@@ -2,7 +2,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { Config } from 'react-native-config';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
-import { AppInterface } from '../providers/AppListProvider';
+import { AppInterface } from '../providers/AppStatusProvider';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -338,11 +338,14 @@ export default class BackendServerComms {
       },
     };
 
+    console.log('Fetching apps from:', url);
+
     try {
       const response = await axios(config);
 
       if (response.status === 200 && response.data) {
         if (response.data.success && response.data.data) {
+          console.log('Response:', response.data.data);
           return response.data.data;
         } else {
           throw new Error('Invalid response format');

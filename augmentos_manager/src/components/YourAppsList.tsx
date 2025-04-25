@@ -26,7 +26,7 @@ interface YourAppsListProps {
 }
 
 const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
-    const { appStatus, refreshAppStatus, optimisticallyStartApp, clearPendingOperation, isSensingEnabled } = useAppStatus();
+    const { appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, isSensingEnabled } = useAppStatus();
     const navigation = useNavigation<NavigationProps>();
     const [_isLoading, setIsLoading] = React.useState(false);
     const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
@@ -171,9 +171,46 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 completeOnboarding();
             }
         }
-        
+
         // Optimistically update UI
         optimisticallyStartApp(packageName);
+        
+        // Find the app we're trying to start
+        const appToStart = appStatus.find(app => app.packageName === packageName);
+
+        console.log("fdsds####3333");
+        console.log('@@@ appStatus', appStatus);
+        console.log('@@@ appToStart', appToStart);
+        
+        console.log('@@@ appToStart.name', appToStart?.name);
+        console.log('@@@ appToStart.tpaType', appToStart?.tpaType);
+
+        // Check if it's a standard app
+        if (appToStart?.tpaType === 'standard') {
+            console.log('% appToStart', appToStart);
+            // Find any running standard apps
+            const runningStandardApps = appStatus.filter(
+                app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName
+            );
+
+            console.log('%%% runningStandardApps', runningStandardApps);
+
+            
+            // If there's any running standard app, stop it first
+            for (const runningApp of runningStandardApps) {
+                // Optimistically update UI
+                optimisticallyStopApp(runningApp.packageName);
+                
+                try {
+                    console.log('%%% stopping app', runningApp.packageName);
+                    await backendComms.stopApp(runningApp.packageName);
+                    clearPendingOperation(runningApp.packageName);
+                } catch (error) {
+                    console.error('stop app error:', error);
+                    refreshAppStatus();
+                }
+            }
+        }
         
         // Start the operation in the background
         setIsLoading(true);
@@ -200,9 +237,13 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 }, 500);
             }
         } catch (error) {
-            // Only revert the status if the operation failed
-            refreshAppStatus();
+            // Revert the app state when there's an error starting the app
             console.error('start app error:', error);
+            
+            // Clear the pending operation for this app
+            clearPendingOperation(packageName);
+            // Refresh the app status to move the app back to inactive
+            refreshAppStatus();
         } finally {
             setIsLoading(false);
         }
