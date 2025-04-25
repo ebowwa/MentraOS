@@ -246,10 +246,11 @@ class DisplayManager implements DisplayManagerI {
       this.displayState.savedDisplayBeforeBoot = null;
     }
 
-    // If this was the core app, clear its saved display
+    // If this was the core app, clear its saved display and reset mainApp
     if (packageName === this.mainApp) {
       logger.info(`[DisplayManager] - [${userSession.userId}] 🔄 Clearing core app display: ${packageName}`);
       this.displayState.coreAppDisplay = null;
+      this.mainApp = ""; // Reset mainApp when a standard app is stopped
 
       // If core app was currently displaying, clear the display
       if (wasDisplaying) {

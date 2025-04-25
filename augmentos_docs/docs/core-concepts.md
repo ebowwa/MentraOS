@@ -75,7 +75,31 @@ A typical AugmentOS app lifecycle looks like this:
 
 See [App Lifecycle](./tpa-lifecycle) for a more detailed explanation.
 
-## 7. The AugmentOS Cloud
+## 7.  User Authentication
+
+AugmentOS provides mechanisms for identifying and authenticating users:
+
+1. **Session-based identification**: Each webhook includes a `userId` that identifies the current user.
+2. **Webview authentication**: If your app provides a companion web interface, and users access it through the AugmentOS manager app, you can authenticate them automatically using a token exchange system.
+
+This allows you to provide personalized experiences and maintain user data across sessions without requiring separate login flows.
+
+See the [Webview Authentication](/webview-auth-overview) section for more details about the webview authentication flow.
+
+## 8.  AI Tools
+
+You app can provide tools to the Mira AI assistant:
+
+1. Your app registers tools that the AI assistant can use in its `tpa_config.json` file.
+2. When a user asks the AI to perform a task related to your app, the AI calls your tools via the `onToolCall` event.
+3. Your app executes the requested action and returns results to the AI.
+
+This allows users to interact with your app through natural language via the AI assistant.
+
+See the [Tools](/tools) section for more details.
+
+
+## 9. The AugmentOS Cloud
 
 The AugmentOS Cloud acts as a central hub, managing:
 
