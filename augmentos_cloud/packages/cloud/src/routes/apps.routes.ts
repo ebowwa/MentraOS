@@ -260,7 +260,7 @@ async function getAllApps(req: Request, res: Response) {
       return enhancedApp;
     });
 
-    console.log("🔥🔥🔥: Enhanced apps:");
+    // console.log("🔥🔥🔥: Enhanced apps:");
 
     res.json({
       success: true,
