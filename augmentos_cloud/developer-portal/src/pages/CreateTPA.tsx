@@ -63,6 +63,36 @@ const CreateTPA: React.FC = () => {
       });
     }
   };
+  
+  // Handle URL field blur event to normalize URLs
+  const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // Only normalize URL fields
+    if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
+      if (value) {
+        try {
+          // Normalize the URL and update the form field
+          const normalizedUrl = normalizeUrl(value);
+          setFormData(prev => ({
+            ...prev,
+            [name]: normalizedUrl
+          }));
+          
+          // Clear any URL validation errors
+          if (errors[name]) {
+            setErrors(prev => {
+              const newErrors = { ...prev };
+              delete newErrors[name];
+              return newErrors;
+            });
+          }
+        } catch (error) {
+          console.error(`Error normalizing ${name}:`, error);
+        }
+      }
+    }
+  };
 
   // Validate form
   const validateForm = (): boolean => {
@@ -90,7 +120,15 @@ const CreateTPA: React.FC = () => {
       newErrors.publicUrl = 'Server URL is required';
     } else {
       try {
-        new URL(formData.publicUrl);
+        // Apply normalizeUrl to handle missing protocols before validation
+        const normalizedUrl = normalizeUrl(formData.publicUrl);
+        new URL(normalizedUrl);
+        
+        // Update the form data with the normalized URL
+        setFormData(prev => ({
+          ...prev,
+          publicUrl: normalizedUrl
+        }));
       } catch (e) {
         console.error(e);
         newErrors.publicUrl = 'Please enter a valid URL';
@@ -102,7 +140,15 @@ const CreateTPA: React.FC = () => {
       newErrors.logoURL = 'Logo URL is required';
     } else {
       try {
-        new URL(formData.logoURL);
+        // Apply normalizeUrl to handle missing protocols before validation
+        const normalizedUrl = normalizeUrl(formData.logoURL);
+        new URL(normalizedUrl);
+        
+        // Update the form data with the normalized URL
+        setFormData(prev => ({
+          ...prev,
+          logoURL: normalizedUrl
+        }));
       } catch (e) {
         console.error(e);
         newErrors.logoURL = 'Please enter a valid URL';
@@ -112,7 +158,15 @@ const CreateTPA: React.FC = () => {
     // Webview URL validation (optional)
     if (formData.webviewURL) {
       try {
-        new URL(formData.webviewURL);
+        // Apply normalizeUrl to handle missing protocols before validation
+        const normalizedUrl = normalizeUrl(formData.webviewURL);
+        new URL(normalizedUrl);
+        
+        // Update the form data with the normalized URL
+        setFormData(prev => ({
+          ...prev,
+          webviewURL: normalizedUrl
+        }));
       } catch (e) {
         console.error(e);
         newErrors.webviewURL = 'Please enter a valid URL';
@@ -326,7 +380,8 @@ const CreateTPA: React.FC = () => {
                   name="publicUrl"
                   value={formData.publicUrl}
                   onChange={handleChange}
-                  placeholder="https://yourserver.com"
+                  onBlur={handleUrlBlur}
+                  placeholder="yourserver.com"
                   className={errors.publicUrl ? "border-red-500" : ""}
                 />
                 {errors.publicUrl && (
@@ -335,6 +390,7 @@ const CreateTPA: React.FC = () => {
                 <p className="text-xs text-gray-500">
                   The base URL of your server where AugmentOS will communicate with your app.
                   We'll automatically append "/webhook" to handle events when your app is activated.
+                  HTTPS is required and will be added automatically if not specified.
                   Do not include a trailing slash - it will be automatically removed.
                 </p>
               </div>
@@ -348,7 +404,8 @@ const CreateTPA: React.FC = () => {
                   name="logoURL"
                   value={formData.logoURL}
                   onChange={handleChange}
-                  placeholder="https://yourserver.com/logo.png"
+                  onBlur={handleUrlBlur}
+                  placeholder="yourserver.com/logo.png"
                   className={errors.logoURL ? "border-red-500" : ""}
                 />
                 {errors.logoURL && (
@@ -356,6 +413,7 @@ const CreateTPA: React.FC = () => {
                 )}
                 <p className="text-xs text-gray-500">
                   URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
+                  HTTPS is required and will be added automatically if not specified.
                 </p>
               </div>
 
@@ -366,7 +424,8 @@ const CreateTPA: React.FC = () => {
                   name="webviewURL"
                   value={formData.webviewURL || ''}
                   onChange={handleChange}
-                  placeholder="https://yourserver.com/webview"
+                  onBlur={handleUrlBlur}
+                  placeholder="yourserver.com/webview"
                   className={errors.webviewURL ? "border-red-500" : ""}
                 />
                 {errors.webviewURL && (
@@ -374,6 +433,7 @@ const CreateTPA: React.FC = () => {
                 )}
                 <p className="text-xs text-gray-500 pb-5">
                   If your app has a companion mobile interface, provide the URL here.
+                  HTTPS is required and will be added automatically if not specified.
                 </p>
               </div>
 
