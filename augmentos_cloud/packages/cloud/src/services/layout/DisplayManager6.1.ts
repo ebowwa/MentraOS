@@ -90,10 +90,10 @@ class DisplayManager implements DisplayManagerI {
       logger.info(`[DisplayManager] - [${userSession.userId}] ✅ Boot complete for: ${packageName}`);
       this.bootingApps.delete(packageName);
       if (this.bootingApps.size === 0) {
+        // Clear the boot screen when all apps are done
+        this.clearDisplay('main');
         // Process any queued display requests
         this.processBootQueue();
-      } else {
-        this.updateBootScreen();
       }
     }, this.BOOT_DURATION);
   }
@@ -214,10 +214,7 @@ class DisplayManager implements DisplayManagerI {
 
     // Handle boot screen update if app was booting
     if (wasBooting) {
-      if (this.bootingApps.size > 0) {
-        logger.info(`[DisplayManager] - [${userSession.userId}] 🚀 Updating boot screen after app stop`);
-        this.updateBootScreen();
-      } else {
+      if (this.bootingApps.size === 0) {
         logger.info(`[DisplayManager] - [${userSession.userId}] 🔄 Boot screen complete, clearing state`);
         // Make sure we clear current display if it was boot screen
         if (this.displayState.currentDisplay?.displayRequest.packageName === systemApps.dashboard.packageName) {
