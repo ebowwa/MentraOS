@@ -169,4 +169,5 @@ export interface TranscriptSegment {
  */
 export interface TranscriptI {
   segments: TranscriptSegment[];
+  languageSegments?: Map<string, TranscriptSegment[]>; // Language-indexed map for multi-language support
 }

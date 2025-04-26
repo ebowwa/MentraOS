@@ -261,7 +261,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 Dashboard Content
               </Text>
               <Text style={styles.value}>
-                Choose what to display in your dashboard
+                Choose what additional content to display in your dashboard along with your notifications.
               </Text>
             </View>
             <View style={styles.selectedValueContainer}>
