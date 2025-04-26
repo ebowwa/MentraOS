@@ -85,6 +85,51 @@ router.post('/exchange-user-token', validateTpaApiKey, async (req: Request, res:
   }
 });
 
+// Exchange a temporary token for full tokens (for store webview)
+router.post('/exchange-store-token', async (req: Request, res: Response) => {
+  const { aos_temp_token, packageName } = req.body;
+
+  if (!aos_temp_token) {
+    return res.status(400).json({ success: false, error: 'Missing aos_temp_token' });
+  }
+
+  // Validate packageName is the store
+  if (packageName !== 'org.augmentos.store') {
+    return res.status(403).json({ success: false, error: 'Invalid package name for this endpoint' });
+  }
+
+  try {
+    const result = await tokenService.exchangeTemporaryToken(aos_temp_token, packageName);
+
+    if (result) {
+      // For store webview, we need to return the actual tokens
+      // Generate a new Supabase token
+      const supabaseToken = JOE_MAMA_USER_JWT; // Using existing user token for now
+      
+      // Generate a core token as well
+      const userData = {
+        sub: result.userId,
+        email: result.userId,
+      };
+      const coreToken = jwt.sign(userData, AUGMENTOS_AUTH_JWT_SECRET);
+
+      res.json({ 
+        success: true, 
+        userId: result.userId,
+        tokens: {
+          supabaseToken,
+          coreToken
+        }
+      });
+    } else {
+      res.status(401).json({ success: false, error: 'Invalid or expired token' });
+    }
+  } catch (error) {
+    logger.error(`Error exchanging store token ${aos_temp_token}:`, error);
+    res.status(500).json({ success: false, error: 'Failed to exchange token' });
+  }
+});
+
 // Create a hash with the app's hashed API key
 router.post('/hash-with-api-key', validateCoreToken, async (req: Request, res: Response) => {
   const { stringToHash, packageName } = req.body;

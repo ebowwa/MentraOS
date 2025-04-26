@@ -25,6 +25,9 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+// Package name for the store to be used in token exchange
+const STORE_PACKAGE_NAME = 'org.augmentos.store';
+
 // Create the auth context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -76,12 +79,79 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Extract temporary token from URL
+  const extractTempTokenFromUrl = (url: string): string | null => {
+    try {
+      const parsedUrl = new URL(url);
+      return parsedUrl.searchParams.get('aos_temp_token');
+    } catch (e) {
+      console.error("Error parsing URL for temp token:", e);
+      return null;
+    }
+  };
+
+  // Exchange temporary token for user tokens
+  const exchangeTempToken = async (tempToken: string): Promise<boolean> => {
+    try {
+      // Import the API module
+      const api = (await import('../api')).default;
+      
+      // Add the method to the API module at runtime if needed
+      if (api.auth.exchangeTemporaryToken === undefined) {
+        console.error('exchangeTemporaryToken method not found in API');
+        return false;
+      }
+      
+      const result = await api.auth.exchangeTemporaryToken(tempToken, STORE_PACKAGE_NAME);
+      
+      if (result.success && result.tokens) {
+        console.log('Successfully exchanged temporary token');
+        
+        // Set up auth with the tokens
+        if (result.tokens.coreToken) {
+          setupAxiosAuth(result.tokens.coreToken);
+          setCoreTokenState(result.tokens.coreToken);
+          localStorage.setItem('core_token', result.tokens.coreToken);
+        }
+        
+        if (result.tokens.supabaseToken) {
+          setSupabaseTokenState(result.tokens.supabaseToken);
+          localStorage.setItem('supabase_token', result.tokens.supabaseToken);
+        }
+        
+        // Set up session and user
+        setSession({ access_token: result.tokens.supabaseToken || 'temp-token-session' } as Session);
+        setUser({ id: result.userId || 'webview-user' } as User);
+        setIsWebViewAuth(true);
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to exchange temporary token:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Get initial session from Supabase
     const initializeAuth = async () => {
       setIsLoading(true);
       try {
-        // Check for WebView injected tokens first
+        // Check for temporary token in URL
+        const tempToken = extractTempTokenFromUrl(window.location.href);
+        if (tempToken) {
+          console.log('Temporary token found in URL');
+          const success = await exchangeTempToken(tempToken);
+          if (success) {
+            console.log('Successfully authenticated using temporary token');
+            setIsLoading(false);
+            return;
+          }
+          console.error('Failed to exchange temporary token');
+        }
+        
+        // Check for WebView injected tokens in localStorage as fallback
         const savedCoreToken = localStorage.getItem('core_token');
         const savedSupabaseToken = localStorage.getItem('supabase_token');
         
@@ -175,7 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           // Exchange for Core token on sign in
           try {
-            let newCoreToken = await exchangeForCoreToken(session.access_token);
+            const newCoreToken = await exchangeForCoreToken(session.access_token);
             setAuthToken(newCoreToken);
             console.log('Auth completed, authenticated state:', !!session?.user);
             
