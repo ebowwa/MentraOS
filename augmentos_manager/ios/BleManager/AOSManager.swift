@@ -539,7 +539,6 @@ struct ViewState {
     self.viewStates[stateIndex].layoutType = layoutType
     
     
-    
     var text = layout["text"] as? String ?? " "
     var topText = layout["topText"] as? String ?? " "
     var bottomText = layout["bottomText"] as? String ?? " "
@@ -549,6 +548,11 @@ struct ViewState {
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
+
+    if self.deviceName.contains("Simulated") {
+      // dont send the event to glasses that aren't there:
+      return
+    }
     
     switch layoutType {
     case "text_wall":
