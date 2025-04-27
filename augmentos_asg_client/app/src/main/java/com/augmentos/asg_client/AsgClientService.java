@@ -34,11 +34,11 @@ import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
 import com.augmentos.asg_client.bluetooth.BluetoothStateListener;
 import com.augmentos.asg_client.bluetooth.IBluetoothManager;
+import com.augmentos.asg_client.camera.PhotoCaptureService;
+import com.augmentos.asg_client.camera.PhotoQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
-// Import CameraNeo instead of CameraRecordingService
-import com.augmentos.asg_client.camera.CameraNeo;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -92,6 +92,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private Handler debugVpsPhotoHandler;
     private Runnable debugVpsPhotoRunnable;
     
+    // Photo queue manager for handling offline photo uploads
+    private PhotoQueueManager mPhotoQueueManager;
+    
+    // Photo capture service
+    private PhotoCaptureService mPhotoCaptureService;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -151,11 +156,102 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Initialize the bluetooth manager
         initializeBluetoothManager();
         
+        // Initialize the photo queue manager
+        initializePhotoQueueManager();
+        
+        // Initialize the photo capture service
+        initializePhotoCaptureService();
+        
         // Recording test code (kept from original)
         // this.recordFor5Seconds();
         
         // DEBUG: Start the debug photo upload timer for VPS
         //startDebugVpsPhotoUploadTimer();
+    }
+    
+    /**
+     * Initialize the photo queue manager
+     */
+    private void initializePhotoQueueManager() {
+        if (mPhotoQueueManager == null) {
+            mPhotoQueueManager = new PhotoQueueManager(getApplicationContext());
+            
+            // Set up queue callback
+            mPhotoQueueManager.setQueueCallback(new PhotoQueueManager.QueueCallback() {
+                @Override
+                public void onPhotoQueued(String requestId, String filePath) {
+                    Log.d(TAG, "Photo queued: " + requestId + ", path: " + filePath);
+                }
+                
+                @Override
+                public void onPhotoUploaded(String requestId, String url) {
+                    Log.d(TAG, "Photo uploaded from queue: " + requestId + ", URL: " + url);
+                    // Send notification to phone if connected
+                    sendPhotoSuccessResponse(requestId, "system", url);
+                }
+                
+                @Override
+                public void onPhotoUploadFailed(String requestId, String error) {
+                    Log.d(TAG, "Photo upload failed from queue: " + requestId + ", error: " + error);
+                    // We don't send error notifications to avoid spamming the phone
+                }
+            });
+            
+            // Process the queue in case there are queued photos from previous sessions
+            mPhotoQueueManager.processQueue();
+        }
+    }
+    
+    /**
+     * Initialize the photo capture service
+     */
+    private void initializePhotoCaptureService() {
+        if (mPhotoCaptureService == null) {
+            if (mPhotoQueueManager == null) {
+                initializePhotoQueueManager();
+            }
+            
+            mPhotoCaptureService = new PhotoCaptureService(getApplicationContext(), mPhotoQueueManager) {
+                @Override
+                protected void sendPhotoSuccessResponse(String requestId, String appId, String photoUrl) {
+                    // Override to delegate to parent class
+                    AsgClientService.this.sendPhotoSuccessResponse(requestId, appId, photoUrl);
+                }
+                
+                @Override
+                protected void sendPhotoErrorResponse(String requestId, String appId, String errorMessage) {
+                    // Override to delegate to parent class
+                    AsgClientService.this.sendPhotoErrorResponse(requestId, appId, errorMessage);
+                }
+            };
+            
+            // Set the photo capture listener
+            mPhotoCaptureService.setPhotoCaptureListener(photoCaptureListener);
+        }
+    }
+    
+    /**
+     * Get the photo queue manager instance
+     * 
+     * @return PhotoQueueManager instance
+     */
+    public PhotoQueueManager getPhotoQueueManager() {
+        if (mPhotoQueueManager == null) {
+            initializePhotoQueueManager();
+        }
+        return mPhotoQueueManager;
+    }
+    
+    /**
+     * Get the photo capture service instance
+     * 
+     * @return PhotoCaptureService instance
+     */
+    public PhotoCaptureService getPhotoCaptureService() {
+        if (mPhotoCaptureService == null) {
+            initializePhotoCaptureService();
+        }
+        return mPhotoCaptureService;
     }
     
     /**
@@ -414,6 +510,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             glassesMicrophoneManager = null;
         }
         
+        // No need to clean up PhotoQueueManager as it's stateless and file-based
+        
         super.onDestroy();
     }
 
@@ -541,6 +639,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         if (isConnected) {
             // Handle connection
             onWifiConnected();
+            
+            // Process photo upload queue when connection is restored
+            if (mPhotoQueueManager != null && !mPhotoQueueManager.isQueueEmpty()) {
+                Log.d(TAG, "WiFi connected - processing photo upload queue");
+                mPhotoQueueManager.processQueue();
+            }
         } else {
             // Handle disconnection
             Log.d(TAG, "WiFi disconnected");
@@ -863,7 +967,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
                     
                     // Take the photo using CameraNeo instead of CameraRecordingService
-                    takePhotoAndUpload(photoFilePath, requestId, appId);
+                    mPhotoCaptureService.takePhotoAndUpload(photoFilePath, requestId, appId);
                     break;
                     
                 case "start_video_stream":
@@ -951,9 +1055,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         switch (command) {
             case "cs_pho":
                 Log.d(TAG, "📦 Payload is cs_pho");
-                String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
-                String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
-                takePhotoAndUpload(photoFilePath, "1234", "123445555");
+                // Delegate to the photo capture service
+                getPhotoCaptureService().handlePhotoButtonPress();
                 break;
             case "hm_htsp":
             case "mh_htsp":
@@ -1045,107 +1148,34 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     /**
      * Take a photo and upload it to AugmentOS Cloud
      */
-    /**
-     * Interface for listening to photo capture and upload events
-     */
-    public interface PhotoCaptureListener {
-        void onPhotoCapturing(String requestId);
-        void onPhotoCaptured(String requestId, String filePath);
-        void onPhotoUploading(String requestId);
-        void onPhotoUploaded(String requestId, String url);
-        void onPhotoError(String requestId, String error);
-    }
-    
-    private PhotoCaptureListener photoCaptureListener;
-    
-    /**
-     * Set a listener for photo capture events
-     */
-    public void setPhotoCaptureListener(PhotoCaptureListener listener) {
-        this.photoCaptureListener = listener;
-    }
-    
-    private void takePhotoAndUpload(String photoFilePath, String requestId, String appId) {
-        // Notify that we're about to take a photo
-        if (photoCaptureListener != null) {
-            photoCaptureListener.onPhotoCapturing(requestId);
-        }
-        
-        try {
-            // Use CameraNeo for photo capture instead of CameraRecordingService
-            com.augmentos.asg_client.camera.CameraNeo.takePictureWithCallback(
-                getApplicationContext(),
-                photoFilePath,
-                new com.augmentos.asg_client.camera.CameraNeo.PhotoCaptureCallback() {
-                    @Override
-                    public void onPhotoCaptured(String filePath) {
-                        Log.d(TAG, "Photo captured successfully at: " + filePath);
-                        
-                        // Notify that we've captured the photo
-                        if (photoCaptureListener != null) {
-                            photoCaptureListener.onPhotoCaptured(requestId, filePath);
-                            photoCaptureListener.onPhotoUploading(requestId);
-                        }
-                        
-                        // Upload the photo to AugmentOS Cloud
-                        uploadPhotoToCloud(filePath, requestId, appId);
-                    }
-                    
-                    @Override
-                    public void onPhotoError(String errorMessage) {
-                        Log.e(TAG, "Failed to capture photo: " + errorMessage);
-                        sendPhotoErrorResponse(requestId, appId, errorMessage);
-                        
-                        if (photoCaptureListener != null) {
-                            photoCaptureListener.onPhotoError(requestId, errorMessage);
-                        }
-                    }
-                }
-            );
-        } catch (Exception e) {
-            Log.e(TAG, "Error taking photo", e);
-            sendPhotoErrorResponse(requestId, appId, "Error taking photo: " + e.getMessage());
+    // Photo capture listener (delegated to PhotoCaptureService)
+    private final PhotoCaptureService.PhotoCaptureListener photoCaptureListener = 
+        new PhotoCaptureService.PhotoCaptureListener() {
+            @Override
+            public void onPhotoCapturing(String requestId) {
+                Log.d(TAG, "Photo capturing started: " + requestId);
+            }
             
-            if (photoCaptureListener != null) {
-                photoCaptureListener.onPhotoError(requestId, "Error taking photo: " + e.getMessage());
+            @Override
+            public void onPhotoCaptured(String requestId, String filePath) {
+                Log.d(TAG, "Photo captured: " + requestId + ", path: " + filePath);
             }
-        }
-    }
-    
-    /**
-     * Upload photo to AugmentOS Cloud
-     */
-    private void uploadPhotoToCloud(String photoFilePath, String requestId, String appId) {
-        // Upload the photo to AugmentOS Cloud
-        com.augmentos.augmentos_core.smarterglassesmanager.camera.PhotoUploadService.uploadPhoto(
-            getApplicationContext(),
-            photoFilePath,
-            requestId,
-            new com.augmentos.augmentos_core.smarterglassesmanager.camera.PhotoUploadService.UploadCallback() {
-                @Override
-                public void onSuccess(String url) {
-                    Log.d(TAG, "Photo uploaded successfully: " + url);
-                    sendPhotoSuccessResponse(requestId, appId, url);
-                    
-                    // Notify listener about successful upload
-                    if (photoCaptureListener != null) {
-                        photoCaptureListener.onPhotoUploaded(requestId, url);
-                    }
-                }
-                
-                @Override
-                public void onFailure(String errorMessage) {
-                    Log.e(TAG, "Photo upload failed: " + errorMessage);
-                    sendPhotoErrorResponse(requestId, appId, errorMessage);
-                    
-                    // Notify listener about error
-                    if (photoCaptureListener != null) {
-                        photoCaptureListener.onPhotoError(requestId, "Upload failed: " + errorMessage);
-                    }
-                }
+            
+            @Override
+            public void onPhotoUploading(String requestId) {
+                Log.d(TAG, "Photo uploading: " + requestId);
             }
-        );
-    }
+            
+            @Override
+            public void onPhotoUploaded(String requestId, String url) {
+                Log.d(TAG, "Photo uploaded: " + requestId + ", URL: " + url);
+            }
+            
+            @Override
+            public void onPhotoError(String requestId, String error) {
+                Log.e(TAG, "Photo error: " + requestId + ", error: " + error);
+            }
+        };
     
     /**
      * Send a success response for a photo request
@@ -1245,7 +1275,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             @Override
             public void run() {
                 // Take a photo and upload it to the VPS server
-                takeDebugVpsPhotoAndUpload();
+                if (mPhotoCaptureService != null) {
+                    mPhotoCaptureService.takeDebugVpsPhotoAndUpload();
+                }
                 
                 // Schedule the next execution
                 debugVpsPhotoHandler.postDelayed(this, 10000); // 10 seconds
@@ -1266,164 +1298,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             debugVpsPhotoRunnable = null;
             debugVpsPhotoHandler = null;
         }
-    }
-    
-    /**
-     * DEBUG FUNCTION: Takes a photo and uploads it to the VPS server at 192.168.9.124/vps
-     * This is for debugging purposes only.
-     */
-    private void takeDebugVpsPhotoAndUpload() {
-        Log.d(TAG, "DEBUG: Taking photo for VPS debug upload");
-        
-        // Generate a timestamp for the photo filename
-        String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
-        String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "DEBUG_VPS_" + timeStamp + ".jpg";
-        String requestId = "debug_vps_" + timeStamp;
-        String appId = "debug_vps_app";
-        
-        // Notify that we're about to take a photo (if there's a listener)
-        if (photoCaptureListener != null) {
-            photoCaptureListener.onPhotoCapturing(requestId);
-        }
-        
-        try {
-            // Use the new CameraNeo service for higher quality photos
-            com.augmentos.asg_client.camera.CameraNeo.takePictureWithCallback(
-                getApplicationContext(),
-                photoFilePath,
-                new com.augmentos.asg_client.camera.CameraNeo.PhotoCaptureCallback() {
-                    @Override
-                    public void onPhotoCaptured(String filePath) {
-                        Log.d(TAG, "DEBUG: VPS photo captured successfully at: " + filePath);
-                        
-                        // Notify that we've captured the photo
-                        if (photoCaptureListener != null) {
-                            photoCaptureListener.onPhotoCaptured(requestId, filePath);
-                            photoCaptureListener.onPhotoUploading(requestId);
-                        }
-                        
-                        // Upload the photo to VPS debug server
-                        uploadPhotoToVpsServer(filePath, requestId, appId);
-                    }
-                    
-                    @Override
-                    public void onPhotoError(String errorMessage) {
-                        Log.e(TAG, "DEBUG: Failed to capture VPS photo: " + errorMessage);
-                        
-                        if (photoCaptureListener != null) {
-                            photoCaptureListener.onPhotoError(requestId, errorMessage);
-                        }
-                    }
-                }
-            );
-        } catch (Exception e) {
-            Log.e(TAG, "DEBUG: Error taking VPS photo", e);
-            
-            if (photoCaptureListener != null) {
-                photoCaptureListener.onPhotoError(requestId, "Error taking VPS photo: " + e.getMessage());
-            }
-        }
-    }
-    
-    /**
-     * DEBUG FUNCTION: Upload photo to VPS server at 192.168.9.124/vps
-     * This is for debugging purposes only.
-     */
-    private void uploadPhotoToVpsServer(String photoFilePath, String requestId, String appId) {
-        // Upload the photo to the VPS server
-        new Thread(() -> {
-            try {
-                Log.d(TAG, "DEBUG: Uploading photo to VPS server");
-                
-                // Set up OkHttpClient with timeouts
-                okhttp3.OkHttpClient client = new okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                    .build();
-                
-                // Create the file object
-                java.io.File photoFile = new java.io.File(photoFilePath);
-                if (!photoFile.exists()) {
-                    Log.e(TAG, "DEBUG: VPS photo file does not exist: " + photoFilePath);
-                    return;
-                }
-                
-                // VPS server URL
-                String uploadUrl = "http://54.67.15.233:5555/vps";
-                
-                // Create multipart request with proper field name 'file' as expected by the server
-                okhttp3.RequestBody requestBody = new okhttp3.MultipartBody.Builder()
-                    .setType(okhttp3.MultipartBody.FORM)
-                    .addFormDataPart("file", photoFile.getName(),
-                        okhttp3.RequestBody.create(okhttp3.MediaType.parse("image/jpeg"), photoFile))
-                    .build();
-                    
-                // Build the request
-                okhttp3.Request request = new okhttp3.Request.Builder()
-                    .url(uploadUrl)
-                    .post(requestBody)
-                    .build();
-                    
-                // Execute the request
-                okhttp3.Response response = client.newCall(request).execute();
-                
-                // Process the response
-                if (!response.isSuccessful()) {
-                    Log.e(TAG, "DEBUG: VPS upload failed with status: " + response.code());
-                    return;
-                }
-                
-                // Get response body - this will be the pose information
-                String responseBody = response.body().string();
-                Log.d(TAG, "DEBUG: VPS upload successful. Response (pose): " + responseBody);
-                
-                // Parse the pose information from the response (JSON format)
-                try {
-                    org.json.JSONObject poseData = new org.json.JSONObject(responseBody);
-                    
-                    // Extract position and orientation
-                    float x = (float) poseData.getDouble("x");
-                    float y = (float) poseData.getDouble("y");
-                    float z = (float) poseData.getDouble("z");
-                    float qx = (float) poseData.getDouble("qx");
-                    float qy = (float) poseData.getDouble("qy");
-                    float qz = (float) poseData.getDouble("qz");
-                    float qw = (float) poseData.getDouble("qw");
-                    float confidence = (float) poseData.getDouble("confidence");
-                    
-                    // Log pose information
-                    Log.d(TAG, String.format("DEBUG: VPS pose - Position: (%.2f, %.2f, %.2f)", x, y, z));
-                    Log.d(TAG, String.format("DEBUG: VPS pose - Orientation (quat): (%.2f, %.2f, %.2f, %.2f)", qx, qy, qz, qw));
-                    Log.d(TAG, String.format("DEBUG: VPS pose - Confidence: %.2f", confidence));
-                    
-                    // TODO: You could do something with this pose information here
-                    // For example, display it on the glasses or send it to another application
-                    
-                } catch (org.json.JSONException e) {
-                    Log.e(TAG, "DEBUG: Error parsing VPS pose data: " + e.getMessage());
-                }
-                
-                // Notify through listener
-                if (photoCaptureListener != null) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        photoCaptureListener.onPhotoUploaded(requestId, uploadUrl);
-                    });
-                }
-                
-                // Clean up - delete the temporary file
-                photoFile.delete();
-                
-            } catch (Exception e) {
-                Log.e(TAG, "DEBUG: Error uploading photo to VPS server", e);
-                // Notify through listener
-                if (photoCaptureListener != null) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        photoCaptureListener.onPhotoError(requestId, "DEBUG VPS upload failed: " + e.getMessage());
-                    });
-                }
-            }
-        }).start();
     }
     
     /**

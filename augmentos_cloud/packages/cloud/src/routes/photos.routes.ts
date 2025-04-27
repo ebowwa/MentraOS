@@ -9,8 +9,8 @@ import path from 'path';
 import fs from 'fs';
 import { logger } from '@augmentos/utils';
 import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
-import { webSocketService } from '../services/core/websocket.service';
-import { CloudToTpaMessageType } from '@augmentos/sdk';
+import photoRequestService from '../services/core/photo-request.service';
+import { GalleryPhoto } from '../models/gallery-photo.model';
 
 const router = express.Router();
 
@@ -71,11 +71,11 @@ router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: 
     const baseUrl = process.env.CLOUD_PUBLIC_URL || `http://localhost:${process.env.PORT || 80}`;
     const photoUrl = `${baseUrl}/uploads/${file.filename}`;
 
-    // Get the pending request to check saveToGallery flag
-    const pendingRequest = webSocketService.getPendingPhotoRequest(requestId);
+    // Get the pending request from the centralized service
+    const pendingRequest = photoRequestService.getPendingPhotoRequest(requestId);
     
     if (!pendingRequest) {
-      logger.warn(`No pending request found for photo requestId: ${requestId}`);
+      logger.warn(`No pending photo request found for requestId: ${requestId}`);
       // Clean up the file if no pending request
       fs.unlinkSync(file.path);
       return res.status(404).json({ error: 'Photo request not found or expired' });
@@ -84,16 +84,13 @@ router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: 
     // Save photo to gallery if flag is set
     if (pendingRequest.saveToGallery) {
       try {
-        // Import GalleryPhoto model
-        const { GalleryPhoto } = await import('../models/gallery-photo.model');
-        
         // Save to gallery
         await GalleryPhoto.create({
-          userId: pendingRequest.userId, // We get this from the request
+          userId: pendingRequest.userId,
           filename: file.filename,
           photoUrl,
           requestId,
-          appId: pendingRequest.appId,
+          appId: pendingRequest.appId || 'system',
           metadata: {
             originalFilename: file.originalname,
             size: file.size,
@@ -108,17 +105,17 @@ router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: 
       }
     }
 
-    // Forward the photo URL to the requesting TPA via WebSocket
-    const forwarded = webSocketService.forwardPhotoResponse(requestId, photoUrl);
+    // Process the photo response through the centralized service
+    const processed = photoRequestService.processPhotoResponse(requestId, photoUrl);
 
-    if (!forwarded) {
-      logger.warn(`TPA connection closed for photo requestId: ${requestId}`);
+    if (!processed) {
+      logger.warn(`Failed to process photo response for requestId: ${requestId}`);
       // We still keep the photo since it might be in the gallery
       // Only delete if we didn't save to gallery
       if (!pendingRequest.saveToGallery) {
         fs.unlinkSync(file.path);
       }
-      return res.status(404).json({ error: 'TPA connection closed or request expired' });
+      return res.status(404).json({ error: 'Error processing photo response' });
     }
 
     // Return success response

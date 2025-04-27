@@ -64,6 +64,7 @@ import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
 import tpaRegistrationService from './tpa-registration.service';
 import healthMonitorService from './health-monitor.service';
+import photoRequestService from './photo-request.service';
 import axios from 'axios';
 
 export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
@@ -102,13 +103,7 @@ export class WebSocketService {
   // Global counter for generating sequential audio chunk numbers
   private globalAudioSequence: number = 0;
   
-  // Map to track pending photo requests: requestId -> { appId, ws, saveToGallery }
-  private pendingPhotoRequests = new Map<string, { 
-    appId: string,
-    ws: WebSocket,
-    timestamp: number,
-    saveToGallery?: boolean
-  }>();
+  // We no longer track photo requests here - using photoRequestService instead
 
   constructor() {
     this.glassesWss = new WebSocketServer({ noServer: true });
@@ -712,76 +707,35 @@ export class WebSocketService {
    * @param requestId The ID of the photo request
    * @param photoUrl The URL of the uploaded photo
    * @returns True if the response was forwarded, false if no pending request was found
+   * @deprecated Use photoRequestService.processPhotoResponse instead
    */
   forwardPhotoResponse(requestId: string, photoUrl: string): boolean {
-    // Find the pending request
-    const pendingRequest = this.pendingPhotoRequests.get(requestId);
-    
-    if (!pendingRequest) {
-      logger.warn(`[websocket.service]: No pending photo request found for requestId: ${requestId}`);
-      return false;
-    }
-    
-    // Check if the WebSocket is still open
-    if (pendingRequest.ws.readyState !== WebSocket.OPEN) {
-      logger.warn(`[websocket.service]: TPA WebSocket closed for requestId: ${requestId}`);
-      this.pendingPhotoRequests.delete(requestId);
-      return false;
-    }
-    
-    // Send the photo response to the TPA
-    const photoResponse = {
-      type: CloudToTpaMessageType.PHOTO_RESPONSE,
-      photoUrl,
-      requestId,
-      timestamp: new Date()
-    };
-    
-    pendingRequest.ws.send(JSON.stringify(photoResponse));
-    logger.info(`[websocket.service]: Photo response sent to TPA ${pendingRequest.appId}, requestId: ${requestId}`);
-    
-    // Clean up the pending request
-    this.pendingPhotoRequests.delete(requestId);
-    
-    return true;
+    // Forward to the new service
+    return photoRequestService.processPhotoResponse(requestId, photoUrl);
   }
   
   /**
    * Checks if a photo request with the specified ID is pending
    * @param requestId The ID of the photo request to check
    * @returns True if a pending request with this ID exists, false otherwise
+   * @deprecated Use photoRequestService.hasPhotoRequest instead
    */
   hasPendingPhotoRequest(requestId: string): boolean {
-    return this.pendingPhotoRequests.has(requestId);
+    return photoRequestService.hasPhotoRequest(requestId);
   }
   
   /**
    * Get the pending photo request with the given ID
    * @param requestId Request ID to look up
    * @returns The pending photo request info, or undefined if not found
+   * @deprecated Use photoRequestService.getPhotoRequestInfo instead
    */
   getPendingPhotoRequest(requestId: string): { 
     appId: string, 
     userId: string,
     saveToGallery?: boolean 
   } | undefined {
-    const pendingRequest = this.pendingPhotoRequests.get(requestId);
-    if (!pendingRequest) return undefined;
-    
-    // Find the user ID from session info
-    let userId = 'unknown';
-    for (const [sessionId, session] of this.userSessions.entries()) {
-      if (session.activeAppSessions && session.activeAppSessions[pendingRequest.appId]) {
-        userId = session.userId;
-        break;
-      }
-    }
-    
-    return {
-      appId: pendingRequest.appId,
-      userId,
-      saveToGallery: pendingRequest.saveToGallery
-    };
+    return photoRequestService.getPhotoRequestInfo(requestId);
   }
   
   /**
@@ -1222,11 +1176,14 @@ export class WebSocketService {
           const photoUploadMessage = message as any;
           userSession.logger.info(`[websocket.service]: Received photo response from glasses, requestId: ${photoUploadMessage.requestId}`);
           
-          // Forward the photo response to the requesting TPA
-          const success = this.forwardPhotoResponse(photoUploadMessage.requestId, photoUploadMessage.photoUrl);
+          // Process the photo response
+          const success = photoRequestService.processPhotoResponse(
+            photoUploadMessage.requestId, 
+            photoUploadMessage.photoUrl
+          );
           
           if (!success) {
-            userSession.logger.warn(`[websocket.service]: Failed to forward photo response, no pending request found for requestId: ${photoUploadMessage.requestId}`);
+            userSession.logger.warn(`[websocket.service]: Failed to process photo response, no pending request found for requestId: ${photoUploadMessage.requestId}`);
           }
           break;
         }
@@ -1429,50 +1386,26 @@ export class WebSocketService {
                 return;
               }
 
-              // Generate a unique request ID
-              const requestId = crypto.randomUUID();
-              
-              // Store pending request with saveToGallery flag
-              this.pendingPhotoRequests.set(requestId, {
+              // Create a TPA photo request using PhotoRequestService
+              const { requestId } = photoRequestService.createTpaPhotoRequest(
                 appId,
+                userSession.userId,
                 ws,
-                timestamp: Date.now(),
                 saveToGallery
-              });
+              );
               
               // Build request to glasses
-              const photoRequestToGlasses: PhotoRequestToGlasses = {
-                type: CloudToGlassesMessageType.PHOTO_REQUEST,
-                userSession: {
-                  sessionId: userSession.sessionId,
-                  userId: userSession.userId
-                },
+              const photoRequestToGlasses = photoRequestService.buildPhotoRequestMessage(
                 requestId,
+                userSession.userId,
+                userSession.sessionId,
                 appId,
-                saveToGallery,
-                timestamp: new Date()
-              };
+                saveToGallery
+              );
               
               // Send request to glasses
               userSession.websocket.send(JSON.stringify(photoRequestToGlasses));
               userSession.logger.info(`[websocket.service]: Photo request sent to glasses, requestId: ${requestId}`);
-              
-              // Set timeout for request (30 seconds)
-              setTimeout(() => {
-                if (this.pendingPhotoRequests.has(requestId)) {
-                  // Request timed out, send error to TPA
-                  const pendingRequest = this.pendingPhotoRequests.get(requestId);
-                  if (pendingRequest && pendingRequest.ws.readyState === WebSocket.OPEN) {
-                    this.sendError(pendingRequest.ws, {
-                      type: CloudToTpaMessageType.CONNECTION_ERROR,
-                      message: 'Photo request timed out'
-                    });
-                  }
-                  // Clean up pending request
-                  this.pendingPhotoRequests.delete(requestId);
-                  userSession.logger.warn(`[websocket.service]: Photo request timed out, requestId: ${requestId}`);
-                }
-              }, 30000); // 30 second timeout
               
               break;
             }

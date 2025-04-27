@@ -41,6 +41,8 @@ public class K900NetworkManager extends BaseNetworkManager {
         notificationManager.showDebugNotification(
                 "K900 Network Manager", 
                 "Using K900-specific network APIs");
+
+        enableScan5GWifi(context, false);
     }
     
     @Override
@@ -88,6 +90,15 @@ public class K900NetworkManager extends BaseNetworkManager {
         } catch (Exception e) {
             Log.e(TAG, "Error disabling WiFi", e);
         }
+    }
+
+    public static void enableScan5GWifi(Context context, boolean bEnable)
+    {
+        Intent nn = new Intent("com.xy.xsetting.action");
+        nn.putExtra("cmd", "scan5g");
+        nn.putExtra("enable", bEnable);
+        nn.setPackage("com.android.systemui");
+        context.sendBroadcast(nn);
     }
     
     @Override

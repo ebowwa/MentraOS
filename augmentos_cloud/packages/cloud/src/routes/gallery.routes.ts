@@ -18,8 +18,11 @@ const router = express.Router();
  */
 router.get('/', validateGlassesAuth, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).decodedToken.userId;
+    const userId = (req as any).decodedToken.email;
     
+    console.log("REQUESTING GALLERY PHOTOS FOR USERID:")
+    console.log(userId);
+
     // Get all photos for this user
     const photos = await GalleryPhoto.findByUserId(userId);
     

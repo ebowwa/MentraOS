@@ -18,6 +18,7 @@ import helmet from 'helmet';
 // Import services
 import { webSocketService } from './services/core/websocket.service';
 import { healthMonitorService } from './services/core/health-monitor.service';
+import { photoRequestService } from './services/core/photo-request.service';
 
 // Import routes
 import appRoutes from './routes/apps.routes';
@@ -32,6 +33,7 @@ import tpaServerRoutes from './routes/tpa-server.routes';
 import photoRoutes from './routes/photos.routes';
 import galleryRoutes from './routes/gallery.routes';
 import toolsRoutes from './routes/tools.routes';
+import hardwareRoutes from './routes/hardware.routes';
 
 import path from 'path';
 
@@ -132,6 +134,7 @@ app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/tools', toolsRoutes);
+app.use('/api/hardware', hardwareRoutes);
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 

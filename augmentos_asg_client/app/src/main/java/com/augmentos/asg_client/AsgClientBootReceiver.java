@@ -17,7 +17,7 @@ import android.util.Log;
  */
 public class AsgClientBootReceiver extends BroadcastReceiver {
     private static final String TAG = "AsgClientBootReceiver";
-    private static final int ACTIVITY_START_DELAY_MS = 1000; // 1 second delay
+    private static final int ACTIVITY_START_DELAY_MS = 8000; // 1 second delay
 
     @Override
     public void onReceive(Context context, Intent intent) {

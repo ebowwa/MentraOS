@@ -8,6 +8,7 @@ import android.util.Log;
 
 import com.augmentos.augmentos_core.BuildConfig;
 import com.augmentos.augmentos_core.augmentos_backend.OldBackendServerComms;
+import com.augmentos.augmentos_core.utils.ServerConfigUtil;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,14 +41,12 @@ public class PhotoUploadService {
         void onFailure(String errorMessage);
     }
 
+    /**
+     * @deprecated Use ServerConfigUtil.getServerBaseUrl() instead
+     */
+    @Deprecated
     private static String getServerUrl() {
-        String host = BuildConfig.AUGMENTOS_HOST;// EnvHelper.getEnv("AUGMENTOS_HOST");
-        String port = BuildConfig.AUGMENTOS_PORT;// EnvHelper.getEnv("AUGMENTOS_PORT");
-        boolean secureServer = Boolean.parseBoolean(BuildConfig.AUGMENTOS_SECURE);// Boolean.parseBoolean(EnvHelper.getEnv("AUGMENTOS_SECURE"));
-        if (host == null || port == null) {
-            throw new IllegalStateException("AugmentOS Server Config Not Found");
-        }
-        return String.format("%s://%s:%s", secureServer ? "https" : "http", host, port);
+        return ServerConfigUtil.getServerBaseUrl();
     }
     
     /**
@@ -78,30 +77,51 @@ public class PhotoUploadService {
                     return;
                 }
                 
-                // Get cloud URL from preferences
-                String cloudBaseUrl = getServerUrl();
-                
-                String uploadUrl = cloudBaseUrl + "/api/photos/upload";
+                // Get photo upload URL from central config
+                String uploadUrl = ServerConfigUtil.getPhotoUploadUrl();
                 
                 Log.d(TAG, "Uploading photo to: " + uploadUrl);
                 
                 RequestBody requestBody = new MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("requestId", requestId)
-                    .addFormDataPart("coreToken", coreToken)
+                    // Remove coreToken from form data and use Authorization header instead
                     .addFormDataPart("photo", photoFile.getName(),
                         RequestBody.create(MediaType.parse("image/jpeg"), photoFile))
                     .build();
                     
                 Request request = new Request.Builder()
                     .url(uploadUrl)
+                    .header("Authorization", "Bearer " + coreToken) // Use Authorization header (industry standard)
                     .post(requestBody)
                     .build();
                     
                 Response response = client.newCall(request).execute();
                 
                 if (!response.isSuccessful()) {
-                    handleFailure(callback, "Upload failed with status: " + response.code());
+                    // Get more detailed error information when available
+                    String errorBody = "";
+                    try {
+                        errorBody = response.body() != null ? response.body().string() : "";
+                    } catch (Exception e) {
+                        // Ignore error reading body
+                    }
+                    
+                    // Log detailed error information
+                    Log.e(TAG, "Upload failed with status: " + response.code());
+                    Log.e(TAG, "URL: " + uploadUrl);
+                    Log.e(TAG, "RequestId: " + requestId);
+                    if (!errorBody.isEmpty()) {
+                        Log.e(TAG, "Error response: " + errorBody);
+                    }
+                    
+                    // Create error message with more context
+                    String errorMessage = "Upload failed with status: " + response.code();
+                    if (!errorBody.isEmpty()) {
+                        errorMessage += " - " + errorBody;
+                    }
+                    
+                    handleFailure(callback, errorMessage);
                     return;
                 }
                 

@@ -1146,6 +1146,23 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
 
                 break;
                 
+            case "photo_response":
+                // Process photo response (success or failure)
+                String requestId = json.optString("requestId", "");
+                String appId = json.optString("appId", "");
+                boolean photoSuccess = json.optBoolean("success", false);
+                
+                if (!photoSuccess) {
+                    // Handle failed photo response
+                    String errorMsg = json.optString("error", "Unknown error");
+                    Log.d(TAG, "Photo request failed - requestId: " + requestId + 
+                          ", appId: " + appId + ", error: " + errorMsg);
+                } else {
+                    // Handle successful photo (in future implementation)
+                    Log.d(TAG, "Photo request succeeded - requestId: " + requestId);
+                }
+                break;
+                
             case "wifi_scan_result":
                 // Process WiFi scan results
                 try {
