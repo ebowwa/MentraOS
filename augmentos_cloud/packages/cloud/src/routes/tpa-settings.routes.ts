@@ -97,29 +97,33 @@ router.get('/:tpaName', async (req, res) => {
     let storedSettings = user.getAppSettings(tpaName);
     if (!storedSettings) {
       // Build default settings from config (ignoring groups)
-      const defaultSettings = tpaConfig.settings
-        .filter((setting: any) => setting.type !== 'group')
-        .map((setting: any) => ({
-          key: setting.key,
-          value: setting.defaultValue,       // initially, use defaultValue
-          defaultValue: setting.defaultValue,
-          type: setting.type,
-          label: setting.label,
-          options: setting.options || []
-        }));
+      const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings) 
+        ? tpaConfig.settings
+            .filter((setting: any) => setting.type !== 'group')
+            .map((setting: any) => ({
+              key: setting.key,
+              value: setting.defaultValue,       // initially, use defaultValue
+              defaultValue: setting.defaultValue,
+              type: setting.type,
+              label: setting.label,
+              options: setting.options || []
+            }))
+        : [];
       await user.updateAppSettings(tpaName, defaultSettings);
       storedSettings = defaultSettings;
     }
 
     // Merge config settings with stored values.
-    const mergedSettings = tpaConfig.settings.map((setting: any) => {
-      if (setting.type === 'group') return setting;
-      const stored = storedSettings?.find((s: any) => s.key === setting.key);
-      return {
-        ...setting,
-        selected: stored && stored.value !== undefined ? stored.value : setting.defaultValue
-      };
-    });
+    const mergedSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
+      ? tpaConfig.settings.map((setting: any) => {
+          if (setting.type === 'group') return setting;
+          const stored = storedSettings?.find((s: any) => s.key === setting.key);
+          return {
+            ...setting,
+            selected: stored && stored.value !== undefined ? stored.value : setting.defaultValue
+          };
+        })
+      : [];
 
     // console.log('Merged settings:', mergedSettings);
     const uninstallable = isUninstallable(tpaName);
@@ -182,16 +186,18 @@ router.get('/user/:tpaName', async (req, res) => {
         }
       }
 
-      const defaultSettings = tpaConfig.settings
-        .filter((setting: any) => setting.type !== 'group')
-        .map((setting: any) => ({
-          key: setting.key,
-          value: setting.defaultValue,
-          defaultValue: setting.defaultValue,
-          type: setting.type,
-          label: setting.label,
-          options: setting.options || []
-        }));
+      const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
+        ? tpaConfig.settings
+            .filter((setting: any) => setting.type !== 'group')
+            .map((setting: any) => ({
+              key: setting.key,
+              value: setting.defaultValue,
+              defaultValue: setting.defaultValue,
+              type: setting.type,
+              label: setting.label,
+              options: setting.options || []
+            }))
+        : [];
       await user.updateAppSettings(tpaName, defaultSettings);
       storedSettings = defaultSettings;
     }

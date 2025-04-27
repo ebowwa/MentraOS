@@ -413,39 +413,39 @@ export class WebSocketService {
     userSession.logger.info(`[websocket.service]: ⚡️ Loading app ${packageName} for user ${userSession.userId}\n`);
 
     // If this is a STANDARD app, we need to stop any other STANDARD apps that are running
-    if (app.tpaType === TpaType.STANDARD) {
-      userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
+    // if (app.tpaType === TpaType.STANDARD) {
+    //   userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
       
-      // Find all active STANDARD apps
-      const runningStandardApps = [];
+    //   // Find all active STANDARD apps
+    //   const runningStandardApps = [];
       
-      for (const activeAppName of userSession.activeAppSessions) {
-        // Skip if this is the app we're trying to start
-        if (activeAppName === packageName) continue;
+    //   for (const activeAppName of userSession.activeAppSessions) {
+    //     // Skip if this is the app we're trying to start
+    //     if (activeAppName === packageName) continue;
         
-        // Get the app details to check its type
-        try {
-          const activeApp = await appService.getApp(activeAppName);
-          if (activeApp && activeApp.tpaType === TpaType.STANDARD) {
-            runningStandardApps.push(activeAppName);
-          }
-        } catch (error) {
-          userSession.logger.error(`[websocket.service]: Error checking app type for ${activeAppName}:`, error);
-          // Continue with the next app even if there's an error
-        }
-      }
+    //     // Get the app details to check its type
+    //     try {
+    //       const activeApp = await appService.getApp(activeAppName);
+    //       if (activeApp && activeApp.tpaType === TpaType.STANDARD) {
+    //         runningStandardApps.push(activeAppName);
+    //       }
+    //     } catch (error) {
+    //       userSession.logger.error(`[websocket.service]: Error checking app type for ${activeAppName}:`, error);
+    //       // Continue with the next app even if there's an error
+    //     }
+    //   }
       
-      // Stop any running STANDARD apps
-      for (const standardAppToStop of runningStandardApps) {
-        userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
-        try {
-          await this.stopAppSession(userSession, standardAppToStop);
-        } catch (error) {
-          userSession.logger.error(`[websocket.service]: Error stopping STANDARD app ${standardAppToStop}:`, error);
-          // Continue with the next app even if there's an error
-        }
-      }
-    }
+    //   // Stop any running STANDARD apps
+    //   for (const standardAppToStop of runningStandardApps) {
+    //     userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
+    //     try {
+    //       await this.stopAppSession(userSession, standardAppToStop);
+    //     } catch (error) {
+    //       userSession.logger.error(`[websocket.service]: Error stopping STANDARD app ${standardAppToStop}:`, error);
+    //       // Continue with the next app even if there's an error
+    //     }
+    //   }
+    // }
 
     // Store pending session.
     userSession.loadingApps.add(packageName);
@@ -574,6 +574,9 @@ export class WebSocketService {
 
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+
+        // console.log("🔥🔥🔥: Triggering stop webhook for", app.publicUrl);
+        // console.log("🔥🔥🔥: TPA Session ID:", tpaSessionId);
         await appService.triggerStopWebhook(
           app.publicUrl,
           {
@@ -951,7 +954,7 @@ export class WebSocketService {
           };
 
           ws.send(JSON.stringify(ackMessage));
-          userSession.logger.info(`[websocket.service]\nSENDING connection_ack`);
+          // userSession.logger.info(`[websocket.service]\nSENDING connection_ack` + JSON.stringify(ackMessage));
 
           // Track connection event.
           PosthogService.trackEvent('connected', userSession.userId, {
@@ -971,6 +974,8 @@ export class WebSocketService {
 
             // Generate and send app state to the glasses
             const appStateChange = await this.generateAppStateStatus(userSession);
+
+            // console.log("🔥🔥🔥: Sending app state change:", appStateChange);
             ws.send(JSON.stringify(appStateChange));
 
             // Track event
