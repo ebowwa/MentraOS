@@ -10,6 +10,6 @@ import { render } from '@testing-library/react-native';
 
 describe('App', () => {
   it('renders without crashing', () => {
-    //TOOD
+    //TODO
   });
 }); 
