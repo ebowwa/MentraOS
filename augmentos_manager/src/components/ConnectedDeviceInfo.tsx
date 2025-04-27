@@ -108,7 +108,9 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
     setDisconnectButtonDisabled(false);
 
     try {
+      console.log('Connecting to glasses:', status.core_info.default_wearable);
       if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
+        console.log('Connecting to glasses:', status.core_info.default_wearable);
         await coreCommunicator.sendConnectWearable(status.core_info.default_wearable);
       }
     } catch (error) {
