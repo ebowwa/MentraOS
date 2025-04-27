@@ -5,6 +5,7 @@ on:
     paths:
       - 'augmentos_manager/**'
       - '.github/workflows/augmentos-manager-jest.yml'
+  workflow_dispatch:
 
 jobs:
   test:
