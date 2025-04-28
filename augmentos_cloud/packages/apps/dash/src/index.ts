@@ -20,6 +20,7 @@ import {
   TrashTalkAgent,
   ChineseWordAgent
 } from '@augmentos/agents';
+import dotenv from 'dotenv';
 
 // Configuration
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3100;

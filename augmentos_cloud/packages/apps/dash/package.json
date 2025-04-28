@@ -7,7 +7,7 @@
     "dev": "bun --hot src/index.ts",
     "start": "bun src/index.ts",
     "build": "tsc",
-    "ngrok": "ngrok http --url=dash-aos.ngrok.app 80"
+    "ngrok": "ngrok http --url=dash-aos.ngrok.app 8071"
   },
   "dependencies": {
     "@augmentos/agents": "*",
