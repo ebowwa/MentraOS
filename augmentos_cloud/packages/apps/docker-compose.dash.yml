@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  dashboard-manager:
+    build:
+      context: ./dashboard-manager
+      dockerfile: Dockerfile
+    container_name: dashboard-manager
+    ports:
+      - "3000:80"
+    environment:
+      - PORT=80
+      - CLOUD_LOCAL_HOST_NAME=cloud
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    volumes:
+      - ./dashboard-manager:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - augmentos-network
+
+  dash:
+    build:
+      context: ./dash
+      dockerfile: Dockerfile
+    container_name: dash
+    ports:
+      - "3100:3100"
+    environment:
+      - PORT=3100
+      - CLOUD_LOCAL_HOST_NAME=cloud
+      - AUGMENTOS_AUTH_JWT_SECRET=${AUGMENTOS_AUTH_JWT_SECRET}
+    volumes:
+      - ./dash:/app
+      - /app/node_modules
+    restart: unless-stopped
+    networks:
+      - augmentos-network
+
+networks:
+  augmentos-network:
+    external: true
