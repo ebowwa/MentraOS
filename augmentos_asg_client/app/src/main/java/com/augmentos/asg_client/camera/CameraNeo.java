@@ -27,9 +27,11 @@ import android.media.ImageReader;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.PowerManager;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
+import android.view.WindowManager;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
@@ -68,6 +70,10 @@ public class CameraNeo extends LifecycleService {
     private Size jpegSize;
     private String cameraId;
     private boolean isK900Device = false;
+    
+    // Screen wake variables
+    private PowerManager.WakeLock wakeLock;
+    private PowerManager.WakeLock fullWakeLock;
     
     // Target photo resolution (4:3 landscape orientation)
     private static final int TARGET_WIDTH = 1440;
@@ -144,12 +150,52 @@ public class CameraNeo extends LifecycleService {
     }
     
     private void setupCameraAndTakePicture(String filePath) {
+        // Wake the screen before accessing the camera
+        wakeUpScreen();
+        
         // Check if we're on a K900 device
         isK900Device = isK900Device(getApplicationContext());
         Log.d(TAG, "Device is K900: " + isK900Device);
         
         // For all devices, use Camera2 API but with K900-specific adjustments if needed
         setupCamera2(filePath);
+    }
+    
+    /**
+     * Force the screen to turn on so camera can be accessed
+     */
+    private void wakeUpScreen() {
+        Log.d(TAG, "Waking up screen for camera access");
+        
+        try {
+            // Create a partial wake lock to keep CPU running
+            PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+            if (powerManager == null) {
+                Log.e(TAG, "PowerManager is null");
+                return;
+            }
+            
+            // First create a partial wake lock to keep the CPU running
+            if (wakeLock == null) {
+                wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, 
+                        "AugmentOS:CameraWakeLock");
+                wakeLock.acquire(60000); // 60-second timeout
+            }
+            
+            // Then create a full wake lock to turn the screen on
+            if (fullWakeLock == null) {
+                fullWakeLock = powerManager.newWakeLock(
+                        PowerManager.FULL_WAKE_LOCK | 
+                        PowerManager.ACQUIRE_CAUSES_WAKEUP | 
+                        PowerManager.ON_AFTER_RELEASE, 
+                        "AugmentOS:CameraFullWakeLock");
+                fullWakeLock.acquire(5000); // 5-second timeout
+            }
+            
+            Log.d(TAG, "Screen wake locks acquired");
+        } catch (Exception e) {
+            Log.e(TAG, "Error acquiring wake locks", e);
+        }
     }
     
     /**
@@ -636,10 +682,35 @@ public class CameraNeo extends LifecycleService {
                 imageReader.close();
                 imageReader = null;
             }
+            
+            // Release wake locks
+            releaseWakeLocks();
+            
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while closing camera", e);
         } finally {
             cameraOpenCloseLock.release();
+        }
+    }
+    
+    /**
+     * Release wake locks to avoid battery drain
+     */
+    private void releaseWakeLocks() {
+        try {
+            if (wakeLock != null && wakeLock.isHeld()) {
+                wakeLock.release();
+                wakeLock = null;
+                Log.d(TAG, "Partial wake lock released");
+            }
+            
+            if (fullWakeLock != null && fullWakeLock.isHeld()) {
+                fullWakeLock.release();
+                fullWakeLock = null;
+                Log.d(TAG, "Full wake lock released");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing wake locks", e);
         }
     }
     
@@ -678,5 +749,6 @@ public class CameraNeo extends LifecycleService {
         super.onDestroy();
         closeCamera();
         stopBackgroundThread();
+        releaseWakeLocks(); // Ensure wake locks are released
     }
 }
