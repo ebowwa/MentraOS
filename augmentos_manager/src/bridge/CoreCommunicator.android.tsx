@@ -198,6 +198,7 @@ export class CoreCommunicator extends EventEmitter {
     
     try {
       if ('status' in data) {
+        console.log('Received status update from Core:', data);
         this.emit('statusUpdateReceived', data);
       } else if ('glasses_display_event' in data) {
         GlobalEventEmitter.emit('GLASSES_DISPLAY_EVENT', data.glasses_display_event);
@@ -216,14 +217,6 @@ export class CoreCommunicator extends EventEmitter {
       } else if ('compatible_glasses_search_stop' in data) {
         GlobalEventEmitter.emit('COMPATIBLE_GLASSES_SEARCH_STOP', { 
           modelName: data.compatible_glasses_search_stop.model_name 
-        });
-      } else if ('app_info' in data) {
-        GlobalEventEmitter.emit('APP_INFO_RESULT', { 
-          appInfo: data.app_info 
-        });
-      } else if ('app_is_downloaded' in data) {
-        GlobalEventEmitter.emit('APP_IS_DOWNLOADED_RESULT', { 
-          appIsDownloaded: data.app_is_downloaded 
         });
       } else if ('need_permissions' in data) {
         GlobalEventEmitter.emit('NEED_PERMISSIONS');
@@ -565,4 +558,5 @@ export class CoreCommunicator extends EventEmitter {
 
 // Create and export the singleton instance
 const coreCommunicator = CoreCommunicator.getInstance();
+export default coreCommunicator;
 export default coreCommunicator;

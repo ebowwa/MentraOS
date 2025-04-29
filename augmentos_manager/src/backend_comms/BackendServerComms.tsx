@@ -2,6 +2,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { Config } from 'react-native-config';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { AppInterface } from '../providers/AppStatusProvider';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -312,6 +313,48 @@ export default class BackendServerComms {
       }
     } catch (error: any) {
       console.error('Error uninstalling app:', error.message || error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch all available apps
+   * @returns Promise with the apps data
+   */
+  public async getApps(): Promise<AppInterface[]> {
+    if (!this.coreToken) {
+      throw new Error('No core token available for authentication');
+    }
+
+    const url = `${this.serverUrl}/api/apps/`;
+    console.log('Fetching apps from:', url);
+
+    const config: AxiosRequestConfig = {
+      method: 'GET',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.coreToken}`,
+      },
+    };
+
+    console.log('Fetching apps from:', url);
+
+    try {
+      const response = await axios(config);
+
+      if (response.status === 200 && response.data) {
+        if (response.data.success && response.data.data) {
+          console.log('Response:', response.data.data);
+          return response.data.data;
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } else {
+        throw new Error(`Bad response: ${response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching apps:', error.message || error);
       throw error;
     }
   }
