@@ -1056,7 +1056,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             case "cs_pho":
                 Log.d(TAG, "📦 Payload is cs_pho");
                 // Delegate to the photo capture service
-                getPhotoCaptureService().handlePhotoButtonPress();
+                //getPhotoCaptureService().handlePhotoButtonPress();
+
+                handleButtonPressForVpsDemo();
                 break;
             case "hm_htsp":
             case "mh_htsp":
@@ -1143,6 +1145,19 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } catch (JSONException e) {
             Log.e(TAG, "Error creating version info", e);
         }
+    }
+
+    public void handleButtonPressForVpsDemo() {
+        Log.d(TAG, "Handling button press for VPS demo");
+        
+        // Initialize PhotoCaptureService if needed
+        if (mPhotoCaptureService == null) {
+            initializePhotoCaptureService();
+        }
+        
+        // Call the VPS photo upload method directly
+        // This bypasses the backend communication and directly calls the VPS service
+        mPhotoCaptureService.takeDebugVpsPhotoAndUpload();
     }
     
     /**

@@ -392,14 +392,56 @@ public class PhotoCaptureService {
                     return;
                 }
                 
+                // Get device information
+                String deviceId = android.os.Build.MODEL + "_" + android.os.Build.SERIAL;
+                String deviceName = android.os.Build.MODEL;
+                
+                // Get the timestamp in nanoseconds
+                long timestamp = System.nanoTime();
+                
+                // Get image dimensions from the image file
+                int imageWidth = 1440; // Default width
+                int imageHeight = 1080; // Default height
+                
+                // Try to get actual dimensions from the image file
+                try {
+                    android.graphics.BitmapFactory.Options options = new android.graphics.BitmapFactory.Options();
+                    options.inJustDecodeBounds = true;
+                    android.graphics.BitmapFactory.decodeFile(photoFilePath, options);
+                    if (options.outWidth > 0 && options.outHeight > 0) {
+                        imageWidth = options.outWidth;
+                        imageHeight = options.outHeight;
+                        Log.d(TAG, "Detected image dimensions: " + imageWidth + "x" + imageHeight);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error getting image dimensions, using defaults", e);
+                }
+                
                 // VPS server URL
                 String uploadUrl = "http://54.67.15.233:5555/vps";
                 
-                // Create multipart request with proper field name 'file' as expected by the server
+                // Create JSON object with metadata
+                JSONObject metadata = new JSONObject();
+                try {
+                    metadata.put("device_id", deviceId);
+                    metadata.put("mac_address", deviceId); // Same as device_id
+                    metadata.put("name", "Mentra");
+                    metadata.put("device_type", "glasses");
+                    metadata.put("timestamp", timestamp);
+                    metadata.put("image_width", imageWidth);
+                    metadata.put("image_height", imageHeight);
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error creating metadata JSON", e);
+                }
+                
+                Log.d(TAG, "VPS metadata: " + metadata.toString());
+                
+                // Create multipart request with file and metadata
                 RequestBody requestBody = new MultipartBody.Builder()
                     .setType(MultipartBody.FORM)
                     .addFormDataPart("file", photoFile.getName(),
                         RequestBody.create(MediaType.parse("image/jpeg"), photoFile))
+                    .addFormDataPart("metadata", metadata.toString())
                     .build();
                     
                 // Build the request
