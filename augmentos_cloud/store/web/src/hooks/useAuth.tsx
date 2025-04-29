@@ -252,12 +252,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Check if we're on the login page and need to redirect
             const isLoginPage = window.location.pathname.includes('/login') || 
                               window.location.pathname.includes('/signin');
-            
-            if (isLoginPage) {
-              // Get redirect path from URL or storage
-              const urlParams = new URLSearchParams(window.location.search);
-              const redirectTo = urlParams.get('redirectTo') || localStorage.getItem('auth_redirect') || '/';
-              
+            const localRedirect = localStorage.getItem('auth_redirect');
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectToFromURLParams = urlParams.get('redirectTo');
+            if (isLoginPage || localRedirect || redirectToFromURLParams) {
+              console.log(`isLoginPage: ${isLoginPage}`);
+              console.log(`localRedirect: ${localRedirect}`);
+              console.log(`redirectToFromURLParams: ${redirectToFromURLParams}`);
+              const redirectTo = redirectToFromURLParams || localRedirect || '/';
               console.log('Redirecting to:', redirectTo);
               // Clear storage
               localStorage.removeItem('auth_redirect');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation  } from 'react-router-dom';
 import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api';
@@ -251,7 +251,7 @@ const AppDetails: React.FC = () => {
                         )
                       ) : (
                         <Button
-                          onClick={() => navigate('/login')}
+                          onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
                           className="bg-blue-600 hover:bg-blue-700 w-full md:w-48"
                         >
                           Sign in to install
