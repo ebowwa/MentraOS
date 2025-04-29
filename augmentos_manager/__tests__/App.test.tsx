@@ -21,6 +21,7 @@ jest.mock('@react-navigation/native', () => {
 
 // Mock the App component entirely since it uses components that are difficult to test
 jest.mock('../src/App', () => {
+  // eslint-disable-next-line @typescript-eslint/no-shadow
   const React = require('react');
   return {
     __esModule: true,
