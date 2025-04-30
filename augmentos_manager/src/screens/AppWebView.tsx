@@ -211,9 +211,9 @@ const AppWebView: React.FC<AppWebViewProps> = ({ route, navigation, isDarkTheme,
           <LoadingOverlay message="Preparing..." isDarkTheme={isDarkTheme} />
         )}
         {/* Show loading overlay specifically for the WebView loading phase */}
-        {isLoading && finalUrl && (
+        {/* {isLoading && finalUrl && (
            <LoadingOverlay message={`Loading ${appName}...`} isDarkTheme={isDarkTheme} />
-        )}
+        )} */}
       </View>
     </SafeAreaView>
   );
