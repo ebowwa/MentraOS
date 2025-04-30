@@ -12,6 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Slider } from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import axios from 'axios';
 
 import { useStatus } from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
@@ -22,6 +23,8 @@ import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
 import showAlert from '../utils/AlertUtils';
+
+const CLOUD_URL = process.env.CLOUD_HOST_NAME;
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -46,7 +49,52 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   navigation,
 }) => {
   const { status } = useStatus();
+  const [settings, setSettings] = useState<any>({});
+  const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const coreToken = await AsyncStorage.getItem('core_token');
+        if (!coreToken) {
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await axios.get(`http://${CLOUD_URL}/api/augmentos-settings`, {
+          headers: { Authorization: `Bearer ${coreToken}` }
+        });
+
+        if (response.data.success && response.data.settings) {
+          setSettings(response.data.settings);
+        }
+      } catch (error) {
+        console.error('Error loading settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  const updateSetting = async (key: string, value: any) => {
+    try {
+      const coreToken = await AsyncStorage.getItem('core_token');
+      if (!coreToken) {
+        return;
+      }
+
+      const updatedSettings = { ...settings, [key]: value };
+      await axios.post(`http://${CLOUD_URL}/api/augmentos-settings`, updatedSettings, {
+        headers: { Authorization: `Bearer ${coreToken}` }
+      });
+
+      setSettings(updatedSettings);
+    } catch (error) {
+      console.error(`Error updating setting ${key}:`, error);
+    }
+  };
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
