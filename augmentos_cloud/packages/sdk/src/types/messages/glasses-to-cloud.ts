@@ -17,11 +17,6 @@ export interface ConnectionInit extends BaseMessage {
   coreToken?: string;
 }
 
-export interface RequestSettings extends BaseMessage {
-  type: GlassesToCloudMessageType.REQUEST_SETTINGS;
-  sessionId: string;
-}
-
 /**
  * Start app request from glasses
  */
@@ -151,27 +146,10 @@ export interface NotificationDismissed extends BaseMessage {
 }
 
 /**
- * AugmentOS settings update from glasses
- */
-export interface AugmentosSettingsUpdateRequest extends BaseMessage {
-  type: GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST;
-}
-
-/**
- * Core status update from glasses
- */
-export interface CoreStatusUpdate extends BaseMessage {
-  type: GlassesToCloudMessageType.CORE_STATUS_UPDATE;
-  status: string;
-  details?: Record<string, any>;
-}
-
-/**
  * Union type for all messages from glasses to cloud
  */
 export type GlassesToCloudMessage = 
   | ConnectionInit
-  | RequestSettings
   | StartApp
   | StopApp
   | DashboardState
@@ -185,9 +163,7 @@ export type GlassesToCloudMessage =
   | CalendarEvent
   | Vad
   | PhoneNotification
-  | NotificationDismissed
-  | AugmentosSettingsUpdateRequest
-  | CoreStatusUpdate;
+  | NotificationDismissed;
 
 //===========================================================
 // Type guards
@@ -204,10 +180,6 @@ export function isEvent(message: GlassesToCloudMessage): boolean {
 // Individual type guards
 export function isConnectionInit(message: GlassesToCloudMessage): message is ConnectionInit {
   return message.type === GlassesToCloudMessageType.CONNECTION_INIT;
-}
-
-export function isRequestSettings(message: GlassesToCloudMessage): message is RequestSettings {
-  return message.type === GlassesToCloudMessageType.REQUEST_SETTINGS;
 }
 
 export function isStartApp(message: GlassesToCloudMessage): message is StartApp {

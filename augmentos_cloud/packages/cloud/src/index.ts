@@ -30,8 +30,6 @@ import serverRoutes from './routes/server.routes';
 import adminRoutes from './routes/admin.routes';
 import tpaServerRoutes from './routes/tpa-server.routes';
 import toolsRoutes from './routes/tools.routes';
-// HTTP routes for augmentOS settings are now replaced by WebSocket implementation
-// import augmentosSettingsRoutes from './routes/augmentos-settings.routes';
 
 import path from 'path';
 
@@ -130,8 +128,6 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/tpa-server', tpaServerRoutes);
 app.use('/api/server', serverRoutes);
 app.use('/api/tools', toolsRoutes);
-// HTTP routes for augmentOS settings are now replaced by WebSocket implementation
-// app.use('/api/augmentos-settings', augmentosSettingsRoutes);
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 
