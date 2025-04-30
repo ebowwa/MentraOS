@@ -126,14 +126,14 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
-            // renderLoading={() => (
-            //   <View style={styles.loadingOverlay}>
-            //     <ActivityIndicator size="large" color={theme.primaryColor} />
-            //     <Text style={[styles.loadingText, { color: theme.textColor }]}>
-            //       Loading App Store...
-            //     </Text>
-            //   </View>
-            // )}
+            renderLoading={() => (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color={theme.primaryColor} />
+                <Text style={[styles.loadingText, { color: theme.textColor }]}>
+                  Loading App Store...
+                </Text>
+              </View>
+            )}
           />
           {/* {webviewLoading && (
             <View style={styles.loadingOverlay}>
