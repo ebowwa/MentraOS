@@ -66,26 +66,6 @@ export interface MicrophoneStateChange extends BaseMessage {
 }
 
 /**
- * Settings update to glasses
- */
-export interface SettingsUpdate extends BaseMessage {
-  type: CloudToGlassesMessageType.SETTINGS_UPDATE;
-  sessionId: string;
-  settings: {
-    useOnboardMic: boolean;
-    contextualDashboard: boolean;
-    headUpAngle: number;
-    brightness: number;
-    autoBrightness: boolean;
-    sensingEnabled: boolean;
-    alwaysOnStatusBar: boolean;
-    bypassVad: boolean;
-    bypassAudioEncoding: boolean;
-    enablePhoneNotifications: boolean;
-  };
-}
-
-/**
  * Union type for all messages from cloud to glasses
  */
 export type CloudToGlassesMessage =
@@ -94,8 +74,7 @@ export type CloudToGlassesMessage =
   | AuthError
   | DisplayEvent
   | AppStateChange
-  | MicrophoneStateChange
-  | SettingsUpdate;
+  | MicrophoneStateChange;
 
 //===========================================================
 // Type guards
