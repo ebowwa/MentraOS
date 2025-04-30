@@ -5,7 +5,7 @@ import React, {
   useState,
   useEffect,
 } from 'react';
-import { View, StyleSheet, Animated, Text, Platform } from 'react-native';
+import { View, StyleSheet, Animated, Text, Platform, ActivityIndicator } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -13,8 +13,8 @@ import ConnectedDeviceInfo from '../components/ConnectedDeviceInfo';
 import ConnectedSimulatedGlassesInfo from '../components/ConnectedSimulatedGlassesInfo';
 import RunningAppsList from '../components/RunningAppsList';
 import YourAppsList from '../components/YourAppsList';
-import NavigationBar from '../components/NavigationBar';
 import { useStatus } from '../providers/AugmentOSStatusProvider';
+import { useAppStatus } from '../providers/AppStatusProvider';
 import { ScrollView } from 'react-native-gesture-handler';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import semver from 'semver';
@@ -24,6 +24,7 @@ import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import SensingDisabledWarning from '../components/SensingDisabledWarning';
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -36,12 +37,32 @@ interface AnimatedSectionProps extends PropsWithChildren {
 
 const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const navigation = useNavigation<NavigationProp<any>>();
-  const { status, startBluetoothAndCore } = useStatus();
+  const { appStatus, refreshAppStatus } = useAppStatus();
+  const { status } = useStatus();
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
+
+  // Reset loading state when connection status changes
+  useEffect(() => {
+    if (status.core_info.cloud_connection_status === 'CONNECTED') {
+      setIsInitialLoading(true);
+      const timer = setTimeout(() => {
+        setIsInitialLoading(false);
+      }, 10000);
+      return () => clearTimeout(timer);
+    }
+  }, [status.core_info.cloud_connection_status]);
+
+  // Clear loading state if apps are loaded
+  useEffect(() => {
+    if (appStatus.length > 0) {
+      setIsInitialLoading(false);
+    }
+  }, [appStatus.length]);
 
   // Get local version from env file
   const getLocalVersion = () => {
@@ -186,12 +207,20 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
         <AnimatedSection>
           <Header isDarkTheme={isDarkTheme} navigation={navigation} />
         </AnimatedSection>
-        <ScrollView style={currentThemeStyles.contentContainer}>
+        <ScrollView 
+          style={currentThemeStyles.contentContainer}
+          contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
+        >
           {status.core_info.cloud_connection_status !== 'CONNECTED' &&
             <AnimatedSection>
               <CloudConnection isDarkTheme={isDarkTheme} />
             </AnimatedSection>
           }
+          
+          {/* Sensing Disabled Warning */}
+          <AnimatedSection>
+            <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
+          </AnimatedSection>
 
           <AnimatedSection>
             {/* Use the simulated version if we're connected to simulated glasses */}
@@ -205,7 +234,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
           {status.core_info.puck_connected && (
             <>
-              {status.apps.length > 0 ? (
+              {appStatus.length > 0 ? (
                 <>
                   <AnimatedSection>
                     <RunningAppsList isDarkTheme={isDarkTheme} />
@@ -214,15 +243,32 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
                   <AnimatedSection>
                     <YourAppsList
                       isDarkTheme={isDarkTheme}
-                      key={`apps-list-${status.apps.length}`}
+                      key={`apps-list-${appStatus.length}`}
                     />
                   </AnimatedSection>
                 </>
+              ) : status.core_info.cloud_connection_status === 'CONNECTED' ? (
+                isInitialLoading ? (
+                  <AnimatedSection>
+                    <View style={currentThemeStyles.loadingContainer}>
+                      <Text style={currentThemeStyles.loadingText}>
+                        Loading your apps...
+                      </Text>
+                    </View>
+                  </AnimatedSection>
+                ) : (
+                  <AnimatedSection>
+                    <View style={currentThemeStyles.noAppsContainer}>
+                      <Text style={currentThemeStyles.noAppsText}>
+                        Unable to load your apps.{'\n'}Please check your internet connection and try again.
+                      </Text>
+                    </View>
+                  </AnimatedSection>
+                )
               ) : (
                 <AnimatedSection>
                   <Text style={currentThemeStyles.noAppsText}>
-                    No apps found. Visit the AugmentOS App Store to explore and
-                    download apps for your device.
+                    Unable to load apps. Please check your cloud connection to view and manage your apps.
                   </Text>
                 </AnimatedSection>
               )}
@@ -230,7 +276,6 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           )}
         </ScrollView>
       </View>
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </SafeAreaView>
   );
 };
@@ -242,11 +287,24 @@ const lightThemeStyles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingBottom: 0, // Explicitly set to 0 to prevent space above navbar
+    marginBottom: -15, // Negative margin to help close the gap
+  },
+  warningContainer: {
+    paddingHorizontal: 20,
+  },
+  noAppsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
   noAppsText: {
-    marginTop: 10,
     color: '#000000',
     fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   brightnessContainer: {
     marginTop: 15,
@@ -265,6 +323,16 @@ const lightThemeStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    color: '#000000',
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+  },
 });
 
 const darkThemeStyles = StyleSheet.create({
@@ -275,11 +343,21 @@ const darkThemeStyles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: 20,
-    paddingBottom: 55,
+    paddingBottom: 0, // Remove bottom padding that causes space above navbar
+    marginBottom: -15, // Negative margin to help close the gap
+  },
+  noAppsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
   noAppsText: {
     color: '#ffffff',
     fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   brightnessContainer: {
     marginTop: 15,
@@ -298,11 +376,26 @@ const darkThemeStyles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 20,
+  },
+  loadingText: {
+    color: '#ffffff',
+    fontFamily: 'Montserrat-Regular',
+    fontSize: 16,
+  },
 });
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fullWidthItem: {
+    width: '100%',
+    paddingHorizontal: 0,
+    marginHorizontal: 0,
   },
 });
 

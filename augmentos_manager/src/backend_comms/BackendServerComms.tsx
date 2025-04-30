@@ -2,6 +2,7 @@
 import axios, { AxiosRequestConfig } from 'axios';
 import { Config } from 'react-native-config';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { AppInterface } from '../providers/AppStatusProvider';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -11,24 +12,21 @@ interface Callback {
 export default class BackendServerComms {
   private static instance: BackendServerComms;
   private TAG = 'MXT2_BackendServerComms';
-  private serverUrl;
+  private serverUrl: string;
+  private appStoreUrl: string;
   private coreToken: string | null = null;
 
-  public getServerUrl(): string {
+  private constructor() {
     const secure = Config.AUGMENTOS_SECURE === 'true';
     const host = Config.AUGMENTOS_HOST;
     const port = Config.AUGMENTOS_PORT;
     const protocol = secure ? 'https' : 'http';
-    const serverUrl = `${protocol}://${host}:${port}`;
-    console.log("Got a new server url: ");
-    console.log(serverUrl);
-    //console.log('React Native Config:', Config);
-    //console.log("\n\n\n");
-    return serverUrl;
+    this.serverUrl = `${protocol}://${host}:${port}`;
+    this.appStoreUrl = `https://prod.augmentos.cloud`;
   }
 
-  private constructor() {
-    this.serverUrl = this.getServerUrl();
+  public getServerUrl(): string {
+    return this.serverUrl;
   }
 
   public static getInstance(): BackendServerComms {
@@ -243,7 +241,7 @@ export default class BackendServerComms {
         //console.error('Error starting app:', error.message || error);
         //GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Error starting app: ' + error.message || error, type: 'error' })
         GlobalEventEmitter.emit('SHOW_BANNER', { message: `Could not connect to ${packageName}`, type: "error" });
-        //throw error;
+        throw error;
       }
     }
   
@@ -293,7 +291,7 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/apps/${packageName}/uninstall`;
+    const url = `${this.appStoreUrl}/api/apps/uninstall/${packageName}`;
     console.log('Uninstalling app:', packageName);
 
     const config: AxiosRequestConfig = {
@@ -315,6 +313,123 @@ export default class BackendServerComms {
       }
     } catch (error: any) {
       console.error('Error uninstalling app:', error.message || error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fetch all available apps
+   * @returns Promise with the apps data
+   */
+  public async getApps(): Promise<AppInterface[]> {
+    if (!this.coreToken) {
+      throw new Error('No core token available for authentication');
+    }
+
+    const url = `${this.serverUrl}/api/apps/`;
+    console.log('Fetching apps from:', url);
+
+    const config: AxiosRequestConfig = {
+      method: 'GET',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.coreToken}`,
+      },
+    };
+
+    console.log('Fetching apps from:', url);
+
+    try {
+      const response = await axios(config);
+
+      if (response.status === 200 && response.data) {
+        if (response.data.success && response.data.data) {
+          console.log('Response:', response.data.data);
+          return response.data.data;
+        } else {
+          throw new Error('Invalid response format');
+        }
+      } else {
+        throw new Error(`Bad response: ${response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error('Error fetching apps:', error.message || error);
+      throw error;
+    }
+  }
+
+  /**
+   * Requests a temporary, single-use token for webview authentication.
+   * @param packageName The package name of the TPA the token is for.
+   * @returns Promise resolving to the temporary token string.
+   * @throws Error if the request fails or no core token is available.
+   */
+  public async generateWebviewToken(packageName: string): Promise<string> {
+    if (!this.coreToken) {
+      throw new Error('Authentication required: No core token available.');
+    }
+
+    const url = `${this.serverUrl}/api/auth/generate-webview-token`;
+    console.log('Requesting webview token for:', packageName, 'at URL:', url);
+
+    const config: AxiosRequestConfig = {
+      method: 'POST',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.coreToken}`, // Use the stored coreToken
+      },
+      data: { packageName }, // Send the target package name in the body
+    };
+
+    try {
+      const response = await axios(config);
+      if (response.status === 200 && response.data.success && response.data.token) {
+        console.log(`Received temporary webview token for ${packageName}`);
+        return response.data.token;
+      } else {
+        throw new Error(`Failed to generate webview token: ${response.data.error || response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error(`${this.TAG}: Error generating webview token -`, error.message || error);
+      // Consider more specific error handling based on response status if available
+      if (axios.isAxiosError(error) && error.response) {
+        throw new Error(`Failed to generate webview token: ${error.response.data?.error || error.message}`);
+      }
+      throw error; // Re-throw the original error or a new one
+    }
+  }
+
+  public async hashWithApiKey(stringToHash: string, packageName: string): Promise<string> {
+    if (!this.coreToken) {
+      throw new Error('No core token available for authentication');
+    }
+
+    const url = `${this.serverUrl}/api/auth/hash-with-api-key`;
+    
+    const config: AxiosRequestConfig = {
+      method: 'POST',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.coreToken}`,
+      },
+      data: {
+        stringToHash,
+        packageName
+      },
+    };
+
+    try {
+      const response = await axios(config);
+      if (response.status === 200 && response.data.success) {
+        return response.data.hash;
+      } else {
+        throw new Error(`Failed to generate hash: ${response.data.error || response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error(`${this.TAG}: Error generating hash:`, error.message || error);
       throw error;
     }
   }

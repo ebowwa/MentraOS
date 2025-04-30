@@ -17,7 +17,6 @@ import { useStatus } from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import { stopExternalService } from '../bridge/CoreServiceStarter';
 import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
-import NavigationBar from '../components/NavigationBar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { SETTINGS_KEYS } from '../consts';
 import { supabase } from '../supabaseClient';
@@ -47,6 +46,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   navigation,
 }) => {
   const { status } = useStatus();
+
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -88,7 +88,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         return;
       }
     }
-    
     // Continue with toggling the setting if permission granted or turning off
     const newVal = !forceCoreOnboardMic;
     await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
@@ -114,7 +113,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         { text: 'Cancel', style: 'cancel' },
         { text: 'Yes', onPress: forgetGlasses },
       ],
-      { 
+      {
         cancelable: false,
         isDarkTheme
       },
@@ -191,7 +190,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         { text: 'Cancel', style: 'cancel' },
         { text: 'Yes', onPress: handleSignOut },
       ],
-      { 
+      {
         cancelable: false,
         isDarkTheme,
       },
@@ -269,6 +268,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 Use the phone's microphone instead of the glasses'
                 microphone (if applicable).
               </Text>
+              {status.glasses_info?.model_name === "Simulated Glasses" && (
+                <View style={styles.flagContainer}>
+                  <Text style={[styles.flagText, { color: '#ff6b6b' }]}>
+                    This setting has no effect when using Simulated Glasses
+                  </Text>
+                </View>
+              )}
             </View>
             <Switch
               //disabled={!status.glasses_info?.model_name}
@@ -461,7 +467,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </TouchableOpacity>
         </ScrollView>
       </View>
-      <NavigationBar toggleTheme={toggleTheme} isDarkTheme={isDarkTheme} />
     </SafeAreaView>
   );
 };
@@ -573,4 +578,16 @@ const styles = StyleSheet.create({
   thumbTintColor: {
     color: '#FFFFFF',
   },
+  flagContainer: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 107, 107, 0.1)', // Returning to original red color
+    alignSelf: 'flex-start',
+  },
+  flagText: {
+    fontSize: 12,
+    fontWeight: '500',
+  }
 });

@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    marginTop: 15,
+    marginTop: 16, // Increased space above component to match ConnectedDeviceInfo
   },
   connectedContent: {
     flex: 1,

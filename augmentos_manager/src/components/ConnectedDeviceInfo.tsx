@@ -108,7 +108,9 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
     setDisconnectButtonDisabled(false);
 
     try {
+      console.log('Connecting to glasses:', status.core_info.default_wearable);
       if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
+        console.log('Connecting to glasses:', status.core_info.default_wearable);
         await coreCommunicator.sendConnectWearable(status.core_info.default_wearable);
       }
     } catch (error) {
@@ -286,12 +288,13 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
 const styles = StyleSheet.create({
   deviceInfoContainer: {
-    padding: 10,
-    borderRadius: 10,
+    padding: 16,
+    borderRadius: 12,
     width: '100%',
     minHeight: 230,
     justifyContent: 'center',
-    marginTop: 15,
+    marginTop: 16, // Increased space above component
+    backgroundColor: '#E5E5EA',
   },
   connectedContent: {
     flex: 1,

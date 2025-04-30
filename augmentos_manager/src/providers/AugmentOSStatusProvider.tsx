@@ -18,14 +18,21 @@ interface AugmentOSStatusContextType {
 const AugmentOSStatusContext = createContext<AugmentOSStatusContextType | undefined>(undefined);
 
 export const StatusProvider = ({ children }: { children: ReactNode }) => {
-    const [status, setStatus] = useState(AugmentOSParser.parseStatus({}));
+    const [status, setStatus] = useState<AugmentOSMainStatus>(() => {
+        return AugmentOSParser.parseStatus({});
+    });
     const [isInitialized, setIsInitialized] = useState(false);
     const [screenMirrorItems, setScreenMirrorItems] = useState<{ id: string; name: string }[]>([]);
-
+    
     const refreshStatus = useCallback((data: any) => {
         if (!(data && 'status' in data)) {return;}
 
         const parsedStatus = AugmentOSParser.parseStatus(data);
+
+        const forceUpdate = parsedStatus.force_update;
+
+        console.log('1111 Parsed status:', parsedStatus);
+
         if (INTENSE_LOGGING)
             console.log('Parsed status:', parsedStatus);
         
