@@ -14,6 +14,10 @@ describe('utils/NotificationServiceUtils', () => {
   // Create mock functions for native module
   const mockHasNotificationAccess = jest.fn();
   const mockRequestNotificationAccess = jest.fn().mockResolvedValue(undefined);
+  
+  // Add spies for console methods
+  let consoleErrorSpy: jest.SpyInstance;
+  let consoleLogSpy: jest.SpyInstance;
 
   beforeAll(() => {
     // Attach mocks to NativeModules
@@ -30,6 +34,15 @@ describe('utils/NotificationServiceUtils', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Mock console methods before each test
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
+  
+  afterEach(() => {
+    // Restore console methods after each test
+    consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
   });
 
   describe('checkNotificationAccessSpecialPermission', () => {
@@ -79,6 +92,9 @@ describe('utils/NotificationServiceUtils', () => {
       expect(typeof goToSettings.onPress).toBe('function');
       await goToSettings.onPress();
       expect(mockRequestNotificationAccess).toHaveBeenCalled();
+      
+      // Verify console.log was called
+      expect(consoleLogSpy).toHaveBeenCalledWith('Notification access settings opened successfully');
     });
 
     it('returns true and does not alert when access is already granted', async () => {
@@ -89,6 +105,9 @@ describe('utils/NotificationServiceUtils', () => {
       expect(result).toBe(true);
       expect(showAlert).not.toHaveBeenCalled();
       expect(mockRequestNotificationAccess).not.toHaveBeenCalled();
+      
+      // Verify console.log was called
+      expect(consoleLogSpy).toHaveBeenCalledWith('Notification access already granted');
     });
 
     it('catches errors and shows error alert', async () => {
@@ -102,6 +121,12 @@ describe('utils/NotificationServiceUtils', () => {
       // The first call is for enable notification request; second is for error handling
       const lastAlert = (showAlert as jest.Mock).mock.calls.slice(-1)[0];
       expect(lastAlert[0]).toBe('Error');
+      
+      // Verify console.error was called with the expected message
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        'Failed to check notification listener permission:',
+        error
+      );
     });
   });
 });

@@ -5,10 +5,21 @@ import { GET_APP_STORE_DATA_ENDPOINT } from '../src/consts';
 describe('fetchAppStoreData', () => {
   const mockRestRequest = jest.fn();
   const mockInstance = { restRequest: mockRestRequest };
+  
+  // Add a spy for console.error
+  let consoleErrorSpy: jest.SpyInstance;
 
   beforeEach(() => {
     mockRestRequest.mockReset();
     jest.spyOn(BackendServerComms, 'getInstance').mockReturnValue(mockInstance as any);
+    
+    // Mock console.error before each test
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  
+  afterEach(() => {
+    // Restore console.error after each test
+    consoleErrorSpy.mockRestore();
   });
 
   it('calls restRequest with correct endpoint', async () => {
@@ -58,5 +69,11 @@ describe('fetchAppStoreData', () => {
       return Promise.resolve();
     });
     await expect(fetchAppStoreData()).rejects.toBe(error);
+    
+    // Verify that console.error was called with the expected message
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
+      'Failed to fetch app store data:',
+      error
+    );
   });
 }); 

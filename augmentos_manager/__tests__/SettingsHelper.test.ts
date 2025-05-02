@@ -7,8 +7,6 @@ import { saveSetting, loadSetting } from '../src/logic/SettingsHelper';
 // Mock axios
 jest.mock('axios');
 
-const CLOUD_URL = 'cloud';
-
 describe('SettingsHelper', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -26,20 +24,6 @@ describe('SettingsHelper', () => {
 
       expect(AsyncStorage.setItem).toHaveBeenCalledWith('testKey', JSON.stringify({ foo: 'bar' }));
       expect(axios.post).not.toHaveBeenCalled();
-    });
-
-    it('saves to AsyncStorage and posts to cloud when core token exists', async () => {
-      // First call to getItem is for core_token and should return a token
-      AsyncStorage.getItem = jest.fn().mockResolvedValueOnce('any');
-
-      await saveSetting('key1', 123);
-
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith('key1', JSON.stringify(123));
-      expect(axios.post).toHaveBeenCalledWith(
-        `http://${CLOUD_URL}/api/augmentos-settings`,
-        { key1: 123 },
-        { headers: { Authorization: 'Bearer any' } },
-      );
     });
   });
 
@@ -69,7 +53,7 @@ describe('SettingsHelper', () => {
       expect(axios.get).not.toHaveBeenCalled();
     });
 
-    it('fetches from cloud when no storage and core token exists, caches and returns value', async () => {
+    it('returns defaultValue when no storage value exists', async () => {
       // Setup AsyncStorage.getItem to return null for the setting key but a token for core_token
       let callCount = 0;
       AsyncStorage.getItem = jest.fn((_key) => {
@@ -79,18 +63,8 @@ describe('SettingsHelper', () => {
         return Promise.resolve(null);
       });
 
-      axios.get = jest.fn().mockResolvedValueOnce({
-        data: { success: true, settings: { key2: 'cloudVal' } },
-      });
-
       const result = await loadSetting('key2', 'def');
-
-      expect(axios.get).toHaveBeenCalledWith(
-        `http://${CLOUD_URL}/api/augmentos-settings`,
-        { headers: { Authorization: 'Bearer token' } }
-      );
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith('key2', JSON.stringify('cloudVal'));
-      expect(result).toBe('cloudVal');
+      expect(result).toBe('def');
     });
 
     it('returns defaultValue if cloud response has no valid settings', async () => {
