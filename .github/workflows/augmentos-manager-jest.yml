@@ -12,23 +12,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: '18'
           cache: 'npm'
           cache-dependency-path: augmentos_manager/package-lock.json
 
       - name: Install dependencies
-        run: |
-          cd augmentos_manager
-          npm ci
+        working-directory: ./augmentos_manager
+        run: npm ci
 
       - name: Run Jest tests
-        run: |
-          cd augmentos_manager
-          npm run test
+        working-directory: ./augmentos_manager
+        run: npm run test
         env:
-          CI: true 
+          CI: true
