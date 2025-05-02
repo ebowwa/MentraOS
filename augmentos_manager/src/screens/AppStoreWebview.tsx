@@ -135,14 +135,14 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
               </View>
             )}
           />
-          {webviewLoading && (
+          {/* {webviewLoading && (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color={theme.primaryColor} />
               <Text style={[styles.loadingText, { color: theme.textColor }]}>
                 Loading App Store...
               </Text>
             </View>
-          )}
+          )} */}
         </View>
       )}
     </SafeAreaView>

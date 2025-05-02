@@ -270,7 +270,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               ) : (
                 <>
                   <Text style={styles.selectedValue}>
-                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label}
+                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label || 'Notification Summary'}
                   </Text>
                   <Icon name="chevron-right" size={16} color="#000000" />
                 </>
