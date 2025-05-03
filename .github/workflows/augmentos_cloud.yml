@@ -52,6 +52,7 @@ jobs:
 
       # 3. build other projects
       - name: Build all projects
+        working-directory: augmentos_cloud
         run: bun run build
 
       # ^ Installs NPM packages. Bun uses its lockfile to ensure deterministic installs.
