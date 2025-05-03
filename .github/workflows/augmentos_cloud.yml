@@ -46,10 +46,14 @@ jobs:
             ${{ runner.os }}-bun-
       # ^ Uses GitHub cache to store Bun's package cache for faster installs
 
-      # 4. Install project dependencies using Bun
       - name: Install Dependencies
         working-directory: augmentos_cloud
-        run: bun install
+        run: bun run setup-deps
+
+      # 3. build other projects
+      - name: Build all projects
+        run: bun run build
+
       # ^ Installs NPM packages. Bun uses its lockfile to ensure deterministic installs.
       # If cache was restored, this will be fast as packages are already downloaded.
 
@@ -62,7 +66,7 @@ jobs:
 
       # 6. Run tests to verify functionality
       - name: Run tests
-        working-directory: augmentos_cloud
+        working-directory: augmentos_cloud/packages/cloud
         run: bun run test
       # ^ Executes the test suite (e.g., via Jest, Bun's built-in test runner, or another framework).
       # If any tests fail, the job (and workflow) will fail, preventing deployment.
