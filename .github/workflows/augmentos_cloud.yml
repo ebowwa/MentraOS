@@ -1,14 +1,13 @@
 # Name of the workflow
-name: Deploy AugmentOS Cloud ☁️ Dev environment
+name: Test AugmentOS Cloud ☁️
 
-# Trigger on pushes to isaiah/cloud branch
+# trigger
 on:
   push:
     paths:
       - 'augmentos_cloud/**'
       - '.github/workflows/augmentos_cloud.yml'
 
-# We use two jobs: build and deploy, for modularity and future scalability
 jobs:
   build_and_test:
     name: Build & Test
