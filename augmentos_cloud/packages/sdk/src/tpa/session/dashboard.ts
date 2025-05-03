@@ -94,7 +94,7 @@ class DashboardSystemManager implements DashboardSystemAPI {
  */
 class DashboardContentManager implements DashboardContentAPI {
   private currentMode: DashboardMode | 'none' = 'none';
-  private alwaysOnEnabled: boolean = false;
+  // private alwaysOnEnabled: boolean = false;
   
   constructor(
     private packageName: string,
@@ -130,17 +130,17 @@ class DashboardContentManager implements DashboardContentAPI {
     this.send(message);
   }
 
-  writeToAlwaysOn(content: string): void {
-    this.write(content, [DashboardMode.ALWAYS_ON]);
-  }
+  // writeToAlwaysOn(content: string): void {
+  //   this.write(content, [DashboardMode.ALWAYS_ON]);
+  // }
 
   async getCurrentMode(): Promise<DashboardMode | 'none'> {
     return this.currentMode;
   }
 
-  async isAlwaysOnEnabled(): Promise<boolean> {
-    return this.alwaysOnEnabled;
-  }
+  // async isAlwaysOnEnabled(): Promise<boolean> {
+  //   return this.alwaysOnEnabled;
+  // }
 
   onModeChange(callback: (mode: DashboardMode | 'none') => void): () => void {
     return this.events.onDashboardModeChange((data) => {
@@ -149,12 +149,12 @@ class DashboardContentManager implements DashboardContentAPI {
     });
   }
   
-  onAlwaysOnChange(callback: (enabled: boolean) => void): () => void {
-    return this.events.onDashboardAlwaysOnChange((data) => {
-      this.alwaysOnEnabled = data.enabled;
-      callback(data.enabled);
-    });
-  }
+  // onAlwaysOnChange(callback: (enabled: boolean) => void): () => void {
+  //   return this.events.onDashboardAlwaysOnChange((data) => {
+  //     this.alwaysOnEnabled = data.enabled;
+  //     callback(data.enabled);
+  //   });
+  // }
 
   // Internal methods to update state
   setCurrentMode(mode: DashboardMode | 'none'): void {
@@ -162,10 +162,10 @@ class DashboardContentManager implements DashboardContentAPI {
     this.events.emit('dashboard_mode_change', { mode });
   }
 
-  setAlwaysOnEnabled(enabled: boolean): void {
-    this.alwaysOnEnabled = enabled;
-    this.events.emit('dashboard_always_on_change', { enabled });
-  }
+  // setAlwaysOnEnabled(enabled: boolean): void {
+  //   this.alwaysOnEnabled = enabled;
+  //   this.events.emit('dashboard_always_on_change', { enabled });
+  // }
 }
 
 /**

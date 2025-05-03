@@ -1,3 +1,4 @@
+// TODO: 
 /**
  * Dashboard API Types
  * 
@@ -12,7 +13,7 @@ import { TpaToCloudMessageType } from '../message-types';
 export enum DashboardMode {
   MAIN = 'main',           // Full dashboard experience
   EXPANDED = 'expanded',   // More space for TPA content
-  ALWAYS_ON = 'always_on'  // Persistent minimal dashboard
+  // ALWAYS_ON = 'always_on'  // Persistent minimal dashboard
 }
 
 /**
@@ -77,7 +78,7 @@ export interface DashboardContentAPI {
    * Write content to always-on dashboard mode
    * @param content Content to display
    */
-  writeToAlwaysOn(content: string): void;
+  // writeToAlwaysOn(content: string): void;
   
   /**
    * Get current active dashboard mode
@@ -89,7 +90,7 @@ export interface DashboardContentAPI {
    * Check if always-on dashboard is enabled
    * @returns Promise resolving to boolean
    */
-  isAlwaysOnEnabled(): Promise<boolean>;
+  // isAlwaysOnEnabled(): Promise<boolean>;
   
   /**
    * Register for mode change notifications
@@ -103,7 +104,7 @@ export interface DashboardContentAPI {
    * @param callback Function to call when always-on mode changes
    * @returns Cleanup function to unregister callback
    */
-  onAlwaysOnChange(callback: (enabled: boolean) => void): () => void;
+  // onAlwaysOnChange(callback: (enabled: boolean) => void): () => void;
 }
 
 /**
