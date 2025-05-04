@@ -23,8 +23,8 @@ RUN echo "🚀 Starting build process..." && \
     echo "⚙️ Building packages/cloud..." && \
     cd ../cloud && bun run build && \
     echo "✅ Building packages/cloud..." && \
-    echo "⚙️ Building packages/apps/dashboard-manager..." && \
-    cd ../apps/dashboard-manager && bun run build && \
+    echo "⚙️ Building packages/apps/dashboard..." && \
+    cd ../apps/dashboard && bun run build && \
     echo "🎉🎉🎉 All packages built successfully! 🎉🎉🎉"
 
 # Use Bun to run the application

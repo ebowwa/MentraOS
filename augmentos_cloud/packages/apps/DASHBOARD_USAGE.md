@@ -31,7 +31,7 @@ You can also run each component separately:
 
 ```bash
 # Dashboard Manager
-cd dashboard-manager
+cd dashboard
 bun run dev
 
 # Fun Facts TPA

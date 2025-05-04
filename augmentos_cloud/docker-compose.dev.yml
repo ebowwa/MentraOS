@@ -33,7 +33,7 @@ services:
       - augmentos-network-dev
 
   # Dashboard service
-  dashboard:
+  dashboard-manager:
     stop_grace_period: 10s
     init: true
     build:
@@ -45,7 +45,7 @@ services:
     environment:
       - NODE_ENV=development
       - HOST=0.0.0.0
-      - SERVICE_NAME=dashboard
+      - SERVICE_NAME=dashboard-manager
     env_file:
       - .env
     volumes:
