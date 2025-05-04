@@ -148,3 +148,8 @@ export interface WebSocketError {
   message: string;
   details?: unknown;
 }
+
+import { Request } from 'express';
+export interface AuthenticatedRequest extends Request {
+  authUserId?: string;
+}

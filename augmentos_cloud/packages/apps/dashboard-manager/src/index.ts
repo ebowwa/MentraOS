@@ -573,7 +573,10 @@ async function updateDashboard(sessionId?: string) {
       name: "calendar",
       async run(context: any) {
         const session: SessionInfo = context.session;
-        if (!session.calendarEvent || !session.latestLocation) return '';
+        if (!session.calendarEvent || !session.latestLocation) {
+          console.log(`[Session ${session.userId}] No calendar event or location data available for calendar`);
+          return '';
+        }
         
         const event = session.calendarEvent;
         // Get timezone from the session's location data, fall back to system timezone
@@ -729,6 +732,8 @@ async function updateDashboard(sessionId?: string) {
 }
 
 function handlePhoneNotification(sessionId: string, notificationData: any) {
+
+  console.log(`[Session ${sessionId}] Received phone notification:`, notificationData);
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
 

@@ -7,6 +7,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Animated,
+    Platform,
 } from 'react-native';
 import showAlert from '../utils/AlertUtils';
 import MessageModal from './MessageModal';
@@ -18,13 +19,14 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import AppIcon from './AppIcon';
 import { NavigationProps } from './types';
+import { useAppStatus } from '../providers/AppStatusProvider';
 
 interface YourAppsListProps {
     isDarkTheme: boolean;
 }
 
 const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
-    const { status, updateAppStatus } = useStatus();
+    const { appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation, isSensingEnabled } = useAppStatus();
     const navigation = useNavigation<NavigationProps>();
     const [_isLoading, setIsLoading] = React.useState(false);
     const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
@@ -46,6 +48,10 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
     const itemWidth = containerWidth > 0 ? (containerWidth - (GRID_MARGIN * numColumns)) / numColumns : 0;
     
     const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
+
+    const backendComms = BackendServerComms.getInstance();
+
+    // console.log('%%% appStatus', appStatus);
 
     // Check onboarding status whenever the screen comes into focus
     useFocusEffect(
@@ -165,15 +171,55 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 completeOnboarding();
             }
         }
+
+        // Optimistically update UI
+        optimisticallyStartApp(packageName);
         
-        // Update UI immediately
-        updateAppStatus(packageName, true, true);
+        // Find the app we're trying to start
+        const appToStart = appStatus.find(app => app.packageName === packageName);
+
+        console.log("fdsds####3333");
+        console.log('@@@ appStatus', appStatus);
+        console.log('@@@ appToStart', appToStart);
+        
+        console.log('@@@ appToStart.name', appToStart?.name);
+        console.log('@@@ appToStart.tpaType', appToStart?.tpaType);
+
+        // Check if it's a standard app
+        if (appToStart?.tpaType === 'standard') {
+            console.log('% appToStart', appToStart);
+            // Find any running standard apps
+            const runningStandardApps = appStatus.filter(
+                app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName
+            );
+
+            console.log('%%% runningStandardApps', runningStandardApps);
+
+            
+            // If there's any running standard app, stop it first
+            for (const runningApp of runningStandardApps) {
+                // Optimistically update UI
+                optimisticallyStopApp(runningApp.packageName);
+                
+                try {
+                    console.log('%%% stopping app', runningApp.packageName);
+                    await backendComms.stopApp(runningApp.packageName);
+                    clearPendingOperation(runningApp.packageName);
+                } catch (error) {
+                    console.error('stop app error:', error);
+                    refreshAppStatus();
+                }
+            }
+        }
         
         // Start the operation in the background
         setIsLoading(true);
         try {
-            await BackendServerComms.getInstance().startApp(packageName);
-            
+            console.log('%%% starting app', packageName);
+            await backendComms.startApp(packageName);
+            // Clear the pending operation since it completed successfully
+            clearPendingOperation(packageName);
+
             if (!onboardingCompleted && packageName === 'com.augmentos.livecaptions') {
                 // If this is the Live Captions app, make sure we've hidden the tip
                 setShowOnboardingTip(false);
@@ -191,9 +237,13 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
                 }, 500);
             }
         } catch (error) {
-            // Only revert the status if the operation failed
-            updateAppStatus(packageName, false, false);
+            // Revert the app state when there's an error starting the app
             console.error('start app error:', error);
+            
+            // Clear the pending operation for this app
+            clearPendingOperation(packageName);
+            // Refresh the app status to move the app back to inactive
+            refreshAppStatus();
         } finally {
             setIsLoading(false);
         }
@@ -206,21 +256,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         });
     };
 
-    const [isSensingEnabled, setIsSensingEnabled] = React.useState(
-        status.core_info.sensing_enabled,
-    );
-    useEffect(() => {
-        setIsSensingEnabled(status.core_info.sensing_enabled);
-    }, [status.core_info.sensing_enabled]);
-
     // Filter out duplicate apps and running apps
-    const availableApps = status.apps.filter(app => {
+    const availableApps = appStatus.filter(app => {
         if (app.is_running) {
             return false;
         }
         // Check if this is the first occurrence of this package name
-        const firstIndex = status.apps.findIndex(a => a.packageName === app.packageName);
-        return firstIndex === status.apps.indexOf(app);
+        const firstIndex = appStatus.findIndex(a => a.packageName === app.packageName);
+        return firstIndex === appStatus.indexOf(app);
     });
 
     return (
@@ -235,6 +278,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
             <ScrollView 
                 style={styles.listContainer}
                 showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.scrollViewContent}
             >
                 {availableApps.map((app, index) => (
                     <TouchableOpacity
@@ -573,6 +617,9 @@ const styles = StyleSheet.create({
         color: '#007AFF',
         fontSize: 14,
         fontWeight: 'bold',
+    },
+    scrollViewContent: {
+        paddingBottom: Platform.OS === 'ios' ? 24 : 38, // Account for nav bar height + iOS home indicator
     },
 });
 

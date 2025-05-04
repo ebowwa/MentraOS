@@ -90,10 +90,10 @@ class DisplayManager implements DisplayManagerI {
       logger.info(`[DisplayManager] - [${userSession.userId}] ✅ Boot complete for: ${packageName}`);
       this.bootingApps.delete(packageName);
       if (this.bootingApps.size === 0) {
+        // Clear the boot screen when all apps are done
+        this.clearDisplay('main');
         // Process any queued display requests
         this.processBootQueue();
-      } else {
-        this.updateBootScreen();
       }
     }, this.BOOT_DURATION);
   }
@@ -214,10 +214,7 @@ class DisplayManager implements DisplayManagerI {
 
     // Handle boot screen update if app was booting
     if (wasBooting) {
-      if (this.bootingApps.size > 0) {
-        logger.info(`[DisplayManager] - [${userSession.userId}] 🚀 Updating boot screen after app stop`);
-        this.updateBootScreen();
-      } else {
+      if (this.bootingApps.size === 0) {
         logger.info(`[DisplayManager] - [${userSession.userId}] 🔄 Boot screen complete, clearing state`);
         // Make sure we clear current display if it was boot screen
         if (this.displayState.currentDisplay?.displayRequest.packageName === systemApps.dashboard.packageName) {
@@ -246,10 +243,11 @@ class DisplayManager implements DisplayManagerI {
       this.displayState.savedDisplayBeforeBoot = null;
     }
 
-    // If this was the core app, clear its saved display
+    // If this was the core app, clear its saved display and reset mainApp
     if (packageName === this.mainApp) {
       logger.info(`[DisplayManager] - [${userSession.userId}] 🔄 Clearing core app display: ${packageName}`);
       this.displayState.coreAppDisplay = null;
+      this.mainApp = ""; // Reset mainApp when a standard app is stopped
 
       // If core app was currently displaying, clear the display
       if (wasDisplaying) {
@@ -286,13 +284,18 @@ class DisplayManager implements DisplayManagerI {
       const activeDisplay = this.createActiveDisplay(displayRequest);
       this.displayState.coreAppDisplay = activeDisplay;
 
-      // Check if background app with lock is actually displaying
-      if (!this.displayState.backgroundLock ||
-        this.displayState.currentDisplay?.displayRequest.packageName !== this.displayState.backgroundLock.packageName) {
-        logger.info(`[DisplayManager] - [${userSession.userId}] ✅ Background not displaying, showing core app`);
+      // Fixed condition: check if a background app (different from the core app) has the lock and is displaying
+      const blockedByBackgroundApp = 
+        this.displayState.backgroundLock && 
+        this.displayState.backgroundLock?.packageName !== this.mainApp && 
+        this.displayState.currentDisplay?.displayRequest.packageName === this.displayState.backgroundLock?.packageName;
+      
+      if (!blockedByBackgroundApp) {
+        logger.info(`[DisplayManager] - [${userSession.userId}] ✅ Background not displaying or core app has the lock, showing core app`);
         return this.showDisplay(activeDisplay);
       }
-      logger.info(`[DisplayManager] - [${userSession.userId}] ❌ Background app is displaying, core app blocked by ${this.displayState.backgroundLock.packageName}`);
+      
+      logger.info(`[DisplayManager] - [${userSession.userId}] ❌ Background app is displaying, core app blocked by ${this.displayState.backgroundLock?.packageName}`);
       return false;
     }
 
@@ -547,6 +550,18 @@ class DisplayManager implements DisplayManagerI {
     // Check if there's no background lock yet
     if (!this.displayState.backgroundLock) {
       logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔒 Granting new background lock to ${packageName}`);
+      this.displayState.backgroundLock = {
+        packageName,
+        expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT),
+        lastActiveTime: Date.now()
+      };
+      return true;
+    }
+    
+    // Check if the current lock holder is the main app (core/standard app)
+    // Background apps should be able to display alongside the core app
+    if (this.displayState.backgroundLock.packageName === this.mainApp) {
+      logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔒 Core app has lock, but allowing background app ${packageName} to display`);
       this.displayState.backgroundLock = {
         packageName,
         expiresAt: new Date(Date.now() + this.LOCK_TIMEOUT),
