@@ -61,7 +61,7 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   return (
     <View style={styles.appsContainer}>
       <Text style={[styles.sectionTitle, {color: textColor}]}>
-        Active Apps ({runningApps.length})
+        Active Apps
       </Text>
       <View style={styles.listContainer}>
         {runningApps.length > 0 ? (
