@@ -270,7 +270,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({ isDarkTheme }) => {
         <View style={styles.appsContainer}>
             <View style={styles.titleContainer}>
                 <Text style={[styles.sectionTitle, { color: textColor }]}>
-                    Inactive Apps ({availableApps.length})
+                    Inactive Apps
                 </Text>
             </View>
 
