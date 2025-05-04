@@ -1,713 +1,854 @@
-/**
- * Dashboard Manager TPA 
- * 
- * System TPA that provides the dashboard functionality for AugmentOS
- * using the SDK Dashboard API.
- */
-import path from "path";
-import { 
-  TpaServer, 
-  TpaSession, 
-  StreamType, 
-  DashboardMode, 
-  HeadPosition,
-  GlassesBatteryUpdate,
-  LocationUpdate,
-  PhoneNotification,
-  CalendarEvent
+import express from 'express';
+import WebSocket from 'ws';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid'; // if you need unique IDs
+import {
+  TpaConnectionInit,
+  TpaSubscriptionUpdate,
+  DataStream,
+  DisplayRequest,
+  DoubleTextWall,
+  LayoutType,
+  TpaType,
+  TpaToCloudMessageType,
+  ViewType,
+  StreamType,
+  CalendarEvent,
 } from '@augmentos/sdk';
-import { logger, wrapText } from '@augmentos/utils';
 import tzlookup from 'tz-lookup';
-import { v4 as uuidv4 } from 'uuid';
-import axios from 'axios';
+import { NewsAgent } from '@augmentos/agents';
+import { NotificationSummaryAgent } from '@augmentos/agents';
+import { FunFactAgent } from '@augmentos/agents';
+import { FamousQuotesAgent } from '@augmentos/agents';
+import { GratitudePingAgent } from '@augmentos/agents';
+import { TrashTalkAgent } from '@augmentos/agents';
+import { ChineseWordAgent } from '@augmentos/agents';
+import { WeatherModule } from './dashboard-modules/WeatherModule';
+import { fetchSettings, getUserDashboardContent } from './settings_handler'; // <-- new import
+import { wrapText } from '@augmentos/utils';
 
-// Weather module for fetching weather data
-interface WeatherSummary {
-  condition: string;
-  temp_f: number;
-}
-
-class WeatherModule {
-  private apiKey: string;
-  private baseUrl: string;
-
-  constructor() {
-    this.apiKey = "53394e85a9b325c2f46e7e097859a7b8";
-    this.baseUrl = 'https://api.openweathermap.org';
-  }
-
-  /**
-   * Fetch the current weather condition and temperature in Fahrenheit.
-   */
-  public async fetchWeatherForecast(latitude: number, longitude: number): Promise<WeatherSummary | null> {
-    const url = `${this.baseUrl}/data/3.0/onecall?lat=${latitude}&lon=${longitude}&exclude=minutely,hourly,daily,alerts&units=imperial&appid=${this.apiKey}`;
-    try {
-      const response = await axios.get(url);
-      const data = response.data;
-      if (!data || !data.current || !data.current.weather || data.current.weather.length === 0) {
-        logger.error('Unexpected weather API response structure:', data);
-        return null;
-      }
-
-      return {
-        condition: data.current.weather[0].main,
-        temp_f: Math.round(data.current.temp),
-      };
-    } catch (error) {
-      logger.error('Error fetching weather data:', error);
-      return null;
-    }
-  }
-}
-
-// Configuration constants
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80;
+const app = express();
+const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
+const CLOUD_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME || "cloud"; 
 const PACKAGE_NAME = "system.augmentos.dashboard";
-const API_KEY = process.env.AUGMENTOS_AUTH_JWT_SECRET || '';
+const API_KEY = process.env.AUGMENTOS_AUTH_JWT_SECRET; // In production, store securely
 
-// Validate API key
 if (!API_KEY) {
-  logger.error("AUGMENTOS_AUTH_JWT_SECRET environment variable is required.");
+  console.error("[dashboard-manager]: API_KEY is not set. Please set the AUGMENTOS_AUTH_JWT_SECRET environment variable.");
   process.exit(1);
 }
 
-// List of notification app names to ignore
-const notificationAppBlackList = ['youtube', 'augment', 'maps'];
+console.log(`\n\n[Dashboard Manager] Starting TPA on port ${PORT}...`);
+console.log(`[Dashboard Manager] Connecting to cloud at ${CLOUD_HOST_NAME}...`);
 
-/**
- * Dashboard Manager TPA - Main application class
- * 
- * This is the system dashboard TPA that manages system information
- * display and dashboard mode control. It uses the AugmentOS SDK's
- * dashboard.system API to update dashboard sections and control modes.
- */
-class DashboardServer extends TpaServer {
-  // Keep track of active sessions with their metadata
-  private _activeSessions: Map<string, {
-    userId: string;
-    batteryLevel?: number;
-    latestLocation?: { latitude: number; longitude: number; timezone?: string };
-    phoneNotificationCache: { title: string; content: string; timestamp: number; uuid: string }[];
-    phoneNotificationRanking?: { summary: string; timestamp: number }[];
-    calendarEvent?: any;
-    weatherCache?: { timestamp: number; data: string };
-    dashboardMode: DashboardMode;
-    updateInterval?: NodeJS.Timeout;
-  }> = new Map();
-
-  constructor() {
-    super({
-      packageName: PACKAGE_NAME,
-      port: PORT,
-      apiKey: API_KEY,
-      publicDir: path.join(__dirname, "./public"),
-    });
-    
-    logger.info('Dashboard Manager initialized with configuration', { 
-      packageName: PACKAGE_NAME,
-      port: PORT
-    });
-  }
-
-  /**
-   * Called by TpaServer when a new session is created
-   */
-  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
-    logger.info(`🚀 New dashboard session started for user ${userId}`, {
-      sessionId,
-      userId,
-      timestamp: new Date().toISOString()
-    });
-    
-    // Initialize session metadata
-    this._activeSessions.set(sessionId, {
-      userId,
-      phoneNotificationCache: [],
-      dashboardMode: DashboardMode.MAIN
-    });
-    
-    logger.info(`📊 Dashboard session initialized with mode: ${DashboardMode.MAIN}`);
-
-    // Set up event handlers for this session
-    this.setupEventHandlers(session, sessionId);
-    logger.info(`✅ Event handlers set up for session ${sessionId}`);
-    
-    // Initialize dashboard content and state
-    this.initializeDashboard(session, sessionId);
-    logger.info(`✅ Dashboard initialized for session ${sessionId}`);
-    
-    // Set up settings handlers
-    this.setupSettingsHandlers(session, sessionId);
-    logger.info(`✅ Settings handlers set up for session ${sessionId}`);
-    
-    // Start dashboard update interval
-    const updateInterval = setInterval(() => {
-      logger.info(`⏰ Scheduled dashboard update triggered for session ${sessionId}`);
-      this.updateDashboardSections(session, sessionId);
-    }, 60000); // Update every minute
-    
-    // Store the interval reference for cleanup
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (sessionInfo) {
-      sessionInfo.updateInterval = updateInterval;
-      logger.info(`✅ Dashboard update interval scheduled for session ${sessionId}`);
+// For demonstration, we'll keep session-based info in-memory.
+// In real usage, you might store persistent data in a DB.
+interface SessionInfo {
+  userId: string;
+  ws: WebSocket;
+  // track last agent calls
+  lastNewsUpdate?: number;
+  // cache for phone notifications as raw objects
+  phoneNotificationCache?: { title: string; content: string; timestamp: number; uuid: string }[];
+  // store the ranked notifications from the NotificationSummaryAgent
+  phoneNotificationRanking?: any[];
+  transcriptionCache: any[];
+  // embed the dashboard card into session info
+  dashboard: DoubleTextWall;
+  // cache latest location update, e.g., { latitude, longitude, timezone }
+  latestLocation?: { latitude: number; longitude: number; timezone?: string };
+  // weather cache per user
+  weatherCache?: { timestamp: number; data: string };
+  // NEW: Cache for calendar events.
+  calendarEvent?: CalendarEvent;
+  // NEW: Cache for news summaries and an index pointer.
+  newsCache?: string[];
+  newsIndex?: number;
+  // NEW: Cached battery level from glasses
+  batteryLevel?: number;
+  // NEW: Cache for agent results
+  agentResults?: {
+    [key: string]: {
+      result: any;
+      timestamp: number;
     }
-    
-    logger.info(`✅ Dashboard session setup completed for user ${userId}`, {
-      sessionId,
-      activeSessionCount: this._activeSessions.size
-    });
-  }
-  
-  /**
-   * Set up handlers for settings changes
-   */
-  private setupSettingsHandlers(session: TpaSession, sessionId: string): void {
-    // Listen for specific setting changes
-    session.settings.onValueChange('dashboard_content', (newValue, oldValue) => {
-      logger.info(`Dashboard content setting changed from ${oldValue} to ${newValue} for session ${sessionId}`);
-      
-      // Apply the setting change immediately
-      this.updateDashboardSections(session, sessionId);
-    });
-    
-    // Get and log current settings
-    const dashboardContent = session.settings.get('dashboard_content', 'none');
-    logger.info(`Current dashboard content setting: ${dashboardContent} for session ${sessionId}`);
-  }
-
-  /**
-   * Called by TpaServer when a session is stopped
-   */
-  protected async onStop(
-    sessionId: string,
-    userId: string,
-    reason: string
-  ): Promise<void> {
-    logger.info(`Dashboard session stopped: ${reason}`, { userId });
-
-    // Clean up any intervals
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (sessionInfo?.updateInterval) {
-      clearInterval(sessionInfo.updateInterval);
-    }
-    
-    // Remove from active sessions map
-    this._activeSessions.delete(sessionId);
-    
-    logger.info(`Dashboard session resources cleaned up`, { 
-      activeSessionCount: this._activeSessions.size 
-    });
-  }
-  
-  /**
-   * Set up event handlers for a session
-   */
-  private setupEventHandlers(session: TpaSession, sessionId: string): void {
-    // Handle phone notifications
-    session.onPhoneNotifications((data) => {
-      this.handlePhoneNotification(session, sessionId, data);
-    });
-    
-    // Handle location updates
-    session.on(StreamType.LOCATION_UPDATE, (data: LocationUpdate) => {
-      this.handleLocationUpdate(session, sessionId, data);
-    });
-    
-    // Handle head position changes
-    session.onHeadPosition((data) => {
-      if (data.position === 'up') {
-        this.updateDashboardSections(session, sessionId);
-      }
-    });
-    
-    // Handle battery updates
-    session.on(StreamType.GLASSES_BATTERY_UPDATE, (data: GlassesBatteryUpdate) => {
-      this.handleBatteryUpdate(session, sessionId, data);
-    });
-    
-    // Handle calendar events
-    session.on(StreamType.CALENDAR_EVENT, (data: CalendarEvent) => {
-      this.handleCalendarEvent(session, sessionId, data);
-    });
-    
-    // Handle dashboard mode changes (from cloud side)
-    session.dashboard.content.onModeChange((mode) => {
-      if (mode === 'none') return;
-      
-      const sessionInfo = this._activeSessions.get(sessionId);
-      if (!sessionInfo) return;
-      
-      sessionInfo.dashboardMode = mode;
-      logger.info(`Dashboard mode changed to ${mode} for session ${sessionId}`);
-      this.updateDashboardSections(session, sessionId);
-    });
-  }
-  
-  /**
-   * Initialize dashboard content and state
-   */
-  private initializeDashboard(session: TpaSession, sessionId: string): void {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) {
-      logger.error(`❌ Failed to initialize dashboard: session info not found for ${sessionId}`);
-      return;
-    }
-    
-    logger.info(`🛠️ Initializing dashboard for session ${sessionId}`);
-    
-    // Set dashboard to main mode
-    try {
-      logger.info(`🔄 Setting dashboard mode to ${DashboardMode.MAIN} for session ${sessionId}`);
-      session.dashboard.system?.setViewMode(DashboardMode.MAIN);
-      sessionInfo.dashboardMode = DashboardMode.MAIN;
-      logger.info(`✅ Dashboard mode set to ${DashboardMode.MAIN} for session ${sessionId}`);
-    } catch (error) {
-      logger.error(`❌ Error setting dashboard mode: ${error}`);
-    }
-    
-    // Initialize dashboard sections
-    try {
-      logger.info(`🔄 Initializing dashboard sections for session ${sessionId}`);
-      this.updateDashboardSections(session, sessionId);
-      logger.info(`✅ Dashboard sections initialized for session ${sessionId}`);
-    } catch (error) {
-      logger.error(`❌ Error initializing dashboard sections: ${error}`);
-    }
-  }
-  
-  /**
-   * Update all dashboard sections with current data
-   */
-  private updateDashboardSections(session: TpaSession, sessionId: string): void {
-    logger.info(`🔄 Updating dashboard sections for session ${sessionId}`);
-    
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) {
-      logger.error(`❌ Failed to update dashboard: session info not found for ${sessionId}`);
-      return;
-    }
-    
-    try {
-      // Format time and battery together for top left (to match original format)
-      const timeText = this.formatTimeSection(sessionInfo);
-      const batteryText = this.formatBatterySection(sessionInfo);
-      const topLeftText = `${timeText}, ${batteryText}`;
-      
-      logger.info(`📊 Setting top-left dashboard section for session ${sessionId}`, {
-        timeText: timeText,
-        batteryText: batteryText
-      });
-      
-      session.dashboard.system?.setTopLeft(topLeftText);
-      logger.info(`✅ Top-left section updated for session ${sessionId}`);
-
-      // Format status section (weather, calendar, etc.)
-      const statusText = this.formatStatusSection(sessionInfo);
-      logger.info(`📊 Setting top-right dashboard section for session ${sessionId}`, {
-        statusText: statusText.substring(0, 30) + (statusText.length > 30 ? '...' : '')
-      });
-      
-      session.dashboard.system?.setTopRight(statusText);
-      logger.info(`✅ Top-right section updated for session ${sessionId}`);
-
-      // Format notification section
-      const notificationText = this.formatNotificationSection(sessionInfo);
-      logger.info(`📊 Setting bottom-left dashboard section for session ${sessionId}`, {
-        notificationText: notificationText ? 
-          notificationText.substring(0, 30) + (notificationText.length > 30 ? '...' : '') : 
-          'empty'
-      });
-      
-      session.dashboard.system?.setBottomLeft(notificationText);
-      logger.info(`✅ Bottom-left section updated for session ${sessionId}`);
-
-      // Don't send bottom right since we're not using it in the original format
-      session.dashboard.system?.setBottomRight("");
-      
-      logger.info(`✅ All dashboard sections updated successfully for session ${sessionId}`);
-    } catch (error) {
-      logger.error(`❌ Error updating dashboard sections for session ${sessionId}:`, error);
-    }
-  }
-  
-  /**
-   * Format time section text
-   */
-  private formatTimeSection(sessionInfo: any): string {
-    // Check if we have a valid timezone from location
-    if (!sessionInfo.latestLocation?.timezone) {
-      return "◌ $DATE$, $TIME12$";
-    }
-  
-    try {
-      const timezone = sessionInfo.latestLocation.timezone;
-      const options = {
-        timeZone: timezone,
-        hour: "2-digit" as const,
-        minute: "2-digit" as const,
-        month: "numeric" as const,
-        day: "numeric" as const,
-        hour12: true
-      };
-      let formatted = new Date().toLocaleString("en-US", options);
-      formatted = formatted.replace(/ [AP]M/, "");
-      return `◌ ${formatted}`;
-    } catch (error) {
-      logger.error(`Error formatting time:`, error);
-      return "◌ $DATE$, $TIME12$";
-    }
-  }
-  
-  /**
-   * Format battery section text
-   */
-  private formatBatterySection(sessionInfo: any): string {
-    return (typeof sessionInfo.batteryLevel === 'number')
-      ? `${sessionInfo.batteryLevel}%`
-      : "$GBATT$";
-  }
-  
-  /**
-   * Format notification section text
-   */
-  private formatNotificationSection(sessionInfo: any): string {
-    // Use ranked notifications if available, otherwise use the raw cache
-    const notifications = sessionInfo.phoneNotificationRanking || 
-                      sessionInfo.phoneNotificationCache || [];
-    
-    if (notifications.length === 0) return "";
-  
-    // Take the latest 2 notifications
-    const topNotifications = notifications.slice(0, 2);
-    
-    // Format differently based on whether we're using ranked or raw notifications
-    if (topNotifications.length > 0 && 'summary' in topNotifications[0]) {
-      return topNotifications
-        .map((notification: { summary: string; timestamp: number }) => 
-          wrapText(notification.summary, 25))
-        .join('\n');
-    } else {
-      return topNotifications
-        .map((notification: { title: string; content: string; timestamp: number; uuid: string }) => 
-          `${notification.title}: ${notification.content}`)
-        .join('\n');
-    }
-  }
-  
-  /**
-   * Format status section text
-   */
-  private formatStatusSection(sessionInfo: any): string {
-    // Prioritize calendar events if available
-    if (sessionInfo.calendarEvent) {
-      return this.formatCalendarEvent(sessionInfo.calendarEvent);
-    }
-    
-    // Then weather if available
-    if (sessionInfo.weatherCache) {
-      return sessionInfo.weatherCache.data;
-    }
-    
-    // Default status
-    return "Status: Connected";
-  }
-  
-  /**
-   * Format calendar event
-   */
-  private formatCalendarEvent(event: any): string {
-    try {
-      const eventDate = new Date(event.dtStart);
-      const formattedTime = eventDate.toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        hour12: true 
-      }).replace(" ", "");
-      
-      const title = event.title.length > 10 
-        ? event.title.substring(0, 10).trim() + '...' 
-        : event.title;
-      
-      return `${title} @ ${formattedTime}`;
-    } catch (error) {
-      logger.error('Error formatting calendar event', error);
-      return "Calendar event";
-    }
-  }
-  
-  /**
-   * Handle phone notification event
-   */
-  private handlePhoneNotification(session: TpaSession, sessionId: string, data: PhoneNotification): void {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) return;
-  
-    // Check if the app name is blacklisted
-    if (data.app && notificationAppBlackList.some(app => 
-      data.app.toLowerCase().includes(app))) {
-      logger.debug(`Notification from ${data.app} is blacklisted.`);
-      return;
-    }
-  
-    // Add notification to cache
-    const newNotification = {
-      title: data.title || 'No Title',
-      content: data.content || '',
-      timestamp: Date.now(),
-      uuid: uuidv4()
-    };
-  
-    // Prevent duplicate notifications
-    const cache = sessionInfo.phoneNotificationCache;
-    if (cache.length > 0) {
-      const lastNotification = cache[cache.length - 1];
-      if (lastNotification.title === newNotification.title &&
-          lastNotification.content === newNotification.content) {
-        logger.debug(`Duplicate notification detected. Not adding to cache.`);
-        return;
-      }
-    }
-  
-    // Add to cache
-    sessionInfo.phoneNotificationCache.push(newNotification);
-    
-    // Process notifications (rank them)
-    sessionInfo.phoneNotificationRanking = sessionInfo.phoneNotificationCache
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map(notification => ({
-        summary: `${notification.title}: ${notification.content}`,
-        timestamp: notification.timestamp
-      }));
-    
-    // Update dashboard sections
-    this.updateDashboardSections(session, sessionId);
-  }
-  
-  /**
-   * Handle location update event
-   */
-  private async handleLocationUpdate(session: TpaSession, sessionId: string, data: LocationUpdate): Promise<void> {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) return;
-  
-    // Extract lat, lng from location data
-    const { lat, lng } = data;
-    
-    // Skip if invalid coordinates
-    if (typeof lat !== "number" || typeof lng !== "number") {
-      logger.error(`Invalid location data:`, data);
-      return;
-    }
-    
-    // Determine timezone from coordinates
-    let timezone: string | undefined;
-    try {
-      timezone = tzlookup(lat, lng);
-    } catch (error) {
-      logger.error(`Error looking up timezone for lat=${lat}, lng=${lng}:`, error);
-    }
-    
-    // Update location in session
-    sessionInfo.latestLocation = { 
-      latitude: lat, 
-      longitude: lng,
-      timezone: timezone || sessionInfo.latestLocation?.timezone
-    };
-    
-    // Fetch weather data if we don't have recent weather or location changed significantly
-    const shouldFetchWeather = !sessionInfo.weatherCache || 
-                              (Date.now() - (sessionInfo.weatherCache.timestamp || 0) > 60 * 60 * 1000); // 1 hour
-    
-    if (shouldFetchWeather) {
-      try {
-        const weatherModule = new WeatherModule();
-        const weatherData = await weatherModule.fetchWeatherForecast(lat, lng);
-        
-        if (weatherData) {
-          sessionInfo.weatherCache = {
-            timestamp: Date.now(),
-            data: `${weatherData.condition}, ${weatherData.temp_f}°F`
-          };
-        }
-      } catch (error) {
-        logger.error(`Error fetching weather for session ${sessionId}:`, error);
-      }
-    }
-  
-    // Update dashboard with location info
-    this.updateDashboardSections(session, sessionId);
-  }
-  
-  /**
-   * Handle battery update event
-   */
-  private handleBatteryUpdate(session: TpaSession, sessionId: string, data: GlassesBatteryUpdate): void {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) return;
-  
-    // Update battery level if it changed
-    if (typeof data.level === 'number' && sessionInfo.batteryLevel !== data.level) {
-      sessionInfo.batteryLevel = data.level;
-      this.updateDashboardSections(session, sessionId);
-    }
-  }
-  
-  /**
-   * Handle calendar event
-   */
-  private handleCalendarEvent(session: TpaSession, sessionId: string, event: CalendarEvent): void {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) return;
-  
-    // Validate event structure
-    if (!event.title || !event.dtStart) {
-      logger.error(`Invalid calendar event structure:`, event);
-      return;
-    }
-  
-    // Update calendar event
-    sessionInfo.calendarEvent = event;
-    this.updateDashboardSections(session, sessionId);
-  }
-  
-  /**
-   * Change dashboard mode for a session
-   */
-  public changeDashboardMode(sessionId: string, mode: DashboardMode): void {
-    const sessionInfo = this._activeSessions.get(sessionId);
-    if (!sessionInfo) {
-      logger.warn(`Cannot change dashboard mode: Session ${sessionId} not found`);
-      return;
-    }
-    
-    // Find the TPA session
-    const session = this.getExpressApp().get(`tpa-session-${sessionId}`);
-    if (!session) {
-      logger.warn(`Cannot change dashboard mode: TPA session object not found`);
-      return;
-    }
-    
-    // Update local state
-    sessionInfo.dashboardMode = mode;
-    
-    // Set mode in the cloud
-    session.dashboard.system?.setViewMode(mode);
-    
-    // Update dashboard sections for the new mode
-    this.updateDashboardSections(session, sessionId);
-    
-    logger.info(`Dashboard mode changed to ${mode} for session ${sessionId}`);
-  }
-  
-  /**
-   * Get all active dashboard sessions
-   */
-  public getActiveSessions(): string[] {
-    return Array.from(this._activeSessions.keys());
-  }
-  
-  /**
-   * Handle settings updates - called by TpaServer when settings change
-   * This is the proper SDK method for receiving settings updates
-   */
-  protected async onSettingsUpdate(userId: string, settings: any): Promise<void> {
-    logger.info(`Settings updated for user ${userId}`, settings);
-    
-    // Find all sessions for this user
-    for (const [sessionId, sessionInfo] of this._activeSessions.entries()) {
-      if (sessionInfo.userId === userId) {
-        const session = this.getExpressApp().get(`tpa-session-${sessionId}`);
-        if (session) {
-          // Handle dashboard content setting if it exists
-          if (settings.find((s: any) => s.key === 'dashboard_content')) {
-            const dashboardContent = settings.find((s: any) => s.key === 'dashboard_content').value;
-            logger.info(`Dashboard content setting changed to ${dashboardContent} for user ${userId}`);
-          }
-          
-          // Apply settings and update dashboard
-          this.updateDashboardSections(session, sessionId);
-        }
-      }
-    }
-  }
-  
-  /**
-   * Force update all dashboard sessions
-   */
-  public updateAllDashboards(): void {
-    for (const sessionId of this._activeSessions.keys()) {
-      const session = this.getExpressApp().get(`tpa-session-${sessionId}`);
-      if (session) {
-        this.updateDashboardSections(session, sessionId);
-      }
-    }
-    
-    logger.info(`Updated all active dashboards (${this._activeSessions.size})`);
-  }
+  };
+  // NEW: Single history list for all agents
+  agentHistory?: string[];
+  [key: string]: any;
 }
 
-// ===========================================
-// Additional Routes Configuration
-// ===========================================
+const activeSessions = new Map<string, SessionInfo>();
 
-// Create and start the dashboard manager
-const dashboardServer = new DashboardServer();
-const expressApp = dashboardServer.getExpressApp();
+const notificationAppBlackList = ['youtube', 'augment', 'maps'];
 
-// Configure custom routes
-expressApp.post('/mode', (req, res) => {
+// Parse JSON bodies
+app.use(express.json());
+
+// -----------------------------------
+// 1) Webhook Endpoint
+// -----------------------------------
+app.post('/webhook', async (req: express.Request, res: express.Response) => {
   try {
-    const { sessionId, mode } = req.body;
-    
-    if (!sessionId || !mode) {
-      return res.status(400).json({ error: 'Missing sessionId or mode' });
-    }
-    
-    if (!Object.values(DashboardMode).includes(mode)) {
-      return res.status(400).json({ error: 'Invalid dashboard mode' });
-    }
-    
-    dashboardServer.changeDashboardMode(sessionId, mode as DashboardMode);
-    res.status(200).json({ status: 'mode updated' });
-  } catch (error) {
-    logger.error('Error updating dashboard mode', error);
+    const { sessionId, userId } = req.body;
+    console.log(`\n[Webhook] Session start for user ${userId}, session ${sessionId}\n`);
+
+    // Fetch user settings
+    await fetchSettings(userId);
+
+    // 1) Create a new WebSocket connection to the cloud
+    const ws = new WebSocket(`ws://${CLOUD_HOST_NAME}/tpa-ws`);
+
+    // Create a new dashboard card
+    const dashboardCard: DoubleTextWall = {
+      // layoutType: 'double_text_wall',
+      layoutType: LayoutType.DOUBLE_TEXT_WALL,
+      topText: 'Loading contextual dashboard...',
+      bottomText: '',
+    };
+
+    // Store session info, including the dashboard card.
+    activeSessions.set(sessionId, {
+      userId,
+      ws,
+      lastNewsUpdate: Date.now(), // start time for e.g. news
+      transcriptionCache: [],
+      dashboard: dashboardCard,
+      agentResults: {}, // Initialize agentResults
+      agentHistory: [], // Initialize single history list
+    });
+
+    // 2) On open, send tpa_connection_init and initial dashboard display event
+    ws.on('open', async () => {
+      console.log(`[Session ${sessionId}] Connected to augmentos-cloud`);
+
+      const initMessage: TpaConnectionInit = {
+        // type: 'tpa_connection_init',
+        type: TpaToCloudMessageType.CONNECTION_INIT,
+        sessionId: sessionId,
+        packageName: PACKAGE_NAME,
+        apiKey: API_KEY,
+      };
+      ws.send(JSON.stringify(initMessage));
+
+      // Initialize agent results based on dashboard content
+      const dashboardContent = getUserDashboardContent(userId);
+      console.log(`[Session ${sessionId}] Dashboard content: ${dashboardContent}`);
+      const sessionInfo = activeSessions.get(sessionId);
+      if (!sessionInfo) {
+        console.error(`[Session ${sessionId}] Session info not found`);
+        return;
+      }
+
+      const displayRequest: DisplayRequest = {
+        // type: 'display_event',
+        // view: 'dashboard',
+        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        view: ViewType.DASHBOARD,
+        packageName: PACKAGE_NAME,
+        sessionId: sessionId,
+        layout: dashboardCard,
+        durationMs: 4000,
+        timestamp: new Date(),
+      };
+      ws.send(JSON.stringify(displayRequest));
+
+      // Fetch news once the connection is open.
+      const newsAgent = new NewsAgent();
+      // const newsResult = await newsAgent.handleContext({});
+      const newsResult = {
+        news_summaries: [
+          "News summary 1",
+          "News summary 2",
+          "News summary 3"
+        ]
+      };
+      await updateDashboardCache(sessionId, sessionInfo);
+      await updateDashboard(sessionId);
+    });
+
+    // 3) On message, handle incoming data
+    ws.on('message', (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        handleMessage(sessionId, ws, message);
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error parsing message:`, err);
+      }
+    });
+
+    // 4) On close, clean up session
+    ws.on('close', (message) => {
+
+      console.log(`\n\n[Session ${sessionId}] 🛑TPA Disconnected`, message, "\n");
+      activeSessions.delete(sessionId);
+    });
+
+    // Respond to the cloud
+    res.status(200).json({ status: 'connecting' });
+  } catch (err) {
+    console.error('Error handling /webhook:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// NOTE: We don't need to manually implement the settings endpoint.
-// TpaServer already handles /settings and will call our onSettingsUpdate method
+// -----------------------------------
+// 2) Handle Incoming Messages
+// -----------------------------------
+function handleMessage(sessionId: string, ws: WebSocket, message: any) {
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) {
+    console.warn(`Session ${sessionId} not found in activeSessions`);
+    return;
+  }
 
-// Force update all dashboards
-// expressApp.post('/admin/update-all', (req, res) => {
-//   try {
-//     dashboardServer.updateAllDashboards();
-//     res.status(200).json({ status: 'all dashboards updated' });
-//   } catch (error) {
-//     logger.error('Error updating all dashboards', error);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
+  // console.log("MESSAGE TYPE: " + message);
 
-// // Get all active sessions
-// expressApp.get('/admin/sessions', (req, res) => {
-//   try {
-//     const sessions = dashboardServer.getActiveSessions();
-//     res.status(200).json({ sessions, count: sessions.length });
-//   } catch (error) {
-//     logger.error('Error getting sessions', error);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
+  switch (message.type) {
+    case 'tpa_connection_ack': {
+      // Connection acknowledged, subscribe to transcription
+      const subMessage: TpaSubscriptionUpdate = {
+        // type: 'subscription_update',
+        type: TpaToCloudMessageType.SUBSCRIPTION_UPDATE,
+        packageName: PACKAGE_NAME,
+        sessionId: sessionId,
+        // subscriptions: ['phone_notification', 'location_update', 'head_position', 'glasses_battery_update']
+        subscriptions: [StreamType.PHONE_NOTIFICATION, StreamType.LOCATION_UPDATE, StreamType.HEAD_POSITION, StreamType.GLASSES_BATTERY_UPDATE, StreamType.CALENDAR_EVENT]
+      };
+      ws.send(JSON.stringify(subMessage));
+      console.log(`Session ${sessionId} connected and subscribed`);
+      break;
+    }
 
-// Start the server
-dashboardServer.start().then(() => {
-  logger.info(`Dashboard Manager TPA running on port ${PORT}`);
-}).catch(error => {
-  logger.error('Failed to start Dashboard Manager:', error);
-  process.exit(1);
+    case 'data_stream': {
+      const streamMessage = message as DataStream;
+      console.log(`[Session ${sessionId}] Received data stream:`, streamMessage);
+
+      switch (streamMessage.streamType) {
+        // case 'phone_notification':
+        case StreamType.PHONE_NOTIFICATION:
+          // Instead of immediately handling the notification,
+          // cache it and send the entire list to the NotificationSummaryAgent.
+          handlePhoneNotification(sessionId, streamMessage.data);
+          break;
+
+        case StreamType.CALENDAR_EVENT:
+          handleCalendarEvent(sessionId, streamMessage.data);
+          break;
+
+        case StreamType.LOCATION_UPDATE:
+          handleLocationUpdate(sessionId, streamMessage.data);
+          break;
+        
+        // case 'head_position':
+        case StreamType.HEAD_POSITION:
+          handleHeadPosition(sessionId, streamMessage.data);
+          break;
+
+        // case 'glasses_battery_update':
+        case StreamType.GLASSES_BATTERY_UPDATE:
+          // NEW: Update battery only if the level has changed.
+          handleGlassesBatteryUpdate(sessionId, streamMessage.data);
+          break;
+
+        // add more streams here if needed
+        default:
+          console.log(`[Session ${sessionId}] Unknown data stream: ${streamMessage.streamType}`);
+      }
+      break;
+    }
+
+    default:
+      console.log(`[Session ${sessionId}] Unhandled message type: ${message.type}`);
+  }
+}
+
+function handleLocationUpdate(sessionId: string, locationData: any) {
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) return;
+
+  console.log(`[Session ${sessionId}] Received location update:`, locationData);
+
+  // Extract lat, lng, and timestamp from the locationData.
+  const { lat, lng, timestamp } = locationData;
+
+  // Validate that lat and lng are numbers.
+  if (typeof lat !== "number" || typeof lng !== "number") {
+    console.error(`[Session ${sessionId}] Invalid location data:`, locationData);
+    return;
+  }
+
+  // Try to determine the timezone for the coordinates
+  let timezone: string | undefined;
+  try {
+    timezone = tzlookup(lat, lng);
+  } catch (error) {
+    console.error(`[Session ${sessionId}] Error looking up timezone for lat=${lat}, lng=${lng}:`, error);
+    // No default timezone - just keep the previous one if it exists
+  }
+
+  // Cache the location update in the session
+  // If we couldn't determine a timezone, preserve the previous one if it exists
+  sessionInfo.latestLocation = { 
+    latitude: lat, 
+    longitude: lng,
+    // Only update timezone if we found one, otherwise keep previous
+    timezone: timezone || (sessionInfo.latestLocation?.timezone)
+  };
+
+  console.log(
+    `[Session ${sessionId}] Cached location update: lat=${lat}, lng=${lng}, timezone=${timezone || 'not determined'}`
+  );
+
+  // Call updateDashboard if this was the first location update
+  updateDashboard(sessionId);
+}
+
+function handleCalendarEvent(sessionId: string, calendarEvent: any) {
+  console.log(`[Session ${sessionId}] Received calendar event:`, calendarEvent);
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) return;
+
+  // Validate calendar event structure
+  if (!calendarEvent.title || !calendarEvent.dtStart) {
+    console.error(`[Session ${sessionId}] Invalid calendar event structure:`, calendarEvent);
+    return;
+  }
+
+  // Add the calendar event to the session's cache.
+  sessionInfo.calendarEvent = calendarEvent;
+  console.log(`[Session ${sessionId}] Cached calendar event:`, calendarEvent);
+  
+  updateDashboard(sessionId);
+}
+
+// Helper function to update dashboard cache for a specific session
+async function updateDashboardCache(sessionId: string, sessionInfo: SessionInfo) {
+  const dashboardContent = getUserDashboardContent(sessionInfo.userId);
+  
+  // Initialize agentResults if needed
+  if (!sessionInfo.agentResults) {
+    sessionInfo.agentResults = {};
+  }
+
+  // Check if the dashboard content has changed
+  const currentContent = sessionInfo.agentResults['current_content']?.result?.content;
+  if (currentContent !== dashboardContent) {
+    // Content has changed, clear the old cache and prepare new one
+    sessionInfo.agentResults = {};
+    sessionInfo.agentResults['current_content'] = {
+      result: { content: dashboardContent },
+      timestamp: Date.now()
+    };
+  }
+
+  // Handle different dashboard content types
+  switch (dashboardContent) {
+    case 'fun_facts':
+      // Update fun fact cache
+      const funFactAgent = new FunFactAgent();
+      try {
+        const result = await funFactAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['fun_facts'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating fun fact:`, err);
+      }
+      break;
+
+    case 'famous_quotes':
+      // Update famous quotes cache
+      const famousQuotesAgent = new FamousQuotesAgent();
+      try {
+        const result = await famousQuotesAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['famous_quotes'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating famous quote:`, err);
+      }
+      break;
+
+    case 'gratitude_ping':
+      // Update gratitude ping cache
+      const gratitudePingAgent = new GratitudePingAgent();
+      try {
+        const result = await gratitudePingAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['gratitude_ping'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating gratitude ping:`, err);
+      }
+      break;
+
+    case 'trash_talk':
+      // Update trash talk cache
+      const trashTalkAgent = new TrashTalkAgent();
+      try {
+        const result = await trashTalkAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['trash_talk'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating trash talk:`, err);
+      }
+      break;
+
+    case 'chinese_words':
+      // Update Chinese word cache
+      const chineseWordAgent = new ChineseWordAgent();
+      try {
+        const result = await chineseWordAgent.handleContext({ agentHistory: sessionInfo.agentHistory || [] });
+        if (sessionInfo.agentResults) {
+          sessionInfo.agentResults['chinese_words'] = {
+            result: { insight: result.insight },
+            timestamp: Date.now()
+          };
+          sessionInfo.agentHistory = result.agentHistory;
+        }
+      } catch (err) {
+        console.error(`[Session ${sessionId}] Error updating Chinese word:`, err);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  // Update the dashboard after cache is updated
+  updateDashboard(sessionId);
+}
+
+async function handleHeadPosition(sessionId: string, headPositionData: any) {
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) return;
+
+  if (headPositionData.position === 'up') {
+    // Update the dashboard cache
+    await updateDashboardCache(sessionId, sessionInfo);
+
+    // Handle news separately as it has its own rotation logic
+    if (sessionInfo.newsCache && sessionInfo.newsCache.length > 0) {
+      const currentIndex = sessionInfo.newsIndex || 0;
+      const nextIndex = currentIndex + 1;
+
+      if (nextIndex >= sessionInfo.newsCache.length) {
+        sessionInfo.newsCache = ["News summary 1", "News summary 2", "News summary 3"];
+        sessionInfo.newsIndex = 0;
+      } else {
+        sessionInfo.newsIndex = nextIndex;
+      }
+
+      updateDashboard(sessionId);
+    }
+
+  }
+}
+
+// NEW: Handle glasses battery update only if battery level changes.
+function handleGlassesBatteryUpdate(sessionId: string, glassesBatteryData: any) {
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) return;
+
+  // Assume glassesBatteryData.level holds the new battery level.
+  const newLevel = glassesBatteryData.level;
+  if (typeof newLevel !== 'number') {
+    console.error(`[Session ${sessionId}] Invalid battery data:`, glassesBatteryData);
+    return;
+  }
+
+  // Only update if the new battery level is different from the cached one.
+  if (sessionInfo.batteryLevel === newLevel) {
+    // No change; do not update dashboard.
+    return;
+  }
+
+  // Update the cached battery level.
+  sessionInfo.batteryLevel = newLevel;
+  console.log(`[Session ${sessionId}] Battery level updated to ${newLevel}`);
+
+  // Update the dashboard to reflect the new battery level.
+  updateDashboard(sessionId);
+}
+
+function handleSettings(sessionId: string, settingsData: any) {
+  // console.log(`[Session ${sessionId}] Received context_settings:`, settingsData);
+  const sessionInfo = activeSessions.get(sessionId);
+  if (sessionInfo) {
+    sessionInfo['currentSettings'] = settingsData;
+  }
+}
+
+// -----------------------------------
+// 7) Internal Dashboard Updater
+// -----------------------------------
+async function updateDashboard(sessionId?: string) {
+  // Skip updates if no session ID is provided
+  if (!sessionId) {
+    console.log(`[Dashboard Manager] Called updateDashboard without a session ID`);
+    return;
+  }
+
+  console.log(`[Session ${sessionId}] Updating dashboard...`);
+
+  // Define left modules in group 1 (same-line modules).
+  const leftModulesGroup1 = [
+    {
+      name: "time",
+      async run(sessionInfo: SessionInfo) {
+        // Check if we have a valid timezone from location
+        if (!sessionInfo.latestLocation?.timezone) {
+          return "◌ $DATE$, $TIME12$"
+        }
+
+        const timezone = sessionInfo.latestLocation.timezone;
+        console.log(`[Session ${sessionInfo.userId}] Using timezone: ${timezone}`);
+
+        try {
+          const options = {
+            timeZone: timezone,
+            hour: "2-digit" as const,
+            minute: "2-digit" as const,
+            month: "numeric" as const,
+            day: "numeric" as const,
+            hour12: true
+          };
+          let formatted = new Date().toLocaleString("en-US", options);
+          formatted = formatted.replace(/ [AP]M/, "");
+          return `◌ ${formatted}`;
+        } catch (error) {
+          console.error(`[Session ${sessionInfo.userId}] Error formatting time with timezone ${timezone}:`, error);
+          return "◌ $DATE$, $TIME12$"
+        }
+      }
+    },
+    { 
+      name: "status", 
+      async run(sessionInfo: SessionInfo) {
+        // Only show the cached battery level if it exists; otherwise, show "-%".
+        return (typeof sessionInfo.batteryLevel === 'number')
+          ? `${sessionInfo.batteryLevel}%`
+          : "$GBATT$";
+      } 
+    },
+  ];
+
+  // Define left modules in group 2 (notification summaries)
+  const leftModulesGroup2 = [
+    {
+      name: "notification_summary",
+      async run(sessionInfo: SessionInfo) {
+        // Use the ranked notifications from the NotificationSummaryAgent if available
+        const rankedNotifications = sessionInfo.phoneNotificationRanking || [];
+        const topTwoNotifications = rankedNotifications.slice(0, 2);
+        console.log(`[Session ${sessionInfo.userId}] Ranked Notifications:`, topTwoNotifications);
+        return topTwoNotifications
+          .map(notification => wrapText(notification.summary, 25))
+          .join('\n');
+      }
+    }
+  ];
+
+  // Define right modules.
+  const rightModules = [
+    {
+      name: "calendar",
+      async run(context: any) {
+        const session: SessionInfo = context.session;
+        if (!session.calendarEvent || !session.latestLocation) return '';
+        
+        const event = session.calendarEvent;
+        // Get timezone from the session's location data, fall back to system timezone
+        const currTimezone = session.latestLocation.timezone;
+        // Create dates with the user's timezone
+        const eventDate = new Date(new Date(event.dtStart).toLocaleString("en-US", { timeZone: currTimezone }));
+        const today = new Date(new Date().toLocaleString("en-US", { timeZone: currTimezone }));
+        const tomorrow = new Date(new Date().toLocaleString("en-US", { timeZone: currTimezone }));
+        tomorrow.setDate(today.getDate() + 1);
+        
+        // Format the time portion
+        const timeOptions = { hour: "2-digit" as const, minute: "2-digit" as const, hour12: true };
+        const formattedTime = eventDate.toLocaleTimeString('en-US', { ...timeOptions }).replace(" ", "");
+
+        // Check if event is today or tomorrow
+        if (eventDate.toDateString() === today.toDateString()) {
+          const title = event.title.length > 10 ? event.title.substring(0, 10).trim() + '...' : event.title;
+          return `${title} @ ${formattedTime}`;
+        } else if (eventDate.toDateString() === tomorrow.toDateString()) {
+          const title = event.title.length > 6 ? event.title.substring(0, 4).trim() + '...' : event.title;
+          return `${title} tmr @ ${formattedTime}`;
+        } else {
+          return "";
+        }
+      }
+    },
+    {
+      name: "weather",
+      async run(context: any) {
+        // Check that we have location data.
+        if (!context.latestLocation) {
+          console.log(`[Session ${context.session.userId}] No location data available for weather`);
+          return '';
+        }
+        const { latitude, longitude } = context.latestLocation;
+        console.log(`[Session ${context.session.userId}] Fetching weather for lat=${latitude}, lon=${longitude}`);
+        
+        // Use per-session weather cache.
+        const session: SessionInfo = context.session;
+        if (
+          session.weatherCache &&
+          (Date.now() - session.weatherCache.timestamp) < 1 * 60 * 60 * 1000 // 1 hour
+        ) {
+          console.log(`[Session ${session.userId}][Weather] Returning cached weather data.`);
+          return session.weatherCache.data;
+        }
+        // Otherwise, fetch new weather data.
+        const weatherAgent = new WeatherModule();
+        try {
+          const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
+          console.log(`[Session ${session.userId}][Weather] Fetched weather data:`, weather);
+          const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
+          // Cache the result on the session.
+          session.weatherCache = { timestamp: Date.now(), data: result };
+          return result;
+        } catch (error) {
+          console.error(`[Session ${session.userId}][Weather] Error fetching weather:`, error);
+          return '';
+        }
+      },
+    },
+    {
+      name: "custom_dashboard_content",
+      async run(context: any) {
+        const session: SessionInfo = context.session;
+        const dashboardContent = getUserDashboardContent(session.userId);
+        console.log(`[Session ${session.userId}] Dashboard content: ${dashboardContent}`);
+        console.log(`[Session ${session.userId}] Agent results:`, JSON.stringify(session.agentResults));
+        
+        if (session.agentResults![dashboardContent]) {
+          // Use cached agent result
+          const cachedResult = session.agentResults![dashboardContent];
+          console.log(`[Session ${session.userId}] Cached result:`, JSON.stringify(cachedResult));
+          if (cachedResult.result && cachedResult.result.insight) {
+            return wrapText(cachedResult.result.insight, 22);
+          }
+        }
+        // Return empty string if no cached result
+        return '';
+      }
+    }
+  ];
+
+  // Helper: update a single session dashboard.
+  async function updateSessionDashboard(sessionId: string, sessionInfo: SessionInfo) {
+    // Prepare a context for modules that need it.
+    // Include the session itself so that per-user caches (like weatherCache and newsCache) can be accessed.
+    const context = {
+      transcriptions: sessionInfo.transcriptionCache,
+      latestLocation: sessionInfo.latestLocation,
+      session: sessionInfo,
+    };
+    // Clear the transcription cache.
+    sessionInfo.transcriptionCache = [];
+
+    // Run left group 1 modules concurrently.
+    const leftGroup1Promises = leftModulesGroup1.map(module => module.run(sessionInfo));
+    const leftGroup1Results = await Promise.all(leftGroup1Promises);
+    const leftGroup1Text = leftGroup1Results.filter(text => text.trim()).join(', ');
+
+    // Run left group 2 modules (notification summaries)
+    const leftGroup2Promises = leftModulesGroup2.map(module => module.run(sessionInfo));
+    const leftGroup2Results = await Promise.all(leftGroup2Promises);
+    const leftGroup2Text = leftGroup2Results.filter(text => text.trim()).join('\n');
+
+    // Combine left texts.
+    let leftText = leftGroup1Text;
+    if (leftGroup2Text) {
+      leftText += `\n${leftGroup2Text}`;
+    }
+    leftText = wrapText(leftText, 30);
+
+    // Run right modules concurrently.
+    const rightPromises = rightModules.map(module => module.run(context));
+    const rightResults = await Promise.all(rightPromises);
+    let rightText = rightResults.filter(text => text.trim() !== '').join('\n');
+
+    console.log(`[Session ${sessionId}] Left text: ${leftText}`);
+    console.log(`[Session ${sessionId}] Right text: ${rightText}`);
+
+    // Create display event.
+    const displayRequest: DisplayRequest = {
+      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      view: ViewType.DASHBOARD,
+      packageName: PACKAGE_NAME,
+      sessionId: sessionId,
+      layout: {
+        layoutType: LayoutType.DOUBLE_TEXT_WALL,
+        topText: leftText,
+        bottomText: rightText,
+      },
+      durationMs: 4000,
+      timestamp: new Date(),
+    };
+
+    sessionInfo.ws.send(JSON.stringify(displayRequest));
+  }
+
+  // If a sessionId is provided, update that session only.
+  if (sessionId) {
+    const sessionInfo = activeSessions.get(sessionId);
+    if (sessionInfo) {
+      await updateSessionDashboard(sessionId, sessionInfo);
+    } else {
+      console.warn(`Session ${sessionId} not found`);
+    }
+  } else {
+    // Otherwise, update dashboard for all sessions.
+    for (const [sessId, sessionInfo] of activeSessions.entries()) {
+      await updateSessionDashboard(sessId, sessionInfo);
+    }
+  }
+}
+
+function handlePhoneNotification(sessionId: string, notificationData: any) {
+  const sessionInfo = activeSessions.get(sessionId);
+  if (!sessionInfo) return;
+
+  // Initialize the notification cache if needed.
+  if (!sessionInfo.phoneNotificationCache) {
+    sessionInfo.phoneNotificationCache = [];
+  }
+
+  // Check if the app name is blacklisted.
+  for (const blacklisted of notificationAppBlackList) {
+    if (notificationData.app.toLowerCase().includes(blacklisted)) {
+      console.log(`Notification from ${notificationData.app} is blacklisted.`);
+      return;
+    }
+  }
+
+  // Prepare the new notification.
+  const newNotification = {
+    title: notificationData.title || 'No Title',
+    content: notificationData.content || '',
+    timestamp: Date.now(),
+    uuid: uuidv4(),  // Generate a unique id if not provided.
+  };
+
+  // Prevent duplicate notifications: don't add if the new notification's title and content
+  // are identical to the most recent notification in the cache.
+  const cache = sessionInfo.phoneNotificationCache;
+  if (cache.length > 0) {
+    const lastNotification = cache[cache.length - 1];
+    if (lastNotification.title === newNotification.title &&
+        lastNotification.content === newNotification.content) {
+      console.log(`[Session ${sessionId}] Duplicate notification detected. Not adding to cache.`);
+      return;
+    }
+  }
+
+  // Add the new notification to the cache.
+  sessionInfo.phoneNotificationCache.push(newNotification);
+  console.log(`[Session ${sessionId}] Received phone notification:`, notificationData);
+
+  // Instantiate the NotificationSummaryAgent.
+  const notificationSummaryAgent = new NotificationSummaryAgent();
+
+  // Pass the entire list of notifications to the agent.
+  notificationSummaryAgent.handleContext({ notifications: sessionInfo.phoneNotificationCache })
+    .then((filteredNotifications: any) => {
+      // console.log(`[Session ${sessionId}] Filtered Notifications:`, filteredNotifications);
+      // Save the ranked notifications for later use in the dashboard.
+      sessionInfo.phoneNotificationRanking = filteredNotifications;
+      // Update the dashboard after the notifications have been filtered.
+      // console.log(`[Session ${sessionId}] Updating dashboard after notification filtering.` + filteredNotifications);
+      updateDashboard(sessionId);
+    })
+    .catch(err => {
+      console.error(`[Session ${sessionId}] Notification filtering failed:`, err);
+      // Fallback: update dashboard with the raw notifications.
+      updateDashboard(sessionId);
+    });
+}
+
+// -----------------------------------
+// 6) Health Check & Static
+// -----------------------------------
+app.get('/health', (req: express.Request, res: express.Response) => {
+  res.json({ status: 'healthy', app: PACKAGE_NAME });
 });
 
-// Export the server instance for testing
-export { dashboardServer };
+app.use(express.static(path.join(__dirname, './public')));
+
+// -----------------------------------
+// Listen
+// -----------------------------------
+app.listen(PORT, () => {
+  console.log(`Dashboard Manager TPA running`);
+});
+
+// -----------------------------------
+// Schedule Dashboard Updates
+// -----------------------------------
+setTimeout(() => {
+  // Run updateDashboard 5 seconds after the file runs.
+  updateDashboard();
+  // Then, schedule it to run every 5 seconds.
+  setInterval(() => updateDashboard(), 60000);
+}, 5000);
+
+// Add settings endpoint
+app.post('/settings', async (req: express.Request, res: express.Response) => {
+  try {
+    console.log('Received settings update for dashboard:', req.body);
+    const { userIdForSettings } = req.body;
+    
+    // Fetch and apply new settings
+    await fetchSettings(userIdForSettings);
+    
+    // Update dashboard for all sessions with this userId
+    await updateDashboardForUser(userIdForSettings);
+    
+    res.status(200).json({ status: 'settings updated' });
+  } catch (error) {
+    console.error('Error updating settings:', error);
+    res.status(500).json({ error: 'Internal server error updating settings' });
+  }
+});
+
+// Helper function to update dashboard for all sessions of a specific user
+async function updateDashboardForUser(userId: string) {
+  let userSessionsFound = false;
+
+  // Find all sessions for this user and update them
+  for (const [sessionId, session] of activeSessions.entries()) {
+    if (session.userId === userId) {
+      userSessionsFound = true;
+
+      await updateDashboardCache(sessionId, session);
+      await updateDashboard(sessionId);
+    }
+  }
+
+  if (!userSessionsFound) {
+    console.log(`No active sessions found for user ${userId}`);
+  }
+}

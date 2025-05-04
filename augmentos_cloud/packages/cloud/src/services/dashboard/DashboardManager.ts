@@ -95,14 +95,14 @@ export class DashboardManager {
 
     // Set configuration with defaults
     this.queueSize = config.queueSize || 5;
-    this.updateIntervalMs = config.updateIntervalMs || 5000;
+    this.updateIntervalMs = config.updateIntervalMs || 1000 * 45;
     this.alwaysOnEnabled = config.alwaysOnEnabled || false;
     
     // Initialize mode to the provided value or default to MAIN
     this.currentMode = config.initialMode || DashboardMode.MAIN;
 
     // Start update interval
-    this.startUpdateInterval();
+    // this.startUpdateInterval();
 
     userSession.logger.info(`Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
   }
@@ -110,23 +110,23 @@ export class DashboardManager {
   /**
    * Start the update interval for dashboard rendering
    */
-  private startUpdateInterval(): void {
-    // Clear any existing interval
-    if (this.updateInterval) {
-      clearInterval(this.updateInterval);
-    }
+  // private startUpdateInterval(): void {
+  //   // Clear any existing interval
+  //   if (this.updateInterval) {
+  //     clearInterval(this.updateInterval);
+  //   }
 
-    // Create new interval for periodic updates
-    this.updateInterval = setInterval(() => {
-      // Update regular dashboard (main/expanded)
-      this.updateDashboard();
+  //   // Create new interval for periodic updates
+  //   this.updateInterval = setInterval(() => {
+  //     // Update regular dashboard (main/expanded)
+  //     this.updateDashboard();
       
-      // Always update the always-on dashboard if it's enabled
-      if (this.alwaysOnEnabled) {
-        this.updateAlwaysOnDashboard();
-      }
-    }, this.updateIntervalMs);
-  }
+  //     // Always update the always-on dashboard if it's enabled
+  //     if (this.alwaysOnEnabled) {
+  //       this.updateAlwaysOnDashboard();
+  //     }
+  //   }, this.updateIntervalMs);
+  // }
 
   /**
    * Process TPA message and route to the appropriate handler
@@ -192,10 +192,10 @@ export class DashboardManager {
         case DashboardMode.EXPANDED:
           this.expandedContent.set(packageName, { packageName, content, timestamp });
           break;
-        case DashboardMode.ALWAYS_ON:
-          this.alwaysOnContent.set(packageName, { packageName, content, timestamp });
-          alwaysOnUpdated = true;
-          break;
+        // case DashboardMode.ALWAYS_ON:
+        //   this.alwaysOnContent.set(packageName, { packageName, content, timestamp });
+        //   alwaysOnUpdated = true;
+        //   break;
       }
     });
 
