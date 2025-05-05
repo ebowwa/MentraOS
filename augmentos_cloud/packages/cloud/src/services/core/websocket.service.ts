@@ -1101,6 +1101,9 @@ export class WebSocketService {
           const calendarEvent = message as CalendarEvent;
           userSession.logger.info('Calendar event:', calendarEvent);
 
+          // Cache the event for future subscribers
+          subscriptionService.cacheCalendarEvent(userSession.sessionId, calendarEvent);
+
           this.broadcastToTpa(userSession.sessionId, message.type as any, message);
           break;
         }
@@ -1187,6 +1190,11 @@ export class WebSocketService {
               // Get the minimal language subscriptions before update
               const previousLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSessionId);
 
+              // Check if the app is newly subscribing to calendar events
+              const isNewCalendarSubscription = 
+                !subscriptionService.hasSubscription(userSessionId, message.packageName, StreamType.CALENDAR_EVENT) &&
+                subMessage.subscriptions.includes(StreamType.CALENDAR_EVENT);
+
               // Update subscriptions
               subscriptionService.updateSubscriptions(
                 userSessionId,
@@ -1226,6 +1234,28 @@ export class WebSocketService {
                 } else {
                   userSession.logger.info('No media subscriptions, ensuring microphone is disabled');
                   this.sendDebouncedMicrophoneStateChange(userSession.websocket, userSession, false);
+                }
+              }
+
+              // Send cached calendar event if app just subscribed to calendar events
+              if (isNewCalendarSubscription) {
+                console.log("🔥🔥🔥: isNewCalendarSubscription:", isNewCalendarSubscription);
+                const lastCalendarEvent = subscriptionService.getLastCalendarEvent(userSessionId);
+                if (lastCalendarEvent) {
+                  userSession.logger.info(`Sending cached calendar event to newly subscribed app ${message.packageName}`);
+                  const tpaSessionId = `${userSessionId}-${message.packageName}`;
+                  const tpaWs = userSession.appConnections.get(message.packageName);
+                  
+                  if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
+                    const dataStream: DataStream = {
+                      type: CloudToTpaMessageType.DATA_STREAM,
+                      sessionId: tpaSessionId,
+                      streamType: StreamType.CALENDAR_EVENT,
+                      data: lastCalendarEvent,
+                      timestamp: new Date()
+                    };
+                    tpaWs.send(JSON.stringify(dataStream));
+                  }
                 }
               }
 

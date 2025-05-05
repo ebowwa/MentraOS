@@ -9,7 +9,7 @@
  * - Providing subscription queries for broadcasting
  */
 
-import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLanguageStream, createTranscriptionStream } from '@augmentos/sdk';
+import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@augmentos/sdk';
 import { logger } from '@augmentos/utils';
 
 /**
@@ -41,6 +41,31 @@ export class SubscriptionService {
    * @private
    */
   private history = new Map<string, SubscriptionHistory[]>();
+
+  /**
+   * Cache for the last calendar event per session
+   * @private
+   */
+  private lastCalendarEventCache = new Map<string, CalendarEvent>();
+
+  /**
+   * Caches the last calendar event for a session
+   * @param sessionId - User session identifier
+   * @param event - Calendar event to cache
+   */
+  cacheCalendarEvent(sessionId: string, event: CalendarEvent): void {
+    this.lastCalendarEventCache.set(sessionId, event);
+    logger.info(`Cached calendar event for session ${sessionId}`);
+  }
+
+  /**
+   * Gets the last cached calendar event for a session
+   * @param sessionId - User session identifier
+   * @returns The last calendar event or undefined if none exists
+   */
+  getLastCalendarEvent(sessionId: string): CalendarEvent | undefined {
+    return this.lastCalendarEventCache.get(sessionId);
+  }
 
   /**
    * Generates a unique key for subscription storage
@@ -228,6 +253,9 @@ export class SubscriptionService {
       this.history.delete(key);
     });
 
+    // Remove cached calendar event for this session
+    this.lastCalendarEventCache.delete(sessionId);
+
     logger.info(`Removed subscription history for session ${sessionId} (${keysToRemove.length} entries)`);
   }
 
@@ -264,7 +292,7 @@ export class SubscriptionService {
 
   /**
    * Returns the minimal set of language-specific subscriptions for a given user session.
-   * For example, if a user’s apps request:
+   * For example, if a user's apps request:
    *  - transcription:en-US
    *  - translation:es-ES-to-en-US
    *  - transcription:en-US
