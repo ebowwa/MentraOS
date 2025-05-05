@@ -628,7 +628,13 @@ async function updateDashboard(sessionId?: string) {
         try {
           const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
           console.log(`[Session ${session.userId}][Weather] Fetched weather data:`, weather);
-          const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
+          let result = '-';
+          if (weather) {
+            const useFahrenheit = isNorthAmerica(latitude, longitude);
+            const temp = useFahrenheit ? weather.temp_f : weather.temp_c;
+            const unit = useFahrenheit ? '°F' : '°C';
+            result = `${weather.condition}, ${temp}${unit}`;
+          }
           // Cache the result on the session.
           session.weatherCache = { timestamp: Date.now(), data: result };
           return result;
@@ -856,4 +862,13 @@ async function updateDashboardForUser(userId: string) {
   if (!userSessionsFound) {
     console.log(`No active sessions found for user ${userId}`);
   }
+}
+
+// Utility: Estimate if a location is in North America (rough bounding box)
+function isNorthAmerica(latitude: number, longitude: number): boolean {
+  // North America bounding box: lat 7 to 84, lon -168 to -52
+  return (
+    latitude >= 7 && latitude <= 84 &&
+    longitude >= -168 && longitude <= -52
+  );
 }
