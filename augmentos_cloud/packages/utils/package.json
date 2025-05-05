@@ -14,7 +14,8 @@
     "link-pkg": "bun link"
   },
   "dependencies": {
-    "@augmentos/sdk": "workspace:*"
+    "@augmentos/sdk": "workspace:*",
+    "posthog-node": "^4.14.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"
