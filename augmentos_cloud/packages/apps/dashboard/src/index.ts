@@ -426,7 +426,7 @@ class DashboardServer extends TpaServer {
       }).replace(" ", "");
       
       const title = event.title.length > 10 
-        ? event.title.substring(0, 10).trim() + '...' 
+        ? event.title.substring(0, 7).trim() + '...' 
         : event.title;
       
       return `${title} @ ${formattedTime}`;
