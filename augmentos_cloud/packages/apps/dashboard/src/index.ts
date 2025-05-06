@@ -20,44 +20,18 @@ import { logger, wrapText } from '@augmentos/utils';
 import tzlookup from 'tz-lookup';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
+import { WeatherModule, WeatherSummary } from './dashboard-modules/WeatherModule';
 
-// Weather module for fetching weather data
-interface WeatherSummary {
-  condition: string;
-  temp_f: number;
-}
-
-class WeatherModule {
-  private apiKey: string;
-  private baseUrl: string;
-
-  constructor() {
-    this.apiKey = "53394e85a9b325c2f46e7e097859a7b8";
-    this.baseUrl = 'https://api.openweathermap.org';
-  }
-
-  /**
-   * Fetch the current weather condition and temperature in Fahrenheit.
-   */
-  public async fetchWeatherForecast(latitude: number, longitude: number): Promise<WeatherSummary | null> {
-    const url = `${this.baseUrl}/data/3.0/onecall?lat=${latitude}&lon=${longitude}&exclude=minutely,hourly,daily,alerts&units=imperial&appid=${this.apiKey}`;
-    try {
-      const response = await axios.get(url);
-      const data = response.data;
-      if (!data || !data.current || !data.current.weather || data.current.weather.length === 0) {
-        logger.error('Unexpected weather API response structure:', data);
-        return null;
-      }
-
-      return {
-        condition: data.current.weather[0].main,
-        temp_f: Math.round(data.current.temp),
-      };
-    } catch (error) {
-      logger.error('Error fetching weather data:', error);
-      return null;
-    }
-  }
+/**
+ * Utility: Estimate if a location is in North America (rough bounding box)
+ * Used to determine whether to display temperature in Fahrenheit or Celsius
+ */
+function isNorthAmerica(latitude: number, longitude: number): boolean {
+  // North America bounding box: lat 7 to 84, lon -168 to -52
+  return (
+    latitude >= 7 && latitude <= 84 &&
+    longitude >= -168 && longitude <= -52
+  );
 }
 
 // Configuration constants
@@ -91,6 +65,7 @@ class DashboardServer extends TpaServer {
     phoneNotificationRanking?: { summary: string; timestamp: number }[];
     calendarEvent?: any;
     weatherCache?: { timestamp: number; data: string };
+    useFahrenheit?: boolean; // Whether to use Fahrenheit (true) or Celsius (false)
     dashboardMode: DashboardMode;
     updateInterval?: NodeJS.Timeout;
   }> = new Map();
@@ -508,6 +483,11 @@ class DashboardServer extends TpaServer {
       logger.error(`Error looking up timezone for lat=${lat}, lng=${lng}:`, error);
     }
     
+    // Determine if we should use Fahrenheit based on location
+    const useFahrenheit = isNorthAmerica(lat, lng);
+    sessionInfo.useFahrenheit = useFahrenheit;
+    logger.info(`Location in North America: ${useFahrenheit}, will use ${useFahrenheit ? 'Fahrenheit' : 'Celsius'}`);
+    
     // Update location in session
     sessionInfo.latestLocation = { 
       latitude: lat, 
@@ -525,10 +505,16 @@ class DashboardServer extends TpaServer {
         const weatherData = await weatherModule.fetchWeatherForecast(lat, lng);
         
         if (weatherData) {
+          // Use Fahrenheit for North America, Celsius for rest of world
+          const temp = useFahrenheit ? weatherData.temp_f : weatherData.temp_c;
+          const unit = useFahrenheit ? '°F' : '°C';
+          
           sessionInfo.weatherCache = {
             timestamp: Date.now(),
-            data: `${weatherData.condition}, ${weatherData.temp_f}°F`
+            data: `${weatherData.condition}, ${temp}${unit}`
           };
+          
+          logger.info(`Weather updated: ${sessionInfo.weatherCache.data}`);
         }
       } catch (error) {
         logger.error(`Error fetching weather for session ${sessionId}:`, error);
