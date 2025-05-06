@@ -4,6 +4,7 @@ import { logger } from '@augmentos/utils';
 export interface WeatherSummary {
   condition: string;
   temp_f: number;
+  temp_c: number;
 }
 
 export class WeatherModule {
@@ -32,13 +33,19 @@ export class WeatherModule {
         return null;
       }
 
-      const weatherSummary = {
+      console.log(`[Weather] Data: ${JSON.stringify(data)}`);
+
+      const tempF = Math.round(data.current.temp);
+      // Convert Fahrenheit to Celsius: (F - 32) * 5/9
+      const tempC = Math.round((data.current.temp - 32) * 5/9);
+
+      console.log(`[Weather] Temp F: ${tempF}, Temp C: ${tempC}`);
+
+      return {
         condition: data.current.weather[0].main,
-        temp_f: Math.round(data.current.temp),
+        temp_f: tempF,
+        temp_c: tempC,
       };
-      
-      logger.info(`✅ Weather data fetched successfully: ${weatherSummary.condition}, ${weatherSummary.temp_f}°F`);
-      return weatherSummary;
     } catch (error) {
       logger.error('❌ Error fetching weather data:', error);
       return null;
