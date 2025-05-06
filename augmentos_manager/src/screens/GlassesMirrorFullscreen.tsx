@@ -66,6 +66,12 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
     // Check for existing recordings
     checkRecordings();
     
+    // Add a focus listener to reload recordings when returning from gallery
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Refresh recording count when returning to this screen
+      checkRecordings();
+    });
+    
     return () => {
       // Show status bar when exiting
       StatusBar.setHidden(false);
@@ -77,8 +83,10 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
       if (isRecording) {
         stopRecording();
       }
+      // Clean up focus listener
+      unsubscribe();
     };
-  }, []);
+  }, [navigation]);
   
   // Count how many recordings are available
   const checkRecordings = async () => {
@@ -267,10 +275,10 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
             'Your recording has been saved successfully!',
             [
               { 
-                text: 'View Recordings',
-                onPress: () => navigation.navigate('GlassesRecordingsGallery')
+                text: 'View in Gallery',
+                onPress: () => navigation.goBack()
               },
-              { text: 'OK' }
+              { text: 'Continue Recording' }
             ],
             {
               iconName: 'check-circle',
@@ -396,13 +404,13 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
             </View>
           )}
           
-          {/* Videos button - show when recordings exist */}
+          {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (
             <TouchableOpacity
               style={styles.videosButton}
-              onPress={() => navigation.navigate('GlassesRecordingsGallery')}
+              onPress={() => navigation.goBack()}
             >
-              <Icon name="video-library" size={24} color="white" />
+              <Icon name="photo-library" size={24} color="white" />
               {recordingCount > 0 && (
                 <View style={styles.badgeContainer}>
                   <Text style={styles.badgeText}>{recordingCount}</Text>

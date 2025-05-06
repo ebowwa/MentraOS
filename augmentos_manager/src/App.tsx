@@ -121,14 +121,13 @@ const App: React.FC = () => {
     setIsDarkTheme(prevTheme => !prevTheme);
   };
 
-  // Screens where the navbar should be hidden
-  const hideNavbarScreens = [
-    'Login', 
-    'SplashScreen', 
-    'VerifyEmailScreen', 
-    'VersionUpdateScreen',
-    'WelcomePage',
-    'ConnectingToPuck'
+  // Only show navbar on these top-level screens
+  const showNavbarScreens = [
+    'Home',
+    'GlassesMirror',
+    'AppStore',
+    'AppStoreWeb',
+    'SettingsPage'
   ];
 
   return (
@@ -515,7 +514,7 @@ const App: React.FC = () => {
 
                                   </Stack.Navigator>
                                 </View>
-                                {!hideNavbarScreens.includes(currentRouteName) && (
+                                {showNavbarScreens.includes(currentRouteName) && (
                                   <View style={{
                                     marginTop: -30, // Adjusted to close gap
                                     backgroundColor: isDarkTheme ? '#000000' : '#F2F2F7', // Match navbar color
