@@ -49,52 +49,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   navigation,
 }) => {
   const { status } = useStatus();
-  const [settings, setSettings] = useState<any>({});
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const coreToken = await AsyncStorage.getItem('core_token');
-        if (!coreToken) {
-          setIsLoading(false);
-          return;
-        }
-
-        const response = await axios.get(`http://${CLOUD_URL}/api/augmentos-settings`, {
-          headers: { Authorization: `Bearer ${coreToken}` }
-        });
-
-        if (response.data.success && response.data.settings) {
-          setSettings(response.data.settings);
-        }
-      } catch (error) {
-        console.error('Error loading settings:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadSettings();
-  }, []);
-
-  const updateSetting = async (key: string, value: any) => {
-    try {
-      const coreToken = await AsyncStorage.getItem('core_token');
-      if (!coreToken) {
-        return;
-      }
-
-      const updatedSettings = { ...settings, [key]: value };
-      await axios.post(`http://${CLOUD_URL}/api/augmentos-settings`, updatedSettings, {
-        headers: { Authorization: `Bearer ${coreToken}` }
-      });
-
-      setSettings(updatedSettings);
-    } catch (error) {
-      console.error(`Error updating setting ${key}:`, error);
-    }
-  };
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -116,30 +70,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const toggleForceCoreOnboardMic = async () => {
-    // First request microphone permission if we're enabling the mic
-    if (!forceCoreOnboardMic) {
-      // We're about to enable the mic, so request permission
-      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
-      if (!hasMicPermission) {
-        // Permission denied, don't toggle the setting
-        console.log('Microphone permission denied, cannot enable phone microphone');
-        showAlert(
-          'Microphone Permission Required',
-          'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
-          [{ text: 'OK' }],
-          {
-            isDarkTheme,
-            iconName: 'microphone',
-            iconColor: '#2196F3'
-          }
-        );
-        return;
-      }
-    }
-    // Continue with toggling the setting if permission granted or turning off
     const newVal = !forceCoreOnboardMic;
-    await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
-    setForceCoreOnboardMic(newVal);
+    try {
+      await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
+      setForceCoreOnboardMic(newVal);
+    } catch (error) {
+      console.log('Microphone permission denied, cannot enable phone microphone');
+      showAlert(
+        'Microphone Permission Required',
+        'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
+        [{ text: 'OK' }],
+        {
+          isDarkTheme,
+          iconName: 'microphone',
+          iconColor: '#2196F3'
+        }
+      );
+    }
   };
 
   const toggleAlwaysOnStatusBar = async () => {
