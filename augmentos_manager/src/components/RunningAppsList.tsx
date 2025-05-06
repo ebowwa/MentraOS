@@ -1,19 +1,22 @@
 import React, {useMemo, useState, useRef} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import {useStatus} from '../providers/AugmentOSStatusProvider';
+import { useAppStatus } from '../providers/AppStatusProvider';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import AppIcon from './AppIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
+import showAlert from '../utils/AlertUtils';
+import BackendServerComms from '../backend_comms/BackendServerComms';
 
 interface RunningAppsListProps {
   isDarkTheme: boolean;
 }
 
 const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
-  const {status, updateAppStatus} = useStatus();
+  const { appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation } = useAppStatus();
+  const backendComms = BackendServerComms.getInstance();
   const [_isLoading, setIsLoading] = useState(false);
   const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
   const navigation = useNavigation<NavigationProps>();
@@ -21,14 +24,18 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
 
   const stopApp = async (packageName: string) => {
     console.log('STOP APP');
-    
-    updateAppStatus(packageName, false, false);
-    
+
+    // Optimistically update UI first
+    optimisticallyStopApp(packageName);
+
     setIsLoading(true);
     try {
-      await coreCommunicator.stopAppByPackageName(packageName);
+      await backendComms.stopApp(packageName);
+      // Clear the pending operation since it completed successfully
+      clearPendingOperation(packageName);
     } catch (error) {
-      updateAppStatus(packageName, true, true);
+      // On error, refresh from the server to get the accurate state
+      refreshAppStatus();
       console.error('Stop app error:', error);
     } finally {
       setIsLoading(false);
@@ -43,8 +50,8 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   };
 
   const runningApps = useMemo(
-    () => status.apps.filter(app => app.is_running),
-    [status],
+    () => appStatus.filter(app => app.is_running),
+    [appStatus],
   );
 
   const scrollToBottom = () => {
@@ -54,7 +61,7 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   return (
     <View style={styles.appsContainer}>
       <Text style={[styles.sectionTitle, {color: textColor}]}>
-        Active Apps ({runningApps.length})
+        Active Apps
       </Text>
       <View style={styles.listContainer}>
         {runningApps.length > 0 ? (

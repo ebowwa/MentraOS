@@ -95,10 +95,33 @@ const EditTPA: React.FC = () => {
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    
+    // For URL fields, normalize on blur instead of on every keystroke
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
+  };
+  
+  // Handle URL field blur event to normalize URLs
+  const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    
+    // Only normalize URL fields
+    if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
+      if (value) {
+        try {
+          // Normalize the URL and update the form field
+          const normalizedUrl = normalizeUrl(value);
+          setFormData(prev => ({
+            ...prev,
+            [name]: normalizedUrl
+          }));
+        } catch (error) {
+          console.error(`Error normalizing ${name}:`, error);
+        }
+      }
+    }
   };
   
   // Handle form submission
@@ -318,11 +341,13 @@ const EditTPA: React.FC = () => {
                     name="publicUrl"
                     value={formData.publicUrl}
                     onChange={handleChange}
-                    placeholder="https://yourserver.com" 
+                    onBlur={handleUrlBlur}
+                    placeholder="yourserver.com" 
                   />
                   <p className="text-xs text-gray-500">
                     The base URL of your server where AugmentOS will communicate with your app.
                     We'll automatically append "/webhook" to handle events when your app is activated.
+                    HTTPS is required and will be added automatically if not specified.
                     Do not include a trailing slash - it will be automatically removed.
                   </p>
                 </div>
@@ -334,10 +359,12 @@ const EditTPA: React.FC = () => {
                     name="logoURL"
                     value={formData.logoURL}
                     onChange={handleChange}
-                    placeholder="https://yourserver.com/logo.png" 
+                    onBlur={handleUrlBlur}
+                    placeholder="yourserver.com/logo.png" 
                   />
                   <p className="text-xs text-gray-500">
                     URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
+                    HTTPS is required and will be added automatically if not specified.
                   </p>
                 </div>
                 
@@ -348,10 +375,12 @@ const EditTPA: React.FC = () => {
                     name="webviewURL"
                     value={formData.webviewURL || ''}
                     onChange={handleChange}
-                    placeholder="https://yourserver.com/webview" 
+                    onBlur={handleUrlBlur}
+                    placeholder="yourserver.com/webview" 
                   />
                   <p className="text-xs text-gray-500">
                     If your app has a companion mobile interface, provide the URL here.
+                    HTTPS is required and will be added automatically if not specified.
                   </p>
                 </div>
                 

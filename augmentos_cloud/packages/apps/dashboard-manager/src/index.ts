@@ -573,7 +573,10 @@ async function updateDashboard(sessionId?: string) {
       name: "calendar",
       async run(context: any) {
         const session: SessionInfo = context.session;
-        if (!session.calendarEvent || !session.latestLocation) return '';
+        if (!session.calendarEvent || !session.latestLocation) {
+          console.log(`[Session ${session.userId}] No calendar event or location data available for calendar`);
+          return '';
+        }
         
         const event = session.calendarEvent;
         // Get timezone from the session's location data, fall back to system timezone
@@ -625,7 +628,13 @@ async function updateDashboard(sessionId?: string) {
         try {
           const weather = await weatherAgent.fetchWeatherForecast(latitude, longitude);
           console.log(`[Session ${session.userId}][Weather] Fetched weather data:`, weather);
-          const result = weather ? `${weather.condition}, ${weather.temp_f}°F` : '-';
+          let result = '-';
+          if (weather) {
+            const useFahrenheit = isNorthAmerica(latitude, longitude);
+            const temp = useFahrenheit ? weather.temp_f : weather.temp_c;
+            const unit = useFahrenheit ? '°F' : '°C';
+            result = `${weather.condition}, ${temp}${unit}`;
+          }
           // Cache the result on the session.
           session.weatherCache = { timestamp: Date.now(), data: result };
           return result;
@@ -729,6 +738,8 @@ async function updateDashboard(sessionId?: string) {
 }
 
 function handlePhoneNotification(sessionId: string, notificationData: any) {
+
+  console.log(`[Session ${sessionId}] Received phone notification:`, notificationData);
   const sessionInfo = activeSessions.get(sessionId);
   if (!sessionInfo) return;
 
@@ -851,4 +862,13 @@ async function updateDashboardForUser(userId: string) {
   if (!userSessionsFound) {
     console.log(`No active sessions found for user ${userId}`);
   }
+}
+
+// Utility: Estimate if a location is in North America (rough bounding box)
+function isNorthAmerica(latitude: number, longitude: number): boolean {
+  // North America bounding box: lat 7 to 84, lon -168 to -52
+  return (
+    latitude >= 7 && latitude <= 84 &&
+    longitude >= -168 && longitude <= -52
+  );
 }

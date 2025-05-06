@@ -3,6 +3,7 @@ import axios from 'axios';
 export interface WeatherSummary {
   condition: string;
   temp_f: number;
+  temp_c: number;
 }
 
 export class WeatherModule {
@@ -27,9 +28,18 @@ export class WeatherModule {
         return null;
       }
 
+      console.log(`[Weather] Data: ${JSON.stringify(data)}`);
+
+      const tempF = Math.round(data.current.temp);
+      // Convert Fahrenheit to Celsius: (F - 32) * 5/9
+      const tempC = Math.round((data.current.temp - 32) * 5/9);
+
+      console.log(`[Weather] Temp F: ${tempF}, Temp C: ${tempC}`);
+
       return {
         condition: data.current.weather[0].main,
-        temp_f: Math.round(data.current.temp),
+        temp_f: tempF,
+        temp_c: tempC,
       };
     } catch (error) {
       console.error('Error fetching weather data:', error);

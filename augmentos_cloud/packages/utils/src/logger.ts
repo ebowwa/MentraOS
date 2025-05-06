@@ -1,5 +1,6 @@
 import winston from 'winston';
 import { UserSession } from '@augmentos/sdk';
+import { PostHogTransport } from './PostHogTransport';
 
 // Define the error structure
 interface FormattedError {
@@ -49,33 +50,33 @@ export function createLogger(defaultMeta = {}) {
   });
 
   // Create a custom format that processes all kinds of objects
-const objectFormat = winston.format((info: any) => {
-  // Check for splat (additional arguments)
-  const splatSymbol = Symbol.for('splat');
-  const splat = info[splatSymbol];
-  
-  if (splat && Array.isArray(splat) && splat.length > 0) {
-    // Get the first argument
-    const arg = splat[0];
+  const objectFormat = winston.format((info: any) => {
+    // Check for splat (additional arguments)
+    const splatSymbol = Symbol.for('splat');
+    const splat = info[splatSymbol];
     
-    // Handle any type of object
-    if (arg !== null && typeof arg === 'object') {
-      // Convert Maps and Sets
-      if (arg instanceof Map || arg instanceof Set) {
-        info.data = safeStringify(arg);
-      } else {
-        // For regular objects and arrays
-        info.data = arg;
-      }
+    if (splat && Array.isArray(splat) && splat.length > 0) {
+      // Get the first argument
+      const arg = splat[0];
       
-      // Remove from splat to prevent double logging
-      delete info[splatSymbol];
+      // Handle any type of object
+      if (arg !== null && typeof arg === 'object') {
+        // Convert Maps and Sets
+        if (arg instanceof Map || arg instanceof Set) {
+          info.data = safeStringify(arg);
+        } else {
+          // For regular objects and arrays
+          info.data = arg;
+        }
+        
+        // Remove from splat to prevent double logging
+        delete info[splatSymbol];
+      }
     }
-  }
+    
+    return info;
+  });
   
-  return info;
-});
-
   return winston.createLogger({
     level: process.env.LOG_LEVEL || 'info',
     defaultMeta: {
@@ -130,7 +131,8 @@ const objectFormat = winston.format((info: any) => {
             return `[${level}]: ${timestamp} ${userInfo}\n${message}${dataStr}${splatStr}${metaStr}${errorStr}\n`;
           })
         )
-      })
+      }),
+      new PostHogTransport({ level: 'warn', captureExceptions: true })
     ]
   });
 }

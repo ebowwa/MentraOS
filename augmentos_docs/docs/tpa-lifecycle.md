@@ -72,6 +72,8 @@ This restart is necessary because the AugmentOS phone app maintains a connection
 
 ## Example Lifecycle Flow
 
+![App Lifecycle Flow Diagram](./assets/app-lifecycle-flow.png)
+
 ```mermaid
 sequenceDiagram
     participant User

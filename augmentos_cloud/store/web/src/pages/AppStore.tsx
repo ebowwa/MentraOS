@@ -302,7 +302,7 @@ const AppStore: React.FC = () => {
                           onClick={() => handleUninstall(app.packageName)}
                           variant="destructive"
                           disabled={installingApp === app.packageName}
-                          className="w-full"
+                          className="w-full bg-[#E24A24] hover:bg-[#E24A24]/90"
                         >
                           {installingApp === app.packageName ? (
                             <>

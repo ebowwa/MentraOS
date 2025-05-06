@@ -70,7 +70,7 @@
         "mongoose": "^6.5.2",
         "multer": "^1.4.5-lts.1",
         "openai": "^4.28.0",
-        "posthog-node": "^4.6.0",
+        "posthog-node": "^4.14.0",
         "uuid": "^11.0.5",
         "ws": "^8.18.1",
       },
@@ -117,6 +117,7 @@
       "version": "1.0.0",
       "dependencies": {
         "@augmentos/sdk": "workspace:*",
+        "posthog-node": "^4.14.0",
       },
       "devDependencies": {
         "typescript": "^5.0.0",
@@ -1440,7 +1441,7 @@
 
     "postgres-interval": ["postgres-interval@1.2.0", "", { "dependencies": { "xtend": "^4.0.0" } }, "sha512-9ZhXKM/rw350N1ovuWHbGxnGh/SNJ4cnxHiM0rxE4VN41wsg8P8zWn9hv/buK00RP4WvlOyr/RBDiptyxVbkZQ=="],
 
-    "posthog-node": ["posthog-node@4.13.0", "", { "dependencies": { "axios": "^1.8.2" } }, "sha512-4rGi+9hf4WmMcKjWuzBtQYzFRltfVmSPCB5N364AhchFAT2Eoclx1M7KUWJZ0C2fMObdNGRNw1NQYEO4iGnviQ=="],
+    "posthog-node": ["posthog-node@4.14.0", "", { "dependencies": { "axios": "^1.8.2" } }, "sha512-PitSiuxGiVFl0ItuhIfi3Sq1tcaMU4vlbPu1wv0qufTJGDjWthOOr4vYfFIs1xkbJFOQcfGczMXkr44kX5TDDg=="],
 
     "prelude-ls": ["prelude-ls@1.2.1", "", {}, "sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g=="],
 

@@ -233,14 +233,6 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit('COMPATIBLE_GLASSES_SEARCH_STOP', { 
           modelName: data.compatible_glasses_search_stop.model_name 
         });
-      } else if ('app_info' in data) {
-        GlobalEventEmitter.emit('APP_INFO_RESULT', { 
-          appInfo: data.app_info 
-        });
-      } else if ('app_is_downloaded' in data) {
-        GlobalEventEmitter.emit('APP_IS_DOWNLOADED_RESULT', { 
-          appIsDownloaded: data.app_is_downloaded 
-        });
       } else if ('need_permissions' in data) {
         GlobalEventEmitter.emit('NEED_PERMISSIONS');
       } else if ('need_wifi_credentials' in data) {

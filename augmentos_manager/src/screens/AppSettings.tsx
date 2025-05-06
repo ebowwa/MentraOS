@@ -20,6 +20,8 @@ import BackendServerComms from '../backend_comms/BackendServerComms';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { getAppImage } from '../logic/getAppImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { useAppStatus } from '../providers/AppStatusProvider';
+import AppIcon from '../components/AppIcon';
 
 type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
@@ -36,10 +38,11 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   // Local state to track current values for each setting.
   const [settingsState, setSettingsState] = useState<{ [key: string]: any }>({});
   // Get app info from status
-  const { status, updateAppStatus } = useStatus();
+  const { status } = useStatus();
+  const { appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation } = useAppStatus();
   const appInfo = useMemo(() => {
-    return status.apps.find(app => app.packageName === packageName) || null;
-  }, [status.apps, packageName]);
+    return appStatus.find(app => app.packageName === packageName) || null;
+  }, [appStatus, packageName]);
 
   // Handle app start/stop actions with debouncing
   const handleStartStopApp = async () => {
@@ -49,23 +52,53 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
     
     try {
       if (appInfo.is_running) {
-        // Immediately update the app status locally
-        updateAppStatus(packageName, false, false);
+        // Optimistically update UI first
+        optimisticallyStopApp(packageName);
+        
         // Then request the server to stop the app
-        await BackendServerComms.getInstance().stopApp(packageName);
+        await backendServerComms.stopApp(packageName);
+        
+        // Clear the pending operation since it completed successfully
+        clearPendingOperation(packageName);
       } else {
-        // Immediately update the app status locally
-        updateAppStatus(packageName, true, true);
+        // Optimistically update UI first
+        optimisticallyStartApp(packageName);
+        
+        // Check if it's a standard app
+        if (appInfo.tpaType === 'standard') {
+          // Find any running standard apps
+          const runningStandardApps = appStatus.filter(
+            app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName
+          );
+          
+          // If there's any running standard app, stop it first
+          for (const runningApp of runningStandardApps) {
+            // Optimistically update UI
+            optimisticallyStopApp(runningApp.packageName);
+            
+            try {
+              await backendServerComms.stopApp(runningApp.packageName);
+              clearPendingOperation(runningApp.packageName);
+            } catch (error) {
+              console.error('Stop app error:', error);
+              refreshAppStatus();
+            }
+          }
+        }
+        
         // Then request the server to start the app
-        await BackendServerComms.getInstance().startApp(packageName);
+        await backendServerComms.startApp(packageName);
+        
+        // Clear the pending operation since it completed successfully
+        clearPendingOperation(packageName);
       }
     } catch (error) {
-      // Revert the status change if there was an error
-      if (appInfo.is_running) {
-        updateAppStatus(packageName, true, true);
-      } else {
-        updateAppStatus(packageName, false, false);
-      }
+      // Clear the pending operation for this app
+      clearPendingOperation(packageName);
+      
+      // Refresh the app status to get the accurate state from the server
+      refreshAppStatus();
+      
       console.error(`Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`, error);
     }
   };
@@ -89,7 +122,10 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
               setIsUninstalling(true);
               // First stop the app if it's running
               if (appInfo?.is_running) {
+                // Optimistically update UI first
+                optimisticallyStopApp(packageName);
                 await backendServerComms.stopApp(packageName);
+                clearPendingOperation(packageName);
               }
               
               // Then uninstall it
@@ -105,6 +141,8 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
               navigation.goBack();
             } catch (error: any) {
               console.error('Error uninstalling app:', error);
+              clearPendingOperation(packageName);
+              refreshAppStatus();
               GlobalEventEmitter.emit('SHOW_BANNER', { 
                 message: `Error uninstalling app: ${error.message || 'Unknown error'}`, 
                 type: "error" 
@@ -357,10 +395,11 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
           <View style={styles.appIconRow}>
             <View style={styles.appIconContainer}>
               <View style={styles.iconWrapper}>
-                <ImageBackground
-                  source={getAppImage(appInfo)}
+                <AppIcon
+                  app={appInfo}
+                  isDarkTheme={isDarkTheme}
+                  isForegroundApp={appInfo.is_foreground}
                   style={styles.appIconLarge}
-                  imageStyle={styles.appIconRounded}
                 />
               </View>
             </View>
@@ -374,11 +413,11 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
                 <Text style={[styles.appMetaInfo, { color: theme.secondaryTextColor }]}>
                   Package: {packageName}
                 </Text>
-                {appInfo.is_foreground && (
+                {/* {appInfo.is_foreground && (
                   <Text style={[styles.appMetaInfo, { color: '#2196F3' }]}>
                     Foreground App
                   </Text>
-                )}
+                )} */}
               </View>
             </View>
           </View>
@@ -508,9 +547,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   appIconLarge: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: 100,
+    height: 100,
+    borderRadius: 18,
   },
   appIconRounded: {
     borderRadius: 18,
