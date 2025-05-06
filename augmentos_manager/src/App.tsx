@@ -394,7 +394,7 @@ const App: React.FC = () => {
                           headerShown: false,
                           presentation: 'fullScreenModal',
                           gestureEnabled: true,
-                          animationEnabled: true,
+                          //animationEnabled: true,
                         }}>
                         {(props) => <VideoPlayerScreen {...props} isDarkTheme={isDarkTheme} />}
                         </Stack.Screen>
