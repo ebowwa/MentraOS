@@ -1151,17 +1151,17 @@ export class WebSocketService {
           break;
         }
 
-        case GlassesToCloudMessageType.AUGMENTOS_SETTINGS_UPDATE_REQUEST: {
+        case "settings_update_request": {
           const settingsUpdate = message as AugmentosSettingsUpdateRequest;
           userSession.logger.info('Received AugmentOS settings update request via WebSocket');
-          
+
           try {
             // Find or create the user
             const user = await User.findOrCreateUser(userSession.userId);
 
             // Get current settings from database
             const currentSettings = user.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
-            userSession.logger.info('Current settings from database:', currentSettings);
+            userSession.logger.info('Current settings from database:', currentSettings.brightness);
 
             // Send current settings back to the client
             const responseMessage = {
@@ -1188,7 +1188,7 @@ export class WebSocketService {
           break;
         }
 
-        case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
+        case "core_status_update": {
           const coreStatusUpdate = message as CoreStatusUpdate;
           userSession.logger.info('Received core status update:', coreStatusUpdate);
 
