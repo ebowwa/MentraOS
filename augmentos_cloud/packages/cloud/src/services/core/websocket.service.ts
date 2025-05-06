@@ -17,7 +17,7 @@
 // import { WebSocketServer, WebSocket } from 'ws';
 import WebSocket from 'ws';
 import { IncomingMessage, Server } from 'http';
-import sessionService, { ExtendedUserSession, IS_LC3, SequencedAudioChunk } from './session.service';
+import { ExtendedUserSession, IS_LC3, SequencedAudioChunk } from './session.service';
 import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
 import appService from './app.service';
@@ -63,6 +63,8 @@ import { logger } from '@augmentos/utils';
 import tpaRegistrationService from './tpa-registration.service';
 import healthMonitorService from './health-monitor.service';
 import axios from 'axios';
+import { SessionService } from './session.service';
+import { getSessionService } from './session.service';
 
 export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
 export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
@@ -96,13 +98,40 @@ type MicrophoneStateChangeDebouncer = { timer: ReturnType<typeof setTimeout> | n
 export class WebSocketService {
   private glassesWss: WebSocket.Server;
   private tpaWss: WebSocket.Server;
+  private sessionService?: SessionService; // Make optional
+  private static instance: WebSocketService;
 
   // Global counter for generating sequential audio chunk numbers
   private globalAudioSequence: number = 0;
 
-  constructor() {
+  private constructor() {
     this.glassesWss = new WebSocketServer({ noServer: true });
     this.tpaWss = new WebSocketServer({ noServer: true });
+  }
+
+  public static getInstance(): WebSocketService {
+    if (!WebSocketService.instance) {
+      WebSocketService.instance = new WebSocketService();
+    }
+    return WebSocketService.instance;
+  }
+
+  public initialize() {
+    try {
+      this.sessionService = getSessionService();
+      logger.info('✅ WebSocket Service initialized');
+    } catch (error) {
+      logger.error('Failed to initialize WebSocket Service:', error);
+      throw error;
+    }
+  }
+
+  // Add a helper method to ensure session service exists
+  private getSessionService(): SessionService {
+    if (!this.sessionService) {
+      throw new Error('WebSocket Service not initialized');
+    }
+    return this.sessionService;
   }
 
   /**
@@ -247,8 +276,33 @@ export class WebSocketService {
    * @param server - HTTP/HTTPS server instance to attach WebSocket servers to
    */
   setupWebSocketServers(server: Server): void {
-    this.initializeWebSocketServers();
-    this.setupUpgradeHandler(server);
+    server.on('upgrade', (request, socket, head) => {
+      const url = new URL(request.url || '', `http://${request.headers.host}`);
+      
+      if (url.pathname === '/glasses-ws') {
+        this.glassesWss.handleUpgrade(request, socket, head, ws => {
+          this.glassesWss.emit('connection', ws, request);
+        });
+      } else if (url.pathname === '/tpa-ws') {
+        this.tpaWss.handleUpgrade(request, socket, head, ws => {
+          this.tpaWss.emit('connection', ws, request);
+        });
+      } else {
+        socket.destroy();
+      }
+    });
+
+    this.glassesWss.on('connection', (ws, request) => {
+      this.handleGlassesConnection(ws, request).catch(error => {
+        logger.error('Error handling glasses connection:', error);
+      });
+    });
+
+    this.tpaWss.on('connection', (ws, request) => {
+      this.handleTpaConnection(ws, request).catch(error => {
+        logger.error('Error handling TPA connection:', error);
+      });
+    });
   }
 
   private microphoneStateChangeDebouncers = new Map<string, MicrophoneStateChangeDebouncer>();
@@ -646,7 +700,7 @@ export class WebSocketService {
    * @param data - Data to broadcast
    */
   broadcastToTpa(userSessionId: string, streamType: StreamType, data: CloudToTpaMessage): void {
-    const userSession = sessionService.getSession(userSessionId);
+    const userSession = this.getSessionService().getSession(userSessionId);
     if (!userSession) {
       logger.error(`[websocket.service]: User session not found for ${userSessionId}`);
       return;
@@ -700,40 +754,9 @@ export class WebSocketService {
     }
   }
   /**
-   * ⚡️⚡️ Initializes the WebSocket servers for both glasses and TPAs.
-   * @private
-   */
-  private initializeWebSocketServers(): void {
-    this.glassesWss.on('connection', this.handleGlassesConnection.bind(this));
-    this.tpaWss.on('connection', this.handleTpaConnection.bind(this));
-  }
-
-  /**
-   * 🗿 Sets up the upgrade handler for WebSocket connections.
-   * @param server - HTTP/HTTPS server instance
-   * @private
-   */
-  private setupUpgradeHandler(server: Server): void {
-    server.on('upgrade', (request, socket, head) => {
-      const { url } = request;
-
-      if (url === '/glasses-ws') {
-        this.glassesWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-          this.glassesWss.emit('connection', ws, request);
-        });
-      } else if (url === '/tpa-ws') {
-        this.tpaWss.handleUpgrade(request, socket, head, (ws: WebSocket) => {
-          this.tpaWss.emit('connection', ws, request);
-        });
-      } else {
-        socket.destroy();
-      }
-    });
-  }
-
-  /**
    * 🥳🤓 Handles new glasses client connections.
    * @param ws - WebSocket connection
+   * @param request - Incoming message
    * @private
    */
   private async handleGlassesConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
@@ -778,7 +801,7 @@ export class WebSocketService {
 
     // Register this connection with the health monitor
     healthMonitorService.registerGlassesConnection(ws);
-    const userSession = await sessionService.createSession(ws, userId);
+    const userSession = await this.getSessionService().createSession(ws, userId);
 
     // Set up the audio buffer processing interval
     // if (userSession.audioBuffer) {
@@ -809,7 +832,7 @@ export class WebSocketService {
             _buffer.byteOffset + _buffer.byteLength
           );
           // Process the audio data
-          const _arrayBuffer = await sessionService.handleAudioData(userSession, arrayBuf);
+          const _arrayBuffer = await this.getSessionService().handleAudioData(userSession, arrayBuf);
           // Send audio chunk to TPAs subscribed to audio_chunk
           if (_arrayBuffer) {
             this.broadcastToTpaAudio(userSession, _arrayBuffer);
@@ -849,14 +872,14 @@ export class WebSocketService {
     ws.on('close', () => {
       userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}`);
       // Mark the session as disconnected but do not remove it immediately
-      sessionService.markSessionDisconnected(userSession);
+      this.getSessionService().markSessionDisconnected(userSession);
 
       // Set a timeout to eventually clean up the session if not reconnected
       setTimeout(() => {
         userSession.logger.info(`[websocket.service]: Grace period expired, checking if we should cleanup session: ${userSession.sessionId}`);
         if (userSession.websocket.readyState === WebSocket.CLOSED || userSession.websocket.readyState === WebSocket.CLOSING) {
           userSession.logger.info(`[websocket.service]: User disconnected: ${userSession.sessionId}`);
-          sessionService.endSession(userSession);
+          this.getSessionService().endSession(userSession);
         }
       }, RECONNECT_GRACE_PERIOD_MS);
 
@@ -874,7 +897,7 @@ export class WebSocketService {
     // TODO(isaiahb): Investigate if we really need to destroy the session on an error.
     ws.on('error', (error) => {
       userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
-      sessionService.endSession(userSession);
+      this.getSessionService().endSession(userSession);
       ws.close();
     });
   }
@@ -950,7 +973,7 @@ export class WebSocketService {
           const ackMessage: ConnectionAck = {
             type: CloudToGlassesMessageType.CONNECTION_ACK,
             sessionId: userSession.sessionId,
-            userSession: await sessionService.transformUserSessionForClient(userSession as ExtendedUserSession),
+            userSession: await this.getSessionService().transformUserSessionForClient(userSession as ExtendedUserSession),
             timestamp: new Date()
           };
 
@@ -1137,9 +1160,10 @@ export class WebSocketService {
   /**
    * 🥳 Handles new TPA connections.
    * @param ws - WebSocket connection
+   * @param request - Incoming message
    * @private
    */
-  private handleTpaConnection(ws: WebSocket): void {
+  private async handleTpaConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
     logger.info('New TPA attempting to connect...');
     let currentAppSession: string | null = null;
     const setCurrentSessionId = (appSessionId: string) => {
@@ -1164,7 +1188,7 @@ export class WebSocketService {
         const message = JSON.parse(data.toString()) as TpaToCloudMessage;
         if (message.sessionId) {
           userSessionId = message.sessionId.split('-')[0];
-          userSession = sessionService.getSession(userSessionId);
+          userSession = this.getSessionService().getSession(userSessionId);
         }
 
         // Handle TPA messages here.
@@ -1233,7 +1257,7 @@ export class WebSocketService {
               const clientResponse: AppStateChange = {
                 type: CloudToGlassesMessageType.APP_STATE_CHANGE,
                 sessionId: userSession.sessionId,
-                userSession: await sessionService.transformUserSessionForClient(userSession as ExtendedUserSession),
+                userSession: await this.getSessionService().transformUserSessionForClient(userSession as ExtendedUserSession),
                 timestamp: new Date()
               };
               userSession?.websocket.send(JSON.stringify(clientResponse));
@@ -1247,7 +1271,7 @@ export class WebSocketService {
               }
 
               const displayMessage = message as DisplayRequest;
-              sessionService.updateDisplay(userSession.sessionId, displayMessage);
+              this.getSessionService().updateDisplay(userSession.sessionId, displayMessage);
               break;
             }
             
@@ -1315,7 +1339,7 @@ export class WebSocketService {
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
-        const userSession = sessionService.getSession(userSessionId);
+        const userSession = this.getSessionService().getSession(userSessionId);
 
         if (!userSession) {
           logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
@@ -1353,7 +1377,7 @@ export class WebSocketService {
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
-        const userSession = sessionService.getSession(userSessionId);
+        const userSession = this.getSessionService().getSession(userSessionId);
         if (!userSession) {
           logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
           return;
@@ -1392,7 +1416,7 @@ export class WebSocketService {
     setCurrentSessionId: (sessionId: string) => void
   ): Promise<void> {
     const userSessionId = initMessage.sessionId.split('-')[0];
-    const userSession = sessionService.getSession(userSessionId);
+    const userSession = this.getSessionService().getSession(userSessionId);
 
     if (!userSession) {
       logger.error(`[websocket.service] User session not found for ${userSessionId}`);
@@ -1544,10 +1568,5 @@ export class WebSocketService {
   }
 }
 
-/**
- * ☝️ Singleton instance for websocket service.
- */
-export const webSocketService = new WebSocketService();
-logger.info('✅ WebSocket Service');
-
+export const webSocketService = WebSocketService.getInstance();
 export default webSocketService;
