@@ -205,11 +205,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <Text style={styles.headerTitle}>
           Dashboard Settings
         </Text>
-      </View>
+      </View> */}
       <ScrollView 
         style={styles.scrollViewContainer}
         showsVerticalScrollIndicator={false}
