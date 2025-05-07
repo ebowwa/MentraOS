@@ -170,44 +170,44 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
   return (
     <View style={[styles.deviceInfoContainer]}>
-      {/* Status Indicators Row */}
-      <View style={styles.statusIndicatorsRow}>
-        {microphoneActive && (
-          <View style={styles.iconContainer}>
+      {/* Status Indicators Row - Only render if indicators present */}
+      {(microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) && (
+        <View style={styles.statusIndicatorsRow}>
+          {microphoneActive && (
             <Icon name="microphone" size={20} color="#4CAF50" />
-          </View>
-        )}
-        
-        {/* Centered flex space */}
-        <View style={{flex: 1}} />
-        
-        {/* WiFi Status Indicator */}
-        {status.glasses_info && status.glasses_info.glasses_use_wifi === true && (
-          <TouchableOpacity 
-            style={styles.wifiContainer}
-            onPress={() => {
-              if (status.glasses_info) {
-                navigation.navigate('GlassesWifiSetupScreen', {
-                  deviceModel: status.glasses_info.model_name || 'Glasses'
-                });
-              }
-            }}
-          >
-            {status.glasses_info.glasses_wifi_connected ? (
-              <>
-                {status.glasses_info.glasses_wifi_ssid && (
-                  <Text style={styles.wifiSsidText}>
-                    {status.glasses_info.glasses_wifi_ssid}
-                  </Text>
-                )}
-                <Icon name="wifi" size={20} color="#4CAF50" />
-              </>
-            ) : (
-              <MaterialIcon name="wifi-off" size={20} color="#E53935" />
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
+          )}
+          
+          {/* Centered flex space */}
+          <View style={{flex: 1}} />
+          
+          {/* WiFi Status Indicator */}
+          {status.glasses_info && status.glasses_info.glasses_use_wifi === true && (
+            <TouchableOpacity 
+              style={styles.wifiContainer}
+              onPress={() => {
+                if (status.glasses_info) {
+                  navigation.navigate('GlassesWifiSetupScreen', {
+                    deviceModel: status.glasses_info.model_name || 'Glasses'
+                  });
+                }
+              }}
+            >
+              {status.glasses_info.glasses_wifi_connected ? (
+                <>
+                  {status.glasses_info.glasses_wifi_ssid && (
+                    <Text style={styles.wifiSsidText}>
+                      {status.glasses_info.glasses_wifi_ssid}
+                    </Text>
+                  )}
+                  <Icon name="wifi" size={20} color="#4CAF50" />
+                </>
+              ) : (
+                <MaterialIcon name="wifi-off" size={20} color="#E53935" />
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
       
       {status.core_info.puck_connected ? (
         <>
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     width: '100%',
-    minHeight: 230,
+    minHeight: 240,
     justifyContent: 'center',
     marginTop: 16, // Increased space above component
     backgroundColor: '#E5E5EA',
@@ -500,8 +500,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 10,
-    marginBottom: 10,
-    height: 30,
+    //height: 30,
   },
   iconContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.1)',
