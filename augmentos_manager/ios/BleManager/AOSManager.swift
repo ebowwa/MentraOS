@@ -554,7 +554,7 @@ struct ViewState {
       return
     }
     
-    print("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
+    // print("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
     switch layoutType {
     case "text_wall":
