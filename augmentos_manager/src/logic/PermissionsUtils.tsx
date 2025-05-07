@@ -74,7 +74,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
   [PermissionFeatures.LOCATION]: {
     name: 'Location',
     description: 'Used for navigation and location-based services',
-    ios: [PERMISSIONS.IOS.LOCATION_WHEN_IN_USE, PERMISSIONS.IOS.LOCATION_ALWAYS],
+    ios: [PERMISSIONS.IOS.LOCATION_WHEN_IN_USE],
     android: [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
     critical: false,
   },
