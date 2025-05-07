@@ -54,6 +54,8 @@ export interface ExtendedUserSession extends UserSession {
   cleanupTimerId?: NodeJS.Timeout;
   websocket: WebSocket;
   displayManager: DisplayManager;
+  // Add dashboard manager to the user session
+  dashboardManager: any; // Will import and use proper type later to avoid circular dependencies
   transcript: { 
     segments: TranscriptSegment[];  // For backward compatibility (English)
     languageSegments?: Map<string, TranscriptSegment[]>; // Language-indexed map for multi-language support
@@ -119,6 +121,7 @@ export class SessionService {
       appConnections: new Map<string, WebSocket | any>(),
       OSSettings: { brightness: 50, volume: 50 },
       displayManager: new DisplayManager(),
+      // Will add dashboardManager after the session is fully constructed
       transcript: { 
         segments: [],
         languageSegments: new Map<string, TranscriptSegment[]>() 
@@ -154,9 +157,19 @@ export class SessionService {
       sessionLogger.error(`❌ Failed to initialize LC3 service for session ${sessionId}:`, error);
     }
 
-    // Finalize and Store Session
+    // Finalize the user session
     const userSession = partialSession as ExtendedUserSession;
 
+    // Now create the DashboardManager for this session
+    // We need to dynamically import to avoid circular dependency issues
+    const { DashboardManager } = require('../dashboard/DashboardManager');
+    userSession.dashboardManager = new DashboardManager(userSession, {
+      queueSize: 5,
+      updateIntervalMs: 500,
+      alwaysOnEnabled: false
+    });
+
+    // Store the session
     this.activeSessions.set(sessionId, userSession);
     this.sessionsByUser.set(userId, userSession);
     sessionLogger.info(`[session.service] Created and stored new session ${sessionId} for user ${userId}`);
@@ -454,6 +467,12 @@ export class SessionService {
     }
 
     // SubscriptionManager is part of userSession, no specific cleanup needed here
+
+    // Clean up dashboard manager if it exists
+    if (userSession.dashboardManager && typeof userSession.dashboardManager.dispose === 'function') {
+      userSession.logger.info(`🧹 Cleaning up dashboard manager for session ${userSession.sessionId}`);
+      userSession.dashboardManager.dispose();
+    }
 
     // Clear transcript data
     if (userSession.transcript) {

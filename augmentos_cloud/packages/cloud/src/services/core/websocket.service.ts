@@ -48,6 +48,7 @@ import {
   TpaConnectionInit,
   TpaSubscriptionUpdate,
   TpaToCloudMessage,
+  TpaToCloudMessageType,
   TpaType,
   UserSession,
   Vad,
@@ -1323,6 +1324,31 @@ export class WebSocketService {
               sessionService.updateDisplay(userSession.sessionId, displayMessage);
               break;
             }
+            
+            // Dashboard message handling
+            case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
+            case TpaToCloudMessageType.DASHBOARD_MODE_CHANGE:
+            case TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE: {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+              
+              try {
+                // Import dashboard service functions dynamically to avoid circular dependencies
+                const dashboardService = require('../dashboard');
+                
+                // Handle the dashboard message, passing both message and userSession
+                const handled = dashboardService.handleTpaMessage(message, userSession);
+                
+                if (!handled) {
+                  userSession.logger.warn(`Dashboard message ${message.type} not handled`, message);
+                }
+              } catch (error) {
+                userSession.logger.error(`Error handling dashboard message ${message.type}:`, error);
+              }
+              break;
+            }
           }
         }
         catch (error) {
@@ -1379,6 +1405,16 @@ export class WebSocketService {
         // Log the disconnection
         userSession.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
 
+        // Clean up dashboard content for the disconnected TPA
+        try {
+          // Import dashboard service dynamically to avoid circular dependencies
+          const dashboardService = require('../dashboard');
+          // Pass both the packageName and the userSession
+          dashboardService.handleTpaDisconnected(packageName, userSession);
+        } catch (error) {
+          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+        }
+
         // Notify the registration service that this session is disconnected
         // but DON'T remove it from registry - we want to enable recovery!
         // Just note that the session is temporarily disconnected
@@ -1400,6 +1436,17 @@ export class WebSocketService {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
+        
+        // Clean up dashboard content for the disconnected TPA
+        try {
+          // Import dashboard service dynamically to avoid circular dependencies
+          const dashboardService = require('../dashboard');
+          // Pass both the packageName and the userSession
+          dashboardService.handleTpaDisconnected(packageName, userSession);
+        } catch (error) {
+          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+        }
+        
         userSession?.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
       }
       ws.close();

@@ -26,6 +26,7 @@ import {
   isValidLanguageCode,
   createTranslationStream
 } from '../../types';
+import { DashboardMode } from '../../types/dashboard';
 
 /** 🎯 Type-safe event handler function */
 type Handler<T> = (data: T) => void;
@@ -36,6 +37,8 @@ interface SystemEvents {
   'disconnected': string;
   'error': WebSocketError | Error;
   'settings_update': AppSettings;
+  'dashboard_mode_change': { mode: DashboardMode | 'none' };
+  'dashboard_always_on_change': { enabled: boolean };
 }
 
 /** 📡 All possible event types */
@@ -207,6 +210,26 @@ export class EventManager {
   onSettingsUpdate(handler: Handler<SystemEvents['settings_update']>) {
     this.emitter.on('settings_update', handler);
     return () => this.emitter.off('settings_update', handler);
+  }
+
+  /**
+   * 🌐 Listen for dashboard mode changes
+   * @param handler - Function to handle dashboard mode changes
+   * @returns Cleanup function to remove the handler
+   */
+  onDashboardModeChange(handler: Handler<SystemEvents['dashboard_mode_change']>) {
+    this.emitter.on('dashboard_mode_change', handler);
+    return () => this.emitter.off('dashboard_mode_change', handler);
+  }
+
+  /**
+   * 🌐 Listen for dashboard always-on mode changes
+   * @param handler - Function to handle dashboard always-on mode changes
+   * @returns Cleanup function to remove the handler
+   */
+  onDashboardAlwaysOnChange(handler: Handler<SystemEvents['dashboard_always_on_change']>) {
+    this.emitter.on('dashboard_always_on_change', handler);
+    return () => this.emitter.off('dashboard_always_on_change', handler);
   }
   
   /**
