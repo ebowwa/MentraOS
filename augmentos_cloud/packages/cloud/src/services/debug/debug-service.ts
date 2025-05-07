@@ -1,3 +1,4 @@
+import { TranscriptSegment } from '@augmentos/sdk';
 import { Server as HTTPServer } from 'http';
 
 interface SystemStats {
@@ -18,18 +19,8 @@ interface DebugSessionInfo {
   OSSettings: { brightness: number; volume: number };
   isTranscribing: boolean;
   transcript: {
-    segments: Array<{
-      resultId: string;
-      text: string;
-      timestamp: Date;
-      isFinal: boolean;
-    }>;
-    languageSegments: Record<string, Array<{
-      resultId: string;
-      text: string;
-      timestamp: Date;
-      isFinal: boolean;
-    }>>;
+    segments: TranscriptSegment[];
+    languageSegments?: Map<string, TranscriptSegment[]>;
   };
   subscriptionManager: {
     subscriptions: Record<string, string[]>;
@@ -38,11 +29,7 @@ interface DebugSessionInfo {
     activeDisplay: {
       displayRequest: {
         packageName: string;
-        layout: {
-          layoutType: string;
-          text?: string;
-          title?: string;
-        };
+        layout: any; // Accept any layout object structure
         timestamp: Date;
       };
       startedAt: Date;
@@ -50,29 +37,25 @@ interface DebugSessionInfo {
     displayHistory: Array<{
       displayRequest: {
         packageName: string;
-        layout: {
-          layoutType: string;
-          text?: string;
-          title?: string;
-        };
+        layout: any; // Accept any layout object structure
         timestamp: Date;
       };
       startedAt: Date;
     }>;
-  };
+  } | any; // Accept DisplayManager directly as well
   dashboardManager: {
     dashboardMode: string;
     alwaysOnEnabled: boolean;
     contentQueue: string[];
-  };
+  } | any; // Accept any dashboard manager
   appConnections: Record<string, { readyState: number }>;
-  lastAudioTimestamp: number;
+  lastAudioTimestamp: number | undefined;
   transcriptionStreams: Record<string, { status: string; language: string }>;
   audioBuffer: {
     chunks: any[];
     lastProcessedSequence: number;
     processingInProgress: boolean;
-  };
+  } | any; // Accept any audio buffer structure
   lc3Service: {
     initialized: boolean;
     status: string;
@@ -83,7 +66,7 @@ interface DebugSessionInfo {
   }>;
 }
 
-type DebuggerEvent = 
+type DebuggerEvent =
   | { type: 'SESSION_UPDATE'; sessionId: string; data: Partial<DebugSessionInfo> }
   | { type: 'SESSION_DISCONNECTED'; sessionId: string; timestamp: string }
   | { type: 'SESSION_CONNECTED'; sessionId: string; timestamp: string }
@@ -117,7 +100,7 @@ export class DebugService {
         languageSegments: session.transcript?.languageSegments || {}
       },
       subscriptionManager: {
-        subscriptions: session.subscriptionManager?.subscriptions ? 
+        subscriptions: session.subscriptionManager?.subscriptions ?
           Object.fromEntries(
             Object.entries(session.subscriptionManager.subscriptions)
               .map(([key, value]) => [key, Array.isArray(value) ? value : []])
@@ -136,8 +119,8 @@ export class DebugService {
           },
           startedAt: session.displayManager.activeDisplay.startedAt
         } : null,
-        displayHistory: Array.isArray(session.displayManager?.displayHistory) ? 
-          session.displayManager.displayHistory.map(item => ({
+        displayHistory: Array.isArray(session.displayManager?.displayHistory) ?
+          session.displayManager.displayHistory.map((item: any) => ({
             displayRequest: {
               packageName: item.displayRequest.packageName,
               layout: {
@@ -153,10 +136,10 @@ export class DebugService {
       dashboardManager: {
         dashboardMode: session.dashboardManager?.dashboardMode || 'inactive',
         alwaysOnEnabled: Boolean(session.dashboardManager?.alwaysOnEnabled),
-        contentQueue: Array.isArray(session.dashboardManager?.contentQueue) ? 
+        contentQueue: Array.isArray(session.dashboardManager?.contentQueue) ?
           session.dashboardManager.contentQueue : []
       },
-      appConnections: session.appConnections ? 
+      appConnections: session.appConnections ?
         Object.fromEntries(
           Object.entries(session.appConnections)
             .map(([key, value]) => [key, { readyState: value?.readyState || 0 }])
@@ -180,7 +163,7 @@ export class DebugService {
     // Add middleware to handle SSE requests
     this.server.on('request', async (req, res) => {
       const url = new URL(req.url || '', `http://${req.headers.host}`);
-      
+
       // REST API endpoint for initial session data
       if (url.pathname === '/api/debug/sessions' && req.method === 'GET') {
         const stats = this.calculateSystemStats();
@@ -209,14 +192,14 @@ export class DebugService {
 
         // Send initial connection message
         res.write(`event: connected\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
-        
+
         // Send initial state
         const stats = this.calculateSystemStats();
-        res.write(`event: sessions\ndata: ${JSON.stringify({ 
-          sessions: Array.from(this.sessions.values()).map(session => this.serializeSession(session)), 
-          stats 
+        res.write(`event: sessions\ndata: ${JSON.stringify({
+          sessions: Array.from(this.sessions.values()).map(session => this.serializeSession(session)),
+          stats
         })}\n\n`);
-        
+
         // Add client
         const client = {
           send: (data: string) => res.write(data)
@@ -242,15 +225,15 @@ export class DebugService {
   private calculateSystemStats(): SystemStats {
     const activeSessions = Array.from(this.sessions.values()).filter(s => !s.disconnectedAt).length;
     const totalSessions = this.sessions.size;
-    
+
     let activeTpas = 0;
     let totalTpas = 0;
-    
+
     this.sessions.forEach(session => {
       totalTpas += (session.installedApps?.length || 0);
       activeTpas += (session.activeAppSessions?.length || 0);
     });
-    
+
     return {
       activeSessions,
       totalSessions,
