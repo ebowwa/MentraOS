@@ -39,6 +39,7 @@ interface SystemEvents {
     code: number;        // WebSocket close code (1000 = normal)
     reason: string;      // Reason provided by server
     wasClean: boolean;   // Whether this was a clean closure
+    permanent?: boolean; // Whether this is a permanent disconnection (no more reconnection attempts)
   };
   'error': WebSocketError | Error;
   'settings_update': AppSettings;

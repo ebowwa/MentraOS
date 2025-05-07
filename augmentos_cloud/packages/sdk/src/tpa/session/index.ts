@@ -1071,6 +1071,16 @@ export class TpaSession {
     const maxAttempts = this.config.maxReconnectAttempts || 3;
     if (this.reconnectAttempts >= maxAttempts) {
       console.log(`🔄 Maximum reconnection attempts (${maxAttempts}) reached, giving up`);
+      
+      // Emit a permanent disconnection event to trigger onStop in the TPA server
+      this.events.emit('disconnected', {
+        message: `Connection permanently lost after ${maxAttempts} failed reconnection attempts`,
+        code: 4000, // Custom code for max reconnection attempts exhausted
+        reason: 'Maximum reconnection attempts exceeded',
+        wasClean: false,
+        permanent: true // Flag this as a permanent disconnection
+      });
+      
       return;
     }
 
@@ -1095,6 +1105,20 @@ export class TpaSession {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error(`❌ [${this.config.packageName}] Reconnection failed: ${errorMessage}`);
       this.events.emit('error', new Error(`Reconnection failed: ${errorMessage}`));
+      
+      // Check if this was the last attempt
+      if (this.reconnectAttempts >= maxAttempts) {
+        console.log(`🔄 [${this.config.packageName}] Final reconnection attempt failed, emitting permanent disconnection`);
+        
+        // Emit permanent disconnection event after the last failed attempt
+        this.events.emit('disconnected', {
+          message: `Connection permanently lost after ${maxAttempts} failed reconnection attempts`,
+          code: 4000, // Custom code for max reconnection attempts exhausted
+          reason: 'Maximum reconnection attempts exceeded',
+          wasClean: false,
+          permanent: true // Flag this as a permanent disconnection
+        });
+      }
     }
   }
 
