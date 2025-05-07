@@ -384,8 +384,8 @@ class DashboardServer extends TpaServer {
       return sessionInfo.weatherCache.data;
     }
     
-    // Default status
-    return "Status: Connected";
+    // Default status note: previously "Status: connected".
+    return "";
   }
   
   /**

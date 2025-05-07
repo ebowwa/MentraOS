@@ -78,9 +78,18 @@ type DebuggerEvent =
 export class DebugService {
   private clients = new Set<{ send: (data: string) => void }>();
   private sessions: Map<string, DebugSessionInfo> = new Map();
+  private isActive = false;
 
   constructor(private server: HTTPServer) {
-    this.setupRoutes();
+    // Only enable debug service in development or debug environments
+    const env = process.env.NODE_ENV || 'production';
+    if (env === 'development' || env === 'debug') {
+      console.log(`🔍 [DebugService] Debug service ENABLED in ${env} environment`);
+      this.isActive = true;
+      this.setupRoutes();
+    } else {
+      console.log('🔒 [DebugService] Debug service DISABLED in production environment');
+    }
   }
 
   private serializeSession(session: DebugSessionInfo): any {
@@ -160,64 +169,92 @@ export class DebugService {
   }
 
   private setupRoutes() {
+    // Double-check that we're in a development environment
+    const env = process.env.NODE_ENV || 'production';
+    if (env !== 'development' && env !== 'debug') {
+      console.warn('🛑 [DebugService] Attempted to setup debug routes in production environment!');
+      return; // Don't set up routes in production
+    }
+    
+    console.log(`🔌 [DebugService] Setting up debug routes`);
+    
     // Add middleware to handle SSE requests
     this.server.on('request', async (req, res) => {
-      const url = new URL(req.url || '', `http://${req.headers.host}`);
+      // Skip if not active (additional safety check)
+      if (!this.isActive) return;
+      
+      try {
+        const url = new URL(req.url || '', `http://${req.headers.host}`);
 
-      // REST API endpoint for initial session data
-      if (url.pathname === '/api/debug/sessions' && req.method === 'GET') {
-        const stats = this.calculateSystemStats();
-        res.writeHead(200, {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        });
-        res.end(JSON.stringify({
-          sessions: Array.from(this.sessions.values()).map(session => this.serializeSession(session)),
-          stats
-        }));
-        return;
-      }
+        // REST API endpoint for initial session data
+        if (url.pathname === '/api/debug/sessions' && req.method === 'GET') {
+          console.log(`🔍 [DebugService] Serving debug sessions data`);
+          const stats = this.calculateSystemStats();
+          res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+          });
+          res.end(JSON.stringify({
+            sessions: Array.from(this.sessions.values()).map(session => this.serializeSession(session)),
+            stats
+          }));
+          return;
+        }
 
-      // SSE endpoint for real-time updates
-      if (url.pathname === '/api/debug/events' && req.method === 'GET') {
-        res.writeHead(200, {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET',
-          'Access-Control-Allow-Headers': 'Content-Type',
-          'Access-Control-Max-Age': '86400'
-        });
+        // SSE endpoint for real-time updates
+        if (url.pathname === '/api/debug/events' && req.method === 'GET') {
+          console.log(`🔄 [DebugService] Starting SSE connection for debug events`);
+          res.writeHead(200, {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET',
+            'Access-Control-Allow-Headers': 'Content-Type',
+            'Access-Control-Max-Age': '86400'
+          });
 
-        // Send initial connection message
-        res.write(`event: connected\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+          // Send initial connection message
+          res.write(`event: connected\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
 
-        // Send initial state
-        const stats = this.calculateSystemStats();
-        res.write(`event: sessions\ndata: ${JSON.stringify({
-          sessions: Array.from(this.sessions.values()).map(session => this.serializeSession(session)),
-          stats
-        })}\n\n`);
+          // Send initial state
+          const stats = this.calculateSystemStats();
+          res.write(`event: sessions\ndata: ${JSON.stringify({
+            sessions: Array.from(this.sessions.values()).map(session => this.serializeSession(session)),
+            stats
+          })}\n\n`);
 
-        // Add client
-        const client = {
-          send: (data: string) => res.write(data)
-        };
-        this.clients.add(client);
+          // Add client
+          const client = {
+            send: (data: string) => res.write(data)
+          };
+          this.clients.add(client);
 
-        // Keep connection alive with heartbeats
-        const heartbeat = setInterval(() => {
-          res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
-        }, 30000);
+          // Keep connection alive with heartbeats
+          const heartbeat = setInterval(() => {
+            res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+          }, 30000);
 
-        // Clean up on close
-        req.on('close', () => {
-          clearInterval(heartbeat);
-          this.clients.delete(client);
-        });
+          // Clean up on close
+          req.on('close', () => {
+            console.log(`👋 [DebugService] SSE client disconnected`);
+            clearInterval(heartbeat);
+            this.clients.delete(client);
+          });
 
-        return;
+          return;
+        }
+      } catch (error) {
+        console.error(`❌ [DebugService] Error handling debug request:`, error);
+        // Send error response if possible
+        try {
+          if (!res.headersSent) {
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Internal server error in debug service' }));
+          }
+        } catch (responseError) {
+          console.error(`❌ [DebugService] Failed to send error response:`, responseError);
+        }
       }
     });
   }
@@ -244,14 +281,24 @@ export class DebugService {
 
   // Broadcast events to all connected clients
   private broadcastEvent(event: DebuggerEvent) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     const message = `event: ${event.type.toLowerCase()}\ndata: ${JSON.stringify(event)}\n\n`;
     this.clients.forEach(client => {
-      client.send(message);
+      try {
+        client.send(message);
+      } catch (error) {
+        console.error('[DebugService] Error sending message to client:', error);
+        // Remove failed client
+        this.clients.delete(client);
+      }
     });
   }
 
   // Public methods for updating session state
   public updateSession(sessionId: string, data: Partial<DebugSessionInfo>) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     const session = this.sessions.get(sessionId);
     if (session) {
       const updatedSession = { ...session, ...data };
@@ -265,6 +312,8 @@ export class DebugService {
   }
 
   public sessionConnected(sessionId: string, session: DebugSessionInfo) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     this.sessions.set(sessionId, session);
     this.broadcastEvent({
       type: 'SESSION_CONNECTED',
@@ -274,6 +323,8 @@ export class DebugService {
   }
 
   public sessionDisconnected(sessionId: string) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     const session = this.sessions.get(sessionId);
     if (session) {
       this.sessions.set(sessionId, { ...session, disconnectedAt: new Date().toISOString() });
@@ -286,6 +337,8 @@ export class DebugService {
   }
 
   public updateTPAState(sessionId: string, tpaId: string, state: any) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     this.broadcastEvent({
       type: 'TPA_STATE_CHANGE',
       sessionId,
@@ -295,6 +348,8 @@ export class DebugService {
   }
 
   public updateDisplay(sessionId: string, display: any) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     this.broadcastEvent({
       type: 'DISPLAY_UPDATE',
       sessionId,
@@ -303,6 +358,8 @@ export class DebugService {
   }
 
   public updateTranscription(sessionId: string, transcript: any) {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     this.broadcastEvent({
       type: 'TRANSCRIPTION_UPDATE',
       sessionId,
@@ -311,6 +368,8 @@ export class DebugService {
   }
 
   public updateSystemStats() {
+    if (!this.isActive) return; // Skip if debug service is not active
+    
     this.broadcastEvent({
       type: 'SYSTEM_STATS_UPDATE',
       stats: this.calculateSystemStats()
