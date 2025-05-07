@@ -1154,6 +1154,14 @@ struct ViewState {
   }
   
   private func loadSettings() async {
+    
+    UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
+    UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+    UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+    
     let defaults = UserDefaults.standard
     
     // Load each setting with appropriate type handling
@@ -1167,22 +1175,8 @@ struct ViewState {
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
-    
-    // For numeric values, provide the default if the key doesn't exist
-    if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
-      headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
-    }
-    
-    if defaults.object(forKey: SettingsKeys.brightness) != nil {
-      brightness = defaults.integer(forKey: SettingsKeys.brightness)
-    }
-    
-    if defaults.object(forKey: SettingsKeys.sensingEnabled) != nil {
-       sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
-     } else {
-       print("Settings loaded: Sensing key did not exist, defaulting to true!")
-       sensingEnabled = true
-     }
+    headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
+    brightness = defaults.integer(forKey: SettingsKeys.brightness)
   
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
