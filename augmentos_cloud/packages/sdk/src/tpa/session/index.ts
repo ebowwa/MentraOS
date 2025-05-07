@@ -57,7 +57,8 @@ import { DashboardAPI } from '../../types/dashboard';
  * const config: TpaSessionConfig = {
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key',
- *   autoReconnect: true
+ *   // Auto-reconnection is enabled by default
+ *   // autoReconnect: true 
  * };
  * ```
  */
@@ -70,7 +71,7 @@ export interface TpaSessionConfig {
   augmentOSWebsocketUrl?: string;
   /** 🔄 Automatically attempt to reconnect on disconnect (default: true) */
   autoReconnect?: boolean;
-  /** 🔁 Maximum number of reconnection attempts (default: 5) */
+  /** 🔁 Maximum number of reconnection attempts (default: 3) */
   maxReconnectAttempts?: number;
   /** ⏱️ Base delay between reconnection attempts in ms (default: 1000) */
   reconnectDelay?: number;
@@ -137,9 +138,9 @@ export class TpaSession {
     // Set defaults and merge with provided config
     this.config = {
       augmentOSWebsocketUrl: `ws://localhost:8002/tpa-ws`, // Use localhost as default
-      autoReconnect: false,
-      maxReconnectAttempts: 0,
-      reconnectDelay: 1000,
+      autoReconnect: true,   // Enable auto-reconnection by default for better reliability
+      maxReconnectAttempts: 3, // Default to 3 reconnection attempts for better resilience
+      reconnectDelay: 1000,  // Start with 1 second delay (uses exponential backoff)
       ...config
     };
     
@@ -461,8 +462,33 @@ export class TpaSession {
         // Connection closure handler
         const closeHandler = (code: number, reason: string) => {
           const reasonStr = reason ? `: ${reason}` : '';
-          this.events.emit('disconnected', `Connection closed (code: ${code})${reasonStr}`);
-          this.handleReconnection();
+          const closeInfo = `Connection closed (code: ${code})${reasonStr}`;
+          
+          // Emit the disconnected event with structured data for better handling
+          this.events.emit('disconnected', {
+            message: closeInfo,
+            code: code,
+            reason: reason || '',
+            wasClean: code === 1000 || code === 1001,
+          });
+          
+          // Only attempt reconnection for abnormal closures
+          // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
+          // 1000 (Normal Closure) and 1001 (Going Away) are normal
+          // 1002-1015 are abnormal, and reason "App stopped" means intentional closure
+          const isNormalClosure = (code === 1000 || code === 1001);
+          const isManualStop = reason && reason.includes('App stopped');
+          
+          // Log closure details for diagnostics
+          console.log(`🔌 [${this.config.packageName}] WebSocket closed with code ${code}${reasonStr}`);
+          console.log(`🔌 [${this.config.packageName}] isNormalClosure: ${isNormalClosure}, isManualStop: ${isManualStop}`);
+          
+          if (!isNormalClosure && !isManualStop) {
+            console.log(`🔌 [${this.config.packageName}] Abnormal closure detected, attempting reconnection`);
+            this.handleReconnection();
+          } else {
+            console.log(`🔌 [${this.config.packageName}] Normal closure detected, not attempting reconnection`);
+          }
         };
         
         this.ws.on('close', closeHandler);
@@ -831,7 +857,17 @@ export class TpaSession {
         else if (isAppStopped(message)) {
           const reason = message.reason || 'unknown';
           const displayReason = `App stopped: ${reason}`;
-          this.events.emit('disconnected', displayReason);
+          
+          // Emit disconnected event with clean closure info to prevent reconnection attempts
+          this.events.emit('disconnected', {
+            message: displayReason,
+            code: 1000, // Normal closure code
+            reason: displayReason,
+            wasClean: true,
+          });
+          
+          // Clear reconnection state
+          this.reconnectAttempts = 0;
         }
         // Handle dashboard mode changes
         else if (isDashboardModeChanged(message)) {
@@ -1025,14 +1061,25 @@ export class TpaSession {
    * 🔄 Handle reconnection with exponential backoff
    */
   private async handleReconnection(): Promise<void> {
-    if (!this.config.autoReconnect ||
-      !this.sessionId ||
-      this.reconnectAttempts >= (this.config.maxReconnectAttempts || 5)) {
+    // Check if reconnection is allowed
+    if (!this.config.autoReconnect || !this.sessionId) {
+      console.log(`🔄 Reconnection skipped: autoReconnect=${this.config.autoReconnect}, sessionId=${this.sessionId ? 'valid' : 'invalid'}`);
       return;
     }
 
-    const delay = (this.config.reconnectDelay || 1000) * Math.pow(2, this.reconnectAttempts);
+    // Check if we've exceeded the maximum attempts
+    const maxAttempts = this.config.maxReconnectAttempts || 3;
+    if (this.reconnectAttempts >= maxAttempts) {
+      console.log(`🔄 Maximum reconnection attempts (${maxAttempts}) reached, giving up`);
+      return;
+    }
+
+    // Calculate delay with exponential backoff
+    const baseDelay = this.config.reconnectDelay || 1000;
+    const delay = baseDelay * Math.pow(2, this.reconnectAttempts);
     this.reconnectAttempts++;
+
+    console.log(`🔄 [${this.config.packageName}] Reconnection attempt ${this.reconnectAttempts}/${maxAttempts} in ${delay}ms`);
 
     // Use the resource tracker for the timeout
     await new Promise<void>(resolve => {
@@ -1040,10 +1087,14 @@ export class TpaSession {
     });
 
     try {
+      console.log(`🔄 [${this.config.packageName}] Attempting to reconnect...`);
       await this.connect(this.sessionId);
+      console.log(`✅ [${this.config.packageName}] Reconnection successful!`);
       this.reconnectAttempts = 0;
     } catch (error) {
-      this.events.emit('error', new Error('Reconnection failed'));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`❌ [${this.config.packageName}] Reconnection failed: ${errorMessage}`);
+      this.events.emit('error', new Error(`Reconnection failed: ${errorMessage}`));
     }
   }
 

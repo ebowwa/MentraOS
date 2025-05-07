@@ -34,7 +34,12 @@ type Handler<T> = (data: T) => void;
 /** 🔄 System events not tied to streams */
 interface SystemEvents {
   'connected': AppSettings | undefined;
-  'disconnected': string;
+  'disconnected': string | {
+    message: string;     // Human-readable close message
+    code: number;        // WebSocket close code (1000 = normal)
+    reason: string;      // Reason provided by server
+    wasClean: boolean;   // Whether this was a clean closure
+  };
   'error': WebSocketError | Error;
   'settings_update': AppSettings;
   'dashboard_mode_change': { mode: DashboardMode | 'none' };
