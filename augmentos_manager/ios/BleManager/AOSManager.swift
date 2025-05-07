@@ -429,7 +429,7 @@ struct ViewState {
         currentViewState = self.viewStates[0]
       }
       
-      if (isDashboard && !contextualDashboard) {
+      if (isDashboard && !self.contextualDashboard) {
         return
       }
       
@@ -553,6 +553,8 @@ struct ViewState {
       // dont send the event to glasses that aren't there:
       return
     }
+    
+    print("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
     switch layoutType {
     case "text_wall":
@@ -1077,24 +1079,24 @@ struct ViewState {
     }
     
     // wait for the g1's to be fully ready:
-    connectTask?.cancel()
-    connectTask = Task {
-      while !(connectTask?.isCancelled ?? true) {
-        print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
-        print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
-        if self.g1Manager?.g1Ready ?? false {
-          // we actualy don't need this line:
-          //          handleDeviceReady()
-          handleRequestStatus()
-          break
-        } else {
-          // todo: ios not the cleanest solution here
-          self.g1Manager?.RN_startScan()
-        }
-        
-        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
-      }
-    }
+//    connectTask?.cancel()
+//    connectTask = Task {
+//      while !(connectTask?.isCancelled ?? true) {
+//        print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
+//        print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
+//        if self.g1Manager?.g1Ready ?? false {
+//          // we actualy don't need this line:
+//          //          handleDeviceReady()
+//          handleRequestStatus()
+//          break
+//        } else {
+//          // todo: ios not the cleanest solution here
+//          self.g1Manager?.RN_startScan()
+//        }
+//        
+//        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
+//      }
+//    }
   }
   
   
@@ -1147,9 +1149,8 @@ struct ViewState {
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
     
-//    print("settings saved")
-//    print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
-//          "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
+    print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
+          "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
   }
   
   private func loadSettings() async {
