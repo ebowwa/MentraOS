@@ -190,7 +190,10 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
     }
     
     // All permissions granted, proceed with connecting to the wearable
-    coreCommunicator.sendConnectWearable(glassesModelName, deviceName);
+    setTimeout(() => {
+      // give some time to show the loader (otherwise it's a bit jarring)
+      coreCommunicator.sendConnectWearable(glassesModelName, deviceName);
+    }, 2000);
     navigation.navigate('GlassesPairingGuideScreen', {
       glassesModelName: glassesModelName,
     });
