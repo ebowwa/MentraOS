@@ -85,7 +85,7 @@ struct ViewState {
   
   @objc public func setup() {
     
-    self.g1Manager = ERG1Manager()
+    // self.g1Manager = ERG1Manager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
     
@@ -452,7 +452,7 @@ struct ViewState {
         //          print("Sending chunk: \(chunk)")
         //          await sendCommand(chunk)
         //        }
-        self.g1Manager?.RN_sendText(text);
+        sendText(text);
         break
       case "double_text_wall":
         let topText = currentViewState.topText
@@ -460,7 +460,7 @@ struct ViewState {
         self.g1Manager?.RN_sendDoubleTextWall(topText, bottomText);
         break
       case "reference_card":
-        self.g1Manager?.RN_sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
+        sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
         break
       default:
         print("UNHANDLED LAYOUT_TYPE \(layoutType)")
@@ -582,8 +582,6 @@ struct ViewState {
   }
   
   func onDisplayEvent(_ event: [String: Any]) {
-    //    print("displayEvent \(event)", event)
-    
     handleDisplayEvent(event)
   }
   
@@ -624,7 +622,7 @@ struct ViewState {
   
   private func sendText(_ text: String) {
     print("Sending text: \(text)")
-    if self.deviceName.contains("Simulated") {
+    if self.deviceName.isEmpty || self.deviceName.contains("Simulated") || self.deviceName.contains("Audio") {
       return
     }
     self.g1Manager?.RN_sendText(text)
@@ -633,7 +631,7 @@ struct ViewState {
   private func disconnect() {
     onMicrophoneStateChange(false)
     
-    if self.deviceName.contains("Simulated") {
+    if self.deviceName.isEmpty || self.deviceName.contains("Simulated") || self.deviceName.contains("Audio") {
       return
     }
     
@@ -809,12 +807,12 @@ struct ViewState {
           Task {
             self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
             if autoBrightnessChanged {
-              self.g1Manager?.RN_sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
+              sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
             } else {
-              self.g1Manager?.RN_sendText("Set brightness to \(value)%")
+              sendText("Set brightness to \(value)%")
             }
             try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
-            self.g1Manager?.RN_sendText(" ")// clear screen
+            sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -827,9 +825,9 @@ struct ViewState {
           self.dashboardHeight = value
           Task {
             self.g1Manager?.RN_setDashboardPosition(value)
-            self.g1Manager?.RN_sendText("Set dashboard position to \(value)")
+            sendText("Set dashboard position to \(value)")
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            self.g1Manager?.RN_sendText(" ")// clear screen
+            sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -1014,16 +1012,16 @@ struct ViewState {
       // Check if we've completed all cycles
       if cycles >= totalCycles {
         // End animation with final message
-        self.g1Manager?.RN_sendText("                  /// AugmentOS Connected \\\\\\")
+        self.sendText("                  /// AugmentOS Connected \\\\\\")
         animationQueue.asyncAfter(deadline: .now() + 1.0) {
-          self.g1Manager?.RN_sendText(" ")
+          self.sendText(" ")
         }
         return
       }
       
       // Display current animation frame
       let frameText = "                    \(arrowFrames[frameIndex]) AugmentOS Booting \(arrowFrames[frameIndex])"
-      self.g1Manager?.RN_sendText(frameText)
+      self.sendText(frameText)
       
       // Move to next frame
       frameIndex = (frameIndex + 1) % arrowFrames.count
