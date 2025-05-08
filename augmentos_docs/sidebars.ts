@@ -32,6 +32,8 @@ const sidebars: SidebarsConfig = {
       items: [
         'events',
         'layouts',
+        'tools',
+        'webview-auth-overview',
         {
           type: 'doc',
           id: 'tpa-lifecycle',
@@ -67,10 +69,11 @@ const sidebars: SidebarsConfig = {
             'reference/interfaces/layout-types',
             'reference/interfaces/webhook-types',
             'reference/interfaces/message-types',
+            'reference/interfaces/tool-types',
           ],
         },
-        'reference/token-utils',
         'reference/utilities',
+        'reference/webview-auth',
       ],
     },
     {

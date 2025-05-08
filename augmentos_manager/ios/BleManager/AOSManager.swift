@@ -49,6 +49,7 @@ struct ViewState {
   private var bypassAudioEncoding: Bool = false;
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
+  private var connectTask: Task<Void, Never>?
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
@@ -371,13 +372,15 @@ struct ViewState {
     Task {
       // Only enable microphone if sensing is also enabled
       let actuallyEnabled = isEnabled && self.sensingEnabled
+
+      let glassesHasMic = getGlassesHasMic()
       
       // if the glasses dont have a mic, use the onboard mic anyways
-      let useBoardMic = self.useOnboardMic || (!getGlassesHasMic())
+      let useBoardMic = self.useOnboardMic || (!glassesHasMic)
       let useGlassesMic = actuallyEnabled && !useBoardMic
       let useOnboardMic = actuallyEnabled && useBoardMic
 
-      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useBoardMic) useGlassesMic: \(useGlassesMic)")
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useBoardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic)")
 
       await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
       
@@ -396,13 +399,9 @@ struct ViewState {
           return
         }
         
-        if !micManager.isRecording {
-          micManager.startRecording()
-        }
+        micManager.startRecording()
       } else {
-        if micManager.isRecording {
-          micManager.stopRecording()
-        }
+        micManager.stopRecording()
       }
     }
   }
@@ -540,7 +539,6 @@ struct ViewState {
     self.viewStates[stateIndex].layoutType = layoutType
     
     
-    
     var text = layout["text"] as? String ?? " "
     var topText = layout["topText"] as? String ?? " "
     var bottomText = layout["bottomText"] as? String ?? " "
@@ -550,6 +548,11 @@ struct ViewState {
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
+
+    if self.deviceName.contains("Simulated") {
+      // dont send the event to glasses that aren't there:
+      return
+    }
     
     switch layoutType {
     case "text_wall":
@@ -847,12 +850,13 @@ struct ViewState {
   }
   
   private func handleDisconnectWearable() {
+    connectTask?.cancel()
     self.g1Manager?.disconnect()
     handleRequestStatus()
   }
 
   private func getGlassesHasMic() -> Bool {
-    if self.deviceName.contains("G1") {
+    if self.defaultWearable?.contains("G1") ?? false {
       return true
     }
     return false
@@ -1072,9 +1076,10 @@ struct ViewState {
       }
     }
     
-//    // wait for the g1's to be fully ready:
-    Task {
-      while !Task.isCancelled {
+    // wait for the g1's to be fully ready:
+    connectTask?.cancel()
+    connectTask = Task {
+      while !(connectTask?.isCancelled ?? true) {
         print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
         print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
         if self.g1Manager?.g1Ready ?? false {
@@ -1171,6 +1176,13 @@ struct ViewState {
       brightness = defaults.integer(forKey: SettingsKeys.brightness)
     }
     
+    if defaults.object(forKey: SettingsKeys.sensingEnabled) != nil {
+       sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
+     } else {
+       print("Settings loaded: Sensing key did not exist, defaulting to true!")
+       sensingEnabled = true
+     }
+  
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
     self.settingsLoadedSemaphore.signal()

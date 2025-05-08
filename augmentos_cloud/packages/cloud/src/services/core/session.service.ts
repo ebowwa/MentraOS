@@ -18,6 +18,7 @@ import { AudioWriter } from "../debug/audio-writer";
 import { systemApps } from './system-apps';
 import { SubscriptionManager } from './subscription.manager'; // Import the new manager
 import { Logger } from 'winston';
+import { DebugService } from '../debug/debug-service';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
 const LOG_AUDIO = false;
@@ -54,7 +55,12 @@ export interface ExtendedUserSession extends UserSession {
   cleanupTimerId?: NodeJS.Timeout;
   websocket: WebSocket;
   displayManager: DisplayManager;
-  transcript: { segments: TranscriptSegment[] };
+  // Add dashboard manager to the user session
+  dashboardManager: any; // Will import and use proper type later to avoid circular dependencies
+  transcript: { 
+    segments: TranscriptSegment[];  // For backward compatibility (English)
+    languageSegments?: Map<string, TranscriptSegment[]>; // Language-indexed map for multi-language support
+  };
   bufferedAudio: ArrayBufferLike[]; // More specific type
   lastAudioTimestamp?: number;
   recognizer?: any; // Define type from MS SDK if possible
@@ -72,6 +78,11 @@ export interface ExtendedUserSession extends UserSession {
 export class SessionService {
   private activeSessions = new Map<string, ExtendedUserSession>();
   private sessionsByUser = new Map<string, ExtendedUserSession>();
+  private debugService: DebugService;
+
+  constructor(debugService: DebugService) {
+    this.debugService = debugService;
+  }
 
   async createSession(ws: WebSocket, userId: string): Promise<ExtendedUserSession> {
     const existingSession = this.sessionsByUser.get(userId);
@@ -95,6 +106,34 @@ export class SessionService {
       // Ensure installedApps are fresh if reusing
       existingSession.installedApps = await appService.getAllApps(userId);
 
+      // Notify debug service of session reconnection
+      this.debugService.sessionConnected(existingSession.sessionId, {
+        sessionId: existingSession.sessionId,
+        userId: existingSession.userId,
+        startTime: existingSession.startTime.toISOString(),
+        disconnectedAt: null,
+        activeAppSessions: existingSession.activeAppSessions,
+        installedApps: existingSession.installedApps,
+        loadingApps: existingSession.loadingApps,
+        OSSettings: existingSession.OSSettings,
+        isTranscribing: existingSession.isTranscribing,
+        transcript: existingSession.transcript,
+        subscriptionManager: {
+          subscriptions: Object.fromEntries(Array.from(existingSession.subscriptionManager.getAllSubscriptions()).map(([k, v]) => [k, Array.from(v)]))
+        },
+        displayManager: existingSession.displayManager,
+        dashboardManager: existingSession.dashboardManager,
+        appConnections: Object.fromEntries(Array.from(existingSession.appConnections.entries()).map(([k, v]) => [k, { readyState: v.readyState }])),
+        lastAudioTimestamp: existingSession.lastAudioTimestamp,
+        transcriptionStreams: Object.fromEntries(Array.from(existingSession.transcriptionStreams.entries()).map(([k, v]) => [k, { status: 'active', language: k }])),
+        audioBuffer: existingSession.audioBuffer,
+        lc3Service: existingSession.lc3Service ? {
+          initialized: true,
+          status: 'active'
+        } : null,
+        recentEvents: []
+      });
+
       return existingSession;
     }
 
@@ -116,7 +155,11 @@ export class SessionService {
       appConnections: new Map<string, WebSocket | any>(),
       OSSettings: { brightness: 50, volume: 50 },
       displayManager: new DisplayManager(),
-      transcript: { segments: [] },
+      // Will add dashboardManager after the session is fully constructed
+      transcript: { 
+        segments: [],
+        languageSegments: new Map<string, TranscriptSegment[]>() 
+      },
       websocket: ws,
       bufferedAudio: [],
       disconnectedAt: null,
@@ -148,12 +191,50 @@ export class SessionService {
       sessionLogger.error(`❌ Failed to initialize LC3 service for session ${sessionId}:`, error);
     }
 
-    // Finalize and Store Session
+    // Finalize the user session
     const userSession = partialSession as ExtendedUserSession;
 
+    // Now create the DashboardManager for this session
+    // We need to dynamically import to avoid circular dependency issues
+    const { DashboardManager } = require('../dashboard/DashboardManager');
+    userSession.dashboardManager = new DashboardManager(userSession, {
+      queueSize: 5,
+      updateIntervalMs: 500,
+      alwaysOnEnabled: false
+    });
+
+    // Store the session
     this.activeSessions.set(sessionId, userSession);
     this.sessionsByUser.set(userId, userSession);
     sessionLogger.info(`[session.service] Created and stored new session ${sessionId} for user ${userId}`);
+
+    // Notify debug service of new session
+    this.debugService.sessionConnected(sessionId, {
+      sessionId: userSession.sessionId,
+      userId: userSession.userId,
+      startTime: userSession.startTime.toISOString(),
+      disconnectedAt: null,
+      activeAppSessions: userSession.activeAppSessions,
+      installedApps: userSession.installedApps,
+      loadingApps: userSession.loadingApps,
+      OSSettings: userSession.OSSettings,
+      isTranscribing: userSession.isTranscribing,
+      transcript: userSession.transcript,
+      subscriptionManager: {
+        subscriptions: {}
+      },
+      displayManager: userSession.displayManager,
+      dashboardManager: userSession.dashboardManager,
+      appConnections: {},
+      lastAudioTimestamp: userSession.lastAudioTimestamp,
+      transcriptionStreams: {},
+      audioBuffer: userSession.audioBuffer,
+      lc3Service: userSession.lc3Service ? {
+        initialized: true,
+        status: 'active'
+      } : null,
+      recentEvents: []
+    });
 
     return userSession;
   }
@@ -243,10 +324,41 @@ export class SessionService {
     }
   }
 
-  addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment): void {
-    if (userSession && userSession.transcript) { // Check transcript exists
+  addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment, language: string = 'en-US'): void {
+    if (!userSession || !userSession.transcript) return;
+    
+    // Initialize languageSegments if not exists
+    if (!userSession.transcript.languageSegments) {
+      userSession.transcript.languageSegments = new Map<string, TranscriptSegment[]>();
+    }
+    
+    // Ensure the language entry exists in the map
+    if (!userSession.transcript.languageSegments.has(language)) {
+      userSession.transcript.languageSegments.set(language, []);
+    }
+    
+    // Get the current segments for this language
+    const languageSpecificSegments = userSession.transcript.languageSegments.get(language)!;
+    
+    // Add the segment
+    languageSpecificSegments.push(segment);
+    
+    // For backward compatibility, also add to segments array if it's English
+    if (language === 'en-US') {
       userSession.transcript.segments.push(segment);
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    }
+    
+    // Prune old segments (older than 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    
+    // Clean up the language-specific segments
+    userSession.transcript.languageSegments.set(
+      language,
+      languageSpecificSegments.filter(seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo)
+    );
+    
+    // Clean up the legacy segments array for backward compatibility
+    if (language === 'en-US') {
       userSession.transcript.segments = userSession.transcript.segments.filter(
         seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
       );
@@ -391,6 +503,9 @@ export class SessionService {
 
     userSession.logger.info(`[Ending session] Starting cleanup for ${userSession.sessionId}`);
 
+    // Notify debug service of session disconnection before cleanup
+    this.debugService.sessionDisconnected(userSession.sessionId);
+
     if (userSession.cleanupTimerId) {
       clearTimeout(userSession.cleanupTimerId);
       userSession.logger.info(`[session.service]: Cleared cleanup timer during endSession for ${userSession.sessionId}`);
@@ -418,7 +533,22 @@ export class SessionService {
 
     // SubscriptionManager is part of userSession, no specific cleanup needed here
 
-    if (userSession.transcript) userSession.transcript.segments = []; // Check exists
+    // Clean up dashboard manager if it exists
+    if (userSession.dashboardManager && typeof userSession.dashboardManager.dispose === 'function') {
+      userSession.logger.info(`🧹 Cleaning up dashboard manager for session ${userSession.sessionId}`);
+      userSession.dashboardManager.dispose();
+    }
+
+    // Clear transcript data
+    if (userSession.transcript) {
+      userSession.transcript.segments = []; // Clear legacy segments
+      
+      // Clear language-specific segments if they exist
+      if (userSession.transcript.languageSegments) {
+        userSession.transcript.languageSegments.clear();
+      }
+    }
+    
     userSession.bufferedAudio = [];
 
     userSession.appConnections.forEach((ws, appName) => {
@@ -494,7 +624,9 @@ export class SessionService {
       userSession.logger.info(
         `Session ${userSession.sessionId} marked as disconnected at ${userSession.disconnectedAt.toISOString()}`
       );
-      // Keep in activeSessions until grace period timeout in websocket service
+
+      // Notify debug service of session disconnection
+      this.debugService.sessionDisconnected(userSession.sessionId);
     }
   }
 
@@ -507,6 +639,35 @@ export class SessionService {
   }
 }
 
-export const sessionService = new SessionService();
-logger.info('✅ Session Service Initialized');
-export default sessionService;
+// We'll initialize this in index.ts after creating the debug service
+let _sessionService: SessionService | null = null;
+
+export function initializeSessionService(debugService: DebugService): SessionService {
+  if (!_sessionService) {
+    _sessionService = new SessionService(debugService);
+    logger.info('✅ Session Service Initialized');
+  }
+  return _sessionService;
+}
+
+export function getSessionService(): SessionService {
+  if (!_sessionService) {
+    throw new Error('Session service not initialized');
+  }
+  return _sessionService;
+}
+
+// Create a proxy object that forwards calls to the real service once initialized
+const sessionServiceProxy = new Proxy({} as SessionService, {
+  get(target, prop: keyof SessionService) {
+    const service = _sessionService;
+    if (!service) {
+      throw new Error('Session service accessed before initialization');
+    }
+    return service[prop];
+  }
+});
+
+// Export both the named export and default export using the same proxy
+export const sessionService = sessionServiceProxy;
+export default sessionServiceProxy;

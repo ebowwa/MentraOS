@@ -22,6 +22,17 @@ export interface TokenExchangeResponse {
   coreToken: string;
 }
 
+// Temporary token exchange response
+export interface TempTokenExchangeResponse {
+  success: boolean;
+  userId?: string;
+  tokens?: {
+    supabaseToken?: string;
+    coreToken?: string;
+  };
+  error?: string;
+}
+
 // User interface
 export interface User {
   id: string;
@@ -117,6 +128,13 @@ const appService = {
    */
   uninstallApp: async (packageName: string): Promise<boolean> => {
     try {
+      // First stop the app and verify it was successful
+      const stopSuccess = await appService.stopApp(packageName);
+      if (!stopSuccess) {
+        throw new Error(`Failed to stop app ${packageName} before uninstallation`);
+      }
+      
+      // Then uninstall it
       const response = await axios.post<ApiResponse<null>>(
         `${getBaseUrl()}/api/apps/uninstall/${packageName}`
       );
@@ -220,6 +238,45 @@ const authService = {
     } catch (error) {
       console.error("Error exchanging token:", error);
       throw error;
+    }
+  },
+
+  /**
+   * Exchange a temporary token for user tokens
+   * @param tempToken The temporary token from URL
+   * @param packageName The package name requesting the exchange
+   * @returns Promise with exchange result containing tokens and user ID
+   */
+  exchangeTemporaryToken: async (tempToken: string, packageName: string): Promise<TempTokenExchangeResponse> => {
+    try {
+      const response = await axios.post<TempTokenExchangeResponse>(
+        `${getBaseUrl()}/api/auth/exchange-store-token`,
+        { aos_temp_token: tempToken, packageName },
+        {
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
+      
+      if (response.status === 200 && response.data.success) {
+        return response.data;
+      } else {
+        return { 
+          success: false, 
+          error: response.data.error || `Failed with status ${response.status}` 
+        };
+      }
+    } catch (error) {
+      console.error("Error exchanging temporary token:", error);
+      if (axios.isAxiosError(error) && error.response) {
+        return { 
+          success: false, 
+          error: error.response.data?.error || error.message 
+        };
+      }
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      };
     }
   }
 };

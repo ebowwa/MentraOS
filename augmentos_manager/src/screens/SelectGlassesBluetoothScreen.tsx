@@ -147,13 +147,13 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
   React.useEffect(() => {
     // If puck gets d/c'd here, return to home
     if (!status.core_info.puck_connected) {
-      console.log("RETURN HOME FROM PAIR SCREEN: DISCONNECTED FROM PUCK")
+      // console.log("RETURN HOME FROM PAIR SCREEN: DISCONNECTED FROM PUCK")
       navigation.navigate('Home');
     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      console.log("RETURN HOME FROM PAIR SCREEN: GOT MODEL NAME: " + status.glasses_info?.model_name);
+      // console.log("RETURN HOME FROM PAIR SCREEN: GOT MODEL NAME: " + status.glasses_info?.model_name);
       navigation.navigate('Home');
     }
   }, [status]);

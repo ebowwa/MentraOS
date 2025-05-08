@@ -22,7 +22,7 @@ services:
     SERVICE_NAME: "cloud"
 - name: dashboard-manager
   type: web
-  run: node packages/apps/dashboard-manager/dist/index.js
+  run: node packages/apps/dashboard/dist/index.js
   port: 80
   cpuCores: 0.5
   ramMegabytes: 512

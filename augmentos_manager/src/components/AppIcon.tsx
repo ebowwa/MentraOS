@@ -1,22 +1,19 @@
 // AppIcon.tsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { AppInfo } from '../AugmentOSStatusParser';
-import LinearGradient from 'react-native-linear-gradient';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
-import { getAppImage } from '../logic/getAppImage';
-import { FallbackImageBackground } from './FallbackImageBackground';
 import { saveSetting, loadSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
+import { AppInterface } from '../providers/AppStatusProvider';
 
 interface AppIconProps {
-    app: AppInfo;
+    app: AppInterface;
     isForegroundApp?: boolean;
     onClick?: () => void;
-    style?: object;
+    style?: ViewStyle;
     isDarkTheme?: boolean;
+    showLabel?: boolean;
 }
 
 const AppIcon: React.FC<AppIconProps> = ({
@@ -25,8 +22,9 @@ const AppIcon: React.FC<AppIconProps> = ({
     onClick,
     style,
     isDarkTheme = false,
+    showLabel = false,
 }) => {
-  const navigation = useNavigation<NavigationProps>();
+    const navigation = useNavigation<NavigationProps>();
 
     const openAppSettings = async () => {
         // Mark onboarding as completed when user long-presses an app icon
@@ -54,83 +52,41 @@ const AppIcon: React.FC<AppIconProps> = ({
             onLongPress={openAppSettings}
             delayLongPress={500} // Make long press easier to trigger
             activeOpacity={0.7}
-            style={[styles.appWrapper, style]}
+            style={[styles.container, style]}
             accessibilityLabel={`Launch ${app.name}`}
             accessibilityRole="button"
         >
-            <LinearGradient
-                colors={isForegroundApp ? ['#ADE7FF', '#FFB2F9', '#FFE396'] : ['transparent', 'transparent']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.linearGradient}
-            >
-                <View
+            <Image
+                source={{ uri: app.logoURL }}
+                style={styles.icon}
+            />
+
+            {showLabel && (
+                <Text
                     style={[
-                        styles.appIconWrapper,
-                        isDarkTheme ? styles.appIconWrapperDark : styles.appIconWrapperLight,
+                        styles.appName,
+                        isDarkTheme ? styles.appNameDark : styles.appNameLight,
                     ]}
+                    numberOfLines={2}
                 >
-                    <FallbackImageBackground
-                        source={getAppImage(app)}
-                        // source={{ uri: app.icon }}
-                        style={styles.appIcon}
-                        imageStyle={styles.appIconRounded}
-                    />
-                </View>
-            </LinearGradient>
-
-            {isForegroundApp && (
-                <View style={styles.squareBadge}>
-                    <FontAwesome name="star" size={12} color="#FFFFFF" />
-                </View>
+                    {app.name}
+                </Text>
             )}
-
-            <Text
-                style={[
-                    styles.appName,
-                    isDarkTheme ? styles.appNameDark : styles.appNameLight,
-                ]}
-                numberOfLines={2}
-            >
-                {app.name}
-            </Text>
         </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
-    linearGradient: {
-        borderRadius: 23,
-        padding: 2,
-    },
-    appWrapper: {
-        alignItems: 'center',
-        width: 70,
-        height: 100,
-        borderColor: '#E5E5EA',
-    },
-    appIconWrapper: {
-        width: 65,
-        height: 65,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 0,
+    container: {
+        width: 50,
+        height: 50,
+        borderRadius: 12,
         overflow: 'hidden',
-        // borderWidth: 1,
     },
-    appIconWrapperLight: {
-        borderColor: '#E5E5EA',
-    },
-    appIconWrapperDark: {
-        borderColor: '#333333',
-    },
-    appIcon: {
+    icon: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
-    },
-    appIconRounded: {
-        borderRadius: 15,
     },
     appName: {
         marginTop: 5,

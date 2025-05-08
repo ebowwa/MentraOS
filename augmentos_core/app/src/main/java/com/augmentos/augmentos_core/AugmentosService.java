@@ -192,6 +192,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private WebSocketLifecycleManager webSocketLifecycleManager;
     private boolean isMicEnabledForFrontend = false;
 
+    private boolean isInitializing = false;
+
     public AugmentosService() {
     }
 
@@ -210,6 +212,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 if (connectionState == SmartGlassesConnectionState.CONNECTED) {
                     Log.d(TAG, "Got event for onGlassesConnected.. CONNECTED ..");
                     Log.d(TAG, "****************** SENDING REFERENCE CARD: CONNECTED TO AUGMENT OS");
+                    isInitializing = true;
                     playStartupSequenceOnSmartGlasses();
                     asrPlanner.updateAsrLanguages();
                 } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
@@ -694,6 +697,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                             ), 3000); // Delay of 3 seconds
                     }
 
+                    // Set isInitializing to false after booting sequence is finished, with 100ms delay
+                    uiHandler.postDelayed(() -> isInitializing = false, 500);
                     return; // Stop looping
                 }
 
@@ -833,58 +838,62 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     public Runnable parseDisplayEventMessage(JSONObject rawMsg) {
-            try {
-                JSONObject msg = generateTemplatedJsonFromServer(rawMsg);
+        if(isInitializing) {
+            return () -> {};
+        }
+
+        try {
+            JSONObject msg = generateTemplatedJsonFromServer(rawMsg);
 
 //                Log.d(TAG, "Parsed message: " + msg.toString());
 
-                JSONObject layout = msg.getJSONObject("layout");
-                String layoutType = layout.getString("layoutType");
-                String title;
-                String text;
-                switch (layoutType) {
-                    case "empty":
-                        return () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine);
-                    case "reference_card":
-                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null
-                                && !layout.getString("title").contains("AugmentOS")) {
-                            title = layout.getString("title") + " | " + cachedDashboardTopLine;
-                        } else {
-                            title = layout.getString("title");
-                        }
-                        text = layout.getString("text");
-                        return () -> smartGlassesManager.sendReferenceCard(title, text);
-                    case "text_wall":
-                    case "text_line": // This assumes that the dashboard doesn't use textwall layout
-                        text = layout.getString("text");
-                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null) {
-                            String finalText = cachedDashboardTopLine + "\n" + text;
-                            return () -> smartGlassesManager.sendTextWall(finalText);
-                        } else {
-                            return () -> smartGlassesManager.sendTextWall(text);
-                        }
-                    case "double_text_wall":
-                        String topText = layout.getString("topText");
-                        String bottomText = layout.getString("bottomText");
-                        return () -> smartGlassesManager.sendDoubleTextWall(topText, bottomText);
-                    case "text_rows":
-                        JSONArray rowsArray = layout.getJSONArray("text");
-                        String[] stringsArray = new String[rowsArray.length()];
-                        for (int k = 0; k < rowsArray.length(); k++)
-                            stringsArray[k] = rowsArray.getString(k);
-                        return () -> smartGlassesManager.sendRowsCard(stringsArray);
-                    case "bitmap_view":
-                        String base64Data = layout.getString("data");
-                        byte[] decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
-                        Bitmap bmp = BitmapJavaUtils.bytesToBitmap(decodedBytes);
-                        return () -> smartGlassesManager.sendBitmap(bmp);
-                    default:
-                        Log.d(TAG, "ISSUE PARSING LAYOUT");
-                }
-            } catch (JSONException e) {
-                e.printStackTrace();
+            JSONObject layout = msg.getJSONObject("layout");
+            String layoutType = layout.getString("layoutType");
+            String title;
+            String text;
+            switch (layoutType) {
+                case "empty":
+                    return () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine);
+                case "reference_card":
+                    if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null
+                            && !layout.getString("title").contains("AugmentOS")) {
+                        title = layout.getString("title") + " | " + cachedDashboardTopLine;
+                    } else {
+                        title = layout.getString("title");
+                    }
+                    text = layout.getString("text");
+                    return () -> smartGlassesManager.sendReferenceCard(title, text);
+                case "text_wall":
+                case "text_line": // This assumes that the dashboard doesn't use textwall layout
+                    text = layout.getString("text");
+                    if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null) {
+                        String finalText = cachedDashboardTopLine + "\n" + text;
+                        return () -> smartGlassesManager.sendTextWall(finalText);
+                    } else {
+                        return () -> smartGlassesManager.sendTextWall(text);
+                    }
+                case "double_text_wall":
+                    String topText = layout.getString("topText");
+                    String bottomText = layout.getString("bottomText");
+                    return () -> smartGlassesManager.sendDoubleTextWall(topText, bottomText);
+                case "text_rows":
+                    JSONArray rowsArray = layout.getJSONArray("text");
+                    String[] stringsArray = new String[rowsArray.length()];
+                    for (int k = 0; k < rowsArray.length(); k++)
+                        stringsArray[k] = rowsArray.getString(k);
+                    return () -> smartGlassesManager.sendRowsCard(stringsArray);
+                case "bitmap_view":
+                    String base64Data = layout.getString("data");
+                    byte[] decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
+                    Bitmap bmp = BitmapJavaUtils.bytesToBitmap(decodedBytes);
+                    return () -> smartGlassesManager.sendBitmap(bmp);
+                default:
+                    Log.d(TAG, "ISSUE PARSING LAYOUT");
             }
-            return () -> {};
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        return () -> {};
     }
 
     /**
