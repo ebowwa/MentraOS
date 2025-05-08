@@ -11,6 +11,7 @@ import {
   Alert,
   AppState,
   NativeModules,
+  Linking,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -54,8 +55,8 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
   );
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] =
     React.useState(status.core_info.contextual_dashboard_enabled);
-  const [notificationsEnabled, setNotificationsEnabled] = React.useState(false);
-  const [calendarEnabled, setCalendarEnabled] = React.useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = React.useState(true);
+  const [calendarEnabled, setCalendarEnabled] = React.useState(true);
   const [calendarPermissionPending, setCalendarPermissionPending] =
     React.useState(false);
   const [appState, setAppState] = React.useState(AppState.currentState);
@@ -215,11 +216,40 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
         }
       }
     } else {
-      // If turning off, stop notification service on Android
+      // If turning off, show alert and navigate to settings instead of just toggling off
       if (Platform.OS === 'android') {
-        await NotificationService.stopNotificationListenerService();
+        showAlert(
+          'Revoke Notification Access',
+          'To revoke notification access, please go to your device settings and disable notification access for AugmentOS Manager.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Go to Settings',
+              onPress: () => {
+                if (NativeModules.NotificationAccess && NativeModules.NotificationAccess.requestNotificationAccess) {
+                  NativeModules.NotificationAccess.requestNotificationAccess();
+                }
+              },
+            },
+          ]
+        );
+      } else {
+        // iOS: open app settings
+        showAlert(
+          'Revoke Notification Access',
+          'To revoke notification access, please go to your device settings and disable notifications for AugmentOS Manager.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Go to Settings',
+              onPress: () => {
+                Linking.openSettings();
+              },
+            },
+          ]
+        );
       }
-      setNotificationsEnabled(false);
+      // Do not immediately setNotificationsEnabled(false) or stop the service
     }
   };
 
