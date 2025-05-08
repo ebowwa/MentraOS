@@ -772,11 +772,16 @@ struct ViewState {
             print("update_glasses_brightness invalid params")
             break
           }
+          let autoBrightnessChanged = self.autoBrightness != autoBrightness
           self.brightness = value
           self.autoBrightness = autoBrightness
           Task {
             self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
-            self.g1Manager?.RN_sendText("Set brightness to \(value)%")
+            if autoBrightnessChanged {
+              self.g1Manager?.RN_sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
+            } else {
+              self.g1Manager?.RN_sendText("Set brightness to \(value)%")
+            }
             try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
             self.g1Manager?.RN_sendText(" ")// clear screen
           }
