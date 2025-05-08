@@ -616,6 +616,11 @@ struct ViewState {
       self.g1Manager?.RN_startScan()
     }
   }
+
+  private func handleSetServerUrl(url: String) {
+    print("Setting server URL to: \(url)")
+    self.serverComms.setServerUrl(url)
+  }
   
   @objc func handleCommand(_ command: String) {
     print("Received command: \(command)")
@@ -650,6 +655,7 @@ struct ViewState {
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case bypassVad = "bypass_vad_for_debugging"
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
+      case setServerUrl = "set_server_url"
       case unknown
     }
     
@@ -672,6 +678,13 @@ struct ViewState {
         
         // Process based on command type
         switch commandType {
+        case .setServerUrl:
+          guard let params = params, let url = params["url"] as? String else {
+            print("set_server_url invalid params")
+            break
+          }
+          handleSetServerUrl(url: url)
+          break
         case .setAuthSecretKey:
           if let params = params,
              let userId = params["userId"] as? String,

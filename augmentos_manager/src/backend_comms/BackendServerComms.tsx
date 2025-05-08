@@ -1,10 +1,10 @@
 // backend_comms/BackendServerComms.ts
-import axios, { AxiosRequestConfig } from 'axios';
-import { Config } from 'react-native-config';
+import axios, {AxiosRequestConfig} from 'axios';
+import {Config} from 'react-native-config';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
-import { loadSetting } from '../logic/SettingsHelper';
-import { SETTINGS_KEYS } from '../consts';
-import { AppInterface } from '../providers/AppStatusProvider';
+import {loadSetting} from '../logic/SettingsHelper';
+import {SETTINGS_KEYS} from '../consts';
+import {AppInterface} from '../providers/AppStatusProvider';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -29,7 +29,9 @@ export default class BackendServerComms {
     const port = Config.AUGMENTOS_PORT;
     const protocol = secure ? 'https' : 'http';
     const defaultServerUrl = `${protocol}://${host}:${port}`;
-    console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`);
+    console.log(
+      `${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`,
+    );
     return defaultServerUrl;
   }
 
@@ -43,18 +45,21 @@ export default class BackendServerComms {
     }
     return BackendServerComms.instance;
   }
-  
+
   public setCoreToken(token: string | null): void {
     this.coreToken = token;
     console.log(`${this.TAG}: Core token ${token ? 'set' : 'cleared'}`);
   }
-  
+
   public getCoreToken(): string | null {
     return this.coreToken;
   }
-  
 
-  public async restRequest(endpoint: string, data: any, callback: Callback): Promise<void> {
+  public async restRequest(
+    endpoint: string,
+    data: any,
+    callback: Callback,
+  ): Promise<void> {
     try {
       const baseUrl = await this.getServerUrl();
       const url = baseUrl + endpoint;
@@ -66,7 +71,7 @@ export default class BackendServerComms {
         headers: {
           'Content-Type': 'application/json',
         },
-        ...(data && { data }),
+        ...(data && {data}),
       };
 
       // Make the request
@@ -88,7 +93,7 @@ export default class BackendServerComms {
       callback.onFailure(-1);
     }
   }
-  
+
   /**
    * Send error report to backend server
    * @param reportData The error report data
@@ -108,7 +113,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`,
+        Authorization: `Bearer ${this.coreToken}`,
       },
       data: reportData,
     };
@@ -121,7 +126,10 @@ export default class BackendServerComms {
         throw new Error(`Error sending report: ${response.statusText}`);
       }
     } catch (error: any) {
-      console.error(`${this.TAG}: Error sending report -`, error.message || error);
+      console.error(
+        `${this.TAG}: Error sending report -`,
+        error.message || error,
+      );
       throw error;
     }
   }
@@ -132,17 +140,17 @@ export default class BackendServerComms {
     const config: AxiosRequestConfig = {
       method: 'POST',
       url,
-      headers: { 'Content-Type': 'application/json' },
-      data: { supabaseToken },
+      headers: {'Content-Type': 'application/json'},
+      data: {supabaseToken},
     };
 
     try {
       const response = await axios(config);
       if (response.status === 200 && response.data) {
-        console.log("GOT A RESPONSE!!!")
-        console.log("\n\n");
+        console.log('GOT A RESPONSE!!!');
+        console.log('\n\n');
         console.log(JSON.stringify(response.data));
-        console.log("\n\n\n\n");
+        console.log('\n\n\n\n');
         // Store the token internally
         this.setCoreToken(response.data.coreToken);
         return response.data.coreToken;
@@ -168,7 +176,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`,
+        Authorization: `Bearer ${this.coreToken}`,
       },
     };
 
@@ -187,7 +195,10 @@ export default class BackendServerComms {
   }
 
   // New method to update a TPA setting on the server.
-  public async updateTpaSetting(tpaName: string, update: { key: string; value: any }): Promise<any> {
+  public async updateTpaSetting(
+    tpaName: string,
+    update: {key: string; value: any},
+  ): Promise<any> {
     if (!this.coreToken) {
       throw new Error('No core token available for authentication');
     }
@@ -201,7 +212,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`,
+        Authorization: `Bearer ${this.coreToken}`,
       },
       data: update,
     };
@@ -220,81 +231,84 @@ export default class BackendServerComms {
     }
   }
 
-    /**
+  /**
    * Start an app using the REST API
    * @param packageName Package name of the app to start
    * @returns Response including app state
    */
-    public async startApp(packageName: string): Promise<any> {
-      if (!this.coreToken) {
-        throw new Error('No core token available for authentication');
-      }
-
-      const baseUrl = await this.getServerUrl();
-      const url = `${baseUrl}/apps/${packageName}/start`;
-      console.log('Starting app:', packageName);
-  
-      const config: AxiosRequestConfig = {
-        method: 'POST',
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.coreToken}`,
-        },
-      };
-  
-      try {
-        const response = await axios(config);
-        if (response.status === 200 && response.data) {
-          console.log('App started successfully:', packageName);
-          return response.data;
-        } else {
-          throw new Error(`Bad response: ${response.statusText}`);
-        }
-      } catch (error: any) {
-        //console.error('Error starting app:', error.message || error);
-        //GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Error starting app: ' + error.message || error, type: 'error' })
-        GlobalEventEmitter.emit('SHOW_BANNER', { message: `Could not connect to ${packageName}`, type: "error" });
-        throw error;
-      }
+  public async startApp(packageName: string): Promise<any> {
+    if (!this.coreToken) {
+      throw new Error('No core token available for authentication');
     }
-  
-    /**
-     * Stop an app using the REST API
-     * @param packageName Package name of the app to stop
-     * @returns Response including app state
-     */
-    public async stopApp(packageName: string): Promise<any> {
-      if (!this.coreToken) {
-        throw new Error('No core token available for authentication');
-      }
 
-      const baseUrl = await this.getServerUrl();
-      const url = `${baseUrl}/apps/${packageName}/stop`;
-      console.log('Stopping app:', packageName);
-  
-      const config: AxiosRequestConfig = {
-        method: 'POST',
-        url,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.coreToken}`,
-        },
-      };
-  
-      try {
-        const response = await axios(config);
-        if (response.status === 200 && response.data) {
-          console.log('App stopped successfully:', packageName);
-          return response.data;
-        } else {
-          throw new Error(`Bad response: ${response.statusText}`);
-        }
-      } catch (error: any) {
-        console.error('Error stopping app:', error.message || error);
-        throw error;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/apps/${packageName}/start`;
+    console.log('Starting app:', packageName);
+
+    const config: AxiosRequestConfig = {
+      method: 'POST',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.coreToken}`,
+      },
+    };
+
+    try {
+      const response = await axios(config);
+      if (response.status === 200 && response.data) {
+        console.log('App started successfully:', packageName);
+        return response.data;
+      } else {
+        throw new Error(`Bad response: ${response.statusText}`);
       }
+    } catch (error: any) {
+      //console.error('Error starting app:', error.message || error);
+      //GlobalEventEmitter.emit('SHOW_BANNER', { message: 'Error starting app: ' + error.message || error, type: 'error' })
+      GlobalEventEmitter.emit('SHOW_BANNER', {
+        message: `Could not connect to ${packageName}`,
+        type: 'error',
+      });
+      throw error;
     }
+  }
+
+  /**
+   * Stop an app using the REST API
+   * @param packageName Package name of the app to stop
+   * @returns Response including app state
+   */
+  public async stopApp(packageName: string): Promise<any> {
+    if (!this.coreToken) {
+      throw new Error('No core token available for authentication');
+    }
+
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/apps/${packageName}/stop`;
+    console.log('Stopping app:', packageName);
+
+    const config: AxiosRequestConfig = {
+      method: 'POST',
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.coreToken}`,
+      },
+    };
+
+    try {
+      const response = await axios(config);
+      if (response.status === 200 && response.data) {
+        console.log('App stopped successfully:', packageName);
+        return response.data;
+      } else {
+        throw new Error(`Bad response: ${response.statusText}`);
+      }
+    } catch (error: any) {
+      console.error('Error stopping app:', error.message || error);
+      throw error;
+    }
+  }
 
   /**
    * Uninstall an app using the REST API
@@ -315,7 +329,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`,
+        Authorization: `Bearer ${this.coreToken}`,
       },
     };
 
@@ -342,7 +356,8 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/api/apps/`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/api/apps/`;
     console.log('Fetching apps from:', url);
 
     const config: AxiosRequestConfig = {
@@ -350,7 +365,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`,
+        Authorization: `Bearer ${this.coreToken}`,
       },
     };
 
@@ -386,7 +401,8 @@ export default class BackendServerComms {
       throw new Error('Authentication required: No core token available.');
     }
 
-    const url = `${this.serverUrl}/api/auth/generate-webview-token`;
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/api/auth/generate-webview-token`;
     console.log('Requesting webview token for:', packageName, 'at URL:', url);
 
     const config: AxiosRequestConfig = {
@@ -394,46 +410,65 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`, // Use the stored coreToken
+        Authorization: `Bearer ${this.coreToken}`, // Use the stored coreToken
       },
-      data: { packageName }, // Send the target package name in the body
+      data: {packageName}, // Send the target package name in the body
     };
 
     try {
       const response = await axios(config);
-      if (response.status === 200 && response.data.success && response.data.token) {
+      if (
+        response.status === 200 &&
+        response.data.success &&
+        response.data.token
+      ) {
         console.log(`Received temporary webview token for ${packageName}`);
         return response.data.token;
       } else {
-        throw new Error(`Failed to generate webview token: ${response.data.error || response.statusText}`);
+        throw new Error(
+          `Failed to generate webview token: ${
+            response.data.error || response.statusText
+          }`,
+        );
       }
     } catch (error: any) {
-      console.error(`${this.TAG}: Error generating webview token -`, error.message || error);
+      console.error(
+        `${this.TAG}: Error generating webview token -`,
+        error.message || error,
+      );
       // Consider more specific error handling based on response status if available
       if (axios.isAxiosError(error) && error.response) {
-        throw new Error(`Failed to generate webview token: ${error.response.data?.error || error.message}`);
+        throw new Error(
+          `Failed to generate webview token: ${
+            error.response.data?.error || error.message
+          }`,
+        );
       }
       throw error; // Re-throw the original error or a new one
     }
   }
 
-  public async hashWithApiKey(stringToHash: string, packageName: string): Promise<string> {
+  public async hashWithApiKey(
+    stringToHash: string,
+    packageName: string,
+  ): Promise<string> {
     if (!this.coreToken) {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/api/auth/hash-with-api-key`;
-    
+    const baseUrl = await this.getServerUrl();
+    const url = `${baseUrl}/api/auth/hash-with-api-key`;
+
     const config: AxiosRequestConfig = {
       method: 'POST',
       url,
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.coreToken}`,
+        Authorization: `Bearer ${this.coreToken}`,
       },
       data: {
         stringToHash,
-        packageName
+        packageName,
       },
     };
 
@@ -442,10 +477,17 @@ export default class BackendServerComms {
       if (response.status === 200 && response.data.success) {
         return response.data.hash;
       } else {
-        throw new Error(`Failed to generate hash: ${response.data.error || response.statusText}`);
+        throw new Error(
+          `Failed to generate hash: ${
+            response.data.error || response.statusText
+          }`,
+        );
       }
     } catch (error: any) {
-      console.error(`${this.TAG}: Error generating hash:`, error.message || error);
+      console.error(
+        `${this.TAG}: Error generating hash:`,
+        error.message || error,
+      );
       throw error;
     }
   }
