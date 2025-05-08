@@ -150,12 +150,12 @@ export class CoreCommunicator extends EventEmitter {
    * Initializes the communication channel with Core
    */
   async initialize() {
-    // Initialize BleManager for permission checks
-    try {
-      await BleManager.start({showAlert: false});
-    } catch (error) {
-      console.warn('Failed to initialize BleManager:', error);
-    }
+    // // Initialize BleManager for permission checks
+    // try {
+    //   await BleManager.start({showAlert: false});
+    // } catch (error) {
+    //   console.warn('Failed to initialize BleManager:', error);
+    // }
 
     // AOSModule.sendCommand(JSON.stringify({ "command": "request_status" }));
     setTimeout(() => {

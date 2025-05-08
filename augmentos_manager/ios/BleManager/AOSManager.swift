@@ -438,6 +438,11 @@ struct ViewState {
         CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
       }
       
+      if self.deviceName.isEmpty || self.deviceName.contains("Simulated") || self.deviceName.contains("Audio") {
+        // dont send the event to glasses that aren't there:
+        return
+      }
+      
       let layoutType = currentViewState.layoutType
       switch layoutType {
       case "text_wall":
@@ -548,11 +553,6 @@ struct ViewState {
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
-
-    if self.deviceName.contains("Simulated") {
-      // dont send the event to glasses that aren't there:
-      return
-    }
     
     // print("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
@@ -620,6 +620,25 @@ struct ViewState {
   private func handleSetServerUrl(url: String) {
     print("Setting server URL to: \(url)")
 //    self.serverComms.setServerUrl(url)
+  }
+  
+  private func sendText(_ text: String) {
+    print("Sending text: \(text)")
+    if self.deviceName.contains("Simulated") {
+      return
+    }
+    self.g1Manager?.RN_sendText(text)
+  }
+  
+  private func disconnect() {
+    onMicrophoneStateChange(false)
+    
+    if self.deviceName.contains("Simulated") {
+      return
+    }
+    
+    self.g1Manager?.disconnect()
+    
   }
   
   @objc func handleCommand(_ command: String) {
@@ -699,15 +718,14 @@ struct ViewState {
           handleRequestStatus()
           
         case .connectWearable:
-          if let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
-            handleConnectWearable(modelName: modelName, deviceName: deviceName)
-          } else {
-            print("connect_wearable invalid params, connecting to default device")
-            handleConnectWearable(modelName: "", deviceName: "")
+          guard let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String else {
+            print("connect_wearable invalid params")
+            break
           }
-          
+          handleConnectWearable(modelName: modelName, deviceName: deviceName)
+          break
         case .disconnectWearable:
-          self.g1Manager?.RN_sendText(" ")// clear the screen
+          self.sendText(" ")// clear the screen
           handleDisconnectWearable()
           handleRequestStatus()
           break
@@ -871,7 +889,7 @@ struct ViewState {
   
   private func handleDisconnectWearable() {
     connectTask?.cancel()
-    self.g1Manager?.disconnect()
+    disconnect()
     handleRequestStatus()
   }
 
@@ -1038,7 +1056,7 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
       await self.g1Manager?.setSilentMode(false)// turn off silent mode
       await self.g1Manager?.getBatteryStatus()
-      self.g1Manager?.RN_sendText("// BOOTING AUGMENTOS")
+      sendText("// BOOTING AUGMENTOS")
       
       // send loaded settings to glasses:
       self.g1Manager?.RN_getBatteryStatus()
@@ -1052,9 +1070,9 @@ struct ViewState {
       self.g1Manager?.RN_setDashboardPosition(dashboardHeight)
       try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
 //      playStartupSequence()
-      self.g1Manager?.RN_sendText("// AUGMENTOS CONNECTED")
+      sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-      self.g1Manager?.RN_sendText(" ")// clear screen
+      sendText(" ")// clear screen
       
       
       // send to the server our battery status:
@@ -1083,7 +1101,7 @@ struct ViewState {
     
     // just g1's for now:
     Task {
-      self.g1Manager?.disconnect()
+      disconnect()
       
       if (deviceName != "") {
         self.deviceName = deviceName
@@ -1200,20 +1218,6 @@ struct ViewState {
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
     self.settingsLoadedSemaphore.signal()
-    print("Settings Loaded!")
-    
-    
-//    if (self.g1Manager.g1Ready) {
-//      self.g1Manager.RN_getBatteryStatus()
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.dashboardEnabled = contextualDashboard
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
-//    }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +
           "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
