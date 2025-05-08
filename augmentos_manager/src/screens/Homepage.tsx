@@ -6,7 +6,7 @@ import React, {
   useEffect,
 } from 'react';
 import { View, StyleSheet, Animated, Text, Platform, ActivityIndicator } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
 import Header from '../components/Header';
 import ConnectedDeviceInfo from '../components/ConnectedDeviceInfo';
@@ -25,6 +25,8 @@ import { loadSetting, saveSetting } from '../logic/SettingsHelper';
 import { NativeModules, NativeEventEmitter } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import SensingDisabledWarning from '../components/SensingDisabledWarning';
+import { SETTINGS_KEYS } from '../consts';
+import NonProdWarning from '../components/NonProdWarning';
 
 interface HomepageProps {
   isDarkTheme: boolean;
@@ -42,6 +44,8 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false);
   const [isCheckingVersion, setIsCheckingVersion] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [nonProdBackend, setNonProdBackend] = useState(false);
+  const route = useRoute();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -56,6 +60,11 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
       return () => clearTimeout(timer);
     }
   }, [status.core_info.cloud_connection_status]);
+
+  const checkNonProdBackend = async () => {
+    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null);
+    setNonProdBackend(url && !(url.includes('prod.augmentos.cloud')));
+  }
 
   // Clear loading state if apps are loaded
   useEffect(() => {
@@ -171,6 +180,9 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   useFocusEffect(
     useCallback(() => {
+
+      checkNonProdBackend();
+
       // Reset animations when screen is about to focus
       fadeAnim.setValue(0);
       slideAnim.setValue(-50);
@@ -218,9 +230,15 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
           }
           
           {/* Sensing Disabled Warning */}
-          <AnimatedSection>
-            <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
-          </AnimatedSection>
+            <AnimatedSection>
+              <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
+            </AnimatedSection>
+
+          {nonProdBackend && (
+            <AnimatedSection>
+              <NonProdWarning isNonProdBackend={nonProdBackend} />
+            </AnimatedSection>
+          )}
 
           <AnimatedSection>
             {/* Use the simulated version if we're connected to simulated glasses */}

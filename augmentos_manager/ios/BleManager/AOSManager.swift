@@ -438,6 +438,11 @@ struct ViewState {
         CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
       }
       
+      if self.deviceName.isEmpty || self.deviceName.contains("Simulated") || self.deviceName.contains("Audio") {
+        // dont send the event to glasses that aren't there:
+        return
+      }
+      
       let layoutType = currentViewState.layoutType
       switch layoutType {
       case "text_wall":
@@ -447,7 +452,7 @@ struct ViewState {
         //          print("Sending chunk: \(chunk)")
         //          await sendCommand(chunk)
         //        }
-        self.g1Manager?.RN_sendText(text);
+        sendText(text);
         break
       case "double_text_wall":
         let topText = currentViewState.topText
@@ -455,7 +460,7 @@ struct ViewState {
         self.g1Manager?.RN_sendDoubleTextWall(topText, bottomText);
         break
       case "reference_card":
-        self.g1Manager?.RN_sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
+        sendText(currentViewState.topText + "\n\n" + currentViewState.bottomText);
         break
       default:
         print("UNHANDLED LAYOUT_TYPE \(layoutType)")
@@ -548,11 +553,6 @@ struct ViewState {
     topText = parsePlaceholders(topText)
     bottomText = parsePlaceholders(bottomText)
     title = parsePlaceholders(title)
-
-    if self.deviceName.contains("Simulated") {
-      // dont send the event to glasses that aren't there:
-      return
-    }
     
     // print("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
@@ -582,8 +582,6 @@ struct ViewState {
   }
   
   func onDisplayEvent(_ event: [String: Any]) {
-    //    print("displayEvent \(event)", event)
-    
     handleDisplayEvent(event)
   }
   
@@ -615,6 +613,30 @@ struct ViewState {
     } else if (modelName.contains("G1")) {
       self.g1Manager?.RN_startScan()
     }
+  }
+
+  private func handleSetServerUrl(url: String) {
+    print("Setting server URL to: \(url)")
+//    self.serverComms.setServerUrl(url)
+  }
+  
+  private func sendText(_ text: String) {
+    print("Sending text: \(text)")
+    if self.deviceName.isEmpty || self.deviceName.contains("Simulated") || self.deviceName.contains("Audio") {
+      return
+    }
+    self.g1Manager?.RN_sendText(text)
+  }
+  
+  private func disconnect() {
+    onMicrophoneStateChange(false)
+    
+    if self.deviceName.isEmpty || self.deviceName.contains("Simulated") || self.deviceName.contains("Audio") {
+      return
+    }
+    
+    self.g1Manager?.disconnect()
+    
   }
   
   @objc func handleCommand(_ command: String) {
@@ -650,6 +672,7 @@ struct ViewState {
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case bypassVad = "bypass_vad_for_debugging"
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
+      case setServerUrl = "set_server_url"
       case unknown
     }
     
@@ -672,6 +695,13 @@ struct ViewState {
         
         // Process based on command type
         switch commandType {
+        case .setServerUrl:
+          guard let params = params, let url = params["url"] as? String else {
+            print("set_server_url invalid params")
+            break
+          }
+          handleSetServerUrl(url: url)
+          break
         case .setAuthSecretKey:
           if let params = params,
              let userId = params["userId"] as? String,
@@ -686,15 +716,15 @@ struct ViewState {
           handleRequestStatus()
           
         case .connectWearable:
-          if let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String {
-            handleConnectWearable(modelName: modelName, deviceName: deviceName)
-          } else {
-            print("connect_wearable invalid params, connecting to default device")
-            handleConnectWearable(modelName: "", deviceName: "")
+          guard let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String else {
+            print("connect_wearable invalid params")
+//            handleConnectWearable(modelName: "", deviceName: "")
+            break
           }
-          
+          handleConnectWearable(modelName: modelName, deviceName: deviceName)
+          break
         case .disconnectWearable:
-          self.g1Manager?.RN_sendText(" ")// clear the screen
+          self.sendText(" ")// clear the screen
           handleDisconnectWearable()
           handleRequestStatus()
           break
@@ -778,12 +808,12 @@ struct ViewState {
           Task {
             self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
             if autoBrightnessChanged {
-              self.g1Manager?.RN_sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
+              sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
             } else {
-              self.g1Manager?.RN_sendText("Set brightness to \(value)%")
+              sendText("Set brightness to \(value)%")
             }
             try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
-            self.g1Manager?.RN_sendText(" ")// clear screen
+            sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -796,9 +826,9 @@ struct ViewState {
           self.dashboardHeight = value
           Task {
             self.g1Manager?.RN_setDashboardPosition(value)
-            self.g1Manager?.RN_sendText("Set dashboard position to \(value)")
+            sendText("Set dashboard position to \(value)")
             try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            self.g1Manager?.RN_sendText(" ")// clear screen
+            sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -858,7 +888,7 @@ struct ViewState {
   
   private func handleDisconnectWearable() {
     connectTask?.cancel()
-    self.g1Manager?.disconnect()
+    disconnect()
     handleRequestStatus()
   }
 
@@ -983,16 +1013,16 @@ struct ViewState {
       // Check if we've completed all cycles
       if cycles >= totalCycles {
         // End animation with final message
-        self.g1Manager?.RN_sendText("                  /// AugmentOS Connected \\\\\\")
+        self.sendText("                  /// AugmentOS Connected \\\\\\")
         animationQueue.asyncAfter(deadline: .now() + 1.0) {
-          self.g1Manager?.RN_sendText(" ")
+          self.sendText(" ")
         }
         return
       }
       
       // Display current animation frame
       let frameText = "                    \(arrowFrames[frameIndex]) AugmentOS Booting \(arrowFrames[frameIndex])"
-      self.g1Manager?.RN_sendText(frameText)
+      self.sendText(frameText)
       
       // Move to next frame
       frameIndex = (frameIndex + 1) % arrowFrames.count
@@ -1025,7 +1055,7 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 3 seconds
       await self.g1Manager?.setSilentMode(false)// turn off silent mode
       await self.g1Manager?.getBatteryStatus()
-      self.g1Manager?.RN_sendText("// BOOTING AUGMENTOS")
+      sendText("// BOOTING AUGMENTOS")
       
       // send loaded settings to glasses:
       self.g1Manager?.RN_getBatteryStatus()
@@ -1039,9 +1069,9 @@ struct ViewState {
       self.g1Manager?.RN_setDashboardPosition(dashboardHeight)
       try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
 //      playStartupSequence()
-      self.g1Manager?.RN_sendText("// AUGMENTOS CONNECTED")
+      sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
-      self.g1Manager?.RN_sendText(" ")// clear screen
+      sendText(" ")// clear screen
       
       
       // send to the server our battery status:
@@ -1070,7 +1100,7 @@ struct ViewState {
     
     // just g1's for now:
     Task {
-      self.g1Manager?.disconnect()
+      disconnect()
       
       if (deviceName != "") {
         self.deviceName = deviceName
@@ -1187,20 +1217,6 @@ struct ViewState {
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
     self.settingsLoadedSemaphore.signal()
-    print("Settings Loaded!")
-    
-    
-//    if (self.g1Manager.g1Ready) {
-//      self.g1Manager.RN_getBatteryStatus()
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.dashboardEnabled = contextualDashboard
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setHeadUpAngle(headUpAngle)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setBrightness(brightness, autoMode: autoBrightness)
-//      try? await Task.sleep(nanoseconds: 400_000_000)
-//      self.g1Manager.RN_setDashboardPosition(dashboardHeight)
-//    }
     
     print("Settings loaded: Default Wearable: \(defaultWearable ?? "None"), Use Device Mic: \(useOnboardMic), " +
           "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")

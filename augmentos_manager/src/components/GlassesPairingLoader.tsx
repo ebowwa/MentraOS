@@ -167,16 +167,16 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
   }, []);
   
   // Convert animation values to styles
-  const glassesTransform = {
-    transform: [
-      {
-        translateY: glassesAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -10],
-        }),
-      },
-    ],
-  };
+  // const glassesTransform = {
+  //   transform: [
+  //     {
+  //       translateY: glassesAnim.interpolate({
+  //         inputRange: [0, 1],
+  //         outputRange: [0, -10],
+  //       }),
+  //     },
+  //   ],
+  // };
   
   const signalOpacity = signalAnim.interpolate({
     inputRange: [0, 0.2, 1],
@@ -263,7 +263,7 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
       <View style={styles.animationContainer}>
         {/* Signal waves */}
         <View style={styles.signalContainer}>
-          {[1, 2, 3].map((i) => (
+          {/* {[1, 2, 3].map((i) => (
             <Animated.View
               key={i}
               style={[
@@ -275,7 +275,7 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
                 },
               ]}
             />
-          ))}
+          ))} */}
           
           <View style={styles.phoneContainer}>
             <Icon
@@ -311,7 +311,7 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
             />
           </View>
           
-          <Animated.View style={[styles.glassesContainer, glassesTransform]}>
+          <Animated.View style={[styles.glassesContainer]}>
             <MaterialCommunityIcons
               name="glasses"
               size={48}
@@ -404,9 +404,9 @@ const styles = StyleSheet.create({
   },
   signalWave: {
     position: 'absolute',
-    width: 150,
-    height: 40,
-    borderRadius: 20,
+    width: 240,
+    height: 80,
+    borderRadius: 40,
     borderWidth: 2,
     borderStyle: 'dashed',
   },

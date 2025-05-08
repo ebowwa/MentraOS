@@ -26,6 +26,7 @@ class ServerComms {
   private var serverCommsCallback: ServerCommsCallback?
   private var coreToken: String = ""
   private var userid: String = ""
+  private var serverUrl: String = "https://prod.augmentos.cloud:443"
   
   // Audio queue system
   private let audioQueue = DispatchQueue(label: "com.augmentos.audioQueue")
@@ -94,6 +95,27 @@ class ServerComms {
     self.coreToken = coreToken
     self.userid = userid
   }
+
+  private func getWsUrl() -> String {
+
+    // extract host, port, and secure from the serverUrl:
+    let url = URL(string: self.serverUrl)!
+    let host = url.host!
+    let port = url.port!
+    let secure = url.scheme == "https"
+    let wsUrl = "\(secure ? "wss" : "ws")://\(host):\(port)/glasses-ws"
+    print("ServerComms: getWsUrl(): \(wsUrl)")
+    return wsUrl
+  }
+
+  func setServerUrl(_ url: String) {
+    self.serverUrl = url
+    print("ServerComms: setServerUrl: \(url)")
+    if self.wsManager.isConnected() {
+      wsManager.disconnect()
+      connectWebSocket()
+    }
+  }
   
   func setServerCommsCallback(_ callback: ServerCommsCallback) {
     self.serverCommsCallback = callback
@@ -106,7 +128,7 @@ class ServerComms {
   // MARK: - Connection Management
   
   func connectWebSocket() {
-    guard let url = URL(string: getServerUrl()) else {
+    guard let url = URL(string: getWsUrl()) else {
       print("Invalid server URL")
       return
     }
