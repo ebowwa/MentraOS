@@ -16,8 +16,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 // Import services
-import { webSocketService } from './services/core/websocket.service';
 import { healthMonitorService } from './services/core/health-monitor.service';
+import { DebugService } from './services/debug/debug-service';
+import { SessionService, initializeSessionService } from './services/core/session.service';
+import { webSocketService } from './services/core/websocket.service';
 
 // Import routes
 import appRoutes from './routes/apps.routes';
@@ -71,6 +73,16 @@ mongoConnection.init()
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const app = express();
 const server = new Server(app);
+
+// Initialize services in the correct order
+const debugService = new DebugService(server);
+const sessionService = initializeSessionService(debugService);
+
+// Initialize websocket service after session service is ready
+webSocketService.initialize();
+
+// Export services for use in other modules
+export { sessionService, debugService, webSocketService };
 
 // Middleware setup
 app.use(helmet());
@@ -139,7 +151,7 @@ app.get('/health', (req, res) => {
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, './public')));
 
-// Initialize WebSocket service
+// Initialize WebSocket servers
 webSocketService.setupWebSocketServers(server);
 
 // Start the server
