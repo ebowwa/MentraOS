@@ -5,6 +5,7 @@ import { CloudToTpaMessageType } from '../message-types';
 import { StreamType } from '../streams';
 import { AppSettings, TpaConfig } from '../models';
 import { LocationUpdate, CalendarEvent } from './glasses-to-cloud';
+import { DashboardMode } from '../dashboard';
 
 //===========================================================
 // Responses
@@ -117,6 +118,26 @@ export interface DataStream extends BaseMessage {
   data: unknown; // Type depends on the streamType
 }
 
+//===========================================================
+// Dashboard messages
+//===========================================================
+
+/**
+ * Dashboard mode changed notification
+ */
+export interface DashboardModeChanged extends BaseMessage {
+  type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+  mode: DashboardMode;
+}
+
+/**
+ * Dashboard always-on state changed notification
+ */
+export interface DashboardAlwaysOnChanged extends BaseMessage {
+  type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+  enabled: boolean;
+}
+
 /**
  * Union type for all messages from cloud to TPAs
  */
@@ -130,7 +151,9 @@ export type CloudToTpaMessage =
   | AudioChunk
   | LocationUpdate
   | CalendarEvent
-  | DataStream;
+  | DataStream
+  | DashboardModeChanged
+  | DashboardAlwaysOnChanged;
 
 //===========================================================
 // Type guards
@@ -158,4 +181,12 @@ export function isDataStream(message: CloudToTpaMessage): message is DataStream 
 
 export function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk {
   return message.type === StreamType.AUDIO_CHUNK;
+}
+
+export function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged {
+  return message.type === CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+}
+
+export function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is DashboardAlwaysOnChanged {
+  return message.type === CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
 }

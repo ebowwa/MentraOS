@@ -131,7 +131,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
     >
       <ScrollView style={styles.scrollView}>
         {/* Auto Brightness */}
-        {/* <View style={styles.settingItem}>
+        <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
@@ -159,7 +159,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
             thumbColor={switchColors.thumbColor}
             ios_backgroundColor={switchColors.ios_backgroundColor}
           />
-        </View> */}
+        </View>
 
         {/* Brightness Slider */}
         {!isAutoBrightnessEnabled && (

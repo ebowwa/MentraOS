@@ -20,6 +20,9 @@ export * from './streams';
 // Layout types
 export * from './layouts';
 
+// Dashboard types
+export * from './dashboard';
+
 // Other system enums
 export * from './enums';
 

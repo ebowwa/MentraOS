@@ -1,6 +1,6 @@
 // SelectGlassesBluetoothScreen.tsx
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -190,7 +190,10 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
     }
     
     // All permissions granted, proceed with connecting to the wearable
-    coreCommunicator.sendConnectWearable(glassesModelName, deviceName);
+    setTimeout(() => {
+      // give some time to show the loader (otherwise it's a bit jarring)
+      coreCommunicator.sendConnectWearable(glassesModelName, deviceName);
+    }, 2000);
     navigation.navigate('GlassesPairingGuideScreen', {
       glassesModelName: glassesModelName,
     });
@@ -209,6 +212,8 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
     selectedChipBg: isDarkTheme ? '#666666' : '#333333',
     selectedChipText: isDarkTheme ? '#FFFFFF' : '#FFFFFF',
   };
+
+  const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName]);
 
   return (
     <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
@@ -235,7 +240,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
                   }}
                 >
                   <Image
-                    source={getGlassesImage(glassesModelName)}
+                    source={glassesImage}
                     style={styles.glassesImage}
                   />
                   <View style={styles.settingTextContainer}>

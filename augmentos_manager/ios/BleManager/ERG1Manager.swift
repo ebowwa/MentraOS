@@ -265,7 +265,7 @@ enum GlassesError: Error {
     if right != nil {
       rightReady = right!
     }
-    print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
+    // print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
     g1Ready = leftReady && rightReady
     if g1Ready {
       stopReconnectionTimer()
@@ -795,11 +795,11 @@ extension ERG1Manager {
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
     if peripheral == leftPeripheral {
       leftInitialized = success
-      print("Left arm initialized: \(success)")
+      // print("Left arm initialized: \(success)")
       setReadiness(left: true, right: nil)
     } else if peripheral == rightPeripheral {
       rightInitialized = success
-      print("Right arm initialized: \(success)")
+      // print("Right arm initialized: \(success)")
       setReadiness(left: nil, right: true)
     }
     

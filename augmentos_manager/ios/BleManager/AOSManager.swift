@@ -429,7 +429,7 @@ struct ViewState {
         currentViewState = self.viewStates[0]
       }
       
-      if (isDashboard && !contextualDashboard) {
+      if (isDashboard && !self.contextualDashboard) {
         return
       }
       
@@ -553,6 +553,8 @@ struct ViewState {
       // dont send the event to glasses that aren't there:
       return
     }
+    
+    // print("Updating view state \(stateIndex) with \(layoutType) \(text) \(topText) \(bottomText)")
     
     switch layoutType {
     case "text_wall":
@@ -770,11 +772,16 @@ struct ViewState {
             print("update_glasses_brightness invalid params")
             break
           }
+          let autoBrightnessChanged = self.autoBrightness != autoBrightness
           self.brightness = value
           self.autoBrightness = autoBrightness
           Task {
             self.g1Manager?.RN_setBrightness(value, autoMode: autoBrightness)
-            self.g1Manager?.RN_sendText("Set brightness to \(value)%")
+            if autoBrightnessChanged {
+              self.g1Manager?.RN_sendText(autoBrightness ? "Enabled auto brightness" : "Disabled auto brightness")
+            } else {
+              self.g1Manager?.RN_sendText("Set brightness to \(value)%")
+            }
             try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
             self.g1Manager?.RN_sendText(" ")// clear screen
           }
@@ -904,6 +911,7 @@ struct ViewState {
       "cloud_connection_status": cloudConnectionStatus,
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
+      "is_mic_enabled_for_frontend": self.micEnabled && !self.useOnboardMic,
       "sensing_enabled": self.sensingEnabled,
       "always_on_status_bar": self.alwaysOnStatusBar,
       "bypass_vad_for_debugging": self.bypassVad,
@@ -1077,24 +1085,24 @@ struct ViewState {
     }
     
     // wait for the g1's to be fully ready:
-    connectTask?.cancel()
-    connectTask = Task {
-      while !(connectTask?.isCancelled ?? true) {
-        print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
-        print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
-        if self.g1Manager?.g1Ready ?? false {
-          // we actualy don't need this line:
-          //          handleDeviceReady()
-          handleRequestStatus()
-          break
-        } else {
-          // todo: ios not the cleanest solution here
-          self.g1Manager?.RN_startScan()
-        }
-        
-        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
-      }
-    }
+//    connectTask?.cancel()
+//    connectTask = Task {
+//      while !(connectTask?.isCancelled ?? true) {
+//        print("checking if g1 is ready... \(self.g1Manager?.g1Ready ?? false)")
+//        print("leftReady \(self.g1Manager?.leftReady ?? false) rightReady \(self.g1Manager?.rightReady ?? false)")
+//        if self.g1Manager?.g1Ready ?? false {
+//          // we actualy don't need this line:
+//          //          handleDeviceReady()
+//          handleRequestStatus()
+//          break
+//        } else {
+//          // todo: ios not the cleanest solution here
+//          self.g1Manager?.RN_startScan()
+//        }
+//        
+//        try? await Task.sleep(nanoseconds: 15_000_000_000) // 15 seconds
+//      }
+//    }
   }
   
   
@@ -1147,12 +1155,19 @@ struct ViewState {
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
     
-//    print("settings saved")
-//    print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
-//          "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
+    print("Settings saved: Default Wearable: \(defaultWearable ?? "None"), Use Onboard Mic: \(useOnboardMic), " +
+          "Contextual Dashboard: \(contextualDashboard), Head Up Angle: \(headUpAngle), Brightness: \(brightness)")
   }
   
   private func loadSettings() async {
+    
+    UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.contextualDashboard: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.bypassVad: false])
+    UserDefaults.standard.register(defaults: [SettingsKeys.sensingEnabled: true])
+    UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
+    UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+    
     let defaults = UserDefaults.standard
     
     // Load each setting with appropriate type handling
@@ -1166,22 +1181,8 @@ struct ViewState {
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
-    
-    // For numeric values, provide the default if the key doesn't exist
-    if defaults.object(forKey: SettingsKeys.headUpAngle) != nil {
-      headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
-    }
-    
-    if defaults.object(forKey: SettingsKeys.brightness) != nil {
-      brightness = defaults.integer(forKey: SettingsKeys.brightness)
-    }
-    
-    if defaults.object(forKey: SettingsKeys.sensingEnabled) != nil {
-       sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
-     } else {
-       print("Settings loaded: Sensing key did not exist, defaulting to true!")
-       sensingEnabled = true
-     }
+    headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
+    brightness = defaults.integer(forKey: SettingsKeys.brightness)
   
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true
