@@ -15,7 +15,7 @@ services:
   type: web
   run: node packages/cloud/dist/index.js
   port: 80
-  cpuCores: 3
+  cpuCores: 5
   ramMegabytes: 4096
   env:
     HOST: "0.0.0.0"
