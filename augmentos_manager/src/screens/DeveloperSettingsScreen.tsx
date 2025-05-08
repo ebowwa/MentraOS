@@ -109,6 +109,7 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
         console.log('URL Test Successful:', response.data);
         // Save the URL if the test passes
         await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest);
+        await coreCommunicator.setServerUrl(urlToTest);
         setSavedCustomUrl(urlToTest);
         showAlert(
           'Success',
@@ -186,15 +187,6 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
   return (
     <View style={styles.container}>
       <ScrollView style={styles.scrollView}>
-
-        {/* scary warning so that people who don't know what they're doing don't mess with these settings */}
-        <View style={styles.warningContainer}>
-          <Text style={styles.warningText}>
-            Warning: These settings may break the app. Use at your own risk.
-          </Text>
-        </View>
-
-
         {/* Bypass VAD for Debugging Toggle */}
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
@@ -221,6 +213,14 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
             thumbColor={switchColors.thumbColor}
             ios_backgroundColor={switchColors.ios_backgroundColor}
           />
+        </View>
+
+
+        {/* scary warning so that people who don't know what they're doing don't mess with these settings */}
+        <View style={styles.warningContainer}>
+          <Text style={styles.warningText}>
+            Warning: These settings may break the app. Use at your own risk.
+          </Text>
         </View>
 
         {/* Custom Backend URL Section */}
@@ -290,19 +290,19 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
         <View style={styles.buttonColumn}>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => setCustomUrlInput('https://prod.augmentos.cloud')}>
+            onPress={() => setCustomUrlInput('https://prod.augmentos.cloud:443')}>
             <Text style={styles.buttonText}>Production</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => setCustomUrlInput('https://debug.augmentos.cloud')}>
+            onPress={() => setCustomUrlInput('https://debug.augmentos.cloud:443')}>
             <Text style={styles.buttonText}>Debug</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.button}
             onPress={() =>
-              setCustomUrlInput('https://staging.augmentos.cloud')
+              setCustomUrlInput('https://staging.augmentos.cloud:443')
             }>
             <Text style={styles.buttonText}>Staging</Text>
           </TouchableOpacity>
@@ -344,6 +344,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f00',
     padding: 10,
     borderRadius: 8,
+    marginTop: 10,
   },
   warningText: {
     color: '#fff',

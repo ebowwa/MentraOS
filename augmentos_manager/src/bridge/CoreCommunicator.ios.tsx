@@ -181,12 +181,7 @@ export class CoreCommunicator extends EventEmitter {
     // set the backend server url
     const backendServerUrl =
       await BackendServerComms.getInstance().getServerUrl();
-    await this.sendData({
-      command: 'set_server_url',
-      params: {
-        url: backendServerUrl,
-      },
-    });
+    await this.setServerUrl(backendServerUrl);
 
     // Start periodic status checks
     this.startStatusPolling();
@@ -586,6 +581,15 @@ export class CoreCommunicator extends EventEmitter {
       params: {
         userId: userId,
         authSecretKey: authSecretKey,
+      },
+    });
+  }
+
+  async setServerUrl(url: string) {
+    return await this.sendData({
+      command: 'set_server_url',
+      params: {
+        url: url,
       },
     });
   }

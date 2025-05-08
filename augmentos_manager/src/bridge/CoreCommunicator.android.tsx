@@ -569,6 +569,15 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
+  async setServerUrl(url: string) {
+    return await this.sendData({
+      command: 'set_server_url',
+      params: {
+        url: url,
+      },
+    });
+  }
+
   async verifyAuthenticationSecretKey() {
     return await this.sendData({
       command: 'verify_auth_secret_key',

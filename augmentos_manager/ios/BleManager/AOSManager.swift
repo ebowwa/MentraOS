@@ -619,7 +619,7 @@ struct ViewState {
 
   private func handleSetServerUrl(url: String) {
     print("Setting server URL to: \(url)")
-    self.serverComms.setServerUrl(url)
+//    self.serverComms.setServerUrl(url)
   }
   
   @objc func handleCommand(_ command: String) {
