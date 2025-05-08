@@ -21,6 +21,7 @@ import tzlookup from 'tz-lookup';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { WeatherModule, WeatherSummary } from './dashboard-modules/WeatherModule';
+import { NotificationSummaryAgent } from '@augmentos/agents';
 
 /**
  * Utility: Estimate if a location is in North America (rough bounding box)
@@ -70,6 +71,8 @@ class DashboardServer extends TpaServer {
     updateInterval?: NodeJS.Timeout;
   }> = new Map();
 
+  private notificationSummaryAgent: NotificationSummaryAgent;
+
   constructor() {
     super({
       packageName: PACKAGE_NAME,
@@ -77,6 +80,8 @@ class DashboardServer extends TpaServer {
       apiKey: API_KEY,
       publicDir: path.join(__dirname, "./public"),
     });
+    
+    this.notificationSummaryAgent = new NotificationSummaryAgent();
     
     logger.info('Dashboard Manager initialized with configuration', { 
       packageName: PACKAGE_NAME,
@@ -384,8 +389,8 @@ class DashboardServer extends TpaServer {
       return sessionInfo.weatherCache.data;
     }
     
-    // Default status
-    return "Status: Connected";
+    // Default status note: previously "Status: connected".
+    return "";
   }
   
   /**
@@ -414,25 +419,27 @@ class DashboardServer extends TpaServer {
   /**
    * Handle phone notification event
    */
-  private handlePhoneNotification(session: TpaSession, sessionId: string, data: PhoneNotification): void {
+  private async handlePhoneNotification(session: TpaSession, sessionId: string, data: PhoneNotification): Promise<void> {
     const sessionInfo = this._activeSessions.get(sessionId);
     if (!sessionInfo) return;
-  
+
     // Check if the app name is blacklisted
     if (data.app && notificationAppBlackList.some(app => 
       data.app.toLowerCase().includes(app))) {
       logger.debug(`Notification from ${data.app} is blacklisted.`);
       return;
     }
-  
+
     // Add notification to cache
     const newNotification = {
       title: data.title || 'No Title',
       content: data.content || '',
       timestamp: Date.now(),
-      uuid: uuidv4()
+      uuid: uuidv4(),
+      appName: data.app || '',
+      text: data.content || ''
     };
-  
+
     // Prevent duplicate notifications
     const cache = sessionInfo.phoneNotificationCache;
     if (cache.length > 0) {
@@ -443,18 +450,31 @@ class DashboardServer extends TpaServer {
         return;
       }
     }
-  
+
     // Add to cache
     sessionInfo.phoneNotificationCache.push(newNotification);
-    
-    // Process notifications (rank them)
-    sessionInfo.phoneNotificationRanking = sessionInfo.phoneNotificationCache
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map(notification => ({
-        summary: `${notification.title}: ${notification.content}`,
-        timestamp: notification.timestamp
+
+    // Use NotificationSummaryAgent to process and rank notifications
+    try {
+      const ranking = await this.notificationSummaryAgent.handleContext({
+        notifications: sessionInfo.phoneNotificationCache
+      });
+      sessionInfo.phoneNotificationRanking = ranking.map((n: any) => ({
+        summary: n.summary,
+        timestamp: new Date(n.timestamp).getTime() || Date.now()
       }));
-    
+      logger.info('NotificationSummaryAgent ranking:', { ranking });
+    } catch (err) {
+      logger.error('Error using NotificationSummaryAgent:', err);
+      // fallback: use manual summary as before
+      sessionInfo.phoneNotificationRanking = sessionInfo.phoneNotificationCache
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map(notification => ({
+          summary: `${notification.title}: ${notification.content}`,
+          timestamp: notification.timestamp
+        }));
+    }
+
     // Update dashboard sections
     this.updateDashboardSections(session, sessionId);
   }
