@@ -5,6 +5,7 @@ import { CloudToTpaMessageType } from '../message-types';
 import { StreamType } from '../streams';
 import { AppSettings, TpaConfig } from '../models';
 import { LocationUpdate, CalendarEvent } from './glasses-to-cloud';
+import { DashboardMode } from '../dashboard';
 
 //===========================================================
 // Responses
@@ -73,6 +74,7 @@ export interface TranscriptionData extends BaseMessage {
 export interface TranslationData extends BaseMessage {
   type: StreamType.TRANSLATION;
   text: string;  // The transcribed text
+  originalText?: string; // The original transcribed text before translation
   isFinal: boolean;  // Whether this is a final transcription
   startTime: number;  // Start time in milliseconds
   endTime: number;  // End time in milliseconds
@@ -80,6 +82,7 @@ export interface TranslationData extends BaseMessage {
   duration?: number;  // Audio duration in milliseconds
   transcribeLanguage?: string;  // The language code of the transcribed text
   translateLanguage?: string;  // The language code of the translated text
+  didTranslate?: boolean;  // Whether the text was translated
 }
 
 /**
@@ -89,6 +92,17 @@ export interface AudioChunk extends BaseMessage {
   type: StreamType.AUDIO_CHUNK;
   arrayBuffer: ArrayBufferLike;  // The audio data
   sampleRate?: number;  // Audio sample rate (e.g., 16000 Hz)
+}
+
+/**
+ * Tool call from cloud to TPA
+ * Represents a tool invocation with filled parameters
+ */
+export interface ToolCall {
+  toolId: string; // The ID of the tool that was called
+  toolParameters: Record<string, string | number | boolean>; // The parameters of the tool that was called
+  timestamp: Date; // Timestamp when the tool was called
+  userId: string; // ID of the user who triggered the tool call
 }
 
 //===========================================================
@@ -104,6 +118,26 @@ export interface DataStream extends BaseMessage {
   data: unknown; // Type depends on the streamType
 }
 
+//===========================================================
+// Dashboard messages
+//===========================================================
+
+/**
+ * Dashboard mode changed notification
+ */
+export interface DashboardModeChanged extends BaseMessage {
+  type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+  mode: DashboardMode;
+}
+
+/**
+ * Dashboard always-on state changed notification
+ */
+export interface DashboardAlwaysOnChanged extends BaseMessage {
+  type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+  enabled: boolean;
+}
+
 /**
  * Union type for all messages from cloud to TPAs
  */
@@ -117,7 +151,9 @@ export type CloudToTpaMessage =
   | AudioChunk
   | LocationUpdate
   | CalendarEvent
-  | DataStream;
+  | DataStream
+  | DashboardModeChanged
+  | DashboardAlwaysOnChanged;
 
 //===========================================================
 // Type guards
@@ -145,4 +181,12 @@ export function isDataStream(message: CloudToTpaMessage): message is DataStream 
 
 export function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk {
   return message.type === StreamType.AUDIO_CHUNK;
+}
+
+export function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged {
+  return message.type === CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+}
+
+export function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is DashboardAlwaysOnChanged {
+  return message.type === CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
 }

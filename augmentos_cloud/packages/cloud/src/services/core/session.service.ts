@@ -54,7 +54,12 @@ export interface ExtendedUserSession extends UserSession {
   cleanupTimerId?: NodeJS.Timeout;
   websocket: WebSocket;
   displayManager: DisplayManager;
-  transcript: { segments: TranscriptSegment[] };
+  // Add dashboard manager to the user session
+  dashboardManager: any; // Will import and use proper type later to avoid circular dependencies
+  transcript: { 
+    segments: TranscriptSegment[];  // For backward compatibility (English)
+    languageSegments?: Map<string, TranscriptSegment[]>; // Language-indexed map for multi-language support
+  };
   bufferedAudio: ArrayBufferLike[]; // More specific type
   lastAudioTimestamp?: number;
   recognizer?: any; // Define type from MS SDK if possible
@@ -116,7 +121,11 @@ export class SessionService {
       appConnections: new Map<string, WebSocket | any>(),
       OSSettings: { brightness: 50, volume: 50 },
       displayManager: new DisplayManager(),
-      transcript: { segments: [] },
+      // Will add dashboardManager after the session is fully constructed
+      transcript: { 
+        segments: [],
+        languageSegments: new Map<string, TranscriptSegment[]>() 
+      },
       websocket: ws,
       bufferedAudio: [],
       disconnectedAt: null,
@@ -148,9 +157,19 @@ export class SessionService {
       sessionLogger.error(`❌ Failed to initialize LC3 service for session ${sessionId}:`, error);
     }
 
-    // Finalize and Store Session
+    // Finalize the user session
     const userSession = partialSession as ExtendedUserSession;
 
+    // Now create the DashboardManager for this session
+    // We need to dynamically import to avoid circular dependency issues
+    const { DashboardManager } = require('../dashboard/DashboardManager');
+    userSession.dashboardManager = new DashboardManager(userSession, {
+      queueSize: 5,
+      updateIntervalMs: 500,
+      alwaysOnEnabled: false
+    });
+
+    // Store the session
     this.activeSessions.set(sessionId, userSession);
     this.sessionsByUser.set(userId, userSession);
     sessionLogger.info(`[session.service] Created and stored new session ${sessionId} for user ${userId}`);
@@ -243,10 +262,41 @@ export class SessionService {
     }
   }
 
-  addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment): void {
-    if (userSession && userSession.transcript) { // Check transcript exists
+  addTranscriptSegment(userSession: ExtendedUserSession, segment: TranscriptSegment, language: string = 'en-US'): void {
+    if (!userSession || !userSession.transcript) return;
+    
+    // Initialize languageSegments if not exists
+    if (!userSession.transcript.languageSegments) {
+      userSession.transcript.languageSegments = new Map<string, TranscriptSegment[]>();
+    }
+    
+    // Ensure the language entry exists in the map
+    if (!userSession.transcript.languageSegments.has(language)) {
+      userSession.transcript.languageSegments.set(language, []);
+    }
+    
+    // Get the current segments for this language
+    const languageSpecificSegments = userSession.transcript.languageSegments.get(language)!;
+    
+    // Add the segment
+    languageSpecificSegments.push(segment);
+    
+    // For backward compatibility, also add to segments array if it's English
+    if (language === 'en-US') {
       userSession.transcript.segments.push(segment);
-      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    }
+    
+    // Prune old segments (older than 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    
+    // Clean up the language-specific segments
+    userSession.transcript.languageSegments.set(
+      language,
+      languageSpecificSegments.filter(seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo)
+    );
+    
+    // Clean up the legacy segments array for backward compatibility
+    if (language === 'en-US') {
       userSession.transcript.segments = userSession.transcript.segments.filter(
         seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
       );
@@ -418,7 +468,22 @@ export class SessionService {
 
     // SubscriptionManager is part of userSession, no specific cleanup needed here
 
-    if (userSession.transcript) userSession.transcript.segments = []; // Check exists
+    // Clean up dashboard manager if it exists
+    if (userSession.dashboardManager && typeof userSession.dashboardManager.dispose === 'function') {
+      userSession.logger.info(`🧹 Cleaning up dashboard manager for session ${userSession.sessionId}`);
+      userSession.dashboardManager.dispose();
+    }
+
+    // Clear transcript data
+    if (userSession.transcript) {
+      userSession.transcript.segments = []; // Clear legacy segments
+      
+      // Clear language-specific segments if they exist
+      if (userSession.transcript.languageSegments) {
+        userSession.transcript.languageSegments.clear();
+      }
+    }
+    
     userSession.bufferedAudio = [];
 
     userSession.appConnections.forEach((ws, appName) => {

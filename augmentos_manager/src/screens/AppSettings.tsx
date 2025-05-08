@@ -9,6 +9,7 @@ import { MOCK_CONNECTION, SETTINGS_KEYS } from '../consts';
 import GroupTitle from '../components/settings/GroupTitle';
 import ToggleSetting from '../components/settings/ToggleSetting';
 import TextSetting from '../components/settings/TextSetting';
+import TextSettingNoSave from '../components/settings/TextSettingNoSave';
 import SliderSetting from '../components/settings/SliderSetting';
 import SelectSetting from '../components/settings/SelectSetting';
 import MultiSelectSetting from '../components/settings/MultiSelectSetting';
@@ -19,6 +20,9 @@ import BackendServerComms from '../backend_comms/BackendServerComms';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { getAppImage } from '../logic/getAppImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
+import { useAppStatus } from '../providers/AppStatusProvider';
+import AppIcon from '../components/AppIcon';
+import SelectWithSearchSetting from '../components/settings/SelectWithSearchSetting';
 
 type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
@@ -28,6 +32,7 @@ type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'
 const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkTheme, toggleTheme }) => {
   const { packageName, appName } = route.params;
   const backendServerComms = BackendServerComms.getInstance();
+  const [isUninstalling, setIsUninstalling] = useState(false);
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null);
@@ -35,17 +40,67 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   const [settingsState, setSettingsState] = useState<{ [key: string]: any }>({});
   // Get app info from status
   const { status } = useStatus();
+  const { appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation } = useAppStatus();
   const appInfo = useMemo(() => {
-    return status.apps.find(app => app.packageName === packageName) || null;
-  }, [status.apps, packageName]);
+    return appStatus.find(app => app.packageName === packageName) || null;
+  }, [appStatus, packageName]);
 
-  // Placeholder functions for app actions
-  const handleStartStopApp = () => {
-    console.log(`${appInfo?.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`);
-    if (appInfo?.packageName && appInfo?.is_running) {
-      BackendServerComms.getInstance().stopApp(appInfo?.packageName);
-    } else if (appInfo?.packageName && !appInfo?.is_running) {
-      BackendServerComms.getInstance().startApp(appInfo?.packageName);
+  // Handle app start/stop actions with debouncing
+  const handleStartStopApp = async () => {
+    if (!appInfo) return;
+    
+    console.log(`${appInfo.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`);
+    
+    try {
+      if (appInfo.is_running) {
+        // Optimistically update UI first
+        optimisticallyStopApp(packageName);
+        
+        // Then request the server to stop the app
+        await backendServerComms.stopApp(packageName);
+        
+        // Clear the pending operation since it completed successfully
+        clearPendingOperation(packageName);
+      } else {
+        // Optimistically update UI first
+        optimisticallyStartApp(packageName);
+        
+        // Check if it's a standard app
+        if (appInfo.tpaType === 'standard') {
+          // Find any running standard apps
+          const runningStandardApps = appStatus.filter(
+            app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName
+          );
+          
+          // If there's any running standard app, stop it first
+          for (const runningApp of runningStandardApps) {
+            // Optimistically update UI
+            optimisticallyStopApp(runningApp.packageName);
+            
+            try {
+              await backendServerComms.stopApp(runningApp.packageName);
+              clearPendingOperation(runningApp.packageName);
+            } catch (error) {
+              console.error('Stop app error:', error);
+              refreshAppStatus();
+            }
+          }
+        }
+        
+        // Then request the server to start the app
+        await backendServerComms.startApp(packageName);
+        
+        // Clear the pending operation since it completed successfully
+        clearPendingOperation(packageName);
+      }
+    } catch (error) {
+      // Clear the pending operation for this app
+      clearPendingOperation(packageName);
+      
+      // Refresh the app status to get the accurate state from the server
+      refreshAppStatus();
+      
+      console.error(`Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`, error);
     }
   };
 
@@ -65,9 +120,13 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
           style: "destructive",
           onPress: async () => {
             try {
+              setIsUninstalling(true);
               // First stop the app if it's running
               if (appInfo?.is_running) {
+                // Optimistically update UI first
+                optimisticallyStopApp(packageName);
                 await backendServerComms.stopApp(packageName);
+                clearPendingOperation(packageName);
               }
               
               // Then uninstall it
@@ -83,10 +142,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
               navigation.goBack();
             } catch (error: any) {
               console.error('Error uninstalling app:', error);
+              clearPendingOperation(packageName);
+              refreshAppStatus();
               GlobalEventEmitter.emit('SHOW_BANNER', { 
                 message: `Error uninstalling app: ${error.message || 'Unknown error'}`, 
                 type: "error" 
               });
+            } finally {
+              setIsUninstalling(false);
             }
           }
         }
@@ -136,6 +199,19 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
       console.log("\n\n\nGOT TPA SETTING INFO:");
       console.log(JSON.stringify(data));
       console.log("\n\n\n");
+      
+      // If no data is returned from the server, create a minimal app info object
+      if (!data) {
+        setServerAppInfo({
+          name: appInfo?.name || appName,
+          description: appInfo?.description || 'No description available.',
+          instructions: appInfo?.instructions || null,
+          settings: [],
+          uninstallable: true
+        });
+        return;
+      }
+      
       setServerAppInfo(data);
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
@@ -162,6 +238,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
       }
     } catch (err) {
       console.error('Error fetching TPA settings:', err);
+      // If there's an error, create a minimal app info object
+      setServerAppInfo({
+        name: appInfo?.name || appName,
+        description: appInfo?.description || 'No description available.',
+        instructions: appInfo?.instructions || null,
+        settings: [],
+        uninstallable: true
+      });
     }
   }
 
@@ -223,6 +307,16 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             theme={theme}
           />
         );
+      case 'text_no_save_button':
+        return (
+          <TextSettingNoSave
+            key={index}
+            label={setting.label}
+            value={settingsState[setting.key]}
+            onChangeText={(text) => handleSettingChange(setting.key, text)}
+            theme={theme}
+          />
+        );
       case 'slider':
         return (
           <SliderSetting
@@ -252,6 +346,17 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             theme={theme}
           />
         );
+      case 'select_with_search':
+          return (
+            <SelectWithSearchSetting
+              key={index}
+              label={setting.label}
+              value={settingsState[setting.key]}
+              options={setting.options}
+              onValueChange={(val) => handleSettingChange(setting.key, val)}
+              theme={theme}
+            />
+          );
       case 'multiselect':
         return (
           <MultiSelectSetting
@@ -290,16 +395,23 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.backgroundColor }]}>
+      {isUninstalling && (
+        <LoadingOverlay 
+          message={`Uninstalling ${appInfo?.name || appName}...`} 
+          isDarkTheme={isDarkTheme} 
+        />
+      )}
       <ScrollView contentContainerStyle={styles.mainContainer}>
         {/* App Info Header Section */}
         <View style={[styles.appInfoHeader, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}>
           <View style={styles.appIconRow}>
             <View style={styles.appIconContainer}>
               <View style={styles.iconWrapper}>
-                <ImageBackground
-                  source={getAppImage(appInfo)}
+                <AppIcon
+                  app={appInfo}
+                  isDarkTheme={isDarkTheme}
+                  isForegroundApp={appInfo.is_foreground}
                   style={styles.appIconLarge}
-                  imageStyle={styles.appIconRounded}
                 />
               </View>
             </View>
@@ -313,11 +425,11 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
                 <Text style={[styles.appMetaInfo, { color: theme.secondaryTextColor }]}>
                   Package: {packageName}
                 </Text>
-                {appInfo.is_foreground && (
+                {/* {appInfo.is_foreground && (
                   <Text style={[styles.appMetaInfo, { color: '#2196F3' }]}>
                     Foreground App
                   </Text>
-                )}
+                )} */}
               </View>
             </View>
           </View>
@@ -447,9 +559,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
   },
   appIconLarge: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: 100,
+    height: 100,
+    borderRadius: 18,
   },
   appIconRounded: {
     borderRadius: 18,

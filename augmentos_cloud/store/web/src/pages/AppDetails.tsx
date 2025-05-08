@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation  } from 'react-router-dom';
 import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api';
@@ -109,9 +109,17 @@ const AppDetails: React.FC = () => {
     try {
       setInstallingApp(true);
 
-      const success = await api.app.uninstallApp(app.packageName);
+      // First stop the app
+      const stopSuccess = await api.app.stopApp(app.packageName);
+      if (!stopSuccess) {
+        toast.error('Failed to stop app before uninstallation');
+        return;
+      }
 
-      if (success) {
+      // Then uninstall the app
+      const uninstallSuccess = await api.app.uninstallApp(app.packageName);
+
+      if (uninstallSuccess) {
         toast.success('App uninstalled successfully');
         setApp(prev => prev ? { ...prev, isInstalled: false, installedDate: undefined } : null);
       } else {
@@ -119,7 +127,7 @@ const AppDetails: React.FC = () => {
       }
     } catch (err) {
       console.error('Error uninstalling app:', err);
-      toast.error('Failed to uninstall app');
+      toast.error('Failed to uninstall app. Please try again.');
     } finally {
       setInstallingApp(false);
     }
@@ -205,15 +213,22 @@ const AppDetails: React.FC = () => {
                       {isAuthenticated ? (
                         app.isInstalled ? (
                           <Button
-                            variant="outline"
+                            variant="destructive"
                             onClick={handleUninstall}
                             disabled={installingApp}
-                            className="w-full md:w-48"
+                            className="w-full md:w-48 bg-[#E24A24] hover:bg-[#E24A24]/90"
                           >
                             {installingApp ? (
-                              <div className="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full mr-2"></div>
-                            ) : null}
-                            Uninstall
+                              <>
+                                <div className="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full mr-2"></div>
+                                Uninstalling...
+                              </>
+                            ) : (
+                              <>
+                                <X className="h-4 w-4 mr-1" />
+                                Uninstall
+                              </>
+                            )}
                           </Button>
                         ) : (
                           <Button
@@ -222,16 +237,21 @@ const AppDetails: React.FC = () => {
                             className="w-full md:w-48"
                           >
                             {installingApp ? (
-                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                              <>
+                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                                Installing...
+                              </>
                             ) : (
-                              <Download className="h-4 w-4 mr-1" />
+                              <>
+                                <Download className="h-4 w-4 mr-1" />
+                                Install
+                              </>
                             )}
-                            Install
                           </Button>
                         )
                       ) : (
                         <Button
-                          onClick={() => navigate('/login')}
+                          onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
                           className="bg-blue-600 hover:bg-blue-700 w-full md:w-48"
                         >
                           Sign in to install

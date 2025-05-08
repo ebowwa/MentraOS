@@ -33,7 +33,19 @@ class OnboardMicrophoneManager {
   
   // MARK: - Initialization
   
-  init() {}
+  init() {
+    // Set up audio session notification to handle route changes
+    NotificationCenter.default.addObserver(
+      self,
+      selector: #selector(handleRouteChange),
+      name: AVAudioSession.routeChangeNotification,
+      object: nil
+    )
+  }
+  
+  deinit {
+    NotificationCenter.default.removeObserver(self)
+  }
   
   // MARK: - Public Methods
   
@@ -50,6 +62,103 @@ class OnboardMicrophoneManager {
     return AVAudioSession.sharedInstance().recordPermission == .granted
   }
   
+  /// Get a list of available audio input devices
+  func getAvailableInputDevices() -> [String: String] {
+    var deviceInfo = [String: String]()
+    
+    // Get current route inputs
+    let currentRoute = AVAudioSession.sharedInstance().currentRoute
+    for input in currentRoute.inputs {
+      deviceInfo[input.uid] = input.portName
+    }
+    
+    // Also check available inputs which may include disconnected but paired devices
+    if let availableInputs = AVAudioSession.sharedInstance().availableInputs {
+      for input in availableInputs {
+        deviceInfo[input.uid] = input.portName
+      }
+    }
+    
+    return deviceInfo
+  }
+  
+  /// Manually set AirPods or another specific device as preferred input
+  func setPreferredInputDevice(named deviceName: String) -> Bool {
+    guard let availableInputs = AVAudioSession.sharedInstance().availableInputs else {
+      print("No available inputs found")
+      return false
+    }
+    
+    // Find input containing the specified name (case insensitive)
+    guard let preferredInput = availableInputs.first(where: {
+      $0.portName.range(of: deviceName, options: .caseInsensitive) != nil
+    }) else {
+      print("No input device found containing name: \(deviceName)")
+      return false
+    }
+    
+    do {
+      try AVAudioSession.sharedInstance().setPreferredInput(preferredInput)
+      print("Successfully set preferred input to: \(preferredInput.portName)")
+      return true
+    } catch {
+      print("Failed to set preferred input: \(error)")
+      return false
+    }
+  }
+  
+  /// Handle audio route changes (e.g. when connecting/disconnecting AirPods)
+  @objc private func handleRouteChange(notification: Notification) {
+    guard let userInfo = notification.userInfo,
+          let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
+          let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
+      return
+    }
+    
+    // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
+    if isRecording {
+      switch reason {
+      case .newDeviceAvailable, .oldDeviceUnavailable:
+        // Restart recording to use the new input device
+        stopRecording()
+        _ = startRecording()
+      default:
+        break
+      }
+    }
+    
+    // Log the current audio route
+    logCurrentAudioRoute()
+  }
+  
+  /// Log the current audio input/output route for debugging
+  private func logCurrentAudioRoute() {
+    let currentRoute = AVAudioSession.sharedInstance().currentRoute
+    var routeDescription = "Current audio route:\n"
+    
+    // Log inputs
+    if currentRoute.inputs.isEmpty {
+      routeDescription += "- No input ports\n"
+    } else {
+      for (index, port) in currentRoute.inputs.enumerated() {
+        routeDescription += "- Input \(index + 1): \(port.portName) (type: \(port.portType.rawValue))\n"
+      }
+    }
+    
+    // Log outputs
+    if currentRoute.outputs.isEmpty {
+      routeDescription += "- No output ports"
+    } else {
+      for (index, port) in currentRoute.outputs.enumerated() {
+        routeDescription += "- Output \(index + 1): \(port.portName) (type: \(port.portType.rawValue))"
+        if index < currentRoute.outputs.count - 1 {
+          routeDescription += "\n"
+        }
+      }
+    }
+    
+    print(routeDescription)
+  }
   
   // MARK: - Private Helpers
   
@@ -78,7 +187,7 @@ class OnboardMicrophoneManager {
     return data as Data
   }
   
-  /// Start recording from the onboard microphone
+  /// Start recording from the available microphone (built-in, Bluetooth, AirPods, etc.)
   func startRecording() -> Bool {
     // Don't restart if already recording
     if isRecording {
@@ -96,8 +205,38 @@ class OnboardMicrophoneManager {
     // Initialize audio session
     audioSession = AVAudioSession.sharedInstance()
     do {
-      try audioSession?.setCategory(.record, mode: .default)
-      try audioSession?.setActive(true)
+      // First deactivate the session to reset any previous state
+      try audioSession?.setActive(false, options: .notifyOthersOnDeactivation)
+      
+      // Use playAndRecord instead of record category, as this has better compatibility with iOS 16+
+      // and works with Bluetooth headsets more reliably
+      try audioSession?.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+      
+      // Find and prefer AirPods if available
+      if let availableInputs = audioSession?.availableInputs, !availableInputs.isEmpty {
+        print("Available audio inputs:")
+        
+        // Log all available inputs for debugging
+        for (index, input) in availableInputs.enumerated() {
+          print("[\(index)] \(input.portName) (type: \(input.portType.rawValue))")
+        }
+        
+        // Try to find AirPods or other Bluetooth headphones
+        let preferredInput = availableInputs.first { input in
+          return input.portType == .bluetoothHFP ||
+                 input.portType == .bluetoothA2DP
+        } ?? availableInputs.first // Fallback to first available input if no AirPods found
+        
+        // Set the preferred input
+        try audioSession?.setPreferredInput(preferredInput)
+        print("Set preferred input to: \(preferredInput?.portName ?? "None")")
+      }
+      
+      // Now activate the session
+      try audioSession?.setActive(true, options: .notifyOthersOnDeactivation)
+      
+      // Log the current audio route to see which device is being used
+      logCurrentAudioRoute()
     } catch {
       print("Failed to set up audio session: \(error)")
       return false
@@ -158,7 +297,7 @@ class OnboardMicrophoneManager {
     do {
       try audioEngine?.start()
       isRecording = true
-      print("Onboard microphone started recording")
+      print("Started recording from: \(getActiveInputDevice() ?? "Unknown device")")
       return true
     } catch {
       print("Failed to start audio engine: \(error)")
@@ -166,8 +305,13 @@ class OnboardMicrophoneManager {
     }
   }
   
+  /// Get the currently active input device name
+  func getActiveInputDevice() -> String? {
+    let currentRoute = AVAudioSession.sharedInstance().currentRoute
+    return currentRoute.inputs.first?.portName
+  }
   
-  /// Stop recording from the onboard microphone
+  /// Stop recording from the microphone
   func stopRecording() {
     guard isRecording else {
       return
@@ -183,7 +327,7 @@ class OnboardMicrophoneManager {
     audioSession = nil
     isRecording = false
     
-    print("Onboard microphone stopped recording")
+    print("Stopped recording")
     // play back the audio (for testing only):
 //    playbackRecordedAudio()
   }
@@ -270,6 +414,7 @@ class OnboardMicrophoneManager {
   // MARK: - Cleanup
   
   func cleanup() {
+    NotificationCenter.default.removeObserver(self)
     stopRecording()
   }
 }

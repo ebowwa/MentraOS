@@ -3,6 +3,23 @@
 
 import { AppSettingType, AppState, Language, TpaType } from './enums';
 
+
+// Tool parameter type definition
+export interface ToolParameterSchema {
+  type: 'string' | 'number' | 'boolean';
+  description: string;
+  enum?: string[];
+  required?: boolean;
+}
+
+// Tool schema definition for TPAs
+export interface ToolSchema {
+  id: string;
+  description: string;
+  activationPhrases?: string[];
+  parameters?: Record<string, ToolParameterSchema>;
+}
+
 /**
  * Developer profile information
  */
@@ -152,4 +169,5 @@ export interface TranscriptSegment {
  */
 export interface TranscriptI {
   segments: TranscriptSegment[];
+  languageSegments?: Map<string, TranscriptSegment[]>; // Language-indexed map for multi-language support
 }

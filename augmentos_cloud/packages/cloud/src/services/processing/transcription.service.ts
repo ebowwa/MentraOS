@@ -15,7 +15,8 @@ import {
   TranslationData,
   UserSession,
   ExtendedStreamType,
-  getLanguageInfo
+  getLanguageInfo,
+  TranscriptSegment
 } from '@augmentos/sdk';
 import webSocketService from '../core/websocket.service';
 import subscriptionService from '../core/subscription.service';
@@ -190,39 +191,53 @@ export class TranscriptionService {
 
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
-        console.log(`🎤 TRANSLATION [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
+        const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
+        const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
+
+        console.log(`🎤 TRANSLATION from ${detectedSourceLang} to ${languageInfo.translateLanguage} [Interim][${userSession.userId}][${subscription}]: ${translatedText}`);
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           text: translatedText,
+          originalText: event.result.text,
           startTime: this.calculateRelativeTime(event.result.offset),
           endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
           isFinal: false,
           speakerId: event.result.speakerId,
           transcribeLanguage: languageInfo.transcribeLanguage,
-          translateLanguage: languageInfo.translateLanguage
+          translateLanguage: languageInfo.translateLanguage,
+          didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
-        this.updateTranscriptHistory(userSession, event, false);
+        
+        // Save transcript in the appropriate language
+        this.updateTranscriptHistory(userSession, event, false, languageInfo.translateLanguage);
       };
 
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognized = (_sender: any, event: any) => {
         if (!event.result.translations) return;
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
+        // Compare normalized text to determine if translation occurred
+        const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
+        const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           isFinal: true,
           text: translatedText,
+          originalText: event.result.text,
           startTime: this.calculateRelativeTime(event.result.offset),
           endTime: this.calculateRelativeTime(event.result.offset + event.result.duration),
           speakerId: event.result.speakerId,
           duration: event.result.duration,
           transcribeLanguage: languageInfo.transcribeLanguage,
-          translateLanguage: languageInfo.translateLanguage
+          translateLanguage: languageInfo.translateLanguage,
+          didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
-        this.updateTranscriptHistory(userSession, event, true);
+        
+        // Save transcript in the appropriate language
+        this.updateTranscriptHistory(userSession, event, true, languageInfo.translateLanguage);
       };
     } else {
       // Transcription branch.
@@ -239,11 +254,8 @@ export class TranscriptionService {
           transcribeLanguage: languageInfo.transcribeLanguage
         };
 
-        console.log('\n\n\n#### transcriptionData:', event.result.language, "\n\n\n");
-
-        if (languageInfo.transcribeLanguage === 'en-US') {
-          this.updateTranscriptHistory(userSession, event, false);
-        }
+        // Save transcript for all languages, not just English
+        this.updateTranscriptHistory(userSession, event, false, languageInfo.transcribeLanguage);
         this.broadcastTranscriptionResult(userSession, transcriptionData);
       };
 
@@ -260,11 +272,9 @@ export class TranscriptionService {
           duration: event.result.duration,
           transcribeLanguage: languageInfo.transcribeLanguage
         };
-        // console.log('\n\n\n#### result:', true, "\n\n\n");
-        // console.log('\n\n\n#### languageInfo.transcribeLanguage:', event.result.language, "\n\n\n");
-        if (languageInfo.transcribeLanguage === 'en-US') {
-          this.updateTranscriptHistory(userSession, event, true);
-        }
+
+        // Save transcript for all languages, not just English
+        this.updateTranscriptHistory(userSession, event, true, languageInfo.transcribeLanguage);
         this.broadcastTranscriptionResult(userSession, transcriptionData);
       };
     }
@@ -329,58 +339,91 @@ export class TranscriptionService {
     this.stopTranscription(userSession);
   }
 
-  private updateTranscriptHistory(userSession: ExtendedUserSession, event: ConversationTranscriptionEventArgs, isFinal: boolean): void {
-    const segments = userSession.transcript.segments;
-    const hasInterimLast = segments.length > 0 && !segments[segments.length - 1].isFinal;
-
-    // console.log('\n\n\n########', event.result.language, "\n\n\n");
-    // Only save English transcriptions.
-    // if (event.result.language !== 'en-US') {
-    //   console.log("🚫 Skipping non-English transcription");
-    //   return;
-    // }
-
+  private updateTranscriptHistory(
+    userSession: ExtendedUserSession, 
+    event: ConversationTranscriptionEventArgs, 
+    isFinal: boolean,
+    language: string = 'en-US'
+  ): void {
+    // Initialize languageSegments if it doesn't exist
+    if (!userSession.transcript.languageSegments) {
+      userSession.transcript.languageSegments = new Map<string, TranscriptSegment[]>();
+    }
+    
+    // Ensure the language entry exists in the map
+    if (!userSession.transcript.languageSegments.has(language)) {
+      userSession.transcript.languageSegments.set(language, []);
+    }
+    
+    // Handle both the language-specific segments and (for backward compatibility) the legacy segments
+    const segments = language === 'en-US' ? userSession.transcript.segments : [];
+    const languageSegments = userSession.transcript.languageSegments.get(language)!;
+    
+    // Check if we need to update an interim segment
+    const hasInterimLastLegacy = segments.length > 0 && !segments[segments.length - 1].isFinal;
+    const hasInterimLastLanguage = languageSegments.length > 0 && !languageSegments[languageSegments.length - 1].isFinal;
+    
     const currentTime = new Date();
+    const newSegment = {
+      resultId: event.result.resultId,
+      speakerId: event.result.speakerId,
+      text: event.result.text,
+      timestamp: currentTime,
+      isFinal: isFinal
+    };
 
+    // Handle final segment
     if (isFinal) {
-      if (hasInterimLast) {
-        segments.pop();
+      // For language-specific segments
+      if (hasInterimLastLanguage) {
+        languageSegments.pop(); // Remove the interim segment
       }
-      segments.push({
-        resultId: event.result.resultId,
-        speakerId: event.result.speakerId,
-        text: event.result.text,
-        timestamp: currentTime,
-        isFinal: true
-      });
-    }
+      languageSegments.push({...newSegment});
+      
+      // For backward compatibility with legacy segments (English only)
+      if (language === 'en-US') {
+        if (hasInterimLastLegacy) {
+          segments.pop(); // Remove the interim segment
+        }
+        segments.push({...newSegment});
+      }
+    } 
+    // Handle interim segment
     else {
-      if (hasInterimLast) {
-        segments[segments.length - 1] = {
-          resultId: event.result.resultId,
-          speakerId: event.result.speakerId,
-          text: event.result.text,
-          timestamp: currentTime,
-          isFinal: false
-        };
+      // For language-specific segments
+      if (hasInterimLastLanguage) {
+        languageSegments[languageSegments.length - 1] = {...newSegment};
       } else {
-        segments.push({
-          resultId: event.result.resultId,
-          speakerId: event.result.speakerId,
-          text: event.result.text,
-          timestamp: currentTime,
-          isFinal: false
-        });
+        languageSegments.push({...newSegment});
+      }
+      
+      // For backward compatibility with legacy segments (English only)
+      if (language === 'en-US') {
+        if (hasInterimLastLegacy) {
+          segments[segments.length - 1] = {...newSegment};
+        } else {
+          segments.push({...newSegment});
+        }
       }
     }
-
-    // console.log('\n\n\nsegments:', segments, "\n\n\n");
-
+    
     // Prune old segments (older than 30 minutes)
     const thirtyMinutesAgo = new Date(currentTime.getTime() - 30 * 60 * 1000);
-    userSession.transcript.segments = segments.filter(
-      seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
+    
+    // Update language-specific segments
+    userSession.transcript.languageSegments.set(
+      language, 
+      languageSegments.filter(seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo)
     );
+    
+    // Update legacy segments (English only) for backward compatibility
+    if (language === 'en-US') {
+      userSession.transcript.segments = segments.filter(
+        seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
+      );
+    }
+    
+    console.log(`📝 Updated transcript for language ${language}, now has ${languageSegments.length} segments`);
   }
 }
 

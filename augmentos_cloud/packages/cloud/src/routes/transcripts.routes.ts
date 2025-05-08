@@ -12,6 +12,7 @@ const router = express.Router();
 //   - duration: number (seconds to look back)
 //   - startTime?: ISO timestamp (optional alternative to duration)
 //   - endTime?: ISO timestamp (optional alternative to duration)
+//   - language?: string (language code, e.g. 'en-US', 'fr-FR', defaults to 'en-US')
 
 // Get all available apps
 router.get('/api/transcripts/:appSessionId', async (req, res) => {
@@ -20,12 +21,10 @@ router.get('/api/transcripts/:appSessionId', async (req, res) => {
     const duration = req.query.duration;
     const startTime = req.query.startTime;
     const endTime = req.query.endTime;
+    const language = (req.query.language as string) || 'en-US';
 
-    // console.log('\n\n\nreq.params:', req.params, "\n\n\n");
-    // console.log('\n\n\nreq.query:', req.query.duration, "\n\n\n");
-    // console.log('\n\n\nreq.query:', req.query.startTime, "\n\n\n");
-    // console.log('\n\n\nreq.query:', req.query.endTime, "\n\n\n");
-  
+    console.log(`🔍 Fetching transcripts for session ${appSessionId}, language: ${language}`);
+    
     if (!duration && !startTime && !endTime) {
       return res.status(400).json({ error: 'duration, startTime, or endTime is required' });
     }
@@ -36,27 +35,46 @@ router.get('/api/transcripts/:appSessionId', async (req, res) => {
       return res.status(404).json({ error: 'Session not found' });
     }
 
-    const transcriptSegments = userSession.transcript.segments;
-    // console.log('\n\n\ntranscriptSegments:', transcriptSegments, "\n\n\n");
+    let transcriptSegments: TranscriptSegment[] = [];
+    
+    // Check if we have language-specific segments
+    if (userSession.transcript.languageSegments?.has(language)) {
+      console.log(`✅ Found language-specific segments for ${language}`);
+      transcriptSegments = userSession.transcript.languageSegments.get(language) || [];
+    } else if (language === 'en-US') {
+      // Fallback to legacy segments for English 
+      console.log('⚠️ Using legacy segments for en-US');
+      transcriptSegments = userSession.transcript.segments;
+    } else {
+      console.log(`⚠️ No segments found for language ${language}`);
+      // Return empty array for languages we don't have
+    }
 
+    // Apply time-based filtering
     const filteredTranscriptSegments = transcriptSegments.filter((segment: TranscriptSegment) => {
-      const startTime = new Date(segment.timestamp);
+      const segmentTime = new Date(segment.timestamp);
       const currentTime = new Date();
-      const secondsSinceNow = (currentTime.getTime() - startTime.getTime()) / 1000;
+      const secondsSinceNow = (currentTime.getTime() - segmentTime.getTime()) / 1000;
 
       if (duration) {
         const durationSeconds = parseInt(duration as string);
         return secondsSinceNow <= durationSeconds;
       }
+      
+      // TODO: Add handling for startTime/endTime filters
+      return true;
     });
 
+    console.log(`💬 Returning ${filteredTranscriptSegments.length} transcript segments for language ${language}`);
+    
     res.json({
+      language: language,
       segments: filteredTranscriptSegments
     });
 
   } catch (error) {
-    console.error('Error fetching apps:', error);
-    res.status(500).json({ error: 'Error fetching apps' });
+    console.error('Error fetching transcripts:', error);
+    res.status(500).json({ error: 'Error fetching transcripts' });
   }
 });
 

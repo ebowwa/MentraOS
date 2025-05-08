@@ -48,6 +48,7 @@ import {
   TpaConnectionInit,
   TpaSubscriptionUpdate,
   TpaToCloudMessage,
+  TpaToCloudMessageType,
   TpaType,
   UserSession,
   Vad,
@@ -413,39 +414,39 @@ export class WebSocketService {
     userSession.logger.info(`[websocket.service]: ⚡️ Loading app ${packageName} for user ${userSession.userId}\n`);
 
     // If this is a STANDARD app, we need to stop any other STANDARD apps that are running
-    if (app.tpaType === TpaType.STANDARD) {
-      userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
+    // if (app.tpaType === TpaType.STANDARD) {
+    //   userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
       
-      // Find all active STANDARD apps
-      const runningStandardApps = [];
+    //   // Find all active STANDARD apps
+    //   const runningStandardApps = [];
       
-      for (const activeAppName of userSession.activeAppSessions) {
-        // Skip if this is the app we're trying to start
-        if (activeAppName === packageName) continue;
+    //   for (const activeAppName of userSession.activeAppSessions) {
+    //     // Skip if this is the app we're trying to start
+    //     if (activeAppName === packageName) continue;
         
-        // Get the app details to check its type
-        try {
-          const activeApp = await appService.getApp(activeAppName);
-          if (activeApp && activeApp.tpaType === TpaType.STANDARD) {
-            runningStandardApps.push(activeAppName);
-          }
-        } catch (error) {
-          userSession.logger.error(`[websocket.service]: Error checking app type for ${activeAppName}:`, error);
-          // Continue with the next app even if there's an error
-        }
-      }
+    //     // Get the app details to check its type
+    //     try {
+    //       const activeApp = await appService.getApp(activeAppName);
+    //       if (activeApp && activeApp.tpaType === TpaType.STANDARD) {
+    //         runningStandardApps.push(activeAppName);
+    //       }
+    //     } catch (error) {
+    //       userSession.logger.error(`[websocket.service]: Error checking app type for ${activeAppName}:`, error);
+    //       // Continue with the next app even if there's an error
+    //     }
+    //   }
       
-      // Stop any running STANDARD apps
-      for (const standardAppToStop of runningStandardApps) {
-        userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
-        try {
-          await this.stopAppSession(userSession, standardAppToStop);
-        } catch (error) {
-          userSession.logger.error(`[websocket.service]: Error stopping STANDARD app ${standardAppToStop}:`, error);
-          // Continue with the next app even if there's an error
-        }
-      }
-    }
+    //   // Stop any running STANDARD apps
+    //   for (const standardAppToStop of runningStandardApps) {
+    //     userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
+    //     try {
+    //       await this.stopAppSession(userSession, standardAppToStop);
+    //     } catch (error) {
+    //       userSession.logger.error(`[websocket.service]: Error stopping STANDARD app ${standardAppToStop}:`, error);
+    //       // Continue with the next app even if there's an error
+    //     }
+    //   }
+    // }
 
     // Store pending session.
     userSession.loadingApps.add(packageName);
@@ -574,6 +575,9 @@ export class WebSocketService {
 
       try {
         const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+
+        // console.log("🔥🔥🔥: Triggering stop webhook for", app.publicUrl);
+        // console.log("🔥🔥🔥: TPA Session ID:", tpaSessionId);
         await appService.triggerStopWebhook(
           app.publicUrl,
           {
@@ -730,6 +734,7 @@ export class WebSocketService {
   /**
    * 🥳🤓 Handles new glasses client connections.
    * @param ws - WebSocket connection
+   * @param request - Incoming message
    * @private
    */
   private async handleGlassesConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
@@ -951,7 +956,7 @@ export class WebSocketService {
           };
 
           ws.send(JSON.stringify(ackMessage));
-          userSession.logger.info(`[websocket.service]\nSENDING connection_ack`);
+          // userSession.logger.info(`[websocket.service]\nSENDING connection_ack` + JSON.stringify(ackMessage));
 
           // Track connection event.
           PosthogService.trackEvent('connected', userSession.userId, {
@@ -971,6 +976,8 @@ export class WebSocketService {
 
             // Generate and send app state to the glasses
             const appStateChange = await this.generateAppStateStatus(userSession);
+
+            // console.log("🔥🔥🔥: Sending app state change:", appStateChange);
             ws.send(JSON.stringify(appStateChange));
 
             // Track event
@@ -1078,6 +1085,14 @@ export class WebSocketService {
         case GlassesToCloudMessageType.LOCATION_UPDATE: {
           const locationUpdate = message as LocationUpdate;
           try {
+            console.log("🔥🔥🔥: Received location update from glasses:", locationUpdate);
+            // Cache the location update in subscription service
+            subscriptionService.cacheLocation(userSession.sessionId, {
+              latitude: locationUpdate.lat,
+              longitude: locationUpdate.lng,
+              timestamp: new Date()
+            });
+            
             const user = await User.findByEmail(userSession.userId);
             if (user) {
               await user.setLocation(locationUpdate);
@@ -1095,6 +1110,9 @@ export class WebSocketService {
         case GlassesToCloudMessageType.CALENDAR_EVENT: {
           const calendarEvent = message as CalendarEvent;
           userSession.logger.info('Calendar event:', calendarEvent);
+
+          // Cache the event for future subscribers
+          subscriptionService.cacheCalendarEvent(userSession.sessionId, calendarEvent);
 
           this.broadcastToTpa(userSession.sessionId, message.type as any, message);
           break;
@@ -1182,6 +1200,16 @@ export class WebSocketService {
               // Get the minimal language subscriptions before update
               const previousLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSessionId);
 
+              // Check if the app is newly subscribing to calendar events
+              const isNewCalendarSubscription = 
+                !subscriptionService.hasSubscription(userSessionId, message.packageName, StreamType.CALENDAR_EVENT) &&
+                subMessage.subscriptions.includes(StreamType.CALENDAR_EVENT);
+
+              // Check if the app is newly subscribing to location updates
+              const isNewLocationSubscription = 
+                !subscriptionService.hasSubscription(userSessionId, message.packageName, StreamType.LOCATION_UPDATE) &&
+                subMessage.subscriptions.includes(StreamType.LOCATION_UPDATE);
+
               // Update subscriptions
               subscriptionService.updateSubscriptions(
                 userSessionId,
@@ -1224,6 +1252,58 @@ export class WebSocketService {
                 }
               }
 
+              // Send cached calendar event if app just subscribed to calendar events
+              if (isNewCalendarSubscription) {
+                console.log("🔥🔥🔥: isNewCalendarSubscription:", isNewCalendarSubscription);
+                const lastCalendarEvent = subscriptionService.getLastCalendarEvent(userSessionId);
+                if (lastCalendarEvent) {
+                  userSession.logger.info(`Sending cached calendar event to newly subscribed app ${message.packageName}`);
+                  const tpaSessionId = `${userSessionId}-${message.packageName}`;
+                  const tpaWs = userSession.appConnections.get(message.packageName);
+                  
+                  if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
+                    const dataStream: DataStream = {
+                      type: CloudToTpaMessageType.DATA_STREAM,
+                      sessionId: tpaSessionId,
+                      streamType: StreamType.CALENDAR_EVENT,
+                      data: lastCalendarEvent,
+                      timestamp: new Date()
+                    };
+                    tpaWs.send(JSON.stringify(dataStream));
+                  }
+                }
+              }
+
+              // Send cached location if app just subscribed to location updates
+              if (isNewLocationSubscription) {
+                console.log("🔥🔥🔥: isNewLocationSubscription:", isNewLocationSubscription);
+                const lastLocation = subscriptionService.getLastLocation(userSessionId);
+                if (lastLocation) {
+                  userSession.logger.info(`Sending cached location to newly subscribed app ${message.packageName}`);
+                  const tpaSessionId = `${userSessionId}-${message.packageName}`;
+                  const tpaWs = userSession.appConnections.get(message.packageName);
+                  
+                  if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
+                    const locationUpdate: LocationUpdate = {
+                      type: GlassesToCloudMessageType.LOCATION_UPDATE,
+                      sessionId: tpaSessionId,
+                      lat: lastLocation.latitude,
+                      lng: lastLocation.longitude,
+                      timestamp: new Date()
+                    };
+                    
+                    const dataStream: DataStream = {
+                      type: CloudToTpaMessageType.DATA_STREAM,
+                      sessionId: tpaSessionId,
+                      streamType: StreamType.LOCATION_UPDATE,
+                      data: locationUpdate,
+                      timestamp: new Date()
+                    };
+                    tpaWs.send(JSON.stringify(dataStream));
+                  }
+                }
+              }
+
               const clientResponse: AppStateChange = {
                 type: CloudToGlassesMessageType.APP_STATE_CHANGE,
                 sessionId: userSession.sessionId,
@@ -1242,6 +1322,31 @@ export class WebSocketService {
 
               const displayMessage = message as DisplayRequest;
               sessionService.updateDisplay(userSession.sessionId, displayMessage);
+              break;
+            }
+            
+            // Dashboard message handling
+            case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
+            case TpaToCloudMessageType.DASHBOARD_MODE_CHANGE:
+            case TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE: {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+              
+              try {
+                // Import dashboard service functions dynamically to avoid circular dependencies
+                const dashboardService = require('../dashboard');
+                
+                // Handle the dashboard message, passing both message and userSession
+                const handled = dashboardService.handleTpaMessage(message, userSession);
+                
+                if (!handled) {
+                  userSession.logger.warn(`Dashboard message ${message.type} not handled`, message);
+                }
+              } catch (error) {
+                userSession.logger.error(`Error handling dashboard message ${message.type}:`, error);
+              }
               break;
             }
           }
@@ -1300,6 +1405,16 @@ export class WebSocketService {
         // Log the disconnection
         userSession.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
 
+        // Clean up dashboard content for the disconnected TPA
+        try {
+          // Import dashboard service dynamically to avoid circular dependencies
+          const dashboardService = require('../dashboard');
+          // Pass both the packageName and the userSession
+          dashboardService.handleTpaDisconnected(packageName, userSession);
+        } catch (error) {
+          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+        }
+
         // Notify the registration service that this session is disconnected
         // but DON'T remove it from registry - we want to enable recovery!
         // Just note that the session is temporarily disconnected
@@ -1321,6 +1436,17 @@ export class WebSocketService {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
+        
+        // Clean up dashboard content for the disconnected TPA
+        try {
+          // Import dashboard service dynamically to avoid circular dependencies
+          const dashboardService = require('../dashboard');
+          // Pass both the packageName and the userSession
+          dashboardService.handleTpaDisconnected(packageName, userSession);
+        } catch (error) {
+          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+        }
+        
         userSession?.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
       }
       ws.close();
@@ -1469,6 +1595,30 @@ export class WebSocketService {
             timestamp: new Date()
           };
           this.broadcastToTpa(userSessionId, StreamType.LOCATION_UPDATE, locationUpdate);
+        }
+      }
+      
+      // Send cached location to any app that subscribes to location updates
+      if (subscriptionService.hasSubscription(userSessionId, initMessage.packageName, StreamType.LOCATION_UPDATE)) {
+        const lastLocation = subscriptionService.getLastLocation(userSessionId);
+        if (lastLocation) {
+          userSession.logger.info(`Sending cached location to app ${initMessage.packageName} on connect`);
+          const locationUpdate: LocationUpdate = {
+            type: GlassesToCloudMessageType.LOCATION_UPDATE,
+            sessionId: initMessage.sessionId,
+            lat: lastLocation.latitude,
+            lng: lastLocation.longitude,
+            timestamp: new Date()
+          };
+          
+          const dataStream: DataStream = {
+            type: CloudToTpaMessageType.DATA_STREAM,
+            sessionId: initMessage.sessionId,
+            streamType: StreamType.LOCATION_UPDATE,
+            data: locationUpdate,
+            timestamp: new Date()
+          };
+          ws.send(JSON.stringify(dataStream));
         }
       }
     } catch (error) {
