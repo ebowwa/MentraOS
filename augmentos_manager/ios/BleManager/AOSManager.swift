@@ -85,7 +85,7 @@ struct ViewState {
   
   @objc public func setup() {
     
-    // self.g1Manager = ERG1Manager()
+    self.g1Manager = ERG1Manager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
     
@@ -718,6 +718,7 @@ struct ViewState {
         case .connectWearable:
           guard let params = params, let modelName = params["model_name"] as? String, let deviceName = params["device_name"] as? String else {
             print("connect_wearable invalid params")
+//            handleConnectWearable(modelName: "", deviceName: "")
             break
           }
           handleConnectWearable(modelName: modelName, deviceName: deviceName)
