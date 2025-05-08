@@ -225,11 +225,19 @@ const PrivacySettingsScreen: React.FC<PrivacySettingsScreenProps> = ({
 
   const handleToggleCalendar = async () => {
     if (calendarEnabled) {
-      // We can't revoke the permission, but we can provide info
+      // We can't revoke the permission, but we can provide info and a way to open settings
       showAlert(
         'Permission Management',
         'To revoke calendar permission, please go to your device settings and modify app permissions.',
-        [{text: 'OK'}],
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Go to Settings',
+            onPress: () => {
+              Linking.openSettings();
+            },
+          },
+        ],
       );
       return;
     }
