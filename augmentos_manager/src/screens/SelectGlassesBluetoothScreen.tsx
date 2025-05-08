@@ -1,6 +1,6 @@
 // SelectGlassesBluetoothScreen.tsx
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -213,6 +213,8 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
     selectedChipText: isDarkTheme ? '#FFFFFF' : '#FFFFFF',
   };
 
+  const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName]);
+
   return (
     <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
       <ScrollView style={styles.scrollViewContainer}>
@@ -238,7 +240,7 @@ const SelectGlassesBluetoothScreen: React.FC<SelectGlassesBluetoothScreenProps> 
                   }}
                 >
                   <Image
-                    source={getGlassesImage(glassesModelName)}
+                    source={glassesImage}
                     style={styles.glassesImage}
                   />
                   <View style={styles.settingTextContainer}>
