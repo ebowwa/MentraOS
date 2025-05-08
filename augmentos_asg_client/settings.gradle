@@ -11,6 +11,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven { url 'https://jitpack.io' }
+        // Add Google's Maven repository for alpha/beta releases
+        maven { url 'https://androidx.dev/storage/maven-metadata/androidx/repository' }
+        flatDir {
+            dirs "${rootProject.projectDir}/app/libs", "${rootProject.projectDir}/streampack-lib"
+        }
     }
 }
 rootProject.name = "AugmentOS ASG Client"
