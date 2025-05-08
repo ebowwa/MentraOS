@@ -8,7 +8,6 @@ import WebSocket from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
-import { createDashboardAPI } from './dashboard';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -186,12 +185,26 @@ export class TpaSession {
     // We'll configure it once we have the session ID and server URL
     this.settings = new SettingsManager();
     
-    // Initialize dashboard API
-    this.dashboard = createDashboardAPI(
-      config.packageName,
-      this.send.bind(this),
-      this.events
-    );
+    // Initialize dashboard API with this session instance
+    // Import DashboardManager dynamically to avoid circular dependency
+    const { DashboardManager } = require('./dashboard');
+    this.dashboard = new DashboardManager(this, this.send.bind(this));
+  }
+  
+  /**
+   * Get the current session ID
+   * @returns The current session ID or 'unknown-session-id' if not connected
+   */
+  getSessionId(): string {
+    return this.sessionId || 'unknown-session-id';
+  }
+  
+  /**
+   * Get the package name for this TPA
+   * @returns The package name
+   */
+  getPackageName(): string {
+    return this.config.packageName;
   }
 
   // =====================================
@@ -304,17 +317,6 @@ export class TpaSession {
    */
   async connect(sessionId: string): Promise<void> {
     this.sessionId = sessionId;
-    
-    // Set sessionId for dashboard module to use
-    try {
-      // Dynamically import to avoid circular dependencies
-      const dashboard = require('./dashboard'); 
-      if (dashboard.TpaSession && typeof dashboard.TpaSession.setSessionId === 'function') {
-        dashboard.TpaSession.setSessionId(sessionId);
-      }
-    } catch (error) {
-      console.warn('Failed to set session ID for dashboard module:', error);
-    }
     
     // Configure settings API client with the WebSocket URL and session ID
     // This allows settings to be fetched from the correct server

@@ -18,33 +18,16 @@ import { TpaToCloudMessageType } from '../../types/message-types';
 import { Layout } from '../../types/layouts';
 import { EventManager } from './events';
 
-/**
- * Mock implementation of TpaSession needed for sessionId
- */
-class TpaSession {
-  private static sessionId: string = '';
-  
-  /**
-   * Get the current TPA session ID
-   * This is a workaround to avoid circular dependencies
-   */
-  public static getSessionId(): string {
-    return TpaSession.sessionId || 'unknown-session-id';
-  }
-  
-  /**
-   * Set the TPA session ID - called from index.ts
-   */
-  public static setSessionId(id: string): void {
-    TpaSession.sessionId = id;
-  }
-}
+// Import TpaSession interface for typing
+import type { TpaSession } from './index';
+import { TpaToCloudMessage } from 'src/types';
 
 /**
  * Implementation of DashboardSystemAPI interface for system dashboard TPA
  */
-class DashboardSystemManager implements DashboardSystemAPI {
+export class DashboardSystemManager implements DashboardSystemAPI {
   constructor(
+    private session: TpaSession,
     private packageName: string,
     private send: (message: any) => void
   ) {}
@@ -69,7 +52,7 @@ class DashboardSystemManager implements DashboardSystemAPI {
     const message: DashboardModeChange = {
       type: TpaToCloudMessageType.DASHBOARD_MODE_CHANGE,
       packageName: this.packageName,
-      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
+      sessionId: `${this.session.getSessionId()}-${this.packageName}`,
       mode,
       timestamp: new Date()
     };
@@ -80,7 +63,7 @@ class DashboardSystemManager implements DashboardSystemAPI {
     const message: DashboardSystemUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
       packageName: this.packageName,
-      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
+      sessionId: `${this.session.getSessionId()}-${this.packageName}`,
       section,
       content,
       timestamp: new Date()
@@ -92,11 +75,12 @@ class DashboardSystemManager implements DashboardSystemAPI {
 /**
  * Implementation of DashboardContentAPI interface for all TPAs
  */
-class DashboardContentManager implements DashboardContentAPI {
+export class DashboardContentManager implements DashboardContentAPI {
   private currentMode: DashboardMode | 'none' = 'none';
   // private alwaysOnEnabled: boolean = false;
   
   constructor(
+    private session: TpaSession,
     private packageName: string,
     private send: (message: any) => void,
     private events: EventManager
@@ -106,7 +90,7 @@ class DashboardContentManager implements DashboardContentAPI {
     const message: DashboardContentUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
       packageName: this.packageName,
-      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
+      sessionId: `${this.session.getSessionId()}-${this.packageName}`,
       content,
       modes: targets,
       timestamp: new Date()
@@ -122,7 +106,7 @@ class DashboardContentManager implements DashboardContentAPI {
     const message: DashboardContentUpdate = {
       type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
       packageName: this.packageName,
-      sessionId: `${TpaSession.getSessionId()}-${this.packageName}`,
+      sessionId: `${this.session.getSessionId()}-${this.packageName}`,
       content,
       modes: [DashboardMode.EXPANDED],
       timestamp: new Date()
@@ -169,35 +153,23 @@ class DashboardContentManager implements DashboardContentAPI {
 }
 
 /**
- * Creates a Dashboard API instance based on the TPA package name
- * @param packageName TPA package name
- * @param send Function to send messages to the cloud
- * @param events EventManager instance to handle event subscriptions
- * @returns Dashboard API instance
+ * Dashboard Manager - Main class that manages dashboard functionality
+ * Each TpaSession instance gets its own DashboardManager instance
  */
-export function createDashboardAPI(
-  packageName: string,
-  send: (message: any) => void,
-  events: EventManager
-): DashboardAPI {
-  // Create content API (available to all TPAs)
-  const content = new DashboardContentManager(packageName, send, events);
-  
-  // Check if this is the system dashboard TPA
-  const isSystemDashboard = packageName === systemApps.dashboard.packageName;
-  
-  // Create API based on TPA type
-  const api: DashboardAPI = {
-    content
-  };
-  
-  // Add system API if this is the system dashboard TPA
-  if (isSystemDashboard) {
-    api.system = new DashboardSystemManager(packageName, send);
-  }
-  
-  return api;
-}
+export class DashboardManager implements DashboardAPI {
+  public readonly content: DashboardContentAPI;
+  public readonly system?: DashboardSystemAPI;
 
-// Export TpaSession class for sessionId management
-export { TpaSession };
+  constructor(session: TpaSession, send: (message: TpaToCloudMessage) => void) {
+    const packageName = session.getPackageName();
+    const events = session.events;
+
+    // Create content API (available to all TPAs)
+    this.content = new DashboardContentManager(session, packageName, send, events);
+    
+    // Add system API if this is the system dashboard TPA
+    if (packageName === systemApps.dashboard.packageName) {
+      this.system = new DashboardSystemManager(session, packageName, send);
+    }
+  }
+}
