@@ -215,15 +215,12 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
           />
         </View>
 
-
-        {/* scary warning so that people who don't know what they're doing don't mess with these settings */}
-        <View style={styles.warningContainer}>
+        {/* <View style={styles.warningContainer}>
           <Text style={styles.warningText}>
             Warning: These settings may break the app. Use at your own risk.
           </Text>
         </View>
 
-        {/* Custom Backend URL Section */}
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text
@@ -306,7 +303,7 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
             }>
             <Text style={styles.buttonText}>Staging</Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Bypass Audio Encoding for Debugging Toggle
         <View style={styles.settingItem}>
