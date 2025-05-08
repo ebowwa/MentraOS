@@ -25,7 +25,8 @@ export const getModelSpecificTips = (model: string) => {
         "Try closing the charging case and opening it again",
         "Ensure no other app is currently connected to your G1",
         "Restart your phone's Bluetooth",
-        "Make sure your phone is within 3 feet of your glasses & case"
+        "Make sure your phone is within 3 feet of your glasses & case",
+        "If your glasses were previously paired to a different phone, you must unpair/forget the glasses in your phone's Bluetooth settings before retrying the pairing process"
       ];
     case 'Mentra Mach1':
     case 'Vuzix Z100':
