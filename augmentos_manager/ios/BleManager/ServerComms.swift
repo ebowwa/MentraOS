@@ -400,6 +400,7 @@ class ServerComms {
       }
       
     case "microphone_state_change":
+      print("ServerComms: microphone_state_change: \(msg)")
       let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
       if let callback = serverCommsCallback {
         callback.onMicrophoneStateChange(isMicrophoneEnabled)

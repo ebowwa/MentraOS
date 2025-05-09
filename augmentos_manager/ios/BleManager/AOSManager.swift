@@ -171,21 +171,6 @@ struct ViewState {
     handleRequestStatus()
   }
   
-  //  func checkIfMicNeedsTobeEnabled() {
-  //    print("checkIfMicNeedsTobeEnabled() micEnabled: \(self.micEnabled) g1Ready: \(self.g1Manager.g1Ready) whatToStreamCount: \(self.cachedWhatToStream.count)")
-  //    // only bother checking if the mic isn't already enabled
-  //    guard !self.micEnabled else { return }
-  //    // check if device is ready, if not, return:
-  //    guard self.g1Manager.g1Ready else { return }
-  //
-  //    for what in self.cachedWhatToStream {
-  //      if what.contains("transcription") {
-  //        onMicrophoneStateChange(true)
-  //        break
-  //      }
-  //    }
-  //  }
-  
   func onAppStateChange(_ apps: [ThirdPartyCloudApp]/*, _ whatToStream: [String]*/) {
     self.cachedThirdPartyAppList = apps
     handleRequestStatus()
