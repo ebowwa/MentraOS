@@ -381,7 +381,7 @@ class DashboardServer extends TpaServer {
   private formatStatusSection(sessionInfo: any): string {
     // Prioritize calendar events if available
     if (sessionInfo.calendarEvent) {
-      return this.formatCalendarEvent(sessionInfo.calendarEvent);
+      return this.formatCalendarEvent(sessionInfo.calendarEvent, sessionInfo);
     }
     
     // Then weather if available
@@ -396,19 +396,29 @@ class DashboardServer extends TpaServer {
   /**
    * Format calendar event
    */
-  private formatCalendarEvent(event: any): string {
+  private formatCalendarEvent(event: any, sessionInfo: any): string {
     try {
-      const eventDate = new Date(event.dtStart);
+      const timezone = sessionInfo.latestLocation?.timezone;
+
+      let eventDate: Date;
+      if (timezone) {
+        // Convert the event start time into a localized Date object
+        const localized = new Date(new Date(event.dtStart).toLocaleString("en-US", { timeZone: timezone }));
+        eventDate = localized;
+      } else {
+        eventDate = new Date(event.dtStart); // fallback
+      }
+
       const formattedTime = eventDate.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit', 
         hour12: true 
       }).replace(" ", "");
-      
+
       const title = event.title.length > 10 
         ? event.title.substring(0, 7).trim() + '...' 
         : event.title;
-      
+
       return `${title} @ ${formattedTime}`;
     } catch (error) {
       logger.error('Error formatting calendar event', error);
