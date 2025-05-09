@@ -26,7 +26,7 @@ class ServerComms {
   private var serverCommsCallback: ServerCommsCallback?
   private var coreToken: String = ""
   private var userid: String = ""
-  private var serverUrl: String = "https://prod.augmentos.cloud:443"
+  private var serverUrl: String = ""
   
   // Audio queue system
   private let audioQueue = DispatchQueue(label: "com.augmentos.audioQueue")

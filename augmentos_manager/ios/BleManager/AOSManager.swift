@@ -602,7 +602,7 @@ struct ViewState {
 
   private func handleSetServerUrl(url: String) {
     print("Setting server URL to: \(url)")
-//    self.serverComms.setServerUrl(url)
+   self.serverComms.setServerUrl(url)
   }
   
   private func sendText(_ text: String) {
