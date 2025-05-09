@@ -252,7 +252,6 @@ struct ViewState {
 //        let pcmConverter = PcmConverter()
 //        let lc3Data = pcmConverter.encode(pcmData) as Data
         
-        
         let vadState = vad.currentState()
         if vadState == .speeching {
           checkSetVadStatus(speaking: true)
@@ -615,6 +614,8 @@ struct ViewState {
   }
   
   private func disconnect() {
+    self.somethingConnected = false
+    self.isSearching = false
 
     // save the mic state:
     let micWasEnabled = self.micEnabled
@@ -897,13 +898,19 @@ struct ViewState {
     
     // also referenced as glasses_info:
     var connectedGlasses: [String: Any] = [:];
+
+    connectedGlasses = [
+      "is_searching": self.isSearching,
+    ]
     
+    self.somethingConnected = false
     if (self.defaultWearable == "Simulated Glasses") {
       connectedGlasses = [
         "model_name": self.defaultWearable,
         "auto_brightness": false,
         "is_searching": self.isSearching,
       ]
+      self.somethingConnected = true
     }
     
     if isGlassesConnected {
@@ -916,9 +923,8 @@ struct ViewState {
         "dashboard_height": self.dashboardHeight,
         "is_searching": self.isSearching,
       ]
+      self.somethingConnected = true
     }
-    
-    self.somethingConnected = connectedGlasses.count > 0
     
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
     
@@ -1085,7 +1091,6 @@ struct ViewState {
 
     Task {
       disconnect()
-      
       if (deviceName != "") {
         self.deviceName = deviceName
         saveSettings()
