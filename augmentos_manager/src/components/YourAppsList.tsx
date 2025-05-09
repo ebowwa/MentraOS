@@ -442,6 +442,13 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
     );
     return firstIndex === appStatus.indexOf(app);
   });
+
+  // remove the notify app on iOS
+  if (Platform.OS === 'ios') {
+    availableApps = availableApps.filter(
+      app => app.packageName !== 'cloud.augmentos.notify' && app.name !== 'Notify',
+    );
+  }
   // alphabetically sort the available apps
   availableApps.sort((a, b) => a.name.localeCompare(b.name));
 
