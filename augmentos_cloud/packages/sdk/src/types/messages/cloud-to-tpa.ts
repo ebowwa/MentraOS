@@ -104,8 +104,6 @@ export interface ToolCall {
   toolParameters: Record<string, string | number | boolean>; // The parameters of the tool that was called
   timestamp: Date; // Timestamp when the tool was called
   userId: string; // ID of the user who triggered the tool call
-  sessionId?: string; // ID of the session that the tool call belongs to
-  session?: TpaSession; // The session that the tool call belongs to
 }
 
 //===========================================================
