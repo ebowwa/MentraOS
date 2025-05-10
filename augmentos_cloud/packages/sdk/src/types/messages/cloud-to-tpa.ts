@@ -6,6 +6,7 @@ import { StreamType } from '../streams';
 import { AppSettings, TpaConfig } from '../models';
 import { LocationUpdate, CalendarEvent } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
+import { TpaSession } from 'src/tpa/session';
 
 //===========================================================
 // Responses

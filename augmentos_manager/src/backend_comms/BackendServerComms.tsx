@@ -358,7 +358,6 @@ export default class BackendServerComms {
 
     const baseUrl = await this.getServerUrl();
     const url = `${baseUrl}/api/apps/`;
-    console.log('Fetching apps from:', url);
 
     const config: AxiosRequestConfig = {
       method: 'GET',
@@ -369,14 +368,11 @@ export default class BackendServerComms {
       },
     };
 
-    console.log('Fetching apps from:', url);
-
     try {
       const response = await axios(config);
 
       if (response.status === 200 && response.data) {
         if (response.data.success && response.data.data) {
-          console.log('Response:', response.data.data);
           return response.data.data;
         } else {
           throw new Error('Invalid response format');

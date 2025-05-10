@@ -26,7 +26,7 @@ class ServerComms {
   private var serverCommsCallback: ServerCommsCallback?
   private var coreToken: String = ""
   private var userid: String = ""
-  private var serverUrl: String = "https://prod.augmentos.cloud:443"
+  private var serverUrl: String = ""
   
   // Audio queue system
   private let audioQueue = DispatchQueue(label: "com.augmentos.audioQueue")
@@ -400,6 +400,7 @@ class ServerComms {
       }
       
     case "microphone_state_change":
+      print("ServerComms: microphone_state_change: \(msg)")
       let isMicrophoneEnabled = msg["isMicrophoneEnabled"] as? Bool ?? true
       if let callback = serverCommsCallback {
         callback.onMicrophoneStateChange(isMicrophoneEnabled)

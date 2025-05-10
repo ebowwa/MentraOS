@@ -215,7 +215,7 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
           />
         </View>
 
-        {/* <View style={styles.warningContainer}>
+        <View style={styles.warningContainer}>
           <Text style={styles.warningText}>
             Warning: These settings may break the app. Use at your own risk.
           </Text>
@@ -295,15 +295,14 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({
             onPress={() => setCustomUrlInput('https://debug.augmentos.cloud:443')}>
             <Text style={styles.buttonText}>Debug</Text>
           </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.button}
             onPress={() =>
-              setCustomUrlInput('https://staging.augmentos.cloud:443')
+              setCustomUrlInput('https://global.augmentos.cloud:443')
             }>
-            <Text style={styles.buttonText}>Staging</Text>
+            <Text style={styles.buttonText}>Global</Text>
           </TouchableOpacity>
-        </View> */}
+        </View>
 
         {/* Bypass Audio Encoding for Debugging Toggle
         <View style={styles.settingItem}>
