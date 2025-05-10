@@ -1,10 +1,45 @@
 import express from 'express';
 import sessionService, { IS_LC3 } from '../services/core/session.service';
+import { Request, Response, NextFunction } from 'express';
+import appService from '../services/core/app.service';
 const router = express.Router();
+
+// Only allow com.augmentos.shazam
+const ALLOWED_PACKAGE = 'com.augmentos.shazam';
+
+async function shazamAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  const apiKey = req.query.apiKey as string;
+  const packageName = req.query.packageName as string;
+  const userId = req.query.userId as string;
+
+  if (apiKey && packageName && userId) {
+    if (packageName !== ALLOWED_PACKAGE) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized package name'
+      });
+    }
+    // Validate the API key for the specified package
+    const isValid = await appService.validateApiKey(packageName, apiKey, req.ip);
+    if (!isValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid API key.'
+      });
+    }
+    (req as any).userSession = { userId, minimal: true, apiKeyAuth: true };
+    return next();
+  }
+
+  return res.status(401).json({
+    success: false,
+    message: 'Authentication required. Provide apiKey, packageName, and userId.'
+  });
+}
 
 // GET /api/audio/:sessionId
 // Returns the last 10 seconds of audio for the session as a binary buffer (decoded to PCM if LC3)
-router.get('/api/audio/:userId', async (req, res) => {
+router.get('/api/audio/:userId', shazamAuthMiddleware, async (req, res) => {
   try {
     const userId = req.params.userId;
     const userSession = sessionService.getSession(userId);
