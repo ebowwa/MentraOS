@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, {useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import { getModelSpecificTips } from './GlassesTroubleshootingModal';
+import {getModelSpecificTips} from './GlassesTroubleshootingModal';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface GlassesPairingLoaderProps {
@@ -20,8 +20,8 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
   glassesModelName,
   isDarkTheme,
 }) => {
-  const { width } = useWindowDimensions();
-  
+  const {width} = useWindowDimensions();
+
   // Animation values
   const glassesAnim = useRef(new Animated.Value(0)).current;
   const signalAnim = useRef(new Animated.Value(0)).current;
@@ -29,17 +29,17 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
   const dotAnim2 = useRef(new Animated.Value(0)).current;
   const dotAnim3 = useRef(new Animated.Value(0)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
-  
+
   // Animation value for ping-pong motion
   const pingPongAnim = useRef(new Animated.Value(0)).current;
-  
+
   const [currentTipIndex, setCurrentTipIndex] = React.useState(0);
   const progressValue = useRef(0);
   const tipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pingPongDirection = useRef(1); // 1 for right, -1 for left
 
   let tips = getModelSpecificTips(glassesModelName);
-  
+
   // Set up all animations
   useEffect(() => {
     // Glasses bobbing animation
@@ -57,9 +57,9 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
           useNativeDriver: true,
           easing: Easing.inOut(Easing.sin),
         }),
-      ])
+      ]),
     ).start();
-    
+
     // Signal waves animation
     Animated.loop(
       Animated.sequence([
@@ -74,9 +74,9 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
           duration: 0,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     ).start();
-    
+
     // Dots typing effect
     Animated.loop(
       Animated.sequence([
@@ -120,9 +120,9 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
         ]),
         // Pause when empty
         Animated.delay(300),
-      ])
+      ]),
     ).start();
-    
+
     // Ping-pong animation function
     const animatePingPong = () => {
       Animated.timing(pingPongAnim, {
@@ -136,147 +136,126 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
         animatePingPong();
       });
     };
-    
+
     // Start the ping-pong animation
     animatePingPong();
 
-    // Progress bar animation
-    // Will take about 2-3 minutes to reach ~85%, then will stay there until actually paired
     Animated.timing(progressAnim, {
       toValue: 85,
-      duration: 150000, // 2.5 minutes
+      duration: 75000,
       useNativeDriver: false,
       easing: Easing.out(Easing.exp),
     }).start();
-    
+
     // Set up fact rotator
     const rotateTips = () => {
       tipTimerRef.current = setTimeout(() => {
-        setCurrentTipIndex((prevIndex) => (prevIndex + 1) % tips.length);
+        setCurrentTipIndex(prevIndex => (prevIndex + 1) % tips.length);
         rotateTips();
       }, 8000); // Change tip every 8 seconds
     };
-    
+
     rotateTips();
-    
+
     return () => {
       if (tipTimerRef.current) {
         clearTimeout(tipTimerRef.current);
       }
     };
   }, []);
-  
-  // Convert animation values to styles
-  const glassesTransform = {
-    transform: [
-      {
-        translateY: glassesAnim.interpolate({
-          inputRange: [0, 1],
-          outputRange: [0, -10],
-        }),
-      },
-    ],
-  };
-  
+
   const signalOpacity = signalAnim.interpolate({
     inputRange: [0, 0.2, 1],
     outputRange: [1, 0.7, 0],
   });
-  
+
   const signalScale = signalAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [1, 2],
   });
-  
+
   const dot1Opacity = dotAnim1.interpolate({
     inputRange: [0, 1],
     outputRange: [0.3, 1],
   });
-  
+
   const dot2Opacity = dotAnim2.interpolate({
     inputRange: [0, 1],
     outputRange: [0.3, 1],
   });
-  
+
   const dot3Opacity = dotAnim3.interpolate({
     inputRange: [0, 1],
     outputRange: [0.3, 1],
   });
-  
+
   // Width of the entire animation area
-  const ANIMATION_WIDTH = 130;
-  
+  const ANIMATION_WIDTH = 55;
+
   // Ping-pong animation for dot positions
   // We interpolate based on the pingPongAnim value which goes from -1 to 1
-  
-  // Dot 1 (first dot)
+
   const dot1Transform = {
     transform: [
       {
         translateX: pingPongAnim.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [ANIMATION_WIDTH * 0.1, ANIMATION_WIDTH * 0.35, ANIMATION_WIDTH * 0.8], // Left to right
+          outputRange: [
+            -ANIMATION_WIDTH * 0.9,
+            ANIMATION_WIDTH * 0.35,
+            ANIMATION_WIDTH * 0.9,
+          ],
         }),
       },
     ],
   };
-  
+
   // Dot 2 (middle dot)
   const dot2Transform = {
     transform: [
       {
         translateX: pingPongAnim.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [ANIMATION_WIDTH * 0.15, ANIMATION_WIDTH * 0.5, ANIMATION_WIDTH * 0.85], // Left to right
+          outputRange: [-ANIMATION_WIDTH * 0.9, 0, ANIMATION_WIDTH * 0.9],
         }),
       },
     ],
   };
-  
+
   // Dot 3 (last dot)
   const dot3Transform = {
     transform: [
       {
         translateX: pingPongAnim.interpolate({
           inputRange: [-1, 0, 1],
-          outputRange: [ANIMATION_WIDTH * 0.2, ANIMATION_WIDTH * 0.65, ANIMATION_WIDTH * 0.9], // Left to right
+          outputRange: [
+            -ANIMATION_WIDTH * 0.9,
+            -ANIMATION_WIDTH * 0.35,
+            ANIMATION_WIDTH * 0.9,
+          ],
         }),
       },
     ],
   };
-  
+
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 100],
     outputRange: ['0%', '100%'],
   });
-  
+
   // Update progress bar listener
-  progressAnim.addListener(({ value }) => {
+  progressAnim.addListener(({value}) => {
     progressValue.current = value;
   });
-  
+
   return (
-    <View style={[
-      styles.container,
-      isDarkTheme ? styles.darkContainer : styles.lightContainer
-    ]}>
+    <View
+      style={[
+        styles.container,
+        isDarkTheme ? styles.darkContainer : styles.lightContainer,
+      ]}>
       <View style={styles.animationContainer}>
-        {/* Signal waves */}
         <View style={styles.signalContainer}>
-          {[1, 2, 3].map((i) => (
-            <Animated.View
-              key={i}
-              style={[
-                styles.signalWave,
-                {
-                  opacity: signalOpacity,
-                  transform: [{ scale: signalScale }],
-                  borderColor: isDarkTheme ? '#4f46e5' : '#6366f1',
-                },
-              ]}
-            />
-          ))}
-          
           <View style={styles.phoneContainer}>
             <Icon
               name="mobile-phone"
@@ -285,33 +264,33 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
               style={styles.phoneIcon}
             />
           </View>
-          
+
           {/* Ping-pong bouncing dots between phone and glasses */}
           <View style={styles.bouncingDotsContainer}>
             <Animated.View
               style={[
                 styles.bouncingDot,
                 dot1Transform,
-                isDarkTheme ? styles.darkBouncingDot : styles.lightBouncingDot
+                isDarkTheme ? styles.darkBouncingDot : styles.lightBouncingDot,
               ]}
             />
             <Animated.View
               style={[
                 styles.bouncingDot,
                 dot2Transform,
-                isDarkTheme ? styles.darkBouncingDot : styles.lightBouncingDot
+                isDarkTheme ? styles.darkBouncingDot : styles.lightBouncingDot,
               ]}
             />
             <Animated.View
               style={[
                 styles.bouncingDot,
                 dot3Transform,
-                isDarkTheme ? styles.darkBouncingDot : styles.lightBouncingDot
+                isDarkTheme ? styles.darkBouncingDot : styles.lightBouncingDot,
               ]}
             />
           </View>
-          
-          <Animated.View style={[styles.glassesContainer, glassesTransform]}>
+
+          <Animated.View style={[styles.glassesContainer]}>
             <MaterialCommunityIcons
               name="glasses"
               size={48}
@@ -321,54 +300,42 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({
           </Animated.View>
         </View>
       </View>
-      
+
       {/* Status text */}
       <View style={styles.statusContainer}>
-        <Text style={[
-          styles.statusText,
-          isDarkTheme ? styles.darkText : styles.lightText
-        ]}>
+        <Text
+          style={[
+            styles.statusText,
+            isDarkTheme ? styles.darkText : styles.lightText,
+          ]}>
           Pairing {glassesModelName}
         </Text>
-        {/* <View style={styles.dotsContainer}>
-          <Animated.Text style={[
-            styles.dot,
-            { opacity: dot1Opacity },
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>•</Animated.Text>
-          <Animated.Text style={[
-            styles.dot,
-            { opacity: dot2Opacity },
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>•</Animated.Text>
-          <Animated.Text style={[
-            styles.dot,
-            { opacity: dot3Opacity },
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>•</Animated.Text>
-        </View> */}
       </View>
-      
+
       {/* Progress bar */}
-      <View style={[
-        styles.progressBarContainer,
-        isDarkTheme ? styles.darkProgressContainer : styles.lightProgressContainer
-      ]}>
+      <View
+        style={[
+          styles.progressBarContainer,
+          isDarkTheme
+            ? styles.darkProgressContainer
+            : styles.lightProgressContainer,
+        ]}>
         <Animated.View
           style={[
             styles.progressBar,
-            { width: progressWidth },
-            isDarkTheme ? styles.darkProgressBar : styles.lightProgressBar
+            {width: progressWidth},
+            isDarkTheme ? styles.darkProgressBar : styles.lightProgressBar,
           ]}
         />
       </View>
-      
+
       {/* Tips carousel */}
       <View style={styles.tipsContainer}>
-        <Text style={[
-          styles.tipText,
-          isDarkTheme ? styles.darkTip : styles.lightTip
-        ]}>
+        <Text
+          style={[
+            styles.tipText,
+            isDarkTheme ? styles.darkTip : styles.lightTip,
+          ]}>
           {tips[currentTipIndex]}
         </Text>
       </View>
@@ -381,7 +348,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
   darkContainer: {
     backgroundColor: '#111827',
@@ -391,61 +357,38 @@ const styles = StyleSheet.create({
   },
   animationContainer: {
     height: 200,
+    flexShrink: 1,
+    alignContent: 'center',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,
   },
   signalContainer: {
     width: 200,
-    height: 100,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    position: 'relative',
   },
-  signalWave: {
-    position: 'absolute',
-    width: 150,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-  },
-  glassesContainer: {
-    position: 'absolute',
-    right: 0,
-    top: 20,
-  },
+  glassesContainer: {},
   glassesIcon: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-  phoneContainer: {
-    position: 'absolute',
-    left: 0,
-    top: 20,
-  },
+  phoneContainer: {},
   phoneIcon: {
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-  // Modified styles for ping-pong bouncing dots
-  bouncingDotsContainer: {
-    position: 'absolute',
-    width: 170, // Width of the animation area
-    height: 20,
-    top: 40,
-    left: 15, // Position to span between phone and glasses
-  },
+  bouncingDotsContainer: {},
   bouncingDot: {
     position: 'absolute',
     width: 10,
     height: 10,
     borderRadius: 5,
-    // No margins as we're using absolute positioning
   },
   darkBouncingDot: {
     backgroundColor: '#a5b4fc',
@@ -466,7 +409,6 @@ const styles = StyleSheet.create({
   },
   dotsContainer: {
     flexDirection: 'row',
-    marginLeft: 4,
   },
   dot: {
     fontSize: 24,

@@ -276,7 +276,7 @@ const AppStore: React.FC = () => {
                     <img
                       src={app.logoURL}
                       alt={`${app.name} logo`}
-                      className="w-12 h-12 object-cover"
+                      className="w-12 h-12 object-cover rounded-lg"
                       onError={(e) => {
                         // Fallback for broken images
                         (e.target as HTMLImageElement).src = "https://placehold.co/48x48/gray/white?text=App";
