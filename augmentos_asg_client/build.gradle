@@ -2,6 +2,8 @@ buildscript {
     repositories {
         google()
         mavenCentral()
+        // Add Google's early-access repository for alpha/beta dependencies
+        maven { url 'https://androidx.dev/archives/builds/7968150/artifacts/repository' }
     }
     dependencies {
         //classpath 'com.google.gms:google-services:4.4.0'

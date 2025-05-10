@@ -2,752 +2,310 @@ package com.augmentos.asg_client.rtmp;
 
 import android.content.Context;
 import android.util.Log;
-import android.util.Size;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
-import io.github.thibaultbee.streampack.data.AudioConfig;
-import io.github.thibaultbee.streampack.data.VideoConfig;
-import io.github.thibaultbee.streampack.ext.rtmp.streamers.CameraRtmpLiveStreamer;
-import io.github.thibaultbee.streampack.listeners.OnConnectionListener;
-import io.github.thibaultbee.streampack.listeners.OnErrorListener;
-import io.github.thibaultbee.streampack.error.StreamPackError;
-
-import kotlinx.coroutines.BuildersKt;
-import kotlinx.coroutines.CoroutineScope;
-import kotlinx.coroutines.Dispatchers;
-import kotlin.Unit;
-import kotlin.coroutines.Continuation;
-import kotlin.coroutines.intrinsics.CoroutineSingletons;
-import kotlin.jvm.functions.Function2;
-
-import java.lang.reflect.Method;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
+import io.github.thibaultbee.streampack.views.PreviewView;
 
 /**
- * Helper class for RTMP streaming with optimizations for smart glasses
+ * Manager class for RTMP streaming integration with AsgClientService
+ * Uses the container-based approach to avoid ClassNotFoundException with PreviewView
  */
 public class RtmpStreamingManager {
-    private static final String TAG = "RtmpStreaming";
-    private final Context mContext;
-    private CameraRtmpLiveStreamer mStreamer;
-    private boolean mIsInitialized = false;
-
-    /**
-     * Create a new RtmpStreamingManager
-     *
-     * @param context  Application context
-     */
-    public RtmpStreamingManager(Context context) {
-        mContext = context;
+    private static final String TAG = "RtmpStreamingManager";
+    
+    private RTMPStreamingExample rtmpStreamer;
+    private Context context;
+    private ViewGroup previewContainer;
+    private PreviewView previewView;
+    private String rtmpUrl;
+    private boolean isInitialized = false;
+    
+    // Callback for streaming status
+    private StreamingStatusCallback callback;
+    
+    // Interface for streaming status updates
+    public interface StreamingStatusCallback {
+        void onStreamingStarted();
+        void onStreamingStopped();
+        void onStreamingError(String errorMessage);
+        void onConnectionSuccess();
+        void onConnectionFailed(String reason);
     }
-
+    
     /**
-     * Initialize the RTMP streamer with optimized settings for smart glasses
+     * Initialize streaming manager with container for PreviewView
+     * 
+     * @param context Application context
+     * @param previewContainer Container to hold the PreviewView (e.g., FrameLayout)
+     * @param rtmpUrl RTMP server URL
+     * @param callback Callback for streaming status
+     */
+    public RtmpStreamingManager(Context context, ViewGroup previewContainer, String rtmpUrl, StreamingStatusCallback callback) {
+        this.context = context;
+        this.previewContainer = previewContainer;
+        this.rtmpUrl = rtmpUrl;
+        this.callback = callback;
+        
+        // Don't create PreviewView immediately to avoid ClassNotFoundException at initialization time
+        Log.d(TAG, "RtmpStreamingManager initialized with container and URL: " + rtmpUrl);
+    }
+    
+    /**
+     * Initialize the streaming components when needed (e.g., when user starts streaming)
+     * This allows lazy initialization to avoid ClassNotFoundException during app startup
+     * 
      * @return true if initialization was successful
      */
     public boolean initialize() {
-        if (mIsInitialized) {
+        if (isInitialized) {
             return true;
         }
-
+        
         try {
-            // Create streamer with callbacks 
-            Log.d(TAG, "Creating CameraRtmpLiveStreamer");
+            // Create PreviewView programmatically only when needed
+            previewView = new PreviewView(context);
+            previewView.setLayoutParams(new ViewGroup.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT,
+                    ViewGroup.LayoutParams.MATCH_PARENT));
             
-            // For testing, if audio causes issues, we can disable it
-            boolean enableAudio = true;
+            // Add it to the container
+            previewContainer.removeAllViews(); // Clear any existing views
+            previewContainer.addView(previewView);
             
-            try {
-                // Check if we have audio permission
-                int permissionCheck = mContext.checkCallingOrSelfPermission(android.Manifest.permission.RECORD_AUDIO);
-                if (permissionCheck != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                    Log.w(TAG, "⚠️ RECORD_AUDIO permission not granted! Disabling audio for streaming.");
-                    enableAudio = false;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error checking audio permission: " + e.getMessage());
-                enableAudio = false;
-            }
+            // Create streamer with the PreviewView
+            rtmpStreamer = new RTMPStreamingExample(context, previewView);
             
-            mStreamer = new CameraRtmpLiveStreamer(
-                mContext,
-                enableAudio, // enable audio based on permissions
-                new OnErrorListener() {
-                    @Override
-                    public void onError(StreamPackError error) {
-                        Log.e(TAG, "Streaming error: " + error.getMessage());
-                    }
-                },
-                new OnConnectionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.d(TAG, "RTMP connection successful");
-                    }
-
-                    @Override
-                    public void onFailed(String reason) {
-                        Log.e(TAG, "RTMP connection failed: " + reason);
-                    }
-
-                    @Override
-                    public void onLost(String reason) {
-                        Log.e(TAG, "RTMP connection lost: " + reason);
-                    }
-                }
+            // Configure with optimized settings for smart glasses
+            rtmpStreamer.configure(
+                    250_000,   // 250 kbps video
+                    640, 480,  // 640x480 resolution
+                    15,         // 15 fps
+                    32_000,    // 32 kbps audio
+                    44100,     // 44.1 kHz sample rate
+                    false      // mono audio
             );
-
-            // Configure video and audio settings - verify they were successful
-            boolean videoConfigured = configureVideoSettings();
-            boolean audioConfigured = configureAudioSettings();
             
-            if (!videoConfigured) {
-                Log.e(TAG, "CRITICAL: Video configuration failed. RTMP streaming will fail without video config.");
-                return false;
-            }
-            
-            if (!audioConfigured) {
-                Log.w(TAG, "WARNING: Audio configuration failed. Streaming might work with just video.");
-                // We don't fail the initialization for audio config failure
-            }
-            
-            // Dump the state of streamer to debug log
-            dumpStreamerState();
-
-            mIsInitialized = true;
-            Log.d(TAG, "RTMP streaming manager initialized with optimized settings");
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize RTMP streamer", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Dump the state of the streamer object to help with debugging
-     */
-    private void dumpStreamerState() {
-        if (mStreamer == null) return;
-        
-        try {
-            Log.d(TAG, "--------------- RTMP Streamer State ---------------");
-            // Check if video config is set
-            try {
-                Field videoConfigField = findField(mStreamer.getClass(), "videoConfig");
-                if (videoConfigField != null) {
-                    videoConfigField.setAccessible(true);
-                    Object videoConfig = videoConfigField.get(mStreamer);
-                    Log.d(TAG, "VideoConfig: " + (videoConfig != null ? "SET" : "NULL"));
-                } else {
-                    Log.d(TAG, "VideoConfig field not found");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error checking videoConfig: " + e.getMessage());
-            }
-            
-            // Check if audio config is set
-            try {
-                Field audioConfigField = findField(mStreamer.getClass(), "audioConfig");
-                if (audioConfigField != null) {
-                    audioConfigField.setAccessible(true);
-                    Object audioConfig = audioConfigField.get(mStreamer);
-                    Log.d(TAG, "AudioConfig: " + (audioConfig != null ? "SET" : "NULL"));
-                } else {
-                    Log.d(TAG, "AudioConfig field not found");
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error checking audioConfig: " + e.getMessage());
-            }
-            
-            // Check the class hierarchy to help with debugging
-            Log.d(TAG, "Class: " + mStreamer.getClass().getName());
-            Log.d(TAG, "Superclass: " + mStreamer.getClass().getSuperclass().getName());
-            StringBuilder interfaces = new StringBuilder();
-            for (Class<?> iface : mStreamer.getClass().getInterfaces()) {
-                interfaces.append(iface.getName()).append(", ");
-            }
-            Log.d(TAG, "Interfaces: " + (interfaces.length() > 0 ? interfaces.toString() : "none"));
-            Log.d(TAG, "---------------------------------------------------");
-        } catch (Exception e) {
-            Log.e(TAG, "Error dumping streamer state", e);
-        }
-    }
-
-    /**
-     * Configure video with optimized settings for smart glasses
-     * @return true if video was successfully configured
-     */
-    private boolean configureVideoSettings() {
-        try {
-            Log.d(TAG, "Configuring video settings for RTMP streaming");
-            
-            // QCIF resolution (176x144) at 15fps
-            // Create a Size object for resolution
-            android.util.Size resolution = new android.util.Size(176, 144);
-            
-            // Use the correct VideoConfig constructor based on available signatures
-            VideoConfig videoConfig = null;
-            
-            try {
-                // First constructor: mimeType, startBitrate, resolution, fps, profile, level, gopDuration
-                videoConfig = new VideoConfig(
-                    "video/avc",          // mimeType
-                    250000,               // startBitrate in bps
-                    resolution,           // resolution as Size object
-                    15,                   // fps
-                    2,                    // profile (2 for Baseline profile)
-                    1,                    // level (1 for Level 1)
-                    2.0f                  // GOP duration in seconds
-                );
-                Log.d(TAG, "Created VideoConfig with full constructor: profile=2, level=1");
-            } catch (Exception e) {
-                Log.e(TAG, "Error with full VideoConfig constructor: " + e.getMessage() + ". Trying alternative approach...");
-                try {
-                    // Try to create with default constructor and set fields via reflection
-                    videoConfig = new VideoConfig();
-                    
-                    // Set fields via reflection
-                    Class<?> videoConfigClass = videoConfig.getClass();
-                    
-                    // Set mimetype field
-                    try {
-                        Field mimeTypeField = findField(videoConfigClass, "mimeType");
-                        if (mimeTypeField != null) {
-                            mimeTypeField.setAccessible(true);
-                            mimeTypeField.set(videoConfig, "video/avc");
-                        }
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Error setting mimeType: " + ex.getMessage());
-                    }
-                    
-                    // Set bitrate field
-                    try {
-                        Field bitrateField = findField(videoConfigClass, "bitrate");
-                        if (bitrateField != null) {
-                            bitrateField.setAccessible(true);
-                            bitrateField.set(videoConfig, 250000);
-                        }
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Error setting bitrate: " + ex.getMessage());
-                    }
-                    
-                    // Set resolution field
-                    try {
-                        Field resolutionField = findField(videoConfigClass, "resolution");
-                        if (resolutionField != null) {
-                            resolutionField.setAccessible(true);
-                            resolutionField.set(videoConfig, resolution);
-                        }
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Error setting resolution: " + ex.getMessage());
-                    }
-                    
-                    // Set fps field
-                    try {
-                        Field fpsField = findField(videoConfigClass, "fps");
-                        if (fpsField != null) {
-                            fpsField.setAccessible(true);
-                            fpsField.set(videoConfig, 15);
-                        }
-                    } catch (Exception ex) {
-                        Log.e(TAG, "Error setting fps: " + ex.getMessage());
-                    }
-                    
-                    Log.d(TAG, "Created VideoConfig with default constructor and reflection");
-                } catch (Exception e2) {
-                    Log.e(TAG, "Failed to create VideoConfig via all methods: " + e2.getMessage());
-                    return false;
-                }
-            }
-            
-            // First try using direct field access for videoConfig
-            try {
-                Field videoConfigField = findField(mStreamer.getClass(), "videoConfig");
-                if (videoConfigField != null) {
-                    videoConfigField.setAccessible(true);
-                    videoConfigField.set(mStreamer, videoConfig);
-                    Log.d(TAG, "Video configured via direct field access: 176x144 @ 15fps, 250kbps");
-                    return true;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to set video config via direct field access: " + e.getMessage());
-            }
-            
-            // Try using the setter method if field access failed
-            try {
-                // First try the direct class
-                Method method = findMethod(mStreamer.getClass(), "setVideoConfig", VideoConfig.class);
-                if (method != null) {
-                    method.setAccessible(true);
-                    method.invoke(mStreamer, videoConfig);
-                    Log.d(TAG, "Video configured via direct method: 176x144 @ 15fps, 250kbps");
-                    return true;
-                }
-                
-                // Then try superclass if direct method not found
-                method = findMethod(mStreamer.getClass().getSuperclass(), "setVideoConfig", VideoConfig.class);
-                if (method != null) {
-                    method.setAccessible(true);
-                    method.invoke(mStreamer, videoConfig);
-                    Log.d(TAG, "Video configured via superclass method: 176x144 @ 15fps, 250kbps");
-                    return true;
-                }
-                
-                // Look through all interfaces
-                for (Class<?> iface : mStreamer.getClass().getInterfaces()) {
-                    method = findMethod(iface, "setVideoConfig", VideoConfig.class);
-                    if (method != null) {
-                        method.setAccessible(true);
-                        method.invoke(mStreamer, videoConfig);
-                        Log.d(TAG, "Video configured via interface method: 176x144 @ 15fps, 250kbps");
-                        return true;
+            // Set up callback handler
+            rtmpStreamer.setCallback(new RTMPStreamingExample.StreamingCallback() {
+                @Override
+                public void onStarted() {
+                    Log.i(TAG, "RTMP streaming started");
+                    if (callback != null) {
+                        callback.onStreamingStarted();
                     }
                 }
                 
-                Log.e(TAG, "Could not find setVideoConfig method in any class or interface");
-                return false;
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to set video config via reflection: " + e.getMessage(), e);
-                return false;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error configuring video: " + e.getMessage(), e);
-            return false;
-        }
-    }
-    
-    /**
-     * Helper method to find a method in a class or its superclasses
-     */
-    private Method findMethod(Class<?> clazz, String methodName, Class<?>... paramTypes) {
-        while (clazz != null) {
-            try {
-                return clazz.getDeclaredMethod(methodName, paramTypes);
-            } catch (NoSuchMethodException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Helper method to find a field in a class or its superclasses
-     */
-    private Field findField(Class<?> clazz, String fieldName) {
-        while (clazz != null) {
-            try {
-                return clazz.getDeclaredField(fieldName);
-            } catch (NoSuchFieldException e) {
-                clazz = clazz.getSuperclass();
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Check if audio is available for the streamer
-     */
-    private boolean isAudioAvailable(Object streamer) {
-        if (streamer == null) return false;
-        
-        try {
-            // First, see if the streamer has audio enabled
-            Method isAudioEnabledMethod = findMethod(streamer.getClass(), "isAudioEnabled");
-            if (isAudioEnabledMethod != null) {
-                isAudioEnabledMethod.setAccessible(true);
-                Boolean audioEnabled = (Boolean)isAudioEnabledMethod.invoke(streamer);
-                if (audioEnabled == null || !audioEnabled) {
-                    return false; // Audio is explicitly disabled
-                }
-            }
-            
-            // Check if we have audio permission
-            int permissionCheck = mContext.checkCallingOrSelfPermission(android.Manifest.permission.RECORD_AUDIO);
-            if (permissionCheck != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                return false; // No permission, can't use audio
-            }
-            
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Error checking audio availability: " + e.getMessage());
-            return false; // Assume no audio available on error
-        }
-    }
-
-    /**
-     * Configure audio with optimized settings for smart glasses
-     * @return true if audio was successfully configured
-     */
-    private boolean configureAudioSettings() {
-        try {
-            Log.d(TAG, "Configuring audio settings for RTMP streaming");
-            
-            // First check if audio is enabled - if not, we return true because we don't need audio config
-            try {
-                Method isAudioEnabledMethod = findMethod(mStreamer.getClass(), "isAudioEnabled");
-                if (isAudioEnabledMethod != null) {
-                    isAudioEnabledMethod.setAccessible(true);
-                    Boolean audioEnabled = (Boolean)isAudioEnabledMethod.invoke(mStreamer);
-                    if (audioEnabled != null && !audioEnabled) {
-                        Log.d(TAG, "Audio is disabled, skipping audio configuration");
-                        return true; // Audio is disabled, so we don't need to configure it
-                    }
-                }
-            } catch (Exception e) {
-                Log.w(TAG, "Failed to check if audio is enabled: " + e.getMessage());
-                // Continue trying to configure audio anyway
-            }
-            
-            // Create AudioConfig with default constructor
-            AudioConfig audioConfig = null;
-            try {
-                audioConfig = new AudioConfig();
-                Log.d(TAG, "Created AudioConfig with default constructor");
-                
-                // Try to set properties with reflection
-                Method setBitrateMethod = findMethod(AudioConfig.class, "setBitrate", int.class);
-                if (setBitrateMethod != null) {
-                    setBitrateMethod.setAccessible(true);
-                    setBitrateMethod.invoke(audioConfig, 32000);
-                } else {
-                    // Try direct field access
-                    Field bitrateField = findField(AudioConfig.class, "bitrate");
-                    if (bitrateField != null) {
-                        bitrateField.setAccessible(true);
-                        bitrateField.set(audioConfig, 32000);
+                @Override
+                public void onStopped() {
+                    Log.i(TAG, "RTMP streaming stopped");
+                    if (callback != null) {
+                        callback.onStreamingStopped();
                     }
                 }
                 
-                Method setSampleRateMethod = findMethod(AudioConfig.class, "setSampleRate", int.class);
-                if (setSampleRateMethod != null) {
-                    setSampleRateMethod.setAccessible(true);
-                    setSampleRateMethod.invoke(audioConfig, 44100);
-                } else {
-                    // Try direct field access
-                    Field sampleRateField = findField(AudioConfig.class, "sampleRate");
-                    if (sampleRateField != null) {
-                        sampleRateField.setAccessible(true);
-                        sampleRateField.set(audioConfig, 44100);
+                @Override
+                public void onError(String message) {
+                    Log.e(TAG, "RTMP streaming error: " + message);
+                    if (callback != null) {
+                        callback.onStreamingError(message);
                     }
                 }
                 
-                Method setStereoMethod = findMethod(AudioConfig.class, "setStereo", boolean.class);
-                if (setStereoMethod != null) {
-                    setStereoMethod.setAccessible(true);
-                    setStereoMethod.invoke(audioConfig, false);
-                } else {
-                    // Try direct field access
-                    Field stereoField = findField(AudioConfig.class, "stereo");
-                    if (stereoField != null) {
-                        stereoField.setAccessible(true);
-                        stereoField.set(audioConfig, false);
+                @Override
+                public void onConnected() {
+                    Log.i(TAG, "RTMP server connected");
+                    if (callback != null) {
+                        callback.onConnectionSuccess();
                     }
-                }
-            } catch (Exception ex) {
-                Log.e(TAG, "Error creating or configuring AudioConfig: " + ex.getMessage());
-            }
-            
-            if (audioConfig == null) {
-                Log.e(TAG, "Failed to create AudioConfig");
-                
-                // Try to disable audio as a fallback
-                try {
-                    Method setAudioEnabledMethod = findMethod(mStreamer.getClass(), "setAudioEnabled", boolean.class);
-                    if (setAudioEnabledMethod != null) {
-                        setAudioEnabledMethod.setAccessible(true);
-                        setAudioEnabledMethod.invoke(mStreamer, false);
-                        Log.w(TAG, "Disabled audio as fallback since AudioConfig creation failed");
-                        return true; // We successfully disabled audio
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to disable audio: " + e.getMessage());
-                }
-                
-                return false;
-            }
-            
-            // First try using direct field access for audioConfig
-            try {
-                Field audioConfigField = findField(mStreamer.getClass(), "audioConfig");
-                if (audioConfigField != null) {
-                    audioConfigField.setAccessible(true);
-                    audioConfigField.set(mStreamer, audioConfig);
-                    Log.d(TAG, "Audio configured via direct field access: 44.1kHz, mono, 32kbps");
-                    return true;
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to set audio config via direct field access: " + e.getMessage());
-            }
-            
-            // Try using the setter method if field access failed
-            try {
-                // First try the direct class
-                Method method = findMethod(mStreamer.getClass(), "setAudioConfig", AudioConfig.class);
-                if (method != null) {
-                    method.setAccessible(true);
-                    method.invoke(mStreamer, audioConfig);
-                    Log.d(TAG, "Audio configured via direct method: 44.1kHz, mono, 32kbps");
-                    return true;
-                }
-                
-                // Then try superclass if direct method not found
-                method = findMethod(mStreamer.getClass().getSuperclass(), "setAudioConfig", AudioConfig.class);
-                if (method != null) {
-                    method.setAccessible(true);
-                    method.invoke(mStreamer, audioConfig);
-                    Log.d(TAG, "Audio configured via superclass method: 44.1kHz, mono, 32kbps");
-                    return true;
-                }
-                
-                // Look through all interfaces
-                for (Class<?> iface : mStreamer.getClass().getInterfaces()) {
-                    method = findMethod(iface, "setAudioConfig", AudioConfig.class);
-                    if (method != null) {
-                        method.setAccessible(true);
-                        method.invoke(mStreamer, audioConfig);
-                        Log.d(TAG, "Audio configured via interface method: 44.1kHz, mono, 32kbps");
-                        return true;
-                    }
-                }
-                
-                Log.e(TAG, "Could not find setAudioConfig method in any class or interface");
-                
-                // Try to disable audio as a fallback
-                try {
-                    Method setAudioEnabledMethod = findMethod(mStreamer.getClass(), "setAudioEnabled", boolean.class);
-                    if (setAudioEnabledMethod != null) {
-                        setAudioEnabledMethod.setAccessible(true);
-                        setAudioEnabledMethod.invoke(mStreamer, false);
-                        Log.w(TAG, "Disabled audio as fallback since setting AudioConfig failed");
-                        return true; // We successfully disabled audio
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to disable audio: " + e.getMessage());
-                }
-                
-                return false;
-            } catch (Exception e) {
-                Log.e(TAG, "Failed to set audio config via reflection: " + e.getMessage(), e);
-                
-                // Try to disable audio as a fallback
-                try {
-                    Method setAudioEnabledMethod = findMethod(mStreamer.getClass(), "setAudioEnabled", boolean.class);
-                    if (setAudioEnabledMethod != null) {
-                        setAudioEnabledMethod.setAccessible(true);
-                        setAudioEnabledMethod.invoke(mStreamer, false);
-                        Log.w(TAG, "Disabled audio as fallback due to error: " + e.getMessage());
-                        return true; // We successfully disabled audio
-                    }
-                } catch (Exception ex) {
-                    Log.e(TAG, "Failed to disable audio: " + ex.getMessage());
-                }
-                
-                return false;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Error configuring audio: " + e.getMessage(), e);
-            return false;
-        }
-    }
-
-    /**
-     * Start streaming to the specified RTMP URL
-     *
-     * @param rtmpUrl  The RTMP URL to stream to
-     * @return true if streaming started successfully (or at least the process was initiated)
-     */
-    public boolean startStreaming(final String rtmpUrl) {
-        // Make sure we're initialized
-        if (!mIsInitialized) {
-            boolean success = initialize();
-            if (!success) {
-                Log.e(TAG, "Failed to initialize RTMP streamer - cannot start streaming");
-                return false;
-            }
-        }
-
-        if (mStreamer == null) {
-            Log.e(TAG, "Cannot start streaming - streamer not initialized");
-            return false;
-        }
-        
-        // Double check that video config is set by dumping state
-        dumpStreamerState();
-
-        Log.d(TAG, "Starting RTMP stream to: " + rtmpUrl);
-
-        // Use a simpler approach with runBlocking to handle suspend functions
-        try {
-            // Create thread to handle RTMP operations
-            Thread streamingThread = new Thread(() -> {
-                try {
-                    Log.d(TAG, "Connecting to RTMP server: " + rtmpUrl);
-                    
-                    // Use runBlocking to call suspend functions
-                    kotlinx.coroutines.BuildersKt.runBlocking(
-                        Dispatchers.getIO(),
-                        (Function2<kotlinx.coroutines.CoroutineScope, kotlin.coroutines.Continuation<? super Unit>, kotlin.coroutines.intrinsics.CoroutineSingletons>) 
-                        (scope, continuation) -> {
-                            try {
-                                // Make extra sure videoConfig is set - try once more
-                                try {
-                                    configureVideoSettings();
-                                } catch (Exception ve) {
-                                    Log.e(TAG, "Last attempt to set video config failed", ve);
-                                }
-                                
-                                // We need to manually call the Kotlin suspend functions from Java using reflection
-                                Method connectMethod = findMethod(mStreamer.getClass(), "connect", String.class, kotlin.coroutines.Continuation.class);
-                                if (connectMethod == null) {
-                                    Log.e(TAG, "Could not find connect method");
-                                    return kotlin.coroutines.intrinsics.CoroutineSingletons.COROUTINE_SUSPENDED;
-                                }
-                                connectMethod.setAccessible(true);
-                                connectMethod.invoke(mStreamer, rtmpUrl, continuation);
-                                
-                                // After connecting, check if we need to disable audio
-                                if (!isAudioAvailable(mStreamer)) {
-                                    Log.w(TAG, "Audio appears to be unavailable. Attempting to disable audio before streaming.");
-                                    try {
-                                        Method setAudioEnabledMethod = findMethod(mStreamer.getClass(), "setAudioEnabled", boolean.class);
-                                        if (setAudioEnabledMethod != null) {
-                                            setAudioEnabledMethod.setAccessible(true);
-                                            setAudioEnabledMethod.invoke(mStreamer, false);
-                                            Log.w(TAG, "Audio disabled for streaming due to potential permission issues");
-                                        }
-                                    } catch (Exception ex) {
-                                        Log.e(TAG, "Failed to disable audio: " + ex.getMessage());
-                                    }
-                                }
-                                
-                                // After connecting, start the stream
-                                Method startStreamMethod = findMethod(mStreamer.getClass(), "startStream", kotlin.coroutines.Continuation.class);
-                                if (startStreamMethod == null) {
-                                    Log.e(TAG, "Could not find startStream method");
-                                    return kotlin.coroutines.intrinsics.CoroutineSingletons.COROUTINE_SUSPENDED;
-                                }
-                                startStreamMethod.setAccessible(true);
-                                try {
-                                    startStreamMethod.invoke(mStreamer, continuation);
-                                    Log.d(TAG, "RTMP stream started successfully");
-                                } catch (Exception ex) {
-                                    if (ex instanceof InvocationTargetException && ex.getCause() != null && 
-                                            ex.getCause().getMessage() != null && 
-                                            ex.getCause().getMessage().contains("No audioRecorder")) {
-                                        
-                                        Log.e(TAG, "Failed to start stream due to audio recorder issue. Disabling audio and retrying...");
-                                        
-                                        // Try disabling audio and restart
-                                        try {
-                                            Method setAudioEnabledMethod = findMethod(mStreamer.getClass(), "setAudioEnabled", boolean.class);
-                                            if (setAudioEnabledMethod != null) {
-                                                setAudioEnabledMethod.setAccessible(true);
-                                                setAudioEnabledMethod.invoke(mStreamer, false);
-                                                
-                                                // Try again after disabling audio
-                                                startStreamMethod.invoke(mStreamer, continuation);
-                                                Log.d(TAG, "RTMP stream started successfully with audio disabled");
-                                            } else {
-                                                Log.e(TAG, "Could not disable audio - streaming may fail");
-                                                throw ex; // Rethrow if we couldn't fix it
-                                            }
-                                        } catch (Exception e) {
-                                            Log.e(TAG, "Error trying to disable audio and restart streaming", e);
-                                            throw ex; // Rethrow if our fix didn't work
-                                        }
-                                    } else {
-                                        throw ex; // Rethrow if it's not an audio issue
-                                    }
-                                }
-                            } catch (Exception e) {
-                                Log.e(TAG, "Error calling RTMP methods via reflection: " + e.getMessage(), e);
-                                if (e instanceof InvocationTargetException && e.getCause() != null) {
-                                    Log.e(TAG, "Caused by: " + e.getCause().getMessage());
-                                }
-                            }
-                            return kotlin.coroutines.intrinsics.CoroutineSingletons.COROUTINE_SUSPENDED;
-                        }
-                    );
-                } catch (Exception e) {
-                    Log.e(TAG, "Failed to start RTMP stream", e);
                 }
             });
             
-            // Start streaming in background thread
-            streamingThread.start();
+            isInitialized = true;
+            Log.d(TAG, "RTMP streaming components initialized successfully");
             return true;
         } catch (Exception e) {
-            Log.e(TAG, "Error creating streaming thread", e);
+            Log.e(TAG, "Failed to initialize RTMP streaming components", e);
+            if (callback != null) {
+                callback.onStreamingError("Initialization failed: " + e.getMessage());
+            }
             return false;
         }
     }
-
+    
     /**
-     * Stop the current stream
+     * Start the camera preview
+     * 
+     * @return true if successful
+     */
+    public boolean startPreview() {
+        if (!isInitialized && !initialize()) {
+            return false;
+        }
+        
+        try {
+            if (rtmpStreamer.startPreview()) {
+                Log.d(TAG, "Camera preview started");
+                return true;
+            } else {
+                Log.e(TAG, "Failed to start camera preview");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting preview", e);
+            return false;
+        }
+    }
+    
+    /**
+     * Start RTMP streaming
+     * 
+     * @return true if streaming started
+     */
+    public boolean startStreaming() {
+        if (!isInitialized && !initialize()) {
+            return false;
+        }
+        
+        if (rtmpStreamer.isStreaming()) {
+            Log.w(TAG, "Already streaming");
+            return true;
+        }
+        
+        // Make sure preview is running
+        if (!startPreview()) {
+            Log.e(TAG, "Cannot start streaming without preview");
+            return false;
+        }
+        
+        try {
+            // Use the configured RTMP URL
+            rtmpStreamer.startStreaming(rtmpUrl);
+            Log.i(TAG, "RTMP streaming started to: " + rtmpUrl);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting streaming", e);
+            if (callback != null) {
+                callback.onStreamingError("Failed to start streaming: " + e.getMessage());
+            }
+            return false;
+        }
+    }
+    
+    /**
+     * Stop RTMP streaming
      */
     public void stopStreaming() {
-        if (mStreamer != null) {
-            try {
-                if (mStreamer.isConnected()) {
-                    Log.d(TAG, "Stopping RTMP stream");
-                    
-                    // Create thread to handle disconnection
-                    Thread disconnectThread = new Thread(() -> {
-                        try {
-                            // Use runBlocking to call suspend disconnect function
-                            kotlinx.coroutines.BuildersKt.runBlocking(
-                                Dispatchers.getIO(),
-                                (Function2<kotlinx.coroutines.CoroutineScope, kotlin.coroutines.Continuation<? super Unit>, kotlin.coroutines.intrinsics.CoroutineSingletons>) 
-                                (scope, continuation) -> {
-                                    try {
-                                        // Call disconnect via reflection
-                                        Method disconnectMethod = mStreamer.getClass().getDeclaredMethod("disconnect", kotlin.coroutines.Continuation.class);
-                                        disconnectMethod.setAccessible(true);
-                                        disconnectMethod.invoke(mStreamer, continuation);
-                                        
-                                        Log.d(TAG, "RTMP stream stopped successfully");
-                                    } catch (Exception e) {
-                                        Log.e(TAG, "Error during disconnect via reflection", e);
-                                    }
-                                    return kotlin.coroutines.intrinsics.CoroutineSingletons.COROUTINE_SUSPENDED;
-                                }
-                            );
-                        } catch (Exception e) {
-                            Log.e(TAG, "Failed to stop RTMP stream", e);
-                        }
-                    });
-                    
-                    // Start disconnect in background thread
-                    disconnectThread.start();
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "Error stopping RTMP stream", e);
+        if (!isInitialized || rtmpStreamer == null) {
+            return;
+        }
+        
+        try {
+            if (rtmpStreamer.isStreaming()) {
+                rtmpStreamer.stopStreaming();
+                Log.i(TAG, "RTMP streaming stopped");
             }
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping streaming", e);
         }
     }
-
+    
     /**
-     * Release resources
+     * Stop the camera preview
+     */
+    public void stopPreview() {
+        if (!isInitialized || rtmpStreamer == null) {
+            return;
+        }
+        
+        try {
+            // Stop streaming first if active
+            if (rtmpStreamer.isStreaming()) {
+                stopStreaming();
+            }
+            
+            rtmpStreamer.stopPreview();
+            Log.d(TAG, "Camera preview stopped");
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping preview", e);
+        }
+    }
+    
+    /**
+     * Release all resources
      */
     public void release() {
-        if (mStreamer != null) {
-            try {
-                stopStreaming();
-                mStreamer.release();
-                mStreamer = null;
-                mIsInitialized = false;
-                Log.d(TAG, "RTMP streamer resources released");
-            } catch (Exception e) {
-                Log.e(TAG, "Error releasing RTMP streamer", e);
-            }
+        if (!isInitialized || rtmpStreamer == null) {
+            return;
+        }
+        
+        try {
+            stopStreaming();
+            stopPreview();
+            rtmpStreamer.release();
+            
+            // Clean up references
+            previewView = null;
+            rtmpStreamer = null;
+            isInitialized = false;
+            
+            Log.d(TAG, "RTMP streaming resources released");
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing resources", e);
         }
     }
-
+    
     /**
-     * Check if currently streaming
-     *
-     * @return true if streaming, false otherwise
+     * Update the RTMP URL
+     * 
+     * @param rtmpUrl New RTMP URL
      */
-    public boolean isConnected() {
-        return mStreamer != null && mStreamer.isConnected();
+    public void setRtmpUrl(String rtmpUrl) {
+        this.rtmpUrl = rtmpUrl;
+        Log.d(TAG, "RTMP URL updated: " + rtmpUrl);
+    }
+    
+    /**
+     * Check if streaming is active
+     * 
+     * @return true if streaming
+     */
+    public boolean isStreaming() {
+        return isInitialized && rtmpStreamer != null && rtmpStreamer.isStreaming();
+    }
+    
+    /**
+     * Configure custom video and audio settings
+     * 
+     * @param videoBitrate Video bitrate in bps
+     * @param videoWidth Video width in pixels
+     * @param videoHeight Video height in pixels
+     * @param videoFps Video framerate
+     * @param audioBitrate Audio bitrate in bps
+     * @param audioSampleRate Audio sample rate in Hz
+     * @param audioStereo True for stereo, false for mono
+     */
+    public void configure(int videoBitrate, int videoWidth, int videoHeight, int videoFps,
+                          int audioBitrate, int audioSampleRate, boolean audioStereo) {
+        if (!isInitialized && !initialize()) {
+            return;
+        }
+        
+        try {
+            rtmpStreamer.configure(
+                    videoBitrate,
+                    videoWidth, videoHeight,
+                    videoFps,
+                    audioBitrate,
+                    audioSampleRate,
+                    audioStereo
+            );
+            
+            Log.d(TAG, "Streaming configuration updated: " + 
+                    videoWidth + "x" + videoHeight + "@" + videoFps + "fps, " +
+                    (audioStereo ? "stereo" : "mono") + " audio");
+        } catch (Exception e) {
+            Log.e(TAG, "Error updating configuration", e);
+        }
     }
 }

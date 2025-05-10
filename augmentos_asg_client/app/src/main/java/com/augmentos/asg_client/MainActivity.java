@@ -50,7 +50,7 @@ import com.augmentos.asg_client.rtmp.RTMPStreamer;
 import com.augmentos.asg_client.rtmp.RTMPStreamingExample;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
 
-import io.github.thibaultbee.streampack.views.PreviewView;
+// Don't import PreviewView directly to avoid ClassNotFoundException during startup
 
 import android.media.projection.MediaProjectionManager;
 
@@ -62,9 +62,8 @@ public class MainActivity extends AppCompatActivity {
   boolean mBound;
   PermissionsUtils permissionsUtils;
   
-  // RTMP streaming components using the new approach
+  // RTMP streaming components using the container-based approach
   private ViewGroup cameraPreviewContainer;
-  private PreviewView rtmpPreviewView;
   private RTMPStreamingExample rtmpStreamer;
   private boolean isStreamingActive = false;
   private final String defaultRtmpUrl = "rtmp://10.0.0.22:1935/live/Byh6EOtelg";
@@ -97,19 +96,10 @@ public class MainActivity extends AppCompatActivity {
     // Set layout for launcher
     setContentView(R.layout.activity_main);
     
-    // Initialize the container for RTMP streaming
+    // Initialize the container for RTMP streaming - but DON'T create the PreviewView yet
     cameraPreviewContainer = findViewById(R.id.camera_preview_container);
     if (cameraPreviewContainer != null) {
-      // Create PreviewView programmatically
-      rtmpPreviewView = new PreviewView(this);
-      rtmpPreviewView.setLayoutParams(new ViewGroup.LayoutParams(
-          ViewGroup.LayoutParams.MATCH_PARENT,
-          ViewGroup.LayoutParams.MATCH_PARENT));
-      
-      // Add it to the container
-      cameraPreviewContainer.addView(rtmpPreviewView);
-      
-      Log.d(TAG, "RTMP PreviewView created programmatically");
+      Log.d(TAG, "Found camera_preview_container in layout");
       
       // If permissions are granted, initialize streaming
       if (hasRequiredPermissions()) {
@@ -142,15 +132,28 @@ public class MainActivity extends AppCompatActivity {
   }
 
   /**
-   * Initialize the RTMP streamer using the StreamPack library's approach
+   * Initialize the RTMP streamer using the container-based approach
    */
   private void initializeRtmpStreamer() {
-    if (rtmpPreviewView != null) {
-      Log.d(TAG, "Initializing RTMP streamer with PreviewView");
+    if (cameraPreviewContainer != null) {
+      Log.d(TAG, "Initializing RTMP streamer with container-based approach");
       
       try {
-        // Create the RTMP streamer using the proper StreamPackLite approach
-        rtmpStreamer = new RTMPStreamingExample(this, rtmpPreviewView);
+        // First make sure container is empty
+        cameraPreviewContainer.removeAllViews();
+        
+        // Now create the PreviewView inside the container
+        io.github.thibaultbee.streampack.views.PreviewView previewView = 
+            new io.github.thibaultbee.streampack.views.PreviewView(this);
+        previewView.setLayoutParams(new ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.MATCH_PARENT,
+            ViewGroup.LayoutParams.MATCH_PARENT));
+        
+        // Add the PreviewView to the container
+        cameraPreviewContainer.addView(previewView);
+        
+        // Create the RTMP streamer using the PreviewView we just created
+        rtmpStreamer = new RTMPStreamingExample(this, previewView);
         
         // Set up callbacks
         rtmpStreamer.setCallback(new RTMPStreamingExample.StreamingCallback() {
@@ -202,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         Toast.makeText(this, "Error initializing RTMP streamer: " + e.getMessage(), Toast.LENGTH_SHORT).show();
       }
     } else {
-      Log.e(TAG, "Cannot initialize RTMP streamer - PreviewView is null");
+      Log.e(TAG, "Cannot initialize RTMP streamer - container is null");
     }
   }
   
@@ -302,7 +305,7 @@ public class MainActivity extends AppCompatActivity {
         if (allPermissionsGranted) {
           Log.d(TAG, "Camera and audio permissions granted, ready for streaming");
           // Permissions are granted, can proceed with camera initialization
-          if (rtmpPreviewView != null) {
+          if (cameraPreviewContainer != null) {
             initializeRtmpStreamer();
           }
         } else {
@@ -363,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
     }
     
     // Initialize or reinitialize streaming if needed
-    if (rtmpPreviewView != null) {
+    if (cameraPreviewContainer != null) {
       // Check permissions before initializing
       if (hasRequiredPermissions()) {
         // Reinitialize streamer if needed
