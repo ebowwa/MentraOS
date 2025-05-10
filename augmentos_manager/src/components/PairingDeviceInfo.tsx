@@ -57,7 +57,7 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({ isDarkTheme, glas
 
 
   const themeStyles = {
-    backgroundColor: isDarkTheme ? '#333333' : '#F2F2F7',
+    backgroundColor: isDarkTheme ? '#333333' : '#6750A414',
     textColor: isDarkTheme ? '#FFFFFF' : '#333333',
     statusLabelColor: isDarkTheme ? '#CCCCCC' : '#666666',
     statusValueColor: isDarkTheme ? '#FFFFFF' : '#333333',
@@ -89,7 +89,7 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({ isDarkTheme, glas
 const styles = StyleSheet.create({
   deviceInfoContainer: {
     padding: 10,
-    borderRadius: 10,
+    borderRadius: 16,
     width: '100%',
     minHeight: 250,
     justifyContent: 'center',

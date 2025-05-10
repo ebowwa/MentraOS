@@ -193,6 +193,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private WebSocketLifecycleManager webSocketLifecycleManager;
     private boolean isMicEnabledForFrontend = false;
 
+    private boolean isInitializing = false;
 
     public AugmentosService() {
     }
@@ -212,6 +213,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 if (connectionState == SmartGlassesConnectionState.CONNECTED) {
                     Log.d(TAG, "Got event for onGlassesConnected.. CONNECTED ..");
                     Log.d(TAG, "****************** SENDING REFERENCE CARD: CONNECTED TO AUGMENT OS");
+                    isInitializing = true;
                     playStartupSequenceOnSmartGlasses();
                     asrPlanner.updateAsrLanguages();
                     requestSettingsFromServer();
@@ -696,6 +698,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 //                            ), 3000); // Delay of 3 seconds
 //                    }
 
+                    // Set isInitializing to false after booting sequence is finished, with 100ms delay
+                    uiHandler.postDelayed(() -> isInitializing = false, 500);
                     return; // Stop looping
                 }
 
@@ -835,8 +839,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     public Runnable parseDisplayEventMessage(JSONObject rawMsg) {
-            try {
-                JSONObject msg = generateTemplatedJsonFromServer(rawMsg);
+        if(isInitializing) {
+            return () -> {};
+        }
+
+        try {
+            JSONObject msg = generateTemplatedJsonFromServer(rawMsg);
 
 //                Log.d(TAG, "Parsed message: " + msg.toString());
 

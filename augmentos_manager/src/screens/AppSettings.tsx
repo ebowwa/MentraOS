@@ -22,6 +22,7 @@ import { getAppImage } from '../logic/getAppImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 import { useAppStatus } from '../providers/AppStatusProvider';
 import AppIcon from '../components/AppIcon';
+import SelectWithSearchSetting from '../components/settings/SelectWithSearchSetting';
 
 type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
@@ -345,6 +346,17 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             theme={theme}
           />
         );
+      case 'select_with_search':
+          return (
+            <SelectWithSearchSetting
+              key={index}
+              label={setting.label}
+              value={settingsState[setting.key]}
+              options={setting.options}
+              onValueChange={(val) => handleSettingChange(setting.key, val)}
+              theme={theme}
+            />
+          );
       case 'multiselect':
         return (
           <MultiSelectSetting

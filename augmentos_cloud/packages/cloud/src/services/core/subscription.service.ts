@@ -9,7 +9,7 @@
  * - Providing subscription queries for broadcasting
  */
 
-import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLanguageStream, createTranscriptionStream } from '@augmentos/sdk';
+import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@augmentos/sdk';
 import { logger } from '@augmentos/utils';
 
 /**
@@ -19,6 +19,16 @@ interface SubscriptionHistory {
   timestamp: Date;
   subscriptions: ExtendedStreamType[];
   action: 'add' | 'remove' | 'update';
+}
+
+/**
+ * Location data structure
+ */
+interface Location {
+  latitude: number;
+  longitude: number;
+  accuracy?: number;
+  timestamp: Date;
 }
 
 /**
@@ -41,6 +51,56 @@ export class SubscriptionService {
    * @private
    */
   private history = new Map<string, SubscriptionHistory[]>();
+
+  /**
+   * Cache for the last calendar event per session
+   * @private
+   */
+  private lastCalendarEventCache = new Map<string, CalendarEvent>();
+
+  /**
+   * Cache for the last location per session
+   * @private
+   */
+  private lastLocationCache = new Map<string, Location>();
+
+  /**
+   * Caches the last calendar event for a session
+   * @param sessionId - User session identifier
+   * @param event - Calendar event to cache
+   */
+  cacheCalendarEvent(sessionId: string, event: CalendarEvent): void {
+    this.lastCalendarEventCache.set(sessionId, event);
+    logger.info(`Cached calendar event for session ${sessionId}`);
+  }
+
+  /**
+   * Gets the last cached calendar event for a session
+   * @param sessionId - User session identifier
+   * @returns The last calendar event or undefined if none exists
+   */
+  getLastCalendarEvent(sessionId: string): CalendarEvent | undefined {
+    return this.lastCalendarEventCache.get(sessionId);
+  }
+
+  /**
+   * Caches the last location for a session
+   * @param sessionId - User session identifier
+   * @param location - Location to cache
+   */
+  cacheLocation(sessionId: string, location: Location): void {
+    this.lastLocationCache.set(sessionId, location);
+    logger.info(`Cached location for session ${sessionId}`);
+  }
+
+  /**
+   * Gets the last cached location for a session
+   * @param sessionId - User session identifier
+   * @returns The last location or undefined if none exists
+   */
+  getLastLocation(sessionId: string): Location | undefined {
+    return this.lastLocationCache.get(sessionId);
+  }
 
   /**
    * Generates a unique key for subscription storage
@@ -231,6 +291,12 @@ export class SubscriptionService {
       this.history.delete(key);
     });
 
+    // Remove cached calendar event for this session
+    this.lastCalendarEventCache.delete(sessionId);
+    
+    // Remove cached location for this session
+    this.lastLocationCache.delete(sessionId);
+
     logger.info(`Removed subscription history for session ${sessionId} (${keysToRemove.length} entries)`);
   }
 
@@ -267,7 +333,7 @@ export class SubscriptionService {
 
   /**
    * Returns the minimal set of language-specific subscriptions for a given user session.
-   * For example, if a user’s apps request:
+   * For example, if a user's apps request:
    *  - transcription:en-US
    *  - translation:es-ES-to-en-US
    *  - transcription:en-US

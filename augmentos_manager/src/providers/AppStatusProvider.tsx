@@ -116,8 +116,6 @@ export const AppStatusProvider = ({ children }: { children: ReactNode }) => {
                     return appCopy;
                 });
 
-                console.log('$$$ updatedAppsData', updatedAppsData);
-
                 setAppStatus(updatedAppsData);
             }
         } catch (err) {

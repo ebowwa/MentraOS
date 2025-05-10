@@ -135,7 +135,7 @@ enum GlassesError: Error {
     }
   }
   
-  private var centralManager: CBCentralManager!
+  private var centralManager: CBCentralManager?
   private var leftPeripheral: CBPeripheral?
   private var rightPeripheral: CBPeripheral?
   private var connectedDevices: [String: (CBPeripheral?, CBPeripheral?)] = [:]
@@ -150,8 +150,8 @@ enum GlassesError: Error {
   
   override init() {
     super.init()
-    centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
-    setupCommandQueue()
+    // centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+    // setupCommandQueue()
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -163,8 +163,14 @@ enum GlassesError: Error {
   
   // this scans for new (un-paired) glasses to connect to:
   @objc func RN_startScan() -> Bool {
+
+    if centralManager == nil {
+      centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+      setupCommandQueue()
+    }
+
     self.isDisconnecting = false// reset intentional disconnect flag
-    guard centralManager.state == .poweredOn else {
+    guard centralManager!.state == .poweredOn else {
       print("Bluetooth is not powered on.")
       return false
     }
@@ -189,7 +195,7 @@ enum GlassesError: Error {
       }
     }
     
-    centralManager.scanForPeripherals(withServices: nil, options: nil)
+    centralManager!.scanForPeripherals(withServices: nil, options: nil)
     return true
   }
   
@@ -204,11 +210,11 @@ enum GlassesError: Error {
     print("RN_connectGlasses()")
     
     if let side = leftPeripheral {
-      centralManager.connect(side, options: nil)
+      centralManager!.connect(side, options: nil)
     }
     
     if let side = rightPeripheral {
-      centralManager.connect(side, options: nil)
+      centralManager!.connect(side, options: nil)
     }
     
     // just return if we don't have both a left and right arm:
@@ -265,7 +271,7 @@ enum GlassesError: Error {
     if right != nil {
       rightReady = right!
     }
-    print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
+    // print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
     g1Ready = leftReady && rightReady
     if g1Ready {
       stopReconnectionTimer()
@@ -273,7 +279,7 @@ enum GlassesError: Error {
   }
   
   @objc func RN_stopScan() {
-    centralManager.stopScan()
+    centralManager!.stopScan()
     print("Stopped scanning for devices")
   }
   
@@ -281,11 +287,11 @@ enum GlassesError: Error {
     self.isDisconnecting = true
     stopReconnectionTimer()
     if let left = leftPeripheral {
-      centralManager.cancelPeripheralConnection(left)
+      centralManager!.cancelPeripheralConnection(left)
     }
     
     if let right = rightPeripheral {
-      centralManager.cancelPeripheralConnection(right)
+      centralManager!.cancelPeripheralConnection(right)
     }
     
     leftPeripheral = nil
@@ -518,7 +524,7 @@ enum GlassesError: Error {
   }
   
   private func getConnectedDevices() -> [CBPeripheral] {
-    let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
+    let connectedPeripherals = centralManager!.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
     return connectedPeripherals
   }
   
@@ -795,11 +801,11 @@ extension ERG1Manager {
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
     if peripheral == leftPeripheral {
       leftInitialized = success
-      print("Left arm initialized: \(success)")
+      // print("Left arm initialized: \(success)")
       setReadiness(left: true, right: nil)
     } else if peripheral == rightPeripheral {
       rightInitialized = success
-      print("Right arm initialized: \(success)")
+      // print("Right arm initialized: \(success)")
       setReadiness(left: nil, right: true)
     }
     

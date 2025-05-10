@@ -5,7 +5,7 @@
   ],
 
   "scripts": {
-    "build": "cd packages/sdk && bun run build && cd ../utils && bun run build && cd ../agents && bun run build && cd ../apps/dashboard-manager && bun run build",
+    "build": "cd packages/sdk && bun run build && cd ../utils && bun run build && cd ../agents && bun run build && cd ../apps/dashboard && bun run build",
     "setup-deps": "bun install --no-link",
 
     "dev": "bun run dev:stop && bun run dev:rebuild && docker compose -f docker-compose.dev.yml -p dev up",
