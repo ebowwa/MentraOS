@@ -172,6 +172,7 @@ const AppStore: React.FC = () => {
     }
 
     try {
+      console.log('Uninstalling app:', packageName);
       setInstallingApp(packageName);
 
       const success = await api.app.uninstallApp(packageName);
