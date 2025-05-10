@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, useLocation  } from 'react-router-dom';
+import { useParams, useNavigate  } from 'react-router-dom';
 import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api from '../api';
@@ -11,7 +11,7 @@ import Header from '../components/Header';
 const AppDetails: React.FC = () => {
   const { packageName } = useParams<{ packageName: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [app, setApp] = useState<AppI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,11 +110,12 @@ const AppDetails: React.FC = () => {
       setInstallingApp(true);
 
       // First stop the app
-      const stopSuccess = await api.app.stopApp(app.packageName);
-      if (!stopSuccess) {
-        toast.error('Failed to stop app before uninstallation');
-        return;
-      }
+      // const stopSuccess = await api.app.stopApp(app.packageName);
+      // if (!stopSuccess) {
+      //   toast.error('Failed to stop app before uninstallation');
+      //   return;
+      // }
+      // App should be stopped automatically by the backend when uninstalling.
 
       // Then uninstall the app
       const uninstallSuccess = await api.app.uninstallApp(app.packageName);
