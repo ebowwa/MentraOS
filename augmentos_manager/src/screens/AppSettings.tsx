@@ -10,9 +10,8 @@ import {
   ImageBackground,
   TouchableOpacity,
   Alert,
-  KeyboardAvoidingView,
   Platform,
-  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {RootStackParamList} from '../components/types';
@@ -451,11 +450,10 @@ const AppSettings: React.FC<AppSettingsProps> = ({
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{flex: 1}}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
-        >
-        <ScrollView contentContainerStyle={styles.mainContainer}
-         automaticallyAdjustKeyboardInsets={true}
-        >
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}>
+        <ScrollView
+          contentContainerStyle={styles.mainContainer}
+          automaticallyAdjustKeyboardInsets={true}>
           {/* App Info Header Section */}
           <View
             style={[
@@ -595,8 +593,9 @@ const AppSettings: React.FC<AppSettingsProps> = ({
               </Text>
             </View>
           )}
+
           {/* App Settings Section */}
-          {/* <View
+          <View
             style={[
               styles.sectionContainer,
               {
@@ -606,32 +605,26 @@ const AppSettings: React.FC<AppSettingsProps> = ({
             ]}>
             <Text style={[styles.sectionTitle, {color: theme.textColor}]}>
               App Settings
-            </Text> */}
-
-          <View style={{backgroundColor: 'red', height: 300, width: 300}}>
-            <Text>test</Text>
+            </Text>
+            <View style={styles.settingsContainer}>
+              {serverAppInfo.settings && serverAppInfo.settings.length > 0 ? (
+                serverAppInfo.settings.map((setting: any, index: number) =>
+                  renderSetting(
+                    {...setting, uniqueKey: `${setting.key}-${index}`},
+                    index,
+                  ),
+                )
+              ) : (
+                <Text
+                  style={[
+                    styles.noSettingsText,
+                    {color: theme.secondaryTextColor},
+                  ]}>
+                  No settings available for this app
+                </Text>
+              )}
+            </View>
           </View>
-          <View style={styles.settingsContainer}>
-            {serverAppInfo.settings && serverAppInfo.settings.length > 0 ? (
-              serverAppInfo.settings.map((setting: any, index: number) =>
-                renderSetting(
-                  {...setting, uniqueKey: `${setting.key}-${index}`},
-                  index,
-                ),
-              )
-            ) : (
-              <Text
-                style={[
-                  styles.noSettingsText,
-                  {color: theme.secondaryTextColor},
-                ]}>
-                No settings available for this app
-              </Text>
-            )}
-          </View>
-
-          <TextInput></TextInput>
-          {/* </View> */}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
