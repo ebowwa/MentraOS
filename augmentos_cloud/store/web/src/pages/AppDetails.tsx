@@ -118,6 +118,7 @@ const AppDetails: React.FC = () => {
       // App should be stopped automatically by the backend when uninstalling.
 
       // Then uninstall the app
+      console.log('Uninstalling app:', app.packageName);
       const uninstallSuccess = await api.app.uninstallApp(app.packageName);
 
       if (uninstallSuccess) {
