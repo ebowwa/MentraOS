@@ -506,18 +506,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
           );
         })}
       </ScrollView>
-
-      {/* <MessageModal
-        visible={onboardingModalVisible && availableApps.length > 0}
-        title="Start Live Captions"
-        message="To continue, start the Live Captions app."
-        buttons={[
-          {text: 'Okay', onPress: () => setOnboardingModalVisible(false)},
-        ]}
-        isDarkTheme={isDarkTheme}
-        iconName="gesture-tap"
-        iconSize={40}
-      /> */}
     </View>
   );
 };

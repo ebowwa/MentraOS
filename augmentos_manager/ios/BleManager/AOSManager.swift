@@ -918,7 +918,7 @@ struct ViewState {
         "model_name": self.defaultWearable,
         "battery_life": self.batteryLevel,
         "headUp_angle": self.headUpAngle,
-        "brightness": self.brightness,
+        "brightness": self.autoBrightness ? "AUTO" : "\(self.brightness)%",
         "auto_brightness": self.autoBrightness,
         "dashboard_height": self.dashboardHeight,
         "is_searching": self.isSearching,
