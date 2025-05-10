@@ -453,6 +453,15 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
+  async sendSetPreferredMic(mic: string) {
+    return await this.sendData({
+      command: 'set_preferred_mic',
+      params: {
+        mic: mic,
+      },
+    });
+  }
+
   async sendToggleContextualDashboard(enabled: boolean) {
     return await this.sendData({
       command: 'enable_contextual_dashboard',
