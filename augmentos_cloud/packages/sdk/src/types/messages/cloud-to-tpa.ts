@@ -6,6 +6,7 @@ import { StreamType } from '../streams';
 import { AppSettings, TpaConfig } from '../models';
 import { LocationUpdate, CalendarEvent } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
+import { TpaSession } from 'src/tpa/session';
 
 //===========================================================
 // Responses
@@ -103,6 +104,8 @@ export interface ToolCall {
   toolParameters: Record<string, string | number | boolean>; // The parameters of the tool that was called
   timestamp: Date; // Timestamp when the tool was called
   userId: string; // ID of the user who triggered the tool call
+  sessionId?: string; // ID of the session that the tool call belongs to
+  session?: TpaSession; // The session that the tool call belongs to
 }
 
 //===========================================================
