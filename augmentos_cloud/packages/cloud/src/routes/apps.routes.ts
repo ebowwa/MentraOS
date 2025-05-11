@@ -31,7 +31,7 @@ interface MongooseDocument {
 }
 
 // This is annyoing to change in the env files everywhere for each region so we set it here.
-export const CLOUD_VERSION = "2.1.3"; //process.env.CLOUD_VERSION;
+export const CLOUD_VERSION = "2.1.16"; //process.env.CLOUD_VERSION;
 if (!CLOUD_VERSION) {
   console.error('CLOUD_VERSION is not set');
 }
