@@ -2,8 +2,8 @@ version: v2
 # Omit a hard-coded name here. Use environment variables to supply dynamic values.
 namespace: ${PORTER_NAMESPACE}
 
-envGroups:
-- dev
+# envGroups:
+# - dev
 
 build:
   method: docker

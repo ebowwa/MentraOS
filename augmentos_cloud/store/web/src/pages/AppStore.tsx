@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 
 const AppStore: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -172,6 +172,7 @@ const AppStore: React.FC = () => {
     }
 
     try {
+      console.log('Uninstalling app:', packageName);
       setInstallingApp(packageName);
 
       const success = await api.app.uninstallApp(packageName);

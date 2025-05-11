@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,10 +9,10 @@ import {
   SafeAreaView,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {useNavigation, useFocusEffect} from '@react-navigation/native';
 
-import { RootStackParamList, AppStoreItem } from '../components/types';
+import {RootStackParamList, AppStoreItem} from '../components/types';
 import AppItem from '../components/AppStore/AppItem';
 import InternetConnectionFallbackComponent from '../components/InternetConnectionFallbackComponent';
 import LoadingComponent from '../components/LoadingComponent';
@@ -22,15 +22,17 @@ interface AppStoreProps {
 }
 
 import BackendServerComms from '../backend_comms/BackendServerComms';
-import { GET_APP_STORE_DATA_ENDPOINT } from '../consts';
+import {GET_APP_STORE_DATA_ENDPOINT} from '../consts';
+import {useAppStatus} from '../providers/AppStatusProvider';
 
-const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
+const AppStore: React.FC<AppStoreProps> = ({isDarkTheme}) => {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList, 'AppStore'>>();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredApps, setFilteredApps] = useState<AppStoreItem[]>([]);
   const [selectedCategory] = useState<string | null>(null);
+  const {refreshAppStatus} = useAppStatus();
 
   // New state for handling connection errors
   const [isError, setIsError] = useState(false);
@@ -58,8 +60,10 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
   }, []);
 
   useFocusEffect(
-    React.useCallback(() => {
-      // Any logic that was previously in animations can be placed here if needed
+    useCallback(() => {
+      return () => {
+        refreshAppStatus();
+      };
     }, []),
   );
 
@@ -69,7 +73,9 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
 
     const callback = {
       onSuccess: (data: any) => {
-        const visibleApps = data.filter((app: AppStoreItem) => app.showInAppStore);
+        const visibleApps = data.filter(
+          (app: AppStoreItem) => app.showInAppStore,
+        );
         setFilteredApps(visibleApps); // Assuming the API returns a list of AppStoreItem
         setIsError(false); // Reset error state on success
         setIsLoading(false); // Stop loading
@@ -80,7 +86,11 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
       },
     };
 
-    await backendServerComms.restRequest(GET_APP_STORE_DATA_ENDPOINT, null, callback);
+    await backendServerComms.restRequest(
+      GET_APP_STORE_DATA_ENDPOINT,
+      null,
+      callback,
+    );
   };
 
   const handleSearch = (text: string) => {
@@ -116,12 +126,12 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
   //   }
   // };
 
-  const renderItem = ({ item, index }: { item: AppStoreItem; index: number }) => (
+  const renderItem = ({item, index}: {item: AppStoreItem; index: number}) => (
     <AppItem
       item={item}
       index={index}
       theme={theme}
-      onPress={() => navigation.navigate('AppDetails', { app: item })}
+      onPress={() => navigation.navigate('AppDetails', {app: item})}
     />
   );
 
@@ -154,8 +164,9 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
   // );
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={[styles.container, { backgroundColor: theme.backgroundColor }]}>
+    <SafeAreaView style={{flex: 1}}>
+      <View
+        style={[styles.container, {backgroundColor: theme.backgroundColor}]}>
         {/* Conditionally render Header and Search Bar when there is no error and not loading */}
         {!isError && !isLoading && (
           <View
@@ -165,14 +176,12 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
                 backgroundColor: theme.headerBg,
                 borderBottomColor: theme.borderColor,
               },
-            ]}
-          >
+            ]}>
             <Text
               style={[
                 styles.header,
                 isDarkTheme ? styles.headerTextDark : styles.headerTextLight,
-              ]}
-            >
+              ]}>
               AugmentOS Store
             </Text>
             <View
@@ -181,8 +190,7 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
                 {
                   backgroundColor: theme.searchBg,
                 },
-              ]}
-            >
+              ]}>
               <MaterialCommunityIcons
                 name="magnify"
                 size={20}
@@ -190,7 +198,7 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
                 style={styles.searchIcon}
               />
               <TextInput
-                style={[styles.searchInput, { color: theme.textColor }]}
+                style={[styles.searchInput, {color: theme.textColor}]}
                 placeholder="Search for apps..."
                 placeholderTextColor={isDarkTheme ? '#999999' : '#aaaaaa'}
                 value={searchQuery}
@@ -199,8 +207,7 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
               {searchQuery.length > 0 && (
                 <TouchableOpacity
                   onPress={() => handleSearch('')}
-                  style={styles.clearButton}
-                >
+                  style={styles.clearButton}>
                   <MaterialCommunityIcons
                     name="close-circle"
                     size={18}
@@ -231,7 +238,8 @@ const AppStore: React.FC<AppStoreProps> = ({ isDarkTheme }) => {
             <>
               {/* Recommended Section */}
               <View style={styles.recommendSection}>
-                <Text style={[styles.recommendHeader, { color: theme.textColor }]}>
+                <Text
+                  style={[styles.recommendHeader, {color: theme.textColor}]}>
                   Recommended for You
                 </Text>
                 {/* Uncomment and implement when ready
