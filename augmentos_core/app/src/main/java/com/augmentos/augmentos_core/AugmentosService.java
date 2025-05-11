@@ -1111,7 +1111,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     brightnessString = brightnessLevel + "%";
                 }
                 connectedGlasses.put("brightness", brightnessString);
-                connectedGlasses.put("auto_brightness_enabled", autoBrightness);
+                connectedGlasses.put("auto_brightness", autoBrightness);
 //                Log.d(TAG, "Connected glasses info: " + headUpAngle);
                 if (headUpAngle == null) {
                     headUpAngle = 20;
