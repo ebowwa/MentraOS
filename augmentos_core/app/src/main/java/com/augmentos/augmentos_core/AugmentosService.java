@@ -162,6 +162,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private Integer brightnessLevel;
     private Boolean autoBrightness;
     private Integer headUpAngle;
+    private String preferredMic;
 
     private final boolean showingDashboardNow = false;
     private boolean contextualDashboardEnabled;
@@ -403,6 +404,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         autoBrightness = PreferenceManager.getDefaultSharedPreferences(this)
                 .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false);
         headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEADUP_ANGLE), "20"));
+        preferredMic = PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.PREFERRED_MIC), "glasses");
 
         contextualDashboardEnabled = getContextualDashboardEnabled();
         alwaysOnStatusBarEnabled = getAlwaysOnStatusBarEnabled();
@@ -1089,6 +1091,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
             coreInfo.put("force_core_onboard_mic", SmartGlassesManager.getForceCoreOnboardMic(this));
+            coreInfo.put("preferred_mic", preferredMic);
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             status.put("core_info", coreInfo);
@@ -1558,6 +1561,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
         }
+    }
+
+    @Override
+    public void setPreferredMic(String mic) {
+        Log.d("AugmentOsService", "Setting preferred mic: " + mic);
+        preferredMic = mic;
+        SmartGlassesManager.setPreferredMic(this, mic);
+        setForceCoreOnboardMic(mic.equals("phone"));
     }
 
     @Override

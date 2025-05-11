@@ -65,7 +65,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [preferredMic, setPreferredMic] = useState(
     status.core_info.preferred_mic,
   );
-  
+
   const preferredMicOptions = [
     {label: 'Phone / Headset', value: 'phone'},
     {label: 'Glasses', value: 'glasses'},
@@ -289,44 +289,24 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </View>
 
         <ScrollView style={styles.scrollViewContainer}>
-          {/* Force Onboard Microphone */}
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  //   styles.disabledItem,
-                ]}>
-                Use Phone Microphone
-              </Text>
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  //   styles.disabledItem,
-                ]}>
-                Use the phone's microphone instead of the glasses'
-                microphone (if applicable).
-              </Text>
-              {status.glasses_info?.model_name === "Simulated Glasses" && (
-                <View style={styles.flagContainer}>
-                  <Text style={[styles.flagText, { color: '#ff6b6b' }]}>
-                    This setting has no effect when using Simulated Glasses
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Switch
-              //disabled={!status.glasses_info?.model_name}
-              value={forceCoreOnboardMic}
-              onValueChange={toggleForceCoreOnboardMic}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
+          <View style={styles.settingItem2}>
+            <SelectSetting
+              label={'Preferred Microphone'}
+              value={preferredMic}
+              description={
+                "Use the phone's microphone instead of the glasses' microphone (if applicable)."
+              }
+              options={preferredMicOptions}
+              onValueChange={val => setMic(val)}
+              theme={theme}
             />
+            {status.glasses_info?.model_name === 'Simulated Glasses' && (
+              <View style={styles.flagContainer}>
+                <Text style={[styles.flagText, {color: '#ff6b6b'}]}>
+                  This setting has no effect when using Simulated Glasses
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Always on time, date and battery */}
