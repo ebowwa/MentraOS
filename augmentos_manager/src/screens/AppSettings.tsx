@@ -1,11 +1,23 @@
 // src/AppSettings.tsx
-import React, { useEffect, useState, useMemo, useLayoutEffect } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, Image, ImageBackground, TouchableOpacity, Alert } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../components/types';
+import React, {useEffect, useState, useMemo, useLayoutEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Image,
+  ImageBackground,
+  TouchableOpacity,
+  Alert,
+  Platform,
+  KeyboardAvoidingView,
+} from 'react-native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {RootStackParamList} from '../components/types';
 import NavigationBar from '../components/NavigationBar';
 import coreCommunicator from '../bridge/CoreCommunicator';
-import { MOCK_CONNECTION, SETTINGS_KEYS } from '../consts';
+import {MOCK_CONNECTION, SETTINGS_KEYS} from '../consts';
 import GroupTitle from '../components/settings/GroupTitle';
 import ToggleSetting from '../components/settings/ToggleSetting';
 import TextSetting from '../components/settings/TextSetting';
@@ -15,31 +27,46 @@ import SelectSetting from '../components/settings/SelectSetting';
 import MultiSelectSetting from '../components/settings/MultiSelectSetting';
 import TitleValueSetting from '../components/settings/TitleValueSetting';
 import LoadingOverlay from '../components/LoadingOverlay';
-import { useStatus } from '../providers/AugmentOSStatusProvider';
+import {useStatus} from '../providers/AugmentOSStatusProvider';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { getAppImage } from '../logic/getAppImage';
+import {getAppImage} from '../logic/getAppImage';
 import GlobalEventEmitter from '../logic/GlobalEventEmitter';
-import { useAppStatus } from '../providers/AppStatusProvider';
+import {useAppStatus} from '../providers/AppStatusProvider';
 import AppIcon from '../components/AppIcon';
+import SelectWithSearchSetting from '../components/settings/SelectWithSearchSetting';
 
-type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
+type AppSettingsProps = NativeStackScreenProps<
+  RootStackParamList,
+  'AppSettings'
+> & {
   isDarkTheme: boolean;
   toggleTheme: () => void;
 };
 
-const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkTheme, toggleTheme }) => {
-  const { packageName, appName } = route.params;
+const AppSettings: React.FC<AppSettingsProps> = ({
+  route,
+  navigation,
+  isDarkTheme,
+  toggleTheme,
+}) => {
+  const {packageName, appName} = route.params;
   const backendServerComms = BackendServerComms.getInstance();
   const [isUninstalling, setIsUninstalling] = useState(false);
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null);
   // Local state to track current values for each setting.
-  const [settingsState, setSettingsState] = useState<{ [key: string]: any }>({});
+  const [settingsState, setSettingsState] = useState<{[key: string]: any}>({});
   // Get app info from status
-  const { status } = useStatus();
-  const { appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation } = useAppStatus();
+  const {status} = useStatus();
+  const {
+    appStatus,
+    refreshAppStatus,
+    optimisticallyStartApp,
+    optimisticallyStopApp,
+    clearPendingOperation,
+  } = useAppStatus();
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null;
   }, [appStatus, packageName]);
@@ -47,35 +74,40 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   // Handle app start/stop actions with debouncing
   const handleStartStopApp = async () => {
     if (!appInfo) return;
-    
-    console.log(`${appInfo.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`);
-    
+
+    console.log(
+      `${appInfo.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`,
+    );
+
     try {
       if (appInfo.is_running) {
         // Optimistically update UI first
         optimisticallyStopApp(packageName);
-        
+
         // Then request the server to stop the app
         await backendServerComms.stopApp(packageName);
-        
+
         // Clear the pending operation since it completed successfully
         clearPendingOperation(packageName);
       } else {
         // Optimistically update UI first
         optimisticallyStartApp(packageName);
-        
+
         // Check if it's a standard app
         if (appInfo.tpaType === 'standard') {
           // Find any running standard apps
           const runningStandardApps = appStatus.filter(
-            app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName
+            app =>
+              app.is_running &&
+              app.tpaType === 'standard' &&
+              app.packageName !== packageName,
           );
-          
+
           // If there's any running standard app, stop it first
           for (const runningApp of runningStandardApps) {
             // Optimistically update UI
             optimisticallyStopApp(runningApp.packageName);
-            
+
             try {
               await backendServerComms.stopApp(runningApp.packageName);
               clearPendingOperation(runningApp.packageName);
@@ -85,38 +117,41 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             }
           }
         }
-        
+
         // Then request the server to start the app
         await backendServerComms.startApp(packageName);
-        
+
         // Clear the pending operation since it completed successfully
         clearPendingOperation(packageName);
       }
     } catch (error) {
       // Clear the pending operation for this app
       clearPendingOperation(packageName);
-      
+
       // Refresh the app status to get the accurate state from the server
       refreshAppStatus();
-      
-      console.error(`Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`, error);
+
+      console.error(
+        `Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`,
+        error,
+      );
     }
   };
 
   const handleUninstallApp = () => {
     console.log(`Uninstalling app: ${packageName}`);
-    
+
     Alert.alert(
-      "Uninstall App",
+      'Uninstall App',
       `Are you sure you want to uninstall ${appInfo?.name || appName}?`,
       [
         {
-          text: "Cancel",
-          style: "cancel"
+          text: 'Cancel',
+          style: 'cancel',
         },
-        { 
-          text: "Uninstall", 
-          style: "destructive",
+        {
+          text: 'Uninstall',
+          style: 'destructive',
           onPress: async () => {
             try {
               setIsUninstalling(true);
@@ -127,32 +162,36 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
                 await backendServerComms.stopApp(packageName);
                 clearPendingOperation(packageName);
               }
-              
+
               // Then uninstall it
               await backendServerComms.uninstallApp(packageName);
-              
+
               // Show success message
-              GlobalEventEmitter.emit('SHOW_BANNER', { 
-                message: `${appInfo?.name || appName} has been uninstalled successfully`, 
-                type: "success" 
+              GlobalEventEmitter.emit('SHOW_BANNER', {
+                message: `${
+                  appInfo?.name || appName
+                } has been uninstalled successfully`,
+                type: 'success',
               });
-              
+
               // Navigate back to the previous screen
               navigation.goBack();
             } catch (error: any) {
               console.error('Error uninstalling app:', error);
               clearPendingOperation(packageName);
               refreshAppStatus();
-              GlobalEventEmitter.emit('SHOW_BANNER', { 
-                message: `Error uninstalling app: ${error.message || 'Unknown error'}`, 
-                type: "error" 
+              GlobalEventEmitter.emit('SHOW_BANNER', {
+                message: `Error uninstalling app: ${
+                  error.message || 'Unknown error'
+                }`,
+                type: 'error',
               });
             } finally {
               setIsUninstalling(false);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   };
 
@@ -161,7 +200,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
     if (serverAppInfo?.webviewURL) {
       navigation.setOptions({
         headerRight: () => (
-          <View style={{ marginRight: 8 }}>
+          <View style={{marginRight: 8}}>
             <FontAwesome.Button
               name="globe"
               size={22}
@@ -173,14 +212,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
                   webviewURL: serverAppInfo.webviewURL,
                   appName: appName,
                   packageName: packageName,
-                  fromSettings: true
+                  fromSettings: true,
                 });
               }}
-              style={{ padding: 0, margin: 0 }}
-              iconStyle={{ marginRight: 0 }}
+              style={{padding: 0, margin: 0}}
+              iconStyle={{marginRight: 0}}
             />
           </View>
-        )
+        ),
       });
     }
   }, [serverAppInfo, navigation, isDarkTheme, packageName, appName]);
@@ -195,10 +234,10 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   const fetchUpdatedSettingsInfo = async () => {
     try {
       const data = await backendServerComms.getTpaSettings(packageName);
-      console.log("\n\n\nGOT TPA SETTING INFO:");
+      console.log('\n\n\nGOT TPA SETTING INFO:');
       console.log(JSON.stringify(data));
-      console.log("\n\n\n");
-      
+      console.log('\n\n\n');
+
       // If no data is returned from the server, create a minimal app info object
       if (!data) {
         setServerAppInfo({
@@ -206,15 +245,15 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
           description: appInfo?.description || 'No description available.',
           instructions: appInfo?.instructions || null,
           settings: [],
-          uninstallable: true
+          uninstallable: true,
         });
         return;
       }
-      
+
       setServerAppInfo(data);
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
-        const initialState: { [key: string]: any } = {};
+        const initialState: {[key: string]: any} = {};
         data.settings.forEach((setting: any) => {
           if (setting.type !== 'group') {
             initialState[setting.key] = setting.selected;
@@ -222,7 +261,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
         });
         setSettingsState(initialState);
       }
-      
+
       // Check if we should auto-redirect to webview
       // Only redirect if webviewURL exists AND we're not coming from the webview already
       const fromWebView = route.params.fromWebView === true;
@@ -232,7 +271,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
           appName: appName,
           packageName: packageName,
           // We'll use this flag in the webview to show the Settings button
-          fromSettings: true
+          fromSettings: true,
         });
       }
     } catch (err) {
@@ -243,30 +282,31 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
         description: appInfo?.description || 'No description available.',
         instructions: appInfo?.instructions || null,
         settings: [],
-        uninstallable: true
+        uninstallable: true,
       });
     }
-  }
+  };
 
   // When a setting changes, update local state and send the full updated settings payload.
   const handleSettingChange = (key: string, value: any) => {
     console.log(`Changing ${key} to ${value}`);
-    setSettingsState((prevState) => ({
+    setSettingsState(prevState => ({
       ...prevState,
       [key]: value,
     }));
 
     // Build an array of settings to send.
-    const updatedPayload = Object.keys(settingsState).map((settingKey) => ({
+    const updatedPayload = Object.keys(settingsState).map(settingKey => ({
       key: settingKey,
       value: settingKey === key ? value : settingsState[settingKey],
     }));
 
-    backendServerComms.updateTpaSetting(packageName, { key, value })
-      .then((data) => {
+    backendServerComms
+      .updateTpaSetting(packageName, {key, value})
+      .then(data => {
         console.log('Server update response:', data);
       })
-      .catch((error) => {
+      .catch(error => {
         console.error('Error updating setting on server:', error);
       });
   };
@@ -285,14 +325,20 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
   const renderSetting = (setting: any, index: number) => {
     switch (setting.type) {
       case 'group':
-        return <GroupTitle key={`group-${index}`} title={setting.title} theme={theme} />;
+        return (
+          <GroupTitle
+            key={`group-${index}`}
+            title={setting.title}
+            theme={theme}
+          />
+        );
       case 'toggle':
         return (
           <ToggleSetting
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
-            onValueChange={(val) => handleSettingChange(setting.key, val)}
+            onValueChange={val => handleSettingChange(setting.key, val)}
             theme={theme}
           />
         );
@@ -302,7 +348,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
-            onChangeText={(text) => handleSettingChange(setting.key, text)}
+            onChangeText={text => handleSettingChange(setting.key, text)}
             theme={theme}
           />
         );
@@ -312,7 +358,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
-            onChangeText={(text) => handleSettingChange(setting.key, text)}
+            onChangeText={text => handleSettingChange(setting.key, text)}
             theme={theme}
           />
         );
@@ -324,13 +370,13 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             value={settingsState[setting.key]}
             min={setting.min}
             max={setting.max}
-            onValueChange={(val) =>
-              setSettingsState((prevState) => ({
+            onValueChange={val =>
+              setSettingsState(prevState => ({
                 ...prevState,
                 [setting.key]: val,
               }))
             }
-            onValueSet={(val) => handleSettingChange(setting.key, val)}
+            onValueSet={val => handleSettingChange(setting.key, val)}
             theme={theme}
           />
         );
@@ -341,7 +387,18 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             label={setting.label}
             value={settingsState[setting.key]}
             options={setting.options}
-            onValueChange={(val) => handleSettingChange(setting.key, val)}
+            onValueChange={val => handleSettingChange(setting.key, val)}
+            theme={theme}
+          />
+        );
+      case 'select_with_search':
+        return (
+          <SelectWithSearchSetting
+            key={index}
+            label={setting.label}
+            value={settingsState[setting.key]}
+            options={setting.options}
+            onValueChange={val => handleSettingChange(setting.key, val)}
             theme={theme}
           />
         );
@@ -352,7 +409,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
             label={setting.label}
             values={settingsState[setting.key]}
             options={setting.options}
-            onValueChange={(vals) => handleSettingChange(setting.key, vals)}
+            onValueChange={vals => handleSettingChange(setting.key, vals)}
             theme={theme}
           />
         );
@@ -372,140 +429,211 @@ const AppSettings: React.FC<AppSettingsProps> = ({ route, navigation, isDarkThem
 
   if (!serverAppInfo || !appInfo) {
     return (
-      <View style={{ flex: 1, backgroundColor: theme.backgroundColor }}>
-        <LoadingOverlay 
-          message={`Loading ${appName} settings...`} 
-          isDarkTheme={isDarkTheme} 
+      <View style={{flex: 1, backgroundColor: theme.backgroundColor}}>
+        <LoadingOverlay
+          message={`Loading ${appName} settings...`}
+          isDarkTheme={isDarkTheme}
         />
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.backgroundColor }]}>
+    <SafeAreaView
+      style={[styles.safeArea, {backgroundColor: theme.backgroundColor}]}>
       {isUninstalling && (
-        <LoadingOverlay 
-          message={`Uninstalling ${appInfo?.name || appName}...`} 
-          isDarkTheme={isDarkTheme} 
+        <LoadingOverlay
+          message={`Uninstalling ${appInfo?.name || appName}...`}
+          isDarkTheme={isDarkTheme}
         />
       )}
-      <ScrollView contentContainerStyle={styles.mainContainer}>
-        {/* App Info Header Section */}
-        <View style={[styles.appInfoHeader, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}>
-          <View style={styles.appIconRow}>
-            <View style={styles.appIconContainer}>
-              <View style={styles.iconWrapper}>
-                <AppIcon
-                  app={appInfo}
-                  isDarkTheme={isDarkTheme}
-                  isForegroundApp={appInfo.is_foreground}
-                  style={styles.appIconLarge}
-                />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{flex: 1}}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}>
+        <ScrollView
+          contentContainerStyle={styles.mainContainer}
+          automaticallyAdjustKeyboardInsets={true}>
+          {/* App Info Header Section */}
+          <View
+            style={[
+              styles.appInfoHeader,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.borderColor,
+              },
+            ]}>
+            <View style={styles.appIconRow}>
+              <View style={styles.appIconContainer}>
+                <View style={styles.iconWrapper}>
+                  <AppIcon
+                    app={appInfo}
+                    isDarkTheme={isDarkTheme}
+                    isForegroundApp={appInfo.is_foreground}
+                    style={styles.appIconLarge}
+                  />
+                </View>
               </View>
-            </View>
 
-            <View style={styles.appInfoTextContainer}>
-              <Text style={[styles.appName, { color: theme.textColor }]}>{appInfo.name}</Text>
-              <View style={styles.appMetaInfoContainer}>
-                <Text style={[styles.appMetaInfo, { color: theme.secondaryTextColor }]}>
-                  Version {appInfo.version || '1.0.0'}
+              <View style={styles.appInfoTextContainer}>
+                <Text style={[styles.appName, {color: theme.textColor}]}>
+                  {appInfo.name}
                 </Text>
-                <Text style={[styles.appMetaInfo, { color: theme.secondaryTextColor }]}>
-                  Package: {packageName}
-                </Text>
-                {/* {appInfo.is_foreground && (
+                <View style={styles.appMetaInfoContainer}>
+                  <Text
+                    style={[
+                      styles.appMetaInfo,
+                      {color: theme.secondaryTextColor},
+                    ]}>
+                    Version {appInfo.version || '1.0.0'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.appMetaInfo,
+                      {color: theme.secondaryTextColor},
+                    ]}>
+                    Package: {packageName}
+                  </Text>
+                  {/* {appInfo.is_foreground && (
                   <Text style={[styles.appMetaInfo, { color: '#2196F3' }]}>
                     Foreground App
                   </Text>
                 )} */}
+                </View>
               </View>
+            </View>
+
+            {/* Description within the main card */}
+            <View
+              style={[
+                styles.descriptionContainer,
+                {borderTopColor: theme.separatorColor},
+              ]}>
+              <Text style={[styles.descriptionText, {color: theme.textColor}]}>
+                {serverAppInfo.description || 'No description available.'}
+              </Text>
             </View>
           </View>
 
-          {/* Description within the main card */}
-          <View style={[styles.descriptionContainer, { borderTopColor: theme.separatorColor }]}>
-            <Text style={[styles.descriptionText, { color: theme.textColor }]}>
-              {serverAppInfo.description || 'No description available.'}
-            </Text>
-          </View>
-        </View>
+          {/* App Action Buttons Section */}
+          <View
+            style={[
+              styles.sectionContainer,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.borderColor,
+              },
+            ]}>
+            <View style={styles.actionButtonsRow}>
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    borderColor: theme.borderColor,
+                    backgroundColor: theme.backgroundColor,
+                  },
+                ]}
+                onPress={handleStartStopApp}
+                activeOpacity={0.7}>
+                <FontAwesome
+                  name={appInfo.is_running ? 'stop' : 'play'}
+                  size={16}
+                  style={[styles.buttonIcon, {color: theme.secondaryTextColor}]}
+                />
+                <Text
+                  style={[
+                    styles.buttonText,
+                    {color: theme.secondaryTextColor},
+                  ]}>
+                  {appInfo.is_running ? 'Stop' : 'Start'}
+                </Text>
+              </TouchableOpacity>
 
-        {/* App Action Buttons Section */}
-        <View style={[styles.sectionContainer, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}>
-          <View style={styles.actionButtonsRow}>
-            <TouchableOpacity
+              <TouchableOpacity
+                style={[
+                  styles.actionButton,
+                  {
+                    borderColor: theme.borderColor,
+                    backgroundColor: theme.backgroundColor,
+                  },
+                  !serverAppInfo.uninstallable && styles.disabledButton,
+                ]}
+                activeOpacity={0.7}
+                onPress={handleUninstallApp}
+                disabled={!serverAppInfo.uninstallable}>
+                <FontAwesome
+                  name="trash"
+                  size={16}
+                  style={[styles.buttonIcon, {color: '#ff3b30'}]}
+                />
+                <Text style={[styles.buttonText, {color: '#ff3b30'}]}>
+                  Uninstall
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Removed the Open Website section - now in the header */}
+
+          {/* App Instructions Section */}
+          {(serverAppInfo.instructions || appInfo.instructions) && (
+            <View
               style={[
-                styles.actionButton,
-                { borderColor: theme.borderColor, backgroundColor: theme.backgroundColor }
-              ]}
-              onPress={handleStartStopApp}
-              activeOpacity={0.7}
-            >
-              <FontAwesome
-                name={appInfo.is_running ? "stop" : "play"}
-                size={16}
-                style={[styles.buttonIcon, { color: theme.secondaryTextColor }]}
-              />
-              <Text style={[styles.buttonText, { color: theme.secondaryTextColor }]}>
-                {appInfo.is_running ? "Stop" : "Start"}
+                styles.sectionContainer,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.borderColor,
+                },
+              ]}>
+              <Text style={[styles.sectionTitle, {color: theme.textColor}]}>
+                About this App
               </Text>
-            </TouchableOpacity>
+              <Text style={[styles.instructionsText, {color: theme.textColor}]}>
+                {serverAppInfo.instructions || appInfo.instructions}
+              </Text>
+            </View>
+          )}
 
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                { borderColor: theme.borderColor, backgroundColor: theme.backgroundColor },
-                !serverAppInfo.uninstallable && styles.disabledButton
-              ]}
-              activeOpacity={0.7}
-              onPress={handleUninstallApp}
-              disabled={!serverAppInfo.uninstallable}
-            >
-              <FontAwesome
-                name="trash"
-                size={16}
-                style={[styles.buttonIcon, { color: '#ff3b30' }]}
-              />
-              <Text style={[styles.buttonText, { color: '#ff3b30' }]}>Uninstall</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Removed the Open Website section - now in the header */}
-
-        {/* App Instructions Section */}
-        {(serverAppInfo.instructions || appInfo.instructions) && (
-          <View style={[styles.sectionContainer, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}>
-            <Text style={[styles.sectionTitle, { color: theme.textColor }]}>About this App</Text>
-            <Text style={[styles.instructionsText, { color: theme.textColor }]}>
-              {serverAppInfo.instructions || appInfo.instructions}
+          {/* App Settings Section */}
+          <View
+            style={[
+              styles.sectionContainer,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.borderColor,
+              },
+            ]}>
+            <Text style={[styles.sectionTitle, {color: theme.textColor}]}>
+              App Settings
             </Text>
+            <View style={styles.settingsContainer}>
+              {serverAppInfo.settings && serverAppInfo.settings.length > 0 ? (
+                serverAppInfo.settings.map((setting: any, index: number) =>
+                  renderSetting(
+                    {...setting, uniqueKey: `${setting.key}-${index}`},
+                    index,
+                  ),
+                )
+              ) : (
+                <Text
+                  style={[
+                    styles.noSettingsText,
+                    {color: theme.secondaryTextColor},
+                  ]}>
+                  No settings available for this app
+                </Text>
+              )}
+            </View>
           </View>
-        )}
-
-        {/* App Settings Section */}
-        <View style={[styles.sectionContainer, { backgroundColor: theme.cardBackground, borderColor: theme.borderColor }]}>
-          <Text style={[styles.sectionTitle, { color: theme.textColor }]}>App Settings</Text>
-          <View style={styles.settingsContainer}>
-            {serverAppInfo.settings && serverAppInfo.settings.length > 0 ? (
-              serverAppInfo.settings.map((setting: any, index: number) =>
-                renderSetting({ ...setting, uniqueKey: `${setting.key}-${index}` }, index)
-              )
-            ) : (
-              <Text style={[styles.noSettingsText, { color: theme.secondaryTextColor }]}>
-                No settings available for this app
-              </Text>
-            )}
-          </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: {
-    flex: 1
+    flex: 1,
   },
   mainContainer: {
     flexGrow: 1,
@@ -519,7 +647,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -583,7 +711,7 @@ const styles = StyleSheet.create({
     padding: 16,
     elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -612,7 +740,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 20
+    marginHorizontal: 20,
   },
   actionButtonsRow: {
     flexDirection: 'row',

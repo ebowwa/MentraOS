@@ -680,7 +680,7 @@ export class AppService {
             'Content-Type': 'application/json',
             'X-TPA-API-Key': appDoc.hashedApiKey, // Use the hashed API key for authentication
           },
-          timeout: 10000 // 10 second timeout
+          timeout: 20000 // 10 second timeout
         });
         
         // Return successful response

@@ -73,6 +73,7 @@ export interface ExtendedUserSession extends UserSession {
 
   // Add the subscription manager instance
   subscriptionManager: SubscriptionManager;
+  recentAudioBuffer: { data: ArrayBufferLike; timestamp: number }[]; // Buffer for last 10 seconds of audio
 }
 
 export class SessionService {
@@ -165,6 +166,7 @@ export class SessionService {
       bufferedAudio: [],
       disconnectedAt: null,
       isTranscribing: false,
+      recentAudioBuffer: [], // Initialize the recent audio buffer
 
       audioBuffer: {
         chunks: [],
@@ -371,11 +373,15 @@ export class SessionService {
     // Update the last audio timestamp
     userSession.lastAudioTimestamp = Date.now();
 
-    // If not transcribing, just ignore the audio
-    // if (!userSession.isTranscribing) {
-    //   if (LOG_AUDIO) console.log('🔇 Skipping audio while transcription is paused');
-    //   return;
-    // }
+    // --- Maintain recentAudioBuffer for last 10 seconds ---
+    if (audioData && userSession.recentAudioBuffer) {
+      const now = Date.now();
+      // Store the chunk with its timestamp
+      userSession.recentAudioBuffer.push({ data: audioData, timestamp: now });
+      // Prune to keep only the last 10 seconds
+      const tenSecondsAgo = now - 10_000;
+      userSession.recentAudioBuffer = userSession.recentAudioBuffer.filter(chunk => chunk.timestamp >= tenSecondsAgo);
+    }
 
     // Lazy initialize the audio writer if it doesn't exist
     if (DEBUG_AUDIO && !userSession.audioWriter) {

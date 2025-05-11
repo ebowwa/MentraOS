@@ -21,6 +21,7 @@ import tzlookup from 'tz-lookup';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { WeatherModule, WeatherSummary } from './dashboard-modules/WeatherModule';
+import { NotificationSummaryAgent } from '@augmentos/agents';
 
 /**
  * Utility: Estimate if a location is in North America (rough bounding box)
@@ -70,6 +71,8 @@ class DashboardServer extends TpaServer {
     updateInterval?: NodeJS.Timeout;
   }> = new Map();
 
+  private notificationSummaryAgent: NotificationSummaryAgent;
+
   constructor() {
     super({
       packageName: PACKAGE_NAME,
@@ -77,6 +80,8 @@ class DashboardServer extends TpaServer {
       apiKey: API_KEY,
       publicDir: path.join(__dirname, "./public"),
     });
+    
+    this.notificationSummaryAgent = new NotificationSummaryAgent();
     
     logger.info('Dashboard Manager initialized with configuration', { 
       packageName: PACKAGE_NAME,
@@ -376,7 +381,7 @@ class DashboardServer extends TpaServer {
   private formatStatusSection(sessionInfo: any): string {
     // Prioritize calendar events if available
     if (sessionInfo.calendarEvent) {
-      return this.formatCalendarEvent(sessionInfo.calendarEvent);
+      return this.formatCalendarEvent(sessionInfo.calendarEvent, sessionInfo);
     }
     
     // Then weather if available
@@ -391,19 +396,29 @@ class DashboardServer extends TpaServer {
   /**
    * Format calendar event
    */
-  private formatCalendarEvent(event: any): string {
+  private formatCalendarEvent(event: any, sessionInfo: any): string {
     try {
-      const eventDate = new Date(event.dtStart);
+      const timezone = sessionInfo.latestLocation?.timezone;
+
+      let eventDate: Date;
+      if (timezone) {
+        // Convert the event start time into a localized Date object
+        const localized = new Date(new Date(event.dtStart).toLocaleString("en-US", { timeZone: timezone }));
+        eventDate = localized;
+      } else {
+        eventDate = new Date(event.dtStart); // fallback
+      }
+
       const formattedTime = eventDate.toLocaleTimeString('en-US', { 
         hour: '2-digit', 
         minute: '2-digit', 
         hour12: true 
       }).replace(" ", "");
-      
+
       const title = event.title.length > 10 
         ? event.title.substring(0, 7).trim() + '...' 
         : event.title;
-      
+
       return `${title} @ ${formattedTime}`;
     } catch (error) {
       logger.error('Error formatting calendar event', error);
@@ -414,25 +429,27 @@ class DashboardServer extends TpaServer {
   /**
    * Handle phone notification event
    */
-  private handlePhoneNotification(session: TpaSession, sessionId: string, data: PhoneNotification): void {
+  private async handlePhoneNotification(session: TpaSession, sessionId: string, data: PhoneNotification): Promise<void> {
     const sessionInfo = this._activeSessions.get(sessionId);
     if (!sessionInfo) return;
-  
+
     // Check if the app name is blacklisted
     if (data.app && notificationAppBlackList.some(app => 
       data.app.toLowerCase().includes(app))) {
       logger.debug(`Notification from ${data.app} is blacklisted.`);
       return;
     }
-  
+
     // Add notification to cache
     const newNotification = {
       title: data.title || 'No Title',
       content: data.content || '',
       timestamp: Date.now(),
-      uuid: uuidv4()
+      uuid: uuidv4(),
+      appName: data.app || '',
+      text: data.content || ''
     };
-  
+
     // Prevent duplicate notifications
     const cache = sessionInfo.phoneNotificationCache;
     if (cache.length > 0) {
@@ -443,18 +460,31 @@ class DashboardServer extends TpaServer {
         return;
       }
     }
-  
+
     // Add to cache
     sessionInfo.phoneNotificationCache.push(newNotification);
-    
-    // Process notifications (rank them)
-    sessionInfo.phoneNotificationRanking = sessionInfo.phoneNotificationCache
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .map(notification => ({
-        summary: `${notification.title}: ${notification.content}`,
-        timestamp: notification.timestamp
+
+    // Use NotificationSummaryAgent to process and rank notifications
+    try {
+      const ranking = await this.notificationSummaryAgent.handleContext({
+        notifications: sessionInfo.phoneNotificationCache
+      });
+      sessionInfo.phoneNotificationRanking = ranking.map((n: any) => ({
+        summary: n.summary,
+        timestamp: new Date(n.timestamp).getTime() || Date.now()
       }));
-    
+      logger.info('NotificationSummaryAgent ranking:', { ranking });
+    } catch (err) {
+      logger.error('Error using NotificationSummaryAgent:', err);
+      // fallback: use manual summary as before
+      sessionInfo.phoneNotificationRanking = sessionInfo.phoneNotificationCache
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .map(notification => ({
+          summary: `${notification.title}: ${notification.content}`,
+          timestamp: notification.timestamp
+        }));
+    }
+
     // Update dashboard sections
     this.updateDashboardSections(session, sessionId);
   }

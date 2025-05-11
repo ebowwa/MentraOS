@@ -152,21 +152,6 @@ RCT_EXPORT_METHOD(
 }
 
 RCT_EXPORT_METHOD(
-  connectServer:
-  (RCTPromiseResolveBlock)resolve
-  rejecter:(RCTPromiseRejectBlock)reject
-)
-{
-  @try {
-    [self.aosManager connectServer];
-    resolve(@[@"Connected to server!"]);
-  }
-  @catch(NSException *exception) {
-    reject(@"0", exception.description, nil);
-  }
-}
-
-RCT_EXPORT_METHOD(
   getBatteryStatus:
   (RCTPromiseResolveBlock)resolve
   rejecter:(RCTPromiseRejectBlock)reject

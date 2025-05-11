@@ -74,7 +74,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
   [PermissionFeatures.LOCATION]: {
     name: 'Location',
     description: 'Used for navigation and location-based services',
-    ios: [PERMISSIONS.IOS.LOCATION_WHEN_IN_USE, PERMISSIONS.IOS.LOCATION_ALWAYS],
+    ios: [PERMISSIONS.IOS.LOCATION_WHEN_IN_USE],
     android: [PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION],
     critical: false,
   },
@@ -157,6 +157,24 @@ export const hasPermissionBeenRequested = async (featureKey: string): Promise<bo
     return value === 'true';
   } catch (e) {
     console.error('Failed to get permission requested status', e);
+    return false;
+  }
+};
+
+export const markPermissionGranted = async (featureKey: string): Promise<void> => {
+  try {
+    await AsyncStorage.setItem(`PERMISSION_GRANTED_${featureKey}`, 'true');
+  } catch (e) {
+    console.error('Failed to save permission granted status', e);
+  }
+};
+
+export const hasPermissionBeenGranted = async (featureKey: string): Promise<boolean> => {
+  try {
+    const value = await AsyncStorage.getItem(`PERMISSION_GRANTED_${featureKey}`);
+    return value === 'true';
+  } catch (e) {
+    console.error('Failed to get permission granted status', e);
     return false;
   }
 };
@@ -386,10 +404,9 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
     for (const permission of config.ios) {
       try {
         const result = await request(permission);
-        console.log(`iOS permission ${permission} result:`, result);
-        
         if (result === RESULTS.GRANTED) {
           partiallyGranted = true;
+          await markPermissionGranted(permission);
         } else if (result === RESULTS.LIMITED) {
           partiallyGranted = true;
           allGranted = false;
@@ -582,6 +599,16 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
         const status = await check(permission);
         if (status === RESULTS.GRANTED || status === RESULTS.LIMITED) {
           return true; // We have at least one permission, feature can work
+        }
+        if (permission === PERMISSIONS.IOS.CALENDARS) {
+          // this permission is wierd and we should assume it's granted if we've been granted it before, but check for sure by requesting it:
+          if (await hasPermissionBeenGranted(permission)) {
+            // request the permission again to be sure (will do nothing if already granted)
+            const result = await request(permission);
+            if (result === RESULTS.GRANTED) {
+              return true;
+            }
+          }
         }
       } catch (error) {
         console.error(`Error checking iOS permission ${permission}:`, error);
