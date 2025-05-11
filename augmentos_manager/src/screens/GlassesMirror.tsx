@@ -416,7 +416,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
             <TouchableOpacity
               onPress={navigateToFullScreen}
             >
-              <Icon name="fullscreen" size={24} color={isDarkTheme ? "#ffffff" : "#000000"} />
+              <Icon name="camera" size={24} color={isDarkTheme ? "#ffffff" : "#000000"} />
             </TouchableOpacity>
           )}
         </View>

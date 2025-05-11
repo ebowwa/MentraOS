@@ -14,6 +14,7 @@ interface VideoItemProps {
   onPlayVideo: (filePath: string) => void;
   onShareVideo: (filePath: string) => void;
   onDeleteVideo: (filePath: string) => void;
+  showSourceBadge?: boolean; // Optional prop to show source badge
 }
 
 const VideoItem: React.FC<VideoItemProps> = ({
@@ -22,6 +23,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
   onPlayVideo,
   onShareVideo,
   onDeleteVideo,
+  showSourceBadge = false,
 }) => {
   // Extract filename from path
   const filename = videoPath.split('/').pop() || '';
@@ -97,6 +99,15 @@ const VideoItem: React.FC<VideoItemProps> = ({
               <Icon name="delete" size={16} color="white" />
             </TouchableOpacity>
           </View>
+          
+          {/* Source badge */}
+          {showSourceBadge && (
+            <View style={styles.sourceBadge}>
+              <Text style={styles.sourceBadgeText}>
+                Local
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -174,6 +185,20 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#FF5252', // Red
+  },
+  sourceBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sourceBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontFamily: 'Montserrat-Medium',
   },
 });
 

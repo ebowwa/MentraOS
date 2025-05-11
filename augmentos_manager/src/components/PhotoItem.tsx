@@ -18,6 +18,7 @@ interface PhotoItemProps {
   isDarkTheme: boolean;
   onViewPhoto: (photo: any) => void;
   onDeletePhoto: (photoId: string) => void;
+  showSourceBadge?: boolean; // Optional prop to show source badge
 }
 
 const PhotoItem: React.FC<PhotoItemProps> = ({
@@ -25,6 +26,7 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
   isDarkTheme,
   onViewPhoto,
   onDeletePhoto,
+  showSourceBadge = false,
 }) => {
   // Parse date from string
   const dateObj = new Date(photo.uploadDate);
@@ -92,6 +94,15 @@ const PhotoItem: React.FC<PhotoItemProps> = ({
               <Icon name="delete" size={16} color="white" />
             </TouchableOpacity>
           </View>
+          
+          {/* Source badge */}
+          {showSourceBadge && (
+            <View style={styles.sourceBadge}>
+              <Text style={styles.sourceBadgeText}>
+                Cloud
+              </Text>
+            </View>
+          )}
         </View>
       </View>
     </TouchableOpacity>
@@ -178,6 +189,20 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#FF5252', // Red
+  },
+  sourceBadge: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sourceBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontFamily: 'Montserrat-Medium',
   },
 });
 
