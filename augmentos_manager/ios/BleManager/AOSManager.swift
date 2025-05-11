@@ -408,14 +408,14 @@ struct ViewState {
       if isEnabled {
         // Just check permissions - we no longer request them directly from Swift
         // Permissions should already be granted via React Native UI flow
-        if !micManager.checkPermissions() {
+        if !(micManager?.checkPermissions() ?? false) {
           print("Microphone permissions not granted. Cannot enable microphone.")
           return
         }
         
-        micManager.startRecording()
+        micManager?.startRecording()
       } else {
-        micManager.stopRecording()
+        micManager?.stopRecording()
       }
     }
   }
