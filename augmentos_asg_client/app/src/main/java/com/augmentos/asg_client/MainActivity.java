@@ -46,11 +46,7 @@ import androidx.preference.PreferenceManager;
 
 // import com.firebase.ui.auth.AuthUI;
 import com.augmentos.asg_client.AsgClientService;
-import com.augmentos.asg_client.rtmp.RTMPStreamer;
-import com.augmentos.asg_client.rtmp.RTMPStreamingExample;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
-
-// Don't import PreviewView directly to avoid ClassNotFoundException during startup
 
 import android.media.projection.MediaProjectionManager;
 
@@ -62,15 +58,8 @@ public class MainActivity extends AppCompatActivity {
   boolean mBound;
   PermissionsUtils permissionsUtils;
   
-  // RTMP streaming components using the container-based approach
-  private ViewGroup cameraPreviewContainer;
-  private RTMPStreamingExample rtmpStreamer;
-  private boolean isStreamingActive = false;
-  private final String defaultRtmpUrl = "rtmp://10.0.0.22:1935/live/Byh6EOtelg";
-  
   //Permissions
   private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
-  private static final int PERMISSIONS_REQUEST_CAMERA = 3;
   private static final int PICK_CONTACT_REQUEST = 1;
   private static final int READ_CONTACTS_PERMISSIONS_REQUEST = 2;
 
@@ -86,159 +75,15 @@ public class MainActivity extends AppCompatActivity {
     permissionsUtils = new PermissionsUtils(this, TAG);
     permissionsUtils.getSomePermissions();
     
-    // Check for camera and audio permissions
-    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED
-        || ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
       gettingPermissions = true;
-      requestCameraAndAudioPermissions();
+      permissionsUtils.getSomePermissions();
     }
 
     // Set layout for launcher
     setContentView(R.layout.activity_main);
-    
-    // Initialize the container for RTMP streaming - but DON'T create the PreviewView yet
-    cameraPreviewContainer = findViewById(R.id.camera_preview_container);
-    if (cameraPreviewContainer != null) {
-      Log.d(TAG, "Found camera_preview_container in layout");
-      
-      // If permissions are granted, initialize streaming
-      if (hasRequiredPermissions()) {
-        // Small delay to ensure the view is properly attached
-        new Handler().postDelayed(() -> initializeRtmpStreamer(), 500);
-      }
-    } else {
-      Log.e(TAG, "Could not find camera_preview_container in layout");
-    }
   }
   
-  /**
-   * Request camera and audio permissions
-   */
-  private void requestCameraAndAudioPermissions() {
-    String[] permissions = {
-      Manifest.permission.CAMERA,
-      Manifest.permission.RECORD_AUDIO
-    };
-    
-    requestPermissions(permissions, PERMISSIONS_REQUEST_CAMERA);
-  }
-  
-  /**
-   * Check if required permissions are granted
-   */
-  private boolean hasRequiredPermissions() {
-    return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
-        && ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED;
-  }
-
-  /**
-   * Initialize the RTMP streamer using the container-based approach
-   */
-  private void initializeRtmpStreamer() {
-    if (cameraPreviewContainer != null) {
-      Log.d(TAG, "Initializing RTMP streamer with container-based approach");
-      
-      try {
-        // First make sure container is empty
-        cameraPreviewContainer.removeAllViews();
-        
-        // Now create the PreviewView inside the container
-        io.github.thibaultbee.streampack.views.PreviewView previewView = 
-            new io.github.thibaultbee.streampack.views.PreviewView(this);
-        previewView.setLayoutParams(new ViewGroup.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT));
-        
-        // Add the PreviewView to the container
-        cameraPreviewContainer.addView(previewView);
-        
-        // Create the RTMP streamer using the PreviewView we just created
-        rtmpStreamer = new RTMPStreamingExample(this, previewView);
-        
-        // Set up callbacks
-        rtmpStreamer.setCallback(new RTMPStreamingExample.StreamingCallback() {
-          @Override
-          public void onStarted() {
-            Log.d(TAG, "RTMP streaming started successfully");
-            isStreamingActive = true;
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "RTMP Streaming started", Toast.LENGTH_SHORT).show());
-          }
-          
-          @Override
-          public void onStopped() {
-            Log.d(TAG, "RTMP streaming stopped");
-            isStreamingActive = false;
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "RTMP Streaming stopped", Toast.LENGTH_SHORT).show());
-          }
-          
-          @Override
-          public void onError(String message) {
-            Log.e(TAG, "RTMP streaming error: " + message);
-            isStreamingActive = false;
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "RTMP Streaming error: " + message, Toast.LENGTH_SHORT).show());
-          }
-          
-          @Override
-          public void onConnected() {
-            Log.d(TAG, "Connected to RTMP server");
-            runOnUiThread(() -> Toast.makeText(MainActivity.this, "Connected to RTMP server", Toast.LENGTH_SHORT).show());
-          }
-        });
-        
-        // Start the preview - this is the critical step
-        if (hasRequiredPermissions()) {
-          boolean previewStarted = rtmpStreamer.startPreview();
-          Log.d(TAG, "RTMP preview started: " + previewStarted);
-          
-          if (previewStarted) {
-            // Start streaming after a short delay to ensure preview is stabilized
-            new Handler().postDelayed(() -> startRtmpStreaming(), 1000);
-          } else {
-            Log.e(TAG, "Failed to start preview - check camera permissions and surface");
-          }
-        } else {
-          Log.e(TAG, "Cannot start preview - missing permissions");
-          requestCameraAndAudioPermissions();
-        }
-      } catch (Exception e) {
-        Log.e(TAG, "Error initializing RTMP streamer: " + e.getMessage(), e);
-        Toast.makeText(this, "Error initializing RTMP streamer: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-      }
-    } else {
-      Log.e(TAG, "Cannot initialize RTMP streamer - container is null");
-    }
-  }
-  
-  /**
-   * Start RTMP streaming
-   */
-  private void startRtmpStreaming() {
-    if (rtmpStreamer != null && !isStreamingActive) {
-      // Start streaming to the default URL
-      rtmpStreamer.startStreaming(defaultRtmpUrl);
-    }
-  }
-  
-  /**
-   * Stop RTMP streaming
-   */
-  private void stopRtmpStreaming() {
-    if (rtmpStreamer != null && isStreamingActive) {
-      rtmpStreamer.stopStreaming();
-      isStreamingActive = false;
-    }
-  }
-  
-  /**
-   * Release RTMP resources
-   */
-  private void releaseRtmpResources() {
-    if (rtmpStreamer != null) {
-      stopRtmpStreaming();
-      rtmpStreamer.release();
-      rtmpStreamer = null;
-    }
-  }
 
   @Override
   public void onStart() {
@@ -265,8 +110,6 @@ public class MainActivity extends AppCompatActivity {
 
   @Override
   public void onDestroy() {
-    // Release RTMP streaming resources
-    releaseRtmpResources();
     super.onDestroy();
   }
 
@@ -288,31 +131,6 @@ public class MainActivity extends AppCompatActivity {
                   .show();
         }
         return;
-      case PERMISSIONS_REQUEST_CAMERA:
-        // Check if all required permissions are granted
-        boolean allPermissionsGranted = true;
-        if (grantResults.length > 0) {
-          for (int result : grantResults) {
-            if (result != PackageManager.PERMISSION_GRANTED) {
-              allPermissionsGranted = false;
-              break;
-            }
-          }
-        } else {
-          allPermissionsGranted = false;
-        }
-        
-        if (allPermissionsGranted) {
-          Log.d(TAG, "Camera and audio permissions granted, ready for streaming");
-          // Permissions are granted, can proceed with camera initialization
-          if (cameraPreviewContainer != null) {
-            initializeRtmpStreamer();
-          }
-        } else {
-          Toast.makeText(this, "Camera and Microphone permissions are required for RTMP streaming",
-              Toast.LENGTH_LONG).show();
-        }
-        return;
       case READ_CONTACTS_PERMISSIONS_REQUEST:
         if (grantResults.length > 0 &&
                 grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -323,8 +141,6 @@ public class MainActivity extends AppCompatActivity {
       default: // Should not happen. Something we did not request.
     }
   }
-  
-  // Remove the SurfaceHolder.Callback implementation since we're now using PreviewView
 
   @Override
   public void onConfigurationChanged(@NonNull Configuration newConfig) {
@@ -365,27 +181,13 @@ public class MainActivity extends AppCompatActivity {
       }
     }
     
-    // Initialize or reinitialize streaming if needed
-    if (cameraPreviewContainer != null) {
-      // Check permissions before initializing
-      if (hasRequiredPermissions()) {
-        // Reinitialize streamer if needed
-        if (rtmpStreamer == null || !isStreamingActive) {
-          initializeRtmpStreamer();
-        }
-      }
-    }
   }
 
   @Override
   protected void onPause() {
     super.onPause();
-    
-    // For now, let's keep streaming active even when activity is paused
-    // If you want to stop streaming when app is in background, uncomment below:
-    // stopRtmpStreaming();
 
-    //unbind wearableAi service
+    //unbind service
     unbindAsgClientService();
   }
 

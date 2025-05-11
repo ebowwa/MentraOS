@@ -47,7 +47,6 @@ import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
 import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
-import com.augmentos.asg_client.rtmp.RTMPStreamer;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -103,10 +102,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     
     // Photo queue manager for handling offline photo uploads
     private PhotoQueueManager mPhotoQueueManager;
-    
-    // RTMP streaming
-    private RTMPStreamer rtmpStreamer;
-    
+
     // Photo capture service
     private PhotoCaptureService mPhotoCaptureService;
 
@@ -174,9 +170,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Initialize the photo capture service
         initializePhotoCaptureService();
         
-        // Initialize RTMP streaming components but don't autostart
-        initializeRtmpStreaming();
-        
         // Recording test code (kept from original)
         // this.recordFor5Seconds();
         
@@ -217,44 +210,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
     
-    // Flag to track if RTMP streaming is active
-    private boolean isRtmpStreamingActive = false;
-    
-    // Variable to store the current RTMP URL for reconnection if needed
-    private String currentRtmpUrl = null;
-    
-    // The SurfaceView used for RTMP streaming preview
-    private android.view.SurfaceView rtmpSurfaceView = null;
-    
-    // Callback for RTMP streaming state changes for external monitoring
-    public interface RtmpStreamingListener {
-        void onStreamingStarted(String url);
-        void onStreamingStopped();
-        void onStreamingError(String error);
-    }
-    
-    // List of streaming listeners
-    private final List<RtmpStreamingListener> rtmpStreamingListeners = new ArrayList<>();
-    
-    /**
-     * Add a listener to receive RTMP streaming state changes
-     * 
-     * @param listener The listener to add
-     */
-    public void addRtmpStreamingListener(RtmpStreamingListener listener) {
-        if (listener != null && !rtmpStreamingListeners.contains(listener)) {
-            rtmpStreamingListeners.add(listener);
-        }
-    }
-    
-    /**
-     * Remove a previously added RTMP streaming listener
-     * 
-     * @param listener The listener to remove
-     */
-    public void removeRtmpStreamingListener(RtmpStreamingListener listener) {
-        rtmpStreamingListeners.remove(listener);
-    }
     
     /**
      * Initialize the photo capture service
@@ -544,67 +499,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         
         // Stop debug VPS photo timer
         stopDebugVpsPhotoUploadTimer();
-        
-        // Stop RTMP streaming if active
-        if (rtmpStreamer != null) {
-            if (isRtmpStreamingActive) {
-                try {
-                    // Use synchronous approach for shutdown to ensure cleanup happens
-                    rtmpStreamer.stopStreaming(new RTMPStreamer.StreamingCallback() {
-                        @Override
-                        public void onStreamingStarted() {
-                            // Not used in this context
-                        }
-                        
-                        @Override
-                        public void onStreamingStopped() {
-                            Log.d(TAG, "RTMP streaming stopped during service shutdown");
-                            isRtmpStreamingActive = false;
-                            currentRtmpUrl = null;
-                            
-                            // Notify listeners
-                            notifyStreamingStopped();
-                        }
-                        
-                        @Override
-                        public void onStreamingError(String error) {
-                            Log.e(TAG, "Error stopping RTMP stream during shutdown: " + error);
-                            isRtmpStreamingActive = false;
-                            currentRtmpUrl = null;
-                            
-                            // Notify listeners
-                            notifyStreamingError("Error during shutdown: " + error);
-                        }
-                    });
-                    
-                    // Give it a moment to clean up
-                    try {
-                        Thread.sleep(500);
-                    } catch (InterruptedException e) {
-                        // Ignore
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Error stopping RTMP stream: " + e.getMessage());
-                }
-            }
-            
-            // Always release resources regardless of streaming state
-            try {
-                rtmpStreamer.release();
-                Log.d(TAG, "RTMP streamer resources released during service shutdown");
-            } catch (Exception e) {
-                Log.e(TAG, "Error releasing RTMP resources: " + e.getMessage());
-            }
-            
-            // Clear the surface view reference
-            rtmpSurfaceView = null;
-            rtmpStreamer = null;
-            isRtmpStreamingActive = false;
-            currentRtmpUrl = null;
-            
-            // Clear listeners
-            rtmpStreamingListeners.clear();
-        }
         
         // Shutdown the network manager if it's initialized
         if (networkManager != null) {
@@ -1088,14 +982,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "start_rtmp_stream":
                     Log.d(TAG, "RTMP streaming requested via BLE command");
                     String rtmpUrl = dataToProcess.optString("rtmpUrl", "");
-                    
+
                     if (rtmpUrl.isEmpty()) {
                         Log.e(TAG, "Cannot start RTMP stream - missing rtmpUrl");
-                        sendRtmpStreamingResponse(false, "Missing rtmpUrl parameter");
+                        // TODO: Add actual implementation
+                        Log.d(TAG, "RTMP streaming not yet implemented");
                         break;
                     }
-                    
-                    // Configuring video/audio settings if provided
+
+                    // Parse and log video settings if provided
                     if (dataToProcess.has("video")) {
                         try {
                             JSONObject videoConfig = dataToProcess.getJSONObject("video");
@@ -1103,48 +998,43 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             int width = videoConfig.optInt("width", 176);
                             int height = videoConfig.optInt("height", 144);
                             int fps = videoConfig.optInt("fps", 15);
-                            
-                            configureRtmpVideo(bitrate, width, height, fps);
+
+                            Log.d(TAG, "RTMP video config - bitrate: " + bitrate +
+                                   ", resolution: " + width + "x" + height +
+                                   ", fps: " + fps);
                         } catch (Exception e) {
                             Log.e(TAG, "Error parsing video config: " + e.getMessage());
                         }
                     }
-                    
+
+                    // Parse and log audio settings if provided
                     if (dataToProcess.has("audio")) {
                         try {
                             JSONObject audioConfig = dataToProcess.getJSONObject("audio");
                             int bitrate = audioConfig.optInt("bitrate", 32000);
                             int sampleRate = audioConfig.optInt("sampleRate", 44100);
                             boolean stereo = audioConfig.optBoolean("stereo", false);
-                            
-                            configureRtmpAudio(bitrate, sampleRate, stereo);
+
+                            Log.d(TAG, "RTMP audio config - bitrate: " + bitrate +
+                                   ", sampleRate: " + sampleRate +
+                                   ", stereo: " + stereo);
                         } catch (Exception e) {
                             Log.e(TAG, "Error parsing audio config: " + e.getMessage());
                         }
                     }
-                    
-                    // Start streaming
-                    boolean success = startRtmpStreaming(rtmpUrl);
-                    if (success) {
-                        sendRtmpStreamingResponse(true, "RTMP streaming started");
-                    } else {
-                        sendRtmpStreamingResponse(false, "Failed to start RTMP streaming");
-                    }
+
+                    // Placeholder for actual streaming functionality
+                    Log.d(TAG, "Would start RTMP streaming to URL: " + rtmpUrl + " (not implemented)");
                     break;
-                    
+
                 case "stop_rtmp_stream":
                     Log.d(TAG, "RTMP streaming stop requested via BLE command");
-                    boolean stopSuccess = stopRtmpStreaming();
-                    if (stopSuccess) {
-                        sendRtmpStreamingResponse(true, "RTMP streaming stopped");
-                    } else {
-                        sendRtmpStreamingResponse(false, "Failed to stop RTMP streaming");
-                    }
+                    Log.d(TAG, "RTMP streaming stop not yet implemented");
                     break;
-                    
+
                 case "get_rtmp_status":
                     Log.d(TAG, "RTMP status requested via BLE command");
-                    sendRtmpStreamingStatus();
+                    Log.d(TAG, "RTMP status check not yet implemented");
                     break;
                     
                 case "set_wifi_credentials":

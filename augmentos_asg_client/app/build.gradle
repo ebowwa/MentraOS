@@ -29,19 +29,6 @@ android {
         abortOnError false
         checkReleaseBuilds false
     }
-    
-    // Handle duplicate classes from StreamPackLite AAR files
-    packagingOptions {
-        // Use more specific patterns to avoid conflicts with other libraries
-        pickFirst 'META-INF/**'
-        pickFirst 'kotlin/**/*.kotlin_metadata'
-        pickFirst 'kotlin/**/*.kotlin_module'
-        pickFirst 'kotlin/**/*.kotlin_builtins'
-        pickFirst '**/*.so'
-        
-        // CRITICAL: We NEED to pickFirst the streampack classes to handle duplicates between AARs
-        pickFirst 'io/github/thibaultbee/streampack/**/*.class'
-    }
 
     defaultConfig {
         applicationId "com.augmentos.asg_client"
@@ -71,27 +58,6 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1,DEPENDENCIES}'
             excludes += '/META-INF/INDEX.LIST'
             excludes += "com/augmentos/augmentoslib/DataStreamType.class"
-        }
-        
-        // CRITICAL: Handle duplicate classes between core and RTMP AAR files
-        resources {
-            // Pick first occurrence for Kotlin metadata and META-INF
-            pickFirsts += [
-                'META-INF/**',
-                '**/*.kotlin_metadata',
-                '**/*.kotlin_module',
-                '**/*.kotlin_builtins'
-            ]
-            
-            // CRITICAL: We must pick first for streampack classes since both AARs contain some common classes
-            // This prevents duplicate class errors during dex merging
-            pickFirsts += [
-                'io/github/thibaultbee/streampack/**/*.class'
-            ]
-        }
-        
-        jniLibs {
-            pickFirsts += '**/*.so'
         }
     }
 
@@ -166,42 +132,4 @@ dependencies {
     implementation "androidx.camera:camera-lifecycle:1.3.0"
     implementation "androidx.camera:camera-view:1.3.0"
     implementation "androidx.camera:camera-extensions:1.3.0"
-    
-    // We need to include the alpha camera-viewfinder dependency for StreamPackLite to work
-    // This uses the same repository that StreamPackLite uses
-    repositories {
-        // Add Google's early-access repository for alpha/beta dependencies
-        maven { url 'https://androidx.dev/archives/builds/7968150/artifacts/repository' }
-    }
-    
-    // Now we can include the alpha dependency directly
-    implementation "androidx.camera:camera-viewfinder:1.4.0-alpha06"
-    
-    // RTMP streaming dependencies - include the AARs in the correct order
-    implementation files('libs/streampack-core.aar')
-    implementation files('libs/streampack-rtmp.aar')
-    
-    // Required dependencies for StreamPackLite
-    implementation 'video.api:rtmpdroid:1.2.1'
-    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.0'
-    
-    // Handle class duplications with specific versions
-    configurations.all {
-        resolutionStrategy {
-            // Force certain versions to avoid conflicts
-            force 'org.jetbrains.kotlin:kotlin-stdlib:1.9.0'
-            force 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
-        }
-    }
-    
-    // Handle duplicate classes issue with modules
-    configurations {
-        // This will allow duplicate classes from streampack AARs to be resolved properly
-        all {
-            resolutionStrategy.dependencySubstitution {
-                // Add specific substitutions if needed in the future
-            }
-        }
-    }
 }
