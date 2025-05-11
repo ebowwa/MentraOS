@@ -3,7 +3,7 @@ name: Deploy to all regions
 on:
   push:
     branches:
-      - global
+      - main
 
 jobs:
   east-asia:
