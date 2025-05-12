@@ -12,6 +12,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Slider} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import axios from 'axios';
 
 import {useStatus} from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
@@ -26,6 +27,8 @@ import {
 } from '../logic/PermissionsUtils';
 import showAlert from '../utils/AlertUtils';
 import SelectSetting from '../components/settings/SelectSetting.tsx';
+
+const CLOUD_URL = process.env.CLOUD_HOST_NAME;
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -310,7 +313,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
 
           {/* Always on time, date and battery */}
-          {Platform.OS === 'android' && (
+          {/* {Platform.OS === 'android' && (
             <View style={styles.settingItem}>
               <View style={styles.settingTextContainer}>
                 <Text
@@ -337,7 +340,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 ios_backgroundColor={switchColors.ios_backgroundColor}
               />
             </View>
-          )}
+          )} */}
 
           {/* Privacy Settings */}
           <TouchableOpacity
