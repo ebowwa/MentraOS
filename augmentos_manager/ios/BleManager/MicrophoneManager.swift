@@ -9,6 +9,11 @@ import Foundation
 import AVFoundation
 import Combine
 
+protocol MicCallback {
+  func onRouteChange(reason: AVAudioSession.RouteChangeReason, availableInputs: [AVAudioSessionPortDescription])
+  func onInterruption(began: Bool)
+}
+
 class OnboardMicrophoneManager {
   // MARK: - Properties
   
@@ -16,6 +21,8 @@ class OnboardMicrophoneManager {
   private let voiceDataSubject = PassthroughSubject<Data, Never>()
   private var audioRecording = [Data]();
   private var audioPlayer: AVAudioPlayer?
+
+  private var micCallback: MicCallback?
   
   /// Public access to voice data stream
   var voiceData: AnyPublisher<Data, Never> {
@@ -41,6 +48,13 @@ class OnboardMicrophoneManager {
       name: AVAudioSession.routeChangeNotification,
       object: nil
     )
+    
+    NotificationCenter.default.addObserver(
+        self,
+        selector: #selector(handleInterruption),
+        name: AVAudioSession.interruptionNotification,
+        object: nil
+    )
   }
   
   deinit {
@@ -48,6 +62,10 @@ class OnboardMicrophoneManager {
   }
   
   // MARK: - Public Methods
+
+  func setMicCallback(_ callback: MicCallback) {
+    self.micCallback = callback
+  }
   
   /// Check (but don't request) microphone permissions
   /// Permissions are requested by React Native UI, not directly by Swift
@@ -107,6 +125,36 @@ class OnboardMicrophoneManager {
     }
   }
   
+  @objc private func handleInterruption(notification: Notification) {
+      guard let userInfo = notification.userInfo,
+            let typeValue = userInfo[AVAudioSessionInterruptionTypeKey] as? UInt,
+            let type = AVAudioSession.InterruptionType(rawValue: typeValue) else {
+          return
+      }
+      
+      switch type {
+      case .began:
+          print("Audio session interrupted - another app took control")
+          // Phone call started, pause recording
+          if isRecording {
+//              stopRecording()
+            micCallback?.onInterruption(began: true)
+          }
+      case .ended:
+          print("Audio session interruption ended")
+          if let optionsValue = userInfo[AVAudioSessionInterruptionOptionKey] as? UInt {
+              let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+              if options.contains(.shouldResume) {
+                  // Safe to resume recording
+//                  _ = startRecording()
+                micCallback?.onInterruption(began: false)
+              }
+          }
+      @unknown default:
+          break
+      }
+  }
+  
   /// Handle audio route changes (e.g. when connecting/disconnecting AirPods)
   @objc private func handleRouteChange(notification: Notification) {
     guard let userInfo = notification.userInfo,
@@ -114,18 +162,21 @@ class OnboardMicrophoneManager {
           let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else {
       return
     }
+
+    print("handleRouteChange: \(reason) @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
+    micCallback?.onRouteChange(reason: reason, availableInputs: audioSession?.availableInputs ?? [])
     
-    // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
-    if isRecording {
-      switch reason {
-      case .newDeviceAvailable, .oldDeviceUnavailable:
-        // Restart recording to use the new input device
-        stopRecording()
-        _ = startRecording()
-      default:
-        break
-      }
-    }
+    // // If we're recording and the audio route changed (e.g., AirPods connected/disconnected)
+    // if isRecording {
+    //   switch reason {
+    //   case .newDeviceAvailable, .oldDeviceUnavailable:
+    //     // Restart recording to use the new input device
+    //     stopRecording()
+    //     _ = startRecording()
+    //   default:
+    //     break
+    //   }
+    // }
     
     // Log the current audio route
     logCurrentAudioRoute()

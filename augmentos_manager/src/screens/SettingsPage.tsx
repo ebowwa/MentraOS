@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -10,19 +10,23 @@ import {
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Slider } from 'react-native-elements';
+import {Slider} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import axios from 'axios';
 
-import { useStatus } from '../providers/AugmentOSStatusProvider';
+import {useStatus} from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
-import { stopExternalService } from '../bridge/CoreServiceStarter';
-import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { SETTINGS_KEYS } from '../consts';
-import { supabase } from '../supabaseClient';
-import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import {stopExternalService} from '../bridge/CoreServiceStarter';
+import {loadSetting, saveSetting} from '../logic/SettingsHelper.tsx';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {SETTINGS_KEYS} from '../consts';
+import {supabase} from '../supabaseClient';
+import {
+  requestFeaturePermissions,
+  PermissionFeatures,
+} from '../logic/PermissionsUtils';
 import showAlert from '../utils/AlertUtils';
+import SelectSetting from '../components/settings/SelectSetting.tsx';
 
 const CLOUD_URL = process.env.CLOUD_HOST_NAME;
 
@@ -48,7 +52,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   toggleTheme,
   navigation,
 }) => {
-  const { status } = useStatus();
+  const {status} = useStatus();
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -61,6 +65,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled,
   );
+  const [preferredMic, setPreferredMic] = useState(
+    status.core_info.preferred_mic,
+  );
+  
+  const preferredMicOptions = [
+    {label: 'Phone / Headset', value: 'phone'},
+    {label: 'Glasses', value: 'glasses'},
+  ];
 
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
@@ -70,23 +82,63 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const toggleForceCoreOnboardMic = async () => {
-    const newVal = !forceCoreOnboardMic;
-    try {
-      await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
-      setForceCoreOnboardMic(newVal);
-    } catch (error) {
-      console.log('Microphone permission denied, cannot enable phone microphone');
-      showAlert(
-        'Microphone Permission Required',
-        'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
-        [{ text: 'OK' }],
-        {
-          isDarkTheme,
-          iconName: 'microphone',
-          iconColor: '#2196F3'
-        }
+    // First request microphone permission if we're enabling the mic
+    if (!forceCoreOnboardMic) {
+      // We're about to enable the mic, so request permission
+      const hasMicPermission = await requestFeaturePermissions(
+        PermissionFeatures.MICROPHONE,
       );
+      if (!hasMicPermission) {
+        // Permission denied, don't toggle the setting
+        console.log(
+          'Microphone permission denied, cannot enable phone microphone',
+        );
+        showAlert(
+          'Microphone Permission Required',
+          'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
+          [{text: 'OK'}],
+          {
+            isDarkTheme,
+            iconName: 'microphone',
+            iconColor: '#2196F3',
+          },
+        );
+        return;
+      }
     }
+    // Continue with toggling the setting if permission granted or turning off
+    const newVal = !forceCoreOnboardMic;
+    await coreCommunicator.sendToggleForceCoreOnboardMic(newVal);
+    setForceCoreOnboardMic(newVal);
+  };
+
+  const setMic = async (val: string) => {
+    if (val === 'phone') {
+      // We're potentially about to enable the mic, so request permission
+      const hasMicPermission = await requestFeaturePermissions(
+        PermissionFeatures.MICROPHONE,
+      );
+      if (!hasMicPermission) {
+        // Permission denied, don't toggle the setting
+        console.log(
+          'Microphone permission denied, cannot enable phone microphone',
+        );
+        showAlert(
+          'Microphone Permission Required',
+          'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
+          [{text: 'OK'}],
+          {
+            isDarkTheme,
+            iconName: 'microphone',
+            iconColor: '#2196F3',
+          },
+        );
+        return;
+      }
+    }
+
+    setPreferredMic(val);
+    await coreCommunicator.sendSetPreferredMic(val);
   };
 
   const toggleAlwaysOnStatusBar = async () => {
@@ -94,7 +146,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     await coreCommunicator.sendToggleAlwaysOnStatusBar(newVal);
     setIsAlwaysOnStatusBarEnabled(newVal);
   };
-
 
   const forgetGlasses = async () => {
     await coreCommunicator.sendForgetSmartGlasses();
@@ -105,12 +156,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       'Forget Glasses',
       'Are you sure you want to forget your glasses?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: forgetGlasses },
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Yes', onPress: forgetGlasses},
       ],
       {
         cancelable: false,
-        isDarkTheme
+        isDarkTheme,
       },
     );
   };
@@ -165,14 +216,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
         index: 0,
-        routes: [{ name: 'SplashScreen' }],
+        routes: [{name: 'SplashScreen'}],
       });
     } catch (err) {
       console.error('Error during sign-out:', err);
       // Even if there's an error, still try to navigate away to login
       navigation.reset({
         index: 0,
-        routes: [{ name: 'SplashScreen' }],
+        routes: [{name: 'SplashScreen'}],
       });
     }
   };
@@ -182,8 +233,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       'Sign Out',
       'Are you sure you want to sign out?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: handleSignOut },
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Yes', onPress: handleSignOut},
       ],
       {
         cancelable: false,
@@ -221,7 +272,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   // Slider theme styles - not used anymore, but keep style references for potential future use
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{flex: 1}}>
       <View style={styles.container}>
         {/* Title Section */}
         <View
@@ -447,7 +498,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   styles.redText,
                   (!status.core_info.puck_connected ||
                     status.core_info.default_wearable === '') &&
-                  styles.disabledItem,
+                    styles.disabledItem,
                 ]}>
                 Forget Glasses
               </Text>
@@ -530,6 +581,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
     borderBottomWidth: 1,
   },
+  settingItem2: {
+    paddingVertical: 20,
+    borderBottomColor: '#333',
+    borderBottomWidth: 1,
+  },
   settingTextContainer: {
     flex: 1,
     paddingRight: 10,
@@ -584,5 +640,5 @@ const styles = StyleSheet.create({
   flagText: {
     fontSize: 12,
     fontWeight: '500',
-  }
+  },
 });
