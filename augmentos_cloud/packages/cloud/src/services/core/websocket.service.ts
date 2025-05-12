@@ -1005,7 +1005,7 @@ export class WebSocketService {
           break;
         }
 
-        case GlassesToCloudMessageType.REQUEST_SETTINGS: {
+        case "request_settings": {
           userSession.logger.info('Received settings request');
           
           try {
@@ -1018,6 +1018,8 @@ export class WebSocketService {
               settings: userSettings,
               timestamp: new Date()
             };
+
+            console.log("🔥🔥🔥: Sending settings update:", JSON.stringify(settingsMessage));
 
             ws.send(JSON.stringify(settingsMessage));
             userSession.logger.info('Sent settings update');
@@ -1243,7 +1245,7 @@ export class WebSocketService {
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               headUpAngle: connectedGlasses.headUp_angle,
               brightness: parseInt(connectedGlasses.brightness),
-              autoBrightness: connectedGlasses.auto_brightness_enabled,
+              autoBrightness: connectedGlasses.auto_brightness,
               sensingEnabled: coreInfo.sensing_enabled,
               alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
               bypassVad: coreInfo.bypass_vad_for_debugging,
