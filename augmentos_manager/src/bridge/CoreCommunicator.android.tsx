@@ -491,6 +491,7 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async setGlassesBrightnessMode(brightness: number, autoBrightness: boolean) {
+    console.log('222 setGlassesBrightnessMode', brightness, autoBrightness);
     return await this.sendData({
       command: 'update_glasses_brightness',
       params: {

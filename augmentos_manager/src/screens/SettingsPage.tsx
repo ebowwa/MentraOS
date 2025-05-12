@@ -313,7 +313,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </View>
 
           {/* Always on time, date and battery */}
-          {Platform.OS === 'android' && (
+          {/* {Platform.OS === 'android' && (
             <View style={styles.settingItem}>
               <View style={styles.settingTextContainer}>
                 <Text
@@ -340,7 +340,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 ios_backgroundColor={switchColors.ios_backgroundColor}
               />
             </View>
-          )}
+          )} */}
 
           {/* Privacy Settings */}
           <TouchableOpacity
