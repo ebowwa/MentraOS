@@ -187,31 +187,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             Log.d(TAG, "Starting RTMP streaming service for testing");
 
-            // Start the RTMP streaming service
+            // Start the RTMP streaming service with launch_activity flag
             Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
-            startService(serviceIntent);
-
-            // Use EventBus to send commands to the streaming service
-            // 1. Set the RTMP URL
             String rtmpUrl = "rtmp://10.0.0.22/s/streamKey";
             Log.d(TAG, "Setting RTMP URL: " + rtmpUrl);
-            org.greenrobot.eventbus.EventBus.getDefault().post(
-                new com.augmentos.asg_client.streaming.StreamingCommand.SetRtmpUrl(rtmpUrl)
-            );
-
-            // 2. Start streaming
-            // Add a small delay to ensure the service is ready
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                Log.d(TAG, "Starting RTMP stream");
-                org.greenrobot.eventbus.EventBus.getDefault().post(
-                    new com.augmentos.asg_client.streaming.StreamingCommand.Start()
-                );
-            }, 5000); // 5 second delay
-
-            // Subscribe to streaming events for logging
-            if (!org.greenrobot.eventbus.EventBus.getDefault().isRegistered(this)) {
-                org.greenrobot.eventbus.EventBus.getDefault().register(this);
-            }
+            serviceIntent.putExtra("rtmp_url", rtmpUrl);
+            serviceIntent.putExtra("launch_activity", true);
+            startService(serviceIntent);
 
             Log.d(TAG, "RTMP streaming initialization complete");
         } catch (Exception e) {
@@ -1305,30 +1287,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             Log.d(TAG, "Starting RTMP streaming service for testing");
 
-            // Start the RTMP streaming service
+            // Start the RTMP streaming service with launch_activity flag
             Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
+            serviceIntent.putExtra("rtmp_url", "rtmp://10.0.0.22/s/streamKey");
+            serviceIntent.putExtra("launch_activity", true);
             startService(serviceIntent);
-
-            // Use EventBus to send commands to the streaming service
-            // 1. Set the RTMP URL
-            String rtmpUrl = "rtmp://10.0.0.22/s/streamKey";
-            Log.d(TAG, "Setting RTMP URL: " + rtmpUrl);
-            org.greenrobot.eventbus.EventBus.getDefault().post(
-                new com.augmentos.asg_client.streaming.StreamingCommand.SetRtmpUrl(rtmpUrl)
-            );
-
-            // 2. Start streaming with a delay to ensure the service is ready
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                Log.d(TAG, "Starting RTMP stream");
-                org.greenrobot.eventbus.EventBus.getDefault().post(
-                    new com.augmentos.asg_client.streaming.StreamingCommand.Start()
-                );
-            }, 5000); // 5 second delay
-
-            // Subscribe to streaming events for logging
-            if (!org.greenrobot.eventbus.EventBus.getDefault().isRegistered(this)) {
-                org.greenrobot.eventbus.EventBus.getDefault().register(this);
-            }
 
             Log.d(TAG, "RTMP streaming initialization complete");
         } catch (Exception e) {

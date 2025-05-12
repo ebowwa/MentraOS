@@ -16,12 +16,6 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 import android.util.Size;
-import android.view.Surface;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-import android.view.WindowManager;
-import android.widget.FrameLayout;
-
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
@@ -42,7 +36,6 @@ import io.github.thibaultbee.streampack.views.PreviewView;
 import kotlin.coroutines.Continuation;
 import kotlin.coroutines.CoroutineContext;
 import kotlin.coroutines.EmptyCoroutineContext;
-import kotlin.jvm.functions.Function1;
 
 public class RtmpStreamingService extends Service {
     private static final String TAG = "RtmpStreamingService";
@@ -53,10 +46,6 @@ public class RtmpStreamingService extends Service {
     private CameraRtmpLiveStreamer mStreamer;
     private String mRtmpUrl;
     private boolean mIsStreaming = false;
-    private SurfaceView mSurfaceView;
-    private SurfaceHolder.Callback mSurfaceCallback;
-    private Surface mSurface;
-    private CountDownLatch mSurfaceLatch = new CountDownLatch(1);
 
     public class LocalBinder extends Binder {
         public RtmpStreamingService getService() {
@@ -76,29 +65,23 @@ public class RtmpStreamingService extends Service {
             EventBus.getDefault().register(this);
         }
 
-        // Create a surface for streaming
-        createSurface();
-
-        // Initialize streamer after surface is ready
-        try {
-            // Wait for surface to be ready before initializing streamer
-            boolean surfaceReady = mSurfaceLatch.await(5, TimeUnit.SECONDS);
-            if (surfaceReady) {
-                initStreamer();
-            } else {
-                Log.e(TAG, "Timeout waiting for surface");
-                EventBus.getDefault().post(new StreamingEvent.Error("Timeout waiting for surface"));
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize streamer", e);
-            EventBus.getDefault().post(new StreamingEvent.Error("Failed to initialize: " + e.getMessage()));
-        }
+        // Initialize the streamer
+        initStreamer();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // Start as a foreground service with notification
         startForeground(NOTIFICATION_ID, createNotification());
+
+        // Launch the streaming activity if requested
+        if (intent != null) {
+            String rtmpUrl = intent.getStringExtra("rtmp_url");
+            if (intent.getBooleanExtra("launch_activity", false)) {
+                launchStreamingActivity(rtmpUrl);
+            }
+        }
+
         return START_STICKY;
     }
 
@@ -112,12 +95,6 @@ public class RtmpStreamingService extends Service {
     public void onDestroy() {
         stopStreaming();
         releaseStreamer();
-
-        // Remove surface view if added
-        if (mSurfaceView != null && mSurfaceView.getParent() != null) {
-            WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-            windowManager.removeView((FrameLayout) mSurfaceView.getParent());
-        }
 
         // Unregister from EventBus
         if (EventBus.getDefault().isRegistered(this)) {
@@ -163,70 +140,6 @@ public class RtmpStreamingService extends Service {
         }
     }
 
-    private void createSurface() {
-        try {
-            Log.d(TAG, "Creating surface for streaming");
-
-            // Create a FrameLayout that we can add to the window
-            final FrameLayout container = new FrameLayout(getApplicationContext());
-
-            // Create a SurfaceView as a child of the FrameLayout
-            mSurfaceView = new SurfaceView(getApplicationContext());
-
-            // Add the SurfaceView to the container with specific size
-            FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
-                640, // Fixed width
-                480, // Fixed height
-                android.view.Gravity.CENTER // Center in parent
-            );
-            mSurfaceView.setLayoutParams(params);
-            container.addView(mSurfaceView);
-
-            // Create window parameters
-            WindowManager.LayoutParams windowParams = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.TYPE_APPLICATION,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                android.graphics.PixelFormat.TRANSLUCENT
-            );
-            windowParams.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
-
-            // Add a callback to monitor surface creation events
-            mSurfaceCallback = new SurfaceHolder.Callback() {
-                @Override
-                public void surfaceCreated(SurfaceHolder holder) {
-                    Log.d(TAG, "Surface created");
-                    mSurface = holder.getSurface();
-                    mSurfaceLatch.countDown();
-                }
-
-                @Override
-                public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-                    Log.d(TAG, "Surface changed: " + width + "x" + height);
-                }
-
-                @Override
-                public void surfaceDestroyed(SurfaceHolder holder) {
-                    Log.d(TAG, "Surface destroyed");
-                    mSurface = null;
-                }
-            };
-
-            mSurfaceView.getHolder().addCallback(mSurfaceCallback);
-
-            // Add the container to the window
-            WindowManager windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-            windowManager.addView(container, windowParams);
-            Log.d(TAG, "Surface creation initiated");
-
-        } catch (Exception e) {
-            Log.e(TAG, "Error creating surface", e);
-            EventBus.getDefault().post(new StreamingEvent.Error("Failed to create surface: " + e.getMessage()));
-        }
-    }
-
     @SuppressLint("MissingPermission")
     private void initStreamer() {
         if (mStreamer != null) {
@@ -238,90 +151,81 @@ public class RtmpStreamingService extends Service {
 
             // Create new streamer with error and connection listeners
             mStreamer = new CameraRtmpLiveStreamer(
-                this,
-                true,
-                new OnErrorListener() {
-                    @Override
-                    public void onError(StreamPackError error) {
-                        Log.e(TAG, "Streaming error: " + error.getMessage());
-                        EventBus.getDefault().post(new StreamingEvent.Error("Streaming error: " + error.getMessage()));
-                        stopStreaming();
-                    }
-                },
-                new OnConnectionListener() {
-                    @Override
-                    public void onSuccess() {
-                        Log.i(TAG, "RTMP connection successful");
-                        EventBus.getDefault().post(new StreamingEvent.Connected());
-                    }
+                    this,
+                    true,
+                    new OnErrorListener() {
+                        @Override
+                        public void onError(StreamPackError error) {
+                            Log.e(TAG, "Streaming error: " + error.getMessage());
+                            EventBus.getDefault().post(new StreamingEvent.Error("Streaming error: " + error.getMessage()));
+                            stopStreaming();
+                        }
+                    },
+                    new OnConnectionListener() {
+                        @Override
+                        public void onSuccess() {
+                            Log.i(TAG, "RTMP connection successful");
+                            EventBus.getDefault().post(new StreamingEvent.Connected());
+                        }
 
-                    @Override
-                    public void onFailed(String message) {
-                        Log.e(TAG, "RTMP connection failed: " + message);
-                        EventBus.getDefault().post(new StreamingEvent.ConnectionFailed(message));
-                        stopStreaming();
-                    }
+                        @Override
+                        public void onFailed(String message) {
+                            Log.e(TAG, "RTMP connection failed: " + message);
+                            EventBus.getDefault().post(new StreamingEvent.ConnectionFailed(message));
+                            stopStreaming();
+                        }
 
-                    @Override
-                    public void onLost(String message) {
-                        Log.i(TAG, "RTMP connection lost: " + message);
-                        EventBus.getDefault().post(new StreamingEvent.Disconnected());
-                        stopStreaming();
+                        @Override
+                        public void onLost(String message) {
+                            Log.i(TAG, "RTMP connection lost: " + message);
+                            EventBus.getDefault().post(new StreamingEvent.Disconnected());
+                            stopStreaming();
+                        }
                     }
-                }
             );
 
-            // For MIME type, use the default if null is intended
+            // For MIME type, use the actual mime type instead of null
             String audioMimeType = MediaFormat.MIMETYPE_AUDIO_AAC; // Default to AAC
 
-            // Get the default profile for this MIME type - accessing private method requires reflection
-            // but we can use the known default value for AAC directly
+            // Get the default profile for this MIME type
             int audioProfile = MediaCodecInfo.CodecProfileLevel.AACObjectLC; // Default for AAC
-
 
             // Configure audio settings using proper constructor
             AudioConfig audioConfig = new AudioConfig(
-                null,                // Default mime type (will use AAC)
-                128000,              // 128 kbps
-                44100,               // 44.1 kHz
-                AudioFormat.CHANNEL_IN_STEREO,
-                    audioProfile,                // Default profile
-                0,                   // Default byte format
-                true,                // Enable echo cancellation
-                true                 // Enable noise suppression
+                    MediaFormat.MIMETYPE_AUDIO_AAC,  // Use actual mime type instead of null
+                    128000,              // 128 kbps
+                    44100,               // 44.1 kHz
+                    AudioFormat.CHANNEL_IN_STEREO,
+                    audioProfile,    // Default profile
+                    0,                   // Default byte format
+                    true,                // Enable echo cancellation
+                    true                 // Enable noise suppression
             );
 
-            // For MIME type, use the default if null is intended
+            // For MIME type, use the actual mime type instead of null
             String mimeType = MediaFormat.MIMETYPE_VIDEO_AVC; // Default to H.264
             int profile = VideoConfig.Companion.getBestProfile(mimeType);
             int level = VideoConfig.Companion.getBestLevel(mimeType, profile);
 
-
             // Configure video settings using proper constructor
             VideoConfig videoConfig = new VideoConfig(
-                null,                // Default mime type (will use H.264)
-                2000000,             // 2 Mbps
-                new Size(640, 480),  // Lower resolution for testing
-                30,                  // 30 frames per second
-                profile,                // Default profile
-                level,                // Default level
-                0.0f                 // Default bitrate factor
+                    MediaFormat.MIMETYPE_VIDEO_AVC,  // Use actual mime type instead of null
+                    2000000,             // 2 Mbps
+                    new Size(640, 480),  // Lower resolution for testing
+                    30,                  // 30 frames per second
+                    profile,             // Default profile
+                    level,               // Default level
+                    0.0f                 // Default bitrate factor
             );
 
             // Apply configurations
             mStreamer.configure(videoConfig);
             mStreamer.configure(audioConfig);
 
-            // Start preview with the surface
-            if (mSurface != null && mSurface.isValid()) {
-                Log.d(TAG, "Starting preview with surface");
-                mStreamer.startPreview(mSurface, null);
-                Log.i(TAG, "Preview started successfully");
-                EventBus.getDefault().post(new StreamingEvent.Ready());
-            } else {
-                Log.e(TAG, "Surface is not valid for preview");
-                EventBus.getDefault().post(new StreamingEvent.Error("Invalid surface for preview"));
-            }
+            // Notify that we're ready to connect a preview
+            EventBus.getDefault().post(new StreamingEvent.Ready());
+            Log.i(TAG, "Streamer initialized successfully");
+
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize streamer", e);
             EventBus.getDefault().post(new StreamingEvent.Error("Initialization failed: " + e.getMessage()));
@@ -438,92 +342,6 @@ public class RtmpStreamingService extends Service {
     }
 
     /**
-     * Toggle audio mute
-     * @param mute true to mute, false to unmute
-     */
-//    public void setMute(boolean mute) {
-//        if (mStreamer != null) {
-//            try {
-//                if (mute) {
-//                    // Use the settings object instead of directly accessing protected audioSource
-//                    mStreamer.getSettings().getAudio().setMute(true);
-//                } else {
-//                    mStreamer.getSettings().getAudio().setMute(false);
-//                }
-//                Log.i(TAG, "Audio " + (mute ? "muted" : "unmuted"));
-//            } catch (Exception e) {
-//                Log.e(TAG, "Error setting mute state", e);
-//            }
-//        }
-//    }
-
-    /**
-     * Switch between available cameras (front/back)
-     */
-    @SuppressLint("MissingPermission")
-    public void switchCamera() {
-        if (mStreamer != null) {
-//            try {
-//                // Get current camera ID using the getter that's properly exposed
-//                String currentCamera = mStreamer.getCamera();
-//
-//                // Get available cameras using helper
-//                java.util.List<String> camerasList = mStreamer.getHelper().getVideoConfig().getAvailableCameras();
-//                String[] cameras = camerasList.toArray(new String[0]);
-//
-//                // Find the other camera
-//                String newCamera = null;
-//                for (String camera : cameras) {
-//                    if (!camera.equals(currentCamera)) {
-//                        newCamera = camera;
-//                        break;
-//                    }
-//                }
-//
-//                // Switch to the other camera if found
-//                if (newCamera != null) {
-//                    // Set camera property to switch
-//                    mStreamer.setCamera(newCamera);
-//                    Log.i(TAG, "Camera switched to " + newCamera);
-//                } else {
-//                    Log.w(TAG, "No other camera available");
-//                }
-//            } catch (Exception e) {
-//                Log.e(TAG, "Error switching camera", e);
-//                EventBus.getDefault().post(new StreamingEvent.Error("Failed to switch camera: " + e.getMessage()));
-//            }
-        }
-    }
-
-    /**
-     * Toggle the flash (if available)
-     */
-//    public void toggleFlash() {
-//        if (mStreamer != null) {
-//            try {
-//                // Get current flash state from settings
-//                boolean isFlashEnabled = mStreamer.getSettings().getCamera().getTorch();
-//
-//                // Toggle flash/torch state
-//                mStreamer.getSettings().getCamera().setTorch(!isFlashEnabled);
-//
-//                Log.i(TAG, "Flash " + (!isFlashEnabled ? "enabled" : "disabled"));
-//            } catch (Exception e) {
-//                Log.e(TAG, "Error toggling flash", e);
-//                EventBus.getDefault().post(new StreamingEvent.Error("Failed to toggle flash: " + e.getMessage()));
-//            }
-//        }
-//    }
-
-    /**
-     * Check if currently streaming
-     * @return true if streaming, false otherwise
-     */
-    public boolean isStreaming() {
-        return mIsStreaming;
-    }
-
-    /**
      * Attaches a PreviewView to the streamer for displaying camera preview
      * @param previewView the PreviewView to use for preview
      */
@@ -537,6 +355,30 @@ public class RtmpStreamingService extends Service {
     }
 
     /**
+     * Check if currently streaming
+     * @return true if streaming, false otherwise
+     */
+    public boolean isStreaming() {
+        return mIsStreaming;
+    }
+
+    /**
+     * Launch the streaming activity
+     * @param rtmpUrl Optional RTMP URL to pass to the activity
+     */
+    public void launchStreamingActivity(String rtmpUrl) {
+        Intent intent = new Intent(this, StreamingActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        if (rtmpUrl != null && !rtmpUrl.isEmpty()) {
+            intent.putExtra("rtmp_url", rtmpUrl);
+        }
+
+        startActivity(intent);
+        Log.d(TAG, "Launched StreamingActivity");
+    }
+
+    /**
      * Handle commands from other components
      */
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -547,13 +389,8 @@ public class RtmpStreamingService extends Service {
             stopStreaming();
         } else if (command instanceof StreamingCommand.SetRtmpUrl) {
             setRtmpUrl(((StreamingCommand.SetRtmpUrl) command).getRtmpUrl());
-        } else if (command instanceof StreamingCommand.SwitchCamera) {
-            //switchCamera();
+        } else if (command instanceof StreamingCommand.LaunchActivity) {
+            launchStreamingActivity(((StreamingCommand.LaunchActivity) command).getRtmpUrl());
         }
-//        } else if (command instanceof StreamingCommand.ToggleFlash) {
-//            toggleFlash();
-//        } else if (command instanceof StreamingCommand.SetMute) {
-//            setMute(((StreamingCommand.SetMute) command).isMute());
-//        }
     }
 }

@@ -29,6 +29,21 @@ public abstract class StreamingCommand {
             return rtmpUrl;
         }
     }
+
+    /**
+     * Command to launch the streaming activity
+     */
+    public static class LaunchActivity extends StreamingCommand {
+        private final String rtmpUrl;
+
+        public LaunchActivity(String rtmpUrl) {
+            this.rtmpUrl = rtmpUrl;
+        }
+
+        public String getRtmpUrl() {
+            return rtmpUrl;
+        }
+    }
     
     /**
      * Command to switch camera (front/back)
