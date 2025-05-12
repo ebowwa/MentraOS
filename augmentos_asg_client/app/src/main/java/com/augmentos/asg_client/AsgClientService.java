@@ -157,24 +157,84 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
-        
+
         // Initialize the network manager
         initializeNetworkManager();
-        
+
         // Initialize the bluetooth manager
         initializeBluetoothManager();
-        
+
         // Initialize the photo queue manager
         initializePhotoQueueManager();
-        
+
         // Initialize the photo capture service
         initializePhotoCaptureService();
-        
+
+        // Start RTMP streaming for testing
+        startRtmpStreaming();
+
         // Recording test code (kept from original)
         // this.recordFor5Seconds();
-        
+
         // DEBUG: Start the debug photo upload timer for VPS
         //startDebugVpsPhotoUploadTimer();
+    }
+
+    /**
+     * Start the RTMP streaming service and initiate streaming
+     */
+    private void startRtmpStreamingService() {
+        try {
+            Log.d(TAG, "Starting RTMP streaming service for testing");
+
+            // Start the RTMP streaming service
+            Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
+            startService(serviceIntent);
+
+            // Use EventBus to send commands to the streaming service
+            // 1. Set the RTMP URL
+            String rtmpUrl = "rtmp://10.0.0.22/s/streamKey";
+            Log.d(TAG, "Setting RTMP URL: " + rtmpUrl);
+            org.greenrobot.eventbus.EventBus.getDefault().post(
+                new com.augmentos.asg_client.streaming.StreamingCommand.SetRtmpUrl(rtmpUrl)
+            );
+
+            // 2. Start streaming
+            // Add a small delay to ensure the service is ready
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "Starting RTMP stream");
+                org.greenrobot.eventbus.EventBus.getDefault().post(
+                    new com.augmentos.asg_client.streaming.StreamingCommand.Start()
+                );
+            }, 5000); // 5 second delay
+
+            // Subscribe to streaming events for logging
+            if (!org.greenrobot.eventbus.EventBus.getDefault().isRegistered(this)) {
+                org.greenrobot.eventbus.EventBus.getDefault().register(this);
+            }
+
+            Log.d(TAG, "RTMP streaming initialization complete");
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting RTMP streaming service", e);
+        }
+    }
+
+    /**
+     * Handle streaming events from the RtmpStreamingService
+     */
+    @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
+    public void onStreamingEvent(com.augmentos.asg_client.streaming.StreamingEvent event) {
+        if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Started) {
+            Log.d(TAG, "RTMP streaming started successfully");
+        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Stopped) {
+            Log.d(TAG, "RTMP streaming stopped");
+        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Error) {
+            Log.e(TAG, "RTMP streaming error: " + ((com.augmentos.asg_client.streaming.StreamingEvent.Error) event).getMessage());
+        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.Connected) {
+            Log.d(TAG, "RTMP connection established");
+        } else if (event instanceof com.augmentos.asg_client.streaming.StreamingEvent.ConnectionFailed) {
+            Log.e(TAG, "RTMP connection failed: " + ((com.augmentos.asg_client.streaming.StreamingEvent.ConnectionFailed) event).getMessage());
+        }
     }
     
     /**
@@ -496,15 +556,29 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         // No web server to stop
-        
+
         // Stop debug VPS photo timer
         stopDebugVpsPhotoUploadTimer();
-        
+
+        // Stop RTMP streaming if active
+        try {
+            org.greenrobot.eventbus.EventBus.getDefault().post(
+                new com.augmentos.asg_client.streaming.StreamingCommand.Stop()
+            );
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping RTMP streaming", e);
+        }
+
+        // Unregister from EventBus
+        if (org.greenrobot.eventbus.EventBus.getDefault().isRegistered(this)) {
+            org.greenrobot.eventbus.EventBus.getDefault().unregister(this);
+        }
+
         // Shutdown the network manager if it's initialized
         if (networkManager != null) {
             networkManager.shutdown();
         }
-        
+
         // Shutdown the bluetooth manager if it's initialized
         if (bluetoothManager != null) {
             // Remove this service as a listener first
@@ -512,15 +586,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             // Then shutdown the bluetooth manager
             bluetoothManager.shutdown();
         }
-        
+
         // Clean up the glasses microphone manager if it's initialized
         if (glassesMicrophoneManager != null) {
             glassesMicrophoneManager.destroy();
             glassesMicrophoneManager = null;
         }
-        
+
         // No need to clean up PhotoQueueManager as it's stateless and file-based
-        
+
         super.onDestroy();
     }
 
@@ -1224,6 +1298,44 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     /**
      * Take a photo and upload it to AugmentOS Cloud
      */
+    /**
+     * Start RTMP streaming for testing purposes
+     */
+    private void startRtmpStreaming() {
+        try {
+            Log.d(TAG, "Starting RTMP streaming service for testing");
+
+            // Start the RTMP streaming service
+            Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
+            startService(serviceIntent);
+
+            // Use EventBus to send commands to the streaming service
+            // 1. Set the RTMP URL
+            String rtmpUrl = "rtmp://10.0.0.22/s/streamKey";
+            Log.d(TAG, "Setting RTMP URL: " + rtmpUrl);
+            org.greenrobot.eventbus.EventBus.getDefault().post(
+                new com.augmentos.asg_client.streaming.StreamingCommand.SetRtmpUrl(rtmpUrl)
+            );
+
+            // 2. Start streaming with a delay to ensure the service is ready
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "Starting RTMP stream");
+                org.greenrobot.eventbus.EventBus.getDefault().post(
+                    new com.augmentos.asg_client.streaming.StreamingCommand.Start()
+                );
+            }, 5000); // 5 second delay
+
+            // Subscribe to streaming events for logging
+            if (!org.greenrobot.eventbus.EventBus.getDefault().isRegistered(this)) {
+                org.greenrobot.eventbus.EventBus.getDefault().register(this);
+            }
+
+            Log.d(TAG, "RTMP streaming initialization complete");
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting RTMP streaming service", e);
+        }
+    }
+
     // Photo capture listener (delegated to PhotoCaptureService)
     private final PhotoCaptureService.PhotoCaptureListener photoCaptureListener = 
         new PhotoCaptureService.PhotoCaptureListener() {
@@ -1376,440 +1488,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
     
-    /**
-     * Initialize RTMP streaming components
-     * This creates the necessary UI components and initializes the RTMPStreamer
-     * but doesn't start streaming yet
-     */
-    private void initializeRtmpStreaming() {
-        new Thread(() -> {
-            try {
-                Log.d(TAG, "Initializing RTMP streaming components");
-                
-                // Create UI components on main thread
-                Handler mainHandler = new Handler(Looper.getMainLooper());
-                final java.util.concurrent.CountDownLatch uiLatch = new java.util.concurrent.CountDownLatch(1);
-                
-                mainHandler.post(() -> {
-                    try {
-                        // Following the StreamPackLite README, we need a properly laid out SurfaceView
-                        // Create a FrameLayout that we can add to the window with proper permissions
-                        final android.widget.FrameLayout container = new android.widget.FrameLayout(getApplicationContext());
-                        
-                        // Create a SurfaceView as a child of the FrameLayout
-                        rtmpSurfaceView = new android.view.SurfaceView(getApplicationContext());
-                        Log.d(TAG, "Creating SurfaceView for RTMP streaming");
-                        
-                        // Add the SurfaceView to the container with specific size
-                        android.widget.FrameLayout.LayoutParams params = new android.widget.FrameLayout.LayoutParams(
-                            640, // Fixed width
-                            480, // Fixed height
-                            android.view.Gravity.CENTER // Center in parent
-                        );
-                        rtmpSurfaceView.setLayoutParams(params);
-                        container.addView(rtmpSurfaceView);
-                        Log.d(TAG, "Added SurfaceView to container with size 640x480");
-                        
-                        // Create window parameters - using TYPE_APPLICATION here which doesn't need special permissions
-                        android.view.WindowManager.LayoutParams windowParams = new android.view.WindowManager.LayoutParams(
-                            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
-                            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
-                            android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
-                            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE |
-                            android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                            android.graphics.PixelFormat.TRANSLUCENT
-                        );
-                        windowParams.gravity = android.view.Gravity.TOP | android.view.Gravity.START;
-                        windowParams.x = 0;
-                        windowParams.y = 0;
-                        
-                        // Get the window manager service
-                        final android.view.WindowManager windowManager = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
-                        
-                        // Add a callback to monitor surface creation events
-                        rtmpSurfaceView.getHolder().addCallback(new android.view.SurfaceHolder.Callback() {
-                            @Override
-                            public void surfaceCreated(android.view.SurfaceHolder holder) {
-                                Log.d(TAG, "SurfaceView created - surface is ready");
-                                Log.d(TAG, "Surface holder valid: " + holder.getSurface().isValid());
-                                // Signal that the surface is created and ready to use
-                                uiLatch.countDown();
-                            }
-
-                            @Override
-                            public void surfaceChanged(android.view.SurfaceHolder holder, int format, int width, int height) {
-                                Log.d(TAG, "SurfaceView changed: format=" + format + ", size=" + width + "x" + height);
-                            }
-
-                            @Override
-                            public void surfaceDestroyed(android.view.SurfaceHolder holder) {
-                                Log.d(TAG, "SurfaceView destroyed - surface no longer available");
-                            }
-                        });
-                        
-                        // Add the container to the window to make it part of the view hierarchy
-                        try {
-                            windowManager.addView(container, windowParams);
-                            Log.d(TAG, "Successfully added container to window");
-                        } catch (Exception e) {
-                            Log.e(TAG, "Failed to add container to window: " + e.getMessage(), e);
-                            // If adding to window fails, try to continue and see if the SurfaceView works anyway
-                            uiLatch.countDown();
-                        }
-                    } catch (Exception e) {
-                        Log.e(TAG, "Error initializing RTMP UI components: " + e.getMessage(), e);
-                        uiLatch.countDown(); // Release the latch in case of error
-                    }
-                });
-                
-                // Wait for the surface to be ready - properly blocking until surfaceCreated is called
-                try {
-                    Log.d(TAG, "Waiting for surface to be ready...");
-                    // Wait up to 5 seconds for the surface to initialize
-                    boolean surfaceReady = uiLatch.await(5, java.util.concurrent.TimeUnit.SECONDS);
-                    Log.d(TAG, "Surface ready status: " + surfaceReady);
-                    
-                    // Add a small delay to ensure surface is fully initialized
-                    Thread.sleep(500);
-                    Log.d(TAG, "Added delay for surface initialization");
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Surface wait interrupted", e);
-                }
-                
-                // Initialize our RTMP streamer AFTER surface is ready
-                Log.d(TAG, "Creating RTMPStreamer");
-                rtmpStreamer = new RTMPStreamer(getApplicationContext());
-                
-                // Call startPreview which is the critical step according to the README
-                // This must happen BEFORE starting the stream
-                if (rtmpSurfaceView != null) {
-                    Log.d(TAG, "Calling startPreview on the RTMPStreamer");
-                    boolean previewStarted = rtmpStreamer.startPreview(rtmpSurfaceView);
-                    Log.d(TAG, "startPreview result: " + previewStarted);
-                    
-                    // Force additional layout pass to ensure SurfaceView is measured and laid out
-                    mainHandler.post(() -> {
-                        rtmpSurfaceView.requestLayout();
-                        Log.d(TAG, "Requested layout for SurfaceView");
-                        Log.d(TAG, "SurfaceView dimensions after layout: " + rtmpSurfaceView.getWidth() + "x" + rtmpSurfaceView.getHeight());
-                        Log.d(TAG, "SurfaceView holder valid: " + (rtmpSurfaceView.getHolder() != null && 
-                                                            rtmpSurfaceView.getHolder().getSurface() != null && 
-                                                            rtmpSurfaceView.getHolder().getSurface().isValid()));
-                    });
-                } else {
-                    Log.e(TAG, "Surface view is null, couldn't start preview");
-                }
-                
-                Log.d(TAG, "RTMP streaming components initialized, ready for streaming");
-            } catch (Exception e) {
-                Log.e(TAG, "Error initializing RTMP streaming components", e);
-            }
-        }).start();
-    }
-    
-    /**
-     * Start RTMP streaming to the specified URL
-     * 
-     * @param rtmpUrl The RTMP URL to stream to (e.g., rtmp://server:1935/live/streamkey)
-     * @return true if the streaming request was sent, false otherwise
-     */
-    public boolean startRtmpStreaming(String rtmpUrl) {
-        if (isRtmpStreamingActive) {
-            Log.w(TAG, "RTMP streaming already active");
-            return false;
-        }
-        
-        if (rtmpStreamer == null) {
-            Log.e(TAG, "RTMP streamer not initialized");
-            return false;
-        }
-        
-        if (rtmpUrl == null || rtmpUrl.isEmpty()) {
-            Log.e(TAG, "Invalid RTMP URL");
-            return false;
-        }
-        
-        try {
-            // Store the URL for reconnection if needed
-            currentRtmpUrl = rtmpUrl;
-            
-            // Start streaming with callback
-            rtmpStreamer.startStreaming(rtmpUrl, new RTMPStreamer.StreamingCallback() {
-                @Override
-                public void onStreamingStarted() {
-                    Log.d(TAG, "RTMP streaming started successfully to " + rtmpUrl);
-                    isRtmpStreamingActive = true;
-                    
-                    // Notify listeners
-                    notifyStreamingStarted(rtmpUrl);
-                }
-                
-                @Override
-                public void onStreamingStopped() {
-                    Log.d(TAG, "RTMP streaming stopped");
-                    isRtmpStreamingActive = false;
-                    currentRtmpUrl = null;
-                    
-                    // Notify listeners
-                    notifyStreamingStopped();
-                }
-                
-                @Override
-                public void onStreamingError(String error) {
-                    Log.e(TAG, "RTMP streaming error: " + error);
-                    isRtmpStreamingActive = false;
-                    
-                    // Notify listeners
-                    notifyStreamingError(error);
-                }
-            });
-            
-            Log.d(TAG, "RTMP streaming request sent to " + rtmpUrl);
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Error starting RTMP streaming", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Stop the current RTMP stream
-     * 
-     * @return true if the stop request was sent, false otherwise
-     */
-    public boolean stopRtmpStreaming() {
-        if (!isRtmpStreamingActive) {
-            Log.w(TAG, "No active RTMP stream to stop");
-            return false;
-        }
-        
-        if (rtmpStreamer == null) {
-            Log.e(TAG, "RTMP streamer not initialized");
-            return false;
-        }
-        
-        try {
-            rtmpStreamer.stopStreaming(new RTMPStreamer.StreamingCallback() {
-                @Override
-                public void onStreamingStarted() {
-                    // Not used in this context
-                }
-                
-                @Override
-                public void onStreamingStopped() {
-                    Log.d(TAG, "RTMP streaming stopped successfully");
-                    isRtmpStreamingActive = false;
-                    currentRtmpUrl = null;
-                    
-                    // Notify listeners
-                    notifyStreamingStopped();
-                }
-                
-                @Override
-                public void onStreamingError(String error) {
-                    Log.e(TAG, "Error stopping RTMP stream: " + error);
-                    isRtmpStreamingActive = false;
-                    currentRtmpUrl = null;
-                    
-                    // Notify listeners with the error
-                    notifyStreamingError("Error stopping stream: " + error);
-                }
-            });
-            
-            Log.d(TAG, "RTMP streaming stop request sent");
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Error stopping RTMP streaming", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Check if RTMP streaming is currently active
-     * 
-     * @return true if streaming is active, false otherwise
-     */
-    public boolean isRtmpStreaming() {
-        return isRtmpStreamingActive;
-    }
-    
-    /**
-     * Get the current RTMP URL that's being streamed to
-     * 
-     * @return The current RTMP URL or null if not streaming
-     */
-    public String getCurrentRtmpUrl() {
-        return currentRtmpUrl;
-    }
-    
-    /**
-     * Configure video streaming parameters
-     * 
-     * @param bitrate Video bitrate in bits per second
-     * @param width Video width in pixels
-     * @param height Video height in pixels
-     * @param fps Frames per second
-     * @return true if configuration was successful, false otherwise
-     */
-    public boolean configureRtmpVideo(int bitrate, int width, int height, int fps) {
-        if (rtmpStreamer == null) {
-            Log.e(TAG, "RTMP streamer not initialized");
-            return false;
-        }
-        
-        try {
-            rtmpStreamer.configureVideo(bitrate, width, height, fps);
-            Log.d(TAG, "RTMP video configured: " + width + "x" + height + ", " + fps + "fps, " + bitrate + "bps");
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Error configuring RTMP video", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Configure audio streaming parameters
-     * 
-     * @param bitrate Audio bitrate in bits per second
-     * @param sampleRate Audio sample rate in Hz
-     * @param stereo true for stereo audio, false for mono
-     * @return true if configuration was successful, false otherwise
-     */
-    public boolean configureRtmpAudio(int bitrate, int sampleRate, boolean stereo) {
-        if (rtmpStreamer == null) {
-            Log.e(TAG, "RTMP streamer not initialized");
-            return false;
-        }
-        
-        try {
-            rtmpStreamer.configureAudio(bitrate, sampleRate, stereo);
-            Log.d(TAG, "RTMP audio configured: " + sampleRate + "Hz, " + (stereo ? "stereo" : "mono") + ", " + bitrate + "bps");
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "Error configuring RTMP audio", e);
-            return false;
-        }
-    }
-    
-    /**
-     * Restart the current RTMP stream using the last URL
-     * 
-     * @return true if restart was successful, false otherwise
-     */
-    public boolean restartRtmpStreaming() {
-        if (currentRtmpUrl == null || currentRtmpUrl.isEmpty()) {
-            Log.e(TAG, "No previous RTMP URL to reconnect to");
-            return false;
-        }
-        
-        if (isRtmpStreamingActive) {
-            stopRtmpStreaming();
-        }
-        
-        // Short delay before reconnecting
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            // Ignore
-        }
-        
-        return startRtmpStreaming(currentRtmpUrl);
-    }
-    
-    /**
-     * Notify all listeners that streaming has started
-     */
-    private void notifyStreamingStarted(String url) {
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        mainHandler.post(() -> {
-            for (RtmpStreamingListener listener : rtmpStreamingListeners) {
-                try {
-                    listener.onStreamingStarted(url);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error notifying listener of streaming start", e);
-                }
-            }
-        });
-    }
-    
-    /**
-     * Notify all listeners that streaming has stopped
-     */
-    private void notifyStreamingStopped() {
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        mainHandler.post(() -> {
-            for (RtmpStreamingListener listener : rtmpStreamingListeners) {
-                try {
-                    listener.onStreamingStopped();
-                } catch (Exception e) {
-                    Log.e(TAG, "Error notifying listener of streaming stop", e);
-                }
-            }
-        });
-    }
-    
-    /**
-     * Notify all listeners that a streaming error occurred
-     */
-    private void notifyStreamingError(String error) {
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        mainHandler.post(() -> {
-            for (RtmpStreamingListener listener : rtmpStreamingListeners) {
-                try {
-                    listener.onStreamingError(error);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error notifying listener of streaming error", e);
-                }
-            }
-        });
-    }
-    
-    /**
-     * Send an RTMP streaming response over BLE
-     * 
-     * @param success Whether the operation was successful
-     * @param message Success or error message
-     */
-    private void sendRtmpStreamingResponse(boolean success, String message) {
-        if (bluetoothManager != null && bluetoothManager.isConnected()) {
-            try {
-                JSONObject response = new JSONObject();
-                response.put("type", "rtmp_response");
-                response.put("success", success);
-                response.put("message", message);
-                response.put("timestamp", System.currentTimeMillis());
-                
-                bluetoothManager.sendData(response.toString().getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "Sent RTMP streaming response: " + response);
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending RTMP streaming response", e);
-            }
-        }
-    }
-    
-    /**
-     * Send RTMP streaming status information over BLE
-     */
-    private void sendRtmpStreamingStatus() {
-        if (bluetoothManager != null && bluetoothManager.isConnected()) {
-            try {
-                JSONObject status = new JSONObject();
-                status.put("type", "rtmp_status");
-                status.put("streaming", isRtmpStreamingActive);
-                
-                if (isRtmpStreamingActive && currentRtmpUrl != null) {
-                    status.put("rtmpUrl", currentRtmpUrl);
-                }
-                
-                status.put("timestamp", System.currentTimeMillis());
-                
-                bluetoothManager.sendData(status.toString().getBytes(StandardCharsets.UTF_8));
-                Log.d(TAG, "Sent RTMP streaming status: " + status);
-            } catch (Exception e) {
-                Log.e(TAG, "Error sending RTMP streaming status", e);
-            }
-        }
-    }
+    // RTMP streaming functionality moved to startRtmpStreaming() method
     
     /**
      * Track whether we've been initialized to avoid duplicate initialization

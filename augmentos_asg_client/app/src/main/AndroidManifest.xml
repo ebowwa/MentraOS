@@ -99,6 +99,12 @@
         android:exported="false"
         android:foregroundServiceType="camera" />
 
+    <service
+        android:name=".streaming.RtmpStreamingService"
+        android:enabled="true"
+        android:exported="false"
+        android:foregroundServiceType="camera|microphone" />
+
     <activity
         android:name="com.augmentos.asg_client.MainActivity"
         android:exported="true"
