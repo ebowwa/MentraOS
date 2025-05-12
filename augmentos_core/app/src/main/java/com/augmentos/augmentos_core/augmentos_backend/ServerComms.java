@@ -537,6 +537,20 @@ public class ServerComms {
         }
     }
 
+    /**
+     * Requests settings from server via WebSocket
+     */
+    public void requestSettingsFromServer() {
+        try {
+            Log.d(TAG, "Requesting settings from server");
+            JSONObject settingsRequest = new JSONObject();
+            settingsRequest.put("type", "settings_update_request");
+            wsManager.sendText(settingsRequest.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating settings request", e);
+        }
+    }
+
     public void sendSettingsUpdateRequest() {
         try {
             Log.d(TAG, "Sending settings_update_request");

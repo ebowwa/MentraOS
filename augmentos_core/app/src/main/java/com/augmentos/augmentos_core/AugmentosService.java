@@ -217,7 +217,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     isInitializing = true;
                     playStartupSequenceOnSmartGlasses();
                     asrPlanner.updateAsrLanguages();
-                    requestSettingsFromServer();
+                    ServerComms.getInstance().requestSettingsFromServer();
                 } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
                     edgeTpaSystem.stopAllThirdPartyApps();
                 }
@@ -345,10 +345,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
     }
 
-    @Subscribe
-    public void onBrightnessLevelEvent(BrightnessLevelEvent event) {
-        brightnessLevel = event.brightnessLevel;
-        autoBrightness = event.autoBrightness;
+    // @Subscribe
+    // public void onBrightnessLevelEvent(BrightnessLevelEvent event) {
+    //     brightnessLevel = event.brightnessLevel;
+    //     autoBrightness = event.autoBrightness;
 
         // if (brightnessLevel != -1) {
         //     PreferenceManager.getDefaultSharedPreferences(this)
@@ -366,9 +366,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         //         .apply();
         // }
 
-        sendStatusToAugmentOsManager();
-        sendStatusToBackend();
-    }
+        // sendStatusToAugmentOsManager();
+        // sendStatusToBackend();
+    // }
 
     @Subscribe
     public void onHeadUpAngleEvent(HeadUpAngleEvent event) {
@@ -404,7 +404,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         headUpAngle = 20;
 
         // Request settings from server
-        requestSettingsFromServer();
+        ServerComms.getInstance().requestSettingsFromServer();
         preferredMic = PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.PREFERRED_MIC), "glasses");
 
         contextualDashboardEnabled = true;
@@ -1113,7 +1113,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
                 Log.d(TAG, "22 Brightness: " + brightnessString);
                 connectedGlasses.put("brightness", brightnessString);
-                connectedGlasses.put("auto_brightness", autoBrightness);
+                connectedGlasses.put("auto_brightness", this.autoBrightness);
                 if (headUpAngle == null) {
                     headUpAngle = 20;
                 }
@@ -1168,6 +1168,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             // Wrapping the status object inside a main object (as shown in your example)
             JSONObject mainObject = new JSONObject();
             mainObject.put("status", status);
+
+            Log.d(TAG, "Sending status to backend: " + mainObject.toString());
 
             return mainObject;
         } catch (JSONException e) {
@@ -1586,9 +1588,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             String body = "Updating glasses brightness to " + brightness + "%.";
             smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard(title, body), 6);
             smartGlassesManager.updateGlassesBrightness(brightness);
-            brightnessLevel = brightness;
+            this.brightnessLevel = brightness;
+            this.autoBrightness = false;
             sendStatusToBackend();
-            sendStatusToAugmentOsManager();
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
         }
@@ -1601,7 +1603,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
             this.autoBrightness = autoBrightness;
             sendStatusToBackend();
-            sendStatusToAugmentOsManager();
         }
     }
 
@@ -1813,18 +1814,5 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         super.onBind(intent);
         Log.d(TAG, "Something bound");
         return binder;
-    }
-
-    /**
-     * Requests settings from server via WebSocket
-     */
-    private void requestSettingsFromServer() {
-        try {
-            JSONObject settingsRequest = new JSONObject();
-            settingsRequest.put("type", "request_settings");
-            ServerComms.getInstance().sendCoreStatus(settingsRequest);
-        } catch (JSONException e) {
-            Log.e(TAG, "Error creating settings request", e);
-        }
     }
 }
