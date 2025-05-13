@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -10,18 +10,26 @@ import {
   Modal,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Slider } from 'react-native-elements';
+import {Slider} from 'react-native-elements';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import axios from 'axios';
 
-import { useStatus } from '../providers/AugmentOSStatusProvider';
+import {useStatus} from '../providers/AugmentOSStatusProvider';
 import coreCommunicator from '../bridge/CoreCommunicator';
-import { stopExternalService } from '../bridge/CoreServiceStarter';
-import { loadSetting, saveSetting } from '../logic/SettingsHelper.tsx';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { SETTINGS_KEYS, WIFI_CONFIGURABLE_MODELS } from '../consts';
-import { supabase } from '../supabaseClient';
-import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
+import { WIFI_CONFIGURABLE_MODELS } from '../consts';
+import {stopExternalService} from '../bridge/CoreServiceStarter';
+import {loadSetting, saveSetting} from '../logic/SettingsHelper.tsx';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {SETTINGS_KEYS} from '../consts';
+import {supabase} from '../supabaseClient';
+import {
+  requestFeaturePermissions,
+  PermissionFeatures,
+} from '../logic/PermissionsUtils';
 import showAlert from '../utils/AlertUtils';
+import SelectSetting from '../components/settings/SelectSetting.tsx';
+
+const CLOUD_URL = process.env.CLOUD_HOST_NAME;
 
 interface SettingsPageProps {
   isDarkTheme: boolean;
@@ -45,8 +53,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   toggleTheme,
   navigation,
 }) => {
-  const { status } = useStatus();
-
+  const {status} = useStatus();
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -59,6 +66,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
     status.core_info.always_on_status_bar_enabled,
   );
+  const [preferredMic, setPreferredMic] = useState(
+    status.core_info.preferred_mic,
+  );
+
+  const preferredMicOptions = [
+    {label: 'Phone / Headset', value: 'phone'},
+    {label: 'Glasses', value: 'glasses'},
+  ];
 
   // -- Handlers for toggles, etc. --
   const toggleSensing = async () => {
@@ -71,19 +86,23 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     // First request microphone permission if we're enabling the mic
     if (!forceCoreOnboardMic) {
       // We're about to enable the mic, so request permission
-      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE);
+      const hasMicPermission = await requestFeaturePermissions(
+        PermissionFeatures.MICROPHONE,
+      );
       if (!hasMicPermission) {
         // Permission denied, don't toggle the setting
-        console.log('Microphone permission denied, cannot enable phone microphone');
+        console.log(
+          'Microphone permission denied, cannot enable phone microphone',
+        );
         showAlert(
           'Microphone Permission Required',
           'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
-          [{ text: 'OK' }],
+          [{text: 'OK'}],
           {
             isDarkTheme,
             iconName: 'microphone',
-            iconColor: '#2196F3'
-          }
+            iconColor: '#2196F3',
+          },
         );
         return;
       }
@@ -94,12 +113,40 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setForceCoreOnboardMic(newVal);
   };
 
+  const setMic = async (val: string) => {
+    if (val === 'phone') {
+      // We're potentially about to enable the mic, so request permission
+      const hasMicPermission = await requestFeaturePermissions(
+        PermissionFeatures.MICROPHONE,
+      );
+      if (!hasMicPermission) {
+        // Permission denied, don't toggle the setting
+        console.log(
+          'Microphone permission denied, cannot enable phone microphone',
+        );
+        showAlert(
+          'Microphone Permission Required',
+          'Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.',
+          [{text: 'OK'}],
+          {
+            isDarkTheme,
+            iconName: 'microphone',
+            iconColor: '#2196F3',
+          },
+        );
+        return;
+      }
+    }
+
+    setPreferredMic(val);
+    await coreCommunicator.sendSetPreferredMic(val);
+  };
+
   const toggleAlwaysOnStatusBar = async () => {
     const newVal = !isAlwaysOnStatusBarEnabled;
     await coreCommunicator.sendToggleAlwaysOnStatusBar(newVal);
     setIsAlwaysOnStatusBarEnabled(newVal);
   };
-
 
   const forgetGlasses = async () => {
     await coreCommunicator.sendForgetSmartGlasses();
@@ -110,12 +157,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       'Forget Glasses',
       'Are you sure you want to forget your glasses?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: forgetGlasses },
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Yes', onPress: forgetGlasses},
       ],
       {
         cancelable: false,
-        isDarkTheme
+        isDarkTheme,
       },
     );
   };
@@ -170,14 +217,14 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       // This ensures we skip the SplashScreen logic that might detect stale user data
       navigation.reset({
         index: 0,
-        routes: [{ name: 'SplashScreen' }],
+        routes: [{name: 'SplashScreen'}],
       });
     } catch (err) {
       console.error('Error during sign-out:', err);
       // Even if there's an error, still try to navigate away to login
       navigation.reset({
         index: 0,
-        routes: [{ name: 'SplashScreen' }],
+        routes: [{name: 'SplashScreen'}],
       });
     }
   };
@@ -187,8 +234,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       'Sign Out',
       'Are you sure you want to sign out?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Yes', onPress: handleSignOut },
+        {text: 'Cancel', style: 'cancel'},
+        {text: 'Yes', onPress: handleSignOut},
       ],
       {
         cancelable: false,
@@ -226,7 +273,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   // Slider theme styles - not used anymore, but keep style references for potential future use
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
+    <SafeAreaView style={{flex: 1}}>
       <View style={styles.container}>
         {/* Title Section */}
         <View
@@ -246,48 +293,28 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         </View>
 
         <ScrollView style={styles.scrollViewContainer}>
-          {/* Force Onboard Microphone */}
-          <View style={styles.settingItem}>
-            <View style={styles.settingTextContainer}>
-              <Text
-                style={[
-                  styles.label,
-                  isDarkTheme ? styles.lightText : styles.darkText,
-                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  //   styles.disabledItem,
-                ]}>
-                Use Phone Microphone
-              </Text>
-              <Text
-                style={[
-                  styles.value,
-                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  // (!status.core_info.puck_connected || !status.glasses_info?.model_name) &&
-                  //   styles.disabledItem,
-                ]}>
-                Use the phone's microphone instead of the glasses'
-                microphone (if applicable).
-              </Text>
-              {status.glasses_info?.model_name === "Simulated Glasses" && (
-                <View style={styles.flagContainer}>
-                  <Text style={[styles.flagText, { color: '#ff6b6b' }]}>
-                    This setting has no effect when using Simulated Glasses
-                  </Text>
-                </View>
-              )}
-            </View>
-            <Switch
-              //disabled={!status.glasses_info?.model_name}
-              value={forceCoreOnboardMic}
-              onValueChange={toggleForceCoreOnboardMic}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
+          <View style={styles.settingItem2}>
+            <SelectSetting
+              label={'Preferred Microphone'}
+              value={preferredMic}
+              description={
+                "Use the phone's microphone instead of the glasses' microphone (if applicable)."
+              }
+              options={preferredMicOptions}
+              onValueChange={val => setMic(val)}
+              theme={theme}
             />
+            {status.glasses_info?.model_name === 'Simulated Glasses' && (
+              <View style={styles.flagContainer}>
+                <Text style={[styles.flagText, {color: '#ff6b6b'}]}>
+                  This setting has no effect when using Simulated Glasses
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Always on time, date and battery */}
-          {Platform.OS === 'android' && (
+          {/* {Platform.OS === 'android' && (
             <View style={styles.settingItem}>
               <View style={styles.settingTextContainer}>
                 <Text
@@ -314,7 +341,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 ios_backgroundColor={switchColors.ios_backgroundColor}
               />
             </View>
-          )}
+          )} */}
 
           {/* Privacy Settings */}
           <TouchableOpacity
@@ -505,7 +532,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                   styles.redText,
                   (!status.core_info.puck_connected ||
                     status.core_info.default_wearable === '') &&
-                  styles.disabledItem,
+                    styles.disabledItem,
                 ]}>
                 Forget Glasses
               </Text>
@@ -588,6 +615,11 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
     borderBottomWidth: 1,
   },
+  settingItem2: {
+    paddingVertical: 20,
+    borderBottomColor: '#333',
+    borderBottomWidth: 1,
+  },
   settingTextContainer: {
     flex: 1,
     paddingRight: 10,
@@ -642,5 +674,5 @@ const styles = StyleSheet.create({
   flagText: {
     fontSize: 12,
     fontWeight: '500',
-  }
+  },
 });

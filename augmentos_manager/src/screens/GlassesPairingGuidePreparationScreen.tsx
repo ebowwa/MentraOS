@@ -201,6 +201,9 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
       }
     }
 
+    console.log("needsBluetoothPermissions", needsBluetoothPermissions);
+
+    // slight delay for bluetooth perms
     navigation.navigate('SelectGlassesBluetoothScreen', {
       glassesModelName: glassesModelName,
     });

@@ -99,7 +99,6 @@ const NavigationBar: React.FC<NavigationBarProps> = React.memo(({
         {/* Settings Icon */}
         <TouchableOpacity
           onPress={() => navigation.navigate({name: 'SettingsPage', params: undefined})}
-          onLongPress={() => navigation.navigate({name: 'Testing', params: undefined})}// super secret testing page
           style={styles.iconWrapper}>
           <MaterialCommunityIcons
             name={icons.settings}

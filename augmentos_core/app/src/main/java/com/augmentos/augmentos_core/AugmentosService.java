@@ -56,6 +56,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
@@ -157,6 +158,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     
     // WiFi scan results
     private List<String> wifiNetworks = new ArrayList<>();
+    private String preferredMic;
 
     private final boolean showingDashboardNow = false;
     private boolean contextualDashboardEnabled;
@@ -210,6 +212,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     isInitializing = true;
                     playStartupSequenceOnSmartGlasses();
                     asrPlanner.updateAsrLanguages();
+                    ServerComms.getInstance().requestSettingsFromServer();
                 } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
                     edgeTpaSystem.stopAllThirdPartyApps();
                     
@@ -341,38 +344,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
     }
 
-    @Subscribe
-    public void onBrightnessLevelEvent(BrightnessLevelEvent event) {
-        brightnessLevel = event.brightnessLevel;
-        autoBrightness = event.autoBrightness;
+    // @Subscribe
+    // public void onBrightnessLevelEvent(BrightnessLevelEvent event) {
+    //     brightnessLevel = event.brightnessLevel;
+    //     autoBrightness = event.autoBrightness;
 
-        if (brightnessLevel != -1) {
-            PreferenceManager.getDefaultSharedPreferences(this)
-                .edit()
-                .putString(this.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightnessLevel))
-                .apply();
-            PreferenceManager.getDefaultSharedPreferences(this)
-                .edit()
-                .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
-                .apply();
-        } else {
-            PreferenceManager.getDefaultSharedPreferences(this)
-                .edit()
-                .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
-                .apply();
-        }
-        sendStatusToAugmentOsManager();
-    }
+        // if (brightnessLevel != -1) {
+        //     PreferenceManager.getDefaultSharedPreferences(this)
+        //         .edit()
+        //         .putString(this.getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightnessLevel))
+        //         .apply();
+        //     PreferenceManager.getDefaultSharedPreferences(this)
+        //         .edit()
+        //         .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
+        //         .apply();
+        // } else {
+        //     PreferenceManager.getDefaultSharedPreferences(this)
+        //         .edit()
+        //         .putBoolean(this.getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
+        //         .apply();
+        // }
+
+        // sendStatusToAugmentOsManager();
+        // sendStatusToBackend();
+    // }
 
     @Subscribe
     public void onHeadUpAngleEvent(HeadUpAngleEvent event) {
-//        Log.d(TAG, "BRIGHTNESS received");
         headUpAngle = event.headUpAngle;
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .edit()
-                .putString(this.getResources().getString(R.string.HEADUP_ANGLE), String.valueOf(headUpAngle))
-                .apply();
         sendStatusToAugmentOsManager();
+        sendStatusToBackend();
     }
 
     @Override
@@ -396,15 +397,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         notificationSystem = new NotificationSystem(this, userId);
         calendarSystem = CalendarSystem.getInstance(this);
 
-        Log.d(TAG, "Auto Brightness___: " + PreferenceManager.getDefaultSharedPreferences(this)
-                .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false));
-        brightnessLevel = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.SHARED_PREF_BRIGHTNESS), "50"));
-        autoBrightness = PreferenceManager.getDefaultSharedPreferences(this)
-                .getBoolean(getResources().getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false);
-        headUpAngle = Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.HEADUP_ANGLE), "20"));
+        // Initialize settings with default values
+        brightnessLevel = 50;
+        autoBrightness = false;
+        headUpAngle = 20;
 
-        contextualDashboardEnabled = getContextualDashboardEnabled();
-        alwaysOnStatusBarEnabled = getAlwaysOnStatusBarEnabled();
+        // Request settings from server
+        ServerComms.getInstance().requestSettingsFromServer();
+        preferredMic = PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.PREFERRED_MIC), "glasses");
+
+        contextualDashboardEnabled = true;
+        alwaysOnStatusBarEnabled = false;
 
         edgeTpaSystem = new EdgeTPASystem(this, null); // We'll set smartGlassesManager after it's created
         asrPlanner = new AsrPlanner(edgeTpaSystem);
@@ -743,15 +746,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                             6
                     );
 
-                    if (alwaysOnStatusBarEnabled) {
-                        // BATTERY OPTIMIZATION: Use the existing handler instead of creating a new one
-                        uiHandler.postDelayed(() ->
-                                smartGlassesManager.windowManager.showAppLayer(
-                                    "serverappid",
-                                    () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
-                                    0
-                            ), 3000); // Delay of 3 seconds
-                    }
+//                    if (alwaysOnStatusBarEnabled) {
+//                        // BATTERY OPTIMIZATION: Use the existing handler instead of creating a new one
+//                        uiHandler.postDelayed(() ->
+//                                smartGlassesManager.windowManager.showAppLayer(
+//                                    "serverappid",
+//                                    () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
+//                                    0
+//                            ), 3000); // Delay of 3 seconds
+//                    }
 
                     // Set isInitializing to false after booting sequence is finished, with 100ms delay
                     uiHandler.postDelayed(() -> isInitializing = false, 500);
@@ -903,53 +906,53 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
 //                Log.d(TAG, "Parsed message: " + msg.toString());
 
-            JSONObject layout = msg.getJSONObject("layout");
-            String layoutType = layout.getString("layoutType");
-            String title;
-            String text;
-            switch (layoutType) {
-                case "empty":
-                    return () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine);
-                case "reference_card":
-                    if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null
-                            && !layout.getString("title").contains("AugmentOS")) {
-                        title = layout.getString("title") + " | " + cachedDashboardTopLine;
-                    } else {
-                        title = layout.getString("title");
-                    }
-                    text = layout.getString("text");
-                    return () -> smartGlassesManager.sendReferenceCard(title, text);
-                case "text_wall":
-                case "text_line": // This assumes that the dashboard doesn't use textwall layout
-                    text = layout.getString("text");
-                    if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null) {
-                        String finalText = cachedDashboardTopLine + "\n" + text;
-                        return () -> smartGlassesManager.sendTextWall(finalText);
-                    } else {
-                        return () -> smartGlassesManager.sendTextWall(text);
-                    }
-                case "double_text_wall":
-                    String topText = layout.getString("topText");
-                    String bottomText = layout.getString("bottomText");
-                    return () -> smartGlassesManager.sendDoubleTextWall(topText, bottomText);
-                case "text_rows":
-                    JSONArray rowsArray = layout.getJSONArray("text");
-                    String[] stringsArray = new String[rowsArray.length()];
-                    for (int k = 0; k < rowsArray.length(); k++)
-                        stringsArray[k] = rowsArray.getString(k);
-                    return () -> smartGlassesManager.sendRowsCard(stringsArray);
-                case "bitmap_view":
-                    String base64Data = layout.getString("data");
-                    byte[] decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
-                    Bitmap bmp = BitmapJavaUtils.bytesToBitmap(decodedBytes);
-                    return () -> smartGlassesManager.sendBitmap(bmp);
-                default:
-                    Log.d(TAG, "ISSUE PARSING LAYOUT");
+                JSONObject layout = msg.getJSONObject("layout");
+                String layoutType = layout.getString("layoutType");
+                String title;
+                String text;
+                switch (layoutType) {
+                    case "empty":
+                        return () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine);
+                    case "reference_card":
+//                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null
+//                                && !layout.getString("title").contains("AugmentOS")) {
+//                            title = layout.getString("title") + " | " + cachedDashboardTopLine;
+//                        } else {
+                            title = layout.getString("title");
+//                        }
+                        text = layout.getString("text");
+                        return () -> smartGlassesManager.sendReferenceCard(title, text);
+                    case "text_wall":
+                    case "text_line": // This assumes that the dashboard doesn't use textwall layout
+                        text = layout.getString("text");
+//                        if (alwaysOnStatusBarEnabled && cachedDashboardTopLine != null) {
+//                            String finalText = cachedDashboardTopLine + "\n" + text;
+//                            return () -> smartGlassesManager.sendTextWall(finalText);
+//                        } else {
+                            return () -> smartGlassesManager.sendTextWall(text);
+//                        }
+                    case "double_text_wall":
+                        String topText = layout.getString("topText");
+                        String bottomText = layout.getString("bottomText");
+                        return () -> smartGlassesManager.sendDoubleTextWall(topText, bottomText);
+                    case "text_rows":
+                        JSONArray rowsArray = layout.getJSONArray("text");
+                        String[] stringsArray = new String[rowsArray.length()];
+                        for (int k = 0; k < rowsArray.length(); k++)
+                            stringsArray[k] = rowsArray.getString(k);
+                        return () -> smartGlassesManager.sendRowsCard(stringsArray);
+                    case "bitmap_view":
+                        String base64Data = layout.getString("data");
+                        byte[] decodedBytes = android.util.Base64.decode(base64Data, android.util.Base64.DEFAULT);
+                        Bitmap bmp = BitmapJavaUtils.bytesToBitmap(decodedBytes);
+                        return () -> smartGlassesManager.sendBitmap(bmp);
+                    default:
+                        Log.d(TAG, "ISSUE PARSING LAYOUT");
+                }
+            } catch (JSONException e) {
+                e.printStackTrace();
             }
-        } catch (JSONException e) {
-            e.printStackTrace();
-        }
-        return () -> {};
+            return () -> {};
     }
 
     /**
@@ -1145,6 +1148,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
             coreInfo.put("force_core_onboard_mic", SmartGlassesManager.getForceCoreOnboardMic(this));
+            coreInfo.put("preferred_mic", preferredMic);
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             status.put("core_info", coreInfo);
@@ -1163,9 +1167,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 } else {
                     brightnessString = brightnessLevel + "%";
                 }
+                Log.d(TAG, "22 Brightness: " + brightnessString);
                 connectedGlasses.put("brightness", brightnessString);
-                connectedGlasses.put("auto_brightness_enabled", autoBrightness);
-//                Log.d(TAG, "Connected glasses info: " + headUpAngle);
+                connectedGlasses.put("auto_brightness", this.autoBrightness);
                 if (headUpAngle == null) {
                     headUpAngle = 20;
                 }
@@ -1236,6 +1240,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             JSONObject mainObject = new JSONObject();
             mainObject.put("status", status);
 
+            Log.d(TAG, "Sending status to backend: " + mainObject.toString());
+
             return mainObject;
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -1247,14 +1253,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             @Override
             public void onConnectionAck() {
                 serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
-                if (alwaysOnStatusBarEnabled) {
-                    smartGlassesManager.windowManager.showAppLayer(
-                            "serverappid",
-                            () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
-                            0
-                    );
-                }
+//                if (alwaysOnStatusBarEnabled) {
+//                    smartGlassesManager.windowManager.showAppLayer(
+//                            "serverappid",
+//                            () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
+//                            0
+//                    );
+//                }
             }
+
             @Override
             public void onAppStateChange(List<ThirdPartyCloudApp> appList) {
                 cachedThirdPartyAppList = appList;
@@ -1286,10 +1293,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 // Parse the top line for logging/debugging
                 cachedDashboardTopLine = parseDashboardTopLine(dashboardDisplayData);
 
-                if (alwaysOnStatusBarEnabled) {
-                    onDisplayEvent(cachedDisplayData);
+//                if (alwaysOnStatusBarEnabled) {
+//                    onDisplayEvent(cachedDisplayData);
 //                    Log.d("AugmentosService", "Dashboard display event received: " + dashboardDisplayData.toString());
-                }
+//                }
 
                 // Create the runnable as before
                 cachedDashboardDisplayRunnable = parseDisplayEventMessage(dashboardDisplayData);
@@ -1327,7 +1334,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             @Override
             public void onRequestSingle(String dataType) {
                 switch (dataType) {
-                    case "core_status":
+                    case "core_status_update":
                         Log.d(TAG, "Server wants a core_status");
                         sendStatusToBackend();
                     break;
@@ -1368,15 +1375,74 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e(TAG, "Cannot process video stream request: smartGlassesManager is null");
                 }
             }
+
+            @Override
+            public void onSettingsUpdate(JSONObject settings) {
+                Log.d("AugmentOsService", "!!!! Settings update received: " + settings.toString() + ".");
+                try {
+                    if (settings.has("brightness")) {
+                        brightnessLevel = settings.getInt("brightness");
+                    }
+                    if (settings.has("autoBrightness")) {
+                        autoBrightness = settings.getBoolean("autoBrightness");
+                        Log.d(TAG, "Updating glasses auto brightness: " + autoBrightness);
+                    }
+                    if (autoBrightness) {
+                        smartGlassesManager.updateGlassesAutoBrightness(true);
+                    } else {
+                        Log.d(TAG, "Updating glasses brightness: " + brightnessLevel);
+                        smartGlassesManager.updateGlassesBrightness(brightnessLevel);
+                    }
+
+                    if (settings.has("headUpAngle")) {
+                        headUpAngle = settings.getInt("headUpAngle");
+                        smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
+                    }
+                    // if (settings.has("useOnboardMic")) {
+                    //     useOnboardMic = settings.getBoolean("useOnboardMic");
+                    //     if (useOnboardMic) {
+                    //         smartGlassesManager.changeMicrophoneState(false);
+                    //     }
+                    // }
+//                     if (settings.has("sensingEnabled")) {
+//                         sensingEnabled = settings.getBoolean("sensingEnabled");
+// //                        EventBus.getDefault().post(new SensingEnabledEvent(sensingEnabled));
+//                     }
+                    // if (settings.has("bypassVad")) {
+                    //     bypassVad = settings.getBoolean("bypassVad");
+//                        EventBus.getDefault().post(new BypassVadEvent(bypassVad));
+                    // }
+//                    if (settings.has("bypassAudioEncoding")) {
+//                        bypassAudioEncoding = settings.getBoolean("bypassAudioEncoding");
+//                        EventBus.getDefault().post(new BypassAudioEncodingEvent(bypassAudioEncoding));
+//                    }
+                    if (settings.has("contextualDashboard")) {
+                        contextualDashboardEnabled = settings.getBoolean("contextualDashboard");
+//                        EventBus.getDefault().post(new ContextualDashboardEnabledEvent(contextualDashboardEnabled));
+                    }
+                    if (settings.has("alwaysOnStatusBar")) {
+                        alwaysOnStatusBarEnabled = settings.getBoolean("alwaysOnStatusBar");
+//                        EventBus.getDefault().post(new AlwaysOnStatusBarEnabledEvent(alwaysOnStatusBarEnabled));
+                    }
+                    Log.d("AugmentOsService", "Settings updated: " + settings.toString() + ".");
+
+                    // Update UI or notify other components about settings change
+                    sendStatusToAugmentOsManager();
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error parsing settings update", e);
+                }
+            }
         });
     }
 
     // AugmentOS_Manager Comms Callbacks
     public void sendStatusToBackend() {
         JSONObject status = generateStatusJson();
+        Log.d(TAG, "Sending status to backend: " + status.toString());
         ServerComms.getInstance().sendCoreStatus(status);
     }
-    public void sendStatusToAugmentOsManager(){
+
+    public void sendStatusToAugmentOsManager() {
         JSONObject status = generateStatusJson();
         blePeripheral.sendDataToAugmentOsManager(status.toString());
     }
@@ -1413,11 +1479,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
     }
 
-        // TODO: This is for debug.. remove before pushing to prod
+    // TODO: This is for debug.. remove before pushing to prod
     @Subscribe
     public void handleMicModeChangedEvent(MicModeChangedEvent event) {
         Log.d(TAG, "Microphone mode changed: " + event.getStatus());
-        
+
         // Log the new microphone status
         PhoneMicrophoneManager.MicStatus status = event.getStatus();
         //blePeripheral.sendNotifyManager(status.name(), "success");
@@ -1498,11 +1564,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesWifiConnected = false;
         glassesWifiSsid = "";
         
+
         // Reset instead of stopping
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
         }
-        
+
         sendStatusToAugmentOsManager();
     }
 
@@ -1532,6 +1599,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
         sendStatusToBackend();
+       sendStatusToAugmentOsManager();
     }
 
     @Override
@@ -1541,6 +1609,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             blePeripheral.sendNotifyManager(this.getResources().getString(R.string.SETTING_WILL_APPLY_ON_NEXT_GLASSES_CONNECTION), "success");
         }
         sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override
@@ -1557,48 +1626,31 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void setContextualDashboardEnabled(boolean contextualDashboardEnabled) {
-        saveContextualDashboardEnabled(contextualDashboardEnabled);
         this.contextualDashboardEnabled = contextualDashboardEnabled;
+        sendStatusToBackend();
+       sendStatusToAugmentOsManager();
     }
 
     @Override
     public void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled) {
-        if (alwaysOnStatusBarEnabled) {
-            smartGlassesManager.windowManager.showAppLayer(
-                    "serverappid",
-                    () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
-                    0
-            );
-        }
-        else {
-            EventBus.getDefault().post(new HomeScreenEvent());
-        }
+        // TODO: Fix this
 
-        saveAlwaysOnStatusBarEnabled(alwaysOnStatusBarEnabled);
+        // if (alwaysOnStatusBarEnabled) {
+        //     smartGlassesManager.windowManager.showAppLayer(
+        //             "serverappid",
+        //             () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
+        //             0
+        //     );
+        // }
+        // else {
+        //     EventBus.getDefault().post(new HomeScreenEvent());
+        // }
+
+//        Log.d(TAG, "Setting always on status bar enabled: " + alwaysOnStatusBarEnabled);
+
         this.alwaysOnStatusBarEnabled = alwaysOnStatusBarEnabled;
-    }
-
-    public boolean getContextualDashboardEnabled() {
-        return this.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE).getBoolean("contextual_dashboard_enabled", true);
-    }
-
-    public void saveContextualDashboardEnabled(boolean enabled) {
-        SharedPreferences sharedPreferences = this.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putBoolean("contextual_dashboard_enabled", enabled);
-        editor.apply();
-    }
-
-    public boolean getAlwaysOnStatusBarEnabled() {
-        return this.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE)
-                .getBoolean("always_on_status_bar_enabled", false); // Default to false if not set
-    }
-
-    public void saveAlwaysOnStatusBarEnabled(boolean enabled) {
-        SharedPreferences sharedPreferences = this.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = sharedPreferences.edit();
-        editor.putBoolean("always_on_status_bar_enabled", enabled);
-        editor.apply();
+        sendStatusToBackend();
+//        sendStatusToAugmentOsManager();
     }
 
     // TODO: Can remove this?
@@ -1660,6 +1712,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             String body = "Updating glasses brightness to " + brightness + "%.";
             smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard(title, body), 6);
             smartGlassesManager.updateGlassesBrightness(brightness);
+            this.brightnessLevel = brightness;
+            this.autoBrightness = false;
+            sendStatusToBackend();
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
         }
@@ -1670,6 +1725,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Updating glasses auto brightness: " + autoBrightness);
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
+            this.autoBrightness = autoBrightness;
+            sendStatusToBackend();
         }
     }
 
@@ -1678,6 +1735,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Updating glasses head up angle: " + headUpAngle);
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
+            this.headUpAngle = headUpAngle;
+            sendStatusToBackend();
+            sendStatusToAugmentOsManager();
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
         }
@@ -1743,6 +1803,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         
         // Notify manager app
         blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
+    }
+
+    @Override
+    public void setPreferredMic(String mic) {
+        Log.d("AugmentOsService", "Setting preferred mic: " + mic);
+        preferredMic = mic;
+        SmartGlassesManager.setPreferredMic(this, mic);
+        setForceCoreOnboardMic(mic.equals("phone"));
     }
 
     @Override

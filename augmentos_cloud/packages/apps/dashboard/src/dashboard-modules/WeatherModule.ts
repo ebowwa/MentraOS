@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from '@augmentos/utils';
 
 export interface WeatherSummary {
   condition: string;
@@ -13,6 +14,7 @@ export class WeatherModule {
   constructor() {
     this.apiKey = "53394e85a9b325c2f46e7e097859a7b8";
     this.baseUrl = 'https://api.openweathermap.org';
+    logger.info('🌤️ WeatherModule initialized');
   }
 
   /**
@@ -20,11 +22,14 @@ export class WeatherModule {
    */
   public async fetchWeatherForecast(latitude: number, longitude: number): Promise<WeatherSummary | null> {
     const url = `${this.baseUrl}/data/3.0/onecall?lat=${latitude}&lon=${longitude}&exclude=minutely,hourly,daily,alerts&units=imperial&appid=${this.apiKey}`;
+    logger.info(`🌤️ Fetching weather data for lat=${latitude}, lon=${longitude}`);
+    
     try {
       const response = await axios.get(url);
       const data = response.data;
+      
       if (!data || !data.current || !data.current.weather || data.current.weather.length === 0) {
-        console.error('Unexpected weather API response structure:', data);
+        logger.error('❌ Unexpected weather API response structure:', data);
         return null;
       }
 
@@ -42,7 +47,7 @@ export class WeatherModule {
         temp_c: tempC,
       };
     } catch (error) {
-      console.error('Error fetching weather data:', error);
+      logger.error('❌ Error fetching weather data:', error);
       return null;
     }
   }

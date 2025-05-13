@@ -1,5 +1,5 @@
 {
-  "name": "@augmentos/dashboard-manager",
+  "name": "@augmentos/dashboard",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
@@ -13,7 +13,8 @@
     "@augmentos/sdk": "workspace:*",
     "@augmentos/utils": "workspace:*",
     "@augmentos/agents": "workspace:*",
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "axios": "^1.6.7"
   },
 
   "devDependencies": {

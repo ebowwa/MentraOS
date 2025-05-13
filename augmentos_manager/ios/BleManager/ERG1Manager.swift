@@ -122,6 +122,7 @@ enum GlassesError: Error {
   let DELAY_BETWEEN_SENDS_MS: UInt64 = 8_000_000 // 8ms
   let INITIAL_CONNECTION_DELAY_MS: UInt64 = 350_000_000 // 350ms
   public var textHelper = G1Text()
+  var msgId = 100;
   
   public static let _bluetoothQueue = DispatchQueue(label: "BluetoothG1", qos: .userInitiated)
   
@@ -135,7 +136,7 @@ enum GlassesError: Error {
     }
   }
   
-  private var centralManager: CBCentralManager!
+  private var centralManager: CBCentralManager?
   private var leftPeripheral: CBPeripheral?
   private var rightPeripheral: CBPeripheral?
   private var connectedDevices: [String: (CBPeripheral?, CBPeripheral?)] = [:]
@@ -148,10 +149,43 @@ enum GlassesError: Error {
   
   private var aiTriggerTimeoutTimer: Timer?
   
+  private var leftGlassUUID: UUID? {
+      get {
+          if let uuidString = UserDefaults.standard.string(forKey: "leftGlassUUID") {
+              return UUID(uuidString: uuidString)
+          }
+          return nil
+      }
+      set {
+          if let newValue = newValue {
+              UserDefaults.standard.set(newValue.uuidString, forKey: "leftGlassUUID")
+          } else {
+              UserDefaults.standard.removeObject(forKey: "leftGlassUUID")
+          }
+      }
+  }
+  
+  private var rightGlassUUID: UUID? {
+      get {
+          if let uuidString = UserDefaults.standard.string(forKey: "rightGlassUUID") {
+              return UUID(uuidString: uuidString)
+          }
+          return nil
+      }
+      set {
+          if let newValue = newValue {
+              UserDefaults.standard.set(newValue.uuidString, forKey: "rightGlassUUID")
+          } else {
+              UserDefaults.standard.removeObject(forKey: "rightGlassUUID")
+          }
+      }
+  }
+  
   override init() {
     super.init()
-    centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
-    setupCommandQueue()
+    // centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+    // setupCommandQueue()
+    startHeartbeatTimer()
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -163,8 +197,14 @@ enum GlassesError: Error {
   
   // this scans for new (un-paired) glasses to connect to:
   @objc func RN_startScan() -> Bool {
+
+    if centralManager == nil {
+      centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
+      setupCommandQueue()
+    }
+
     self.isDisconnecting = false// reset intentional disconnect flag
-    guard centralManager.state == .poweredOn else {
+    guard centralManager!.state == .poweredOn else {
       print("Bluetooth is not powered on.")
       return false
     }
@@ -173,6 +213,7 @@ enum GlassesError: Error {
     
     // send our already connected devices to RN:
     let devices = getConnectedDevices()
+    print("connnectedDevices.count: (\(devices.count))")
     for device in devices {
       if let name = device.name {
         print("Connected to device: \(name)")
@@ -189,7 +230,19 @@ enum GlassesError: Error {
       }
     }
     
-    centralManager.scanForPeripherals(withServices: nil, options: nil)
+    
+//    // First try: Connect by UUID (works in background)
+    if connectByUUID() {
+        print("🔄 Found and attempting to connect to stored glasses UUIDs")
+        // Wait for connection to complete - no need to scan
+        return true
+    }
+//
+    let scanOptions: [String: Any] = [
+        CBCentralManagerScanOptionAllowDuplicatesKey: false,  // Don't allow duplicate advertisements
+    ]
+    
+    centralManager!.scanForPeripherals(withServices: nil, options: scanOptions)
     return true
   }
   
@@ -204,11 +257,11 @@ enum GlassesError: Error {
     print("RN_connectGlasses()")
     
     if let side = leftPeripheral {
-      centralManager.connect(side, options: nil)
+      centralManager!.connect(side, options: nil)
     }
     
     if let side = rightPeripheral {
-      centralManager.connect(side, options: nil)
+      centralManager!.connect(side, options: nil)
     }
     
     // just return if we don't have both a left and right arm:
@@ -216,16 +269,14 @@ enum GlassesError: Error {
       return false;
     }
     
-    print("found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") starting heartbeat timer and stopping scan");
-    startHeartbeatTimer();
+    print("found both glasses \(leftPeripheral!.name ?? "(unknown)"), \(rightPeripheral!.name ?? "(unknown)") stopping scan");
+//    startHeartbeatTimer();
     RN_stopScan();
     return true
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
-    // Use Task to handle async operations properly
     Task {
-      
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
       
@@ -243,6 +294,24 @@ enum GlassesError: Error {
       command.append(contentsOf: Array(textData))
       self.queueChunks([command])
     }
+    
+    // @@@@@@@@ just for testing:
+//    Task {
+//      msgId += 1
+//      let ncsNotification = NCSNotification(
+//          msgId: msgId,
+//          appIdentifier: "io.heckel.ntfy",
+//          title: "Notification Title",
+//          subtitle: "Notification Subtitle",
+//          message: text,
+//          displayName: "Example App"
+//      )
+//
+//      let notification = G1Notification(ncsNotification: ncsNotification)
+//      let encodedChunks = await notification.constructNotification()
+//      print("encodedChunks: \(encodedChunks.count)")
+//      self.queueChunks(encodedChunks)
+//    }
   }
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
@@ -253,19 +322,27 @@ enum GlassesError: Error {
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
-    Task {
-      queueChunks(chunks, sleepAfterMs: 50)
-    }
+    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {
+    let prevLeftReady = leftReady
+    let prevRightReady = rightReady
+    
     if left != nil {
       leftReady = left!
+      if (!prevLeftReady) {
+        print("Left ready!")
+      }
     }
     if right != nil {
       rightReady = right!
+      if (!prevRightReady) {
+        print("Right ready!")
+      }
     }
-    print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
+    
+    // print("g1Ready set to \(leftReady) \(rightReady) \(leftReady && rightReady)")
     g1Ready = leftReady && rightReady
     if g1Ready {
       stopReconnectionTimer()
@@ -273,19 +350,21 @@ enum GlassesError: Error {
   }
   
   @objc func RN_stopScan() {
-    centralManager.stopScan()
+    centralManager!.stopScan()
     print("Stopped scanning for devices")
   }
   
   @objc func disconnect() {
     self.isDisconnecting = true
+    leftGlassUUID = nil
+    rightGlassUUID = nil
     stopReconnectionTimer()
     if let left = leftPeripheral {
-      centralManager.cancelPeripheralConnection(left)
+      centralManager!.cancelPeripheralConnection(left)
     }
     
     if let right = rightPeripheral {
-      centralManager.cancelPeripheralConnection(right)
+      centralManager!.cancelPeripheralConnection(right)
     }
     
     leftPeripheral = nil
@@ -518,7 +597,7 @@ enum GlassesError: Error {
   }
   
   private func getConnectedDevices() -> [CBPeripheral] {
-    let connectedPeripherals = centralManager.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
+    let connectedPeripherals = centralManager!.retrieveConnectedPeripherals(withServices: [UART_SERVICE_UUID])
     return connectedPeripherals
   }
   
@@ -795,17 +874,16 @@ extension ERG1Manager {
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {
     if peripheral == leftPeripheral {
       leftInitialized = success
-      print("Left arm initialized: \(success)")
+      // print("Left arm initialized: \(success)")
       setReadiness(left: true, right: nil)
     } else if peripheral == rightPeripheral {
       rightInitialized = success
-      print("Right arm initialized: \(success)")
+      // print("Right arm initialized: \(success)")
       setReadiness(left: nil, right: true)
     }
     
     // Only proceed if both glasses are initialized
     if leftInitialized && rightInitialized {
-      print("Both arms initialized")
       setReadiness(left: true, right: true)
     }
   }
@@ -817,8 +895,9 @@ extension ERG1Manager {
     
     var heartbeatArray = heartbeatData.map { UInt8($0) }
     
-    queueChunks([heartbeatArray])
-    
+    if g1Ready {
+      queueChunks([heartbeatArray])
+    }
 //    if let txChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: peripheral) {
 //      let hexString = heartbeatData.map { String(format: "%02X", $0) }.joined()
 //      peripheral.writeValue(heartbeatData, for: txChar, type: .withoutResponse)
@@ -1148,8 +1227,22 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
   }
   
   public func centralManager(_ central: CBCentralManager, didConnect peripheral: CBPeripheral) {
+    print("centralManager(_:didConnect:) device connected!: \(peripheral.name ?? "Unknown")")
     peripheral.delegate = self
     peripheral.discoverServices([UART_SERVICE_UUID])
+
+    // Store the UUIDs for future reconnection
+    if peripheral == leftPeripheral || (peripheral.name?.contains("_L_") ?? false) {
+        print("🔵 Storing left glass UUID: \(peripheral.identifier.uuidString)")
+        leftGlassUUID = peripheral.identifier
+        leftPeripheral = peripheral
+    }
+
+    if peripheral == rightPeripheral || (peripheral.name?.contains("_R_") ?? false) {
+        print("🔵 Storing right glass UUID: \(peripheral.identifier.uuidString)")
+        rightGlassUUID = peripheral.identifier
+        rightPeripheral = peripheral
+    }
     
     // Update the last connection timestamp
     lastConnectionTimestamp = Date()
@@ -1162,6 +1255,13 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       "name": peripheral.name ?? "Unknown",
       "id": peripheral.identifier.uuidString
     ]
+    
+    // tell iOS to reconnect to this, even from the background
+//    central.connect(peripheral, options: [
+//        CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+//        CBConnectPeripheralOptionNotifyOnDisconnectionKey: true,
+//        CBConnectPeripheralOptionNotifyOnNotificationKey: true
+//    ])
     
     // TODO: ios not actually used for anything yet, but we should trigger a re-connect if it was disconnected:
     //    CoreCommsService.emitter.sendEvent(withName: "onConnectionStateChanged", body: eventBody)
@@ -1223,6 +1323,46 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       reconnectionTimer?.invalidate()
       reconnectionTimer = nil
   }
+  
+  // Connect by UUID
+  @objc public func connectByUUID() -> Bool {
+      print("🔵 Attempting to connect by UUID")
+      var foundAny = false
+      
+      if let leftUUID = leftGlassUUID {
+          print("🔵 Found stored left glass UUID: \(leftUUID.uuidString)")
+          let leftDevices = centralManager!.retrievePeripherals(withIdentifiers: [leftUUID])
+          
+          if let leftDevice = leftDevices.first {
+              print("🔵 Successfully retrieved left glass: \(leftDevice.name ?? "Unknown")")
+              foundAny = true
+              leftPeripheral = leftDevice
+              leftDevice.delegate = self
+              centralManager!.connect(leftDevice, options: [
+                  CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+                  CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+              ])
+          }
+      }
+      
+      if let rightUUID = rightGlassUUID {
+          print("🔵 Found stored right glass UUID: \(rightUUID.uuidString)")
+          let rightDevices = centralManager!.retrievePeripherals(withIdentifiers: [rightUUID])
+          
+          if let rightDevice = rightDevices.first {
+              print("🔵 Successfully retrieved right glass: \(rightDevice.name ?? "Unknown")")
+              foundAny = true
+              rightPeripheral = rightDevice
+              rightDevice.delegate = self
+              centralManager!.connect(rightDevice, options: [
+                  CBConnectPeripheralOptionNotifyOnConnectionKey: true,
+                  CBConnectPeripheralOptionNotifyOnDisconnectionKey: true
+              ])
+          }
+      }
+      
+      return foundAny
+  }
 
   @objc private func attemptReconnection() {
       // Check if we're already connected
@@ -1237,7 +1377,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
           stopReconnectionTimer()
           return
       }
-      
+    
       reconnectionAttempts += 1
       print("Attempting reconnection (attempt \(reconnectionAttempts))...")
       
