@@ -37,6 +37,7 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import com.augmentos.asg_client.streaming.RtmpStreamingService;
 import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
 import com.augmentos.asg_client.bluetooth.BluetoothStateListener;
@@ -50,6 +51,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecording
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -170,6 +172,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Initialize the photo capture service
         initializePhotoCaptureService();
 
+        // Initialize streaming callbacks
+        initializeStreamingCallbacks();
+
         // Start RTMP streaming for testing
         startRtmpStreaming();
 
@@ -181,23 +186,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     /**
-     * Start the RTMP streaming service and initiate streaming
+     * Initialize streaming callbacks for RTMP status updates
      */
-    private void startRtmpStreamingService() {
-        try {
-            Log.d(TAG, "Starting RTMP streaming service for testing");
-
-            // Start the RTMP streaming service with URL
-            Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
-            String rtmpUrl = "rtmp://10.0.0.22/s/streamKey";
-            Log.d(TAG, "Setting RTMP URL: " + rtmpUrl);
-            serviceIntent.putExtra("rtmp_url", rtmpUrl);
-            startService(serviceIntent);
-
-            Log.d(TAG, "RTMP streaming initialization complete");
-        } catch (Exception e) {
-            Log.e(TAG, "Error starting RTMP streaming service", e);
-        }
+    private void initializeStreamingCallbacks() {
+        // Register for streaming status callbacks
+        com.augmentos.asg_client.streaming.RtmpStreamingService.setStreamingStatusCallback(streamingStatusCallback);
+        Log.d(TAG, "Registered RTMP streaming callbacks");
     }
 
     /**
@@ -541,11 +535,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Stop debug VPS photo timer
         stopDebugVpsPhotoUploadTimer();
 
+        // Unregister streaming callback
+        com.augmentos.asg_client.streaming.RtmpStreamingService.setStreamingStatusCallback(null);
+
         // Stop RTMP streaming if active
         try {
             org.greenrobot.eventbus.EventBus.getDefault().post(
                 new com.augmentos.asg_client.streaming.StreamingCommand.Stop()
             );
+
+            // Also use the static method as a backup
+            com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
         } catch (Exception e) {
             Log.e(TAG, "Error stopping RTMP streaming", e);
         }
@@ -1040,23 +1040,42 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                     if (rtmpUrl.isEmpty()) {
                         Log.e(TAG, "Cannot start RTMP stream - missing rtmpUrl");
-                        // TODO: Add actual implementation
-                        Log.d(TAG, "RTMP streaming not yet implemented");
+                        sendRtmpStatusResponse(false, "missing_rtmp_url", null);
                         break;
+                    }
+
+                    // Check WiFi connection first
+                    if (networkManager == null || !networkManager.isConnectedToWifi()) {
+                        Log.e(TAG, "Cannot start RTMP stream - no WiFi connection");
+                        sendRtmpStatusResponse(false, "no_wifi_connection", null);
+                        break;
+                    }
+
+                    // Check if already streaming
+                    if (com.augmentos.asg_client.streaming.RtmpStreamingService.isStreaming()) {
+                        Log.d(TAG, "RTMP stream already active - stopping current stream first");
+                        com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+                        // Short delay to ensure resources are released
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                        }
                     }
 
                     // Parse and log video settings if provided
                     if (dataToProcess.has("video")) {
                         try {
                             JSONObject videoConfig = dataToProcess.getJSONObject("video");
-                            int bitrate = videoConfig.optInt("bitrate", 250000);
-                            int width = videoConfig.optInt("width", 176);
-                            int height = videoConfig.optInt("height", 144);
-                            int fps = videoConfig.optInt("fps", 15);
+                            int bitrate = videoConfig.optInt("bitrate", 2000000);
+                            int width = videoConfig.optInt("width", 640);
+                            int height = videoConfig.optInt("height", 480);
+                            int fps = videoConfig.optInt("fps", 30);
 
                             Log.d(TAG, "RTMP video config - bitrate: " + bitrate +
                                    ", resolution: " + width + "x" + height +
                                    ", fps: " + fps);
+
+                            // TODO: In the future, these could be passed to configure the stream quality
                         } catch (Exception e) {
                             Log.e(TAG, "Error parsing video config: " + e.getMessage());
                         }
@@ -1066,9 +1085,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     if (dataToProcess.has("audio")) {
                         try {
                             JSONObject audioConfig = dataToProcess.getJSONObject("audio");
-                            int bitrate = audioConfig.optInt("bitrate", 32000);
+                            int bitrate = audioConfig.optInt("bitrate", 128000);
                             int sampleRate = audioConfig.optInt("sampleRate", 44100);
-                            boolean stereo = audioConfig.optBoolean("stereo", false);
+                            boolean stereo = audioConfig.optBoolean("stereo", true);
 
                             Log.d(TAG, "RTMP audio config - bitrate: " + bitrate +
                                    ", sampleRate: " + sampleRate +
@@ -1078,18 +1097,48 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         }
                     }
 
-                    // Placeholder for actual streaming functionality
-                    Log.d(TAG, "Would start RTMP streaming to URL: " + rtmpUrl + " (not implemented)");
+                    // Start streaming with the specified URL (callback already registered)
+                    try {
+                        com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl);
+                        Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error starting RTMP streaming", e);
+                        sendRtmpStatusResponse(false, "exception", e.getMessage());
+                    }
                     break;
 
                 case "stop_rtmp_stream":
                     Log.d(TAG, "RTMP streaming stop requested via BLE command");
-                    Log.d(TAG, "RTMP streaming stop not yet implemented");
+
+                    if (com.augmentos.asg_client.streaming.RtmpStreamingService.isStreaming()) {
+                        com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+                        sendRtmpStatusResponse(true, "stopping", null);
+                    } else {
+                        sendRtmpStatusResponse(false, "not_streaming", null);
+                    }
                     break;
 
                 case "get_rtmp_status":
                     Log.d(TAG, "RTMP status requested via BLE command");
-                    Log.d(TAG, "RTMP status check not yet implemented");
+
+                    boolean isStreaming = com.augmentos.asg_client.streaming.RtmpStreamingService.isStreaming();
+                    boolean isReconnecting = com.augmentos.asg_client.streaming.RtmpStreamingService.isReconnecting();
+
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("streaming", isStreaming);
+
+                        if (isReconnecting) {
+                            status.put("reconnecting", true);
+                            status.put("attempt", com.augmentos.asg_client.streaming.RtmpStreamingService.getReconnectAttempt());
+                        }
+
+                        // Send the status response
+                        sendRtmpStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP status response", e);
+                        sendRtmpStatusResponse(false, "json_error", e.getMessage());
+                    }
                     break;
                     
                 case "set_wifi_credentials":
@@ -1286,16 +1335,58 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             Log.d(TAG, "Starting RTMP streaming service for testing");
 
-            // Start the RTMP streaming service with RTMP URL
-            Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
-            serviceIntent.putExtra("rtmp_url", "rtmp://10.0.0.22/s/streamKey");
-            startService(serviceIntent);
+            // Use the static convenience method to start streaming (callback already registered)
+            com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(
+                    this,
+                    "rtmp://10.0.0.22/s/streamKey"
+            );
 
             Log.d(TAG, "RTMP streaming initialization complete");
         } catch (Exception e) {
             Log.e(TAG, "Error starting RTMP streaming service", e);
         }
     }
+
+    /**
+     * Stream status callback implementation
+     */
+    private final RtmpStreamingService.StreamingStatusCallback streamingStatusCallback =
+            new RtmpStreamingService.StreamingStatusCallback() {
+                @Override
+                public void onStreamStarting(String rtmpUrl) {
+                    Log.d(TAG, "RTMP Stream starting to: " + rtmpUrl);
+                }
+
+                @Override
+                public void onStreamStarted(String rtmpUrl) {
+                    Log.d(TAG, "RTMP Stream successfully started to: " + rtmpUrl);
+                }
+
+                @Override
+                public void onStreamStopped() {
+                    Log.d(TAG, "RTMP Stream stopped");
+                }
+
+                @Override
+                public void onReconnecting(int attempt, int maxAttempts, String reason) {
+                    Log.d(TAG, "RTMP Stream reconnecting: attempt " + attempt + " of " + maxAttempts + " (reason: " + reason + ")");
+                }
+
+                @Override
+                public void onReconnected(String rtmpUrl, int attempt) {
+                    Log.d(TAG, "RTMP Stream reconnected to " + rtmpUrl + " after " + attempt + " attempts");
+                }
+
+                @Override
+                public void onReconnectFailed(int maxAttempts) {
+                    Log.d(TAG, "RTMP Stream failed to reconnect after " + maxAttempts + " attempts");
+                }
+
+                @Override
+                public void onStreamError(String error) {
+                    Log.e(TAG, "RTMP Stream error: " + error);
+                }
+            };
 
     // Photo capture listener (delegated to PhotoCaptureService)
     private final PhotoCaptureService.PhotoCaptureListener photoCaptureListener = 
@@ -1373,6 +1464,69 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         } catch (JSONException e) {
             Log.e(TAG, "Error creating photo error response", e);
+        }
+    }
+
+    /**
+     * Send an RTMP status response via BLE
+     *
+     * @param success Whether the command succeeded
+     * @param status  Status message or error code
+     * @param details Additional details or error message
+     */
+    private void sendRtmpStatusResponse(boolean success, String status, String details) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "rtmp_status");
+                response.put("success", success);
+                response.put("status", status);
+
+                if (details != null) {
+                    response.put("details", details);
+                }
+
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending RTMP status: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating RTMP status response", e);
+            }
+        }
+    }
+
+    /**
+     * Send an RTMP status response with a custom status object
+     *
+     * @param success      Whether the command succeeded
+     * @param statusObject Custom status object with details
+     */
+    private void sendRtmpStatusResponse(boolean success, JSONObject statusObject) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "rtmp_status");
+                response.put("success", success);
+
+                // Merge the status object fields into the response
+                Iterator<String> keys = statusObject.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    response.put(key, statusObject.get(key));
+                }
+
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending RTMP status: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating RTMP status response", e);
+            }
         }
     }
     
