@@ -52,9 +52,9 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
   const packageName = req.query.packageName as string;
   const userId = req.query.userId as string;
 
-  console.log("apiKey: " + apiKey);
-  console.log("packageName: " + packageName);
-  console.log("userId: " + userId);
+  // console.log("apiKey: " + apiKey);
+  // console.log("packageName: " + packageName);
+  // console.log("userId: " + userId);
 
   if (apiKey && packageName && userId) {
     if (!ALLOWED_API_KEY_PACKAGES.includes(packageName)) {
