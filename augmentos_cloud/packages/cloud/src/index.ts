@@ -138,7 +138,7 @@ app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/tpa-server', tpaServerRoutes);
+// app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
 app.use('/api/tools', toolsRoutes);
 // HTTP routes for augmentOS settings are now replaced by WebSocket implementation
