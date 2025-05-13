@@ -8,23 +8,24 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.SurfaceTexture;
 import android.media.AudioFormat;
 import android.media.MediaCodecInfo;
 import android.media.MediaFormat;
 import android.os.Binder;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.util.Log;
 import android.util.Size;
+import android.view.Surface;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 import io.github.thibaultbee.streampack.data.AudioConfig;
 import io.github.thibaultbee.streampack.data.VideoConfig;
@@ -46,6 +47,10 @@ public class RtmpStreamingService extends Service {
     private CameraRtmpLiveStreamer mStreamer;
     private String mRtmpUrl;
     private boolean mIsStreaming = false;
+    private SurfaceTexture mSurfaceTexture;
+    private Surface mSurface;
+    private static final int SURFACE_WIDTH = 640;
+    private static final int SURFACE_HEIGHT = 480;
 
     public class LocalBinder extends Binder {
         public RtmpStreamingService getService() {
@@ -74,11 +79,17 @@ public class RtmpStreamingService extends Service {
         // Start as a foreground service with notification
         startForeground(NOTIFICATION_ID, createNotification());
 
-        // Launch the streaming activity if requested
+        // Get RTMP URL from intent if provided
         if (intent != null) {
             String rtmpUrl = intent.getStringExtra("rtmp_url");
-            if (intent.getBooleanExtra("launch_activity", false)) {
-                launchStreamingActivity(rtmpUrl);
+            if (rtmpUrl != null && !rtmpUrl.isEmpty()) {
+                setRtmpUrl(rtmpUrl);
+
+                // Auto-start streaming after a short delay
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    Log.d(TAG, "Auto-starting streaming");
+                    startStreaming();
+                }, 1000);
             }
         }
 
@@ -95,6 +106,9 @@ public class RtmpStreamingService extends Service {
     public void onDestroy() {
         stopStreaming();
         releaseStreamer();
+
+        // Release the surface
+        releaseSurface();
 
         // Unregister from EventBus
         if (EventBus.getDefault().isRegistered(this)) {
@@ -140,6 +154,41 @@ public class RtmpStreamingService extends Service {
         }
     }
 
+    /**
+     * Creates a SurfaceTexture and Surface for the camera preview
+     */
+    private void createSurface() {
+        if (mSurfaceTexture != null) {
+            releaseSurface();
+        }
+
+        try {
+            Log.d(TAG, "Creating surface texture");
+            mSurfaceTexture = new SurfaceTexture(0);
+            mSurfaceTexture.setDefaultBufferSize(SURFACE_WIDTH, SURFACE_HEIGHT);
+            mSurface = new Surface(mSurfaceTexture);
+            Log.d(TAG, "Surface created successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error creating surface", e);
+            EventBus.getDefault().post(new StreamingEvent.Error("Failed to create surface: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Releases the surface and surface texture
+     */
+    private void releaseSurface() {
+        if (mSurface != null) {
+            mSurface.release();
+            mSurface = null;
+        }
+
+        if (mSurfaceTexture != null) {
+            mSurfaceTexture.release();
+            mSurfaceTexture = null;
+        }
+    }
+
     @SuppressLint("MissingPermission")
     private void initStreamer() {
         if (mStreamer != null) {
@@ -148,6 +197,9 @@ public class RtmpStreamingService extends Service {
 
         try {
             Log.d(TAG, "Initializing streamer");
+
+            // Create a surface for the camera
+            createSurface();
 
             // Create new streamer with error and connection listeners
             mStreamer = new CameraRtmpLiveStreamer(
@@ -211,7 +263,7 @@ public class RtmpStreamingService extends Service {
             VideoConfig videoConfig = new VideoConfig(
                     MediaFormat.MIMETYPE_VIDEO_AVC,  // Use actual mime type instead of null
                     2000000,             // 2 Mbps
-                    new Size(640, 480),  // Lower resolution for testing
+                    new Size(SURFACE_WIDTH, SURFACE_HEIGHT),  // Match surface size
                     30,                  // 30 frames per second
                     profile,             // Default profile
                     level,               // Default level
@@ -221,6 +273,14 @@ public class RtmpStreamingService extends Service {
             // Apply configurations
             mStreamer.configure(videoConfig);
             mStreamer.configure(audioConfig);
+
+            // Start the preview with our surface
+            if (mSurface != null && mSurface.isValid()) {
+                mStreamer.startPreview(mSurface, "0"); // Using "0" for back camera
+                Log.d(TAG, "Started camera preview on surface");
+            } else {
+                Log.e(TAG, "Cannot start preview, surface is invalid");
+            }
 
             // Notify that we're ready to connect a preview
             EventBus.getDefault().post(new StreamingEvent.Ready());
@@ -343,14 +403,21 @@ public class RtmpStreamingService extends Service {
 
     /**
      * Attaches a PreviewView to the streamer for displaying camera preview
+     * This is optional and only used if you want to show the preview in an activity
      * @param previewView the PreviewView to use for preview
      */
     public void attachPreview(PreviewView previewView) {
-        if (mStreamer != null) {
-            // Set the streamer on the PreviewView
-            previewView.setStreamer(mStreamer);
+        if (mStreamer != null && previewView != null) {
+            try {
+                // Set the streamer on the PreviewView
+                previewView.setStreamer(mStreamer);
+                Log.d(TAG, "Preview view attached successfully");
+            } catch (Exception e) {
+                Log.e(TAG, "Error attaching preview", e);
+                EventBus.getDefault().post(new StreamingEvent.Error("Failed to attach preview: " + e.getMessage()));
+            }
         } else {
-            Log.e(TAG, "Cannot attach preview: streamer not initialized");
+            Log.e(TAG, "Cannot attach preview: streamer or preview view is null");
         }
     }
 
@@ -360,22 +427,6 @@ public class RtmpStreamingService extends Service {
      */
     public boolean isStreaming() {
         return mIsStreaming;
-    }
-
-    /**
-     * Launch the streaming activity
-     * @param rtmpUrl Optional RTMP URL to pass to the activity
-     */
-    public void launchStreamingActivity(String rtmpUrl) {
-        Intent intent = new Intent(this, StreamingActivity.class);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
-        if (rtmpUrl != null && !rtmpUrl.isEmpty()) {
-            intent.putExtra("rtmp_url", rtmpUrl);
-        }
-
-        startActivity(intent);
-        Log.d(TAG, "Launched StreamingActivity");
     }
 
     /**
@@ -389,8 +440,6 @@ public class RtmpStreamingService extends Service {
             stopStreaming();
         } else if (command instanceof StreamingCommand.SetRtmpUrl) {
             setRtmpUrl(((StreamingCommand.SetRtmpUrl) command).getRtmpUrl());
-        } else if (command instanceof StreamingCommand.LaunchActivity) {
-            launchStreamingActivity(((StreamingCommand.LaunchActivity) command).getRtmpUrl());
         }
     }
 }

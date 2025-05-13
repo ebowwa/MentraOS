@@ -105,12 +105,6 @@
         android:exported="false"
         android:foregroundServiceType="camera|microphone" />
 
-    <activity
-        android:name=".streaming.StreamingActivity"
-        android:exported="false"
-        android:theme="@style/AppTheme"
-        android:label="AugmentOS Streaming" />
-
       <activity
         android:name="com.augmentos.asg_client.MainActivity"
         android:exported="true"

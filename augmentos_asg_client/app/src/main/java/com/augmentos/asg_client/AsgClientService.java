@@ -187,12 +187,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             Log.d(TAG, "Starting RTMP streaming service for testing");
 
-            // Start the RTMP streaming service with launch_activity flag
+            // Start the RTMP streaming service with URL
             Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
             String rtmpUrl = "rtmp://10.0.0.22/s/streamKey";
             Log.d(TAG, "Setting RTMP URL: " + rtmpUrl);
             serviceIntent.putExtra("rtmp_url", rtmpUrl);
-            serviceIntent.putExtra("launch_activity", true);
             startService(serviceIntent);
 
             Log.d(TAG, "RTMP streaming initialization complete");
@@ -1287,10 +1286,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         try {
             Log.d(TAG, "Starting RTMP streaming service for testing");
 
-            // Start the RTMP streaming service with launch_activity flag
+            // Start the RTMP streaming service with RTMP URL
             Intent serviceIntent = new Intent(this, com.augmentos.asg_client.streaming.RtmpStreamingService.class);
             serviceIntent.putExtra("rtmp_url", "rtmp://10.0.0.22/s/streamKey");
-            serviceIntent.putExtra("launch_activity", true);
             startService(serviceIntent);
 
             Log.d(TAG, "RTMP streaming initialization complete");
