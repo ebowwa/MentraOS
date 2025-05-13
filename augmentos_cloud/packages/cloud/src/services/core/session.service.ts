@@ -142,6 +142,7 @@ export class SessionService {
     const sessionId = userId;
     const sessionLogger = createLoggerForUserSession(sessionId);
     const installedApps = await appService.getAllApps(userId); // Fetch apps first
+    sessionLogger.info(`Fetched installed apps for user ${userId}:`, installedApps);
 
     // Create partial session first to pass to manager constructor
     const partialSession: Partial<ExtendedUserSession> = {

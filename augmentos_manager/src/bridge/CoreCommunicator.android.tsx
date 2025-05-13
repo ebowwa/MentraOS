@@ -450,6 +450,15 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
+  async sendSetPreferredMic(mic: string) {
+    return await this.sendData({
+      command: 'set_preferred_mic',
+      params: {
+        mic: mic,
+      },
+    });
+  }
+
   async sendToggleContextualDashboard(enabled: boolean) {
     return await this.sendData({
       command: 'enable_contextual_dashboard',
@@ -478,7 +487,7 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async sendToggleAlwaysOnStatusBar(enabled: boolean) {
-    console.log('sendToggleAlwaysOnStatusBar');
+    console.log('111 sendToggleAlwaysOnStatusBar', enabled);
     return await this.sendData({
       command: 'enable_always_on_status_bar',
       params: {
@@ -488,6 +497,7 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async setGlassesBrightnessMode(brightness: number, autoBrightness: boolean) {
+    console.log('222 setGlassesBrightnessMode', brightness, autoBrightness);
     return await this.sendData({
       command: 'update_glasses_brightness',
       params: {

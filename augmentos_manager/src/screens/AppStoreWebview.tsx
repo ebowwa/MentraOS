@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../components/types';
 import BackendServerComms from '../backend_comms/BackendServerComms';
+import { useAppStatus } from '../providers/AppStatusProvider';
 
 // Define package name for the store webview
 const STORE_PACKAGE_NAME = 'org.augmentos.store';
@@ -23,6 +24,8 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
   const webViewRef = useRef<WebView>(null);
   const [canGoBack, setCanGoBack] = useState(false);
   const [appStoreUrl, setAppStoreUrl] = useState<string>('');
+  const {refreshAppStatus} = useAppStatus();
+
 
   // Theme colors
   const theme = {
@@ -94,6 +97,15 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
 
       return () => subscription.remove(); // Cleanup listener on blur
     }, [canGoBack]) // Re-run effect if canGoBack changes
+  );
+
+  // propagate any changes in app lists when this screen is unmounted:
+  useFocusEffect(
+    useCallback(() => {
+      return async () => {
+        await refreshAppStatus();
+      };
+    }, []),
   );
 
   // Show loading state while getting the URL

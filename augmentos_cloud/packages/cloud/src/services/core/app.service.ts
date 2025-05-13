@@ -18,6 +18,7 @@ import crypto from 'crypto';
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 const APPSTORE_ENABLED = true;
 export const PRE_INSTALLED = ["com.augmentos.livecaptions", "cloud.augmentos.notify", "cloud.augmentos.mira"];
+// export const PRE_INSTALLED = ["cloud.augmentos.live-captions-global", "cloud.augmentos.notify", "cloud.augmentos.mira"];
 
 /**
  * System TPAs that are always available.

@@ -21,4 +21,5 @@ public interface ServerCommsCallback {
     // New methods for explicit app started/stopped events
     void onAppStarted(String packageName);
     void onAppStopped(String packageName);
+    void onSettingsUpdate(JSONObject settings);
 }

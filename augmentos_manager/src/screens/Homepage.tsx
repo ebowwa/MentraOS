@@ -63,7 +63,7 @@ const Homepage: React.FC<HomepageProps> = ({ isDarkTheme, toggleTheme }) => {
 
   const checkNonProdBackend = async () => {
     const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null);
-    setNonProdBackend(url && !(url.includes('prod.augmentos.cloud')));
+    setNonProdBackend(url && (!url.includes('prod.augmentos.cloud') && !url.includes('global.augmentos.cloud')));
   }
 
   // Clear loading state if apps are loaded

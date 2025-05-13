@@ -282,11 +282,15 @@ router.post('/:tpaName', async (req, res) => {
         timestamp: new Date()
       };
 
-      const tpaConnection = userSession.appConnections.get(tpaName);
-
-
-      tpaConnection.send(JSON.stringify(settingsUpdate));
-      logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
+      try {
+        // When the user is not runnning the app, the appConnection is undefined, so we wrap it in a try/catch.
+        const tpaConnection = userSession.appConnections.get(tpaName);
+        tpaConnection.send(JSON.stringify(settingsUpdate));
+        logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
+      }
+      catch (error) {
+        logger.error('Error sending settings update via WebSocket:', error);
+      }
     }
     // Get the app to access its properties
     const app = await appService.getApp(tpaName);
