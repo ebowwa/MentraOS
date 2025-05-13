@@ -36,8 +36,75 @@ if (!CLOUD_VERSION) {
   console.error('CLOUD_VERSION is not set');
 }
 
+// Allowed package names for API key authentication
+const ALLOWED_API_KEY_PACKAGES = ['test.augmentos.mira', 'cloud.augmentos.mira', 'com.augmentos.mira'];
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+
+/**
+ * Unified authentication middleware: allows either
+ * (1) apiKey + packageName + userId (for allowed TPAs), or
+ * (2) core token in Authorization header (for user sessions)
+ */
+async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Option 1: API key authentication
+  const apiKey = req.query.apiKey as string;
+  const packageName = req.query.packageName as string;
+  const userId = req.query.userId as string;
+
+  console.log("apiKey: " + apiKey);
+  console.log("packageName: " + packageName);
+  console.log("userId: " + userId);
+
+  if (apiKey && packageName && userId) {
+    if (!ALLOWED_API_KEY_PACKAGES.includes(packageName)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Unauthorized package name'
+      });
+    }
+    const isValid = await appService.validateApiKey(packageName, apiKey);
+    if (isValid) {
+      // Only allow if a full session exists
+      const userSessions = sessionService.getSessionsForUser(userId);
+      if (userSessions && userSessions.length > 0) {
+        (req as any).userSession = userSessions[0];
+        return next();
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'No active session found for user.'
+        });
+      }
+    } else {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid API key for package.'
+      });
+    }
+  }
+
+  // Option 2: Core token authentication
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const session = await getSessionFromToken(token);
+      if (session) {
+        (req as any).userSession = session;
+        return next();
+      }
+    } catch (error) {
+      // fall through to error below
+    }
+  }
+
+  // If neither auth method worked
+  return res.status(401).json({
+    success: false,
+    message: 'Authentication required. Provide either apiKey, packageName, userId or a valid core token with an active session.'
+  });
+}
 
 /**
  * Helper function to get the active session for a user from their coreToken
@@ -91,46 +158,6 @@ async function getUserIdFromToken(token: string): Promise<string | null> {
     return null;
   }
 }
-
-/**
- * Middleware to extract session from Authorization header
- * Falls back to sessionId in body if Authorization header is not present
- */
-async function sessionAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Check for Authorization header
-  const authHeader = req.headers.authorization;
-  
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    const session = await getSessionFromToken(token);
-    
-    if (session) {
-      // Add session to request object for route handlers
-      (req as any).userSession = session;
-      (req as any).authMode = 'full';
-      next();
-      return;
-    }
-  }
-
-  // Fall back to sessionId in body
-  if (req.body && req.body.sessionId) {
-    const session = sessionService.getSession(req.body.sessionId);
-    if (session) {
-      (req as any).userSession = session;
-      (req as any).authMode = 'full';
-      next();
-      return;
-    }
-  }
-
-  // No valid session found
-  res.status(401).json({
-    success: false,
-    message: 'No valid session. Please provide valid Authorization Bearer token or sessionId.'
-  });
-}
-
 /**
  * Dual mode auth middleware - works with or without active sessions
  * If a valid token is present but no active session, creates a minimal user context
@@ -141,28 +168,10 @@ async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFun
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    
-    // Try to get full session first
+    // Try to get full session
     const session = await getSessionFromToken(token);
-    
     if (session) {
-      // Full session mode
       (req as any).userSession = session;
-      (req as any).authMode = 'full';
-      next();
-      return;
-    }
-    
-    // If no session found, try to at least verify the token for user ID
-    const userId = await getUserIdFromToken(token);
-    
-    if (userId) {
-      // Minimal auth mode - no session but valid user
-      (req as any).userSession = { 
-        userId, 
-        minimal: true
-      };
-      (req as any).authMode = 'minimal';
       next();
       return;
     }
@@ -173,7 +182,6 @@ async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFun
     const session = sessionService.getSession(req.body.sessionId);
     if (session) {
       (req as any).userSession = session;
-      (req as any).authMode = 'full';
       next();
       return;
     }
@@ -182,7 +190,7 @@ async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFun
   // No valid authentication found
   res.status(401).json({
     success: false,
-    message: 'Authentication required. Please provide valid token or session ID.'
+    message: 'Authentication required. Please provide valid token or session ID with an active session.'
   });
 }
 
@@ -232,42 +240,46 @@ const router = express.Router();
  */
 async function getAllApps(req: Request, res: Response) {
   try {
-    const session = (req as any).userSession;
-    const userId = session?.userId;
-    if (!userId) {
+    // Check API key auth first
+    const apiKey = req.query.apiKey as string;
+    const packageName = req.query.packageName as string;
+    const userId = req.query.userId as string;
+    
+    if (apiKey && packageName && userId) {
+      // Already authenticated via middleware
+      const apps = await appService.getAllApps(userId);
+      const userSessions = sessionService.getSessionsForUser(userId);
+      const enhancedApps = enhanceAppsWithSessionState(apps, userSessions);
+      return res.json({
+        success: true,
+        data: enhancedApps
+      });
+    }
+    
+    // Fall back to token auth
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required. Please provide valid token or API key.'
+      });
+    }
+
+    // Get the user ID from the token
+    const token = authHeader.substring(7);
+    const tokenUserId = await getUserIdFromToken(token);
+
+    if (!tokenUserId) {
       return res.status(401).json({
         success: false,
         message: 'User ID is required (via token or userId param)'
       });
     }
-    const apps = await appService.getAllApps(userId);
-    const userSessions = sessionService.getSessionsForUser(userId);
-    const plainApps = apps.map(app => {
-      return (app as unknown as MongooseDocument).toObject?.() || app;
-    });
-    const enhancedApps = plainApps.map(app => {
-      const enhancedApp: EnhancedAppI = {
-        ...app,
-        is_running: false,
-        is_foreground: false
-      };
-      if (userSessions && userSessions.length > 0) {
-        const isRunning = userSessions.some(session =>
-          session.activeAppSessions && session.activeAppSessions.includes(app.packageName)
-        );
-        enhancedApp.is_running = isRunning;
-        if (isRunning) {
-          const isForeground = userSessions.some(session => {
-            return (
-              (session as any).foregroundAppPackageName === app.packageName ||
-              (session as any).foregroundApp === app.packageName
-            );
-          });
-          enhancedApp.is_foreground = isForeground;
-        }
-      }
-      return enhancedApp;
-    });
+
+    const apps = await appService.getAllApps(tokenUserId);
+    const userSessions = sessionService.getSessionsForUser(tokenUserId);
+    const enhancedApps = enhanceAppsWithSessionState(apps, userSessions);
     res.json({
       success: true,
       data: enhancedApps
@@ -452,7 +464,6 @@ async function stopApp(req: Request, res: Response) {
 async function installApp(req: Request, res: Response) {
   const { packageName } = req.params;
   const session = (req as any).userSession; // Get session from middleware
-  const authMode = (req as any).authMode || 'minimal';
   const email = session.userId;
 
   if (!email || !packageName) {
@@ -500,19 +511,12 @@ async function installApp(req: Request, res: Response) {
       message: `App ${packageName} installed successfully`
     });
 
-    // Only attempt WebSocket notifications for full auth mode
-    if (authMode === 'full' && !session.minimal) {
-      console.log(`✅✅✅ Sending real-time notification for user ${email} in ${authMode} auth mode ✅✅✅`);
-      try {
-        // TriggerAppStateChange which send's a appstate change notification to the client.
-        // By default we can just use sessionService.triggerAppStateChange(), because it handles all the logic for us.
-        sessionService.triggerAppStateChange(email);
-      } catch (error) {
-        console.error('Error sending app state notification:', error);
-        // Non-critical error, installation succeeded
-      }
-    } else {
-      console.log(`⛔️⛔️⛔️ Skipping real-time notification for user ${email} in ${authMode} auth mode ⛔️⛔️⛔️`);
+    // Always attempt WebSocket notifications for full session
+    try {
+      sessionService.triggerAppStateChange(email);
+    } catch (error) {
+      console.error('Error sending app state notification:', error);
+      // Non-critical error, installation succeeded
     }
   } catch (error) {
     console.error('Error installing app:', error);
@@ -529,7 +533,6 @@ async function installApp(req: Request, res: Response) {
 async function uninstallApp(req: Request, res: Response) {
   const { packageName } = req.params;
   const session = (req as any).userSession; // Get session from middleware
-  const authMode = (req as any).authMode || 'minimal';
   const email = session.userId;
 
   if (!email || !packageName) {
@@ -568,18 +571,12 @@ async function uninstallApp(req: Request, res: Response) {
       message: `App ${packageName} uninstalled successfully`
     });
 
-    // Only attempt WebSocket notifications for full auth mode
-    if (authMode === 'full' && !session.minimal) {
-      try {
-        // TriggerAppStateChange which send's a appstate change notification to the client.
-        // By default we can just use sessionService.triggerAppStateChange(), because it handles all the logic for us.
-        sessionService.triggerAppStateChange(email);
-      } catch (error) {
-        console.error('Error sending app state notification:', error);
-        // Non-critical error, uninstallation succeeded
-      }
-    } else {
-      console.log(`Skipping real-time notification for user ${email} in ${authMode} auth mode`);
+    // Always attempt WebSocket notifications for full session
+    try {
+      sessionService.triggerAppStateChange(email);
+    } catch (error) {
+      console.error('Error sending app state notification:', error);
+      // Non-critical error, uninstallation succeeded
     }
   } catch (error) {
     console.error('Error uninstalling app:', error);
@@ -595,13 +592,9 @@ async function uninstallApp(req: Request, res: Response) {
  */
 async function getInstalledApps(req: Request, res: Response) {
   const session = (req as any).userSession; // Get session from middleware
-  const authMode = (req as any).authMode || 'minimal';
   const email = session.userId;
 
   try {
-    // Log authentication mode for debugging
-    console.log(`Getting installed apps for user ${email} in ${authMode} mode`);
-    
     const user = await User.findByEmail(email);
     if (!user) {
       return res.status(404).json({
@@ -730,7 +723,7 @@ async function getAvailableApps (req: Request, res: Response) {
 };
 
 // Route Definitions
-router.get('/', apiKeyOrSessionAuthMiddleware, getAllApps);
+router.get('/', unifiedAuthMiddleware, getAllApps);
 router.get('/public', getPublicApps);
 router.get('/search', searchApps);
 
@@ -752,8 +745,40 @@ router.get('/version', async (req, res) => {
 router.get('/available', getAvailableApps);
 router.get('/:packageName', getAppByPackage);
 
-// Device-specific operations - require full sessions
-router.post('/:packageName/start', apiKeyOrSessionAuthMiddleware, startApp);
-router.post('/:packageName/stop', apiKeyOrSessionAuthMiddleware, stopApp);
+// Device-specific operations - use unified auth
+router.post('/:packageName/start', unifiedAuthMiddleware, startApp);
+router.post('/:packageName/stop', unifiedAuthMiddleware, stopApp);
+
+// Helper to enhance apps with running/foreground state
+/**
+ * Enhances a list of apps (SDK AppI or local AppI) with running/foreground state.
+ * Accepts AppI[] from either @augmentos/sdk or local model.
+ */
+function enhanceAppsWithSessionState(apps: any[], userSessions: any[]): EnhancedAppI[] {
+  const plainApps = apps.map(app => {
+    return (app as any).toObject?.() || app;
+  });
+  return plainApps.map(app => {
+    const enhancedApp: EnhancedAppI = {
+      ...app,
+      is_running: false,
+      is_foreground: false
+    };
+    if (userSessions && userSessions.length > 0) {
+      const isRunning = userSessions.some(session =>
+        session.activeAppSessions && session.activeAppSessions.includes(app.packageName)
+      );
+      enhancedApp.is_running = isRunning;
+      if (isRunning) {
+        const isForeground = userSessions.some(session =>
+          (session as any).foregroundAppPackageName === app.packageName ||
+          (session as any).foregroundApp === app.packageName
+        );
+        enhancedApp.is_foreground = isForeground;
+      }
+    }
+    return enhancedApp;
+  });
+}
 
 export default router;

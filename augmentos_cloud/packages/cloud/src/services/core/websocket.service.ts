@@ -603,7 +603,15 @@ export class WebSocketService {
       }
 
       // Check if we need to update microphone state for media subscriptions
-      if (userSession.websocket) {
+      if (userSession.websocket && userSession.websocket.readyState === 1) {
+        // Send explicit app_started message
+        const appStartedMessage = {
+          type: 'app_started',
+          packageName,
+          timestamp: new Date(),
+        };
+        userSession.websocket.send(JSON.stringify(appStartedMessage));
+
         const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
         if (mediaSubscriptions) {
           userSession.logger.info('Media subscriptions detected after starting app, updating microphone state');
@@ -690,7 +698,15 @@ export class WebSocketService {
       userSession.displayManager.handleAppStop(packageName, userSession);
 
       // Check if we need to update microphone state based on remaining apps
-      if (userSession.websocket) {
+      if (userSession.websocket && userSession.websocket.readyState === 1) {
+        // Send explicit app_stopped message
+        const appStoppedMessage = {
+          type: 'app_stopped',
+          packageName,
+          timestamp: new Date(),
+        };
+        userSession.websocket.send(JSON.stringify(appStoppedMessage));
+
         const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
         if (!mediaSubscriptions) {
           userSession.logger.info('No media subscriptions after stopping app, updating microphone state');
