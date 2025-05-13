@@ -1159,6 +1159,10 @@ struct ViewState {
       // we don't need to search for a virtual device
       return
     }
+
+    if (self.defaultWearable.isEmpty) {
+      return
+    }
     
     self.isSearching = true
     handleRequestStatus()// update the UI
@@ -1175,6 +1179,7 @@ struct ViewState {
         self.g1Manager?.RN_pairById(self.deviceName)
       } else {
         print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+        
       }
     }
     

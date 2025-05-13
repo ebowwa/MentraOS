@@ -341,7 +341,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
         );
       case 'text':
         return (
-          <TextSetting
+          <TextSettingNoSave
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
