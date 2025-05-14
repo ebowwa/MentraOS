@@ -7,7 +7,7 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -54,6 +54,12 @@ export const SYSTEM_APPS: AppI[] = [
     description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
     publicUrl: `http://${systemApps.dashboard.host}`,
     logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
+    permissions: [
+      {
+        type: PermissionType.ALL,
+        description: "The dashboard app needs access to everything to provide a seamless experience."
+      }
+    ],
   },
 ];
 

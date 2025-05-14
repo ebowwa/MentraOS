@@ -13,6 +13,12 @@ export enum PermissionType {
   ALL = 'ALL'
 }
 
+// Permission interface
+export interface Permission {
+  type: PermissionType;
+  description?: string;
+}
+
 // Extend the AppI interface for our MongoDB document
 export interface AppI extends _AppI, Document {
   createdAt: Date;
@@ -28,11 +34,6 @@ export interface AppI extends _AppI, Document {
   permissions?: Permission[];
 }
 
-// Permission interface
-export interface Permission {
-  type: PermissionType;
-  description?: string;
-}
 
 // Using existing schema with flexible access
 const AppSchema = new Schema({

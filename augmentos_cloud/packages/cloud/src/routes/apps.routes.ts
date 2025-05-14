@@ -590,7 +590,19 @@ async function uninstallApp(req: Request, res: Response) {
     if (authMode === 'full' && !session.minimal) {
       try {
         // TriggerAppStateChange which send's a appstate change notification to the client.
-        // By default we can just use sessionService.triggerAppStateChange(), because it handles all the logic for us.
+        // Try to stop app before uninstalling.
+        try {
+          const userSession = sessionService.getSession(email);
+          if (userSession) {
+            await webSocketService.stopAppSession(userSession, packageName);
+          }
+          else {
+            console.warn(`Unable to ensure app is stopped before uninstalling, ${email} does not have an active session on this server.`, email, packageName);
+          }
+          await webSocketService.stopAppSession(session, packageName);
+        } catch (error) {
+          console.error('Error stopping app during uninstall:', error);
+        }
         sessionService.triggerAppStateChange(email);
       } catch (error) {
         console.error('Error sending app state notification:', error);

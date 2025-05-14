@@ -1,7 +1,7 @@
 "on":
     push:
         branches:
-            - isaiah/tpa-reload
+            - isaiah/permissions
 name: 🚀 [debug] Porter.run Deploy
 jobs:
     porter-deploy:
