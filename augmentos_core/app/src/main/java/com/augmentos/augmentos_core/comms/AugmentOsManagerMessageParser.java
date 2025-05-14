@@ -74,6 +74,13 @@ public class AugmentOsManagerMessageParser {
                     callback.setContextualDashboardEnabled(dashboardEnabled);
                     break;
 
+                case "set_metric_system_enabled":
+                    // Log.d(TAG, "GOT A COMMAND TO SET METRIC SYSTEM ENABLED");
+                    boolean metricSystemEnabled = commandObject.getJSONObject("params").getBoolean("enabled");
+                    // Log.d(TAG, "Metric system enabled: " + metricSystemEnabled);
+                    callback.setMetricSystemEnabled(metricSystemEnabled);
+                    break;
+
                 case "bypass_vad_for_debugging":
                     boolean bypassVadForDebugging = commandObject.getJSONObject("params").getBoolean("enabled");
                     callback.setBypassVadForDebugging(bypassVadForDebugging);

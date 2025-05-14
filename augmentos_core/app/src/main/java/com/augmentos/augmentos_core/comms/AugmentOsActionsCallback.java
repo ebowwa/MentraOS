@@ -15,6 +15,7 @@ public interface AugmentOsActionsCallback {
     void setSensingEnabled(boolean sensingEnabled);
     void setForceCoreOnboardMic(boolean forceCoreOnboardMic);
     void setContextualDashboardEnabled(boolean contextualDashboardEnabled);
+    void setMetricSystemEnabled(boolean metricSystemEnabled);
     void setBypassVadForDebugging(boolean bypassVadForDebugging);
     void setBypassAudioEncodingForDebugging(boolean bypassAudioEncodingForDebugging);
     void setAlwaysOnStatusBarEnabled(boolean alwaysOnStatusBarEnabled);

@@ -551,18 +551,6 @@ public class ServerComms {
         }
     }
 
-    public void sendSettingsUpdateRequest() {
-        try {
-            Log.d(TAG, "Sending settings_update_request");
-            JSONObject event = new JSONObject();
-            event.put("type", "settings_update_request");
-            event.put("timestamp", System.currentTimeMillis());
-            wsManager.sendText(event.toString());
-        } catch (JSONException e) {
-            Log.e(TAG, "Error building settings_update_request JSON", e);
-        }
-    }
-
     // ------------------------------------------------------------------------
     // INTERNAL: Message Handling
     // ------------------------------------------------------------------------
@@ -590,7 +578,7 @@ public class ServerComms {
                     // Log.d(TAG, "Apps installed: " + msg);
                     serverCommsCallback.onAppStateChange(parseAppList(msg));
                     serverCommsCallback.onConnectionAck();
-                    sendSettingsUpdateRequest();
+                    requestSettingsFromServer();
                 }
                 break;
 
