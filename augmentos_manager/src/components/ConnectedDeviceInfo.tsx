@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/FontAwesome';
@@ -98,11 +98,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
     if (!requirementsCheck.isReady) {
       // Show alert about missing requirements
       console.log('Requirements not met, showing banner with message:', requirementsCheck.message);
-      GlobalEventEmitter.emit('SHOW_BANNER', { 
-        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings', 
-        type: 'error' 
+      GlobalEventEmitter.emit('SHOW_BANNER', {
+        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
+        type: 'error'
       });
-      
+
       return;
     }
 
@@ -118,9 +118,9 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
     } catch (error) {
       console.error('connect to glasses error:', error);
       setConnectButtonDisabled(false);
-      GlobalEventEmitter.emit('SHOW_BANNER', { 
-        message: 'Failed to connect to glasses', 
-        type: 'error' 
+      GlobalEventEmitter.emit('SHOW_BANNER', {
+        message: 'Failed to connect to glasses',
+        type: 'error'
       });
     }
   };
@@ -138,7 +138,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
   // New handler: if already connecting, pressing the button calls disconnect.
   const handleConnectOrDisconnect = async () => {
-    if (isConnectButtonDisabled || status.glasses_info?.is_searching) {
+    if (isConnectButtonDisabled || status.core_info.is_searching) {
       await sendDisconnectWearable();
     } else {
       await connectGlasses();
@@ -162,10 +162,10 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
 
   // Determine the button style for connecting glasses
   const getConnectButtonStyle = () => {
-      return status.glasses_info?.is_searching ?
-        styles.connectingButton :
-          isConnectButtonDisabled ? styles.disabledButton :
-                                    styles.connectButton;
+    return status.core_info.is_searching ?
+      styles.connectingButton :
+      isConnectButtonDisabled ? styles.disabledButton :
+        styles.connectButton;
   };
 
   return (
@@ -176,13 +176,13 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
           {microphoneActive && (
             <Icon name="microphone" size={20} color="#4CAF50" />
           )}
-          
+
           {/* Centered flex space */}
-          <View style={{flex: 1}} />
-          
+          <View style={{ flex: 1 }} />
+
           {/* WiFi Status Indicator */}
           {status.glasses_info && status.glasses_info.glasses_use_wifi === true && (
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.wifiContainer}
               onPress={() => {
                 if (status.glasses_info) {
@@ -208,7 +208,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
           )}
         </View>
       )}
-      
+
       {status.core_info.puck_connected ? (
         <>
           {status.core_info.default_wearable ? (
@@ -232,9 +232,9 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
                         <>
                           <Text style={[styles.statusLabel, { color: themeStyles.statusLabelColor }]}>Battery</Text>
                           <View style={styles.batteryContainer}>
-                          {status.glasses_info?.battery_life >= 0 &&
-                            <Icon name={batteryIcon} size={16} color={batteryColor} style={styles.batteryIcon} />
-                          }
+                            {status.glasses_info?.battery_life >= 0 &&
+                              <Icon name={batteryIcon} size={16} color={batteryColor} style={styles.batteryIcon} />
+                            }
                             <Text style={[styles.batteryValue, { color: batteryColor }]}>
                               {status.glasses_info.battery_life == -1
                                 ? "-"
@@ -246,13 +246,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
                     </View>
 
                     <View style={styles.statusInfo}>
-                      {status.glasses_info?.brightness != null &&
+                      {status.glasses_settings?.brightness != null &&
                         <>
                           <Text style={[styles.statusLabel, { color: themeStyles.statusLabelColor }]}>Brightness</Text>
                           <Text style={[styles.statusValue, { color: themeStyles.statusValueColor }]}>
-                            {status.glasses_info
-                              ? `${status.glasses_info.brightness}`
-                              : "-"}
+                            {status.glasses_settings.brightness}
                           </Text>
                         </>
                       }
@@ -275,12 +273,12 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
                   <TouchableOpacity
                     style={getConnectButtonStyle()}
                     onPress={handleConnectOrDisconnect}
-                    disabled={isConnectButtonDisabled && !status.glasses_info?.is_searching}
+                    disabled={isConnectButtonDisabled && !status.core_info.is_searching}
                   >
                     <Text style={styles.buttonText}>
-                      {isConnectButtonDisabled || status.glasses_info?.is_searching ? 'Connecting Glasses...' : 'Connect Glasses'}
+                      {isConnectButtonDisabled || status.core_info.is_searching ? 'Connecting Glasses...' : 'Connect Glasses'}
                     </Text>
-                    {status.glasses_info?.is_searching && (
+                    {status.core_info.is_searching && (
                       <ActivityIndicator size="small" color="#fff" style={{ marginLeft: 5 }} />
                     )}
                   </TouchableOpacity>
@@ -289,7 +287,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({ isDarkTheme }
             </View>
           ) : (
             <>
-              {status.glasses_info?.is_searching ? (
+              {status.core_info.is_searching ? (
                 <View style={styles.disconnectedContent}>
                   <Text style={[styles.connectText, { color: themeStyles.textColor }]}>
                     Searching for glasses

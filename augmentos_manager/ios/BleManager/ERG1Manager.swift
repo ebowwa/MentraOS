@@ -617,7 +617,7 @@ enum GlassesError: Error {
     guard let command = data.first else { return }// ensure the data isn't empty
     
     let side = peripheral == leftPeripheral ? "left" : "right"
-//    print("received from G1 (\(side)): \(data.hexEncodedString())")
+    print("received from G1 (\(side)): \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -1008,7 +1008,11 @@ extension ERG1Manager {
       lvl = 0x29
     }
     
-    let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
+//    let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
+//    
+//    queueChunks([command])
+    
+    let command: [UInt8] = [0x3E]
     
     queueChunks([command])
     

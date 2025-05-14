@@ -510,7 +510,7 @@ export class CoreCommunicator extends EventEmitter {
       command: 'update_glasses_brightness',
       params: {
         brightness: brightness,
-        autoLight: autoBrightness,
+        autoBrightness: autoBrightness,
       },
     });
   }
@@ -528,6 +528,13 @@ export class CoreCommunicator extends EventEmitter {
     return await this.sendData({
       command: 'update_glasses_dashboard_height',
       params: {height: dashboardHeight},
+    });
+  }
+
+  async setGlassesDepth(depth: number) {
+    return await this.sendData({
+      command: 'update_glasses_depth',
+      params: {depth: depth},
     });
   }
 

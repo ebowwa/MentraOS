@@ -43,6 +43,7 @@ struct ViewState {
   private var batteryLevel = -1;
   private var autoBrightness: Bool = false;
   private var dashboardHeight: Int = 4;
+  private var depth: Int = 5;
   private var sensingEnabled: Bool = true;
   private var isSearching: Bool = false;
   private var alwaysOnStatusBar: Bool = false;
@@ -716,6 +717,7 @@ struct ViewState {
       case updateGlassesHeadUpAngle = "update_glasses_headUp_angle"
       case updateGlassesBrightness = "update_glasses_brightness"
       case updateGlassesDashboardHeight = "update_glasses_dashboard_height"
+      case updateGlassesDepth = "update_glasses_depth"
       case enableSensing = "enable_sensing"
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case bypassVad = "bypass_vad_for_debugging"
@@ -846,7 +848,7 @@ struct ViewState {
           handleRequestStatus()// to update the UI
           break
         case .updateGlassesBrightness:
-          guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoLight"] as? Bool else {
+          guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoBrightness"] as? Bool else {
             print("update_glasses_brightness invalid params")
             break
           }
@@ -860,7 +862,7 @@ struct ViewState {
             } else {
               sendText("Set brightness to \(value)%")
             }
-            try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
             sendText(" ")// clear screen
           }
           saveSettings()
@@ -881,6 +883,20 @@ struct ViewState {
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .updateGlassesDepth:
+          guard let params = params, let value = params["depth"] as? Int else {
+            print("update_glasses_depth invalid params")
+            break
+          }
+          self.depth = value
+          Task {
+            // self.g1Manager?.RN_setDashboardPosition(value)
+            // sendText("Set dashboard position to \(value)")
+            // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            // sendText(" ")// clear screen
+            // todo: update the depth
+          }
+          saveSettings()
         case .enableSensing:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
             print("enable_sensing invalid params")
@@ -963,6 +979,7 @@ struct ViewState {
     
     // also referenced as glasses_info:
     var connectedGlasses: [String: Any] = [:];
+    var glassesSettings: [String: Any] = [:];
 
     connectedGlasses = [
       "is_searching": self.isSearching,
@@ -972,8 +989,6 @@ struct ViewState {
     if (self.defaultWearable == "Simulated Glasses") {
       connectedGlasses = [
         "model_name": self.defaultWearable,
-        "auto_brightness": false,
-        "is_searching": self.isSearching,
       ]
       self.somethingConnected = true
     }
@@ -982,14 +997,17 @@ struct ViewState {
       connectedGlasses = [
         "model_name": self.defaultWearable,
         "battery_life": self.batteryLevel,
-        "headUp_angle": self.headUpAngle,
-        "brightness": self.autoBrightness ? "AUTO" : "\(self.brightness)%",
-        "auto_brightness": self.autoBrightness,
-        "dashboard_height": self.dashboardHeight,
-        "is_searching": self.isSearching,
       ]
       self.somethingConnected = true
     }
+
+    glassesSettings = [
+        "brightness": self.autoBrightness ? "AUTO" : "\(self.brightness)%",
+        "auto_brightness": self.autoBrightness,
+        "dashboard_height": self.dashboardHeight,
+        "depth": self.depth,
+        "headUp_angle": self.headUpAngle,
+    ]
     
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
     
@@ -999,6 +1017,7 @@ struct ViewState {
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
       "preferred_mic": self.preferredMic,
+      "is_searching": self.isSearching,
       // only on if recording from glasses:
       // todo: this isn't robust:
       "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses"),
@@ -1034,6 +1053,7 @@ struct ViewState {
     
     let statusObj: [String: Any] = [
       "connected_glasses": connectedGlasses,
+      "glasses_settings": glassesSettings,
       "apps": apps,
       "core_info": coreInfo,
       "auth": authObj
@@ -1127,7 +1147,9 @@ struct ViewState {
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setDashboardPosition(dashboardHeight)
-      try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      // self.g1Manager?.RN_setDepth(depth)
+      // try? await Task.sleep(nanoseconds: 400_000_000)
 //      playStartupSequence()
       sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -1217,6 +1239,7 @@ struct ViewState {
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
     static let dashboardHeight = "dashboardHeight"
+    static let depth = "depth"
     static let alwaysOnStatusBar = "alwaysOnStatusBar"
     static let bypassVad = "bypassVad"
     static let bypassAudioEncoding = "bypassAudioEncoding"
@@ -1247,6 +1270,7 @@ struct ViewState {
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
+    defaults.set(depth, forKey: SettingsKeys.depth)
     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
     defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
     defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
@@ -1279,6 +1303,7 @@ struct ViewState {
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
+    depth = defaults.integer(forKey: SettingsKeys.depth)
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
