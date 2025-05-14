@@ -59,16 +59,14 @@ const Routes: React.FC<{ isDarkTheme: boolean, toggleTheme: () => void }> = ({ i
   const [currentRouteName, setCurrentRouteName] = useState<string>('');
   const navigationRef = useNavigationContainerRef();
   const { user } = useAuth();
-
-
-  // Screens where the navbar should be hidden
-  const hideNavbarScreens = [
-    'Login',
-    'SplashScreen',
-    'VerifyEmailScreen',
-    'VersionUpdateScreen',
-    'WelcomePage',
-    'ConnectingToPuck',
+  
+  // Only show navbar on these top-level screens
+  const showNavbarScreens = [
+    'Home',
+    'GlassesMirror',
+    'AppStore',
+    'AppStoreWeb',
+    'SettingsPage'
   ];
 
   const linking = {
@@ -530,18 +528,12 @@ const Routes: React.FC<{ isDarkTheme: boolean, toggleTheme: () => void }> = ({ i
             </Stack.Screen>
           </Stack.Navigator>
         </View>
-        {!hideNavbarScreens.includes(currentRouteName) && (
-          <View
-            style={{
-              marginTop: -30, // Adjusted to close gap
-              backgroundColor: isDarkTheme
-                ? '#000000'
-                : '#F2F2F7', // Match navbar color
-            }}>
-            <NavigationBar
-              isDarkTheme={isDarkTheme}
-              toggleTheme={toggleTheme}
-            />
+        {showNavbarScreens.includes(currentRouteName) && (
+          <View style={{
+            marginTop: -30, // Adjusted to close gap
+            backgroundColor: isDarkTheme ? '#000000' : '#F2F2F7', // Match navbar color
+          }}>
+            <NavigationBar isDarkTheme={isDarkTheme} toggleTheme={toggleTheme} />
           </View>
         )}
       </View>
