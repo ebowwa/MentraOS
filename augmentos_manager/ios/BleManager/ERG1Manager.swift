@@ -122,6 +122,7 @@ enum GlassesError: Error {
   let DELAY_BETWEEN_SENDS_MS: UInt64 = 8_000_000 // 8ms
   let INITIAL_CONNECTION_DELAY_MS: UInt64 = 350_000_000 // 350ms
   public var textHelper = G1Text()
+  var msgId = 100;
   
   public static let _bluetoothQueue = DispatchQueue(label: "BluetoothG1", qos: .userInitiated)
   
@@ -275,9 +276,7 @@ enum GlassesError: Error {
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
-    // Use Task to handle async operations properly
     Task {
-      
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
       
@@ -295,6 +294,24 @@ enum GlassesError: Error {
       command.append(contentsOf: Array(textData))
       self.queueChunks([command])
     }
+    
+    // @@@@@@@@ just for testing:
+//    Task {
+//      msgId += 1
+//      let ncsNotification = NCSNotification(
+//          msgId: msgId,
+//          appIdentifier: "io.heckel.ntfy",
+//          title: "Notification Title",
+//          subtitle: "Notification Subtitle",
+//          message: text,
+//          displayName: "Example App"
+//      )
+//
+//      let notification = G1Notification(ncsNotification: ncsNotification)
+//      let encodedChunks = await notification.constructNotification()
+//      print("encodedChunks: \(encodedChunks.count)")
+//      self.queueChunks(encodedChunks)
+//    }
   }
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
@@ -305,9 +322,7 @@ enum GlassesError: Error {
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
-    Task {
-      queueChunks(chunks, sleepAfterMs: 50)
-    }
+    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {

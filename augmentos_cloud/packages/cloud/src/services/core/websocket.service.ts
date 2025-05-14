@@ -64,11 +64,10 @@ import { PosthogService } from '../logging/posthog.service';
 import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
-import tpaRegistrationService from './tpa-registration.service';
-import healthMonitorService from './health-monitor.service';
 import axios from 'axios';
 import { SessionService } from './session.service';
 import { getSessionService } from './session.service';
+import { DisconnectInfo } from './HeartbeatManager';
 
 export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
 export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
@@ -92,8 +91,10 @@ logger.info(`🔥🔥🔥 [websocket.service]: CLOUD_LOCAL_HOST_NAME: ${CLOUD_LO
 const WebSocketServer = WebSocket.Server || WebSocket.WebSocketServer;
 
 // Constants
-const TPA_SESSION_TIMEOUT_MS = 5000;  // 30 seconds
+const TPA_SESSION_TIMEOUT_MS = 5000;  // 5 seconds
 const LOG_AUDIO = false;               // Whether to log audio processing details
+const AUTO_RESTART_APPS = true;        // Whether to automatically try to restart apps after disconnection
+const AUTO_RESTART_DELAY_MS = 500;     // Delay before attempting auto-restart
 type MicrophoneStateChangeDebouncer = { timer: ReturnType<typeof setTimeout> | null; lastState: boolean; lastSentState: boolean };
 
 const DEFAULT_AUGMENTOS_SETTINGS = {
@@ -603,7 +604,15 @@ export class WebSocketService {
       }
 
       // Check if we need to update microphone state for media subscriptions
-      if (userSession.websocket) {
+      if (userSession.websocket && userSession.websocket.readyState === 1) {
+        // Send explicit app_started message
+        const appStartedMessage = {
+          type: 'app_started',
+          packageName,
+          timestamp: new Date(),
+        };
+        userSession.websocket.send(JSON.stringify(appStartedMessage));
+
         const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
         if (mediaSubscriptions) {
           userSession.logger.info('Media subscriptions detected after starting app, updating microphone state');
@@ -690,7 +699,15 @@ export class WebSocketService {
       userSession.displayManager.handleAppStop(packageName, userSession);
 
       // Check if we need to update microphone state based on remaining apps
-      if (userSession.websocket) {
+      if (userSession.websocket && userSession.websocket.readyState === 1) {
+        // Send explicit app_stopped message
+        const appStoppedMessage = {
+          type: 'app_stopped',
+          packageName,
+          timestamp: new Date(),
+        };
+        userSession.websocket.send(JSON.stringify(appStoppedMessage));
+
         const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSession.sessionId);
         if (!mediaSubscriptions) {
           userSession.logger.info('No media subscriptions after stopping app, updating microphone state');
@@ -816,9 +833,11 @@ export class WebSocketService {
     const startTimestamp = new Date();
 
 
-    // Register this connection with the health monitor
-    healthMonitorService.registerGlassesConnection(ws);
+    // Create the user session
     const userSession = await this.getSessionService().createSession(ws, userId);
+    
+    // Register this connection with the HeartbeatManager
+    userSession.heartbeatManager.registerGlassesConnection(ws);
 
     // Set up the audio buffer processing interval
     // if (userSession.audioBuffer) {
@@ -858,7 +877,7 @@ export class WebSocketService {
         }
 
         // Update the last activity timestamp for this connection
-        healthMonitorService.updateGlassesActivity(ws);
+        userSession.heartbeatManager.updateGlassesActivity(ws);
         // console.log("🔥🔥🔥: Received message from glasses:", message);
 
         // Handle JSON messages
@@ -876,7 +895,7 @@ export class WebSocketService {
     // Set up ping handler to track connection health
     ws.on('ping', () => {
       // Update activity whenever a ping is received
-      healthMonitorService.updateGlassesActivity(ws);
+      userSession.heartbeatManager.updateGlassesActivity(ws);
       // Send pong response
       try {
         ws.pong();
@@ -886,8 +905,12 @@ export class WebSocketService {
     });
 
     const RECONNECT_GRACE_PERIOD_MS = 1000 * 60 * 1; // 1 minute
-    ws.on('close', () => {
-      userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}`);
+    ws.on('close', (code: number, reason: string) => {
+      // Capture detailed disconnect information
+      const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
+      
+      userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}, reason: ${disconnectInfo?.reason || 'unknown'}`);
+      
       // Mark the session as disconnected but do not remove it immediately
       this.getSessionService().markSessionDisconnected(userSession);
 
@@ -900,20 +923,26 @@ export class WebSocketService {
         }
       }, RECONNECT_GRACE_PERIOD_MS);
 
-      // Track disconnection event in posthog
+      // Track disconnection event in posthog with more detailed information
       const endTimestamp = new Date();
       const connectionDuration = endTimestamp.getTime() - startTimestamp.getTime();
       PosthogService.trackEvent('disconnected', userSession.userId, {
         userId: userSession.userId,
         sessionId: userSession.sessionId,
         timestamp: new Date().toISOString(),
-        duration: connectionDuration
+        duration: connectionDuration,
+        disconnectReason: disconnectInfo?.reason || 'unknown',
+        disconnectCode: disconnectInfo?.code || 0
       });
     });
 
     // TODO(isaiahb): Investigate if we really need to destroy the session on an error.
     ws.on('error', (error) => {
       userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
+      
+      // Unregister from heartbeat manager
+      userSession.heartbeatManager.unregisterConnection(ws);
+      
       this.getSessionService().endSession(userSession);
       ws.close();
     });
@@ -1342,14 +1371,15 @@ export class WebSocketService {
       currentAppSession = appSessionId;
     }
     let userSessionId = '';
-    let userSession: UserSession | null = null;
+    let userSession: ExtendedUserSession | null = null;
 
-    // Register this connection with the health monitor
-    healthMonitorService.registerTpaConnection(ws);
+    // Note: Will register with HeartbeatManager after we know which session/TPA this belongs to
 
     ws.on('message', async (data: Buffer | string, isBinary: boolean) => {
-      // Update activity timestamp whenever a message is received
-      healthMonitorService.updateTpaActivity(ws);
+      // Update activity timestamp if we have a user session
+      if (userSession) {
+        userSession.heartbeatManager.updateTpaActivity(ws);
+      }
 
       if (isBinary) {
         userSession?.logger.warn('Received unexpected binary message from TPA');
@@ -1559,8 +1589,9 @@ export class WebSocketService {
     // Set up ping handler to track connection health
     ws.on('ping', () => {
       // Update activity whenever a ping is received
-      healthMonitorService.updateTpaActivity(ws);
-      console.log("🔥🔥🔥: Received ping from TPA");
+      if (userSession) {
+        userSession.heartbeatManager.updateTpaActivity(ws);
+      }
       // Send pong response
       try {
         ws.pong();
@@ -1569,7 +1600,7 @@ export class WebSocketService {
       }
     });
 
-    ws.on('close', () => {
+    ws.on('close', async (code: number, reason: string) => {
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
@@ -1580,14 +1611,120 @@ export class WebSocketService {
           return;
         }
 
+        // Capture detailed disconnect information
+        const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
+        
         // Clean up the connection 
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
 
-        // Log the disconnection
-        userSession.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
+        // Log the disconnection with reason
+        userSession.logger.info(
+          `[websocket.service]: TPA session ${currentAppSession} disconnected: ` +
+          `reason=${disconnectInfo?.reason || 'unknown'}, code=${code}`
+        );
+        
+        // [IMPROVED APP STATE CONSISTENCY WITH RECONNECTION GRACE PERIOD]
+        // Check if the app is still in the active sessions list and handle potential reconnection
+        if (userSession.activeAppSessions.includes(packageName)) {
+          const wasExplicitStop = disconnectInfo?.reason === 'explicit_stop';
+          
+          if (!wasExplicitStop) {
+            // Store reconnection timer in a map if it doesn't already exist there
+            if (!userSession._reconnectionTimers) {
+              userSession._reconnectionTimers = new Map();
+            }
+            
+            // Clear any existing timer for this package
+            if (userSession._reconnectionTimers.has(packageName)) {
+              clearTimeout(userSession._reconnectionTimers.get(packageName));
+            }
+            
+            userSession.logger.info(
+              `[websocket.service]: Starting 5-second reconnection grace period for ${packageName}. ` +
+              `Disconnect reason: ${disconnectInfo?.reason || 'unknown'}, code: ${code}`
+            );
+            
+            // Set a 5-second timer before removing from active sessions
+            const timerId = setTimeout(async () => {
+              // Check if the app is still in active sessions and not reconnected
+              if (userSession.activeAppSessions.includes(packageName) && 
+                  !userSession.appConnections.has(packageName)) {
+                
+                userSession.logger.warn(
+                  `[websocket.service]: Reconnection grace period expired for ${packageName}. ` +
+                  `Removing from active app sessions to prevent zombie app state.`
+                );
+                
+                // Remove the app from active sessions after grace period
+                userSession.activeAppSessions = userSession.activeAppSessions.filter(
+                  (appName) => appName !== packageName
+                );
+                
+                // Try to update database if possible
+                try {
+                  const user = await User.findByEmail(userSession.userId);
+                  if (user) {
+                    await user.removeRunningApp(packageName);
+                  }
+                } catch (dbError) {
+                  userSession.logger.error(`Error updating user's running apps:`, dbError);
+                }
+                
+                // Update the glasses client with new app state to ensure UI correctness
+                try {
+                  if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
+                    const appStateChange = await this.generateAppStateStatus(userSession);
+                    userSession.websocket.send(JSON.stringify(appStateChange));
+                    userSession.logger.info(`Sent updated app state to glasses after grace period for ${packageName}`);
+                  }
+                } catch (updateError) {
+                  userSession.logger.error(`Error updating glasses client app state:`, updateError);
+                }
+                
+                // Update the display to reflect the app's removal
+                try {
+                  userSession.displayManager.handleAppStop(packageName, userSession);
+                } catch (displayError) {
+                  userSession.logger.error(`Error updating display after grace period:`, displayError);
+                }
+                
+                // Clean up the timer reference
+                userSession._reconnectionTimers?.delete(packageName);
+                
+                // Auto-restart the app if enabled
+                if (AUTO_RESTART_APPS) {
+                  userSession.logger.info(
+                    `[websocket.service]: Will attempt auto-restart of ${packageName} in ${AUTO_RESTART_DELAY_MS}ms`
+                  );
+                  
+                  // Add a small delay before attempting restart
+                  setTimeout(async () => {
+                    try {
+                      userSession.logger.info(`[websocket.service]: Auto-restarting ${packageName} after disconnect`);
+                      await this.startAppSession(userSession, packageName);
+                      userSession.logger.info(`[websocket.service]: Successfully auto-restarted ${packageName}`);
+                    } catch (restartError) {
+                      userSession.logger.error(
+                        `[websocket.service]: Failed to auto-restart ${packageName}: ${restartError instanceof Error ? restartError.message : String(restartError)}`
+                      );
+                    }
+                  }, AUTO_RESTART_DELAY_MS);
+                }
+              } else {
+                userSession.logger.info(
+                  `[websocket.service]: App ${packageName} reconnected during grace period or was already removed`
+                );
+                userSession._reconnectionTimers?.delete(packageName);
+              }
+            }, 5000); // 5 second grace period
+            
+            // Store the timer ID for potential cancellation
+            userSession._reconnectionTimers.set(packageName, timerId);
+          }
+        }
 
         // Clean up dashboard content for the disconnected TPA
         try {
@@ -1598,15 +1735,10 @@ export class WebSocketService {
         } catch (error) {
           userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
         }
-
-        // Notify the registration service that this session is disconnected
-        // but DON'T remove it from registry - we want to enable recovery!
-        // Just note that the session is temporarily disconnected
-        tpaRegistrationService.handleTpaSessionEnd(currentAppSession);
       }
     });
 
-    ws.on('error', (error) => {
+    ws.on('error', async (error) => {
       logger.error('[websocket.service]: TPA WebSocket error:', error);
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
@@ -1616,9 +1748,109 @@ export class WebSocketService {
           logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
           return;
         }
+        
+        // Unregister from heartbeat manager
+        userSession.heartbeatManager.unregisterConnection(ws);
+        
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
+        }
+        
+        // [IMPROVED APP STATE CONSISTENCY WITH RECONNECTION GRACE PERIOD]
+        // Give app a chance to reconnect before removing from active sessions
+        if (userSession.activeAppSessions.includes(packageName)) {
+          // Initialize reconnection timers map if needed
+          if (!userSession._reconnectionTimers) {
+            userSession._reconnectionTimers = new Map();
+          }
+          
+          // Clear any existing timer for this package
+          if (userSession._reconnectionTimers.has(packageName)) {
+            clearTimeout(userSession._reconnectionTimers.get(packageName));
+          }
+          
+          userSession.logger.info(
+            `[websocket.service]: Starting 5-second reconnection grace period for ${packageName} after error. ` +
+            `Error: ${error.message || 'unknown error'}`
+          );
+          
+          // Set a 5-second timer before removing from active sessions
+          const timerId = setTimeout(async () => {
+            // Check if the app is still in active sessions and not reconnected
+            if (userSession.activeAppSessions.includes(packageName) && 
+                !userSession.appConnections.has(packageName)) {
+              
+              userSession.logger.warn(
+                `[websocket.service]: Reconnection grace period expired for ${packageName} after error. ` +
+                `Removing from active app sessions to prevent zombie app state.`
+              );
+              
+              // Remove the app from active sessions after grace period
+              userSession.activeAppSessions = userSession.activeAppSessions.filter(
+                (appName) => appName !== packageName
+              );
+              
+              // Update database
+              try {
+                const user = await User.findByEmail(userSession.userId);
+                if (user) {
+                  await user.removeRunningApp(packageName);
+                }
+              } catch (dbError) {
+                userSession.logger.error(`Error updating user's running apps:`, dbError);
+              }
+              
+              // Update glasses client with new app state
+              try {
+                if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
+                  const appStateChange = await this.generateAppStateStatus(userSession);
+                  userSession.websocket.send(JSON.stringify(appStateChange));
+                  userSession.logger.info(`Sent updated app state to glasses after grace period for ${packageName}`);
+                }
+              } catch (updateError) {
+                userSession.logger.error(`Error updating glasses client app state:`, updateError);
+              }
+              
+              // Update display
+              try {
+                userSession.displayManager.handleAppStop(packageName, userSession);
+              } catch (displayError) {
+                userSession.logger.error(`Error updating display after grace period:`, displayError);
+              }
+              
+              // Clean up the timer reference
+              userSession._reconnectionTimers?.delete(packageName);
+              
+              // Auto-restart the app if enabled
+              if (AUTO_RESTART_APPS) {
+                userSession.logger.info(
+                  `[websocket.service]: Will attempt auto-restart of ${packageName} in ${AUTO_RESTART_DELAY_MS}ms`
+                );
+                
+                // Add a small delay before attempting restart
+                setTimeout(async () => {
+                  try {
+                    userSession.logger.info(`[websocket.service]: Auto-restarting ${packageName} after error`);
+                    await this.startAppSession(userSession, packageName);
+                    userSession.logger.info(`[websocket.service]: Successfully auto-restarted ${packageName}`);
+                  } catch (restartError) {
+                    userSession.logger.error(
+                      `[websocket.service]: Failed to auto-restart ${packageName}: ${restartError instanceof Error ? restartError.message : String(restartError)}`
+                    );
+                  }
+                }, AUTO_RESTART_DELAY_MS);
+              }
+            } else {
+              userSession.logger.info(
+                `[websocket.service]: App ${packageName} reconnected during error grace period or was already removed`
+              );
+              userSession._reconnectionTimers?.delete(packageName);
+            }
+          }, 5000); // 5 second grace period
+          
+          // Store the timer ID for potential cancellation
+          userSession._reconnectionTimers.set(packageName, timerId);
         }
         
         // Clean up dashboard content for the disconnected TPA
@@ -1627,11 +1859,11 @@ export class WebSocketService {
           const dashboardService = require('../dashboard');
           // Pass both the packageName and the userSession
           dashboardService.handleTpaDisconnected(packageName, userSession);
-        } catch (error) {
-          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+        } catch (dashboardError) {
+          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, dashboardError);
         }
         
-        userSession?.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
+        userSession.logger.error(`[websocket.service]: TPA session ${currentAppSession} disconnected due to error: ${error.message || 'unknown error'}`);
       }
       ws.close();
     });
@@ -1676,21 +1908,10 @@ export class WebSocketService {
     }
 
 
-    // Validate the TPA connection using the registration service
-    // This checks the API key against registered servers
-    const isValidTpa = tpaRegistrationService.handleTpaSessionStart(initMessage);
-
+    // Check if this is a system app
     const isSystemApp = Object.values(systemApps).some(
       app => app.packageName === initMessage.packageName
     );
-
-    // Skip validation for system apps but validate all others
-    if (!isSystemApp && !isValidTpa) {
-      userSession.logger.warn(`[websocket.service] Unregistered TPA attempting to connect: ${initMessage.packageName}`);
-      // We still allow the connection for now, but in production we would reject unregistered TPAs
-      // ws.close(1008, 'Unregistered TPA');
-      // return;
-    }
 
     // For regular apps, check if they're in the loading apps list or already active
     const isLoading = userSession.loadingApps.has(initMessage.packageName);
@@ -1706,6 +1927,18 @@ export class WebSocketService {
     // Store the connection
     userSession.appConnections.set(initMessage.packageName, ws);
     setCurrentSessionId(initMessage.sessionId);
+    
+    // Register the connection with the heartbeat manager
+    userSession.heartbeatManager.registerTpaConnection(ws, initMessage.packageName);
+    
+    // Check if there's a pending reconnection timer and clear it
+    if (userSession._reconnectionTimers && userSession._reconnectionTimers.has(initMessage.packageName)) {
+      userSession.logger.info(
+        `[websocket.service]: Clearing reconnection timer for ${initMessage.packageName} - app successfully reconnected`
+      );
+      clearTimeout(userSession._reconnectionTimers.get(initMessage.packageName));
+      userSession._reconnectionTimers.delete(initMessage.packageName);
+    }
 
     // If the app was in loading state, move it to active
     if (isLoading) {

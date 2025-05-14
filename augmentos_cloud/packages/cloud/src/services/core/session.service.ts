@@ -19,6 +19,7 @@ import { systemApps } from './system-apps';
 import { SubscriptionManager } from './subscription.manager'; // Import the new manager
 import { Logger } from 'winston';
 import { DebugService } from '../debug/debug-service';
+import { HeartbeatManager } from './HeartbeatManager';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
 const LOG_AUDIO = false;
@@ -73,6 +74,10 @@ export interface ExtendedUserSession extends UserSession {
 
   // Add the subscription manager instance
   subscriptionManager: SubscriptionManager;
+  // Add the heartbeat manager instance
+  heartbeatManager: HeartbeatManager;
+  // Map to track reconnection timers
+  _reconnectionTimers?: Map<string, NodeJS.Timeout>;
   recentAudioBuffer: { data: ArrayBufferLike; timestamp: number }[]; // Buffer for last 10 seconds of audio
 }
 
@@ -183,6 +188,10 @@ export class SessionService {
     // Cast to ExtendedUserSession here is safe as we're building it
     partialSession.subscriptionManager = new SubscriptionManager(partialSession as ExtendedUserSession);
     sessionLogger.info(`[session.service] SubscriptionManager created for session ${sessionId}`);
+    
+    // Instantiate the Heartbeat Manager for this session
+    partialSession.heartbeatManager = new HeartbeatManager(partialSession as ExtendedUserSession);
+    sessionLogger.info(`[session.service] HeartbeatManager created for session ${sessionId}`);
 
     // Initialize LC3 and Audio Buffer
     const lc3ServiceInstance = createLC3Service(sessionId);
@@ -539,6 +548,21 @@ export class SessionService {
     }
 
     // SubscriptionManager is part of userSession, no specific cleanup needed here
+
+    // Clean up heartbeat manager
+    if (userSession.heartbeatManager) {
+      userSession.logger.info(`🧹 Cleaning up heartbeat manager for session ${userSession.sessionId}`);
+      userSession.heartbeatManager.dispose();
+    }
+    
+    // Clean up any reconnection timers
+    if (userSession._reconnectionTimers) {
+      userSession.logger.info(`🧹 Cleaning up reconnection timers for session ${userSession.sessionId}`);
+      for (const [packageName, timerId] of userSession._reconnectionTimers.entries()) {
+        clearTimeout(timerId);
+      }
+      userSession._reconnectionTimers.clear();
+    }
 
     // Clean up dashboard manager if it exists
     if (userSession.dashboardManager && typeof userSession.dashboardManager.dispose === 'function') {
