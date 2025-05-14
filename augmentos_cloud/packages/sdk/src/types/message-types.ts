@@ -56,6 +56,8 @@ export enum CloudToGlassesMessageType {
   DISPLAY_EVENT = 'display_event',
   APP_STATE_CHANGE = 'app_state_change',
   MICROPHONE_STATE_CHANGE = 'microphone_state_change',
+  PHOTO_REQUEST = 'photo_request',
+  VIDEO_STREAM_REQUEST = 'video_stream_request',
   SETTINGS_UPDATE = 'settings_update',
   
   // Dashboard updates
@@ -75,6 +77,8 @@ export enum TpaToCloudMessageType {
   
   // Requests
   DISPLAY_REQUEST = 'display_event',
+  PHOTO_REQUEST = 'photo_request',
+  VIDEO_STREAM_REQUEST = 'video_stream_request'
   
   // Dashboard requests
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
@@ -100,6 +104,10 @@ export enum CloudToTpaMessageType {
   
   // Stream data
   DATA_STREAM = 'data_stream',
+  
+  // Media responses
+  PHOTO_RESPONSE = 'photo_response',
+  VIDEO_STREAM_RESPONSE = 'video_stream_response',
 
   WEBSOCKET_ERROR = 'websocket_error'
 }
@@ -149,6 +157,8 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.DISPLAY_EVENT,
   CloudToGlassesMessageType.APP_STATE_CHANGE,
   CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE,
+  CloudToGlassesMessageType.PHOTO_REQUEST,
+  CloudToGlassesMessageType.VIDEO_STREAM_REQUEST,
   CloudToGlassesMessageType.SETTINGS_UPDATE,
   CloudToGlassesMessageType.DASHBOARD_MODE_CHANGE,
   CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE
