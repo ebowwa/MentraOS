@@ -154,7 +154,7 @@ export class SubscriptionService {
 
     try {
       // Get app details
-      const app = await App.findOne({ packageName }).lean();
+      const app = await App.findOne({ packageName });
       
       if (!app) {
         logger.warn(`App ${packageName} not found when checking permissions`);
@@ -213,7 +213,7 @@ export class SubscriptionService {
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
-      logger.error(`Error checking permissions for ${packageName}: ${error.message}`);
+      logger.error(`Error checking permissions for ${packageName}:`, error);
       
       // Continue with the subscription update
       this.subscriptions.set(key, new Set(processedSubscriptions));

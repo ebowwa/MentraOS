@@ -3,9 +3,10 @@ import { PermissionType } from '@augmentos/sdk';
 import { StreamType, createTranscriptionStream } from '@augmentos/sdk';
 import { AppI } from '../../../models/app.model';
 import subscriptionService from '../../core/subscription.service';
+import { expect, test, describe, it, jest, mock, beforeEach } from "bun:test";
 
 // Mock the dependencies
-jest.mock('@augmentos/utils', () => ({
+mock.module('@augmentos/utils', () => ({
   logger: {
     info: jest.fn(),
     warn: jest.fn(),
@@ -14,13 +15,13 @@ jest.mock('@augmentos/utils', () => ({
   }
 }));
 
-jest.mock('../../../models/app.model', () => ({
+mock.module('../../../models/app.model', () => ({
   default: {
     findOne: jest.fn(),
   }
 }));
 
-jest.mock('../../core/session.service', () => ({
+mock.module('../../core/session.service', () => ({
   sessionService: {
     getSession: jest.fn(),
   }

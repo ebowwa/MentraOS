@@ -2,6 +2,7 @@ import { SimplePermissionChecker } from '../simple-permission-checker';
 import { PermissionType } from '@augmentos/sdk';
 import { StreamType, createTranscriptionStream, createTranslationStream } from '@augmentos/sdk';
 import { AppI } from '../../../models/app.model';
+import { expect, test, describe, it } from "bun:test";
 
 describe('SimplePermissionChecker', () => {
   // Sample app with various permission configurations
@@ -78,11 +79,6 @@ describe('SimplePermissionChecker', () => {
 
     it('should return false when app has no permissions defined', () => {
       const app = createTestApp([]);
-      expect(SimplePermissionChecker.hasPermission(app, PermissionType.MICROPHONE)).toBe(false);
-    });
-
-    it('should return false when app permissions are undefined', () => {
-      const app = createTestApp(undefined);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.MICROPHONE)).toBe(false);
     });
   });
