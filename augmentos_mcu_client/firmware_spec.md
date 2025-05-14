@@ -4,9 +4,9 @@
 
 This specification defines the binary packet format and transport protocol for communication between AugmentOS Core (on a phone) and smart glasses via Bluetooth Low Energy (BLE). It supports both JSON control messages and high-speed binary data transfers like audio and image streams.
 
-* All messages are sent over a **single shared BLE characteristic**.
-* Every BLE packet starts with a **1-byte prefix header**.
-* The prefix byte indicates the type of payload.
+* All messages are sent over **standard BLE characteristics (GATT)**.
+* Every BLE packet starts with a **1-byte control header**.
+* The control header byte indicates the type of payload.
 
 ---
 
@@ -20,18 +20,17 @@ This specification defines the binary packet format and transport protocol for c
 | CCCD    | `00002902-0000-1000-8000-00805f9b34fb` | Enable notify on RX Char             |
 
 * The phone acts as **GATT central**, the glasses are **GATT peripheral**.
-* Glasses must support **notifications** on RX characteristic.
+* Glasses send **notifications** on the RX characteristic.
 
 ---
 
 ## 🔠 Packet Types
 
-| Prefix Byte   | Type           | Payload Format                                                |
+| Control Header Byte   | Type           | Payload Format                                                |
 | ------------- | -------------- | ------------------------------------------------------------- |
 | `0x01`        | JSON message   | UTF-8 encoded JSON                                            |
 | `0xA0`        | Audio chunk    | `[A0][stream_id (1 byte)][frame data]`                        |
 | `0xB0`        | Image chunk    | `[B0][stream_id (2 bytes)][chunk_index (1 byte)][chunk_data]` |
-| `0xC0`        | Firmware chunk | `[C0][stream_id (2 bytes)][chunk_index (1 byte)][chunk_data]` |
 | `0xD0`–`0xFF` | Reserved       | —                                                             |
 
 ---
@@ -46,7 +45,7 @@ All JSON messages must begin with `0x01`, followed by UTF-8 encoded JSON bytes.
 [0x01]{"type":"ping","msg_id":"abc123"}
 ```
 
-No length prefix is needed; BLE characteristic defines packet length.
+No length header is needed; BLE characteristic defines packet length.
 
 ---
 
@@ -123,10 +122,6 @@ If any image chunks are missing (as indicated in the `missing_chunks` list from 
 ```
 
 This can be repeated until all chunks are acknowledged or a timeout is reached.
-
-## 🔁 Firmware Transfer (same as image)
-
-Use `0xC0` prefix instead of `0xB0`. All other semantics identical.
 
 ---
 
@@ -329,6 +324,8 @@ Show text at coordinates with size.
   "type": "display_text",
   "msg_id": "txt_001",
   "text": "Hello World",
+  "color": "0xF800",
+  "font_code": "0x11",
   "x": 10,
   "y": 20,
   "size": 2
@@ -483,6 +480,38 @@ Delete a cached bitmap image from memory.
 
 ---
 
+### Display Scrolling Text Box
+
+Displays a scrolling text box
+
+#### 📲 Phone → Glasses
+
+```json
+{
+  "type": "display_vertical_scrolling_text",
+  "msg_id": "vscroll_001",
+  "text": "Line 1\nLine 2\nLine 3\nLine 4",
+  "color": "0xF800",
+  "font_code": "0x11",
+  "x": 0,
+  "y": 0,
+  "width": 128,
+  "height": 64,
+  "align": "left",      // Or "center", "right"
+  "line_spacing": 2,    // optional: pixels between lines
+  "speed": 20,          // optional: pixels/sec (scrolling up)
+  "size": 1,            // optional: font size multiplier
+  "loop": false,        // optional: if true, wraps to top when finished
+  "pause_ms": 1000,     // optional: delay (in ms) before restarting loop
+}
+```
+
+#### 👓 Glasses → Phone
+
+*(none)*
+
+---
+
 ### Turn Off Display
 
 Turns off the screen entirely.
@@ -591,6 +620,8 @@ Draw a line on the screen.
 {
   "type": "draw_line",
   "msg_id": "drawline_001",
+  "color": "0xF800",
+  "stroke": 1,
   "x1": 0,
   "y1": 0,
   "x2": 100,
@@ -614,6 +645,8 @@ Draw a rectangle on the display.
 {
   "type": "draw_rect",
   "msg_id": "rect_001",
+  "color": "0xF800",
+  "stroke": 1,
   "x": 10,
   "y": 10,
   "width": 60,
@@ -637,74 +670,8 @@ Draw a circle on the display.
 {
   "type": "draw_circle",
   "msg_id": "circle_001",
-  "x": 64,
-  "y": 32,
-  "radius": 20
-}
-```
-
-#### 👓 Glasses → Phone
-
-*(none)*
-
----
-
-### Clear Line
-
-Clear a previously drawn line.
-
-#### 📲 Phone → Glasses
-
-```json
-{
-  "type": "clear_line",
-  "msg_id": "clrline_001",
-  "x1": 0,
-  "y1": 0,
-  "x2": 100,
-  "y2": 50
-}
-```
-
-#### 👓 Glasses → Phone
-
-*(none)*
-
----
-
-### Clear Rectangle
-
-Clear a rectangular area.
-
-#### 📲 Phone → Glasses
-
-```json
-{
-  "type": "clear_rect",
-  "msg_id": "clrrect_001",
-  "x": 10,
-  "y": 10,
-  "width": 60,
-  "height": 40
-}
-```
-
-#### 👓 Glasses → Phone
-
-*(none)*
-
----
-
-### Clear Circle
-
-Clear a circular area.
-
-#### 📲 Phone → Glasses
-
-```json
-{
-  "type": "clear_circle",
-  "msg_id": "clrcircle_001",
+  "color": "0xF800",
+  "stroke": 1,
   "x": 64,
   "y": 32,
   "radius": 20
