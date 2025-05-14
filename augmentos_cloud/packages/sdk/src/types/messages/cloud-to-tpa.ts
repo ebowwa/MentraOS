@@ -52,6 +52,16 @@ export interface SettingsUpdate extends BaseMessage {
   settings: AppSettings;
 }
 
+/**
+ * AugmentOS settings update to TPA
+ */
+export interface AugmentosSettingsUpdate extends BaseMessage {
+  type: 'augmentos_settings_update';
+  sessionId: string;
+  settings: Record<string, any>;
+  timestamp: Date;
+}
+
 //===========================================================
 // Audio-related data types
 //===========================================================
@@ -154,7 +164,8 @@ export type CloudToTpaMessage =
   | CalendarEvent
   | DataStream
   | DashboardModeChanged
-  | DashboardAlwaysOnChanged;
+  | DashboardAlwaysOnChanged
+  | AugmentosSettingsUpdate;
 
 //===========================================================
 // Type guards

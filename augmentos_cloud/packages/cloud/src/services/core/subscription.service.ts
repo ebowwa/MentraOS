@@ -128,6 +128,7 @@ export class SubscriptionService {
     subscriptions: ExtendedStreamType[]
   ): void {
     const key = this.getKey(sessionId, packageName);
+    logger.info(`[SubscriptionService] updateSubscriptions called for ${key}. Subscriptions received:`, subscriptions);
     const currentSubs = this.subscriptions.get(key) || new Set();
     const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
 
@@ -147,7 +148,7 @@ export class SubscriptionService {
       }
     }
 
-    logger.info("🎤 Processed subscriptions: ", processedSubscriptions);
+    logger.info("[SubscriptionService] Processed subscriptions:", processedSubscriptions);
 
     // Update subscriptions
     this.subscriptions.set(key, new Set(processedSubscriptions));
@@ -158,6 +159,8 @@ export class SubscriptionService {
       subscriptions: [...processedSubscriptions],
       action
     });
+
+    logger.info(`[SubscriptionService] Subscriptions map after update:`, Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]));
 
     logger.info(`Updated subscriptions for ${packageName} in session ${sessionId}:`, processedSubscriptions);
   }
@@ -355,6 +358,33 @@ export class SubscriptionService {
   }
 
   /**
+   * Gets all TPAs subscribed to a specific AugmentOS setting key
+   * @param userSession - User session identifier
+   * @param settingKey - The augmentosSettings key (e.g., 'metricSystemEnabled')
+   * @returns Array of app IDs subscribed to the augmentos setting
+   */
+  getSubscribedAppsForAugmentosSetting(userSession: UserSession, settingKey: string): string[] {
+    const sessionId = userSession.sessionId;
+    const subscribedApps: string[] = [];
+    const subscription = `augmentos:${settingKey}`;
+
+    logger.info(`[SubscriptionService] getSubscribedAppsForAugmentosSetting called for session ${sessionId}, key '${settingKey}'. Current subscriptions map:`, Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]));
+    for (const [key, subs] of this.subscriptions.entries()) {
+      if (!key.startsWith(`${sessionId}:`)) continue;
+      const [, packageName] = key.split(':');
+      for (const sub of subs) {
+        if (sub === subscription || sub === 'augmentos:*' || sub === 'augmentos:all') {
+          logger.info(`[SubscriptionService] App '${packageName}' is subscribed to '${subscription}' (or wildcard) in session ${sessionId}.`);
+          subscribedApps.push(packageName);
+          break;
+        }
+      }
+    }
+    logger.info(`[SubscriptionService] Subscribed apps for AugmentOS setting '${settingKey}' in session ${sessionId}:`, subscribedApps);
+    return subscribedApps;
+  }
+
+  /**
    * Validates a subscription type
    * @param subscription - Subscription to validate
    * @returns Boolean indicating if the subscription is valid
@@ -362,6 +392,10 @@ export class SubscriptionService {
    */
   private isValidSubscription(subscription: ExtendedStreamType): boolean {
     const validTypes = new Set(Object.values(StreamType));
+    // Allow augmentos:<key> subscriptions for AugmentOS settings
+    if (typeof subscription === 'string' && subscription.startsWith('augmentos:')) {
+      return true;
+    }
     return validTypes.has(subscription as StreamType) || isLanguageStream(subscription);
   }
 }
