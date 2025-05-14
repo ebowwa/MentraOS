@@ -148,7 +148,7 @@ public class MediaUploadQueueManager {
     }
 
     /**
-     * Queue a media file for upload
+     * Queue a media file for upload with an app ID
      *
      * @param mediaFilePath Path to the media file
      * @param requestId     Request ID associated with this media
@@ -156,19 +156,6 @@ public class MediaUploadQueueManager {
      * @return true if successfully queued, false otherwise
      */
     public boolean queueMedia(String mediaFilePath, String requestId, int mediaType) {
-        return queueMedia(mediaFilePath, requestId, "system", mediaType);
-    }
-
-    /**
-     * Queue a media file for upload with an app ID
-     *
-     * @param mediaFilePath Path to the media file
-     * @param requestId     Request ID associated with this media
-     * @param appId         App ID that requested the media
-     * @param mediaType     Type of media (PHOTO or VIDEO)
-     * @return true if successfully queued, false otherwise
-     */
-    public boolean queueMedia(String mediaFilePath, String requestId, String appId, int mediaType) {
         File mediaFile = new File(mediaFilePath);
 
         // Check if file exists
@@ -189,7 +176,6 @@ public class MediaUploadQueueManager {
             // Add to manifest
             JSONObject mediaEntry = new JSONObject();
             mediaEntry.put("requestId", requestId);
-            mediaEntry.put("appId", appId);
             mediaEntry.put("originalPath", mediaFilePath);
             mediaEntry.put("queuedPath", queuedFile.getAbsolutePath());
             mediaEntry.put("mediaType", mediaType); // Added mediaType field

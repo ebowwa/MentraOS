@@ -46,6 +46,7 @@ public class MediaCaptureService {
     private boolean isRecordingVideo = false;
     private String currentVideoId = null;
     private String currentVideoPath = null;
+    private long recordingStartTime = 0;
 
     /**
      * Interface for listening to media capture and upload events
@@ -169,14 +170,13 @@ public class MediaCaptureService {
                         if ("take_photo".equals(jsonResponse.optString("action"))) {
                             String requestId = jsonResponse.optString("requestId");
                             boolean saveToGallery = jsonResponse.optBoolean("saveToGallery", true);
-                            String appId = jsonResponse.optString("appId", "system");
 
                             Log.d(TAG, "Server requesting photo with requestId: " + requestId);
 
                             // Take photo and upload directly to server
                             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
                             String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "IMG_" + timeStamp + ".jpg";
-                            takePhotoAndUpload(photoFilePath, requestId, appId);
+                            takePhotoAndUpload(photoFilePath, requestId);
                         } else {
                             Log.d(TAG, "Button press handled by server, no photo needed");
                         }
@@ -278,7 +278,6 @@ public class MediaCaptureService {
                         // Check if we need to start video recording
                         if ("start_video".equals(jsonResponse.optString("action"))) {
                             String requestId = jsonResponse.optString("requestId");
-                            String appId = jsonResponse.optString("appId", "system");
 
                             Log.d(TAG, "Server requesting video with requestId: " + requestId);
 
@@ -287,7 +286,7 @@ public class MediaCaptureService {
                             String videoFilePath = mContext.getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + "_" + requestId + ".mp4";
 
                             // Start video recording with server-provided requestId
-                            startVideoRecording(videoFilePath, requestId, appId);
+                            startVideoRecording(videoFilePath, requestId);
                         } else {
                             Log.d(TAG, "Button press handled by server, no video recording needed");
                         }
@@ -313,16 +312,15 @@ public class MediaCaptureService {
         // Generate IDs for local recording
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String requestId = "local_video_" + timeStamp;
-        String appId = "system";
         String videoFilePath = mContext.getExternalFilesDir(null) + File.separator + "VID_" + timeStamp + ".mp4";
 
-        startVideoRecording(videoFilePath, requestId, appId);
+        startVideoRecording(videoFilePath, requestId);
     }
 
     /**
      * Start video recording with specific parameters
      */
-    private void startVideoRecording(String videoFilePath, String requestId, String appId) {
+    private void startVideoRecording(String videoFilePath, String requestId) {
         // Check storage availability before recording
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for video capture");
@@ -340,6 +338,7 @@ public class MediaCaptureService {
                 public void onRecordingStarted(String videoId) {
                     Log.d(TAG, "Video recording started with ID: " + videoId);
                     isRecordingVideo = true;
+                    recordingStartTime = System.currentTimeMillis();
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -353,7 +352,7 @@ public class MediaCaptureService {
                     isRecordingVideo = false;
 
                     // Queue the video for upload
-                    mMediaQueueManager.queueMedia(filePath, requestId, appId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+                    mMediaQueueManager.queueMedia(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
 
                     // Notify listener
                     if (mMediaCaptureListener != null) {
@@ -363,8 +362,7 @@ public class MediaCaptureService {
 
                     // TODO: Server upload would happen here, for now just log
                     Log.d(TAG, "Video captured and ready for upload, path: " + filePath +
-                            ", requestId: " + requestId +
-                            ", appId: " + appId);
+                            ", requestId: " + requestId);
 
                     // Reset state
                     currentVideoId = null;
@@ -442,6 +440,18 @@ public class MediaCaptureService {
     }
 
     /**
+     * Get the current recording duration in milliseconds
+     * @return Duration in milliseconds, or 0 if not recording
+     */
+    public long getRecordingDurationMs() {
+        if (!isRecordingVideo || recordingStartTime == 0) {
+            return 0;
+        }
+
+        return System.currentTimeMillis() - recordingStartTime;
+    }
+
+    /**
      * Takes a photo locally when offline or when server communication fails
      */
     private void takePhotoLocally() {
@@ -467,7 +477,7 @@ public class MediaCaptureService {
                         Log.d(TAG, "Offline photo captured successfully at: " + filePath);
 
                         // Queue the photo for later upload
-                        mMediaQueueManager.queueMedia(filePath, requestId, "system", MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                        mMediaQueueManager.queueMedia(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
                         // Notify the user about offline mode
                         Log.d(TAG, "Photo queued for later upload (offline mode)");
@@ -494,7 +504,7 @@ public class MediaCaptureService {
     /**
      * Take a photo and upload it to AugmentOS Cloud
      */
-    public void takePhotoAndUpload(String photoFilePath, String requestId, String appId) {
+    public void takePhotoAndUpload(String photoFilePath, String requestId) {
         // Notify that we're about to take a photo
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onPhotoCapturing(requestId);
@@ -517,13 +527,13 @@ public class MediaCaptureService {
                             }
 
                             // Upload the photo to AugmentOS Cloud
-                            uploadMediaToCloud(filePath, requestId, appId, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            uploadMediaToCloud(filePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
                         }
 
                         @Override
                         public void onPhotoError(String errorMessage) {
                             Log.e(TAG, "Failed to capture photo: " + errorMessage);
-                            sendMediaErrorResponse(requestId, appId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+                            sendMediaErrorResponse(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
                             if (mMediaCaptureListener != null) {
                                 mMediaCaptureListener.onMediaError(requestId, errorMessage, MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
@@ -533,7 +543,7 @@ public class MediaCaptureService {
             );
         } catch (Exception e) {
             Log.e(TAG, "Error taking photo", e);
-            sendMediaErrorResponse(requestId, appId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
+            sendMediaErrorResponse(requestId, "Error taking photo: " + e.getMessage(), MediaUploadQueueManager.MEDIA_TYPE_PHOTO);
 
             if (mMediaCaptureListener != null) {
                 mMediaCaptureListener.onMediaError(requestId, "Error taking photo: " + e.getMessage(),
@@ -545,12 +555,12 @@ public class MediaCaptureService {
     /**
      * Upload a video file to AugmentOS Cloud
      */
-    public void uploadVideo(String videoFilePath, String requestId, String appId) {
+    public void uploadVideo(String videoFilePath, String requestId) {
         if (mMediaCaptureListener != null) {
             mMediaCaptureListener.onVideoUploading(requestId);
         }
 
-        uploadMediaToCloud(videoFilePath, requestId, appId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
+        uploadMediaToCloud(videoFilePath, requestId, MediaUploadQueueManager.MEDIA_TYPE_VIDEO);
     }
 
     /**
@@ -564,7 +574,6 @@ public class MediaCaptureService {
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "DEBUG_VPS_" + timeStamp + ".jpg";
         String requestId = "debug_vps_" + timeStamp;
-        String appId = "debug_vps_app";
 
         // Notify that we're about to take a photo (if there's a listener)
         if (mMediaCaptureListener != null) {
@@ -588,7 +597,7 @@ public class MediaCaptureService {
                             }
 
                             // Upload the photo to VPS debug server
-                            uploadPhotoToVpsServer(filePath, requestId, appId);
+                            uploadPhotoToVpsServer(filePath, requestId);
                         }
 
                         @Override
@@ -614,7 +623,7 @@ public class MediaCaptureService {
     /**
      * Upload media to AugmentOS Cloud
      */
-    private void uploadMediaToCloud(String mediaFilePath, String requestId, String appId, int mediaType) {
+    private void uploadMediaToCloud(String mediaFilePath, String requestId, int mediaType) {
         // Upload the media to AugmentOS Cloud
         MediaUploadService.uploadMedia(
                 mContext,
@@ -626,7 +635,7 @@ public class MediaCaptureService {
                     public void onSuccess(String url) {
                         String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                         Log.d(TAG, mediaTypeStr + " uploaded successfully: " + url);
-                        sendMediaSuccessResponse(requestId, appId, url, mediaType);
+                        sendMediaSuccessResponse(requestId, url, mediaType);
 
                         // Notify listener about successful upload
                         if (mMediaCaptureListener != null) {
@@ -642,7 +651,7 @@ public class MediaCaptureService {
                     public void onFailure(String errorMessage) {
                         String mediaTypeStr = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                         Log.e(TAG, mediaTypeStr + " upload failed: " + errorMessage);
-                        sendMediaErrorResponse(requestId, appId, errorMessage, mediaType);
+                        sendMediaErrorResponse(requestId, errorMessage, mediaType);
 
                         // Notify listener about error
                         if (mMediaCaptureListener != null) {
@@ -657,7 +666,7 @@ public class MediaCaptureService {
      * DEBUG FUNCTION: Upload photo to VPS server at the specified debug URL
      * This is for debugging purposes only.
      */
-    private void uploadPhotoToVpsServer(String photoFilePath, String requestId, String appId) {
+    private void uploadPhotoToVpsServer(String photoFilePath, String requestId) {
         // Upload the photo to the VPS server
         new Thread(() -> {
             try {
@@ -801,7 +810,7 @@ public class MediaCaptureService {
      * Send a success response for a media request
      * This should be overridden by the service that uses this class
      */
-    protected void sendMediaSuccessResponse(String requestId, String appId, String mediaUrl, int mediaType) {
+    protected void sendMediaSuccessResponse(String requestId, String mediaUrl, int mediaType) {
         // Default implementation is empty
         // This should be overridden by the service that uses this class
     }
@@ -810,7 +819,7 @@ public class MediaCaptureService {
      * Send an error response for a media request
      * This should be overridden by the service that uses this class
      */
-    protected void sendMediaErrorResponse(String requestId, String appId, String errorMessage, int mediaType) {
+    protected void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType) {
         // Default implementation is empty
         // This should be overridden by the service that uses this class
     }

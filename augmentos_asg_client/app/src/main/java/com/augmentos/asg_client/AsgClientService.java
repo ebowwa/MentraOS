@@ -53,6 +53,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * This is the FULL AsgClientService code that:
@@ -232,7 +233,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
                     Log.d(TAG, mediaTypeName + " uploaded from queue: " + requestId + ", URL: " + url);
                     // Send notification to phone if connected
-                    sendMediaSuccessResponse(requestId, "system", url, mediaType);
+                    sendMediaSuccessResponse(requestId, url, mediaType);
                 }
                 
                 @Override
@@ -260,15 +261,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             mMediaCaptureService = new MediaCaptureService(getApplicationContext(), mMediaQueueManager) {
                 @Override
-                protected void sendMediaSuccessResponse(String requestId, String appId, String mediaUrl, int mediaType) {
+                protected void sendMediaSuccessResponse(String requestId, String mediaUrl, int mediaType) {
                     // Override to delegate to parent class
-                    AsgClientService.this.sendMediaSuccessResponse(requestId, appId, mediaUrl, mediaType);
+                    AsgClientService.this.sendMediaSuccessResponse(requestId, mediaUrl, mediaType);
                 }
                 
                 @Override
-                protected void sendMediaErrorResponse(String requestId, String appId, String errorMessage, int mediaType) {
+                protected void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType) {
                     // Override to delegate to parent class
-                    AsgClientService.this.sendMediaErrorResponse(requestId, appId, errorMessage, mediaType);
+                    AsgClientService.this.sendMediaErrorResponse(requestId, errorMessage, mediaType);
                 }
             };
 
@@ -1019,7 +1020,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     
                 case "take_photo":
                     String requestId = dataToProcess.optString("requestId", "");
-                    String appId = dataToProcess.optString("appId", "");
                     
                     if (requestId.isEmpty()) {
                         Log.e(TAG, "Cannot take photo - missing requestId");
@@ -1029,14 +1029,104 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     // Generate a temporary file path for the photo
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
-                    
-                    Log.d(TAG, "Taking photo with requestId: " + requestId + ", appId: " + appId);
+
+                    Log.d(TAG, "Taking photo with requestId: " + requestId);
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
                     
                     // Take the photo using CameraNeo instead of CameraRecordingService
-                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, appId);
+                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
                     break;
-                    
+
+                case "start_video_recording":
+                    String videoRequestId = dataToProcess.optString("requestId", "");
+
+                    if (videoRequestId.isEmpty()) {
+                        Log.e(TAG, "Cannot start video recording - missing requestId");
+                        sendVideoRecordingStatusResponse(false, "missing_request_id", null);
+                        return;
+                    }
+
+                    MediaCaptureService captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendVideoRecordingStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+
+                    // Check if already recording
+                    if (captureService.isRecordingVideo()) {
+                        Log.d(TAG, "Already recording video, ignoring start command");
+                        sendVideoRecordingStatusResponse(true, "already_recording", null);
+                        return;
+                    }
+
+                    Log.d(TAG, "Starting video recording with requestId: " + videoRequestId);
+
+                    // Start video recording
+                    captureService.handleVideoButtonPress();
+
+                    // Send success response
+                    sendVideoRecordingStatusResponse(true, "recording_started", null);
+                    break;
+
+                case "stop_video_recording":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendVideoRecordingStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+
+                    // Check if actually recording
+                    if (!captureService.isRecordingVideo()) {
+                        Log.d(TAG, "Not currently recording, ignoring stop command");
+                        sendVideoRecordingStatusResponse(false, "not_recording", null);
+                        return;
+                    }
+
+                    Log.d(TAG, "Stopping video recording");
+
+                    // Stop the recording
+                    captureService.stopVideoRecording();
+
+                    // Send success response
+                    sendVideoRecordingStatusResponse(true, "recording_stopped", null);
+                    break;
+
+                case "get_video_recording_status":
+                    captureService = getMediaCaptureService();
+                    if (captureService == null) {
+                        Log.e(TAG, "Media capture service is not initialized");
+                        sendVideoRecordingStatusResponse(false, "service_unavailable", null);
+                        return;
+                    }
+
+                    boolean isRecording = captureService.isRecordingVideo();
+                    Log.d(TAG, "Video recording status requested: " + (isRecording ? "RECORDING" : "NOT RECORDING"));
+
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("recording", isRecording);
+
+                        // If recording, include duration information
+                        if (isRecording) {
+                            // Get duration in milliseconds from MediaCaptureService
+                            long durationMs = captureService.getRecordingDurationMs();
+                            status.put("duration_ms", durationMs);
+
+                            // Also include formatted duration for convenience
+                            String formattedDuration = formatDuration(durationMs);
+                            status.put("duration_formatted", formattedDuration);
+                        }
+
+                        // Send the status response
+                        sendVideoRecordingStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating video recording status response", e);
+                        sendVideoRecordingStatusResponse(false, "json_error", e.getMessage());
+                    }
+                    break;
+
                 case "start_rtmp_stream":
                     Log.d(TAG, "RTMP streaming requested via BLE command");
                     String rtmpUrl = dataToProcess.optString("rtmpUrl", "");
@@ -1466,7 +1556,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     /**
      * Send a success response for a media request
      */
-    private void sendMediaSuccessResponse(String requestId, String appId, String mediaUrl, int mediaType) {
+    private void sendMediaSuccessResponse(String requestId, String mediaUrl, int mediaType) {
         try {
             JSONObject response = new JSONObject();
 
@@ -1479,7 +1569,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
 
             response.put("requestId", requestId);
-            response.put("appId", appId);
             response.put("success", true);
             
             // Convert to string
@@ -1498,7 +1587,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     /**
      * Send an error response for a media request
      */
-    private void sendMediaErrorResponse(String requestId, String appId, String errorMessage, int mediaType) {
+    private void sendMediaErrorResponse(String requestId, String errorMessage, int mediaType) {
         try {
             JSONObject response = new JSONObject();
 
@@ -1509,7 +1598,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
 
             response.put("requestId", requestId);
-            response.put("appId", appId);
             response.put("success", false);
             response.put("error", errorMessage);
             
@@ -1588,7 +1676,79 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
         }
     }
-    
+
+    /**
+     * Send a video recording status response via BLE
+     *
+     * @param success Whether the command succeeded
+     * @param status  Status message or error code
+     * @param details Additional details or error message
+     */
+    /**
+     * Format milliseconds into a human-readable duration string (MM:SS)
+     */
+    private String formatDuration(long durationMs) {
+        long seconds = (durationMs / 1000) % 60;
+        long minutes = (durationMs / (1000 * 60)) % 60;
+        return String.format(Locale.US, "%02d:%02d", minutes, seconds);
+    }
+
+    private void sendVideoRecordingStatusResponse(boolean success, String status, String details) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "video_recording_status");
+                response.put("success", success);
+                response.put("status", status);
+
+                if (details != null) {
+                    response.put("details", details);
+                }
+
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending video recording status: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating video recording status response", e);
+            }
+        }
+    }
+
+    /**
+     * Send a video recording status response with a custom status object
+     *
+     * @param success      Whether the command succeeded
+     * @param statusObject Custom status object with details
+     */
+    private void sendVideoRecordingStatusResponse(boolean success, JSONObject statusObject) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "video_recording_status");
+                response.put("success", success);
+
+                // Merge the status object fields into the response
+                Iterator<String> keys = statusObject.keys();
+                while (keys.hasNext()) {
+                    String key = keys.next();
+                    response.put(key, statusObject.get(key));
+                }
+
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending video recording status: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating video recording status response", e);
+            }
+        }
+    }
+
 
     /**
      * Example method to send status data back to the connected device
