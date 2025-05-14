@@ -136,6 +136,21 @@ const api = {
         return response.data;
       },
     },
+    
+    // Permissions management
+    permissions: {
+      // Get permissions for a TPA
+      get: async (packageName: string): Promise<any> => {
+        const response = await axios.get(`/api/permissions/${packageName}`);
+        return response.data;
+      },
+      
+      // Update permissions for a TPA
+      update: async (packageName: string, permissions: any): Promise<any> => {
+        const response = await axios.patch(`/api/permissions/${packageName}`, { permissions });
+        return response.data;
+      },
+    },
   },
 
   // Installation sharing endpoints

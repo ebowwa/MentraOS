@@ -33,6 +33,7 @@ import adminRoutes from './routes/admin.routes';
 import tpaServerRoutes from './routes/tpa-server.routes';
 import toolsRoutes from './routes/tools.routes';
 import audioRoutes from './routes/audio.routes';
+import permissionsRoutes from './routes/permissions.routes';
 
 import path from 'path';
 
@@ -96,6 +97,7 @@ app.use(cors({
     'http://localhost:5173',
     'http://127.0.0.1:5174',
     'http://localhost:5174',
+    'http://localhost:5175',
     'http://localhost:5173',
     'http://localhost:53216',
     'http://localhost:6173',
@@ -141,6 +143,7 @@ app.use('/api/admin', adminRoutes);
 // app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
 app.use('/api/tools', toolsRoutes);
+app.use('/api/permissions', permissionsRoutes);
 // HTTP routes for augmentOS settings are now replaced by WebSocket implementation
 // app.use('/api/augmentos-settings', augmentosSettingsRoutes);
 app.use(errorReportRoutes);

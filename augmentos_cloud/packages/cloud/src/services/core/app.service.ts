@@ -131,9 +131,11 @@ export class AppService {
       if (!app) {
         // Check if the app is in the app store
         console.log('Checking app store for app:', packageName);
+        
+        // Use lean() to get a plain JavaScript object instead of a Mongoose document
         app = await App.findOne({
           packageName: packageName
-        }) as AppI;
+        }).lean() as AppI;
       }
     }
 
@@ -143,7 +145,7 @@ export class AppService {
   async findFromAppStore(packageName: string): Promise<AppI | undefined> {
     const app = await App.findOne({
       packageName: packageName
-    }) as AppI;
+    }).lean() as AppI;
     return app;
   }
 
@@ -596,6 +598,7 @@ export class AppService {
       query.developerId = developerId;
     }
 
+    // Use lean() to get a plain JavaScript object instead of a Mongoose document
     return App.findOne(query).lean();
   }
 

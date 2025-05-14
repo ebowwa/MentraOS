@@ -342,11 +342,20 @@ async function getAppByPackage(req: Request, res: Response) {
       });
     }
 
+    // Convert Mongoose document to plain JavaScript object
+    // Use toObject() method if available, otherwise use as is
+    const plainApp = typeof (app as any).toObject === 'function' 
+      ? (app as any).toObject() 
+      : app;
+    
+    // Log permissions for debugging
+    console.log(`App ${packageName} permissions:`, plainApp.permissions);
+
     // If the app has a developerId, try to get the developer profile information
     let developerProfile = null;
-    if (app.developerId) {
+    if (plainApp.developerId) {
       try {
-        const developer = await User.findByEmail(app.developerId);
+        const developer = await User.findByEmail(plainApp.developerId);
         if (developer && developer.profile) {
           developerProfile = developer.profile;
         }
@@ -357,8 +366,8 @@ async function getAppByPackage(req: Request, res: Response) {
     }
 
     // Create response with developer profile if available
-    // Use the AppWithDeveloperProfile interface for type safety
-    const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+    // Use the plain app directly instead of spreading its properties
+    const appObj = plainApp as AppWithDeveloperProfile;
     if (developerProfile) {
       appObj.developerProfile = developerProfile;
     }
@@ -655,7 +664,7 @@ async function getInstalledApps(req: Request, res: Response) {
     try {
       const { packageName } = req.params;
 
-      // Get app details
+      // Get app details and convert to plain object with lean()
       const app = await appService.getAppByPackageName(packageName);
 
       if (!app) {
@@ -664,12 +673,15 @@ async function getInstalledApps(req: Request, res: Response) {
           message: `App with package name ${packageName} not found`
         });
       }
+      
+      // Convert to plain JavaScript object if it's a Mongoose document
+      const plainApp = (app as any).toObject ? (app as any).toObject() : app;
 
       // If the app has a developerId, try to get the developer profile information
       let developerProfile = null;
-      if (app.developerId) {
+      if (plainApp.developerId) {
         try {
-          const developer = await User.findByEmail(app.developerId);
+          const developer = await User.findByEmail(plainApp.developerId);
           if (developer && developer.profile) {
             developerProfile = developer.profile;
           }
@@ -681,10 +693,13 @@ async function getInstalledApps(req: Request, res: Response) {
 
       // Create response with developer profile if available
       // Use the AppWithDeveloperProfile interface for type safety
-      const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+      const appObj = plainApp as AppWithDeveloperProfile;
       if (developerProfile) {
         appObj.developerProfile = developerProfile;
       }
+
+      // Log the permissions to verify they are properly included
+      console.log(`App ${packageName} permissions:`, plainApp.permissions);
 
       res.json({
         success: true,
