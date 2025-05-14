@@ -3,8 +3,16 @@
         "apps": [],
         "details": [
             {
-                "appID": "T5XXXL6N36.com.augmentos.augmentostest",
-                "paths": ["*"]
+                "appID": "3HG9FZ7C8U.com.augmentos.augmentostest",
+                "paths": [
+                    "*"
+                ]
+            },
+            {
+                "appID": "T5XXXL6N36.com.augmentos.augmentos",
+                "paths": [
+                    "*"
+                ]
             }
         ]
     }
