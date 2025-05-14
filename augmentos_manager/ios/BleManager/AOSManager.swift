@@ -29,7 +29,6 @@ struct ViewState {
   @objc var g1Manager: ERG1Manager?
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
-  private var calendarManager: CalendarManager?
   
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
@@ -73,7 +72,6 @@ struct ViewState {
   override init() {
     self.vad = SileroVADStrategy()
     self.serverComms = ServerComms.getInstance()
-    self.calendarManager = CalendarManager()
     super.init()
     Task {
         await loadSettings()
@@ -92,6 +90,7 @@ struct ViewState {
     self.g1Manager = ERG1Manager()
     self.micManager = OnboardMicrophoneManager()
     self.serverComms.locationManager.setup()
+    self.serverComms.mediaManager.setup()
     
     guard g1Manager != nil else {
       return
@@ -113,8 +112,9 @@ struct ViewState {
       print("G1 glasses connection changed to: \(self.g1Manager!.g1Ready ? "Connected" : "Disconnected")")
       //      self.handleRequestStatus()
       if (self.g1Manager!.g1Ready) {
-        self.handleDeviceReady()
+        handleDeviceReady()
       } else {
+        handleDeviceDisconnected()
         handleRequestStatus()
       }
     }
@@ -149,17 +149,6 @@ struct ViewState {
   
   @objc func setCoreToken(_ coreToken: String) {
     serverComms.setAuthCredentials("", coreToken)
-  }
-  
-  @objc func syncCalendarEvents() {
-    // Trigger calendar sync when permissions have been granted
-    Task {
-      if let calendarManager = calendarManager {
-        let events = await calendarManager.fetchUpcomingEvents(days: 7)
-        // Process events here if needed
-        print("Calendar sync triggered, found \(events?.count ?? 0) events")
-      }
-    }
   }
   
   @objc func startApp(_ packageName: String) {
@@ -684,16 +673,16 @@ struct ViewState {
     self.isSearching = false
 
     // save the mic state:
-    let micWasEnabled = self.micEnabled
-    onMicrophoneStateChange(false)
+    // let micWasEnabled = self.micEnabled
+    // onMicrophoneStateChange(false)
     // restore the mic state (so that we know to turn it on when we connect again)
-    self.micEnabled = micWasEnabled
-    
-    if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
-      return
-    }
+    // self.micEnabled = micWasEnabled
     
     self.g1Manager?.disconnect()
+    
+//    if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
+//      return
+//    }
     
   }
   
@@ -1147,12 +1136,20 @@ struct ViewState {
       
       // send to the server our battery status:
       self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false)
+      self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "CONNECTED")
       
       // enable the mic if it was last on:
-      print("ENABLING MIC STATE: \(self.micEnabled)")
-      onMicrophoneStateChange(self.micEnabled)
+      // print("ENABLING MIC STATE: \(self.micEnabled)")
+      // onMicrophoneStateChange(self.micEnabled)
       self.handleRequestStatus()
     }
+  }
+
+  private func handleDeviceDisconnected() {
+    print("Device disconnected")
+    onMicrophoneStateChange(false)// technically shouldn't be necessary
+    self.serverComms.sendGlassesConnectionState(modelName: self.defaultWearable, status: "DISCONNECTED")
+    self.handleRequestStatus()
   }
   
   private func handleConnectWearable(modelName: String, deviceName: String) {
@@ -1160,6 +1157,10 @@ struct ViewState {
     
     if (modelName.contains("Virtual") || self.defaultWearable.contains("Virtual")) {
       // we don't need to search for a virtual device
+      return
+    }
+
+    if (self.defaultWearable.isEmpty) {
       return
     }
     
@@ -1178,6 +1179,7 @@ struct ViewState {
         self.g1Manager?.RN_pairById(self.deviceName)
       } else {
         print("this shouldn't happen (we don't have a deviceName saved, connecting will fail if we aren't already paired)")
+        
       }
     }
     

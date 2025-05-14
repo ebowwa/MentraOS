@@ -31,5 +31,9 @@ public interface ServerCommsCallback {
      * @param appId ID of the app requesting the video stream
      */
     void onVideoStreamRequest(String appId);
+
+    // New methods for explicit app started/stopped events
+    void onAppStarted(String packageName);
+    void onAppStopped(String packageName);
     void onSettingsUpdate(JSONObject settings);
 }

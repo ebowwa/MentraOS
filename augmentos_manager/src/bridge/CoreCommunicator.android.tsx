@@ -261,6 +261,12 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit('WIFI_SCAN_RESULTS', { 
           networks: data.wifi_scan_results
         });
+      } else if (data.type === 'app_started' && data.packageName) {
+        console.log('APP_STARTED_EVENT', data.packageName);
+        GlobalEventEmitter.emit('APP_STARTED_EVENT', data.packageName);
+      } else if (data.type === 'app_stopped' && data.packageName) {
+        console.log('APP_STOPPED_EVENT', data.packageName);
+        GlobalEventEmitter.emit('APP_STOPPED_EVENT', data.packageName);
       }
     } catch (e) {
       console.error('Error parsing data from Core:', e);
@@ -625,6 +631,7 @@ export class CoreCommunicator extends EventEmitter {
       command: 'request_wifi_scan'
     });
   }
+
   
 
   async stopService() {

@@ -158,9 +158,10 @@ export class CoreCommunicator extends EventEmitter {
     // }
 
     // AOSModule.sendCommand(JSON.stringify({ "command": "request_status" }));
+    // wait a bit to ensure the core is ready (a bit of a hack but it is reliable)
     setTimeout(() => {
       AOSModule.sendCommand(JSON.stringify({command: 'connect_wearable'}));
-    }, 2000);
+    }, 3000);
 
     // setTimeout(() => {
     //   AOSModule.sendCommand(JSON.stringify({ "command": "connect_wearable" }));

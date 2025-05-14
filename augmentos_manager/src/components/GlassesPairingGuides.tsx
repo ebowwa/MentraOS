@@ -2,6 +2,8 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 
 // 1) Create an interface for the props
 interface GlassesPairingGuideProps {
@@ -25,6 +27,11 @@ export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = (
       <Text style={[styles.guideStep, { color: textColor }]}>
         2. Place your G1 in the charging case with the lid open.
       </Text>
+
+      <Image source={require('../assets/glasses/g1.png')} style={{...styles.guideImage, width: '60%', alignSelf: 'center'}} />
+
+      {/* arrow downwards */}
+      <FontAwesome name="arrow-down" size={48} color={textColor} style={{alignSelf: 'center', marginTop: -48}} />
 
       <Image source={require('../assets/guide/image_g1_pair.png')} style={styles.guideImage} />
     </View>
