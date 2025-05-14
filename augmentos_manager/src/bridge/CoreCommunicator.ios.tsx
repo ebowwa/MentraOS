@@ -526,6 +526,15 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
+  async sendSetUnitSystem(enabled: boolean) {
+    return await this.sendData({
+      command: 'set_unit_system',
+      params: {
+        system: enabled ? 'metric' : 'imperial',
+      },
+    });
+  }
+
   async startAppByPackageName(packageName: string) {
     await this.sendData({
       command: 'start_app',
@@ -624,6 +633,15 @@ export class CoreCommunicator extends EventEmitter {
   async stopService() {
     // TODO: ios
     // CoreCommsService.stopService();
+  }
+
+  async sendSetMetricSystemEnabled(metricSystemEnabled: boolean) {
+    return await this.sendData({
+      command: 'set_metric_system_enabled',
+      params: {
+        enabled: metricSystemEnabled,
+      },
+    });
   }
 }
 

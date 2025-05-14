@@ -48,6 +48,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null);
+  const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(status.core_info.metric_system_enabled);
 
   const dashboardContentOptions = [
     { label: 'None', value: 'none' },
@@ -63,6 +64,16 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     const newVal = !isContextualDashboardEnabled;
     await coreCommunicator.sendToggleContextualDashboard(newVal);
     setIsContextualDashboardEnabled(newVal);
+  };
+
+  const toggleMetricSystem = async () => {
+    const newVal = !isMetricSystemEnabled;
+    try {
+      await coreCommunicator.sendSetMetricSystemEnabled(newVal);
+      setIsMetricSystemEnabled(newVal);
+    } catch (error) {
+      console.error('Error toggling metric system:', error);
+    }
   };
 
   const onSaveHeadUpAngle = async (newHeadUpAngle: number) => {
@@ -129,6 +140,16 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
       }
     }
   }, [status.glasses_info?.headUp_angle, status.glasses_info]);
+
+  // Update isMetricSystemEnabled when status changes
+  useEffect(() => {
+    setIsMetricSystemEnabled(status.core_info.metric_system_enabled);
+  }, [status.core_info.metric_system_enabled]);
+
+  // Update isContextualDashboardEnabled when status changes
+  useEffect(() => {
+    setIsContextualDashboardEnabled(status.core_info.contextual_dashboard_enabled);
+  }, [status.core_info.contextual_dashboard_enabled]);
 
   // Switch track colors
   const switchColors = {
@@ -239,6 +260,24 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
             <Switch
               value={isContextualDashboardEnabled}
               onValueChange={toggleContextualDashboard}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
+          </View>
+          
+          <View style={[styles.settingItem, styles.elevatedCard]}>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.label}>
+                Use Metric System
+              </Text>
+              <Text style={styles.value}>
+                Metric System (°C) or Imperial System (°F).
+              </Text>
+            </View>
+            <Switch
+              value={isMetricSystemEnabled}
+              onValueChange={toggleMetricSystem}
               trackColor={switchColors.trackColor}
               thumbColor={switchColors.thumbColor}
               ios_backgroundColor={switchColors.ios_backgroundColor}
