@@ -1,0 +1,11 @@
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "T5XXXL6N36.com.augmentos.augmentostest",
+                "paths": ["*"]
+            }
+        ]
+    }
+}
