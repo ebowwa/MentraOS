@@ -44,7 +44,6 @@ import GlassesPairingGuidePreparationScreen from './screens/GlassesPairingGuideP
 import ErrorReportScreen from './screens/ErrorReportScreen';
 import { saveSetting } from './logic/SettingsHelper';
 import WelcomePageComponent from './components/WelcomePageComponent.tsx';
-import TestingPage from './screens/TestingPage.tsx';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import DeveloperSettingsScreen from './screens/DeveloperSettingsScreen.tsx';
 import DashboardSettingsScreen from './screens/DashboardSettingsScreen.tsx';
@@ -203,15 +202,6 @@ const App: React.FC = () => {
                             <Stack.Screen name="ConnectingToPuck" options={{ headerShown: false }}>
                               {() => (
                                 <ConnectingToPuckComponent
-                                  isDarkTheme={isDarkTheme}
-                                  toggleTheme={toggleTheme}
-                                />
-                              )}
-                            </Stack.Screen>
-
-                            <Stack.Screen name="Testing" options={{ headerShown: false }}>
-                              {() => (
-                                <TestingPage
                                   isDarkTheme={isDarkTheme}
                                   toggleTheme={toggleTheme}
                                 />

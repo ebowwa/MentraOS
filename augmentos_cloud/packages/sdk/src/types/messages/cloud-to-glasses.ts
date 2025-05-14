@@ -84,6 +84,25 @@ export interface VideoStreamRequestToGlasses extends BaseMessage {
   userSession: Partial<UserSession>;
   appId: string;
 }
+/**
+ * Settings update to glasses
+ */
+export interface SettingsUpdate extends BaseMessage {
+  type: CloudToGlassesMessageType.SETTINGS_UPDATE;
+  sessionId: string;
+  settings: {
+    useOnboardMic: boolean;
+    contextualDashboard: boolean;
+    headUpAngle: number;
+    brightness: number;
+    autoBrightness: boolean;
+    sensingEnabled: boolean;
+    alwaysOnStatusBar: boolean;
+    bypassVad: boolean;
+    bypassAudioEncoding: boolean;
+    enablePhoneNotifications: boolean;
+  };
+}
 
 /**
  * Union type for all messages from cloud to glasses
@@ -96,7 +115,8 @@ export type CloudToGlassesMessage =
   | AppStateChange
   | MicrophoneStateChange
   | PhotoRequestToGlasses
-  | VideoStreamRequestToGlasses;
+  | VideoStreamRequestToGlasses
+  | SettingsUpdate;
 
 //===========================================================
 // Type guards

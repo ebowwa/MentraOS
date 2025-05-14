@@ -528,7 +528,7 @@ public class ServerComms {
     public void sendCoreStatus(JSONObject status) {
         try {
             JSONObject event = new JSONObject();
-            event.put("type", "core_status");
+            event.put("type", "core_status_update");
             event.put("status", status);
             event.put("timestamp", System.currentTimeMillis());
             wsManager.sendText(event.toString());
@@ -577,6 +577,32 @@ public class ServerComms {
         }
     }
 
+    /**
+     * Requests settings from server via WebSocket
+     */
+    public void requestSettingsFromServer() {
+        try {
+            Log.d(TAG, "Requesting settings from server");
+            JSONObject settingsRequest = new JSONObject();
+            settingsRequest.put("type", "settings_update_request");
+            wsManager.sendText(settingsRequest.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating settings request", e);
+        }
+    }
+
+    public void sendSettingsUpdateRequest() {
+        try {
+            Log.d(TAG, "Sending settings_update_request");
+            JSONObject event = new JSONObject();
+            event.put("type", "settings_update_request");
+            event.put("timestamp", System.currentTimeMillis());
+            wsManager.sendText(event.toString());
+        } catch (JSONException e) {
+            Log.e(TAG, "Error building settings_update_request JSON", e);
+        }
+    }
+
     // ------------------------------------------------------------------------
     // INTERNAL: Message Handling
     // ------------------------------------------------------------------------
@@ -590,6 +616,9 @@ public class ServerComms {
         JSONArray installedApps;
         JSONArray activeAppPackageNames;
 
+        // Log.d(TAG, "Received message of type: " + type);
+        // Log.d(TAG, "Full message: " + msg.toString());
+
 //        Log.d(TAG, "Received message of type: " + msg);
 
         switch (type) {
@@ -601,6 +630,7 @@ public class ServerComms {
                     // Log.d(TAG, "Apps installed: " + msg);
                     serverCommsCallback.onAppStateChange(parseAppList(msg));
                     serverCommsCallback.onConnectionAck();
+                    sendSettingsUpdateRequest();
                 }
                 break;
 
@@ -681,6 +711,18 @@ public class ServerComms {
                     speechRecAugmentos.handleSpeechJson(msg);
                 } else {
                     Log.w(TAG, "Received speech message but speechRecAugmentos is null!");
+                }
+                break;
+
+            case "settings_update":
+                Log.d(TAG, "Received settings update from WebSocket");
+                try {
+                    JSONObject settings = msg.optJSONObject("settings");
+                    if (settings != null && serverCommsCallback != null) {
+                        serverCommsCallback.onSettingsUpdate(settings);
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error handling settings update", e);
                 }
                 break;
 

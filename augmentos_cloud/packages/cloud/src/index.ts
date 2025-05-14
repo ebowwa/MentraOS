@@ -16,9 +16,11 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 // Import services
-import { webSocketService } from './services/core/websocket.service';
 import { healthMonitorService } from './services/core/health-monitor.service';
 import { photoRequestService } from './services/core/photo-request.service';
+import { DebugService } from './services/debug/debug-service';
+import { SessionService, initializeSessionService } from './services/core/session.service';
+import { webSocketService } from './services/core/websocket.service';
 
 // Import routes
 import appRoutes from './routes/apps.routes';
@@ -34,6 +36,7 @@ import photoRoutes from './routes/photos.routes';
 import galleryRoutes from './routes/gallery.routes';
 import toolsRoutes from './routes/tools.routes';
 import hardwareRoutes from './routes/hardware.routes';
+import audioRoutes from './routes/audio.routes';
 
 import path from 'path';
 
@@ -75,6 +78,16 @@ mongoConnection.init()
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80; // Default http port.
 const app = express();
 const server = new Server(app);
+
+// Initialize services in the correct order
+const debugService = new DebugService(server);
+const sessionService = initializeSessionService(debugService);
+
+// Initialize websocket service after session service is ready
+webSocketService.initialize();
+
+// Export services for use in other modules
+export { sessionService, debugService, webSocketService };
 
 // Middleware setup
 app.use(helmet());
@@ -135,8 +148,11 @@ app.use('/api/photos', photoRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/tools', toolsRoutes);
 app.use('/api/hardware', hardwareRoutes);
+// HTTP routes for augmentOS settings are now replaced by WebSocket implementation
+// app.use('/api/augmentos-settings', augmentosSettingsRoutes);
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
+app.use(audioRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -150,6 +166,7 @@ app.use(express.static(path.join(__dirname, './public')));
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Initialize WebSocket service
+// Initialize WebSocket servers
 webSocketService.setupWebSocketServers(server);
 
 // Start the server

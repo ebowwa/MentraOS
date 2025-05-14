@@ -374,6 +374,18 @@ public class SmartGlassesManager {
                 .putBoolean(context.getResources().getString(R.string.FORCE_CORE_ONBOARD_MIC), toForce)
                 .apply();
     }
+
+    public static String getPreferredMic(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context)
+                .getString(context.getResources().getString(R.string.PREFERRED_MIC), "glasses");
+    }
+
+    public static void setPreferredMic(Context context, String mic) {
+        PreferenceManager.getDefaultSharedPreferences(context)
+                .edit()
+                .putString(context.getResources().getString(R.string.PREFERRED_MIC), mic)
+                .apply();
+    }
     
     public static boolean getBypassVadForDebugging(Context context) {
         SharedPreferences sharedPreferences = context.getSharedPreferences("AugmentOSPrefs", Context.MODE_PRIVATE);

@@ -31,4 +31,5 @@ public interface ServerCommsCallback {
      * @param appId ID of the app requesting the video stream
      */
     void onVideoStreamRequest(String appId);
+    void onSettingsUpdate(JSONObject settings);
 }

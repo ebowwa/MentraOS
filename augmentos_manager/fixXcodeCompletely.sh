@@ -17,7 +17,10 @@ rm -rf ~/Library/Developer/Xcode/DerivedData/*
 rm -rf node_modules ios/build ios/Pods ios/Podfile.lock
 
 echo "📦 Reinstalling npm dependencies..."
+npm cache clean --force
 npm install
+# Make sure react-devtools-core is installed properly
+npm install --save-dev react-devtools-core
 
 echo "📦 Reinstalling CocoaPods..."
 cd ios

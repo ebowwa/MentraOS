@@ -41,6 +41,8 @@ const triggerTool = async (req: Request, res: Response) => {
     
     // Call the service method to trigger the webhook
     const result = await appService.triggerTpaToolWebhook(packageName, payload);
+
+    console.log('result', result);
     
     // Return the response from the TPA
     return res.status(result.status).json(result.data);

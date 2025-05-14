@@ -158,6 +158,11 @@ public class AugmentOsManagerMessageParser {
                     callback.requestWifiScan();
                     break;
 
+                case "set_preferred_mic":
+                    String mic = commandObject.getJSONObject("params").getString("mic");
+                    callback.setPreferredMic(mic);
+                    break;
+
                 default:
                     Log.w(TAG, "Unknown command: " + command);
             }
