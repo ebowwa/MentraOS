@@ -62,4 +62,8 @@ public class ServerConfigUtil {
     public static String getPhotoUploadUrl() {
         return getApiUrl("/api/photos/upload");
     }
+
+    public static String getVideoUploadUrl() {
+        return getApiUrl("/api/videos/upload");
+    }
 }

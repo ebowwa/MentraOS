@@ -42,8 +42,8 @@ import com.augmentos.augmentos_core.AugmentosService;
 import com.augmentos.asg_client.bluetooth.BluetoothManagerFactory;
 import com.augmentos.asg_client.bluetooth.BluetoothStateListener;
 import com.augmentos.asg_client.bluetooth.IBluetoothManager;
-import com.augmentos.asg_client.camera.PhotoCaptureService;
-import com.augmentos.asg_client.camera.PhotoQueueManager;
+import com.augmentos.asg_client.camera.MediaCaptureService;
+import com.augmentos.asg_client.camera.MediaUploadQueueManager;
 import com.augmentos.asg_client.network.INetworkManager;
 import com.augmentos.asg_client.network.NetworkManagerFactory;
 import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this is the correct import path for your library
@@ -101,12 +101,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // DEBUG: Timer and handler for VPS photo uploads
     private Handler debugVpsPhotoHandler;
     private Runnable debugVpsPhotoRunnable;
-    
-    // Photo queue manager for handling offline photo uploads
-    private PhotoQueueManager mPhotoQueueManager;
 
-    // Photo capture service
-    private PhotoCaptureService mPhotoCaptureService;
+    // Photo queue manager for handling offline media uploads
+    private MediaUploadQueueManager mMediaQueueManager;
+
+    // Media capture service
+    private MediaCaptureService mMediaCaptureService;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -167,10 +167,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         initializeBluetoothManager();
 
         // Initialize the photo queue manager
-        initializePhotoQueueManager();
+        initializeMediaQueueManager();
 
         // Initialize the photo capture service
-        initializePhotoCaptureService();
+        initializeMediaCaptureService();
 
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
@@ -213,89 +213,92 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
     
     /**
-     * Initialize the photo queue manager
+     * Initialize the media queue manager
      */
-    private void initializePhotoQueueManager() {
-        if (mPhotoQueueManager == null) {
-            mPhotoQueueManager = new PhotoQueueManager(getApplicationContext());
+    private void initializeMediaQueueManager() {
+        if (mMediaQueueManager == null) {
+            mMediaQueueManager = new MediaUploadQueueManager(getApplicationContext());
             
             // Set up queue callback
-            mPhotoQueueManager.setQueueCallback(new PhotoQueueManager.QueueCallback() {
+            mMediaQueueManager.setMediaQueueCallback(new MediaUploadQueueManager.MediaQueueCallback() {
                 @Override
-                public void onPhotoQueued(String requestId, String filePath) {
-                    Log.d(TAG, "Photo queued: " + requestId + ", path: " + filePath);
+                public void onMediaQueued(String requestId, String filePath, int mediaType) {
+                    Log.d(TAG, "Media queued: " + requestId + ", path: " + filePath + ", type: " +
+                            (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "photo" : "video"));
                 }
                 
                 @Override
-                public void onPhotoUploaded(String requestId, String url) {
-                    Log.d(TAG, "Photo uploaded from queue: " + requestId + ", URL: " + url);
+                public void onMediaUploaded(String requestId, String url, int mediaType) {
+                    String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                    Log.d(TAG, mediaTypeName + " uploaded from queue: " + requestId + ", URL: " + url);
                     // Send notification to phone if connected
-                    sendPhotoSuccessResponse(requestId, "system", url);
+                    sendMediaSuccessResponse(requestId, "system", url, mediaType);
                 }
                 
                 @Override
-                public void onPhotoUploadFailed(String requestId, String error) {
-                    Log.d(TAG, "Photo upload failed from queue: " + requestId + ", error: " + error);
+                public void onMediaUploadFailed(String requestId, String error, int mediaType) {
+                    String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                    Log.d(TAG, mediaTypeName + " upload failed from queue: " + requestId + ", error: " + error);
                     // We don't send error notifications to avoid spamming the phone
                 }
             });
-            
-            // Process the queue in case there are queued photos from previous sessions
-            mPhotoQueueManager.processQueue();
+
+            // Process the queue in case there are queued items from previous sessions
+            mMediaQueueManager.processQueue();
         }
     }
     
     
     /**
-     * Initialize the photo capture service
+     * Initialize the media capture service
      */
-    private void initializePhotoCaptureService() {
-        if (mPhotoCaptureService == null) {
-            if (mPhotoQueueManager == null) {
-                initializePhotoQueueManager();
+    private void initializeMediaCaptureService() {
+        if (mMediaCaptureService == null) {
+            if (mMediaQueueManager == null) {
+                initializeMediaQueueManager();
             }
-            
-            mPhotoCaptureService = new PhotoCaptureService(getApplicationContext(), mPhotoQueueManager) {
+
+            mMediaCaptureService = new MediaCaptureService(getApplicationContext(), mMediaQueueManager) {
                 @Override
-                protected void sendPhotoSuccessResponse(String requestId, String appId, String photoUrl) {
+                protected void sendMediaSuccessResponse(String requestId, String appId, String mediaUrl, int mediaType) {
                     // Override to delegate to parent class
-                    AsgClientService.this.sendPhotoSuccessResponse(requestId, appId, photoUrl);
+                    AsgClientService.this.sendMediaSuccessResponse(requestId, appId, mediaUrl, mediaType);
                 }
                 
                 @Override
-                protected void sendPhotoErrorResponse(String requestId, String appId, String errorMessage) {
+                protected void sendMediaErrorResponse(String requestId, String appId, String errorMessage, int mediaType) {
                     // Override to delegate to parent class
-                    AsgClientService.this.sendPhotoErrorResponse(requestId, appId, errorMessage);
+                    AsgClientService.this.sendMediaErrorResponse(requestId, appId, errorMessage, mediaType);
                 }
             };
-            
-            // Set the photo capture listener
-            mPhotoCaptureService.setPhotoCaptureListener(photoCaptureListener);
+
+            // Set the media capture listener
+            mMediaCaptureService.setMediaCaptureListener(mediaCaptureListener);
         }
     }
     
     /**
-     * Get the photo queue manager instance
-     * 
-     * @return PhotoQueueManager instance
+     * Get the media queue manager instance
+     *
+     * @return MediaUploadQueueManager instance
      */
-    public PhotoQueueManager getPhotoQueueManager() {
-        if (mPhotoQueueManager == null) {
-            initializePhotoQueueManager();
+    public MediaUploadQueueManager getMediaQueueManager() {
+        if (mMediaQueueManager == null) {
+            initializeMediaQueueManager();
         }
-        return mPhotoQueueManager;
+        return mMediaQueueManager;
     }
     
     /**
-     * Get the photo capture service instance
-     * 
-     * @return PhotoCaptureService instance
+     * Get the media capture service instance
+     *
+     * @return MediaCaptureService instance
      */
-    public PhotoCaptureService getPhotoCaptureService() {
-        if (mPhotoCaptureService == null) {
-            initializePhotoCaptureService();
+    public MediaCaptureService getMediaCaptureService() {
+        if (mMediaCaptureService == null) {
+            initializeMediaCaptureService();
         }
-        return mPhotoCaptureService;
+        return mMediaCaptureService;
     }
     
     /**
@@ -574,7 +577,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             glassesMicrophoneManager = null;
         }
 
-        // No need to clean up PhotoQueueManager as it's stateless and file-based
+        // No need to clean up MediaQueueManager as it's stateless and file-based
 
         super.onDestroy();
     }
@@ -705,9 +708,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             onWifiConnected();
             
             // Process photo upload queue when connection is restored
-            if (mPhotoQueueManager != null && !mPhotoQueueManager.isQueueEmpty()) {
-                Log.d(TAG, "WiFi connected - processing photo upload queue");
-                mPhotoQueueManager.processQueue();
+            if (mMediaQueueManager != null && !mMediaQueueManager.isQueueEmpty()) {
+                Log.d(TAG, "WiFi connected - processing media upload queue");
+                mMediaQueueManager.processQueue();
             }
         } else {
             // Handle disconnection
@@ -1031,7 +1034,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     Log.d(TAG, "Photo will be saved to: " + photoFilePath);
                     
                     // Take the photo using CameraNeo instead of CameraRecordingService
-                    mPhotoCaptureService.takePhotoAndUpload(photoFilePath, requestId, appId);
+                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId, appId);
                     break;
                     
                 case "start_rtmp_stream":
@@ -1219,20 +1222,42 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void parseK900Command(String command){
         switch (command) {
             case "cs_pho":
-                Log.d(TAG, "📦 Payload is cs_pho");
-                // Delegate to the photo capture service
-                //getPhotoCaptureService().handlePhotoButtonPress();
+                Log.d(TAG, "📦 Payload is cs_pho (short press)");
 
-                handleButtonPressForVpsDemo();
+                // If recording video, treat any button press as stop command
+                if (getMediaCaptureService() != null && getMediaCaptureService().isRecordingVideo()) {
+                    Log.d(TAG, "Stopping video recording due to button press");
+                    getMediaCaptureService().stopVideoRecording();
+                } else {
+                    // Otherwise handle as normal photo capture
+                    getMediaCaptureService().handlePhotoButtonPress();
+                    //handleButtonPressForVpsDemo();
+                }
                 break;
+
             case "hm_htsp":
             case "mh_htsp":
                 Log.d(TAG, "📦 Payload is hm_htsp or mh_htsp");
                 networkManager.startHotspot("Mentra Live", "MentraLive");
                 break;
+
             case "cs_vdo":
-                Log.d(TAG, "📦 Payload is cs_vdo");
+                Log.d(TAG, "📦 Payload is cs_vdo (long press)");
+
+                MediaCaptureService mediaService = getMediaCaptureService();
+                if (mediaService != null) {
+                    if (mediaService.isRecordingVideo()) {
+                        // If already recording, stop
+                        Log.d(TAG, "Stopping video recording due to long press");
+                        mediaService.stopVideoRecording();
+                    } else {
+                        // Otherwise start recording
+                        Log.d(TAG, "Starting video recording due to long press");
+                        mediaService.handleVideoButtonPress();
+                    }
+                }
                 break;
+
             default:
                 Log.d(TAG, "📦 Unknown payload: " + command);
                 break;
@@ -1314,15 +1339,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     public void handleButtonPressForVpsDemo() {
         Log.d(TAG, "Handling button press for VPS demo");
-        
-        // Initialize PhotoCaptureService if needed
-        if (mPhotoCaptureService == null) {
-            initializePhotoCaptureService();
+
+        // Initialize MediaCaptureService if needed
+        if (mMediaCaptureService == null) {
+            initializeMediaCaptureService();
         }
         
         // Call the VPS photo upload method directly
         // This bypasses the backend communication and directly calls the VPS service
-        mPhotoCaptureService.takeDebugVpsPhotoAndUpload();
+        mMediaCaptureService.takeDebugVpsPhotoAndUpload();
     }
     
     /**
@@ -1388,9 +1413,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 }
             };
 
-    // Photo capture listener (delegated to PhotoCaptureService)
-    private final PhotoCaptureService.PhotoCaptureListener photoCaptureListener = 
-        new PhotoCaptureService.PhotoCaptureListener() {
+    // Media capture listener (delegated to MediaCaptureService)
+    private final MediaCaptureService.MediaCaptureListener mediaCaptureListener =
+            new MediaCaptureService.MediaCaptureListener() {
             @Override
             public void onPhotoCapturing(String requestId) {
                 Log.d(TAG, "Photo capturing started: " + requestId);
@@ -1412,43 +1437,77 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             }
             
             @Override
-            public void onPhotoError(String requestId, String error) {
-                Log.e(TAG, "Photo error: " + requestId + ", error: " + error);
+            public void onVideoRecordingStarted(String requestId, String filePath) {
+                Log.d(TAG, "Video recording started: " + requestId + ", path: " + filePath);
+            }
+
+            @Override
+            public void onVideoRecordingStopped(String requestId, String filePath) {
+                Log.d(TAG, "Video recording stopped: " + requestId + ", path: " + filePath);
+            }
+
+            @Override
+            public void onVideoUploading(String requestId) {
+                Log.d(TAG, "Video uploading: " + requestId);
+            }
+
+            @Override
+            public void onVideoUploaded(String requestId, String url) {
+                Log.d(TAG, "Video uploaded: " + requestId + ", URL: " + url);
+            }
+
+            @Override
+            public void onMediaError(String requestId, String error, int mediaType) {
+                String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                Log.e(TAG, mediaTypeName + " error: " + requestId + ", error: " + error);
             }
         };
     
     /**
-     * Send a success response for a photo request
+     * Send a success response for a media request
      */
-    private void sendPhotoSuccessResponse(String requestId, String appId, String photoUrl) {
+    private void sendMediaSuccessResponse(String requestId, String appId, String mediaUrl, int mediaType) {
         try {
             JSONObject response = new JSONObject();
-            response.put("type", "photo_response");
+
+            if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO) {
+                response.put("type", "photo_response");
+                response.put("photoUrl", mediaUrl);
+            } else {
+                response.put("type", "video_response");
+                response.put("videoUrl", mediaUrl);
+            }
+
             response.put("requestId", requestId);
             response.put("appId", appId);
             response.put("success", true);
-            response.put("photoUrl", photoUrl);
             
             // Convert to string
             String jsonString = response.toString();
-            Log.d(TAG, "Formatted photo success response: " + jsonString);
+            Log.d(TAG, "Formatted media success response: " + jsonString);
             
             // Send the response back
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
                 bluetoothManager.sendData(jsonString.getBytes());
             }
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating photo success response", e);
+            Log.e(TAG, "Error creating media success response", e);
         }
     }
     
     /**
-     * Send an error response for a photo request
+     * Send an error response for a media request
      */
-    private void sendPhotoErrorResponse(String requestId, String appId, String errorMessage) {
+    private void sendMediaErrorResponse(String requestId, String appId, String errorMessage, int mediaType) {
         try {
             JSONObject response = new JSONObject();
-            response.put("type", "photo_response");
+
+            if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO) {
+                response.put("type", "photo_response");
+            } else {
+                response.put("type", "video_response");
+            }
+
             response.put("requestId", requestId);
             response.put("appId", appId);
             response.put("success", false);
@@ -1456,14 +1515,14 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             
             // Convert to string
             String jsonString = response.toString();
-            Log.d(TAG, "Formatted photo error response: " + jsonString);
+            Log.d(TAG, "Formatted media error response: " + jsonString);
             
             // Send the response back
             if (bluetoothManager != null && bluetoothManager.isConnected()) {
                 bluetoothManager.sendData(jsonString.getBytes());
             }
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating photo error response", e);
+            Log.e(TAG, "Error creating media error response", e);
         }
     }
 
@@ -1578,8 +1637,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             @Override
             public void run() {
                 // Take a photo and upload it to the VPS server
-                if (mPhotoCaptureService != null) {
-                    mPhotoCaptureService.takeDebugVpsPhotoAndUpload();
+                if (mMediaCaptureService != null && networkManager != null && networkManager.isConnectedToWifi()) {
+                    mMediaCaptureService.takeDebugVpsPhotoAndUpload();
+                } else {
+                    Log.d(TAG, "Skipping VPS photo upload - no WiFi connection or capture service unavailable");
                 }
                 
                 // Schedule the next execution
@@ -1638,6 +1699,22 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.e(TAG, "Successfully initialized bluetooth manager");
             } catch (Exception e) {
                 Log.e(TAG, "Failed to initialize bluetooth manager: " + e.getMessage(), e);
+            }
+
+            // Initialize the media queue manager
+            try {
+                initializeMediaQueueManager();
+                Log.e(TAG, "Successfully initialized media queue manager");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize media queue manager: " + e.getMessage(), e);
+            }
+
+            // Initialize the media capture service
+            try {
+                initializeMediaCaptureService();
+                Log.e(TAG, "Successfully initialized media capture service");
+            } catch (Exception e) {
+                Log.e(TAG, "Failed to initialize media capture service: " + e.getMessage(), e);
             }
             
             // Mark as initialized
