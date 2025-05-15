@@ -1534,8 +1534,8 @@ export class WebSocketService {
                 !subscriptionService.hasSubscription(userSessionId, message.packageName, StreamType.LOCATION_UPDATE) &&
                 subMessage.subscriptions.includes(StreamType.LOCATION_UPDATE);
 
-              // Update subscriptions
-              subscriptionService.updateSubscriptions(
+              // Update subscriptions (async)
+              await subscriptionService.updateSubscriptions(
                 userSessionId,
                 message.packageName,
                 userSession.userId,
