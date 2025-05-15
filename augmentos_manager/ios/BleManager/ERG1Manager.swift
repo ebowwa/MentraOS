@@ -278,11 +278,12 @@ enum GlassesError: Error {
   @objc public func RN_sendText(_ text: String) -> Void {
 
 
-    if (text == " ") {
-      let command: [UInt8] = [0x18]
-      queueChunks([command])
-      return;
-    }
+//    if (text == " " || text == "") {
+//      let command: [UInt8] = [0x18]
+////      let command: [UInt8] = [0x20, 0xCA]
+//      queueChunks([command])
+//      return;
+//    }
 
     Task {
       let displayText = "\(text)"
@@ -634,6 +635,8 @@ enum GlassesError: Error {
     case .BLE_REQ_MIC_ON:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BRIGHTNESS:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    case .BLE_EXIT_ALL_FUNCTIONS:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .WHITELIST:
       // TODO: ios no idea why the glasses send 0xCB before sending ACK:
