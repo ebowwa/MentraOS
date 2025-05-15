@@ -40,38 +40,30 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null);
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(
-    status.glasses_info?.auto_brightness
+    status.glasses_settings.auto_brightness
   );
 
   // -- Effects --
   useEffect(() => {
-    if (status.glasses_info) {
-      if (status.glasses_info?.brightness != null) {
-        setBrightness(parseBrightness(status.glasses_info.brightness));
-      }
-    }
-  }, [status.glasses_info?.brightness, status.glasses_info]);
+    setBrightness(parseBrightness(status.glasses_settings.brightness));
+  }, [status.glasses_settings.brightness]);
 
   useEffect(() => {
-    if (status.glasses_info) {
-      if (status.glasses_info?.auto_brightness != null) {
-        setIsAutoBrightnessEnabled(status.glasses_info.auto_brightness);
-      }
-    }
-  }, [status.glasses_info?.auto_brightness, status.glasses_info]);
+    setIsAutoBrightnessEnabled(status.glasses_settings.auto_brightness);
+  }, [status.glasses_settings.auto_brightness]);
 
   // -- Handlers --
   const changeBrightness = async (newBrightness: number) => {
-    if (!status.glasses_info) {
-      showAlert('Glasses not connected', 'Please connect your smart glasses first.');
+    // if (!status.glasses_info) {
+    //   showAlert('Glasses not connected', 'Please connect your smart glasses first.');
+    //   return;
+    // }
+
+    if (newBrightness == null) {
       return;
     }
 
-    if (newBrightness == null) {
-        return;
-    }
-
-    if (status.glasses_info.brightness === '-') {return;} // or handle accordingly
+    // if (status.glasses_settings.brightness === '-') { return; } // or handle accordingly
     await coreCommunicator.setGlassesBrightnessMode(newBrightness, false);
     setBrightness(newBrightness);
   };
@@ -93,29 +85,21 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
     ios_backgroundColor: isDarkTheme ? '#666666' : '#D1D1D6',
   };
 
-  // Check if brightness control is available for the connected glasses
-  const isBrightnessControlAvailable = 
-    status.glasses_info?.model_name && 
-    status.glasses_info.model_name.toLowerCase().includes('even') &&
-    status.glasses_info.brightness !== '-';
-
   // Fixed slider props to avoid warning
   const sliderProps = {
-    disabled: !isBrightnessControlAvailable,
     style: [
       styles.slider,
-      !isBrightnessControlAvailable && styles.disabledItem
     ],
     minimumValue: 0,
     maximumValue: 100,
     step: 1,
     onSlidingComplete: (value: number) => changeBrightness(value),
     value: brightness ?? 50,
-    minimumTrackTintColor: isBrightnessControlAvailable ? styles.minimumTrackTintColor.color : '#999999',
+    minimumTrackTintColor: styles.minimumTrackTintColor.color,
     maximumTrackTintColor: isDarkTheme
       ? styles.maximumTrackTintColorDark.color
       : styles.maximumTrackTintColorLight.color,
-    thumbTintColor: isBrightnessControlAvailable ? styles.thumbTintColor.color : '#999999',
+    thumbTintColor: styles.thumbTintColor.color,
     // Using inline objects instead of defaultProps
     thumbTouchSize: { width: 40, height: 40 },
     trackStyle: { height: 5 },
@@ -169,7 +153,6 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
                 style={[
                   styles.label,
                   isDarkTheme ? styles.lightText : styles.darkText,
-                  (!isBrightnessControlAvailable) && styles.disabledItem,
                 ]}>
                 Brightness
               </Text>
@@ -177,18 +160,55 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
                 style={[
                   styles.value,
                   isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
-                  (!isBrightnessControlAvailable) && styles.disabledItem,
                 ]}>
-                {isBrightnessControlAvailable 
-                  ? 'Adjust the brightness level of your smart glasses.'
-                  : !status.glasses_info?.model_name 
-                    ? 'Please connect your smart glasses first.'
-                    : 'Brightness control not supported for this device.'}
+                {'Adjust the brightness level of your smart glasses.'}
               </Text>
               <Slider {...sliderProps} />
             </View>
           </View>
         )}
+
+
+        {/* <View style={styles.settingItem}>
+          <View style={styles.settingTextContainer}>
+            <Text
+              style={[
+                styles.label,
+                isDarkTheme ? styles.lightText : styles.darkText,
+              ]}>
+              Depth
+            </Text>
+            <Text
+              style={[
+                styles.value,
+                isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+              ]}>
+              {'Adjust the depth of the contextual dashboard.'}
+            </Text>
+            <Slider {...sliderProps} />
+          </View>
+        </View> */}
+
+
+        {/* <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}>
+                Dashboard Height
+              </Text>
+              <Text
+                style={[
+                  styles.value,
+                  isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+                ]}>
+                {'Adjust the height of the contextual dashboard.'}
+              </Text>
+              <Slider {...sliderProps} />
+            </View>
+          </View> */}
       </ScrollView>
     </View>
   );
