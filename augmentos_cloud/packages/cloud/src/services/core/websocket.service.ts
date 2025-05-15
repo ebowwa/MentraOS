@@ -111,8 +111,16 @@ const DEFAULT_AUGMENTOS_SETTINGS = {
   alwaysOnStatusBar: false,
   bypassVad: false,
   bypassAudioEncoding: false,
-  enablePhoneNotifications: false
+  metricSystemEnabled: false
 } as const;
+
+// Utility function to get changed keys between two objects
+function getChangedKeys<T extends Record<string, any>>(before: T, after: T): string[] {
+  return Object.keys(after).filter(
+    key => before[key] !== after[key] ||
+      (typeof before[key] !== typeof after[key] && before[key] != after[key])
+  );
+}
 
 /**
  * ⚡️🕸️🚀 Implementation of the WebSocket service.
@@ -1108,7 +1116,7 @@ export class WebSocketService {
 
         case "request_settings": {
           userSession.logger.info('Received settings request');
-          
+
           try {
             const user = await User.findByEmail(userSession.userId);
             const userSettings = user?.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
@@ -1365,7 +1373,7 @@ export class WebSocketService {
 
         case "core_status_update": {
           const coreStatusUpdate = message as CoreStatusUpdate;
-          userSession.logger.info('Received core status update:', coreStatusUpdate);
+          // userSession.logger.info('Received core status update:', coreStatusUpdate);
 
           try {
             // The status is already an object, no need to parse
@@ -1382,6 +1390,7 @@ export class WebSocketService {
             const newSettings = {
               useOnboardMic: coreInfo.force_core_onboard_mic,
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
+              metricSystemEnabled: coreInfo.metric_system_enabled,
               headUpAngle: connectedGlasses.headUp_angle,
               brightness: parseInt(connectedGlasses.brightness),
               autoBrightness: connectedGlasses.auto_brightness,
@@ -1389,7 +1398,6 @@ export class WebSocketService {
               alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
               bypassVad: coreInfo.bypass_vad_for_debugging,
               bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
-              enablePhoneNotifications: coreInfo.enable_phone_notifications
             };
 
             console.log("🔥🔥🔥: newSettings:", newSettings);
@@ -1398,43 +1406,58 @@ export class WebSocketService {
             const user = await User.findOrCreateUser(userSession.userId);
 
             // Get current settings before update
-            const currentSettings = JSON.parse(JSON.stringify(user.augmentosSettings));
-            userSession.logger.info('Current settings before update:', currentSettings);
+            const currentSettingsBeforeUpdate = JSON.parse(JSON.stringify(user.augmentosSettings));
+            userSession.logger.info('Current settings before update:', currentSettingsBeforeUpdate);
+
+            console.log("🔥🔥🔥: currentSettingsBeforeUpdate:", currentSettingsBeforeUpdate);
+            console.log("🔥🔥🔥: newSettings:", newSettings);
 
             // Check if anything actually changed
-            const hasChanges = Object.entries(newSettings).some(([key, value]) => {
-              return currentSettings[key] !== value || 
-                    (typeof currentSettings[key] !== typeof value && 
-                    currentSettings[key] != value);
-            });
-
-            if (!hasChanges) {
+            const changedKeys = getChangedKeys(currentSettingsBeforeUpdate, newSettings);
+            console.log("🔥🔥🔥: changedKeys:", changedKeys);
+            if (changedKeys.length === 0) {
               userSession.logger.info('No changes detected in settings from core status update');
             } else {
               userSession.logger.info('Changes detected in settings from core status update:', {
-                changedFields: Object.entries(newSettings)
-                  .filter(([key, value]) => {
-                    return currentSettings[key] !== value || 
-                          (typeof currentSettings[key] !== typeof value && 
-                          currentSettings[key] != value);
-                  })
-                  .map(([key, value]) => ({ 
-                    key, 
-                    from: `${currentSettings[key]} (${typeof currentSettings[key]})`, 
-                    to: `${value} (${typeof value})` 
-                  }))
+                changedFields: changedKeys.map(key => ({
+                  key,
+                  from: `${(currentSettingsBeforeUpdate as Record<string, any>)[key]} (${typeof (currentSettingsBeforeUpdate as Record<string, any>)[key]})`,
+                  to: `${(newSettings as Record<string, any>)[key]} (${typeof (newSettings as Record<string, any>)[key]})`
+                }))
               });
-
-              // Update the settings in the database
-              await user.updateAugmentosSettings(newSettings);
-              
-              // Fetch updated user to verify changes
-              const updatedUser = await User.findOne({ email: userSession.userId });
-              const updatedSettings = updatedUser?.augmentosSettings 
-                ? JSON.parse(JSON.stringify(updatedUser.augmentosSettings))
-                : null;
-                
-              userSession.logger.info('Settings after update:', updatedSettings);
+              // Update the settings in the database before broadcasting
+              try {
+                await user.updateAugmentosSettings(newSettings);
+                userSession.logger.info('Updated AugmentOS settings in the database.');
+              } catch (dbError) {
+                userSession.logger.error('Failed to update AugmentOS settings in the database:', dbError);
+                return; // Do not broadcast if DB update fails
+              }
+              // Only notify for changed keys
+              const notifiedApps = new Set<string>();
+              for (const key of changedKeys) {
+                const subscribedApps = subscriptionService.getSubscribedAppsForAugmentosSetting(userSession, key);
+                // userSession.logger.info('Subscribed apps for key:', key, subscribedApps);
+                console.log("fgdsgfdgfd", key)
+                console.log("fgdsgfdgfd", subscribedApps)
+                for (const packageName of subscribedApps) {
+                  if (notifiedApps.has(packageName)) continue;
+                  console.log("fgdsgfdgfd", packageName)
+                  const tpaWs = userSession.appConnections.get(packageName);
+                  console.log("fgdsgfdgfd", tpaWs)
+                  if (tpaWs && tpaWs.readyState === 1) {
+                    userSession.logger.info(`[websocket.service]: Broadcasting AugmentOS settings update to ${packageName}`);
+                    const augmentosSettingsUpdate = {
+                      type: 'augmentos_settings_update',
+                      sessionId: `${userSession.sessionId}-${packageName}`,
+                      settings: newSettings,
+                      timestamp: new Date()
+                    };
+                    tpaWs.send(JSON.stringify(augmentosSettingsUpdate));
+                    notifiedApps.add(packageName);
+                  }
+                }
+              }
             }
           } catch (error) {
             userSession.logger.error('Error updating settings from core status:', error);

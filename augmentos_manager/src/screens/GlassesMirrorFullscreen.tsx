@@ -21,6 +21,7 @@ import { useGlassesMirror } from '../providers/GlassesMirrorContext';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
 import { NavigationProps } from '../components/types';
 import RNFS from 'react-native-fs';
+import coreCommunicator from '../bridge/CoreCommunicator';
 
 interface GlassesMirrorFullscreenProps {
   isDarkTheme: boolean;
@@ -325,6 +326,7 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
               style={styles.cameraBackground}
               type={cameraType}
               captureAudio={true}
+              keepAudioSession={true}
               zoom={0}
               useNativeZoom={false}
               ratio="16:9"

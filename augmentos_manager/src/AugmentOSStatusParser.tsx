@@ -50,6 +50,7 @@ export interface CoreInfo {
   bypass_vad_for_debugging: boolean;
   bypass_audio_encoding_for_debugging: boolean;
   always_on_status_bar_enabled: boolean;
+  metric_system_enabled: boolean;
   is_searching: boolean;
 }
 
@@ -81,6 +82,7 @@ export class AugmentOSParser {
       bypass_audio_encoding_for_debugging: false,
       default_wearable: null,
       always_on_status_bar_enabled: false,
+      metric_system_enabled: true,
       is_searching: false,
     },
     glasses_info: null,
@@ -118,6 +120,7 @@ export class AugmentOSParser {
       bypass_audio_encoding_for_debugging: false,
       default_wearable: 'evenrealities_g1',
       always_on_status_bar_enabled: false,
+      metric_system_enabled: true,
       is_searching: false,
     },
     glasses_info: {
@@ -174,6 +177,7 @@ export class AugmentOSParser {
             : (status.core_info.default_wearable ?? null),
           is_mic_enabled_for_frontend: status.core_info.is_mic_enabled_for_frontend ?? false,
           always_on_status_bar_enabled: status.core_info.always_on_status_bar_enabled ?? false,
+          metric_system_enabled: status.core_info.metric_system_enabled ?? true,
           is_searching: status.core_info.is_searching ?? false,
         },
         glasses_info: status.connected_glasses
