@@ -649,4 +649,3 @@ export class CoreCommunicator extends EventEmitter {
 // Create and export the singleton instance
 const coreCommunicator = CoreCommunicator.getInstance();
 export default coreCommunicator;
-export default coreCommunicator;
