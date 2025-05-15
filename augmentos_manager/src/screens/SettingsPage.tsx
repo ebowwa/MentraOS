@@ -28,6 +28,7 @@ import {
 } from '../logic/PermissionsUtils';
 import showAlert from '../utils/AlertUtils';
 import SelectSetting from '../components/settings/SelectSetting.tsx';
+import { useAuth } from '../AuthContext.tsx';
 
 const CLOUD_URL = process.env.CLOUD_HOST_NAME;
 
@@ -54,6 +55,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   navigation,
 }) => {
   const {status} = useStatus();
+  const {logout} = useAuth();
 
   // -- Basic states from your original code --
   const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false);
@@ -169,49 +171,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
   const handleSignOut = async () => {
     try {
-      // Try to sign out with Supabase - may fail in offline mode
-      await supabase.auth.signOut().catch(err => {
-        console.log(
-          'Supabase sign-out failed, continuing with local cleanup:',
-          err,
-        );
-      });
-
-      // Completely clear ALL Supabase Auth storage
-      // This is critical to ensure user is redirected to login screen even when offline
-      await AsyncStorage.removeItem('supabase.auth.token');
-      await AsyncStorage.removeItem('supabase.auth.refreshToken');
-      await AsyncStorage.removeItem('supabase.auth.session');
-      await AsyncStorage.removeItem('supabase.auth.expires_at');
-      await AsyncStorage.removeItem('supabase.auth.expires_in');
-      await AsyncStorage.removeItem('supabase.auth.provider_token');
-      await AsyncStorage.removeItem('supabase.auth.provider_refresh_token');
-
-      // Clear any other user-related storage that might prevent proper logout
-      const allKeys = await AsyncStorage.getAllKeys();
-      const userKeys = allKeys.filter(
-        key =>
-          key.startsWith('supabase.auth.') ||
-          key.includes('user') ||
-          key.includes('token'),
-      );
-
-      if (userKeys.length > 0) {
-        await AsyncStorage.multiRemove(userKeys);
-      }
-
-      // Clean up other services
-      console.log('Cleaning up local sessions and services');
-
-      // Delete core auth key
-      await coreCommunicator.deleteAuthenticationSecretKey();
-
-      // Stop the native services
-      coreCommunicator.stopService();
-      stopExternalService();
-
-      // Clean up communicator resources
-      coreCommunicator.cleanup();
+      await logout();
 
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data

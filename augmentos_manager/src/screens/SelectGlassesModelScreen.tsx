@@ -127,17 +127,9 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
                             styles.settingItem,
                             {
                                 backgroundColor: theme.cardBg,
-                                borderColor: (isOnboarding && glasses.modelName === 'Simulated Glasses')
-                                    ? '#2196F3'
-                                    : theme.borderColor,
+                                borderColor: theme.borderColor,
                                 borderWidth: 1,
                             },
-                            (isOnboarding && glasses.modelName === 'Simulated Glasses')
-                                ? {
-                                    borderWidth: 2,
-                                    backgroundColor: isDarkTheme ? '#2c2c2c' : '#f0f7ff'
-                                }
-                                : {}
                         ]}
                         onPress={() => {
                             triggerGlassesPairingGuide(glasses.modelName)
