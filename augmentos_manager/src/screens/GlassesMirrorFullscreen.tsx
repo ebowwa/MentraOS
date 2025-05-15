@@ -166,14 +166,6 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
   // Handle exiting fullscreen mode
   const handleExitFullscreen = () => {
     StatusBar.setHidden(false);
-    stopRecording();
-    // this does nothing but re-enables the mic because the RNCamera is bugged and doesn't properly give back the mic
-    // coreCommunicator.sendToggleSensing(status.core_info.sensing_enabled);
-    coreCommunicator.sendToggleSensing(false);
-    setTimeout(() => {
-      coreCommunicator.sendToggleSensing(true);
-    }, 2000);
-
     navigation.goBack();
   };
   
@@ -334,6 +326,7 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
               style={styles.cameraBackground}
               type={cameraType}
               captureAudio={true}
+              keepAudioSession={true}
               zoom={0}
               useNativeZoom={false}
               ratio="16:9"
