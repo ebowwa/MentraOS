@@ -380,7 +380,8 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
           )}
           
           {/* Recording button */}
-          {hasCameraPermission && (
+          {/* TEMPORARILY: COMMENT OUT THE RECORD BUTTON ULTIL THIS FEATURE IS COMPLETE */}
+          {/* {hasCameraPermission && (
             <View style={styles.recordingContainer}>
               <TouchableOpacity
                 style={[
@@ -402,7 +403,7 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
                 </Text>
               )}
             </View>
-          )}
+          )} */}
           
           {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (

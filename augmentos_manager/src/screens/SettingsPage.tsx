@@ -298,7 +298,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               label={'Preferred Microphone'}
               value={preferredMic}
               description={
-                "Use the phone's microphone instead of the glasses' microphone (if applicable)."
+                "Select which microphone to use"
               }
               options={preferredMicOptions}
               onValueChange={val => setMic(val)}
