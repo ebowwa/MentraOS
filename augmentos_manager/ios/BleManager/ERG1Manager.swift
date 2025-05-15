@@ -276,6 +276,14 @@ enum GlassesError: Error {
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
+
+
+    if (text == " ") {
+      let command: [UInt8] = [0x18]
+      queueChunks([command])
+      return;
+    }
+
     Task {
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
@@ -1008,13 +1016,12 @@ extension ERG1Manager {
       lvl = 0x29
     }
     
-//    let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
-//    
-//    queueChunks([command])
-    
-    let command: [UInt8] = [0x3E]
-    
+    let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
     queueChunks([command])
+    
+    // buried data point testing:
+//    let command: [UInt8] = [0x3E]
+//    queueChunks([command])
     
     //    // Send to both glasses with proper timing
     //    if let rightGlass = rightPeripheral,
