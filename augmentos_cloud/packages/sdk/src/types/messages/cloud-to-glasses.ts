@@ -93,6 +93,7 @@ export interface SettingsUpdate extends BaseMessage {
   settings: {
     useOnboardMic: boolean;
     contextualDashboard: boolean;
+    metricSystemEnabled: boolean;
     headUpAngle: number;
     brightness: number;
     autoBrightness: boolean;
@@ -100,7 +101,6 @@ export interface SettingsUpdate extends BaseMessage {
     alwaysOnStatusBar: boolean;
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
-    enablePhoneNotifications: boolean;
   };
 }
 

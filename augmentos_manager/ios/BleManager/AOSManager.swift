@@ -50,6 +50,7 @@ struct ViewState {
   private var bypassVad: Bool = false;
   private var bypassAudioEncoding: Bool = false;
   private var onboardMicUnavailable: Bool = false;
+  private var metricSystemEnabled: Bool = false;
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
   private var connectTask: Task<Void, Never>?
@@ -727,6 +728,7 @@ struct ViewState {
       case bypassVad = "bypass_vad_for_debugging"
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
       case setServerUrl = "set_server_url"
+      case setMetricSystemEnabled = "set_metric_system_enabled"
       case unknown
     }
     
@@ -945,6 +947,20 @@ struct ViewState {
           // }
           // self.useOnboardMic = enabled
           break
+        case .setMetricSystemEnabled:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            print("set_metric_system_enabled invalid params")
+            break
+          }
+          self.metricSystemEnabled = enabled
+          saveSettings()
+          handleRequestStatus()
+          break
+        case .unknown:
+          print("Unknown command type: \(commandString)")
+          handleRequestStatus()
+        case .ping:
+          break
         }
       }
     } catch {
@@ -1031,6 +1047,7 @@ struct ViewState {
       "bypass_audio_encoding_for_debugging": self.bypassAudioEncoding,
       "core_token": self.coreToken,
       "puck_connected": true,
+      "metric_system_enabled": self.metricSystemEnabled,
     ]
     
     // hardcoded list of apps:
@@ -1248,6 +1265,7 @@ struct ViewState {
     static let bypassVad = "bypassVad"
     static let bypassAudioEncoding = "bypassAudioEncoding"
     static let preferredMic = "preferredMic"
+    static let metricSystemEnabled = "metricSystemEnabled"
   }
   
   private func saveSettings() {
@@ -1279,6 +1297,7 @@ struct ViewState {
     defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
     defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
     defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
+    defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -1296,6 +1315,7 @@ struct ViewState {
     UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
     UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
     UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+    UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
     
     let defaults = UserDefaults.standard
     
@@ -1313,6 +1333,7 @@ struct ViewState {
     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
     headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
     brightness = defaults.integer(forKey: SettingsKeys.brightness)
+    metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
   
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true

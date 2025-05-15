@@ -49,6 +49,7 @@ import {
   createTranslationStream
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
+import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
 
 /**
  * ⚙️ Configuration options for TPA Session
@@ -188,9 +189,31 @@ export class TpaSession {
       this.send.bind(this)
     );
     
-    // Initialize settings manager without API client configuration
-    // We'll configure it once we have the session ID and server URL
-    this.settings = new SettingsManager();
+    // Initialize settings manager with all necessary parameters, including subscribeFn for AugmentOS settings
+    this.settings = new SettingsManager(
+      this.settingsData,
+      this.config.packageName,
+      this.config.augmentOSWebsocketUrl,
+      this.sessionId ?? undefined,
+      async (streams: string[]) => {
+        console.log(`[TpaSession] subscribeFn called for streams:`, streams);
+        streams.forEach((stream) => {
+          if (!this.subscriptions.has(stream as ExtendedStreamType)) {
+            this.subscriptions.add(stream as ExtendedStreamType);
+            console.log(`[TpaSession] Auto-subscribed to stream '${stream}' for AugmentOS setting.`);
+          } else {
+            console.log(`[TpaSession] Already subscribed to stream '${stream}'.`);
+          }
+        });
+        console.log(`[TpaSession] Current subscriptions after subscribeFn:`, Array.from(this.subscriptions));
+        if (this.ws?.readyState === 1) {
+          this.updateSubscriptions();
+          console.log(`[TpaSession] Sent updated subscriptions to cloud after auto-subscribing to AugmentOS setting.`);
+        } else {
+          console.log(`[TpaSession] WebSocket not open, will send subscriptions when connected.`);
+        }
+      }
+    );
     
     // Initialize dashboard API with this session instance
     // Import DashboardManager dynamically to avoid circular dependency
@@ -901,6 +924,12 @@ export class TpaSession {
           // Emit settings update event (for backwards compatibility)
           this.events.emit('settings_update', this.settingsData);
           
+          // --- AugmentOS settings update logic ---
+          // If the message.settings looks like AugmentOS settings (object with known keys), update augmentosSettings
+          if (message.settings && typeof message.settings === 'object') {
+            this.settings.updateAugmentosSettings(message.settings);
+          }
+          
           // Check if we should update subscriptions
           if (this.shouldUpdateSubscriptionsOnSettingsChange) {
             // Check if any subscription trigger settings changed
@@ -954,6 +983,12 @@ export class TpaSession {
             }
           } catch (error) {
             console.error('Error handling dashboard always-on change:', error);
+          }
+        }
+        else if (message.type === 'augmentos_settings_update') {
+          const augmentosMsg = message as AugmentosSettingsUpdate;
+          if (augmentosMsg.settings && typeof augmentosMsg.settings === 'object') {
+            this.settings.updateAugmentosSettings(augmentosMsg.settings);
           }
         }
         // Handle unrecognized message types gracefully
@@ -1104,8 +1139,7 @@ export class TpaSession {
    * 📝 Update subscription list with cloud
    */
   private updateSubscriptions(): void {
-    // console.log(`2222  Subscribing to ${Array.from(this.subscriptions)}`);
-    // console.log(`3333  Subscribing to ${this.config.packageName}`);
+    console.log(`[TpaSession] updateSubscriptions: sending subscriptions to cloud:`, Array.from(this.subscriptions));
     const message: TpaSubscriptionUpdate = {
       type: TpaToCloudMessageType.SUBSCRIPTION_UPDATE,
       packageName: this.config.packageName,

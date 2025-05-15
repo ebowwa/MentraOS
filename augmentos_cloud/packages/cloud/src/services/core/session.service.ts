@@ -19,6 +19,7 @@ import { systemApps } from './system-apps';
 import { SubscriptionManager } from './subscription.manager'; // Import the new manager
 import { Logger } from 'winston';
 import { DebugService } from '../debug/debug-service';
+import { User } from '../../models/user.model';
 import { HeartbeatManager } from './HeartbeatManager';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
@@ -27,6 +28,19 @@ const DEBUG_AUDIO = false;
 export const IS_LC3 = false;
 
 console.log("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
+
+const DEFAULT_AUGMENTOS_SETTINGS = {
+  useOnboardMic: false,
+  contextualDashboard: true,
+  headUpAngle: 20,
+  brightness: 50,
+  autoBrightness: false,
+  sensingEnabled: true,
+  alwaysOnStatusBar: false,
+  bypassVad: false,
+  bypassAudioEncoding: false,
+  metricSystemEnabled: false
+};
 
 // --- Interfaces ---
 export interface SequencedAudioChunk {
@@ -68,7 +82,6 @@ export interface ExtendedUserSession extends UserSession {
   transcriptionStreams: Map<string, ASRStreamInstance>;
   isTranscribing: boolean;
   loadingApps: Set<string>;
-  OSSettings: { brightness: number, volume: number };
   appConnections: Map<string, WebSocket | any>; // Consider stricter type if possible
   installedApps: AppI[]; // Add type from SDK
 
@@ -121,7 +134,6 @@ export class SessionService {
         activeAppSessions: existingSession.activeAppSessions,
         installedApps: existingSession.installedApps,
         loadingApps: existingSession.loadingApps,
-        OSSettings: existingSession.OSSettings,
         isTranscribing: existingSession.isTranscribing,
         transcript: existingSession.transcript,
         subscriptionManager: {
@@ -160,7 +172,6 @@ export class SessionService {
       transcriptionStreams: new Map<string, ASRStreamInstance>(),
       loadingApps: new Set<string>(),
       appConnections: new Map<string, WebSocket | any>(),
-      OSSettings: { brightness: 50, volume: 50 },
       displayManager: new DisplayManager(),
       // Will add dashboardManager after the session is fully constructed
       transcript: { 
@@ -229,7 +240,6 @@ export class SessionService {
       activeAppSessions: userSession.activeAppSessions,
       installedApps: userSession.installedApps,
       loadingApps: userSession.loadingApps,
-      OSSettings: userSession.OSSettings,
       isTranscribing: userSession.isTranscribing,
       transcript: userSession.transcript,
       subscriptionManager: {
