@@ -1,6 +1,6 @@
 // src/services/api.service.ts
 import axios from "axios";
-import { TPA } from "@/types/tpa";
+import { Permission, TPA } from "@/types/tpa";
 import { AppI } from "@augmentos/sdk";
 
 // Set default config
@@ -140,13 +140,13 @@ const api = {
     // Permissions management
     permissions: {
       // Get permissions for a TPA
-      get: async (packageName: string): Promise<any> => {
+      get: async (packageName: string): Promise<{permissions: Permission[]}> => {
         const response = await axios.get(`/api/permissions/${packageName}`);
         return response.data;
       },
       
       // Update permissions for a TPA
-      update: async (packageName: string, permissions: any): Promise<any> => {
+      update: async (packageName: string, permissions: Permission[]): Promise<{permissions: Permission[]}> => {
         const response = await axios.patch(`/api/permissions/${packageName}`, { permissions });
         return response.data;
       },
