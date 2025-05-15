@@ -66,12 +66,15 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../logging/posthog.service';
 import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
-import { logger } from '@augmentos/utils';
+// import { logger } from '@augmentos/utils';
+import { logger as rootLogger } from '../logging/pino-logger';
 import photoRequestService from './photo-request.service';
 import axios from 'axios';
 import { SessionService } from './session.service';
 import { getSessionService } from './session.service';
 import { DisconnectInfo } from './HeartbeatManager';
+
+const logger = rootLogger.child({ service: 'websocket.service' });
 
 export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
 export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"

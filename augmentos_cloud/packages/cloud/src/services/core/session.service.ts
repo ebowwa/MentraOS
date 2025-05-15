@@ -13,20 +13,23 @@ import {
 import appService from './app.service';
 import transcriptionService, { ASRStreamInstance } from '../processing/transcription.service';
 import DisplayManager from '../layout/DisplayManager6.1';
-import { createLC3Service, LC3Service, createLoggerForUserSession, logger } from '@augmentos/utils';
+import { createLC3Service, LC3Service, createLoggerForUserSession } from '@augmentos/utils';
 import { AudioWriter } from "../debug/audio-writer";
 import { systemApps } from './system-apps';
 import { SubscriptionManager } from './subscription.manager'; // Import the new manager
-import { Logger } from 'winston';
+// import { Logger } from 'winston';
 import { DebugService } from '../debug/debug-service';
 import { HeartbeatManager } from './HeartbeatManager';
+import { logger as rootLogger } from '../logging/pino-logger';
+import { Logger } from 'pino';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
 const LOG_AUDIO = false;
 const DEBUG_AUDIO = false;
 export const IS_LC3 = false;
+const logger = rootLogger.child({ module: 'session.service' });
 
-console.log("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
+logger.info("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
 
 // --- Interfaces ---
 export interface SequencedAudioChunk {
@@ -145,7 +148,8 @@ export class SessionService {
 
     // Create new session
     const sessionId = userId;
-    const sessionLogger = createLoggerForUserSession(sessionId);
+    // const sessionLogger = createLoggerForUserSession(sessionId);
+    const sessionLogger = rootLogger.child({ userId });
     const installedApps = await appService.getAllApps(userId); // Fetch apps first
     sessionLogger.info(`Fetched installed apps for user ${userId}:`, installedApps);
 
