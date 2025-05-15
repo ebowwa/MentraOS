@@ -1020,7 +1020,7 @@ struct ViewState {
       "is_searching": self.isSearching,
       // only on if recording from glasses:
       // todo: this isn't robust:
-      "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses"),
+      "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses") && self.somethingConnected,
       "sensing_enabled": self.sensingEnabled,
       "always_on_status_bar": self.alwaysOnStatusBar,
       "bypass_vad_for_debugging": self.bypassVad,
