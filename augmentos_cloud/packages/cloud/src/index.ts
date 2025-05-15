@@ -37,6 +37,7 @@ import galleryRoutes from './routes/gallery.routes';
 import toolsRoutes from './routes/tools.routes';
 import hardwareRoutes from './routes/hardware.routes';
 import audioRoutes from './routes/audio.routes';
+import permissionsRoutes from './routes/permissions.routes';
 
 import path from 'path';
 
@@ -100,6 +101,7 @@ app.use(cors({
     'http://localhost:5173',
     'http://127.0.0.1:5174',
     'http://localhost:5174',
+    'http://localhost:5175',
     'http://localhost:5173',
     'http://localhost:53216',
     'http://localhost:6173',
@@ -147,6 +149,7 @@ app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/gallery', galleryRoutes);
 app.use('/api/tools', toolsRoutes);
+app.use('/api/permissions', permissionsRoutes);
 app.use('/api/hardware', hardwareRoutes);
 // HTTP routes for augmentOS settings are now replaced by WebSocket implementation
 // app.use('/api/augmentos-settings', augmentosSettingsRoutes);
