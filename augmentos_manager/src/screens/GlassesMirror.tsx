@@ -26,6 +26,7 @@ import { showAlert } from '../utils/AlertUtils';
 import { shareFile } from '../utils/FileUtils';
 import RNFS from 'react-native-fs';
 import BackendServerComms from '../backend_comms/BackendServerComms';
+import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 
 interface GlassesMirrorProps {
   isDarkTheme: boolean;
@@ -39,7 +40,22 @@ interface GalleryPhoto {
   userId: string;
 }
 
-type GalleryTab = 'device' | 'cloud';
+// Unified MediaItem interface for both local recordings and cloud photos
+interface MediaItem {
+  id: string;                // Unique identifier
+  sourceType: 'local' | 'cloud'; // Origin of the item
+  mediaType: 'video' | 'photo'; // Type of media
+  thumbnailUrl: string;      // URL or path to thumbnail
+  contentUrl: string;        // URL or path to full content
+  timestamp: number;         // Milliseconds since epoch
+  formattedDate?: string;    // Pre-formatted date for display
+  formattedTime?: string;    // Pre-formatted time for display
+  metadata: {
+    appId?: string;          // Source app for cloud photos
+    fileName?: string;       // For local recordings
+    // Other metadata as needed
+  };
+}
 
 const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
   const { status } = useStatus();
@@ -48,75 +64,128 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
 
   // Helper to check if we have a glasses model name
   const isGlassesConnected = !!status.glasses_info?.model_name;
-  
+
   // Get only the last event
   const lastEvent = events.length > 0 ? events[events.length - 1] : null;
-  
+
   // Function to navigate to fullscreen mode
   const navigateToFullScreen = () => {
     navigation.navigate('GlassesMirrorFullscreen');
   };
 
   // Gallery state
-  const [activeTab, setActiveTab] = useState<GalleryTab>('device');
-  const [recordedVideos, setRecordedVideos] = useState<string[]>([]);
-  const [galleryPhotos, setGalleryPhotos] = useState<GalleryPhoto[]>([]);
+  const [mediaItems, setMediaItems] = useState<MediaItem[]>([]); // Unified media items array
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<GalleryPhoto | null>(null);
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
-  
+
   const backend = BackendServerComms.getInstance();
 
   // Create style object mirroring Homepage approach
   const currentThemeStyles = {
     container: { flex: 1 },
     contentContainer: {
-      flex: 1, 
+      flex: 1,
       paddingBottom: isDarkTheme ? 55 : 0  // Key difference! Homepage has 55px padding in dark mode
     }
   };
 
-  // Load gallery contents
+  // Load gallery contents on component mount
   useEffect(() => {
-    if (activeTab === 'device') {
-      loadRecordings();
-    } else {
-      loadGalleryPhotos();
-    }
-  }, [activeTab]);
+    loadAllMedia();
+  }, []);
 
   // Pull to refresh handler
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    if (activeTab === 'device') {
-      loadRecordings().then(() => setRefreshing(false));
-    } else {
-      loadGalleryPhotos().then(() => setRefreshing(false));
-    }
-  }, [activeTab]);
+    loadAllMedia()
+      .catch(err => console.error('Error during refresh:', err))
+      .finally(() => setRefreshing(false));
+  }, []);
+
+  // Adapter function to convert local recording to MediaItem
+  const mapLocalRecordingToMediaItem = (filePath: string): MediaItem => {
+    const filename = filePath.split('/').pop() || '';
+    const match = filename.match(/glasses-recording-(\d+)\.mp4/);
+    const timestamp = match && match[1] ? parseInt(match[1]) : Date.now();
+
+    // Format date strings for display
+    const date = new Date(timestamp);
+    const formattedDate = date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const formattedTime = date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return {
+      id: filePath,
+      sourceType: 'local',
+      mediaType: 'video',
+      thumbnailUrl: filePath, // Video thumbnail is generated from this path
+      contentUrl: filePath,
+      timestamp,
+      formattedDate,
+      formattedTime,
+      metadata: {
+        fileName: filename
+      }
+    };
+  };
+
+  // Adapter function to convert cloud photo to MediaItem
+  const mapCloudPhotoToMediaItem = (photo: GalleryPhoto): MediaItem => {
+    const timestamp = new Date(photo.uploadDate).getTime();
+
+    // Format date strings for display
+    const date = new Date(timestamp);
+    const formattedDate = date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const formattedTime = date.toLocaleTimeString(undefined, {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    return {
+      id: photo.id,
+      sourceType: 'cloud',
+      mediaType: 'photo',
+      thumbnailUrl: photo.photoUrl,
+      contentUrl: photo.photoUrl,
+      timestamp,
+      formattedDate,
+      formattedTime,
+      metadata: {
+        appId: photo.appId
+      }
+    };
+  };
 
   // Load recorded videos from device
   const loadRecordings = async () => {
     try {
-      setIsLoading(true);
       // Define the videos directory
-      const videoDir = Platform.OS === 'ios' 
-        ? `${RNFS.DocumentDirectoryPath}/AugmentOSRecordings` 
+      const videoDir = Platform.OS === 'ios'
+        ? `${RNFS.DocumentDirectoryPath}/AugmentOSRecordings`
         : `${RNFS.ExternalDirectoryPath}/AugmentOSRecordings`;
-      
+
       // Check if directory exists, create if not
       const dirExists = await RNFS.exists(videoDir);
       if (!dirExists) {
         await RNFS.mkdir(videoDir);
-        setRecordedVideos([]);
-        setIsLoading(false);
-        return;
+        return [];
       }
-      
+
       // Read directory contents
       const files = await RNFS.readDir(videoDir);
-      
+
       // Filter for video files
       const videoFiles = files
         .filter(file => file.name.endsWith('.mp4'))
@@ -125,45 +194,81 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
           // Sort by creation time (latest first)
           return b.localeCompare(a);
         });
-      
-      setRecordedVideos(videoFiles);
+
+      // Convert to MediaItem format
+      const mediaItems = videoFiles.map(filePath => mapLocalRecordingToMediaItem(filePath));
+      return mediaItems;
     } catch (error) {
       console.error('Error loading recordings:', error);
-      Alert.alert('Error', 'Failed to load recordings');
-    } finally {
-      setIsLoading(false);
+      return [];
     }
-    // Return a resolved promise for chaining with refresh
-    return Promise.resolve();
   };
-  
+
   // Load gallery photos from cloud
   const loadGalleryPhotos = async () => {
     try {
-      setIsLoading(true);
-      
-      try {
-        const response = await backend.getGalleryPhotos();
-        if (response && response.success && response.photos) {
-          setGalleryPhotos(response.photos);
-        } else {
-          console.error('Error in gallery response:', response);
-          // Just set empty photos array instead of showing an error
-          setGalleryPhotos([]);
-        }
-      } catch (error) {
-        console.error('Error loading gallery photos:', error);
-        // Set empty array instead of showing an error
-        setGalleryPhotos([]);
+      const response = await backend.getGalleryPhotos();
+      if (response && response.success && response.photos) {
+        // Convert to MediaItem format
+        const mediaItems = response.photos.map((photo: GalleryPhoto) =>
+          mapCloudPhotoToMediaItem(photo)
+        );
+        return mediaItems;
       }
+      return [];
     } catch (error) {
-      console.error('Error in outer gallery photos handler:', error);
-      // No alert, just set empty state
-      setGalleryPhotos([]);
-    } finally {
-      setIsLoading(false);
+      console.error('Error loading gallery photos:', error);
+      return [];
     }
-    // Return a resolved promise for chaining with refresh
+  };
+
+  // Load all media (both local and cloud)
+  const loadAllMedia = async () => {
+    setIsLoading(true);
+
+    // Use state variable to track if we should show cloud connectivity warning
+    let shouldShowCloudWarning = false;
+
+    // Start both loading processes in parallel and handle potential failures
+    const results = await Promise.allSettled([
+      loadRecordings(),
+      loadGalleryPhotos()
+    ]);
+
+    // Process results, extracting data from fulfilled promises
+    const localItems = results[0].status === 'fulfilled' ? results[0].value : [];
+
+    // Check if cloud items failed to load
+    let cloudItems: MediaItem[] = [];
+    if (results[1].status === 'fulfilled') {
+      cloudItems = results[1].value;
+    } else {
+      console.error('Failed to load cloud items:', results[1].reason);
+      shouldShowCloudWarning = true;
+    }
+
+    // Combine whatever items we successfully loaded
+    const combinedItems = [...localItems, ...cloudItems];
+
+    // Sort by timestamp (newest first)
+    combinedItems.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Update state with available items
+    setMediaItems(combinedItems);
+
+    // Show non-blocking toast/message if cloud items failed to load
+    if (shouldShowCloudWarning && Platform.OS === 'android') {
+      ToastAndroid.show('Some cloud items could not be loaded', ToastAndroid.SHORT);
+    } else if (shouldShowCloudWarning) {
+      // Use a non-blocking approach for iOS instead of an alert
+      GlobalEventEmitter.emit('SHOW_BANNER', {
+        message: 'Some cloud items could not be loaded',
+        type: 'warning'
+      });
+    }
+
+    setIsLoading(false);
+
     return Promise.resolve();
   };
 
@@ -237,17 +342,18 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
         'Delete Recording',
         'Are you sure you want to delete this recording?',
         [
-          { 
-            text: 'Cancel', 
-            style: 'cancel' 
+          {
+            text: 'Cancel',
+            style: 'cancel'
           },
-          { 
-            text: 'Delete', 
+          {
+            text: 'Delete',
             style: 'destructive',
             onPress: async () => {
               try {
                 await RNFS.unlink(filePath);
-                await loadRecordings();
+                // Reload all media to update the list
+                await loadAllMedia();
                 if (Platform.OS === 'android') {
                   ToastAndroid.show('Recording deleted', ToastAndroid.SHORT);
                 } else {
@@ -263,7 +369,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
                   iconColor: '#FF3B30'
                 });
               }
-            } 
+            }
           },
         ],
         {
@@ -294,17 +400,18 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
         'Delete Photo',
         'Are you sure you want to delete this photo?',
         [
-          { 
-            text: 'Cancel', 
-            style: 'cancel' 
+          {
+            text: 'Cancel',
+            style: 'cancel'
           },
-          { 
-            text: 'Delete', 
+          {
+            text: 'Delete',
             style: 'destructive',
             onPress: async () => {
               try {
                 await backend.deleteGalleryPhoto(photoId);
-                await loadGalleryPhotos();
+                // Reload all media to update the list
+                await loadAllMedia();
                 if (Platform.OS === 'android') {
                   ToastAndroid.show('Photo deleted', ToastAndroid.SHORT);
                 } else {
@@ -320,7 +427,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
                   iconColor: '#FF3B30'
                 });
               }
-            } 
+            }
           },
         ],
         {
@@ -339,49 +446,34 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
 
   // Render empty state content for gallery
   const renderEmptyGalleryState = () => {
-    if (activeTab === 'device') {
-      return (
-        <View style={styles.emptyContainer}>
-          <Text style={[
-            styles.emptyText,
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>
-            No recordings found
-          </Text>
-          <Text style={[
-            styles.emptySubtext,
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>
-            Create a recording from the glasses mirror screen
-          </Text>
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={[
+          styles.emptyText,
+          isDarkTheme ? styles.darkText : styles.lightText
+        ]}>
+          No media found
+        </Text>
+        <Text style={[
+          styles.emptySubtext,
+          isDarkTheme ? styles.darkText : styles.lightText
+        ]}>
+          {isGlassesConnected
+            ? "Recordings from Glasses Mirror and camera-enabled smart glasses will appear here"
+            : "Connect smart glasses to record or use apps that save to gallery"}
+        </Text>
+        {/* {isGlassesConnected && lastEvent && (
           <TouchableOpacity
             style={styles.recordButton}
             onPress={navigateToFullScreen}
           >
             <Text style={styles.recordButtonText}>
-              Go to Camera
+              Record With Glasses Mirror
             </Text>
           </TouchableOpacity>
-        </View>
-      );
-    } else {
-      return (
-        <View style={styles.emptyContainer}>
-          <Text style={[
-            styles.emptyText,
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>
-            No gallery photos found
-          </Text>
-          <Text style={[
-            styles.emptySubtext,
-            isDarkTheme ? styles.darkText : styles.lightText
-          ]}>
-            Photos from apps will appear here
-          </Text>
-        </View>
-      );
-    }
+        )} */}
+      </View>
+    );
   };
 
   return (
@@ -412,11 +504,28 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
             Glasses Mirror
           </Text>
           
-          {isGlassesConnected && lastEvent && (
+          {isGlassesConnected ? (
             <TouchableOpacity
               onPress={navigateToFullScreen}
+              disabled={!lastEvent}
             >
-              <Icon name="camera" size={24} color={isDarkTheme ? "#ffffff" : "#000000"} />
+              <Icon
+                name="camera"
+                size={24}
+                color={lastEvent
+                  ? (isDarkTheme ? "#ffffff" : "#000000")
+                  : (isDarkTheme ? "#666666" : "#cccccc")}
+              />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              disabled={true}
+            >
+              <Icon
+                name="camera"
+                size={24}
+                color={isDarkTheme ? "#666666" : "#cccccc"}
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -426,8 +535,8 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
           {isGlassesConnected ? (
             <View style={styles.contentContainer}>
               {lastEvent ? (
-                <GlassesDisplayMirror 
-                  layout={lastEvent.layout} 
+                <GlassesDisplayMirror
+                  layout={lastEvent.layout}
                   fallbackMessage="Unknown layout data"
                 />
               ) : (
@@ -441,7 +550,7 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
           ) : (
             <View style={styles.fallbackContainer}>
               <Text style={[isDarkTheme ? styles.darkText : styles.lightText, styles.fallbackText]}>
-                Connect glasses to use the Glasses Mirror
+                Connect smart glasses to use the Glasses Mirror
               </Text>
             </View>
           )}
@@ -455,37 +564,6 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
           ]}>
             Gallery
           </Text>
-          
-          {/* Tab selector */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity 
-              style={[
-                styles.tabButton, 
-                isDarkTheme ? styles.tabButtonDark : styles.tabButtonLight,
-                activeTab === 'device' && (isDarkTheme ? styles.activeTabButtonDark : styles.activeTabButtonLight)
-              ]}
-              onPress={() => setActiveTab('device')}
-            >
-              <Text style={[
-                styles.tabText,
-                activeTab === 'device' ? styles.activeTabText : (isDarkTheme ? styles.darkText : styles.lightText)
-              ]}>Device</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[
-                styles.tabButton,
-                isDarkTheme ? styles.tabButtonDark : styles.tabButtonLight,
-                activeTab === 'cloud' && (isDarkTheme ? styles.activeTabButtonDark : styles.activeTabButtonLight)
-              ]}
-              onPress={() => setActiveTab('cloud')}
-            >
-              <Text style={[
-                styles.tabText,
-                activeTab === 'cloud' ? styles.activeTabText : (isDarkTheme ? styles.darkText : styles.lightText)
-              ]}>Cloud</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Gallery Content */}
           <View style={styles.galleryContent}>
@@ -496,37 +574,42 @@ const GlassesMirror: React.FC<GlassesMirrorProps> = ({ isDarkTheme }) => {
                   styles.loadingText,
                   isDarkTheme ? styles.darkText : styles.lightText
                 ]}>
-                  Loading {activeTab === 'device' ? 'recordings' : 'photos'}...
+                  Loading media...
                 </Text>
               </View>
             ) : (
-              // Content based on active tab and data availability
-              activeTab === 'device' && recordedVideos.length === 0 ||
-              activeTab === 'cloud' && galleryPhotos.length === 0 ? (
+              // Content based on data availability
+              mediaItems.length === 0 ? (
                 renderEmptyGalleryState()
               ) : (
                 <View style={styles.contentList}>
-                  {/* Device recordings tab content */}
-                  {activeTab === 'device' && recordedVideos.map((videoPath, index) => (
-                    <VideoItem
-                      key={index}
-                      videoPath={videoPath}
-                      isDarkTheme={isDarkTheme}
-                      onPlayVideo={playVideo}
-                      onShareVideo={shareVideo}
-                      onDeleteVideo={deleteVideo}
-                    />
-                  ))}
-                  
-                  {/* Cloud photos tab content */}
-                  {activeTab === 'cloud' && galleryPhotos.map((photo, index) => (
-                    <PhotoItem
-                      key={index}
-                      photo={photo}
-                      isDarkTheme={isDarkTheme}
-                      onViewPhoto={viewPhoto}
-                      onDeletePhoto={deletePhoto}
-                    />
+                  {/* Unified media content */}
+                  {mediaItems.map((item, index) => (
+                    item.mediaType === 'video' ? (
+                      <VideoItem
+                        key={`video-${index}`}
+                        videoPath={item.contentUrl}
+                        isDarkTheme={isDarkTheme}
+                        onPlayVideo={playVideo}
+                        onShareVideo={shareVideo}
+                        onDeleteVideo={deleteVideo}
+                        showSourceBadge={true}
+                      />
+                    ) : (
+                      <PhotoItem
+                        key={`photo-${index}`}
+                        photo={{
+                          id: item.id,
+                          photoUrl: item.contentUrl,
+                          uploadDate: new Date(item.timestamp).toISOString(),
+                          appId: item.metadata.appId || 'Unknown'
+                        }}
+                        isDarkTheme={isDarkTheme}
+                        onViewPhoto={viewPhoto}
+                        onDeletePhoto={deletePhoto}
+                        showSourceBadge={true}
+                      />
+                    )
                   ))}
                 </View>
               )
