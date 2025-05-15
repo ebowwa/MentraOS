@@ -276,6 +276,15 @@ enum GlassesError: Error {
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
+
+
+//    if (text == " " || text == "") {
+//      let command: [UInt8] = [0x18]
+////      let command: [UInt8] = [0x20, 0xCA]
+//      queueChunks([command])
+//      return;
+//    }
+
     Task {
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
@@ -617,7 +626,7 @@ enum GlassesError: Error {
     guard let command = data.first else { return }// ensure the data isn't empty
     
     let side = peripheral == leftPeripheral ? "left" : "right"
-//    print("received from G1 (\(side)): \(data.hexEncodedString())")
+    print("received from G1 (\(side)): \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -626,6 +635,8 @@ enum GlassesError: Error {
     case .BLE_REQ_MIC_ON:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BRIGHTNESS:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    case .BLE_EXIT_ALL_FUNCTIONS:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .WHITELIST:
       // TODO: ios no idea why the glasses send 0xCB before sending ACK:
@@ -1009,8 +1020,11 @@ extension ERG1Manager {
     }
     
     let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
-    
     queueChunks([command])
+    
+    // buried data point testing:
+//    let command: [UInt8] = [0x3E]
+//    queueChunks([command])
     
     //    // Send to both glasses with proper timing
     //    if let rightGlass = rightPeripheral,

@@ -11,9 +11,6 @@ import static com.augmentos.augmentos_core.BatteryOptimizationHelper.handleBatte
 import static com.augmentos.augmentos_core.BatteryOptimizationHelper.isSystemApp;
 import static com.augmentos.augmentos_core.Constants.notificationFilterKey;
 import static com.augmentos.augmentos_core.Constants.newsSummaryKey;
-import static com.augmentos.augmentos_core.Constants.augmentOsMainServiceNotificationId;
-import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.GROUP_SUMMARY_NOTIFICATION_ID;
-import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.SERVICE_CORE_NOTIFICATION_ID;
 
 
 import android.app.Notification;
@@ -24,11 +21,9 @@ import android.app.Service;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.hardware.display.VirtualDisplay;
-import android.icu.util.TimeZone;
 import android.media.projection.MediaProjection;
 import android.os.Binder;
 import android.os.Build;
@@ -39,11 +34,7 @@ import android.os.Looper;
 import android.service.notification.NotificationListenerService;
 import android.util.Log;
 
-import java.io.IOException;
-
 import androidx.core.app.NotificationCompat;
-import androidx.lifecycle.Lifecycle;
-import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.LifecycleService;
 import androidx.preference.PreferenceManager;
 
@@ -56,12 +47,13 @@ import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.DisplayGlassesDashboardEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadDownEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesHeadUpEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesDisplayPowerEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
@@ -105,11 +97,6 @@ import java.util.Map;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneManager;
-import com.augmentos.augmentos_core.smarterglassesmanager.utils.EnvHelper;
-
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.Response;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -163,6 +150,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private Integer brightnessLevel;
     private Boolean autoBrightness;
     private Integer headUpAngle;
+    
+    // WiFi status for glasses that require WiFi (e.g., Mentra Live)
+    private boolean glassesNeedWifiCredentials = false;
+    private boolean glassesWifiConnected = false;
+    private String glassesWifiSsid = "";
+    
+    // WiFi scan results
+    private List<String> wifiNetworks = new ArrayList<>();
     private String preferredMic;
 
     private final boolean showingDashboardNow = false;
@@ -222,6 +217,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     ServerComms.getInstance().requestSettingsFromServer();
                 } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
                     edgeTpaSystem.stopAllThirdPartyApps();
+                    
+                    // Reset WiFi status when glasses disconnect
+                    glassesWifiConnected = false;
+                    glassesWifiSsid = "";
                 }
 
                 sendStatusToAugmentOsManager();
@@ -652,6 +651,63 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 4
             );
         }
+    }
+    
+    @Subscribe
+    public void onGlassesNeedWifiCredentialsEvent(GlassesWifiStatusChange event) {
+        glassesWifiConnected = event.isWifiConnected;
+        glassesWifiSsid = event.currentSsid;
+
+        Log.d(TAG, "Received GlassesNeedWifiCredentialsEvent: device=" + event.deviceModel +
+              ", wifiConnected=" + event.isWifiConnected +
+              ", SSID=" + event.currentSsid);
+        
+        // Send status update to the manager
+        sendStatusToAugmentOsManager();
+    }
+    
+    @Subscribe
+    public void onGlassesWifiScanResultEvent(GlassesWifiScanResultEvent event) {
+        Log.d(TAG, "Received WiFi scan results from glasses: " + event.networks.size() + " networks");
+        
+        // Send a dedicated message for WiFi scan results (not part of status)
+        try {
+            JSONObject wifiScanResultObj = new JSONObject();
+            JSONArray networksArray = new JSONArray();
+            
+            for (String network : event.networks) {
+                networksArray.put(network);
+            }
+            
+            wifiScanResultObj.put("wifi_scan_results", networksArray);
+            
+            // Send to the manager app
+            if (blePeripheral != null) {
+                blePeripheral.sendDataToAugmentOsManager(wifiScanResultObj.toString());
+                blePeripheral.sendNotifyManager("Found " + event.networks.size() + " WiFi networks", "success");
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi scan results JSON", e);
+        }
+        
+        // If glasses need WiFi credentials, trigger the credentials input UI in the Manager app
+        // and show a message on the glasses
+//        if (!event.isWifiConnected && smartGlassesManager != null &&
+//            smartGlassesManager.getConnectedSmartGlasses() != null) {
+//
+//            // Send a specific notification to trigger the WiFi setup UI in the Manager app
+//            if (blePeripheral != null) {
+//                blePeripheral.sendWifiCredentialsRequestToManager(event.deviceModel);
+//            }
+//
+//            // Show a message on the glasses to inform the user
+//            smartGlassesManager.windowManager.showAppLayer(
+//                "system",
+//                () -> smartGlassesManager.sendReferenceCard("WiFi Required",
+//                                                           "Please set up WiFi in the AugmentOS Manager app"),
+//                10
+//            );
+//        }
     }
 
     private static final String[] ARROW_FRAMES = {
@@ -1100,6 +1156,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
             coreInfo.put("metric_system_enabled", this.metricSystemEnabled);
+            coreInfo.put("is_searching", getIsSearchingForGlasses());
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
 
@@ -1108,27 +1165,47 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
                 connectedGlasses.put("model_name", smartGlassesManager.getConnectedSmartGlasses().deviceModelName);
                 connectedGlasses.put("battery_life", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
-                String brightnessString;
-                if (brightnessLevel == null) {
-                    brightnessString = "-";
-                } else if (brightnessLevel == -1){
-                    brightnessString = "AUTO";
-                } else {
-                    brightnessString = brightnessLevel + "%";
+                
+                // Add WiFi status information for glasses that need WiFi
+                String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+
+                // Check if these are glasses that support WiFi
+                boolean usesWifi = deviceModel != null && (deviceModel.contains("Mentra Live") || deviceModel.contains("Android Smart Glasses"));
+
+                // Add the general WiFi support flag for all models
+                connectedGlasses.put("glasses_use_wifi", usesWifi);
+
+                // Add detailed WiFi status, but only for models that support it
+                if (usesWifi) {
+                    connectedGlasses.put("glasses_wifi_connected", glassesWifiConnected);
+                    connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
                 }
-                Log.d(TAG, "22 Brightness: " + brightnessString);
-                connectedGlasses.put("brightness", brightnessString);
-                connectedGlasses.put("auto_brightness", this.autoBrightness);
-                if (headUpAngle == null) {
-                    headUpAngle = 20;
-                }
-                connectedGlasses.put("headUp_angle", headUpAngle);
-            }
-            else {
-                connectedGlasses.put("is_searching", getIsSearchingForGlasses());
             }
             status.put("connected_glasses", connectedGlasses);
 
+            // Adding glasses settings
+            JSONObject glassesSettings = new JSONObject();
+            glassesSettings.put("auto_brightness", autoBrightness);
+            glassesSettings.put("headUp_angle", headUpAngle);
+            glassesSettings.put("dashboard_height", 4);// TODO
+            glassesSettings.put("depth", 5);// TODO
+
+            String brightnessString;
+            if (brightnessLevel == null) {
+                brightnessString = "-";
+            } else if (brightnessLevel == -1){
+                brightnessString = "AUTO";
+            } else {
+                brightnessString = brightnessLevel + "%";
+            }
+            connectedGlasses.put("brightness", brightnessString);
+            if (headUpAngle == null) {
+                headUpAngle = 20;
+            }
+            connectedGlasses.put("headUp_angle", headUpAngle);
+            status.put("glasses_settings", glassesSettings);
+            
+            
             // Adding wifi status
             JSONObject wifi = new JSONObject();
             wifi.put("is_connected", wifiStatusHelper.isWifiConnected());
@@ -1277,6 +1354,36 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     default:
                         Log.d(TAG, "Unknown onRequestSingle dataType: " + dataType);
                         break;
+                }
+            }
+            
+            @Override
+            public void onPhotoRequest(String requestId, String appId) {
+                Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId);
+                
+                // Forward the request to the smart glasses manager
+                if (smartGlassesManager != null) {
+                    boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId);
+                    if (!requestSent) {
+                        Log.e(TAG, "Failed to send photo request to glasses");
+                    }
+                } else {
+                    Log.e(TAG, "Cannot process photo request: smartGlassesManager is null");
+                }
+            }
+            
+            @Override
+            public void onVideoStreamRequest(String appId) {
+                Log.d(TAG, "Video stream request received: appId=" + appId);
+                
+                // Forward the request to the smart glasses manager
+                if (smartGlassesManager != null) {
+                    boolean requestSent = smartGlassesManager.requestVideoStream();
+                    if (!requestSent) {
+                        Log.e(TAG, "Failed to send video stream request to glasses");
+                    }
+                } else {
+                    Log.e(TAG, "Cannot process video stream request: smartGlassesManager is null");
                 }
             }
 
@@ -1430,10 +1537,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             return;
         }
 
-        // TODO: Good lord this is hacky
-        // TODO: Find a good way to conditionally send a glasses bt device name to SGC
-        if (!deviceName.isEmpty() && modelName.contains("Even Realities"))
-            savePreferredG1DeviceId(this, deviceName);
+        // Save device address for specific glasses types (just like Even)
+        if (!deviceName.isEmpty()) {
+            if (modelName.contains("Even Realities")) {
+                savePreferredG1DeviceId(this, deviceName);
+            } 
+            else if (modelName.equals("Mentra Live")) {
+                // Save Mentra Live device name in its preferences
+                SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
+                mentraPrefs.edit().putString("LastConnectedDeviceName", deviceName).apply();
+                Log.d("AugmentOsService", "Saved Mentra Live device name: " + deviceName);
+            }
+        }
 
         executeOnceSmartGlassesManagerReady(this, () -> {
             smartGlassesManager.connectToSmartGlasses(device);
@@ -1444,6 +1559,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void disconnectWearable(String wearableId) {
         Log.d("AugmentOsService", "Disconnecting from wearable: " + wearableId);
+        // Reset WiFi status
+        glassesWifiConnected = false;
+        glassesWifiSsid = "";
+        
         // Instead of stopping the service, reset the state
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
@@ -1456,8 +1575,19 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Forgetting wearable");
         SmartGlassesManager.savePreferredWearable(this, "");
         deleteEvenSharedPreferences(this);
+        
+        // Clear MentraLive device name preference
+        SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
+        mentraPrefs.edit().remove("LastConnectedDeviceName").apply();
+        Log.d("AugmentOsService", "Cleared MentraLive stored device name");
+        
         brightnessLevel = null;
         batteryLevel = null;
+        
+        // Reset WiFi status
+        glassesWifiConnected = false;
+        glassesWifiSsid = "";
+        
 
         // Reset instead of stopping
         if (smartGlassesManager != null) {
@@ -1613,12 +1743,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             String body = "Updating glasses brightness to " + brightness + "%.";
             smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard(title, body), 6);
             smartGlassesManager.updateGlassesBrightness(brightness);
-            this.brightnessLevel = brightness;
-            this.autoBrightness = false;
-            sendStatusToBackend();
-        } else {
-            blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
         }
+        this.brightnessLevel = brightness;
+        this.autoBrightness = false;
+        sendStatusToBackend();
     }
 
     @Override
@@ -1626,9 +1754,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Updating glasses auto brightness: " + autoBrightness);
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
-            this.autoBrightness = autoBrightness;
-            sendStatusToBackend();
         }
+        this.autoBrightness = autoBrightness;
+        sendStatusToBackend();
     }
 
     @Override
@@ -1642,6 +1770,68 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
         }
+    }
+    
+    @Override
+    public void setGlassesWifiCredentials(String ssid, String password) {
+        Log.d(TAG, "Setting WiFi credentials for glasses, SSID: " + ssid);
+        
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to set WiFi credentials", "error");
+            return;
+        }
+        
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support WiFi", "error");
+            return;
+        }
+
+        // Send WiFi credentials to glasses
+        smartGlassesManager.sendWifiCredentials(ssid, password);
+
+        // Show a message on the glasses
+        smartGlassesManager.windowManager.showAppLayer(
+            "system",
+            () -> smartGlassesManager.sendReferenceCard("WiFi Setup",
+                                                      "Connecting to: " + ssid),
+            8
+        );
+
+        // Notify manager app
+        blePeripheral.sendNotifyManager("WiFi credentials sent to glasses", "success");
+
+        sendStatusToAugmentOsManager();
+
+    }
+    
+    @Override
+    public void requestWifiScan() {
+        Log.d(TAG, "Requesting WiFi scan from glasses");
+        
+        if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
+            blePeripheral.sendNotifyManager("No glasses connected to scan for WiFi networks", "error");
+            return;
+        }
+        
+        String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
+        if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
+            blePeripheral.sendNotifyManager("Connected glasses do not support WiFi scanning", "error");
+            return;
+        }
+        
+        // Show a message on the glasses
+        smartGlassesManager.windowManager.showAppLayer(
+            "system",
+            () -> smartGlassesManager.sendReferenceCard("WiFi Setup", "Scanning for networks..."),
+            5
+        );
+        
+        // Send the scan request to the glasses
+        smartGlassesManager.requestWifiScan();
+        
+        // Notify manager app
+        blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
     }
 
     @Override
@@ -1788,6 +1978,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset cached data
         cachedThirdPartyAppList = new ArrayList<>();
         cachedDashboardDisplayObject = null;
+        
+        // Reset WiFi status
+        glassesWifiConnected = false;
+        glassesWifiSsid = "";
         
         // Disconnect websockets
         if (webSocketLifecycleManager != null) {

@@ -150,11 +150,38 @@ export interface DashboardAlwaysOnChanged extends BaseMessage {
 }
 
 /**
+ * Photo response to TPA
+ */
+export interface PhotoResponse extends BaseMessage {
+  type: CloudToTpaMessageType.PHOTO_RESPONSE;
+  photoUrl: string;
+  requestId: string;
+}
+
+/**
+ * Video stream response to TPA
+ */
+export interface VideoStreamResponse extends BaseMessage {
+  type: CloudToTpaMessageType.VIDEO_STREAM_RESPONSE;
+  streamUrl: string;
+  appId: string;
+}
+
+/**
+ * Standard connection error (for server compatibility)
+ */
+export interface StandardConnectionError extends BaseMessage {
+  type: 'connection_error';
+  message: string;
+}
+
+/**
  * Union type for all messages from cloud to TPAs
  */
 export type CloudToTpaMessage =
   | TpaConnectionAck
   | TpaConnectionError
+  | StandardConnectionError
   | AppStopped
   | SettingsUpdate
   | TranscriptionData
@@ -163,6 +190,8 @@ export type CloudToTpaMessage =
   | LocationUpdate
   | CalendarEvent
   | DataStream
+  | PhotoResponse
+  | VideoStreamResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
   | AugmentosSettingsUpdate;
@@ -176,7 +205,7 @@ export function isTpaConnectionAck(message: CloudToTpaMessage): message is TpaCo
 }
 
 export function isTpaConnectionError(message: CloudToTpaMessage): message is TpaConnectionError {
-  return message.type === CloudToTpaMessageType.CONNECTION_ERROR;
+  return message.type === CloudToTpaMessageType.CONNECTION_ERROR || message.type === 'connection_error';
 }
 
 export function isAppStopped(message: CloudToTpaMessage): message is AppStopped {
@@ -193,6 +222,14 @@ export function isDataStream(message: CloudToTpaMessage): message is DataStream 
 
 export function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk {
   return message.type === StreamType.AUDIO_CHUNK;
+}
+
+export function isPhotoResponse(message: CloudToTpaMessage): message is PhotoResponse {
+  return message.type === CloudToTpaMessageType.PHOTO_RESPONSE;
+}
+
+export function isVideoStreamResponse(message: CloudToTpaMessage): message is VideoStreamResponse {
+  return message.type === CloudToTpaMessageType.VIDEO_STREAM_RESPONSE;
 }
 
 export function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged {
