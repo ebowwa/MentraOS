@@ -538,15 +538,6 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
-  async sendSetUnitSystem(enabled: boolean) {
-    return await this.sendData({
-      command: 'set_unit_system',
-      params: {
-        system: enabled ? 'metric' : 'imperial',
-      },
-    });
-  }
-
   async startAppByPackageName(packageName: string) {
     await this.sendData({
       command: 'start_app',
