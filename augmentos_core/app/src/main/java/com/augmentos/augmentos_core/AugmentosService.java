@@ -1151,6 +1151,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("preferred_mic", preferredMic);
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
+            coreInfo.put("is_searching", getIsSearchingForGlasses());
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
 
@@ -1159,21 +1160,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
                 connectedGlasses.put("model_name", smartGlassesManager.getConnectedSmartGlasses().deviceModelName);
                 connectedGlasses.put("battery_life", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
-                String brightnessString;
-                if (brightnessLevel == null) {
-                    brightnessString = "-";
-                } else if (brightnessLevel == -1){
-                    brightnessString = "AUTO";
-                } else {
-                    brightnessString = brightnessLevel + "%";
-                }
-                Log.d(TAG, "22 Brightness: " + brightnessString);
-                connectedGlasses.put("brightness", brightnessString);
-                connectedGlasses.put("auto_brightness", this.autoBrightness);
-                if (headUpAngle == null) {
-                    headUpAngle = 20;
-                }
-                connectedGlasses.put("headUp_angle", headUpAngle);
                 
                 // Add WiFi status information for glasses that need WiFi
                 String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
@@ -1195,6 +1181,30 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
             status.put("connected_glasses", connectedGlasses);
 
+            // Adding glasses settings
+            JSONObject glassesSettings = new JSONObject();
+            glassesSettings.put("brightness", brightnessLevel);
+            glassesSettings.put("auto_brightness", autoBrightness);
+            glassesSettings.put("headUp_angle", headUpAngle);
+            glassesSettings.put("dashboard_height", 4);// TODO
+            glassesSettings.put("depth", 5);// TODO
+
+            String brightnessString;
+            if (brightnessLevel == null) {
+                brightnessString = "-";
+            } else if (brightnessLevel == -1){
+                brightnessString = "AUTO";
+            } else {
+                brightnessString = brightnessLevel + "%";
+            }
+            connectedGlasses.put("brightness", brightnessString);
+            if (headUpAngle == null) {
+                headUpAngle = 20;
+            }
+            connectedGlasses.put("headUp_angle", headUpAngle);
+            status.put("glasses_settings", glassesSettings);
+            
+            
             // Adding wifi status
             JSONObject wifi = new JSONObject();
             wifi.put("is_connected", wifiStatusHelper.isWifiConnected());
