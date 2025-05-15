@@ -194,7 +194,6 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
     if (permissions.length == 1 && permissions[0].type == 'ALL') {
       permissions = [
         {type: 'MICROPHONE', required: true},
-        {type: 'CAMERA', required: true},
         {type: 'CALENDAR', required: true},
         {type: 'NOTIFICATIONS', required: true},
         {type: 'LOCATION', required: true},
