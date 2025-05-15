@@ -341,7 +341,7 @@ struct ViewState {
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     
-    print("changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
+    print("@@@@@@@ changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
     // in any case, clear the vadBuffer:
     self.vadBuffer.removeAll()
     self.micEnabled = isEnabled
@@ -377,12 +377,16 @@ struct ViewState {
         } else if (!self.onboardMicUnavailable) {
           useOnboardMic = true
         }
+
+        if (!useGlassesMic && !useOnboardMic) {
+          print("no mic to use!!!!!!")
+        }
       }
       
       useGlassesMic = actuallyEnabled && useGlassesMic
       useOnboardMic = actuallyEnabled && useOnboardMic
 
-      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) sensingEnabled: \(self.sensingEnabled) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 
       if (self.somethingConnected) {
         await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)

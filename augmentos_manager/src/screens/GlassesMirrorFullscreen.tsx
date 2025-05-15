@@ -21,6 +21,7 @@ import { useGlassesMirror } from '../providers/GlassesMirrorContext';
 import { requestFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
 import { NavigationProps } from '../components/types';
 import RNFS from 'react-native-fs';
+import coreCommunicator from '../bridge/CoreCommunicator';
 
 interface GlassesMirrorFullscreenProps {
   isDarkTheme: boolean;
@@ -165,6 +166,14 @@ const GlassesMirrorFullscreen: React.FC<GlassesMirrorFullscreenProps> = ({ isDar
   // Handle exiting fullscreen mode
   const handleExitFullscreen = () => {
     StatusBar.setHidden(false);
+    stopRecording();
+    // this does nothing but re-enables the mic because the RNCamera is bugged and doesn't properly give back the mic
+    // coreCommunicator.sendToggleSensing(status.core_info.sensing_enabled);
+    coreCommunicator.sendToggleSensing(false);
+    setTimeout(() => {
+      coreCommunicator.sendToggleSensing(true);
+    }, 2000);
+
     navigation.goBack();
   };
   
