@@ -169,7 +169,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
         )}
 
 
-        <View style={styles.settingItem}>
+        {/* <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text
               style={[
@@ -187,7 +187,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({
             </Text>
             <Slider {...sliderProps} />
           </View>
-        </View>
+        </View> */}
 
 
         {/* <View style={styles.settingItem}>

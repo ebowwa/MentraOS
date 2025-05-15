@@ -1176,14 +1176,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
                 }
             }
-            else {
-                connectedGlasses.put("is_searching", getIsSearchingForGlasses());
-            }
             status.put("connected_glasses", connectedGlasses);
 
             // Adding glasses settings
             JSONObject glassesSettings = new JSONObject();
-            glassesSettings.put("brightness", brightnessLevel);
             glassesSettings.put("auto_brightness", autoBrightness);
             glassesSettings.put("headUp_angle", headUpAngle);
             glassesSettings.put("dashboard_height", 4);// TODO
@@ -1732,12 +1728,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             String body = "Updating glasses brightness to " + brightness + "%.";
             smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard(title, body), 6);
             smartGlassesManager.updateGlassesBrightness(brightness);
-            this.brightnessLevel = brightness;
-            this.autoBrightness = false;
-            sendStatusToBackend();
-        } else {
-            blePeripheral.sendNotifyManager("Connect glasses to update brightness", "error");
         }
+        this.brightnessLevel = brightness;
+        this.autoBrightness = false;
+        sendStatusToBackend();
     }
 
     @Override
@@ -1745,9 +1739,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Updating glasses auto brightness: " + autoBrightness);
         if (smartGlassesManager != null) {
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
-            this.autoBrightness = autoBrightness;
-            sendStatusToBackend();
         }
+        this.autoBrightness = autoBrightness;
+        sendStatusToBackend();
     }
 
     @Override
