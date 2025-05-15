@@ -1,5 +1,9 @@
 # Simplified Permissions Manager Design Document
 
+Author: Isaiah Ballah
+
+Status: Implemented
+
 ## 1. Overview
 
 ### Problem Statement
