@@ -188,7 +188,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
   };
 
   const checkPermissions = async (app: AppInterface) => {
-    let permissions = app.permissions;
+    let permissions = app.permissions || [];
     let neededPermissions: string[] = [];
 
     if (permissions.length == 1 && permissions[0].type == 'ALL') {
