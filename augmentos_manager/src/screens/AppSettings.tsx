@@ -33,20 +33,12 @@ import {useAppStatus} from '../providers/AppStatusProvider';
 import AppIcon from '../components/AppIcon';
 import SelectWithSearchSetting from '../components/settings/SelectWithSearchSetting';
 
-type AppSettingsProps = NativeStackScreenProps<
-  RootStackParamList,
-  'AppSettings'
-> & {
+type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
   toggleTheme: () => void;
 };
 
-const AppSettings: React.FC<AppSettingsProps> = ({
-  route,
-  navigation,
-  isDarkTheme,
-  toggleTheme,
-}) => {
+const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme, toggleTheme}) => {
   const {packageName, appName} = route.params;
   const backendServerComms = BackendServerComms.getInstance();
   const [isUninstalling, setIsUninstalling] = useState(false);
@@ -57,13 +49,8 @@ const AppSettings: React.FC<AppSettingsProps> = ({
   const [settingsState, setSettingsState] = useState<{[key: string]: any}>({});
   // Get app info from status
   const {status} = useStatus();
-  const {
-    appStatus,
-    refreshAppStatus,
-    optimisticallyStartApp,
-    optimisticallyStopApp,
-    clearPendingOperation,
-  } = useAppStatus();
+  const {appStatus, refreshAppStatus, optimisticallyStartApp, optimisticallyStopApp, clearPendingOperation} =
+    useAppStatus();
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null;
   }, [appStatus, packageName]);
@@ -72,9 +59,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
   const handleStartStopApp = async () => {
     if (!appInfo) return;
 
-    console.log(
-      `${appInfo.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`,
-    );
+    console.log(`${appInfo.is_running ? 'Stopping' : 'Starting'} app: ${packageName}`);
 
     try {
       if (appInfo.is_running) {
@@ -94,10 +79,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
         if (appInfo.tpaType === 'standard') {
           // Find any running standard apps
           const runningStandardApps = appStatus.filter(
-            app =>
-              app.is_running &&
-              app.tpaType === 'standard' &&
-              app.packageName !== packageName,
+            app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName,
           );
 
           // If there's any running standard app, stop it first
@@ -128,68 +110,57 @@ const AppSettings: React.FC<AppSettingsProps> = ({
       // Refresh the app status to get the accurate state from the server
       refreshAppStatus();
 
-      console.error(
-        `Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`,
-        error,
-      );
+      console.error(`Error ${appInfo.is_running ? 'stopping' : 'starting'} app:`, error);
     }
   };
 
   const handleUninstallApp = () => {
     console.log(`Uninstalling app: ${packageName}`);
 
-    Alert.alert(
-      'Uninstall App',
-      `Are you sure you want to uninstall ${appInfo?.name || appName}?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Uninstall',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsUninstalling(true);
-              // First stop the app if it's running
-              if (appInfo?.is_running) {
-                // Optimistically update UI first
-                optimisticallyStopApp(packageName);
-                await backendServerComms.stopApp(packageName);
-                clearPendingOperation(packageName);
-              }
-
-              // Then uninstall it
-              await backendServerComms.uninstallApp(packageName);
-
-              // Show success message
-              GlobalEventEmitter.emit('SHOW_BANNER', {
-                message: `${
-                  appInfo?.name || appName
-                } has been uninstalled successfully`,
-                type: 'success',
-              });
-
-              // Navigate back to the previous screen
-              navigation.goBack();
-            } catch (error: any) {
-              console.error('Error uninstalling app:', error);
+    Alert.alert('Uninstall App', `Are you sure you want to uninstall ${appInfo?.name || appName}?`, [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Uninstall',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsUninstalling(true);
+            // First stop the app if it's running
+            if (appInfo?.is_running) {
+              // Optimistically update UI first
+              optimisticallyStopApp(packageName);
+              await backendServerComms.stopApp(packageName);
               clearPendingOperation(packageName);
-              refreshAppStatus();
-              GlobalEventEmitter.emit('SHOW_BANNER', {
-                message: `Error uninstalling app: ${
-                  error.message || 'Unknown error'
-                }`,
-                type: 'error',
-              });
-            } finally {
-              setIsUninstalling(false);
             }
-          },
+
+            // Then uninstall it
+            await backendServerComms.uninstallApp(packageName);
+
+            // Show success message
+            GlobalEventEmitter.emit('SHOW_BANNER', {
+              message: `${appInfo?.name || appName} has been uninstalled successfully`,
+              type: 'success',
+            });
+
+            // Navigate back to the previous screen
+            navigation.goBack();
+          } catch (error: any) {
+            console.error('Error uninstalling app:', error);
+            clearPendingOperation(packageName);
+            refreshAppStatus();
+            GlobalEventEmitter.emit('SHOW_BANNER', {
+              message: `Error uninstalling app: ${error.message || 'Unknown error'}`,
+              type: 'error',
+            });
+          } finally {
+            setIsUninstalling(false);
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   // Add header button when webviewURL exists
@@ -322,13 +293,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
   const renderSetting = (setting: any, index: number) => {
     switch (setting.type) {
       case 'group':
-        return (
-          <GroupTitle
-            key={`group-${index}`}
-            title={setting.title}
-            theme={theme}
-          />
-        );
+        return <GroupTitle key={`group-${index}`} title={setting.title} theme={theme} />;
       case 'toggle':
         return (
           <ToggleSetting
@@ -412,14 +377,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
           />
         );
       case 'titleValue':
-        return (
-          <TitleValueSetting
-            key={index}
-            label={setting.label}
-            value={setting.value}
-            theme={theme}
-          />
-        );
+        return <TitleValueSetting key={index} label={setting.label} value={setting.value} theme={theme} />;
       default:
         return null;
     }
@@ -428,22 +386,15 @@ const AppSettings: React.FC<AppSettingsProps> = ({
   if (!serverAppInfo || !appInfo) {
     return (
       <View style={{flex: 1, backgroundColor: theme.backgroundColor}}>
-        <LoadingOverlay
-          message={`Loading ${appName} settings...`}
-          isDarkTheme={isDarkTheme}
-        />
+        <LoadingOverlay message={`Loading ${appName} settings...`} isDarkTheme={isDarkTheme} />
       </View>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.safeArea, {backgroundColor: theme.backgroundColor}]}>
+    <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.backgroundColor}]}>
       {isUninstalling && (
-        <LoadingOverlay
-          message={`Uninstalling ${appInfo?.name || appName}...`}
-          isDarkTheme={isDarkTheme}
-        />
+        <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} isDarkTheme={isDarkTheme} />
       )}
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -452,8 +403,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
         <ScrollView
           contentContainerStyle={styles.mainContainer}
           automaticallyAdjustKeyboardInsets={true}
-          keyboardShouldPersistTaps="always"
-          >
+          keyboardShouldPersistTaps="always">
           {/* App Info Header Section */}
           <View
             style={[
@@ -476,24 +426,12 @@ const AppSettings: React.FC<AppSettingsProps> = ({
               </View>
 
               <View style={styles.appInfoTextContainer}>
-                <Text style={[styles.appName, {color: theme.textColor}]}>
-                  {appInfo.name}
-                </Text>
+                <Text style={[styles.appName, {color: theme.textColor}]}>{appInfo.name}</Text>
                 <View style={styles.appMetaInfoContainer}>
-                  <Text
-                    style={[
-                      styles.appMetaInfo,
-                      {color: theme.secondaryTextColor},
-                    ]}>
+                  <Text style={[styles.appMetaInfo, {color: theme.secondaryTextColor}]}>
                     Version {appInfo.version || '1.0.0'}
                   </Text>
-                  <Text
-                    style={[
-                      styles.appMetaInfo,
-                      {color: theme.secondaryTextColor},
-                    ]}>
-                    Package: {packageName}
-                  </Text>
+                  <Text style={[styles.appMetaInfo, {color: theme.secondaryTextColor}]}>Package: {packageName}</Text>
                   {/* {appInfo.is_foreground && (
                   <Text style={[styles.appMetaInfo, { color: '#2196F3' }]}>
                     Foreground App
@@ -504,11 +442,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
             </View>
 
             {/* Description within the main card */}
-            <View
-              style={[
-                styles.descriptionContainer,
-                {borderTopColor: theme.separatorColor},
-              ]}>
+            <View style={[styles.descriptionContainer, {borderTopColor: theme.separatorColor}]}>
               <Text style={[styles.descriptionText, {color: theme.textColor}]}>
                 {serverAppInfo.description || 'No description available.'}
               </Text>
@@ -540,11 +474,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
                   size={16}
                   style={[styles.buttonIcon, {color: theme.secondaryTextColor}]}
                 />
-                <Text
-                  style={[
-                    styles.buttonText,
-                    {color: theme.secondaryTextColor},
-                  ]}>
+                <Text style={[styles.buttonText, {color: theme.secondaryTextColor}]}>
                   {appInfo.is_running ? 'Stop' : 'Start'}
                 </Text>
               </TouchableOpacity>
@@ -561,14 +491,8 @@ const AppSettings: React.FC<AppSettingsProps> = ({
                 activeOpacity={0.7}
                 onPress={handleUninstallApp}
                 disabled={!serverAppInfo.uninstallable}>
-                <FontAwesome
-                  name="trash"
-                  size={16}
-                  style={[styles.buttonIcon, {color: '#ff3b30'}]}
-                />
-                <Text style={[styles.buttonText, {color: '#ff3b30'}]}>
-                  Uninstall
-                </Text>
+                <FontAwesome name="trash" size={16} style={[styles.buttonIcon, {color: '#ff3b30'}]} />
+                <Text style={[styles.buttonText, {color: '#ff3b30'}]}>Uninstall</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -585,9 +509,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
                   borderColor: theme.borderColor,
                 },
               ]}>
-              <Text style={[styles.sectionTitle, {color: theme.textColor}]}>
-                About this App
-              </Text>
+              <Text style={[styles.sectionTitle, {color: theme.textColor}]}>About this App</Text>
               <Text style={[styles.instructionsText, {color: theme.textColor}]}>
                 {serverAppInfo.instructions || appInfo.instructions}
               </Text>
@@ -603,23 +525,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({
                 borderColor: theme.borderColor,
               },
             ]}>
-            <Text style={[styles.sectionTitle, {color: theme.textColor}]}>
-              App Settings
-            </Text>
+            <Text style={[styles.sectionTitle, {color: theme.textColor}]}>App Settings</Text>
             <View style={styles.settingsContainer}>
               {serverAppInfo.settings && serverAppInfo.settings.length > 0 ? (
                 serverAppInfo.settings.map((setting: any, index: number) =>
-                  renderSetting(
-                    {...setting, uniqueKey: `${setting.key}-${index}`},
-                    index,
-                  ),
+                  renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
                 )
               ) : (
-                <Text
-                  style={[
-                    styles.noSettingsText,
-                    {color: theme.secondaryTextColor},
-                  ]}>
+                <Text style={[styles.noSettingsText, {color: theme.secondaryTextColor}]}>
                   No settings available for this app
                 </Text>
               )}
