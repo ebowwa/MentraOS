@@ -282,7 +282,7 @@ async function getAllApps(req: Request, res: Response) {
       data: enhancedApps
     });
   } catch (error) {
-    logger.error('Error fetching apps:', error);
+    logger.error({ error }, 'Error fetching apps');
     res.status(500).json({
       success: false,
       message: 'Error fetching apps'
@@ -301,7 +301,7 @@ async function getPublicApps(req: Request, res: Response) {
       data: apps
     });
   } catch (error) {
-    logger.error('Error fetching public apps:', error);
+    logger.error({ error }, 'Error fetching public apps');
     res.status(500).json({
       success: false,
       message: 'Error fetching public apps'
@@ -363,7 +363,7 @@ async function getAppByPackage(req: Request, res: Response) {
       : app;
 
     // Log permissions for debugging
-    logger.debug(`App ${packageName} permissions:`, plainApp.permissions);
+    logger.debug({ packageName, permissions: plainApp.permissions }, 'App permissions');
 
     // If the app has a developerId, try to get the developer profile information
     let developerProfile = null;
@@ -374,7 +374,7 @@ async function getAppByPackage(req: Request, res: Response) {
           developerProfile = developer.profile;
         }
       } catch (err) {
-        logger.error('Error fetching developer profile:', err);
+        logger.error({ error: err, developerId: plainApp.developerId }, 'Error fetching developer profile');
         // Continue without developer profile
       }
     }
@@ -521,11 +521,11 @@ async function installApp(req: Request, res: Response) {
     try {
       sessionService.triggerAppStateChange(email);
     } catch (error) {
-      logger.warn('Error sending app state notification:', error);
+      logger.warn({ error, email, packageName }, 'Error sending app state notification');
       // Non-critical error, installation succeeded
     }
   } catch (error) {
-    logger.error('Error installing app:', error);
+    logger.error({ error, email, packageName }, 'Error installing app');
     res.status(500).json({
       success: false,
       message: 'Error installing app'
@@ -584,7 +584,7 @@ async function uninstallApp(req: Request, res: Response) {
         await webSocketService.stopAppSession(userSession, packageName);
       }
       else {
-        console.warn(`Unable to ensure app is stopped before uninstalling, ${email} does not have an active session on this server.`, email, packageName);
+        logger.warn({ email, packageName }, 'Unable to ensure app is stopped before uninstalling, no active session');
       }
       await webSocketService.stopAppSession(session, packageName);
     } catch (error) {
@@ -595,12 +595,12 @@ async function uninstallApp(req: Request, res: Response) {
     try {
       sessionService.triggerAppStateChange(email);
     } catch (error) {
-      console.warn('Error updating client AppStateChange after uninstalling an app:', error);
+      logger.warn({ error, email }, 'Error updating client AppStateChange after uninstall');
       // Non-critical error, uninstallation succeeded, but updating client state failed.
     }
 
   } catch (error) {
-    logger.error('Error uninstalling app:', error);
+    logger.error({ error, email, packageName }, 'Error uninstalling app');
     res.status(500).json({
       success: false,
       message: 'Error uninstalling app'

@@ -4,7 +4,8 @@
  */
 
 import { posthog } from '../posthog.service';
-import { TransportStreamCallback } from 'pino';
+// Define a simple callback type instead of importing from pino
+type TransportCallback = () => void;
 
 /**
  * PostHog Transport for Pino
@@ -16,7 +17,7 @@ export const pinoPostHogTransport = {
    * @param line The log entry as a string
    * @param callback Callback to signal completion
    */
-  write(line: string, callback: TransportStreamCallback): void {
+  write(line: string, callback: TransportCallback): void {
     try {
       // Parse the log line
       const log = JSON.parse(line);

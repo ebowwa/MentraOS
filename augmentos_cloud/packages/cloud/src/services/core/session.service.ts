@@ -176,7 +176,7 @@ export class SessionService {
       transcriptionStreams: new Map<string, ASRStreamInstance>(),
       loadingApps: new Set<string>(),
       appConnections: new Map<string, WebSocket | any>(),
-      displayManager: new DisplayManager(),
+      displayManager: {} as any, // Will set after full session init
       // Will add dashboardManager after the session is fully constructed
       transcript: { 
         segments: [],
@@ -220,6 +220,10 @@ export class SessionService {
 
     // Finalize the user session
     const userSession = partialSession as ExtendedUserSession;
+
+    // Now set up the DisplayManager
+    const DisplayManager = require('../layout/DisplayManager6.1').default;
+    userSession.displayManager = new DisplayManager(userSession);
 
     // Now create the DashboardManager for this session
     // We need to dynamically import to avoid circular dependency issues
