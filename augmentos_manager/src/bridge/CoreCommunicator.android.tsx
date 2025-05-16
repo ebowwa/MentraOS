@@ -644,6 +644,29 @@ export class CoreCommunicator extends EventEmitter {
       CoreCommsService.stopService();
     }
   }
+
+  async setGlassesDashboardHeight(dashboardHeight: number) {
+    return await this.sendData({
+      command: 'update_glasses_dashboard_height',
+      params: {height: dashboardHeight},
+    });
+  }
+
+  async setGlassesDepth(depth: number) {
+    return await this.sendData({
+      command: 'update_glasses_depth',
+      params: {depth: depth},
+    });
+  }
+
+  async sendSetMetricSystemEnabled(metricSystemEnabled: boolean) {
+    return await this.sendData({
+      command: 'set_metric_system_enabled',
+      params: {
+        enabled: metricSystemEnabled,
+      },
+    });
+  }
 }
 
 // Create and export the singleton instance

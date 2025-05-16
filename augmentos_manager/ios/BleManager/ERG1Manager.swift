@@ -641,7 +641,7 @@ enum GlassesError: Error {
     case .WHITELIST:
       // TODO: ios no idea why the glasses send 0xCB before sending ACK:
       handleAck(from: peripheral, success: data[1] == 0xCB || data[1] == CommandResponse.ACK.rawValue)
-    case .DASHBOARD_POSITION_COMMAND:
+    case .DASHBOARD_LAYOUT_COMMAND:
       // 0x06 seems arbitrary :/
       handleAck(from: peripheral, success: data[1] == 0x06)
     case .HEAD_UP_ANGLE:
@@ -1083,29 +1083,33 @@ extension ERG1Manager {
     return true
   }
   
-  @objc public func RN_setDashboardPosition(_ position: Int) {
+  @objc public func RN_setDashboardPosition(_ height: Int, _ depth: Int) {
     Task {
-      await setDashboardPosition(DashboardPosition(rawValue: UInt8(position)) ?? DashboardPosition.position0)
+      await setDashboardPosition(height, depth)
     }
   }
   
-  public func setDashboardPosition(_ position: DashboardPosition) async -> Bool {
+  public func setDashboardPosition(_ height: Int, _ depth: Int) async -> Bool {
     guard let rightGlass = rightPeripheral,
           let leftGlass = leftPeripheral,
           let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
           let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
       return false
     }
+
+    let h = DashboardHeight(rawValue: UInt8(height)) ?? DashboardHeight.position0
+    let d = DashboardDepth(rawValue: UInt8(depth)) ?? DashboardDepth.position0
     
     // Build dashboard position command
     var command = Data()
-    command.append(Commands.DASHBOARD_POSITION_COMMAND.rawValue)
+    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
     command.append(0x07) // Length
     command.append(0x00) // Sequence
     command.append(0x01) // Fixed value
     command.append(0x02) // Fixed value
     command.append(0x01) // State ON
-    command.append(position.rawValue) // Position value
+    command.append(h.rawValue) // height
+    command.append(d.rawValue) // depth
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }

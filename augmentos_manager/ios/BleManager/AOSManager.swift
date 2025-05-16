@@ -879,10 +879,10 @@ struct ViewState {
           }
           self.dashboardHeight = value
           Task {
-            self.g1Manager?.RN_setDashboardPosition(value)
-            sendText("Set dashboard position to \(value)")
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            sendText(" ")// clear screen
+            await self.g1Manager?.setDashboardPosition(self.dashboardHeight, self.depth)
+            // sendText("Set dashboard position to \(value)")
+            // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            // sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
@@ -894,7 +894,7 @@ struct ViewState {
           }
           self.depth = value
           Task {
-            // self.g1Manager?.RN_setDashboardPosition(value)
+            await self.g1Manager?.setDashboardPosition(self.dashboardHeight, self.depth)
             // sendText("Set dashboard position to \(value)")
             // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             // sendText(" ")// clear screen
@@ -1150,7 +1150,7 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager?.RN_setDashboardPosition(dashboardHeight)
+      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
       try? await Task.sleep(nanoseconds: 400_000_000)
       // self.g1Manager?.RN_setDepth(depth)
       // try? await Task.sleep(nanoseconds: 400_000_000)
