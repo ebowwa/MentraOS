@@ -13,6 +13,7 @@
     "@augmentos/sdk": "workspace:*",
     "@augmentos/utils": "workspace:*",
     "@augmentos/agents": "workspace:*",
+    "express": "^4.18.2",
     "axios": "^1.6.7"
   },
 

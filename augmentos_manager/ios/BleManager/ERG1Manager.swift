@@ -276,6 +276,15 @@ enum GlassesError: Error {
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
+
+
+//    if (text == " " || text == "") {
+//      let command: [UInt8] = [0x18]
+////      let command: [UInt8] = [0x20, 0xCA]
+//      queueChunks([command])
+//      return;
+//    }
+
     Task {
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
@@ -617,7 +626,7 @@ enum GlassesError: Error {
     guard let command = data.first else { return }// ensure the data isn't empty
     
     let side = peripheral == leftPeripheral ? "left" : "right"
-//    print("received from G1 (\(side)): \(data.hexEncodedString())")
+    print("received from G1 (\(side)): \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -627,12 +636,16 @@ enum GlassesError: Error {
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .BRIGHTNESS:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
+    case .BLE_EXIT_ALL_FUNCTIONS:
+      handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     case .WHITELIST:
       // TODO: ios no idea why the glasses send 0xCB before sending ACK:
       handleAck(from: peripheral, success: data[1] == 0xCB || data[1] == CommandResponse.ACK.rawValue)
-    case .DASHBOARD_POSITION_COMMAND:
+    case .DASHBOARD_LAYOUT_COMMAND:
       // 0x06 seems arbitrary :/
       handleAck(from: peripheral, success: data[1] == 0x06)
+    case .DASHBOARD_SHOW:
+      handleAck(from: peripheral, success: data[1] == 0x07)
     case .HEAD_UP_ANGLE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     // head up angle ack
@@ -1009,8 +1022,11 @@ extension ERG1Manager {
     }
     
     let command: [UInt8] = [Commands.BRIGHTNESS.rawValue, lvl, autoMode ? 0x01 : 0x00]
-    
     queueChunks([command])
+    
+    // buried data point testing:
+//    let command: [UInt8] = [0x3E]
+//    queueChunks([command])
     
     //    // Send to both glasses with proper timing
     //    if let rightGlass = rightPeripheral,
@@ -1069,13 +1085,13 @@ extension ERG1Manager {
     return true
   }
   
-  @objc public func RN_setDashboardPosition(_ position: Int) {
+  @objc public func RN_setDashboardPosition(_ height: Int, _ depth: Int) {
     Task {
-      await setDashboardPosition(DashboardPosition(rawValue: UInt8(position)) ?? DashboardPosition.position0)
+      await setDashboardPosition(UInt8(height), UInt8(depth))
     }
   }
   
-  public func setDashboardPosition(_ position: DashboardPosition) async -> Bool {
+  public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
     guard let rightGlass = rightPeripheral,
           let leftGlass = leftPeripheral,
           let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
@@ -1083,15 +1099,41 @@ extension ERG1Manager {
       return false
     }
     
+    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
+    queueChunks([showDashboard], sleepAfterMs: 300)
+    
+    let h: UInt8 = min(max(height, 1), 8)
+    let d: UInt8 = min(max(depth, 1), 9)
+    
     // Build dashboard position command
+//    var command = Data()
+//    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+//    command.append(0x08) // Length
+//    command.append(0x00) // Sequence
+//    command.append(0x01) // Fixed value
+//    command.append(0x02) // Fixed value
+//    command.append(0x01) // State ON
+//    command.append(h.rawValue) // height
+//    command.append(d.rawValue) // depth
+    
+    print("height \(h)")
+    
     var command = Data()
-    command.append(Commands.DASHBOARD_POSITION_COMMAND.rawValue)
+    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+//    command.append(0x80) // Length high byte
+//    command.append(0x00) // Length low byte
+//    command.append(0x00) // Sequence number
+//    command.append(0x02) // Sub-command
+//    command.append(0x01) // Active state
+//    command.append(0x04) // height
+//    command.append(d) // depth
     command.append(0x07) // Length
     command.append(0x00) // Sequence
     command.append(0x01) // Fixed value
     command.append(0x02) // Fixed value
     command.append(0x01) // State ON
-    command.append(position.rawValue) // Position value
+    command.append(h) // height
+////    command.append(d.rawValue) // depthself.isSearching = false
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }

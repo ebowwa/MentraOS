@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -21,15 +21,15 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import GoogleIcon from '../icons/GoogleIcon';
 import AppleIcon from '../icons/AppleIcon';
-import {supabase} from '../supabaseClient';
-import {Linking} from 'react-native';
+import { supabase } from '../supabaseClient';
+import { Linking } from 'react-native';
 import showAlert from '../utils/AlertUtils';
 
 interface LoginScreenProps {
   navigation: any;
 }
 
-const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
+const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   const [isSigningUp, setIsSigningUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -106,7 +106,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
       if (authParams && authParams.access_token && authParams.refresh_token) {
         try {
           // Update the Supabase session manually
-          const {data, error} = await supabase.auth.setSession({
+          const { data, error } = await supabase.auth.setSession({
             access_token: authParams.access_token,
             refresh_token: authParams.refresh_token,
           });
@@ -132,7 +132,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
     Linking.getInitialURL().then(url => {
       console.log('Initial URL:', url);
       if (url) {
-        handleDeepLink({url});
+        handleDeepLink({ url });
       }
     });
 
@@ -180,7 +180,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
         authOverlayOpacity.setValue(0);
       }, 5000);
 
-      const {data, error} = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           // Must match the deep link scheme/host/path in your AndroidManifest.xml
@@ -222,7 +222,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
 
   const handleAppleSignIn = async () => {
     try {
-      const {data, error} = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           // Match the deep link scheme/host/path in your AndroidManifest.xml
@@ -244,7 +244,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
       }
 
       // After returning from the browser, check the session
-      const {data: sessionData} = await supabase.auth.getSession();
+      const { data: sessionData } = await supabase.auth.getSession();
       console.log('Current session after Apple sign-in:', sessionData.session);
 
       // Note: The actual navigation to SplashScreen will be handled by
@@ -268,7 +268,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
       const redirectUrl = 'https://augmentos.org/verify-email'; // No encoding needed
       //const redirectUrl = "com.augmentos.augmentos_manager://verify_email/";
 
-      const {data, error} = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -298,7 +298,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
 
   const handleEmailSignIn = async (email: string, password: string) => {
     setIsFormLoading(true);
-    const {data, error} = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -335,7 +335,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
   useEffect(() => {
     // Subscribe to auth state changes:
     const {
-      data: {subscription},
+      data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('onAuthStateChange event:', event, session);
       if (session) {
@@ -381,7 +381,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{flex: 1}}
+          style={{ flex: 1 }}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
           <ScrollView
             contentContainerStyle={styles.scrollContent}
@@ -392,7 +392,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                 <Animated.View
                   style={[
                     styles.authLoadingOverlay,
-                    {opacity: authOverlayOpacity},
+                    { opacity: authOverlayOpacity },
                   ]}>
                   <View style={styles.authLoadingContent}>
                     {/* Logo image commented out until we have a new one */}
@@ -413,11 +413,11 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                 </Animated.View>
               )}
               <Animated.Text
-                style={[styles.title, {opacity, transform: [{translateY}]}]}>
+                style={[styles.title, { opacity, transform: [{ translateY }] }]}>
                 AugmentOS
               </Animated.Text>
               <Animated.Text
-                style={[styles.subtitle, {opacity, transform: [{translateY}]}]}>
+                style={[styles.subtitle, { opacity, transform: [{ translateY }] }]}>
                 The future of smart glasses starts here.
               </Animated.Text>
               {/* <Animated.View
@@ -429,10 +429,10 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
           </Animated.View> */}
 
               <Animated.View
-                style={[styles.content, {opacity, transform: [{translateY}]}]}>
+                style={[styles.content, { opacity, transform: [{ translateY }] }]}>
                 {isSigningUp ? (
                   <Animated.View
-                    style={[styles.form, {transform: [{scale: formScale}]}]}>
+                    style={[styles.form, { transform: [{ scale: formScale }] }]}>
                     <View style={styles.inputGroup}>
                       <Text style={styles.inputLabel}>Email</Text>
                       <View style={styles.enhancedInputContainer}>
@@ -443,7 +443,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                           style={styles.inputIcon}
                         />
                         <TextInput
-                          hitSlop={{top: 16, bottom: 16}}
+                          hitSlop={{ top: 16, bottom: 16 }}
                           style={styles.enhancedInput}
                           placeholder="you@example.com"
                           value={email}
@@ -466,7 +466,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                           style={styles.inputIcon}
                         />
                         <TextInput
-                          hitSlop={{top: 16, bottom: 16}}
+                          hitSlop={{ top: 16, bottom: 16 }}
                           style={styles.enhancedInput}
                           placeholder="Enter your password"
                           value={password}
@@ -542,19 +542,19 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                       </Text>
                     </TouchableOpacity>
 
-                    {/* {Platform.OS == 'ios' && (
-                  <TouchableOpacity
-                    style={[styles.socialButton, styles.appleButton]}
-                    onPress={handleAppleSignIn}>
-                    <View style={styles.socialIconContainer}>
-                      <AppleIcon />
-                    </View>
-                    <Text
-                      style={[styles.socialButtonText, styles.appleButtonText]}>
-                      Continue with Apple
-                    </Text>
-                  </TouchableOpacity>
-                )} */}
+                    {Platform.OS == 'ios' && (
+                      <TouchableOpacity
+                        style={[styles.socialButton, styles.appleButton]}
+                        onPress={handleAppleSignIn}>
+                        <View style={styles.socialIconContainer}>
+                          <AppleIcon />
+                        </View>
+                        <Text
+                          style={[styles.socialButtonText, styles.appleButtonText]}>
+                          Continue with Apple
+                        </Text>
+                      </TouchableOpacity>
+                    )}
 
                     <View style={styles.dividerContainer}>
                       <View style={styles.divider} />
@@ -583,7 +583,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
                 )}
               </Animated.View>
 
-              <Animated.Text style={[styles.termsText, {opacity}]}>
+              <Animated.Text style={[styles.termsText, { opacity }]}>
                 By continuing, you agree to our Terms of Service and Privacy
                 Policy
               </Animated.Text>
@@ -595,7 +595,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
   );
 };
 
-const {width} = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {

@@ -147,11 +147,11 @@ async function getUserIdFromToken(token: string): Promise<string | null> {
     // Verify and decode the token
     const userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
     const userId = (userData as JwtPayload).email;
-    
+
     if (!userId) {
       return null;
     }
-    
+
     return userId;
   } catch (error) {
     console.error('Error verifying token:', error);
@@ -244,7 +244,7 @@ async function getAllApps(req: Request, res: Response) {
     const apiKey = req.query.apiKey as string;
     const packageName = req.query.packageName as string;
     const userId = req.query.userId as string;
-    
+
     if (apiKey && packageName && userId) {
       // Already authenticated via middleware
       const apps = await appService.getAllApps(userId);
@@ -255,7 +255,7 @@ async function getAllApps(req: Request, res: Response) {
         data: enhancedApps
       });
     }
-    
+
     // Fall back to token auth
     const authHeader = req.headers.authorization;
 
@@ -359,11 +359,20 @@ async function getAppByPackage(req: Request, res: Response) {
       });
     }
 
+    // Convert Mongoose document to plain JavaScript object
+    // Use toObject() method if available, otherwise use as is
+    const plainApp = typeof (app as any).toObject === 'function'
+      ? (app as any).toObject()
+      : app;
+
+    // Log permissions for debugging
+    console.log(`App ${packageName} permissions:`, plainApp.permissions);
+
     // If the app has a developerId, try to get the developer profile information
     let developerProfile = null;
-    if (app.developerId) {
+    if (plainApp.developerId) {
       try {
-        const developer = await User.findByEmail(app.developerId);
+        const developer = await User.findByEmail(plainApp.developerId);
         if (developer && developer.profile) {
           developerProfile = developer.profile;
         }
@@ -374,8 +383,8 @@ async function getAppByPackage(req: Request, res: Response) {
     }
 
     // Create response with developer profile if available
-    // Use the AppWithDeveloperProfile interface for type safety
-    const appObj = { ...app } as unknown as AppWithDeveloperProfile;
+    // Use the plain app directly instead of spreading its properties
+    const appObj = plainApp as AppWithDeveloperProfile;
     if (developerProfile) {
       appObj.developerProfile = developerProfile;
     }
@@ -571,13 +580,28 @@ async function uninstallApp(req: Request, res: Response) {
       message: `App ${packageName} uninstalled successfully`
     });
 
-    // Always attempt WebSocket notifications for full session
+    // Attempt to stop the app session before uninstalling.
+    try {
+      const userSession = sessionService.getSession(email);
+      if (userSession) {
+        await webSocketService.stopAppSession(userSession, packageName);
+      }
+      else {
+        console.warn(`Unable to ensure app is stopped before uninstalling, ${email} does not have an active session on this server.`, email, packageName);
+      }
+      await webSocketService.stopAppSession(session, packageName);
+    } catch (error) {
+      console.error('Error stopping app during uninstall:', error);
+    }
+
+    // Send app state change notification.
     try {
       sessionService.triggerAppStateChange(email);
     } catch (error) {
-      console.error('Error sending app state notification:', error);
-      // Non-critical error, uninstallation succeeded
+      console.warn('Error updating client AppStateChange after uninstalling an app:', error);
+      // Non-critical error, uninstallation succeeded, but updating client state failed.
     }
+
   } catch (error) {
     console.error('Error uninstalling app:', error);
     res.status(500).json({
@@ -631,67 +655,73 @@ async function getInstalledApps(req: Request, res: Response) {
   }
 }
 
-  /**
-   * Get app details by package name
-   * Public endpoint - no authentication required
-   */
-  async function getAppDetails (req: Request, res: Response) {
-    try {
-      const { packageName } = req.params;
+/**
+ * Get app details by package name
+ * Public endpoint - no authentication required
+ */
+async function getAppDetails(req: Request, res: Response) {
+  try {
+    const { packageName } = req.params;
 
-      // Get app details
-      const app = await appService.getAppByPackageName(packageName);
+    // Get app details and convert to plain object with lean()
+    const app = await appService.getAppByPackageName(packageName);
 
-      if (!app) {
-        return res.status(404).json({
-          success: false,
-          message: `App with package name ${packageName} not found`
-        });
-      }
-
-      // If the app has a developerId, try to get the developer profile information
-      let developerProfile = null;
-      if (app.developerId) {
-        try {
-          const developer = await User.findByEmail(app.developerId);
-          if (developer && developer.profile) {
-            developerProfile = developer.profile;
-          }
-        } catch (err) {
-          console.error('Error fetching developer profile:', err);
-          // Continue without developer profile
-        }
-      }
-
-      // Create response with developer profile if available
-      // Use the AppWithDeveloperProfile interface for type safety
-      const appObj = { ...app } as unknown as AppWithDeveloperProfile;
-      if (developerProfile) {
-        appObj.developerProfile = developerProfile;
-      }
-
-      res.json({
-        success: true,
-        data: appObj
-      });
-    } catch (error) {
-      console.error('Error fetching app details:', error);
-      res.status(500).json({
+    if (!app) {
+      return res.status(404).json({
         success: false,
-        message: 'Failed to fetch app details'
+        message: `App with package name ${packageName} not found`
       });
     }
-  };
 
-async function getAvailableApps (req: Request, res: Response) {
+    // Convert to plain JavaScript object if it's a Mongoose document
+    const plainApp = (app as any).toObject ? (app as any).toObject() : app;
+
+    // If the app has a developerId, try to get the developer profile information
+    let developerProfile = null;
+    if (plainApp.developerId) {
+      try {
+        const developer = await User.findByEmail(plainApp.developerId);
+        if (developer && developer.profile) {
+          developerProfile = developer.profile;
+        }
+      } catch (err) {
+        console.error('Error fetching developer profile:', err);
+        // Continue without developer profile
+      }
+    }
+
+    // Create response with developer profile if available
+    // Use the AppWithDeveloperProfile interface for type safety
+    const appObj = plainApp as AppWithDeveloperProfile;
+    if (developerProfile) {
+      appObj.developerProfile = developerProfile;
+    }
+
+    // Log the permissions to verify they are properly included
+    console.log(`App ${packageName} permissions:`, plainApp.permissions);
+
+    res.json({
+      success: true,
+      data: appObj
+    });
+  } catch (error) {
+    console.error('Error fetching app details:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch app details'
+    });
+  }
+};
+
+async function getAvailableApps(req: Request, res: Response) {
   try {
     const apps = await appService.getAvailableApps();
-    
+
     // Enhance apps with developer profiles
     const enhancedApps = await Promise.all(apps.map(async (app) => {
       // Convert app to plain object for modification and type as AppWithDeveloperProfile
       const appObj = { ...app } as unknown as AppWithDeveloperProfile;
-      
+
       // Add developer profile if the app has a developerId
       if (app.developerId) {
         try {
@@ -704,7 +734,7 @@ async function getAvailableApps (req: Request, res: Response) {
           // Continue without developer profile
         }
       }
-      
+
       return appObj;
     }));
 
