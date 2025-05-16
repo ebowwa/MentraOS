@@ -644,6 +644,8 @@ enum GlassesError: Error {
     case .DASHBOARD_LAYOUT_COMMAND:
       // 0x06 seems arbitrary :/
       handleAck(from: peripheral, success: data[1] == 0x06)
+    case .DASHBOARD_SHOW:
+      handleAck(from: peripheral, success: data[1] == 0x07)
     case .HEAD_UP_ANGLE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     // head up angle ack
@@ -1085,31 +1087,53 @@ extension ERG1Manager {
   
   @objc public func RN_setDashboardPosition(_ height: Int, _ depth: Int) {
     Task {
-      await setDashboardPosition(height, depth)
+      await setDashboardPosition(UInt8(height), UInt8(depth))
     }
   }
   
-  public func setDashboardPosition(_ height: Int, _ depth: Int) async -> Bool {
+  public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
     guard let rightGlass = rightPeripheral,
           let leftGlass = leftPeripheral,
           let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
           let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
       return false
     }
-
-    let h = DashboardHeight(rawValue: UInt8(height)) ?? DashboardHeight.position0
-    let d = DashboardDepth(rawValue: UInt8(depth)) ?? DashboardDepth.position0
+    
+    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
+    queueChunks([showDashboard], sleepAfterMs: 300)
+    
+    let h: UInt8 = min(max(height, 1), 8)
+    let d: UInt8 = min(max(depth, 1), 9)
     
     // Build dashboard position command
+//    var command = Data()
+//    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+//    command.append(0x08) // Length
+//    command.append(0x00) // Sequence
+//    command.append(0x01) // Fixed value
+//    command.append(0x02) // Fixed value
+//    command.append(0x01) // State ON
+//    command.append(h.rawValue) // height
+//    command.append(d.rawValue) // depth
+    
+    print("height \(h)")
+    
     var command = Data()
     command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+//    command.append(0x80) // Length high byte
+//    command.append(0x00) // Length low byte
+//    command.append(0x00) // Sequence number
+//    command.append(0x02) // Sub-command
+//    command.append(0x01) // Active state
+//    command.append(0x04) // height
+//    command.append(d) // depth
     command.append(0x07) // Length
     command.append(0x00) // Sequence
     command.append(0x01) // Fixed value
     command.append(0x02) // Fixed value
     command.append(0x01) // State ON
-    command.append(h.rawValue) // height
-    command.append(d.rawValue) // depth
+    command.append(h) // height
+////    command.append(d.rawValue) // depthself.isSearching = false
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }

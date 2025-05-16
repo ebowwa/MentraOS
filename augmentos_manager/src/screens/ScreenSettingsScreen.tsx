@@ -69,6 +69,11 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
     setDepth(newDepth);
   };
 
+  const changeHeight = async (newHeight: number) => {
+    await coreCommunicator.setGlassesDashboardHeight(newHeight);
+    setHeight(newHeight);
+  };
+
   const toggleAutoBrightness = async () => {
     const newVal = !isAutoBrightnessEnabled;
     await coreCommunicator.setGlassesBrightnessMode(brightness ?? 50, newVal);
@@ -175,7 +180,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
           </View>
         )}
 
-        <View style={styles.settingItem}>
+        {/* <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text style={[styles.label, isDarkTheme ? styles.lightText : styles.darkText]}>Depth</Text>
             <Text style={[styles.value, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
@@ -193,7 +198,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
             </Text>
             <Slider {...heightSliderProps} />
           </View>
-        </View>
+        </View> */}
       </ScrollView>
     </View>
   );

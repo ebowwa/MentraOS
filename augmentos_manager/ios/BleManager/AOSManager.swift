@@ -45,7 +45,7 @@ struct ViewState {
   private var dashboardHeight: Int = 4;
   private var depth: Int = 5;
   private var sensingEnabled: Bool = true;
-  private var isSearching: Bool = false;
+  private var isSearching: Bool = true;
   private var alwaysOnStatusBar: Bool = false;
   private var bypassVad: Bool = false;
   private var bypassAudioEncoding: Bool = false;
@@ -675,8 +675,8 @@ struct ViewState {
   }
   
   private func disconnect() {
+
     self.somethingConnected = false
-    self.isSearching = false
 
     // save the mic state:
     // let micWasEnabled = self.micEnabled
@@ -881,7 +881,7 @@ struct ViewState {
           }
           self.dashboardHeight = value
           Task {
-            await self.g1Manager?.setDashboardPosition(self.dashboardHeight, self.depth)
+            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
             // sendText("Set dashboard position to \(value)")
             // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             // sendText(" ")// clear screen
@@ -896,7 +896,7 @@ struct ViewState {
           }
           self.depth = value
           Task {
-            await self.g1Manager?.setDashboardPosition(self.dashboardHeight, self.depth)
+            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
             // sendText("Set dashboard position to \(value)")
             // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             // sendText(" ")// clear screen
@@ -982,6 +982,7 @@ struct ViewState {
   private func handleDisconnectWearable() {
     connectTask?.cancel()
     disconnect()
+    self.isSearching = false
     handleRequestStatus()
   }
 

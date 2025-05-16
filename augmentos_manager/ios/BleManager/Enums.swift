@@ -27,6 +27,7 @@ enum Commands: UInt8 {
   case WHITELIST = 0x04
   case SILENT_MODE = 0x03
   case DASHBOARD_LAYOUT_COMMAND = 0x26
+  case DASHBOARD_SHOW = 0x06
   case HEAD_UP_ANGLE = 0x0B
 }
 
