@@ -399,6 +399,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({
             theme={theme}
           />
         );
+        return null;
       case 'multiselect':
         return (
           <MultiSelectSetting
@@ -450,7 +451,9 @@ const AppSettings: React.FC<AppSettingsProps> = ({
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}>
         <ScrollView
           contentContainerStyle={styles.mainContainer}
-          automaticallyAdjustKeyboardInsets={true}>
+          automaticallyAdjustKeyboardInsets={true}
+          keyboardShouldPersistTaps="always"
+          >
           {/* App Info Header Section */}
           <View
             style={[
