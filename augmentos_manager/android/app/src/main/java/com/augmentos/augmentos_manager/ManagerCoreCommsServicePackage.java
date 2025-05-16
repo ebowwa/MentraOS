@@ -1,11 +1,11 @@
-package com.augmentos.augmentos_manager;
+package com.augmentos.augmentos;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.uimanager.ViewManager;
 import com.facebook.react.bridge.ReactApplicationContext;
 
-import com.augmentos.augmentos_manager.ManagerCoreCommsServiceModule;
+import com.augmentos.augmentos.ManagerCoreCommsServiceModule;
 
 import java.util.ArrayList;
 import java.util.Collections;

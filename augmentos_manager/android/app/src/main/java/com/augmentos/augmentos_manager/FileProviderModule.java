@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager;
+package com.augmentos.augmentos;
 
 import android.content.Context;
 import android.net.Uri;
@@ -15,7 +15,7 @@ import java.io.File;
 
 public class FileProviderModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
-    private static final String AUTHORITY = "com.augmentos.augmentos_manager.fileprovider";
+    private static final String AUTHORITY = "com.augmentos.augmentos.fileprovider";
 
     public FileProviderModule(ReactApplicationContext reactContext) {
         super(reactContext);

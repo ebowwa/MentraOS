@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager;
+package com.augmentos.augmentos;
 
 import android.app.Notification;
 import android.content.Intent;
@@ -42,7 +42,7 @@ public class NotificationService extends NotificationListenerService {
             "com.sec.android.gallery3d",
             "com.augmentos.augmentos",
             "com.osp.app.signin",
-            "com.augmentos.augmentos_manager",
+            "com.augmentos.augmentos",
             "com.github.welldomax.tunnelshare"
             );
 

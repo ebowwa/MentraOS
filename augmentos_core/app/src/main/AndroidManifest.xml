@@ -159,7 +159,7 @@
   </queries>
 
   <queries>
-    <package android:name="com.augmentos.augmentos_manager" />
+    <package android:name="com.augmentos.augmentos" />
   </queries>
 
 </manifest>

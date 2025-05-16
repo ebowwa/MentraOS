@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager;
+package com.augmentos.augmentos;
 
 import android.app.Activity;
 import android.content.Intent;

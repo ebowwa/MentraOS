@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager
+package com.augmentos.augmentos
 
 import android.app.Application
 import android.content.IntentFilter
@@ -23,14 +23,14 @@ import kjd.reactnative.bluetooth.RNBluetoothClassicPackage
 import com.reactnativecommunity.slider.ReactSliderPackage
 import com.lugg.RNCConfig.RNCConfigPackage
 import org.reactnative.camera.RNCameraPackage
-import com.augmentos.augmentos_manager.logcapture.LogcatCapturePackage
+import com.augmentos.augmentos.logcapture.LogcatCapturePackage
 import com.reactnativecommunity.webview.RNCWebViewPackage
 import com.rnfs.RNFSPackage
 import com.brentvatne.react.ReactVideoPackage
 import fr.greweb.reactnativeviewshot.RNViewShotPackage
 import com.reactlibrary.createthumbnail.CreateThumbnailPackage
 
-// import com.augmentos.augmentos_manager.NotificationServicePackage
+// import com.augmentos.augmentos.NotificationServicePackage
 
 class MainApplication : Application(), ReactApplication {
 

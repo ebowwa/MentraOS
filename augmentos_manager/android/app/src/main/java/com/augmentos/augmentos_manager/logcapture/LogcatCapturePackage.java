@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager.logcapture;
+package com.augmentos.augmentos.logcapture;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;

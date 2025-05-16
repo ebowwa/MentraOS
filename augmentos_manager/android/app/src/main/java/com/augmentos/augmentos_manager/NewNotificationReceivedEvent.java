@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager;
+package com.augmentos.augmentos;
 
 public class NewNotificationReceivedEvent {
     public String appName;

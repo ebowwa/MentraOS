@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_manager;
+package com.augmentos.augmentos;
 
 import com.facebook.react.ReactPackage;
 import com.facebook.react.bridge.NativeModule;
