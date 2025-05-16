@@ -176,6 +176,15 @@ export interface StandardConnectionError extends BaseMessage {
 }
 
 /**
+ * Custom message for general-purpose communication (cloud to TPA)
+ */
+export interface CustomMessage extends BaseMessage {
+  type: CloudToTpaMessageType.CUSTOM_MESSAGE;
+  action: string;  // Identifies the specific action/message type
+  payload: any;    // Custom data payload
+}
+
+/**
  * Union type for all messages from cloud to TPAs
  */
 export type CloudToTpaMessage =
@@ -194,7 +203,8 @@ export type CloudToTpaMessage =
   | VideoStreamResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
-  | AugmentosSettingsUpdate;
+  | AugmentosSettingsUpdate
+  | CustomMessage;
 
 //===========================================================
 // Type guards

@@ -115,7 +115,10 @@ export enum CloudToTpaMessageType {
   PHOTO_RESPONSE = 'photo_response',
   VIDEO_STREAM_RESPONSE = 'video_stream_response',
 
-  WEBSOCKET_ERROR = 'websocket_error'
+  WEBSOCKET_ERROR = 'websocket_error',
+  
+  // General purpose messaging
+  CUSTOM_MESSAGE = 'custom_message'
 }
 
 /**
