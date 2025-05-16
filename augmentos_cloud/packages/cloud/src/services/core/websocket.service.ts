@@ -59,7 +59,9 @@ import {
   AugmentosSettingsUpdateRequest,
   SettingsUpdate,
   RequestSettings,
-  CoreStatusUpdate
+  CoreStatusUpdate,
+  VideoStreamRequest,
+  VideoStreamRequestToGlasses
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -67,7 +69,7 @@ import { PosthogService } from '../logging/posthog.service';
 import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
 import { logger } from '@augmentos/utils';
-import photoRequestService from './photo-request.service';
+import photoRequestService, { PendingPhotoRequest } from './photo-request.service';
 import axios from 'axios';
 import { SessionService } from './session.service';
 import { getSessionService } from './session.service';
@@ -133,7 +135,7 @@ export class WebSocketService {
 
   // Global counter for generating sequential audio chunk numbers
   private globalAudioSequence: number = 0;
-  
+
   // We no longer track photo requests here - using photoRequestService instead
 
   private constructor() {
@@ -310,7 +312,7 @@ export class WebSocketService {
   setupWebSocketServers(server: Server): void {
     server.on('upgrade', (request, socket, head) => {
       const url = new URL(request.url || '', `http://${request.headers.host}`);
-      
+
       if (url.pathname === '/glasses-ws') {
         this.glassesWss.handleUpgrade(request, socket, head, ws => {
           this.glassesWss.emit('connection', ws, request);
@@ -502,14 +504,14 @@ export class WebSocketService {
     // If this is a STANDARD app, we need to stop any other STANDARD apps that are running
     // if (app.tpaType === TpaType.STANDARD) {
     //   userSession.logger.info(`[websocket.service]: 🚦 Starting STANDARD app, checking for other STANDARD apps to stop`);
-      
+
     //   // Find all active STANDARD apps
     //   const runningStandardApps = [];
-      
+
     //   for (const activeAppName of userSession.activeAppSessions) {
     //     // Skip if this is the app we're trying to start
     //     if (activeAppName === packageName) continue;
-        
+
     //     // Get the app details to check its type
     //     try {
     //       const activeApp = await appService.getApp(activeAppName);
@@ -521,7 +523,7 @@ export class WebSocketService {
     //       // Continue with the next app even if there's an error
     //     }
     //   }
-      
+
     //   // Stop any running STANDARD apps
     //   for (const standardAppToStop of runningStandardApps) {
     //     userSession.logger.info(`[websocket.service]: 🛑 Stopping STANDARD app ${standardAppToStop} before starting ${packageName}`);
@@ -801,7 +803,7 @@ export class WebSocketService {
       }
     }
   }
-  
+
   /**
    * Forward a photo response to the requesting TPA
    * @param requestId The ID of the photo request
@@ -813,31 +815,7 @@ export class WebSocketService {
     // Forward to the new service
     return photoRequestService.processPhotoResponse(requestId, photoUrl);
   }
-  
-  /**
-   * Checks if a photo request with the specified ID is pending
-   * @param requestId The ID of the photo request to check
-   * @returns True if a pending request with this ID exists, false otherwise
-   * @deprecated Use photoRequestService.hasPhotoRequest instead
-   */
-  hasPendingPhotoRequest(requestId: string): boolean {
-    return photoRequestService.hasPhotoRequest(requestId);
-  }
-  
-  /**
-   * Get the pending photo request with the given ID
-   * @param requestId Request ID to look up
-   * @returns The pending photo request info, or undefined if not found
-   * @deprecated Use photoRequestService.getPhotoRequestInfo instead
-   */
-  getPendingPhotoRequest(requestId: string): { 
-    appId: string, 
-    userId: string,
-    saveToGallery?: boolean 
-  } | undefined {
-    return photoRequestService.getPhotoRequestInfo(requestId);
-  }
-  
+
   /**
    * Forward a video stream response to the requesting TPA
    * @param appId The ID of the app requesting the stream
@@ -848,12 +826,12 @@ export class WebSocketService {
   forwardVideoStreamResponse(appId: string, streamUrl: string, userSession: UserSession): boolean {
     // Find the TPA connection
     const tpaWebSocket = userSession.appConnections.get(appId);
-    
+
     if (!tpaWebSocket || tpaWebSocket.readyState !== WebSocket.OPEN) {
       logger.warn(`[websocket.service]: Cannot forward video stream response, TPA ${appId} not connected`);
       return false;
     }
-    
+
     // Send the video stream response to the TPA
     const videoStreamResponse = {
       type: CloudToTpaMessageType.VIDEO_STREAM_RESPONSE,
@@ -861,10 +839,10 @@ export class WebSocketService {
       appId,
       timestamp: new Date()
     };
-    
+
     tpaWebSocket.send(JSON.stringify(videoStreamResponse));
     logger.info(`[websocket.service]: Video stream response sent to TPA ${appId}`);
-    
+
     return true;
   }
   /**
@@ -915,7 +893,7 @@ export class WebSocketService {
 
     // Create the user session
     const userSession = await this.getSessionService().createSession(ws, userId);
-    
+
     // Register this connection with the HeartbeatManager
     userSession.heartbeatManager.registerGlassesConnection(ws);
 
@@ -988,9 +966,9 @@ export class WebSocketService {
     ws.on('close', (code: number, reason: string) => {
       // Capture detailed disconnect information
       const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
-      
+
       userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}, reason: ${disconnectInfo?.reason || 'unknown'}`);
-      
+
       // Mark the session as disconnected but do not remove it immediately
       this.getSessionService().markSessionDisconnected(userSession);
 
@@ -1019,10 +997,10 @@ export class WebSocketService {
     // TODO(isaiahb): Investigate if we really need to destroy the session on an error.
     ws.on('error', (error) => {
       userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
-      
+
       // Unregister from heartbeat manager
       userSession.heartbeatManager.unregisterConnection(ws);
-      
+
       this.getSessionService().endSession(userSession);
       ws.close();
     });
@@ -1270,7 +1248,7 @@ export class WebSocketService {
               longitude: locationUpdate.lng,
               timestamp: new Date()
             });
-            
+
             const user = await User.findByEmail(userSession.userId);
             if (user) {
               await user.setLocation(locationUpdate);
@@ -1295,39 +1273,41 @@ export class WebSocketService {
           this.broadcastToTpa(userSession.sessionId, message.type as any, message);
           break;
         }
-        
-        case 'photo_response': {
+
+        // case 'photo_response': {
+        case GlassesToCloudMessageType.PHOTO_RESPONSE: {
           const photoUploadMessage = message as any;
           userSession.logger.info(`[websocket.service]: Received photo response from glasses, requestId: ${photoUploadMessage.requestId}`);
-          
+
           // Process the photo response
           const success = photoRequestService.processPhotoResponse(
-            photoUploadMessage.requestId, 
+            photoUploadMessage.requestId,
             photoUploadMessage.photoUrl
           );
-          
+
           if (!success) {
             userSession.logger.warn(`[websocket.service]: Failed to process photo response, no pending request found for requestId: ${photoUploadMessage.requestId}`);
           }
           break;
         }
-        
+
+        // case 'video_stream_response': {
         case 'video_stream_response': {
           const videoStreamResponse = message as any;
           userSession.logger.info(`[websocket.service]: Received video stream response from glasses, appId: ${videoStreamResponse.appId}`);
-          
+
           // Get the appId from the response
           const appId = videoStreamResponse.appId;
           const streamUrl = videoStreamResponse.streamUrl;
-          
+
           if (!appId || !streamUrl) {
             userSession.logger.warn(`[websocket.service]: Invalid video stream response, missing appId or streamUrl`);
             return;
           }
-          
+
           // Forward the video stream response to the requesting TPA
           const success = this.forwardVideoStreamResponse(appId, streamUrl, userSession);
-          
+
           if (!success) {
             userSession.logger.warn(`[websocket.service]: Failed to forward video stream response to TPA ${appId}`);
           }
@@ -1358,7 +1338,7 @@ export class WebSocketService {
             ws.send(JSON.stringify(responseMessage));
           } catch (error) {
             userSession.logger.error('Error retrieving AugmentOS settings:', error);
-            
+
             // Send error back to client
             const errorMessage = {
               type: 'augmentos_settings_update_error',
@@ -1548,12 +1528,12 @@ export class WebSocketService {
               const previousLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSessionId);
 
               // Check if the app is newly subscribing to calendar events
-              const isNewCalendarSubscription = 
+              const isNewCalendarSubscription =
                 !subscriptionService.hasSubscription(userSessionId, message.packageName, StreamType.CALENDAR_EVENT) &&
                 subMessage.subscriptions.includes(StreamType.CALENDAR_EVENT);
 
               // Check if the app is newly subscribing to location updates
-              const isNewLocationSubscription = 
+              const isNewLocationSubscription =
                 !subscriptionService.hasSubscription(userSessionId, message.packageName, StreamType.LOCATION_UPDATE) &&
                 subMessage.subscriptions.includes(StreamType.LOCATION_UPDATE);
 
@@ -1607,7 +1587,7 @@ export class WebSocketService {
                   userSession.logger.info(`Sending cached calendar event to newly subscribed app ${message.packageName}`);
                   const tpaSessionId = `${userSessionId}-${message.packageName}`;
                   const tpaWs = userSession.appConnections.get(message.packageName);
-                  
+
                   if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
                     const dataStream: DataStream = {
                       type: CloudToTpaMessageType.DATA_STREAM,
@@ -1629,7 +1609,7 @@ export class WebSocketService {
                   userSession.logger.info(`Sending cached location to newly subscribed app ${message.packageName}`);
                   const tpaSessionId = `${userSessionId}-${message.packageName}`;
                   const tpaWs = userSession.appConnections.get(message.packageName);
-                  
+
                   if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
                     const locationUpdate: LocationUpdate = {
                       type: GlassesToCloudMessageType.LOCATION_UPDATE,
@@ -1638,7 +1618,7 @@ export class WebSocketService {
                       lng: lastLocation.longitude,
                       timestamp: new Date()
                     };
-                    
+
                     const dataStream: DataStream = {
                       type: CloudToTpaMessageType.DATA_STREAM,
                       sessionId: tpaSessionId,
@@ -1671,7 +1651,7 @@ export class WebSocketService {
               this.getSessionService().updateDisplay(userSession.sessionId, displayMessage);
               break;
             }
-            
+
             // Dashboard message handling
             case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
             case TpaToCloudMessageType.DASHBOARD_MODE_CHANGE:
@@ -1680,14 +1660,14 @@ export class WebSocketService {
                 ws.close(1008, 'No active session');
                 return;
               }
-              
+
               try {
                 // Import dashboard service functions dynamically to avoid circular dependencies
                 const dashboardService = require('../dashboard');
-                
+
                 // Handle the dashboard message, passing both message and userSession
                 const handled = dashboardService.handleTpaMessage(message, userSession);
-                
+
                 if (!handled) {
                   userSession.logger.warn(`Dashboard message ${message.type} not handled`, message);
                 }
@@ -1707,7 +1687,7 @@ export class WebSocketService {
               const photoRequestMessage = message as PhotoRequest;
               const appId = photoRequestMessage.packageName;
               const saveToGallery = photoRequestMessage.saveToGallery || false;
-              
+
               // Check if the app is currently running
               if (!userSession.activeAppSessions) {
                 this.sendError(ws, {
@@ -1716,7 +1696,7 @@ export class WebSocketService {
                 });
                 return;
               }
-              
+
               // Check if app is in the active sessions array (it's an array, not an object)
               const isAppActive = userSession.activeAppSessions.includes(appId);
               if (!isAppActive) {
@@ -1729,29 +1709,35 @@ export class WebSocketService {
               }
 
               // Create a TPA photo request using PhotoRequestService
-              const { requestId } = photoRequestService.createTpaPhotoRequest(
+              const requestId = photoRequestService.createTpaPhotoRequest(
                 appId,
                 userSession.userId,
                 ws,
-                saveToGallery
+                { saveToGallery }
               );
-              
-              // Build request to glasses
-              const photoRequestToGlasses = photoRequestService.buildPhotoRequestMessage(
-                requestId,
-                userSession.userId,
-                userSession.sessionId,
-                appId,
-                saveToGallery
-              );
-              
+
+              // // Build request to glasses
+              // const photoRequestToGlasses = photoRequestService.buildPhotoRequestMessage(
+              //   requestId,
+              //   userSession.userId,
+              //   userSession.sessionId,
+              //   appId,
+              //   saveToGallery
+              // );
+// photoRequestMessage
               // Send request to glasses
-              userSession.websocket.send(JSON.stringify(photoRequestToGlasses));
+              // userSession.websocket.send(JSON.stringify(photoRequestToGlasses));
+              userSession.websocket.send(JSON.stringify({
+                type: CloudToGlassesMessageType.PHOTO_REQUEST,
+                requestId,
+                appId,
+                timestamp: new Date()
+              }));
               userSession.logger.info(`[websocket.service]: Photo request sent to glasses, requestId: ${requestId}`);
-              
+
               break;
             }
-            
+
             case 'video_stream_request': {
               if (!userSession) {
                 ws.close(1008, 'No active session');
@@ -1761,7 +1747,7 @@ export class WebSocketService {
               // Check if app has permission to request video stream
               const videoStreamRequestMessage = message as VideoStreamRequest;
               const appId = videoStreamRequestMessage.packageName;
-              
+
               // Check if the app is currently running
               if (!userSession.activeAppSessions) {
                 this.sendError(ws, {
@@ -1770,7 +1756,7 @@ export class WebSocketService {
                 });
                 return;
               }
-              
+
               // Check if app is in the active sessions array (it's an array, not an object)
               const isAppActive = userSession.activeAppSessions.includes(appId);
               if (!isAppActive) {
@@ -1781,7 +1767,7 @@ export class WebSocketService {
                 });
                 return;
               }
-              
+
               // Build request to glasses
               const videoStreamRequestToGlasses: VideoStreamRequestToGlasses = {
                 type: CloudToGlassesMessageType.VIDEO_STREAM_REQUEST,
@@ -1792,11 +1778,11 @@ export class WebSocketService {
                 appId,
                 timestamp: new Date()
               };
-              
+
               // Send request to glasses
               userSession.websocket.send(JSON.stringify(videoStreamRequestToGlasses));
               userSession.logger.info(`[websocket.service]: Video stream request sent to glasses for app: ${appId}`);
-              
+
               break;
             }
           }
@@ -1849,7 +1835,7 @@ export class WebSocketService {
 
         // Capture detailed disconnect information
         const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
-        
+
         // Clean up the connection 
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
@@ -1861,44 +1847,44 @@ export class WebSocketService {
           `[websocket.service]: TPA session ${currentAppSession} disconnected: ` +
           `reason=${disconnectInfo?.reason || 'unknown'}, code=${code}`
         );
-        
+
         // [IMPROVED APP STATE CONSISTENCY WITH RECONNECTION GRACE PERIOD]
         // Check if the app is still in the active sessions list and handle potential reconnection
         if (userSession.activeAppSessions.includes(packageName)) {
           const wasExplicitStop = disconnectInfo?.reason === 'explicit_stop';
-          
+
           if (!wasExplicitStop) {
             // Store reconnection timer in a map if it doesn't already exist there
             if (!userSession._reconnectionTimers) {
               userSession._reconnectionTimers = new Map();
             }
-            
+
             // Clear any existing timer for this package
             if (userSession._reconnectionTimers.has(packageName)) {
               clearTimeout(userSession._reconnectionTimers.get(packageName));
             }
-            
+
             userSession.logger.info(
               `[websocket.service]: Starting 5-second reconnection grace period for ${packageName}. ` +
               `Disconnect reason: ${disconnectInfo?.reason || 'unknown'}, code: ${code}`
             );
-            
+
             // Set a 5-second timer before removing from active sessions
             const timerId = setTimeout(async () => {
               // Check if the app is still in active sessions and not reconnected
-              if (userSession.activeAppSessions.includes(packageName) && 
-                  !userSession.appConnections.has(packageName)) {
-                
+              if (userSession.activeAppSessions.includes(packageName) &&
+                !userSession.appConnections.has(packageName)) {
+
                 userSession.logger.warn(
                   `[websocket.service]: Reconnection grace period expired for ${packageName}. ` +
                   `Removing from active app sessions to prevent zombie app state.`
                 );
-                
+
                 // Remove the app from active sessions after grace period
                 userSession.activeAppSessions = userSession.activeAppSessions.filter(
                   (appName) => appName !== packageName
                 );
-                
+
                 // Try to update database if possible
                 try {
                   const user = await User.findByEmail(userSession.userId);
@@ -1908,7 +1894,7 @@ export class WebSocketService {
                 } catch (dbError) {
                   userSession.logger.error(`Error updating user's running apps:`, dbError);
                 }
-                
+
                 // Update the glasses client with new app state to ensure UI correctness
                 try {
                   if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
@@ -1919,23 +1905,23 @@ export class WebSocketService {
                 } catch (updateError) {
                   userSession.logger.error(`Error updating glasses client app state:`, updateError);
                 }
-                
+
                 // Update the display to reflect the app's removal
                 try {
                   userSession.displayManager.handleAppStop(packageName, userSession);
                 } catch (displayError) {
                   userSession.logger.error(`Error updating display after grace period:`, displayError);
                 }
-                
+
                 // Clean up the timer reference
                 userSession._reconnectionTimers?.delete(packageName);
-                
+
                 // Auto-restart the app if enabled
                 if (AUTO_RESTART_APPS) {
                   userSession.logger.info(
                     `[websocket.service]: Will attempt auto-restart of ${packageName} in ${AUTO_RESTART_DELAY_MS}ms`
                   );
-                  
+
                   // Add a small delay before attempting restart
                   setTimeout(async () => {
                     try {
@@ -1956,7 +1942,7 @@ export class WebSocketService {
                 userSession._reconnectionTimers?.delete(packageName);
               }
             }, 5000); // 5 second grace period
-            
+
             // Store the timer ID for potential cancellation
             userSession._reconnectionTimers.set(packageName, timerId);
           }
@@ -1984,15 +1970,15 @@ export class WebSocketService {
           logger.error(`[websocket.service]: User session not found for ${currentAppSession}`);
           return;
         }
-        
+
         // Unregister from heartbeat manager
         userSession.heartbeatManager.unregisterConnection(ws);
-        
+
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
         }
-        
+
         // [IMPROVED APP STATE CONSISTENCY WITH RECONNECTION GRACE PERIOD]
         // Give app a chance to reconnect before removing from active sessions
         if (userSession.activeAppSessions.includes(packageName)) {
@@ -2000,33 +1986,33 @@ export class WebSocketService {
           if (!userSession._reconnectionTimers) {
             userSession._reconnectionTimers = new Map();
           }
-          
+
           // Clear any existing timer for this package
           if (userSession._reconnectionTimers.has(packageName)) {
             clearTimeout(userSession._reconnectionTimers.get(packageName));
           }
-          
+
           userSession.logger.info(
             `[websocket.service]: Starting 5-second reconnection grace period for ${packageName} after error. ` +
             `Error: ${error.message || 'unknown error'}`
           );
-          
+
           // Set a 5-second timer before removing from active sessions
           const timerId = setTimeout(async () => {
             // Check if the app is still in active sessions and not reconnected
-            if (userSession.activeAppSessions.includes(packageName) && 
-                !userSession.appConnections.has(packageName)) {
-              
+            if (userSession.activeAppSessions.includes(packageName) &&
+              !userSession.appConnections.has(packageName)) {
+
               userSession.logger.warn(
                 `[websocket.service]: Reconnection grace period expired for ${packageName} after error. ` +
                 `Removing from active app sessions to prevent zombie app state.`
               );
-              
+
               // Remove the app from active sessions after grace period
               userSession.activeAppSessions = userSession.activeAppSessions.filter(
                 (appName) => appName !== packageName
               );
-              
+
               // Update database
               try {
                 const user = await User.findByEmail(userSession.userId);
@@ -2036,7 +2022,7 @@ export class WebSocketService {
               } catch (dbError) {
                 userSession.logger.error(`Error updating user's running apps:`, dbError);
               }
-              
+
               // Update glasses client with new app state
               try {
                 if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
@@ -2047,23 +2033,23 @@ export class WebSocketService {
               } catch (updateError) {
                 userSession.logger.error(`Error updating glasses client app state:`, updateError);
               }
-              
+
               // Update display
               try {
                 userSession.displayManager.handleAppStop(packageName, userSession);
               } catch (displayError) {
                 userSession.logger.error(`Error updating display after grace period:`, displayError);
               }
-              
+
               // Clean up the timer reference
               userSession._reconnectionTimers?.delete(packageName);
-              
+
               // Auto-restart the app if enabled
               if (AUTO_RESTART_APPS) {
                 userSession.logger.info(
                   `[websocket.service]: Will attempt auto-restart of ${packageName} in ${AUTO_RESTART_DELAY_MS}ms`
                 );
-                
+
                 // Add a small delay before attempting restart
                 setTimeout(async () => {
                   try {
@@ -2084,11 +2070,11 @@ export class WebSocketService {
               userSession._reconnectionTimers?.delete(packageName);
             }
           }, 5000); // 5 second grace period
-          
+
           // Store the timer ID for potential cancellation
           userSession._reconnectionTimers.set(packageName, timerId);
         }
-        
+
         // Clean up dashboard content for the disconnected TPA
         try {
           // Import dashboard service dynamically to avoid circular dependencies
@@ -2098,7 +2084,7 @@ export class WebSocketService {
         } catch (dashboardError) {
           userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, dashboardError);
         }
-        
+
         userSession.logger.error(`[websocket.service]: TPA session ${currentAppSession} disconnected due to error: ${error.message || 'unknown error'}`);
       }
       ws.close();
@@ -2163,10 +2149,10 @@ export class WebSocketService {
     // Store the connection
     userSession.appConnections.set(initMessage.packageName, ws);
     setCurrentSessionId(initMessage.sessionId);
-    
+
     // Register the connection with the heartbeat manager
     userSession.heartbeatManager.registerTpaConnection(ws, initMessage.packageName);
-    
+
     // Check if there's a pending reconnection timer and clear it
     if (userSession._reconnectionTimers && userSession._reconnectionTimers.has(initMessage.packageName)) {
       userSession.logger.info(
@@ -2189,7 +2175,7 @@ export class WebSocketService {
     try {
       const user = await User.findOrCreateUser(userSession.userId);
       userSettings = user.getAppSettings(initMessage.packageName) || [];
-      
+
       // If no settings found, try to fetch and create default settings
       if (!userSettings || userSettings.length === 0) {
         try {
@@ -2198,7 +2184,7 @@ export class WebSocketService {
           if (app && app.publicUrl) {
             const tpaConfigResponse = await axios.get(`${app.publicUrl}/tpa_config.json`);
             const tpaConfig = tpaConfigResponse.data;
-            
+
             if (tpaConfig && tpaConfig.settings) {
               const defaultSettings = tpaConfig.settings
                 .filter((setting: any) => setting.type !== 'group')
@@ -2210,7 +2196,7 @@ export class WebSocketService {
                   label: setting.label,
                   options: setting.options || []
                 }));
-                
+
               await user.updateAppSettings(initMessage.packageName, defaultSettings);
               userSettings = defaultSettings;
               userSession.logger.info(`Created default settings for ${initMessage.packageName}`);
@@ -2223,7 +2209,7 @@ export class WebSocketService {
     } catch (error) {
       userSession.logger.error(`Error retrieving settings for ${initMessage.packageName}: ${error}`);
     }
-    
+
     // Send acknowledgment with settings
     const ackMessage: TpaConnectionAck = {
       type: CloudToTpaMessageType.CONNECTION_ACK,
@@ -2250,7 +2236,7 @@ export class WebSocketService {
           this.broadcastToTpa(userSessionId, StreamType.LOCATION_UPDATE, locationUpdate);
         }
       }
-      
+
       // Send cached location to any app that subscribes to location updates
       if (subscriptionService.hasSubscription(userSessionId, initMessage.packageName, StreamType.LOCATION_UPDATE)) {
         const lastLocation = subscriptionService.getLastLocation(userSessionId);
@@ -2263,7 +2249,7 @@ export class WebSocketService {
             lng: lastLocation.longitude,
             timestamp: new Date()
           };
-          
+
           const dataStream: DataStream = {
             type: CloudToTpaMessageType.DATA_STREAM,
             sessionId: initMessage.sessionId,

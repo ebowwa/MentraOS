@@ -57,7 +57,9 @@ export {
   ConnectionInit,
   DashboardState,
   OpenDashboard,
-  GlassesToCloudMessage
+  GlassesToCloudMessage,
+  PhotoResponse,
+  VideoStreamResponse,
 } from './messages/glasses-to-cloud';
 
 // From messages/cloud-to-glasses.ts

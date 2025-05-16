@@ -6,7 +6,7 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '@augmentos/utils';
 import sessionService from '../services/core/session.service';
 import jwt from 'jsonwebtoken';
-import websocketService from '../services/core/websocket.service';
+import photoRequestService, { PendingPhotoRequest } from '../services/core/photo-request.service';
 
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
@@ -59,7 +59,7 @@ export const validateGlassesAuth = (req: Request, res: Response, next: NextFunct
       const requestId = req.body.requestId;
       
       // Check if this requestId exists in pending requests
-      if (!websocketService.hasPendingPhotoRequest(requestId)) {
+      if (!photoRequestService.hasPendingPhotoRequest(requestId)) {
         logger.warn(`Attempted upload with unknown requestId: ${requestId}`);
         return res.status(400).json({ error: 'Invalid or expired requestId' });
       }
