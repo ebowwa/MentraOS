@@ -107,9 +107,6 @@ export interface UserSession {
 
   // TODO:
   whatToStream: ExtendedStreamType[];
-
-  // OS Settings.
-  OSSettings: any;
 }
 
 /**

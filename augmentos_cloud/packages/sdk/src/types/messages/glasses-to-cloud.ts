@@ -3,6 +3,7 @@
 import { BaseMessage } from './base';
 import { GlassesToCloudMessageType, ControlActionTypes, EventTypes } from '../message-types';
 import { StreamType } from '../streams';
+import { PhotoRequest } from './tpa-to-cloud';
 
 //===========================================================
 // Control actions
@@ -166,6 +167,24 @@ export interface CoreStatusUpdate extends BaseMessage {
   details?: Record<string, any>;
 }
 
+
+// ===========================================================
+// Mentra Live
+// ===========================================================
+export interface PhotoResponse extends BaseMessage {
+  type: GlassesToCloudMessageType.PHOTO_RESPONSE;
+  requestId: string;  // Unique ID for the photo request
+  photoUrl: string;  // URL of the uploaded photo
+  savedToGallery: boolean;  // Whether the photo was saved to gallery
+}
+
+export interface VideoStreamResponse extends BaseMessage {
+  type: GlassesToCloudMessageType.VIDEO_STREAM_RESPONSE;
+  requestId: string;  // Unique ID for the video stream request
+  videoUrl: string;  // URL of the video stream
+  savedToGallery: boolean;  // Whether the video was saved to gallery
+}
+
 /**
  * Union type for all messages from glasses to cloud
  */
@@ -187,7 +206,10 @@ export type GlassesToCloudMessage =
   | PhoneNotification
   | NotificationDismissed
   | AugmentosSettingsUpdateRequest
-  | CoreStatusUpdate;
+  | CoreStatusUpdate
+
+  | PhotoResponse
+  | VideoStreamResponse
 
 //===========================================================
 // Type guards

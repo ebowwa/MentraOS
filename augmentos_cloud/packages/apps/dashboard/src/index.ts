@@ -23,17 +23,6 @@ import axios from 'axios';
 import { WeatherModule, WeatherSummary } from './dashboard-modules/WeatherModule';
 import { NotificationSummaryAgent } from '@augmentos/agents';
 
-/**
- * Utility: Estimate if a location is in North America (rough bounding box)
- * Used to determine whether to display temperature in Fahrenheit or Celsius
- */
-function isNorthAmerica(latitude: number, longitude: number): boolean {
-  // North America bounding box: lat 7 to 84, lon -168 to -52
-  return (
-    latitude >= 7 && latitude <= 84 &&
-    longitude >= -168 && longitude <= -52
-  );
-}
 
 // Configuration constants
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80;
@@ -66,7 +55,6 @@ class DashboardServer extends TpaServer {
     phoneNotificationRanking?: { summary: string; timestamp: number }[];
     calendarEvent?: any;
     weatherCache?: { timestamp: number; data: string };
-    useFahrenheit?: boolean; // Whether to use Fahrenheit (true) or Celsius (false)
     dashboardMode: DashboardMode;
     updateInterval?: NodeJS.Timeout;
   }> = new Map();
@@ -132,7 +120,10 @@ class DashboardServer extends TpaServer {
       sessionInfo.updateInterval = updateInterval;
       logger.info(`✅ Dashboard update interval scheduled for session ${sessionId}`);
     }
-    
+
+    const useMetric = session.settings.get('metricSystemEnabled'); // Get from session settings
+    console.log(`[Dashboard] Metric system enabled: ${JSON.stringify(session.settings)}`);
+    logger.info(`[Dashboard] Metric system enabled: ${useMetric}`);
     logger.info(`✅ Dashboard session setup completed for user ${userId}`, {
       sessionId,
       activeSessionCount: this._activeSessions.size
@@ -149,6 +140,21 @@ class DashboardServer extends TpaServer {
       
       // Apply the setting change immediately
       this.updateDashboardSections(session, sessionId);
+    });
+    
+    // Listen for AugmentOS metric system changes (using new event system)
+    session.settings.onAugmentosSettingChange('metricSystemEnabled', (newValue, oldValue) => {
+      logger.info(`AugmentOS metricSystemEnabled changed from ${oldValue} to ${newValue} for session ${sessionId}`);
+      
+      // Force refresh weather data with new unit setting
+      const sessionInfo = this._activeSessions.get(sessionId);
+      if (sessionInfo && sessionInfo.latestLocation) {
+        // Fetch fresh weather data with new units
+        this.fetchWeatherData(session, sessionId, 
+          sessionInfo.latestLocation.latitude, 
+          sessionInfo.latestLocation.longitude, 
+          true); // force update regardless of cache
+      }
     });
     
     // Get and log current settings
@@ -490,6 +496,47 @@ class DashboardServer extends TpaServer {
   }
   
   /**
+   * Fetch weather data for a given location
+   */
+  private async fetchWeatherData(session: TpaSession, sessionId: string, lat: number, lng: number, forceUpdate: boolean = false): Promise<void> {
+    const sessionInfo = this._activeSessions.get(sessionId);
+    if (!sessionInfo) return;
+    
+    // Determine if we should fetch weather based on cache or forced update
+    const shouldFetchWeather = forceUpdate || 
+                              !sessionInfo.weatherCache || 
+                              (Date.now() - (sessionInfo.weatherCache.timestamp || 0) > 60 * 60 * 1000); // 1 hour
+    
+    if (shouldFetchWeather) {
+      try {
+        const weatherModule = new WeatherModule();
+        const weatherData = await weatherModule.fetchWeatherForecast(lat, lng);
+        
+        if (weatherData) {
+          // Use metricSystemEnabled from session settings to decide units
+          const useMetric = session.settings.getAugmentosSetting('metricSystemEnabled');
+          console.log(`[Weather] Metric system enabled: ${useMetric}`);
+          const temp = useMetric ? weatherData.temp_c : weatherData.temp_f;
+          const unit = useMetric ? '°C' : '°F';
+          
+          sessionInfo.weatherCache = {
+            timestamp: Date.now(),
+            data: `${weatherData.condition}, ${temp}${unit}`
+          };
+          
+          console.log(`[Weather] Weather updated: ${sessionInfo.weatherCache.data}`);
+          logger.info(`Weather updated: ${sessionInfo.weatherCache.data}`);
+          
+          // Update dashboard with new weather info
+          this.updateDashboardSections(session, sessionId);
+        }
+      } catch (error) {
+        logger.error(`Error fetching weather for session ${sessionId}:`, error);
+      }
+    }
+  }
+  
+  /**
    * Handle location update event
    */
   private async handleLocationUpdate(session: TpaSession, sessionId: string, data: LocationUpdate): Promise<void> {
@@ -498,6 +545,8 @@ class DashboardServer extends TpaServer {
   
     // Extract lat, lng from location data
     const { lat, lng } = data;
+
+    console.log(`[Location] Location updated: ${lat}, ${lng}`);
     
     // Skip if invalid coordinates
     if (typeof lat !== "number" || typeof lng !== "number") {
@@ -513,11 +562,6 @@ class DashboardServer extends TpaServer {
       logger.error(`Error looking up timezone for lat=${lat}, lng=${lng}:`, error);
     }
     
-    // Determine if we should use Fahrenheit based on location
-    const useFahrenheit = isNorthAmerica(lat, lng);
-    sessionInfo.useFahrenheit = useFahrenheit;
-    logger.info(`Location in North America: ${useFahrenheit}, will use ${useFahrenheit ? 'Fahrenheit' : 'Celsius'}`);
-    
     // Update location in session
     sessionInfo.latestLocation = { 
       latitude: lat, 
@@ -525,31 +569,8 @@ class DashboardServer extends TpaServer {
       timezone: timezone || sessionInfo.latestLocation?.timezone
     };
     
-    // Fetch weather data if we don't have recent weather or location changed significantly
-    const shouldFetchWeather = !sessionInfo.weatherCache || 
-                              (Date.now() - (sessionInfo.weatherCache.timestamp || 0) > 60 * 60 * 1000); // 1 hour
-    
-    if (shouldFetchWeather) {
-      try {
-        const weatherModule = new WeatherModule();
-        const weatherData = await weatherModule.fetchWeatherForecast(lat, lng);
-        
-        if (weatherData) {
-          // Use Fahrenheit for North America, Celsius for rest of world
-          const temp = useFahrenheit ? weatherData.temp_f : weatherData.temp_c;
-          const unit = useFahrenheit ? '°F' : '°C';
-          
-          sessionInfo.weatherCache = {
-            timestamp: Date.now(),
-            data: `${weatherData.condition}, ${temp}${unit}`
-          };
-          
-          logger.info(`Weather updated: ${sessionInfo.weatherCache.data}`);
-        }
-      } catch (error) {
-        logger.error(`Error fetching weather for session ${sessionId}:`, error);
-      }
-    }
+    // Fetch weather data with the updated location
+    await this.fetchWeatherData(session, sessionId, lat, lng);
   
     // Update dashboard with location info
     this.updateDashboardSections(session, sessionId);

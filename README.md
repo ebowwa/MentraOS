@@ -4,7 +4,7 @@
 ![GitHub Release Version](https://img.shields.io/github/v/release/TeamOpenSmartGlasses/Convoscope)
 ![Last Updated](https://img.shields.io/github/last-commit/TeamOpenSmartGlasses/Convoscope)
 
-# AugmentOS - smart glasses OS and super app.
+# AugmentOS - smart glasses app store and OS.
 
 **The open source operating system for your smart glasses. Access the best apps and AI agents on your smart glasses and build new apps and agents:**
 

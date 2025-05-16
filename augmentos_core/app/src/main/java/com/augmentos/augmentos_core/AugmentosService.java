@@ -191,6 +191,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     private boolean isInitializing = false;
 
+    private boolean metricSystemEnabled;
+
     public AugmentosService() {
     }
 
@@ -407,6 +409,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         preferredMic = PreferenceManager.getDefaultSharedPreferences(this).getString(getResources().getString(R.string.PREFERRED_MIC), "glasses");
 
         contextualDashboardEnabled = true;
+        metricSystemEnabled = false;
+
         alwaysOnStatusBarEnabled = false;
 
         edgeTpaSystem = new EdgeTPASystem(this, null); // We'll set smartGlassesManager after it's created
@@ -1151,6 +1155,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("preferred_mic", preferredMic);
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
+            coreInfo.put("metric_system_enabled", this.metricSystemEnabled);
             coreInfo.put("is_searching", getIsSearchingForGlasses());
             status.put("core_info", coreInfo);
             //Log.d(TAG, "PREFER - Got default wearable: " + SmartGlassesManager.getPreferredWearable(this));
@@ -1436,6 +1441,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         contextualDashboardEnabled = settings.getBoolean("contextualDashboard");
 //                        EventBus.getDefault().post(new ContextualDashboardEnabledEvent(contextualDashboardEnabled));
                     }
+                    if (settings.has("metricSystemEnabled")) {
+                        metricSystemEnabled = settings.getBoolean("metricSystemEnabled");
+                    }
                     if (settings.has("alwaysOnStatusBar")) {
                         alwaysOnStatusBarEnabled = settings.getBoolean("alwaysOnStatusBar");
 //                        EventBus.getDefault().post(new AlwaysOnStatusBarEnabledEvent(alwaysOnStatusBarEnabled));
@@ -1644,7 +1652,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void setContextualDashboardEnabled(boolean contextualDashboardEnabled) {
         this.contextualDashboardEnabled = contextualDashboardEnabled;
         sendStatusToBackend();
-       sendStatusToAugmentOsManager();
+        sendStatusToAugmentOsManager();
     }
 
     @Override
@@ -1667,6 +1675,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.alwaysOnStatusBarEnabled = alwaysOnStatusBarEnabled;
         sendStatusToBackend();
 //        sendStatusToAugmentOsManager();
+    }
+
+    @Override
+    public void setMetricSystemEnabled(boolean metricSystemEnabled) {
+        this.metricSystemEnabled = metricSystemEnabled;
+        sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     // TODO: Can remove this?
