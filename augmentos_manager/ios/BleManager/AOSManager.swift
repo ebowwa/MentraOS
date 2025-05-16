@@ -1001,10 +1001,6 @@ struct ViewState {
     // also referenced as glasses_info:
     var connectedGlasses: [String: Any] = [:];
     var glassesSettings: [String: Any] = [:];
-
-    connectedGlasses = [
-      "is_searching": self.isSearching,
-    ]
     
     self.somethingConnected = false
     if (self.defaultWearable == "Simulated Glasses") {
@@ -1038,7 +1034,7 @@ struct ViewState {
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
       "preferred_mic": self.preferredMic,
-      "is_searching": self.isSearching,
+      "is_searching": self.isSearching && !self.defaultWearable.isEmpty,
       // only on if recording from glasses:
       // todo: this isn't robust:
       "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses") && self.somethingConnected,
