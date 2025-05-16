@@ -20,8 +20,6 @@
     "sourceMap": true,
     "inlineSources": true,
     
-    // Skip typecheck for bun-types which has syntax issues
-    "skipLibCheck": true,
 
     // Set `sourceRoot` to  "/" to strip the build path prefix
     // from generated source code references.
@@ -29,5 +27,5 @@
     "sourceRoot": "/"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/tests/**/*", "../../node_modules/bun-types/bun.d.ts"]
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "src/**/tests/**/*"]
 }

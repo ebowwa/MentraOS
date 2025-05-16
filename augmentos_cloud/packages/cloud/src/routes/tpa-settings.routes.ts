@@ -12,7 +12,7 @@ import appService, { isUninstallable } from '../services/core/app.service';
 import { logger } from '@augmentos/utils';
 import { CloudToTpaMessageType, UserSession } from '@augmentos/sdk';
 import { sessionService } from '../services/core/session.service';
-import { Permission } from 'src/models/app.model';
+import { Permission } from '../models/app.model';
 
 const router = express.Router();
 
