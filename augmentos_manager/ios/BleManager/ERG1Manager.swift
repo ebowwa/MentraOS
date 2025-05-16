@@ -470,11 +470,14 @@ enum GlassesError: Error {
     var attempts: Int = 0
     var result: Bool = false
     var semaphore = side == "left" ? leftSemaphore : rightSemaphore
+    var s = side == "left" ? "L" : "R"
     
     while attempts < maxAttempts && !result {
       if (attempts > 0) {
         print("trying again to send to left: \(attempts)")
       }
+      print("sending (\(s)): \(chunks[0])")
+      
       if self.isDisconnecting {
         // forget whatever we were doing since we're disconnecting:
         break
@@ -648,6 +651,8 @@ enum GlassesError: Error {
       self.compressedVoiceData = data
       //                print("Got voice data: " + String(data.count))
       break
+    case .UNK_1:
+      handleAck(from: peripheral, success: true)
     case .UNK_2:
       handleAck(from: peripheral, success: true)
     case .BLE_REQ_HEARTBEAT:
@@ -1086,13 +1091,17 @@ extension ERG1Manager {
       await setDashboardPosition(UInt8(height), UInt8(depth))
     }
   }
-  
-  @objc public func RN_showDashboard() {
+
+  public func incrementGlobalCounter() {
     if globalCounter < 255 {
       globalCounter += 1
     } else {
       globalCounter = 0
     }
+  }
+  
+  @objc public func RN_showDashboard() {
+    incrementGlobalCounter()
     
     print("Attempting to show dashboard!!! \(globalCounter)")
     // var command = Data()
@@ -1112,46 +1121,28 @@ extension ERG1Manager {
     // let commandArray2: [UInt8] = [0x06, 0x07, 0x00, 0xB6, 0x06, 0x00, 0x04]
 //    0x06, 0x07, 0x00, 0x08, 0x06, 0x00
     
-    queueChunks([[0x06, 0x07, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
-
-    if globalCounter < 255 {
-      globalCounter += 1
-    } else {
-      globalCounter = 0
-    }
-
-    queueChunks([[0x06, 0x0C, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
+    // queueChunks([[0x06, 0x07, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
 
     
-    if globalCounter < 255 {
-      globalCounter += 1
-    } else {
-      globalCounter = 0
-    }
+
+    // queueChunks([[0x06, 0x0C, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
     
     // 2606001e02c90000000000000000000000000000
 
-    let commandArray2: [UInt8] = [0x26, 0x06, 0x00, /*0x01*/globalCounter, 0x02, 0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-    queueChunks([commandArray2])
+    // let commandArray2: [UInt8] = [0x26, 0x06, 0x00, /*0x01*/globalCounter, 0x02, 0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    // queueChunks([commandArray2])
     
-    if globalCounter < 255 {
-      globalCounter += 1
-    } else {
-      globalCounter = 0
-    }
 
-                          //  39    05    00          c6               01    00
-    let cmd1: [UInt8] = [0x39, 0x05, 0x00, /*0x78*/globalCounter, 0x01, 0x00]
-    queueChunks([cmd1])
 
-//    let commandArray3: [UInt8] = [0xf5, 0x1e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-//    queueChunks([commandArray3])
+  //  39    05    00          c6               01    00
+    queueChunks([[0x39, 0x05, 0x00, /*0x78*/globalCounter, 0x01, 0x00]])
+    incrementGlobalCounter()
+    let cmd: [UInt8] = [0x50, 0x06, 0x00, 0x00, 0x01, 0x01]
+    queueChunks([cmd], sendLeft: false, sendRight: true)
 
-// 50, 06, 00, 00, 01, 01
-    let commandArray3: [UInt8] = [0x50, 0x06, 0x00, 0x00, 0x01, 0x01]
-    queueChunks([commandArray3])
-
-    queueChunks([[0x22, 0x05, 0x00, 0x05, 0x01]])
+    incrementGlobalCounter()
+    let cmd2: [UInt8] = [0x26, 0x08, 0x00, /*0x01*/globalCounter, 0x02, 0x01, 0x08, 0x09]
+    queueChunks([cmd2])
   }
   
   public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
@@ -1167,7 +1158,7 @@ extension ERG1Manager {
 //    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
 //    queueChunks([showDashboard], sleepAfterMs: 300)
     
-    globalCounter += 1
+    incrementGlobalCounter()
     
     let h: UInt8 = min(max(height, 0), 8)
     let d: UInt8 = min(max(depth, 1), 9)

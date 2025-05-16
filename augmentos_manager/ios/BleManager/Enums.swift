@@ -30,6 +30,7 @@ enum Commands: UInt8 {
   case DASHBOARD_SHOW = 0x06
   case HEAD_UP_ANGLE = 0x0B
   case UNK_2 = 0x39
+  case UNK_1 = 0x50
 }
 
 enum DeviceOrders: UInt8 {

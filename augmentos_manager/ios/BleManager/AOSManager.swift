@@ -41,7 +41,7 @@ struct ViewState {
   private var headUpAngle = 30;
   private var brightness = 50;
   private var batteryLevel = -1;
-  private var autoBrightness: Bool = false;
+  private var autoBrightness: Bool = true;
   private var dashboardHeight: Int = 4;
   private var depth: Int = 5;
   private var sensingEnabled: Bool = true;
@@ -1318,6 +1318,7 @@ struct ViewState {
     UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
     UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
     UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
+    UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
     
     let defaults = UserDefaults.standard
     
