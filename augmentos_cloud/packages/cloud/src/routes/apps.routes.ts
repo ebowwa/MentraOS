@@ -116,7 +116,7 @@ async function getSessionFromToken(coreToken: string) {
     // Verify and decode the token
     const userData = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET);
     const userId = (userData as JwtPayload).email;
-    console.log("USERID: " + userId || '');
+    // console.log("USERID: " + userId || '');
     if (!userId) {
       return null;
     }
