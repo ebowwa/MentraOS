@@ -140,6 +140,23 @@ export interface DashboardAlwaysOnChanged extends BaseMessage {
 }
 
 /**
+ * Standard connection error (for server compatibility)
+ */
+export interface StandardConnectionError extends BaseMessage {
+  type: 'connection_error';
+  message: string;
+}
+
+/**
+ * Custom message for general-purpose communication (cloud to TPA)
+ */
+export interface CustomMessage extends BaseMessage {
+  type: CloudToTpaMessageType.CUSTOM_MESSAGE;
+  action: string;  // Identifies the specific action/message type
+  payload: any;    // Custom data payload
+}
+
+/**
  * Union type for all messages from cloud to TPAs
  */
 export type CloudToTpaMessage =
@@ -154,7 +171,8 @@ export type CloudToTpaMessage =
   | CalendarEvent
   | DataStream
   | DashboardModeChanged
-  | DashboardAlwaysOnChanged;
+  | DashboardAlwaysOnChanged
+  | CustomMessage;
 
 //===========================================================
 // Type guards

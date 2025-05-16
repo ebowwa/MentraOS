@@ -258,7 +258,8 @@ export class DashboardManager {
     this.userSession.logger.info(`🔄 Dashboard update triggered for session ${this.userSession.sessionId}`, {
       currentMode: this.currentMode,
       mainContentCount: this.mainContent.size,
-      expandedContentCount: this.expandedContent.size
+      expandedContentCount: this.expandedContent.size,
+      userDatetime: this.userSession.userDatetime
     });
     
     // Skip if mode is none

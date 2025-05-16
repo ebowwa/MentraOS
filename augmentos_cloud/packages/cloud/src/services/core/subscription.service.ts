@@ -53,10 +53,10 @@ export class SubscriptionService {
   private history = new Map<string, SubscriptionHistory[]>();
 
   /**
-   * Cache for the last calendar event per session
+   * Cache for all calendar events per session
    * @private
    */
-  private lastCalendarEventCache = new Map<string, CalendarEvent>();
+  private calendarEventsCache = new Map<string, CalendarEvent[]>();
 
   /**
    * Cache for the last location per session
@@ -65,22 +65,42 @@ export class SubscriptionService {
   private lastLocationCache = new Map<string, Location>();
 
   /**
-   * Caches the last calendar event for a session
+   * Caches a calendar event for a session (appends to the list)
    * @param sessionId - User session identifier
    * @param event - Calendar event to cache
    */
   cacheCalendarEvent(sessionId: string, event: CalendarEvent): void {
-    this.lastCalendarEventCache.set(sessionId, event);
-    logger.info(`Cached calendar event for session ${sessionId}`);
+    if (!this.calendarEventsCache.has(sessionId)) {
+      this.calendarEventsCache.set(sessionId, []);
+    }
+    this.calendarEventsCache.get(sessionId)!.push(event);
+    logger.info(`Cached calendar event for session ${sessionId} (total: ${this.calendarEventsCache.get(sessionId)!.length})`);
   }
 
   /**
-   * Gets the last cached calendar event for a session
+   * Gets all cached calendar events for a session
    * @param sessionId - User session identifier
-   * @returns The last calendar event or undefined if none exists
+   * @returns Array of calendar events (empty if none)
+   */
+  getAllCalendarEvents(sessionId: string): CalendarEvent[] {
+    return this.calendarEventsCache.get(sessionId) || [];
+  }
+
+  /**
+   * Removes all cached calendar events for a session
+   * @param sessionId - User session identifier
+   */
+  clearCalendarEvents(sessionId: string): void {
+    this.calendarEventsCache.delete(sessionId);
+    logger.info(`Cleared all calendar events for session ${sessionId}`);
+  }
+
+  /**
+   * @deprecated Use getAllCalendarEvents instead
    */
   getLastCalendarEvent(sessionId: string): CalendarEvent | undefined {
-    return this.lastCalendarEventCache.get(sessionId);
+    const events = this.calendarEventsCache.get(sessionId);
+    return events && events.length > 0 ? events[events.length - 1] : undefined;
   }
 
   /**
@@ -291,8 +311,8 @@ export class SubscriptionService {
       this.history.delete(key);
     });
 
-    // Remove cached calendar event for this session
-    this.lastCalendarEventCache.delete(sessionId);
+    // Remove cached calendar events for this session
+    this.calendarEventsCache.delete(sessionId);
     
     // Remove cached location for this session
     this.lastLocationCache.delete(sessionId);

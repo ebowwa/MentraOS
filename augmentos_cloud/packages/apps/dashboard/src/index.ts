@@ -22,6 +22,7 @@ import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
 import { WeatherModule, WeatherSummary } from './dashboard-modules/WeatherModule';
 import { NotificationSummaryAgent } from '@augmentos/agents';
+import { consoleLoggingIntegration } from "@sentry/node";
 
 /**
  * Utility: Estimate if a location is in North America (rough bounding box)
@@ -69,6 +70,7 @@ class DashboardServer extends TpaServer {
     useFahrenheit?: boolean; // Whether to use Fahrenheit (true) or Celsius (false)
     dashboardMode: DashboardMode;
     updateInterval?: NodeJS.Timeout;
+    userDatetime?: string;
   }> = new Map();
 
   private notificationSummaryAgent: NotificationSummaryAgent;
@@ -107,6 +109,21 @@ class DashboardServer extends TpaServer {
     });
     
     logger.info(`📊 Dashboard session initialized with mode: ${DashboardMode.MAIN}`);
+
+    // Listen for custom messages, including datetime updates
+    session.events.on('custom_message', (message: any) => {
+      console.log('Received custom message:', message);
+      logger.info(`📊 Received custom message: ${JSON.stringify(message)}`);
+
+      if (message.action === 'update_datetime') {
+        const sessionInfo = this._activeSessions.get(sessionId);
+        if (sessionInfo) {
+          sessionInfo.userDatetime = message.payload.datetime;
+          console.log('4324 Updating dashboard sections for session', sessionInfo.userDatetime);
+          this.updateDashboardSections(session, sessionId);
+        }
+      }
+    });
 
     // Set up event handlers for this session
     this.setupEventHandlers(session, sessionId);
@@ -188,12 +205,12 @@ class DashboardServer extends TpaServer {
     session.onPhoneNotifications((data) => {
       this.handlePhoneNotification(session, sessionId, data);
     });
-    
+
     // Handle location updates
     session.on(StreamType.LOCATION_UPDATE, (data: LocationUpdate) => {
       this.handleLocationUpdate(session, sessionId, data);
     });
-    
+
     // Handle head position changes
     session.onHeadPosition((data) => {
       if (data.position === 'up') {
@@ -315,28 +332,52 @@ class DashboardServer extends TpaServer {
    * Format time section text
    */
   private formatTimeSection(sessionInfo: any): string {
-    // Check if we have a valid timezone from location
-    if (!sessionInfo.latestLocation?.timezone) {
-      return "◌ $DATE$, $TIME12$";
+    logger.info(`319 Format time section: ${sessionInfo.userDatetime}`);
+    // 1. Use userDatetime if present
+    if (sessionInfo.userDatetime) {
+      try {
+        // Extract the time part from the ISO string, ignoring timezone
+        // Example: "2025-05-15T19:12:26+08:00" -> "19:12"
+        const match = sessionInfo.userDatetime.match(/T(\d{2}):(\d{2})/);
+        if (match) {
+          const monthDay = sessionInfo.userDatetime.slice(5, 10).replace("-", "/"); // "05-15" -> "05/15"
+          let hour = parseInt(match[1], 10);
+          const minute = match[2];
+          const ampm = hour >= 12 ? 'PM' : 'AM';
+          hour = hour % 12;
+          if (hour === 0) hour = 12;
+          // Add leading zero if hour < 10
+          const hourStr = hour < 10 ? `0${hour}` : `${hour}`;
+          const formatted = `${monthDay}, ${hourStr}:${minute}`;
+          logger.info(`332 User datetime (12hr): ${formatted}`);
+          return `◌ ${formatted}`;
+        }
+      } catch (e) {
+        // fallback below
+      }
     }
-  
-    try {
-      const timezone = sessionInfo.latestLocation.timezone;
-      const options = {
-        timeZone: timezone,
-        hour: "2-digit" as const,
-        minute: "2-digit" as const,
-        month: "numeric" as const,
-        day: "numeric" as const,
-        hour12: true
-      };
-      let formatted = new Date().toLocaleString("en-US", options);
-      formatted = formatted.replace(/ [AP]M/, "");
-      return `◌ ${formatted}`;
-    } catch (error) {
-      logger.error(`Error formatting time:`, error);
-      return "◌ $DATE$, $TIME12$";
+    // 2. Use current time in user's timezone if available
+    if (sessionInfo.latestLocation?.timezone) {
+      try {
+        const timezone = sessionInfo.latestLocation.timezone;
+        const options = {
+          timeZone: timezone,
+          hour: '2-digit' as const,
+          minute: '2-digit' as const,
+          month: 'numeric' as const,
+          day: 'numeric' as const,
+          hour12: true
+        };
+        let formatted = new Date().toLocaleString('en-US', options);
+        formatted = formatted.replace(/ [AP]M/, "");
+        return `◌ ${formatted}`;
+      } catch (error) {
+        logger.error(`Error formatting time:`, error);
+        // fallback below
+      }
     }
+    // 3. Fallback: show placeholder
+    return "◌ $DATE$, $TIME12$";
   }
   
   /**
@@ -379,11 +420,25 @@ class DashboardServer extends TpaServer {
    * Format status section text
    */
   private formatStatusSection(sessionInfo: any): string {
-    // Prioritize calendar events if available
+    // Prioritize calendar events if available and not expired
     if (sessionInfo.calendarEvent) {
-      return this.formatCalendarEvent(sessionInfo.calendarEvent, sessionInfo);
+      const event = sessionInfo.calendarEvent;
+      const now = Date.now();
+      const start = new Date(event.dtStart).getTime();
+      const end = event.dtEnd ? new Date(event.dtEnd).getTime() : null;
+      const tenMinutes = 10 * 60 * 1000;
+
+      // If event has an end time, hide if now > end
+      if (end && now > end) {
+        // Don't show expired event
+      } else if (now > start + tenMinutes) {
+        // Hide if more than 10 minutes past start
+      } else {
+        return this.formatCalendarEvent(event, sessionInfo);
+      }
+      // Otherwise, fall through to weather/default
     }
-    
+
     // Then weather if available
     if (sessionInfo.weatherCache) {
       return sessionInfo.weatherCache.data;
@@ -575,16 +630,42 @@ class DashboardServer extends TpaServer {
   private handleCalendarEvent(session: TpaSession, sessionId: string, event: CalendarEvent): void {
     const sessionInfo = this._activeSessions.get(sessionId);
     if (!sessionInfo) return;
-  
+
     // Validate event structure
     if (!event.title || !event.dtStart) {
       logger.error(`Invalid calendar event structure:`, event);
       return;
     }
-  
-    // Update calendar event
-    sessionInfo.calendarEvent = event;
-    this.updateDashboardSections(session, sessionId);
+
+    // Parse event start time
+    const eventStart = new Date(event.dtStart).getTime();
+    const now = Date.now();
+    if (isNaN(eventStart)) {
+      logger.error(`Invalid dtStart in calendar event:`, event);
+      return;
+    }
+
+    // If the event is expired, do not save it
+    if (eventStart < now) {
+      logger.info(`Received expired calendar event, ignoring:`, { title: event.title, dtStart: event.dtStart });
+      return;
+    }
+
+    // If there is no saved event, or the new event is earlier, save it
+    const currentEvent = sessionInfo.calendarEvent;
+    if (!currentEvent) {
+      sessionInfo.calendarEvent = event;
+      this.updateDashboardSections(session, sessionId);
+      return;
+    }
+    const currentEventStart = new Date(currentEvent.dtStart).getTime();
+    if (isNaN(currentEventStart) || eventStart < currentEventStart) {
+      sessionInfo.calendarEvent = event;
+      this.updateDashboardSections(session, sessionId);
+      return;
+    }
+    // Otherwise, keep the existing event (do not update)
+    logger.info(`Received calendar event is not earlier than the current one, ignoring.`);
   }
   
   /**

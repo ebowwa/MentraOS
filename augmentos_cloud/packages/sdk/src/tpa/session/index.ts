@@ -899,8 +899,24 @@ export class TpaSession {
             console.error('Error handling dashboard always-on change:', error);
           }
         }
+        // Handle custom messages
+        else if (message.type === "custom_message") {
+          this.events.emit('custom_message', message);
+          return;
+        }
+        // Handle 'connection_error' as a specific case if cloud sends this string literal
+        else if ((message as any).type === 'connection_error') {
+          // Treat 'connection_error' (string literal) like TpaConnectionError
+          // This handles cases where the cloud might send the type as a direct string
+          // instead of the enum's 'tpa_connection_error' value.
+          const errorMessage = (message as any).message || 'Unknown connection error (type: connection_error)';
+          console.warn(`Received 'connection_error' type directly. Consider aligning cloud to send 'tpa_connection_error'. Message: ${errorMessage}`);
+          this.events.emit('error', new Error(errorMessage));
+        }
         // Handle unrecognized message types gracefully
         else {
+          console.log(`((())) Unrecognized message type: ${(message as any).type}`);
+          console.log(`((())) CloudToTpaMessageType.CUSTOM_MESSAGE: ${CloudToTpaMessageType.CUSTOM_MESSAGE}`);
           this.events.emit('error', new Error(`Unrecognized message type: ${(message as any).type}`));
         }
       } catch (processingError: unknown) {

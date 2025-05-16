@@ -101,7 +101,10 @@ export enum CloudToTpaMessageType {
   // Stream data
   DATA_STREAM = 'data_stream',
 
-  WEBSOCKET_ERROR = 'websocket_error'
+  WEBSOCKET_ERROR = 'websocket_error',
+  
+  // General purpose messaging
+  CUSTOM_MESSAGE = 'custom_message'
 }
 
 /**

@@ -33,6 +33,7 @@ import adminRoutes from './routes/admin.routes';
 import tpaServerRoutes from './routes/tpa-server.routes';
 import toolsRoutes from './routes/tools.routes';
 import audioRoutes from './routes/audio.routes';
+import userDataRoutes from './routes/user-data.routes';
 
 import path from 'path';
 
@@ -146,6 +147,7 @@ app.use('/api/tools', toolsRoutes);
 app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 app.use(audioRoutes);
+app.use('/api/user-data', userDataRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

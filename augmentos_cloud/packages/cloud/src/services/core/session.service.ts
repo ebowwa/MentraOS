@@ -74,6 +74,9 @@ export interface ExtendedUserSession extends UserSession {
   // Add the subscription manager instance
   subscriptionManager: SubscriptionManager;
   recentAudioBuffer: { data: ArrayBufferLike; timestamp: number }[]; // Buffer for last 10 seconds of audio
+
+  // Custom user data
+  userDatetime?: string;
 }
 
 export class SessionService {
