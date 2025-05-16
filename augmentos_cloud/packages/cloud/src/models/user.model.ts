@@ -29,7 +29,7 @@ interface UserDocument extends Document {
     alwaysOnStatusBar: boolean;
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
-    enablePhoneNotifications: boolean;
+    metricSystemEnabled: boolean;
   };
   location?: Location;
   installedApps?: Array<{
@@ -117,6 +117,7 @@ const UserSchema = new Schema<UserDocument>({
     type: {
       useOnboardMic: { type: Boolean, default: false },
       contextualDashboard: { type: Boolean, default: true },
+      metricSystemEnabled: { type: Boolean, default: false },
       headUpAngle: { type: Number, default: 20 },
       brightness: { type: Number, default: 50 },
       autoBrightness: { type: Boolean, default: false },
@@ -124,9 +125,21 @@ const UserSchema = new Schema<UserDocument>({
       alwaysOnStatusBar: { type: Boolean, default: false },
       bypassVad: { type: Boolean, default: false },
       bypassAudioEncoding: { type: Boolean, default: false },
-      enablePhoneNotifications: { type: Boolean, default: false },
     },
-    default: {}
+    default: function() {
+      return {
+        useOnboardMic: false,
+        contextualDashboard: true,
+        metricSystemEnabled: false,
+        headUpAngle: 20,
+        brightness: 50,
+        autoBrightness: false,
+        sensingEnabled: true,
+        alwaysOnStatusBar: false,
+        bypassVad: false,
+        bypassAudioEncoding: false,
+      };
+    }
   },
   // Cache location so timezones can be calculated by dashboard manager immediately.
   location: {

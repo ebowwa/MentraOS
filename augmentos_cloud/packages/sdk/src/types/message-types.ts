@@ -17,6 +17,12 @@ export enum GlassesToCloudMessageType {
 
   DASHBOARD_STATE = 'dashboard_state',
   OPEN_DASHBOARD = StreamType.OPEN_DASHBOARD,
+
+  // Mentra Live
+  PHOTO_RESPONSE = 'photo_response',
+  VIDEO_STREAM_RESPONSE = 'video_stream_response',
+  // photo_response = 'photo_response',
+  // video_stream_response = 'video_stream_response',
   
   // OPEN_DASHBOARD = 'open_dashboard',
   // Events and data
