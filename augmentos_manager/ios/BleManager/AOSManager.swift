@@ -729,6 +729,7 @@ struct ViewState {
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
       case setServerUrl = "set_server_url"
       case setMetricSystemEnabled = "set_metric_system_enabled"
+      case showDashboard = "show_dashboard"
       case unknown
     }
     
@@ -889,6 +890,10 @@ struct ViewState {
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .showDashboard:
+          Task {
+            await self.g1Manager?.RN_showDashboard()
+          }
         case .updateGlassesDepth:
           guard let params = params, let value = params["depth"] as? Int else {
             print("update_glasses_depth invalid params")
@@ -1164,8 +1169,8 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
-      try? await Task.sleep(nanoseconds: 400_000_000)
+//      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+//      try? await Task.sleep(nanoseconds: 400_000_000)
       // self.g1Manager?.RN_setDepth(depth)
       // try? await Task.sleep(nanoseconds: 400_000_000)
 //      playStartupSequence()

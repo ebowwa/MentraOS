@@ -25,7 +25,8 @@ extension Data {
   }
   
   func hexEncodedString() -> String {
-    return map { String(format: "%02x", $0) }.joined()
+    return map { String(format: "%02x", $0) }.joined(separator: " ")
+//    return map { String(format: "%02x", $0) }.joined(separator: ", ")
   }
 }
 
@@ -97,6 +98,7 @@ enum GlassesError: Error {
   private var reconnectionAttempts: Int = 0
   private let maxReconnectionAttempts: Int = -1 // unlimited reconnection attempts
   private let reconnectionInterval: TimeInterval = 30.0 // Seconds between reconnection attempts
+  private var globalCounter: UInt8 = 0
   
   enum AiMode: String {
     case AI_REQUESTED
@@ -276,15 +278,6 @@ enum GlassesError: Error {
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
-
-
-//    if (text == " " || text == "") {
-//      let command: [UInt8] = [0x18]
-////      let command: [UInt8] = [0x20, 0xCA]
-//      queueChunks([command])
-//      return;
-//    }
-
     Task {
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
@@ -301,7 +294,7 @@ enum GlassesError: Error {
         0x01            // max pages
       ]
       command.append(contentsOf: Array(textData))
-      self.queueChunks([command])
+//      self.queueChunks([command])
     }
     
     // @@@@@@@@ just for testing:
@@ -325,13 +318,13 @@ enum GlassesError: Error {
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
     let chunks = textHelper.createTextWallChunks(text)
-    queueChunks(chunks, sleepAfterMs: 50)
+//    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
-    queueChunks(chunks, sleepAfterMs: 50)
+//    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {
@@ -626,7 +619,8 @@ enum GlassesError: Error {
     guard let command = data.first else { return }// ensure the data isn't empty
     
     let side = peripheral == leftPeripheral ? "left" : "right"
-    print("received from G1 (\(side)): \(data.hexEncodedString())")
+    let sideS = peripheral == leftPeripheral ? "L" : "R"
+    print("REC: (\(sideS)): \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -645,7 +639,7 @@ enum GlassesError: Error {
       // 0x06 seems arbitrary :/
       handleAck(from: peripheral, success: data[1] == 0x06)
     case .DASHBOARD_SHOW:
-      handleAck(from: peripheral, success: data[1] == 0x07)
+      handleAck(from: peripheral, success: data[1] == 0x07 || data[1] == 0x90 || data[1] == 0x0C)
     case .HEAD_UP_ANGLE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     // head up angle ack
@@ -654,6 +648,8 @@ enum GlassesError: Error {
       self.compressedVoiceData = data
       //                print("Got voice data: " + String(data.count))
       break
+    case .UNK_2:
+      handleAck(from: peripheral, success: true)
     case .BLE_REQ_HEARTBEAT:
       // TODO: ios handle semaphores correctly here
       // battery info
@@ -983,8 +979,8 @@ extension ERG1Manager {
     }
   }
   
-  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0) {
-    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs);
+  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0, ignoreAck: Bool = false) {
+    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs, ignoreAck: ignoreAck);
     Task {
       await commandQueue.enqueue(bufferedCommand)
     }
@@ -1091,6 +1087,73 @@ extension ERG1Manager {
     }
   }
   
+  @objc public func RN_showDashboard() {
+    if globalCounter < 255 {
+      globalCounter += 1
+    } else {
+      globalCounter = 0
+    }
+    
+    print("Attempting to show dashboard!!! \(globalCounter)")
+    // var command = Data()
+    // command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+    // command.append(0x08) // Length
+    // command.append(0x00) // Sequence
+    // command.append(globalCounter) // Fixed value
+    // command.append(0x02) // Fixed value
+    // command.append(0x01) // State ON
+    // command.append(0x01) // height
+    // command.append(0x01) // depth
+    
+    // let commandArray = command.map { $0 }
+//    queueChunks([commandArray])
+    
+    // let commandArray2: [UInt8] = [0x06, 0x90, 0x00, 0xac, 0x07, 0x01, 0x00, 0x01, 0x00, 0x00, 0x04, 0x03, 0x84, 0x00, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    // let commandArray2: [UInt8] = [0x06, 0x07, 0x00, 0xB6, 0x06, 0x00, 0x04]
+//    0x06, 0x07, 0x00, 0x08, 0x06, 0x00
+    
+    queueChunks([[0x06, 0x07, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
+
+    if globalCounter < 255 {
+      globalCounter += 1
+    } else {
+      globalCounter = 0
+    }
+
+    queueChunks([[0x06, 0x0C, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
+
+    
+    if globalCounter < 255 {
+      globalCounter += 1
+    } else {
+      globalCounter = 0
+    }
+    
+    // 2606001e02c90000000000000000000000000000
+
+    let commandArray2: [UInt8] = [0x26, 0x06, 0x00, /*0x01*/globalCounter, 0x02, 0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+    queueChunks([commandArray2])
+    
+    if globalCounter < 255 {
+      globalCounter += 1
+    } else {
+      globalCounter = 0
+    }
+
+                          //  39    05    00          c6               01    00
+    let cmd1: [UInt8] = [0x39, 0x05, 0x00, /*0x78*/globalCounter, 0x01, 0x00]
+    queueChunks([cmd1])
+
+//    let commandArray3: [UInt8] = [0xf5, 0x1e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+//    queueChunks([commandArray3])
+
+// 50, 06, 00, 00, 01, 01
+    let commandArray3: [UInt8] = [0x50, 0x06, 0x00, 0x00, 0x01, 0x01]
+    queueChunks([commandArray3])
+
+    queueChunks([[0x22, 0x05, 0x00, 0x05, 0x01]])
+  }
+  
   public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
     guard let rightGlass = rightPeripheral,
           let leftGlass = leftPeripheral,
@@ -1099,27 +1162,31 @@ extension ERG1Manager {
       return false
     }
     
-    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
-    queueChunks([showDashboard], sleepAfterMs: 300)
+//    sent status 26  L 0 , sent size: 8  sent: 26 08 00 02 02 00 03 01
     
-    let h: UInt8 = min(max(height, 1), 8)
+//    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
+//    queueChunks([showDashboard], sleepAfterMs: 300)
+    
+    globalCounter += 1
+    
+    let h: UInt8 = min(max(height, 0), 8)
     let d: UInt8 = min(max(depth, 1), 9)
     
     // Build dashboard position command
-//    var command = Data()
-//    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
-//    command.append(0x08) // Length
-//    command.append(0x00) // Sequence
-//    command.append(0x01) // Fixed value
-//    command.append(0x02) // Fixed value
-//    command.append(0x01) // State ON
-//    command.append(h.rawValue) // height
-//    command.append(d.rawValue) // depth
+    var command = Data()
+    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+    command.append(0x08) // Length
+    command.append(0x00) // Sequence
+    command.append(globalCounter) // Fixed value
+    command.append(0x02) // Fixed value
+    command.append(0x01) // State ON
+    command.append(h) // height
+    command.append(d) // depth
     
     print("height \(h)")
     
-    var command = Data()
-    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
+//    var command = Data()
+//    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
 //    command.append(0x80) // Length high byte
 //    command.append(0x00) // Length low byte
 //    command.append(0x00) // Sequence number
@@ -1127,12 +1194,12 @@ extension ERG1Manager {
 //    command.append(0x01) // Active state
 //    command.append(0x04) // height
 //    command.append(d) // depth
-    command.append(0x07) // Length
-    command.append(0x00) // Sequence
-    command.append(0x01) // Fixed value
-    command.append(0x02) // Fixed value
-    command.append(0x01) // State ON
-    command.append(h) // height
+//    command.append(0x07) // Length
+//    command.append(0x00) // Sequence
+//    command.append(0x01) // Fixed value
+//    command.append(0x02) // Fixed value
+//    command.append(0x01) // State ON
+//    command.append(h) // height
 ////    command.append(d.rawValue) // depthself.isSearching = false
     
     // convert command to array of UInt8

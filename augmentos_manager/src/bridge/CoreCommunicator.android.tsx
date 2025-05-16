@@ -659,6 +659,12 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
+  async showDashboard() {
+    return await this.sendData({
+      command: 'show_dashboard',
+    });
+  }
+
   async sendSetMetricSystemEnabled(metricSystemEnabled: boolean) {
     return await this.sendData({
       command: 'set_metric_system_enabled',
