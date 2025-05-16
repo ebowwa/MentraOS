@@ -7,7 +7,7 @@ const BETTERSTACK_SOURCE_TOKEN = process.env.BETTERSTACK_SOURCE_TOKEN;
 const BETTERSTACK_ENDPOINT = process.env.BETTERSTACK_ENDPOINT || 'https://s1311181.eu-nbg-2.betterstackdata.com';
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SERVICE_NAME = process.env.SERVICE_NAME || 'augmentos-cloud';
-const PRETTY_PRINT = process.env.PRETTY_PRINT !== 'false'; // Enable pretty printing by default
+const PORTER_APP_NAME = process.env.PORTER_APP_NAME || 'cloud-local';
 
 // Determine log level based on environment
 const LOG_LEVEL = NODE_ENV === 'production' ? 'info' : 'debug';
@@ -81,7 +81,7 @@ const baseLoggerOptions: pino.LoggerOptions = {
   level: LOG_LEVEL,
   base: {
     env: NODE_ENV,
-    service: SERVICE_NAME,
+    service: PORTER_APP_NAME,
   },
   timestamp: pino.stdTimeFunctions.isoTime,
 };
