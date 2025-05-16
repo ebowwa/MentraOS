@@ -28,6 +28,13 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import okhttp3.RequestBody;
+import okhttp3.Request;
+import okhttp3.OkHttpClient;
+import okhttp3.Callback;
+import okhttp3.Response;
+import okhttp3.Call;
+
 /**
  * ServerComms is the single facade for all WebSocket interactions in AugmentOS_Core.
  * It delegates the low-level socket to WebSocketManager, handles handshake, routing messages,
@@ -815,5 +822,55 @@ public class ServerComms {
     public void cleanup() {
         wsManager.cleanup();
         disconnectWebSocket();
+    }
+
+    // Helper to get the backend server URL, with placeholder for custom URL logic
+    private String getServerUrlForRest() {
+        // TODO: If you want to support a custom backend URL (like the TSX module),
+        // you could load it from SharedPreferences or another config here.
+        // For now, use the default logic:
+        String host = BuildConfig.AUGMENTOS_HOST;
+        String port = BuildConfig.AUGMENTOS_PORT;
+        boolean secureServer = Boolean.parseBoolean(BuildConfig.AUGMENTOS_SECURE);
+        return String.format("%s://%s:%s", secureServer ? "https" : "http", host, port);
+    }
+
+    // Add this method to send user datetime to backend
+    public void sendUserDatetimeToBackend(String userId, String isoDatetime) {
+        try {
+            String baseUrl = getServerUrlForRest();
+            String url = baseUrl + "/api/user-data/set-datetime";
+
+            JSONObject body = new JSONObject();
+            body.put("userId", userId);
+            body.put("datetime", isoDatetime);
+
+            RequestBody requestBody = RequestBody.create(
+                body.toString(), okhttp3.MediaType.get("application/json; charset=utf-8")
+            );
+            Request request = new Request.Builder()
+                .url(url)
+                .post(requestBody)
+                .build();
+
+            Log.d(TAG, "Sending datetime to backend: " + url);
+            OkHttpClient client = new OkHttpClient();
+            client.newCall(request).enqueue(new Callback() {
+                @Override
+                public void onFailure(Call call, IOException e) {
+                    Log.e(TAG, "Failed to send datetime to backend: " + e.getMessage());
+                }
+                @Override
+                public void onResponse(Call call, Response response) throws IOException {
+                    if (response.isSuccessful()) {
+                        Log.d(TAG, "Datetime sent to backend successfully: " + response.body().string());
+                    } else {
+                        Log.e(TAG, "Failed to send datetime to backend. Response: " + response.code() + ", " + response.body().string());
+                    }
+                }
+            });
+        } catch (Exception e) {
+            Log.e(TAG, "Exception while sending datetime to backend: " + e.getMessage());
+        }
     }
 }
