@@ -20,6 +20,7 @@ import {saveSetting} from './logic/SettingsHelper';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import GlobalEventEmitter from './logic/GlobalEventEmitter';
 import Routes from './Routes.tsx';
+import { AppStoreWebviewPrefetchProvider } from './providers/AppStoreWebviewPrefetchProvider';
 
 // Assign the RootStackParamList to the navigator
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -72,21 +73,23 @@ const App: React.FC = () => {
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaProvider>
-        <NotificationListener>
-          <AuthProvider>
-            <StatusProvider>
-              <AppStatusProvider>
-                <SearchResultsProvider>
-                  <GlassesMirrorProvider>
-                    <MessageBanner />
-                    <ModalProvider isDarkTheme={isDarkTheme} />
-                    <Routes isDarkTheme={isDarkTheme} toggleTheme={toggleTheme}/>
-                  </GlassesMirrorProvider>
-                </SearchResultsProvider>
-              </AppStatusProvider>
-            </StatusProvider>
-          </AuthProvider>
-        </NotificationListener>
+        <AppStoreWebviewPrefetchProvider>
+          <NotificationListener>
+            <AuthProvider>
+              <StatusProvider>
+                <AppStatusProvider>
+                  <SearchResultsProvider>
+                    <GlassesMirrorProvider>
+                      <MessageBanner />
+                      <ModalProvider isDarkTheme={isDarkTheme} />
+                      <Routes isDarkTheme={isDarkTheme} toggleTheme={toggleTheme}/>
+                    </GlassesMirrorProvider>
+                  </SearchResultsProvider>
+                </AppStatusProvider>
+              </StatusProvider>
+            </AuthProvider>
+          </NotificationListener>
+        </AppStoreWebviewPrefetchProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

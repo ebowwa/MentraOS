@@ -39,7 +39,6 @@ import androidx.lifecycle.LifecycleService;
 import androidx.preference.PreferenceManager;
 
 import com.augmentos.augmentos_core.augmentos_backend.AuthHandler;
-import com.augmentos.augmentos_core.augmentos_backend.HTTPServerComms;
 import com.augmentos.augmentos_core.augmentos_backend.ServerComms;
 import com.augmentos.augmentos_core.augmentos_backend.ServerCommsCallback;
 import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
@@ -164,7 +163,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private boolean contextualDashboardEnabled;
     private boolean alwaysOnStatusBarEnabled;
     private AsrPlanner asrPlanner;
-    private HTTPServerComms httpServerComms;
 
     JSONObject cachedDashboardDisplayObject;
     private JSONObject cachedDisplayData;
@@ -192,6 +190,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private boolean isInitializing = false;
 
     private boolean metricSystemEnabled;
+
+    // Handler and Runnable for periodic datetime sending
+    private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
+    private Runnable datetimeRunnable;
 
     public AugmentosService() {
     }
@@ -451,26 +453,28 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         webSocketLifecycleManager = new WebSocketLifecycleManager(this, authHandler);
 
         // Set up backend comms
-        this.httpServerComms = new HTTPServerComms();
         //if(authHandler.getCoreToken() != null)
         //    ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
         initializeServerCommsCallbacks();
 
-//        httpServerComms.getApps(new Callback() {
-//            @Override
-//            public void onFailure(Call call, IOException e) {
-//                Log.e("HTTP", "GET /apps failed: " + e.getMessage());
-//            }
-//
-//            @Override
-//            public void onResponse(Call call, Response response) throws IOException {
-//                if (response.isSuccessful()) {
-//                    Log.d("HTTP", "Response: ");
-//                }
-//            }
-//        });
-
         locationSystem = new LocationSystem(this);
+
+        // Start periodic datetime sending
+        datetimeRunnable = new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US);
+                    String isoDatetime = sdf.format(new java.util.Date());
+                    ServerComms.getInstance().sendUserDatetimeToBackend(userId, isoDatetime);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception while sending periodic datetime: " + e.getMessage());
+                }
+                // Schedule next run in 60 seconds
+                datetimeHandler.postDelayed(this, 60 * 1000);
+            }
+        };
+        datetimeHandler.postDelayed(datetimeRunnable, 60 * 1000); // Start after 60 seconds
     }
 
     private void createNotificationChannel() {
@@ -1264,13 +1268,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             @Override
             public void onConnectionAck() {
                 serverCommsHandler.postDelayed(() -> locationSystem.sendLocationToServer(), 500);
-//                if (alwaysOnStatusBarEnabled) {
-//                    smartGlassesManager.windowManager.showAppLayer(
-//                            "serverappid",
-//                            () -> smartGlassesManager.sendTextWall(cachedDashboardTopLine),
-//                            0
-//                    );
-//                }
+                // Send current datetime to backend after server ack
+                try {
+                    // Format current datetime as ISO 8601 string (yyyy-MM-dd'T'HH:mm:ssZ)
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX", java.util.Locale.US);
+                    String isoDatetime = sdf.format(new java.util.Date());
+                    ServerComms.getInstance().sendUserDatetimeToBackend(userId, isoDatetime);
+                } catch (Exception e) {
+                    Log.e(TAG, "Exception while sending datetime to backend: " + e.getMessage());
+                }
             }
 
             @Override
@@ -2001,7 +2007,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
-    public void onDestroy(){
+    public void onDestroy() {
         Log.d(TAG, "Service being destroyed");
         
         // BATTERY OPTIMIZATION: Cleanup resources first, then unregister from EventBus
@@ -2016,6 +2022,9 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } catch (Exception e) {
             Log.e(TAG, "Error unregistering from EventBus", e);
         }
+        
+        // Stop periodic datetime sending
+        datetimeHandler.removeCallbacks(datetimeRunnable);
         
         super.onDestroy();
     }

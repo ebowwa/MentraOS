@@ -7,6 +7,8 @@ import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { DeveloperProfile } from '@augmentos/sdk';
+import { logger as rootLogger } from '../services/logging/pino-logger';
+const logger = rootLogger.child({ service: 'apps.routes' });
 
 // Extended app interface for API responses that include developer profile
 interface AppWithDeveloperProfile extends AppI {
@@ -33,7 +35,7 @@ interface MongooseDocument {
 // This is annyoing to change in the env files everywhere for each region so we set it here.
 export const CLOUD_VERSION = "2.1.16"; //process.env.CLOUD_VERSION;
 if (!CLOUD_VERSION) {
-  console.error('CLOUD_VERSION is not set');
+  logger.error('CLOUD_VERSION is not set');
 }
 
 // Allowed package names for API key authentication
@@ -51,10 +53,6 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
   const apiKey = req.query.apiKey as string;
   const packageName = req.query.packageName as string;
   const userId = req.query.userId as string;
-
-  // console.log("apiKey: " + apiKey);
-  // console.log("packageName: " + packageName);
-  // console.log("userId: " + userId);
 
   if (apiKey && packageName && userId) {
     if (!ALLOWED_API_KEY_PACKAGES.includes(packageName)) {
@@ -116,7 +114,6 @@ async function getSessionFromToken(coreToken: string) {
     // Verify and decode the token
     const userData = jwt.verify(coreToken, AUGMENTOS_AUTH_JWT_SECRET);
     const userId = (userData as JwtPayload).email;
-    // console.log("USERID: " + userId || '');
     if (!userId) {
       return null;
     }
@@ -132,7 +129,7 @@ async function getSessionFromToken(coreToken: string) {
 
     return null;
   } catch (error) {
-    console.error('Error verifying token or finding session:', error);
+    logger.error('Error verifying token or finding session:', error);
     return null;
   }
 }
@@ -154,7 +151,7 @@ async function getUserIdFromToken(token: string): Promise<string | null> {
 
     return userId;
   } catch (error) {
-    console.error('Error verifying token:', error);
+    logger.error('Error verifying token:', error);
     return null;
   }
 }
@@ -285,7 +282,7 @@ async function getAllApps(req: Request, res: Response) {
       data: enhancedApps
     });
   } catch (error) {
-    console.error('Error fetching apps:', error);
+    logger.error({ error }, 'Error fetching apps');
     res.status(500).json({
       success: false,
       message: 'Error fetching apps'
@@ -304,7 +301,7 @@ async function getPublicApps(req: Request, res: Response) {
       data: apps
     });
   } catch (error) {
-    console.error('Error fetching public apps:', error);
+    logger.error({ error }, 'Error fetching public apps');
     res.status(500).json({
       success: false,
       message: 'Error fetching public apps'
@@ -336,7 +333,7 @@ async function searchApps(req: Request, res: Response) {
       data: searchResults
     });
   } catch (error) {
-    console.error('Error searching apps:', error);
+    logger.error('Error searching apps:', error);
     res.status(500).json({
       success: false,
       message: 'Error searching apps'
@@ -366,7 +363,7 @@ async function getAppByPackage(req: Request, res: Response) {
       : app;
 
     // Log permissions for debugging
-    console.log(`App ${packageName} permissions:`, plainApp.permissions);
+    logger.debug({ packageName, permissions: plainApp.permissions }, 'App permissions');
 
     // If the app has a developerId, try to get the developer profile information
     let developerProfile = null;
@@ -377,7 +374,7 @@ async function getAppByPackage(req: Request, res: Response) {
           developerProfile = developer.profile;
         }
       } catch (err) {
-        console.error('Error fetching developer profile:', err);
+        logger.error({ error: err, developerId: plainApp.developerId }, 'Error fetching developer profile');
         // Continue without developer profile
       }
     }
@@ -394,7 +391,7 @@ async function getAppByPackage(req: Request, res: Response) {
       data: appObj
     });
   } catch (error) {
-    console.error('Error fetching app:', error);
+    logger.error('Error fetching app:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching app'
@@ -423,7 +420,7 @@ async function startApp(req: Request, res: Response) {
       session.websocket.send(JSON.stringify(appStateChange));
     }
   } catch (error) {
-    console.error(`Error starting app ${packageName}:`, error);
+    logger.error(`Error starting app ${packageName}:`, error);
     res.status(500).json({
       success: false,
       message: 'Error starting app'
@@ -459,7 +456,7 @@ async function stopApp(req: Request, res: Response) {
       session.websocket.send(JSON.stringify(appStateChange));
     }
   } catch (error) {
-    console.error(`Error stopping app ${packageName}:`, error);
+    logger.error(`Error stopping app ${packageName}:`, error);
     res.status(500).json({
       success: false,
       message: 'Error stopping app'
@@ -524,11 +521,11 @@ async function installApp(req: Request, res: Response) {
     try {
       sessionService.triggerAppStateChange(email);
     } catch (error) {
-      console.error('Error sending app state notification:', error);
+      logger.warn({ error, email, packageName }, 'Error sending app state notification');
       // Non-critical error, installation succeeded
     }
   } catch (error) {
-    console.error('Error installing app:', error);
+    logger.error({ error, email, packageName }, 'Error installing app');
     res.status(500).json({
       success: false,
       message: 'Error installing app'
@@ -587,23 +584,23 @@ async function uninstallApp(req: Request, res: Response) {
         await webSocketService.stopAppSession(userSession, packageName);
       }
       else {
-        console.warn(`Unable to ensure app is stopped before uninstalling, ${email} does not have an active session on this server.`, email, packageName);
+        logger.warn({ email, packageName }, 'Unable to ensure app is stopped before uninstalling, no active session');
       }
       await webSocketService.stopAppSession(session, packageName);
     } catch (error) {
-      console.error('Error stopping app during uninstall:', error);
+      logger.warn('Error stopping app during uninstall:', error);
     }
 
     // Send app state change notification.
     try {
       sessionService.triggerAppStateChange(email);
     } catch (error) {
-      console.warn('Error updating client AppStateChange after uninstalling an app:', error);
+      logger.warn({ error, email }, 'Error updating client AppStateChange after uninstall');
       // Non-critical error, uninstallation succeeded, but updating client state failed.
     }
 
   } catch (error) {
-    console.error('Error uninstalling app:', error);
+    logger.error({ error, email, packageName }, 'Error uninstalling app');
     res.status(500).json({
       success: false,
       message: 'Error uninstalling app'
@@ -647,7 +644,7 @@ async function getInstalledApps(req: Request, res: Response) {
       data: validApps
     });
   } catch (error) {
-    console.error('Error fetching installed apps:', error);
+    logger.error('Error fetching installed apps:', error);
     res.status(500).json({
       success: false,
       message: 'Error fetching installed apps'
@@ -685,7 +682,7 @@ async function getAppDetails(req: Request, res: Response) {
           developerProfile = developer.profile;
         }
       } catch (err) {
-        console.error('Error fetching developer profile:', err);
+        logger.error('Error fetching developer profile:', err);
         // Continue without developer profile
       }
     }
@@ -698,14 +695,14 @@ async function getAppDetails(req: Request, res: Response) {
     }
 
     // Log the permissions to verify they are properly included
-    console.log(`App ${packageName} permissions:`, plainApp.permissions);
+    logger.debug(`App ${packageName} permissions:`, plainApp.permissions);
 
     res.json({
       success: true,
       data: appObj
     });
   } catch (error) {
-    console.error('Error fetching app details:', error);
+    logger.error('Error fetching app details:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch app details'
@@ -730,7 +727,7 @@ async function getAvailableApps(req: Request, res: Response) {
             appObj.developerProfile = developer.profile;
           }
         } catch (err) {
-          console.error(`Error fetching developer profile for app ${app.packageName}:`, err);
+          logger.error(`Error fetching developer profile for app ${app.packageName}:`, err);
           // Continue without developer profile
         }
       }
@@ -744,7 +741,7 @@ async function getAvailableApps(req: Request, res: Response) {
       data: enhancedApps
     });
   } catch (error) {
-    console.error('Error fetching available apps:', error);
+    logger.error('Error fetching available apps:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch available apps'

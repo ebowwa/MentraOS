@@ -42,7 +42,8 @@ export enum StreamType {
   WILDCARD = '*',
   
   // New stream type
-  AUGMENTOS_SETTINGS_UPDATE_REQUEST = 'settings_update_request'
+  AUGMENTOS_SETTINGS_UPDATE_REQUEST = 'settings_update_request',
+  CUSTOM_MESSAGE = 'custom_message'
 }
 
 /**
@@ -99,7 +100,8 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.ALL]: StreamCategory.SYSTEM,
   [StreamType.WILDCARD]: StreamCategory.SYSTEM,
   
-  [StreamType.AUGMENTOS_SETTINGS_UPDATE_REQUEST]: StreamCategory.SYSTEM
+  [StreamType.AUGMENTOS_SETTINGS_UPDATE_REQUEST]: StreamCategory.SYSTEM,
+  [StreamType.CUSTOM_MESSAGE]: StreamCategory.SYSTEM
 };
 
 /**
