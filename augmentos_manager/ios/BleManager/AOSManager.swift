@@ -54,7 +54,6 @@ struct ViewState {
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
   private var connectTask: Task<Void, Never>?
-  private var datetimeTimer: Timer?
   
   var viewStates: [ViewState] = [
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "", eventStr: ""),
@@ -144,8 +143,6 @@ struct ViewState {
         handleRequestStatus()
       }
       .store(in: &cancellables)
-    
-    startDatetimeTimer()
   }
   
   @objc func connectServer() {
@@ -1353,25 +1350,6 @@ struct ViewState {
   
   @objc func cleanup() {
     cancellables.removeAll()
-    datetimeTimer?.invalidate()
-    datetimeTimer = nil
     saveSettings()
-  }
-  
-  private func startDatetimeTimer() {
-    datetimeTimer?.invalidate()
-    datetimeTimer = Timer.scheduledTimer(withTimeInterval: 60.0, repeats: true) { [weak self] _ in
-      self?.sendCurrentDatetimeToBackend()
-    }
-    // Fire once after a short delay
-    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-      self?.sendCurrentDatetimeToBackend()
-    }
-  }
-
-  private func sendCurrentDatetimeToBackend() {
-    let formatter = ISO8601DateFormatter()
-    let isoDatetime = formatter.string(from: Date())
-    serverComms.sendUserDatetimeToBackend(userId: self.coreTokenOwner, isoDatetime: isoDatetime)
   }
 }
