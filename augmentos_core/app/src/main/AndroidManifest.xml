@@ -26,6 +26,12 @@
   <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
   <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+  
+  <!-- Android 14 (API 34) Foreground Service Type Permissions -->
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -110,7 +116,7 @@
           android:exported="false"
           android:foregroundServiceType="camera|microphone" />
     <service android:name="com.augmentos.augmentos_core.AugmentosService"
-        android:foregroundServiceType="microphone"
+        android:foregroundServiceType="connectedDevice|location"
         android:exported="true"
         android:label="AugmentOS Main"
         android:theme="@style/AppTheme">
@@ -122,6 +128,9 @@
           <action android:name="ACTION_STOP_CORE" />  <!-- Must match the action used in the Manager -->
         </intent-filter>
     </service>
+    <service android:name=".microphone.MicrophoneService"
+        android:foregroundServiceType="microphone"
+        android:exported="false" />
 
     <receiver
         android:name="com.augmentos.augmentos_core.tpa.AugmentOSLibBroadcastReceiver"
