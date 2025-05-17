@@ -30,7 +30,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
   const prefetchWebview = async () => {
     setWebviewLoading(true);
     try {
-      const baseUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org/webview';
+      const baseUrl = Config.AUGMENTOS_APPSTORE_URL!;
       const backendComms = BackendServerComms.getInstance();
       const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME);
       const urlWithToken = new URL(baseUrl);
@@ -38,7 +38,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
       setAppStoreUrl(urlWithToken.toString());
     } catch (error) {
       // fallback to base URL
-      const baseUrl = Config.AUGMENTOS_APPSTORE_URL || 'https://store.augmentos.org/webview';
+      const baseUrl = Config.AUGMENTOS_APPSTORE_URL!;
       setAppStoreUrl(baseUrl);
     } finally {
       setWebviewLoading(false);
