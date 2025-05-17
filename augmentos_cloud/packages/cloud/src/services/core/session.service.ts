@@ -95,6 +95,9 @@ export interface ExtendedUserSession extends UserSession {
   // Map to track reconnection timers
   _reconnectionTimers?: Map<string, NodeJS.Timeout>;
   recentAudioBuffer: { data: ArrayBufferLike; timestamp: number }[]; // Buffer for last 10 seconds of audio
+
+  // Custom user data
+  userDatetime?: string;
 }
 
 export class SessionService {

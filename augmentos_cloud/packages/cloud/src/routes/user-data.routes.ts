@@ -1,5 +1,8 @@
 import express from 'express';
 import sessionService from '../services/core/session.service';
+import { StreamType } from '@augmentos/sdk';
+import subscriptionService from '../services/core/subscription.service';
+import { CloudToTpaMessageType } from '@augmentos/sdk';
 
 const router = express.Router();
 
@@ -19,33 +22,28 @@ router.post('/set-datetime', (req, res) => {
   userSession.userDatetime = datetime;
   console.log('User session updated', userSession.userDatetime);
 
-  // Send a DashboardSystemUpdate message to the dashboard TPA to update the topLeft section
-  console.log('Sending DashboardSystemUpdate message to dashboard TPA');
-  console.log('userSession.appConnections', userSession.appConnections);
-  if (userSession.appConnections && userSession.appConnections.has('system.augmentos.dashboard')) {
-    console.log('Sending custom message to dashboard TPA');
-    const ws = userSession.appConnections.get('system.augmentos.dashboard');
-    if (ws && ws.readyState === 1) { // WebSocket.OPEN === 1
-      const customMessage = {
-        type: 'custom_message',
-        action: 'update_datetime',
-        payload: {
-          datetime: datetime,
-          section: 'topLeft'
-        },
-        timestamp: new Date()
-      };
-      ws.send(JSON.stringify(customMessage));
+  // Relay custom_message to all TPAs subscribed to custom_message
+  if (userSession.appConnections) {
+    const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.CUSTOM_MESSAGE);
+
+    console.log('4343 Subscribed apps', subscribedApps);
+    const customMessage = {
+      type: CloudToTpaMessageType.CUSTOM_MESSAGE,
+      action: 'update_datetime',
+      payload: {
+        datetime: datetime,
+        section: 'topLeft'
+      },
+      timestamp: new Date()
+    };
+    for (const packageName of subscribedApps) {
+      const ws = userSession.appConnections.get(packageName);
+      if (ws && ws.readyState === 1) {
+        ws.send(JSON.stringify(customMessage));
+      }
     }
   }
 
-  // Trigger dashboard update if dashboardManager exists
-  if (userSession.dashboardManager && typeof userSession.dashboardManager.updateDashboard === 'function') {
-    console.log('Triggering dashboard update');
-    userSession.dashboardManager.updateDashboard();
-  } else {
-    console.log('No dashboard manager found');
-  }
   res.json({ success: true, userId, datetime });
 });
 

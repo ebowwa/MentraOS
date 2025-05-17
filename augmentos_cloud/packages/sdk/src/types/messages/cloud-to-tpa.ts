@@ -150,6 +150,23 @@ export interface DashboardAlwaysOnChanged extends BaseMessage {
 }
 
 /**
+ * Standard connection error (for server compatibility)
+ */
+export interface StandardConnectionError extends BaseMessage {
+  type: 'connection_error';
+  message: string;
+}
+
+/**
+ * Custom message for general-purpose communication (cloud to TPA)
+ */
+export interface CustomMessage extends BaseMessage {
+  type: CloudToTpaMessageType.CUSTOM_MESSAGE;
+  action: string;  // Identifies the specific action/message type
+  payload: any;    // Custom data payload
+}
+
+/**
  * Photo response to TPA
  */
 export interface PhotoResponse extends BaseMessage {
@@ -203,6 +220,7 @@ export type CloudToTpaMessage =
   | VideoStreamResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
+  | CustomMessage
   | AugmentosSettingsUpdate
   | CustomMessage;
 
