@@ -26,7 +26,7 @@ class MainActivity : ReactActivity() {
     super.onCreate(null)
   }
 
-  override fun getMainComponentName(): String = "AugmentOS_Manager"
+  override fun getMainComponentName(): String = "AugmentOS"
 
   override fun createReactActivityDelegate(): ReactActivityDelegate =
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
