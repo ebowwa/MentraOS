@@ -138,6 +138,12 @@ export class SubscriptionService {
   }
 
   /**
+   * Caches the subscription update version for each session-app
+   * @private
+   */
+  private subscriptionUpdateVersion = new Map<string, number>();
+
+  /**
    * Updates subscriptions for a TPA.
    * @param sessionId - User session identifier
    * @param packageName - TPA identifier
@@ -152,6 +158,14 @@ export class SubscriptionService {
     subscriptions: ExtendedStreamType[]
   ): Promise<void> {
     const key = this.getKey(sessionId, packageName);
+
+    // Increment version for this key
+    const currentVersion = (this.subscriptionUpdateVersion.get(key) || 0) + 1;
+    this.subscriptionUpdateVersion.set(key, currentVersion);
+
+    // Capture the version for this call
+    const thisCallVersion = currentVersion;
+
     logger.info(`[SubscriptionService] updateSubscriptions called for ${key}. Subscriptions received:`, subscriptions);
     const currentSubs = this.subscriptions.get(key) || new Set();
     const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
@@ -223,9 +237,17 @@ export class SubscriptionService {
         processedSubscriptions.length = 0;
         processedSubscriptions.push(...allowed);
       }
+      const newSubs = new Set(processedSubscriptions);
 
-      // Update subscriptions with allowed subscriptions only
-      this.subscriptions.set(key, new Set(processedSubscriptions));
+      // At the end, before setting:
+      if (this.subscriptionUpdateVersion.get(key) !== thisCallVersion) {
+        // A newer call has started, so abort this update
+        logger.info("🔥🔥🔥: Skipping update as newer call has started");
+        return;
+      }
+
+      // Only now set the subscriptions
+      this.subscriptions.set(key, newSubs);
 
       // Record history
       this.addToHistory(key, {
@@ -484,6 +506,10 @@ export class SubscriptionService {
       return true;
     }
     return validTypes.has(subscription as StreamType) || isLanguageStream(subscription);
+  }
+
+  public getSubscriptionEntries() {
+    return Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]);
   }
 }
 
