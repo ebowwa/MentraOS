@@ -68,12 +68,15 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../logging/posthog.service';
 import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
-import { logger } from '@augmentos/utils';
-import photoRequestService, { PendingPhotoRequest } from './photo-request.service';
+// import { logger } from '@augmentos/utils';
+import { logger as rootLogger } from '../logging/pino-logger';
+import photoRequestService from './photo-request.service';
 import axios from 'axios';
 import { SessionService } from './session.service';
 import { getSessionService } from './session.service';
 import { DisconnectInfo } from './HeartbeatManager';
+
+const logger = rootLogger.child({ service: 'websocket.service' });
 
 export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
 export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
@@ -311,30 +314,102 @@ export class WebSocketService {
    */
   setupWebSocketServers(server: Server): void {
     server.on('upgrade', (request, socket, head) => {
-      const url = new URL(request.url || '', `http://${request.headers.host}`);
+      try {
+        const url = new URL(request.url || '', `http://${request.headers.host}`);
 
-      if (url.pathname === '/glasses-ws') {
-        this.glassesWss.handleUpgrade(request, socket, head, ws => {
-          this.glassesWss.emit('connection', ws, request);
+        // Log detailed information about the upgrade request
+        logger.debug({
+          msg: 'WebSocket upgrade request received',
+          path: url.pathname,
+          headers: {
+            host: request.headers.host,
+            origin: request.headers.origin,
+            upgrade: request.headers.upgrade,
+            connection: request.headers.connection,
+            secWebSocketKey: request.headers['sec-websocket-key']?.substring(0, 10) + '...',
+            secWebSocketVersion: request.headers['sec-websocket-version']
+          },
+          remoteAddress: request.socket.remoteAddress
         });
-      } else if (url.pathname === '/tpa-ws') {
-        this.tpaWss.handleUpgrade(request, socket, head, ws => {
-          this.tpaWss.emit('connection', ws, request);
+
+        if (url.pathname === '/glasses-ws') {
+          logger.debug({ msg: 'Processing glasses-ws upgrade request' });
+
+          try {
+            this.glassesWss.handleUpgrade(request, socket, head, ws => {
+              logger.debug({ msg: 'Glasses WebSocket upgrade successful' });
+              this.glassesWss.emit('connection', ws, request);
+            });
+          } catch (upgradeError) {
+            logger.error({
+              msg: 'Failed to upgrade glasses WebSocket connection',
+              error: upgradeError
+            });
+            socket.destroy();
+          }
+
+        } else if (url.pathname === '/tpa-ws') {
+          logger.debug({ msg: 'Processing tpa-ws upgrade request' });
+
+          try {
+            this.tpaWss.handleUpgrade(request, socket, head, ws => {
+              logger.debug({ msg: 'TPA WebSocket upgrade successful' });
+              this.tpaWss.emit('connection', ws, request);
+            });
+          } catch (upgradeError) {
+            logger.error({
+              msg: 'Failed to upgrade TPA WebSocket connection',
+              error: upgradeError
+            });
+            socket.destroy();
+          }
+
+        } else {
+          logger.debug({
+            msg: 'Unknown WebSocket path, destroying socket',
+            path: url.pathname
+          });
+          socket.destroy();
+        }
+      } catch (error) {
+        logger.error({
+          msg: 'Error in WebSocket upgrade handler',
+          error,
+          url: request.url
         });
-      } else {
         socket.destroy();
       }
     });
 
+    // Glasses connection handler with enhanced error logging
     this.glassesWss.on('connection', (ws, request) => {
+      logger.info({ msg: 'New glasses WebSocket connection established' });
+
       this.handleGlassesConnection(ws, request).catch(error => {
-        logger.error('Error handling glasses connection:', error);
+        logger.error({
+          msg: 'Error handling glasses connection',
+          error: {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          }
+        });
       });
     });
 
+    // TPA connection handler with enhanced error logging
     this.tpaWss.on('connection', (ws, request) => {
+      logger.info({ msg: 'New TPA WebSocket connection established' });
+
       this.handleTpaConnection(ws, request).catch(error => {
-        logger.error('Error handling TPA connection:', error);
+        logger.error({
+          msg: 'Error handling TPA connection',
+          error: {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          }
+        });
       });
     });
   }
@@ -538,11 +613,12 @@ export class WebSocketService {
 
     // Store pending session.
     userSession.loadingApps.add(packageName);
-    userSession.logger.debug(`[websocket.service]: Current Loading Apps:`, userSession.loadingApps);
+    userSession.logger.debug({ loadingApps: userSession.loadingApps }, `[websocket.service]: Current Loading Apps:`,);
 
     try {
       // Trigger TPA webhook 
-      userSession.logger.info("[websocket.service]: ⚡️Triggering webhook for app⚡️: ", app.publicUrl);
+      const { packageName, name, publicUrl } = app;
+      userSession.logger.debug({ packageName, name, publicUrl }, "[websocket.service]: ⚡️Triggering webhook for app⚡️");
 
       // Set up the websocket URL for the TPA connection
       let augmentOSWebsocketUrl = '';
@@ -570,8 +646,8 @@ export class WebSocketService {
         }
       } else {
         // For non-system apps, use the public host
-        augmentOSWebsocketUrl = `ws://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
-        userSession.logger.info(`Using public URL for app ${packageName}`);
+        augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
+        userSession.logger.info({augmentOSWebsocketUrl, packageName, name}, `Using public URL for app ${packageName}`);
       }
 
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server WebSocket URL: ${augmentOSWebsocketUrl}`);
@@ -1478,13 +1554,48 @@ export class WebSocketService {
    * @private
    */
   private async handleTpaConnection(ws: WebSocket, request: IncomingMessage): Promise<void> {
-    logger.info('New TPA attempting to connect...');
+    logger.info({
+      msg: 'New TPA attempting to connect...',
+      headers: {
+        origin: request.headers.origin,
+        host: request.headers.host,
+        userAgent: request.headers['user-agent']
+      },
+      remoteAddress: request.socket.remoteAddress
+    });
+
     let currentAppSession: string | null = null;
     const setCurrentSessionId = (appSessionId: string) => {
       currentAppSession = appSessionId;
+      logger.debug({ msg: 'TPA session ID set', sessionId: appSessionId });
     }
     let userSessionId = '';
     let userSession: ExtendedUserSession | null = null;
+
+    // Add error handler to catch WebSocket errors
+    ws.on('error', (wsError) => {
+      logger.error({
+        msg: 'WebSocket error in TPA connection',
+        error: {
+          name: wsError.name,
+          message: wsError.message,
+          stack: wsError.stack
+        },
+        sessionId: currentAppSession,
+        userSessionId
+      });
+    });
+
+    // Add close handler to track connection closures
+    ws.on('close', (code, reason) => {
+      logger.info({
+        msg: 'TPA WebSocket connection closed',
+        code,
+        reason: reason.toString(),
+        sessionId: currentAppSession,
+        userSessionId
+      });
+    });
 
     // Note: Will register with HeartbeatManager after we know which session/TPA this belongs to
 
@@ -1495,15 +1606,54 @@ export class WebSocketService {
       }
 
       if (isBinary) {
-        userSession?.logger.warn('Received unexpected binary message from TPA');
+        logger.warn({
+          msg: 'Received unexpected binary message from TPA',
+          binaryLength: data instanceof Buffer ? data.length : 'unknown',
+          userSessionId,
+          currentAppSession
+        });
         return;
       }
 
       try {
-        const message = JSON.parse(data.toString()) as TpaToCloudMessage;
+        // Log the raw message for debugging (truncated for safety)
+        const messageStr = data.toString();
+        logger.debug({
+          msg: 'Received TPA message data',
+          dataLength: messageStr.length,
+          dataSample: messageStr.length > 100 ? messageStr.substring(0, 100) + '...' : messageStr,
+          userSessionId,
+          currentAppSession
+        });
+
+        const message = JSON.parse(messageStr) as TpaToCloudMessage;
+
+        logger.debug({
+          msg: 'Parsed TPA message',
+          messageType: message.type,
+          packageName: message.packageName,
+          sessionId: message.sessionId
+        });
+
         if (message.sessionId) {
           userSessionId = message.sessionId.split('-')[0];
+          logger.debug({ msg: 'Extracted user session ID', userSessionId });
+
           userSession = this.getSessionService().getSession(userSessionId);
+
+          if (userSession) {
+            logger.debug({
+              msg: 'Retrieved user session',
+              userId: userSession.userId,
+              sessionId: userSession.sessionId
+            });
+          } else {
+            logger.warn({
+              msg: 'User session not found',
+              userSessionId,
+              messageSessionId: message.sessionId
+            });
+          }
         }
 
         // Handle TPA messages here.
@@ -1511,7 +1661,28 @@ export class WebSocketService {
           switch (message.type) {
             case 'tpa_connection_init': {
               const initMessage = message as TpaConnectionInit;
-              await this.handleTpaInit(ws, initMessage, setCurrentSessionId);
+              logger.info({
+                msg: 'TPA connection initialization received',
+                packageName: initMessage.packageName,
+                sessionId: initMessage.sessionId
+              });
+
+              try {
+                await this.handleTpaInit(ws, initMessage, setCurrentSessionId);
+                logger.info({
+                  msg: 'TPA connection initialized successfully',
+                  packageName: initMessage.packageName,
+                  sessionId: initMessage.sessionId
+                });
+              } catch (initError) {
+                logger.error({
+                  msg: 'Failed to initialize TPA connection',
+                  error: initError,
+                  packageName: initMessage.packageName,
+                  sessionId: initMessage.sessionId
+                });
+                throw initError; // Re-throw to propagate to client
+              }
               break;
             }
 
@@ -1724,7 +1895,7 @@ export class WebSocketService {
               //   appId,
               //   saveToGallery
               // );
-// photoRequestMessage
+              // photoRequestMessage
               // Send request to glasses
               // userSession.websocket.send(JSON.stringify(photoRequestToGlasses));
               userSession.websocket.send(JSON.stringify({
@@ -1788,11 +1959,22 @@ export class WebSocketService {
           }
         }
         catch (error) {
-          userSession?.logger.error('[websocket.service]: Error handling TPA message:', message, error);
+          // Enhanced error logging with structured data
+          logger.error({
+            error: error,
+            messageType: message.type,
+            packageName: message.packageName,
+            sessionId: message.sessionId,
+            userSessionId
+          }, "Error handling TPA message");
+
+          // Send error back to client
           this.sendError(ws, {
             type: CloudToTpaMessageType.CONNECTION_ERROR,
-            message: 'Error processing message'
+            message: `Error processing message: ${(error as any)?.message}`
           });
+
+          // Track error for analytics
           PosthogService.trackEvent("error-handleTpaMessage", "anonymous", {
             eventType: message.type,
             timestamp: new Date().toISOString(),
@@ -1800,10 +1982,17 @@ export class WebSocketService {
           });
         }
       } catch (error) {
-        userSession?.logger.error('[websocket.service]: Error handling TPA message:', error);
+        // This catch handles JSON parsing errors or other issues
+        logger.error({
+          error: error,
+          rawDataLength: typeof data === 'string' ? data.length : (data instanceof Buffer ? data.length : 'unknown'),
+          userSessionId,
+          currentAppSession
+        }, 'Error parsing or pre-processing TPA message');
+
         this.sendError(ws, {
           type: CloudToTpaMessageType.CONNECTION_ERROR,
-          message: 'Error processing message'
+          message: `Error processing message`
         });
       }
     });
