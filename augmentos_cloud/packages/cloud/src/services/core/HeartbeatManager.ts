@@ -8,6 +8,8 @@
 
 import { WebSocket } from 'ws';
 import { ExtendedUserSession } from './session.service';
+import { logger as rootLogger } from "../logging";
+const logger = rootLogger.child({ service: 'HeartbeatManager' });
 
 // Constants
 const HEARTBEAT_INTERVAL_MS = 15000; // 15 seconds

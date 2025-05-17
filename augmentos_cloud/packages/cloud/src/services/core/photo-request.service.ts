@@ -13,8 +13,10 @@
  */
 
 import WebSocket from 'ws';
-import { logger } from '@augmentos/utils';
 import { v4 as uuidv4 } from 'uuid';
+// import { logger } from '@augmentos/utils';
+import { logger as rootLogger } from "../logging";
+const logger = rootLogger.child({ service: 'photo-request.service' });
 
 /**
  * Types of photo request origins

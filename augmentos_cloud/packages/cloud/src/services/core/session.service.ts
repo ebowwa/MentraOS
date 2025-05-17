@@ -13,21 +13,24 @@ import {
 import appService from './app.service';
 import transcriptionService, { ASRStreamInstance } from '../processing/transcription.service';
 import DisplayManager from '../layout/DisplayManager6.1';
-import { createLC3Service, LC3Service, createLoggerForUserSession, logger } from '@augmentos/utils';
+import { createLC3Service, LC3Service, createLoggerForUserSession } from '@augmentos/utils';
 import { AudioWriter } from "../debug/audio-writer";
 import { systemApps } from './system-apps';
 import { SubscriptionManager } from './subscription.manager'; // Import the new manager
-import { Logger } from 'winston';
+// import { Logger } from 'winston';
 import { DebugService } from '../debug/debug-service';
 import { User } from '../../models/user.model';
 import { HeartbeatManager } from './HeartbeatManager';
+import { logger as rootLogger } from '../logging/pino-logger';
+import { Logger } from 'pino';
 
 const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
 const LOG_AUDIO = false;
 const DEBUG_AUDIO = false;
 export const IS_LC3 = false;
+const logger = rootLogger.child({ module: 'session.service' });
 
-console.log("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
+logger.info("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
 
 const DEFAULT_AUGMENTOS_SETTINGS = {
   useOnboardMic: false,
@@ -160,7 +163,8 @@ export class SessionService {
 
     // Create new session
     const sessionId = userId;
-    const sessionLogger = createLoggerForUserSession(sessionId);
+    // const sessionLogger = createLoggerForUserSession(sessionId);
+    const sessionLogger = rootLogger.child({ userId });
     const installedApps = await appService.getAllApps(userId); // Fetch apps first
     sessionLogger.info(`Fetched installed apps for user ${userId}:`, installedApps);
 
@@ -175,7 +179,7 @@ export class SessionService {
       transcriptionStreams: new Map<string, ASRStreamInstance>(),
       loadingApps: new Set<string>(),
       appConnections: new Map<string, WebSocket | any>(),
-      displayManager: new DisplayManager(),
+      displayManager: {} as any, // Will set after full session init
       // Will add dashboardManager after the session is fully constructed
       transcript: { 
         segments: [],
@@ -219,6 +223,10 @@ export class SessionService {
 
     // Finalize the user session
     const userSession = partialSession as ExtendedUserSession;
+
+    // Now set up the DisplayManager
+    const DisplayManager = require('../layout/DisplayManager6.1').default;
+    userSession.displayManager = new DisplayManager(userSession);
 
     // Now create the DashboardManager for this session
     // We need to dynamically import to avoid circular dependency issues
