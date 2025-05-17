@@ -32,6 +32,8 @@ import GlobalEventEmitter from '../logic/GlobalEventEmitter';
 import {useAppStatus} from '../providers/AppStatusProvider';
 import AppIcon from '../components/AppIcon';
 import SelectWithSearchSetting from '../components/settings/SelectWithSearchSetting';
+import { saveSetting, loadSetting } from '../logic/SettingsHelper';
+import SettingsSkeleton from '../components/SettingsSkeleton';
 
 type AppSettingsProps = NativeStackScreenProps<RootStackParamList, 'AppSettings'> & {
   isDarkTheme: boolean;
@@ -54,6 +56,12 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null;
   }, [appStatus, packageName]);
+
+  const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`;
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [hasCachedSettings, setHasCachedSettings] = useState(false);
+
+  console.log("AppInfo", appInfo);
 
   // Handle app start/stop actions with debouncing
   const handleStartStopApp = async () => {
@@ -194,30 +202,58 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
 
   // Fetch TPA settings on mount or when packageName/status change.
   useEffect(() => {
-    (async () => {
-      await fetchUpdatedSettingsInfo();
-    })();
+    let isMounted = true;
+    let debounceTimeout: NodeJS.Timeout;
+
+    const loadCachedSettings = async () => {
+      const cached = await loadSetting(SETTINGS_CACHE_KEY(packageName), null);
+      if (cached && isMounted) {
+        setServerAppInfo(cached.serverAppInfo);
+        setSettingsState(cached.settingsState);
+        setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0));
+        setSettingsLoading(false);
+      } else {
+        setHasCachedSettings(false);
+        setSettingsLoading(true);
+      }
+    };
+
+    // Load cached settings immediately
+    loadCachedSettings();
+
+    // Debounce fetch to avoid redundant calls
+    debounceTimeout = setTimeout(() => {
+      fetchUpdatedSettingsInfo();
+    }, 150);
+
+    return () => {
+      isMounted = false;
+      clearTimeout(debounceTimeout);
+    };
   }, [packageName]);
 
   const fetchUpdatedSettingsInfo = async () => {
+    // Only show skeleton if there are no cached settings
+    if (!hasCachedSettings) setSettingsLoading(true);
+    const startTime = Date.now(); // For profiling
     try {
       const data = await backendServerComms.getTpaSettings(packageName);
-      console.log('\n\n\nGOT TPA SETTING INFO:');
-      console.log(JSON.stringify(data));
-      console.log('\n\n\n');
-
+      const elapsed = Date.now() - startTime;
+      console.log(`[PROFILE] getTpaSettings for ${packageName} took ${elapsed}ms`);
+      // TODO: Profile backend and optimize if slow
       // If no data is returned from the server, create a minimal app info object
       if (!data) {
         setServerAppInfo({
           name: appInfo?.name || appName,
           description: appInfo?.description || 'No description available.',
-          instructions: appInfo?.instructions || null,
           settings: [],
           uninstallable: true,
         });
+        setSettingsState({});
+        setHasCachedSettings(false);
+        setSettingsLoading(false);
         return;
       }
-
       setServerAppInfo(data);
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
@@ -228,30 +264,37 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
           }
         });
         setSettingsState(initialState);
+        // Cache the settings
+        saveSetting(SETTINGS_CACHE_KEY(packageName), {
+          serverAppInfo: data,
+          settingsState: initialState,
+        });
+        setHasCachedSettings(data.settings.length > 0);
+      } else {
+        setHasCachedSettings(false);
       }
-
-      // Check if we should auto-redirect to webview
-      // Only redirect if webviewURL exists AND we're not coming from the webview already
+      setSettingsLoading(false);
+      // Auto-redirect to webview if needed
       const fromWebView = route.params.fromWebView === true;
       if (data.webviewURL && !fromWebView) {
         navigation.replace('AppWebView', {
           webviewURL: data.webviewURL,
           appName: appName,
           packageName: packageName,
-          // We'll use this flag in the webview to show the Settings button
           fromSettings: true,
         });
       }
     } catch (err) {
+      setSettingsLoading(false);
+      setHasCachedSettings(false);
       console.error('Error fetching TPA settings:', err);
-      // If there's an error, create a minimal app info object
       setServerAppInfo({
         name: appInfo?.name || appName,
         description: appInfo?.description || 'No description available.',
-        instructions: appInfo?.instructions || null,
         settings: [],
         uninstallable: true,
       });
+      setSettingsState({});
     }
   };
 
@@ -383,12 +426,9 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
     }
   };
 
-  if (!serverAppInfo || !appInfo) {
-    return (
-      <View style={{flex: 1, backgroundColor: theme.backgroundColor}}>
-        <LoadingOverlay message={`Loading ${appName} settings...`} isDarkTheme={isDarkTheme} />
-      </View>
-    );
+  if (!appInfo) {
+    // Optionally, you could render a fallback error or nothing
+    return null;
   }
 
   return (
@@ -428,15 +468,8 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
               <View style={styles.appInfoTextContainer}>
                 <Text style={[styles.appName, {color: theme.textColor}]}>{appInfo.name}</Text>
                 <View style={styles.appMetaInfoContainer}>
-                  <Text style={[styles.appMetaInfo, {color: theme.secondaryTextColor}]}>
-                    Version {appInfo.version || '1.0.0'}
-                  </Text>
+                  <Text style={[styles.appMetaInfo, {color: theme.secondaryTextColor}]}>Version {appInfo.version || '1.0.0'}</Text>
                   <Text style={[styles.appMetaInfo, {color: theme.secondaryTextColor}]}>Package: {packageName}</Text>
-                  {/* {appInfo.is_foreground && (
-                  <Text style={[styles.appMetaInfo, { color: '#2196F3' }]}>
-                    Foreground App
-                  </Text>
-                )} */}
                 </View>
               </View>
             </View>
@@ -444,7 +477,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
             {/* Description within the main card */}
             <View style={[styles.descriptionContainer, {borderTopColor: theme.separatorColor}]}>
               <Text style={[styles.descriptionText, {color: theme.textColor}]}>
-                {serverAppInfo.description || 'No description available.'}
+                {appInfo.description || 'No description available.'}
               </Text>
             </View>
           </View>
@@ -486,21 +519,19 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
                     borderColor: theme.borderColor,
                     backgroundColor: theme.backgroundColor,
                   },
-                  !serverAppInfo.uninstallable && styles.disabledButton,
+                  !serverAppInfo?.uninstallable && styles.disabledButton,
                 ]}
                 activeOpacity={0.7}
                 onPress={handleUninstallApp}
-                disabled={!serverAppInfo.uninstallable}>
+                disabled={!serverAppInfo?.uninstallable}>
                 <FontAwesome name="trash" size={16} style={[styles.buttonIcon, {color: '#ff3b30'}]} />
                 <Text style={[styles.buttonText, {color: '#ff3b30'}]}>Uninstall</Text>
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Removed the Open Website section - now in the header */}
-
           {/* App Instructions Section */}
-          {(serverAppInfo.instructions || appInfo.instructions) && (
+          {serverAppInfo?.instructions && (
             <View
               style={[
                 styles.sectionContainer,
@@ -511,7 +542,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
               ]}>
               <Text style={[styles.sectionTitle, {color: theme.textColor}]}>About this App</Text>
               <Text style={[styles.instructionsText, {color: theme.textColor}]}>
-                {serverAppInfo.instructions || appInfo.instructions}
+                {serverAppInfo.instructions}
               </Text>
             </View>
           )}
@@ -527,14 +558,14 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
             ]}>
             <Text style={[styles.sectionTitle, {color: theme.textColor}]}>App Settings</Text>
             <View style={styles.settingsContainer}>
-              {serverAppInfo.settings && serverAppInfo.settings.length > 0 ? (
+              {settingsLoading && (!serverAppInfo?.settings || typeof serverAppInfo.settings === 'undefined') ? (
+                <SettingsSkeleton />
+              ) : serverAppInfo?.settings && serverAppInfo.settings.length > 0 ? (
                 serverAppInfo.settings.map((setting: any, index: number) =>
                   renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
                 )
               ) : (
-                <Text style={[styles.noSettingsText, {color: theme.secondaryTextColor}]}>
-                  No settings available for this app
-                </Text>
+                <Text style={[styles.noSettingsText, {color: theme.secondaryTextColor}]}>No settings available for this app</Text>
               )}
             </View>
           </View>
