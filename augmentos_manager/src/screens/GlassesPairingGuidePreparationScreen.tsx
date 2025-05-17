@@ -253,7 +253,8 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     alignItems: 'center',
-    marginBottom: 65,
+    marginBottom: 64,
+    marginTop: 16,
   },
   text: {
     fontSize: 16,

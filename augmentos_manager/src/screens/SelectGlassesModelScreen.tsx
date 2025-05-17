@@ -71,10 +71,12 @@ const SelectGlassesModelScreen: React.FC<SelectGlassesModelScreenProps> = ({
                     // iOS TestFlight or development - include Simulated Glasses
                     { modelName: 'Simulated Glasses', key: 'Simulated Glasses' }, // Moved to first position
                     { modelName: 'Even Realities G1', key: 'evenrealities_g1' },
+                    { modelName: 'Mentra Live', key: 'mentra_live' },
                 ]
                 : [
                     // iOS App Store production build - hide Simulated Glasses
                     { modelName: 'Even Realities G1', key: 'evenrealities_g1' },
+                    { modelName: 'Mentra Live', key: 'mentra_live' },
                 ]
         )
         : [
