@@ -516,7 +516,6 @@ export default SettingsPage;
 const styles = StyleSheet.create({
   scrollViewContainer: {
     paddingHorizontal: 20,
-    marginBottom: 10,
   },
   container: {
     flex: 1,

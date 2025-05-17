@@ -43,28 +43,30 @@ import path from 'path';
 
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
-import { logger } from "@augmentos/utils";
+// import { logger } from "@augmentos/utils";
+import { logger as rootLogger } from './services/logging/pino-logger';
+const logger = rootLogger.child({ module: 'index' });
 
 // Initialize MongoDB connection
 mongoConnection.init()
   .then(() => {
     logger.info('MongoDB connection initialized successfully');
-    
+
     // Log admin emails from environment for debugging
     const adminEmails = process.env.ADMIN_EMAILS || '';
     logger.info('ENVIRONMENT VARIABLES CHECK:');
     logger.info(`- NODE_ENV: ${process.env.NODE_ENV || 'not set'}`);
     logger.info(`- ADMIN_EMAILS: "${adminEmails}"`);
-    
+
     // Log additional environment details
     logger.info(`- Current working directory: ${process.cwd()}`);
-    
+
     if (adminEmails) {
       const emails = adminEmails.split(',').map(e => e.trim());
       logger.info(`Admin access configured for ${emails.length} email(s): [${emails.join(', ')}]`);
     } else {
       logger.warn('No ADMIN_EMAILS environment variable found. Admin panel will be inaccessible.');
-      
+
       // For development, log a helpful message
       if (process.env.NODE_ENV === 'development') {
         logger.info('Development mode: set ADMIN_EMAILS environment variable to enable admin access');
