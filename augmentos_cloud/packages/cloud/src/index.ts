@@ -17,6 +17,7 @@ import helmet from 'helmet';
 
 // Import services
 import { healthMonitorService } from './services/core/health-monitor.service';
+import { photoRequestService } from './services/core/photo-request.service';
 import { DebugService } from './services/debug/debug-service';
 import { SessionService, initializeSessionService } from './services/core/session.service';
 import { webSocketService } from './services/core/websocket.service';
@@ -31,9 +32,13 @@ import devRoutes from './routes/developer.routes';
 import serverRoutes from './routes/server.routes';
 import adminRoutes from './routes/admin.routes';
 import tpaServerRoutes from './routes/tpa-server.routes';
+import photoRoutes from './routes/photos.routes';
+import galleryRoutes from './routes/gallery.routes';
 import toolsRoutes from './routes/tools.routes';
+import hardwareRoutes from './routes/hardware.routes';
 import audioRoutes from './routes/audio.routes';
 import userDataRoutes from './routes/user-data.routes';
+import permissionsRoutes from './routes/permissions.routes';
 
 import path from 'path';
 
@@ -97,6 +102,7 @@ app.use(cors({
     'http://localhost:5173',
     'http://127.0.0.1:5174',
     'http://localhost:5174',
+    'http://localhost:5175',
     'http://localhost:5173',
     'http://localhost:53216',
     'http://localhost:6173',
@@ -139,9 +145,13 @@ app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
-app.use('/api/tpa-server', tpaServerRoutes);
+// app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
+app.use('/api/photos', photoRoutes);
+app.use('/api/gallery', galleryRoutes);
 app.use('/api/tools', toolsRoutes);
+app.use('/api/permissions', permissionsRoutes);
+app.use('/api/hardware', hardwareRoutes);
 // HTTP routes for augmentOS settings are now replaced by WebSocket implementation
 // app.use('/api/augmentos-settings', augmentosSettingsRoutes);
 app.use(errorReportRoutes);
@@ -157,6 +167,10 @@ app.get('/health', (req, res) => {
 // Serve static files from the public directory
 app.use(express.static(path.join(__dirname, './public')));
 
+// Serve uploaded photos
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
+// Initialize WebSocket service
 // Initialize WebSocket servers
 webSocketService.setupWebSocketServers(server);
 

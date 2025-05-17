@@ -43,12 +43,14 @@ struct ViewState {
   private var batteryLevel = -1;
   private var autoBrightness: Bool = false;
   private var dashboardHeight: Int = 4;
+  private var depth: Int = 5;
   private var sensingEnabled: Bool = true;
-  private var isSearching: Bool = false;
+  private var isSearching: Bool = true;
   private var alwaysOnStatusBar: Bool = false;
   private var bypassVad: Bool = false;
   private var bypassAudioEncoding: Bool = false;
   private var onboardMicUnavailable: Bool = false;
+  private var metricSystemEnabled: Bool = false;
   private var settingsLoaded = false
   private let settingsLoadedSemaphore = DispatchSemaphore(value: 0)
   private var connectTask: Task<Void, Never>?
@@ -340,7 +342,7 @@ struct ViewState {
   
   func onMicrophoneStateChange(_ isEnabled: Bool) {
     
-    print("changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
+    print("@@@@@@@ changing microphone state to: \(isEnabled) @@@@@@@@@@@@@@@@")
     // in any case, clear the vadBuffer:
     self.vadBuffer.removeAll()
     self.micEnabled = isEnabled
@@ -376,12 +378,16 @@ struct ViewState {
         } else if (!self.onboardMicUnavailable) {
           useOnboardMic = true
         }
+
+        if (!useGlassesMic && !useOnboardMic) {
+          print("no mic to use!!!!!!")
+        }
       }
       
       useGlassesMic = actuallyEnabled && useGlassesMic
       useOnboardMic = actuallyEnabled && useOnboardMic
 
-      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useBoardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) sensingEnabled: \(self.sensingEnabled) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
+      print("user enabled microphone: \(isEnabled) sensingEnabled: \(self.sensingEnabled) useOnboardMic: \(useOnboardMic) useGlassesMic: \(useGlassesMic) glassesHasMic: \(glassesHasMic) preferredMic: \(self.preferredMic) somethingConnected: \(self.somethingConnected) onboardMicUnavailable: \(self.onboardMicUnavailable)")
 
       if (self.somethingConnected) {
         await self.g1Manager?.setMicEnabled(enabled: useGlassesMic)
@@ -669,8 +675,8 @@ struct ViewState {
   }
   
   private func disconnect() {
+
     self.somethingConnected = false
-    self.isSearching = false
 
     // save the mic state:
     // let micWasEnabled = self.micEnabled
@@ -716,11 +722,13 @@ struct ViewState {
       case updateGlassesHeadUpAngle = "update_glasses_headUp_angle"
       case updateGlassesBrightness = "update_glasses_brightness"
       case updateGlassesDashboardHeight = "update_glasses_dashboard_height"
+      case updateGlassesDepth = "update_glasses_depth"
       case enableSensing = "enable_sensing"
       case enableAlwaysOnStatusBar = "enable_always_on_status_bar"
       case bypassVad = "bypass_vad_for_debugging"
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
       case setServerUrl = "set_server_url"
+      case setMetricSystemEnabled = "set_metric_system_enabled"
       case unknown
     }
     
@@ -846,7 +854,7 @@ struct ViewState {
           handleRequestStatus()// to update the UI
           break
         case .updateGlassesBrightness:
-          guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoLight"] as? Bool else {
+          guard let params = params, let value = params["brightness"] as? Int, let autoBrightness = params["autoBrightness"] as? Bool else {
             print("update_glasses_brightness invalid params")
             break
           }
@@ -860,7 +868,7 @@ struct ViewState {
             } else {
               sendText("Set brightness to \(value)%")
             }
-            try? await Task.sleep(nanoseconds: 700_000_000) // 0.7 seconds
+            try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
             sendText(" ")// clear screen
           }
           saveSettings()
@@ -873,14 +881,28 @@ struct ViewState {
           }
           self.dashboardHeight = value
           Task {
-            self.g1Manager?.RN_setDashboardPosition(value)
-            sendText("Set dashboard position to \(value)")
-            try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            sendText(" ")// clear screen
+            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+            // sendText("Set dashboard position to \(value)")
+            // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            // sendText(" ")// clear screen
           }
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .updateGlassesDepth:
+          guard let params = params, let value = params["depth"] as? Int else {
+            print("update_glasses_depth invalid params")
+            break
+          }
+          self.depth = value
+          Task {
+            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+            // sendText("Set dashboard position to \(value)")
+            // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+            // sendText(" ")// clear screen
+            // todo: update the depth
+          }
+          saveSettings()
         case .enableSensing:
           guard let params = params, let enabled = params["enabled"] as? Bool else {
             print("enable_sensing invalid params")
@@ -925,6 +947,20 @@ struct ViewState {
           // }
           // self.useOnboardMic = enabled
           break
+        case .setMetricSystemEnabled:
+          guard let params = params, let enabled = params["enabled"] as? Bool else {
+            print("set_metric_system_enabled invalid params")
+            break
+          }
+          self.metricSystemEnabled = enabled
+          saveSettings()
+          handleRequestStatus()
+          break
+        case .unknown:
+          print("Unknown command type: \(commandString)")
+          handleRequestStatus()
+        case .ping:
+          break
         }
       }
     } catch {
@@ -946,6 +982,7 @@ struct ViewState {
   private func handleDisconnectWearable() {
     connectTask?.cancel()
     disconnect()
+    self.isSearching = false
     handleRequestStatus()
   }
 
@@ -963,6 +1000,7 @@ struct ViewState {
     
     // also referenced as glasses_info:
     var connectedGlasses: [String: Any] = [:];
+    var glassesSettings: [String: Any] = [:];
 
     connectedGlasses = [
       "is_searching": self.isSearching,
@@ -972,8 +1010,6 @@ struct ViewState {
     if (self.defaultWearable == "Simulated Glasses") {
       connectedGlasses = [
         "model_name": self.defaultWearable,
-        "auto_brightness": false,
-        "is_searching": self.isSearching,
       ]
       self.somethingConnected = true
     }
@@ -982,14 +1018,17 @@ struct ViewState {
       connectedGlasses = [
         "model_name": self.defaultWearable,
         "battery_life": self.batteryLevel,
-        "headUp_angle": self.headUpAngle,
-        "brightness": self.autoBrightness ? "AUTO" : "\(self.brightness)%",
-        "auto_brightness": self.autoBrightness,
-        "dashboard_height": self.dashboardHeight,
-        "is_searching": self.isSearching,
       ]
       self.somethingConnected = true
     }
+
+    glassesSettings = [
+        "brightness": self.autoBrightness ? "AUTO" : "\(self.brightness)%",
+        "auto_brightness": self.autoBrightness,
+        "dashboard_height": self.dashboardHeight,
+        "depth": self.depth,
+        "headUp_angle": self.headUpAngle,
+    ]
     
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"
     
@@ -999,15 +1038,17 @@ struct ViewState {
       "default_wearable": self.defaultWearable as Any,
       "force_core_onboard_mic": self.useOnboardMic,
       "preferred_mic": self.preferredMic,
+      "is_searching": self.isSearching,
       // only on if recording from glasses:
       // todo: this isn't robust:
-      "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses"),
+      "is_mic_enabled_for_frontend": self.micEnabled && (self.preferredMic == "glasses") && self.somethingConnected,
       "sensing_enabled": self.sensingEnabled,
       "always_on_status_bar": self.alwaysOnStatusBar,
       "bypass_vad_for_debugging": self.bypassVad,
       "bypass_audio_encoding_for_debugging": self.bypassAudioEncoding,
       "core_token": self.coreToken,
       "puck_connected": true,
+      "metric_system_enabled": self.metricSystemEnabled,
     ]
     
     // hardcoded list of apps:
@@ -1034,6 +1075,7 @@ struct ViewState {
     
     let statusObj: [String: Any] = [
       "connected_glasses": connectedGlasses,
+      "glasses_settings": glassesSettings,
       "apps": apps,
       "core_info": coreInfo,
       "auth": authObj
@@ -1126,8 +1168,10 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager?.RN_setDashboardPosition(dashboardHeight)
-      try? await Task.sleep(nanoseconds: 400_000_000) // 1 second
+      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+      try? await Task.sleep(nanoseconds: 400_000_000)
+      // self.g1Manager?.RN_setDepth(depth)
+      // try? await Task.sleep(nanoseconds: 400_000_000)
 //      playStartupSequence()
       sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -1217,10 +1261,12 @@ struct ViewState {
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
     static let dashboardHeight = "dashboardHeight"
+    static let depth = "depth"
     static let alwaysOnStatusBar = "alwaysOnStatusBar"
     static let bypassVad = "bypassVad"
     static let bypassAudioEncoding = "bypassAudioEncoding"
     static let preferredMic = "preferredMic"
+    static let metricSystemEnabled = "metricSystemEnabled"
   }
   
   private func saveSettings() {
@@ -1247,10 +1293,12 @@ struct ViewState {
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
+    defaults.set(depth, forKey: SettingsKeys.depth)
     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
     defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
     defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
     defaults.set(preferredMic, forKey: SettingsKeys.preferredMic)
+    defaults.set(metricSystemEnabled, forKey: SettingsKeys.metricSystemEnabled)
     
     // Force immediate save (optional, as UserDefaults typically saves when appropriate)
     defaults.synchronize()
@@ -1268,6 +1316,7 @@ struct ViewState {
     UserDefaults.standard.register(defaults: [SettingsKeys.preferredMic: "glasses"])
     UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
     UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
+    UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
     
     let defaults = UserDefaults.standard
     
@@ -1279,11 +1328,13 @@ struct ViewState {
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
+    depth = defaults.integer(forKey: SettingsKeys.depth)
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
     headUpAngle = defaults.integer(forKey: SettingsKeys.headUpAngle)
     brightness = defaults.integer(forKey: SettingsKeys.brightness)
+    metricSystemEnabled = defaults.bool(forKey: SettingsKeys.metricSystemEnabled)
   
     // Mark settings as loaded and signal completion
     self.settingsLoaded = true

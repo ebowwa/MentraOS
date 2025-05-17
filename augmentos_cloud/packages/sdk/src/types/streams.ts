@@ -34,6 +34,8 @@ export enum StreamType {
   
   // Video streams
   VIDEO = 'video',
+  PHOTO_REQUEST = 'photo_request',
+  VIDEO_STREAM_REQUEST = 'video_stream_request',
   
   // Special subscription types
   ALL = 'all',
@@ -92,6 +94,8 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   [StreamType.CORE_STATUS_UPDATE]: StreamCategory.SYSTEM,
   
   [StreamType.VIDEO]: StreamCategory.HARDWARE,
+  [StreamType.PHOTO_REQUEST]: StreamCategory.HARDWARE,
+  [StreamType.VIDEO_STREAM_REQUEST]: StreamCategory.HARDWARE,
   
   [StreamType.ALL]: StreamCategory.SYSTEM,
   [StreamType.WILDCARD]: StreamCategory.SYSTEM,

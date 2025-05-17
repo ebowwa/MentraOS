@@ -66,6 +66,25 @@ export interface MicrophoneStateChange extends BaseMessage {
 }
 
 /**
+ * Photo request to glasses
+ */
+export interface PhotoRequestToGlasses extends BaseMessage {
+  type: CloudToGlassesMessageType.PHOTO_REQUEST;
+  userSession: Partial<UserSession>;
+  requestId: string;
+  appId: string;
+  saveToGallery?: boolean;
+}
+
+/**
+ * Video stream request to glasses
+ */
+export interface VideoStreamRequestToGlasses extends BaseMessage {
+  type: CloudToGlassesMessageType.VIDEO_STREAM_REQUEST;
+  userSession: Partial<UserSession>;
+  appId: string;
+}
+/**
  * Settings update to glasses
  */
 export interface SettingsUpdate extends BaseMessage {
@@ -74,6 +93,7 @@ export interface SettingsUpdate extends BaseMessage {
   settings: {
     useOnboardMic: boolean;
     contextualDashboard: boolean;
+    metricSystemEnabled: boolean;
     headUpAngle: number;
     brightness: number;
     autoBrightness: boolean;
@@ -81,7 +101,6 @@ export interface SettingsUpdate extends BaseMessage {
     alwaysOnStatusBar: boolean;
     bypassVad: boolean;
     bypassAudioEncoding: boolean;
-    enablePhoneNotifications: boolean;
   };
 }
 
@@ -95,6 +114,8 @@ export type CloudToGlassesMessage =
   | DisplayEvent
   | AppStateChange
   | MicrophoneStateChange
+  | PhotoRequestToGlasses
+  | VideoStreamRequestToGlasses
   | SettingsUpdate;
 
 //===========================================================
@@ -132,4 +153,12 @@ export function isAppStateChange(message: CloudToGlassesMessage): message is App
 
 export function isMicrophoneStateChange(message: CloudToGlassesMessage): message is MicrophoneStateChange {
   return message.type === CloudToGlassesMessageType.MICROPHONE_STATE_CHANGE;
+}
+
+export function isPhotoRequest(message: CloudToGlassesMessage): message is PhotoRequestToGlasses {
+  return message.type === CloudToGlassesMessageType.PHOTO_REQUEST;
+}
+
+export function isVideoStreamRequest(message: CloudToGlassesMessage): message is VideoStreamRequestToGlasses {
+  return message.type === CloudToGlassesMessageType.VIDEO_STREAM_REQUEST;
 }
