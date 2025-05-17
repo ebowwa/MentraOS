@@ -75,7 +75,7 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
   // Show loading state while getting the URL
   if (!appStoreUrl) {
     return (
-      <View style={[styles.loadingOverlay, { backgroundColor: theme.backgroundColor }]}>
+      <View style={[styles.loadingOverlay, { backgroundColor: '#fff' }]}>
         <ActivityIndicator size="large" color={theme.primaryColor} />
         <Text style={[styles.loadingText, { color: theme.textColor }]}>
           Preparing App Store...
@@ -105,7 +105,7 @@ const AppStoreWeb: React.FC<AppStoreWebProps> = ({ isDarkTheme, route }) => {
             domStorageEnabled={true}
             startInLoadingState={true}
             renderLoading={() => (
-              <View style={styles.loadingOverlay}>
+              <View style={[styles.loadingOverlay, { backgroundColor: '#fff' }]}>
                 <ActivityIndicator size="large" color={theme.primaryColor} />
                 <Text style={[styles.loadingText, { color: theme.textColor }]}>
                   Loading App Store...
