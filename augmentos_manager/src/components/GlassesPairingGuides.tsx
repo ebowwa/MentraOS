@@ -1,7 +1,7 @@
 // GlassesPairingGuides.tsx
 
 import React from 'react';
-import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from 'react-native';
+import {View, Text, StyleSheet, Image, TouchableOpacity, Linking, ScrollView} from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
@@ -74,50 +74,55 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({isDa
 
   return (
     <View style={styles.guideContainer}>
-      <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Live</Text>
+      <ScrollView style={{flex: 1}}>
+        <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Live [Beta]</Text>
 
-      <Text style={[styles.guideStep, {color: textColor}]}>
+        {/* <Text style={[styles.guideStep, {color: textColor}]}>
         1. Make sure your Mentra Live is fully charged and turned on.
       </Text>
       <Text style={[styles.guideStep, {color: textColor}]}>
         2. Make sure your Mentra Live is not already paired to a different device.
-      </Text>
+      </Text> */}
 
-      {/* Product image would go here */}
-      <Image
-        source={require('../assets/glasses/mentra_live.png')}
-        style={styles.guideImage}
-        // Fallback if image doesn't exist
-        onError={e => console.log('Image failed to load')}
-      />
-      {/* Feature highlights */}
-      <View style={[styles.featuresContainer, {backgroundColor: isDarkTheme ? '#222' : '#ccc'}]}>
-        <View style={styles.featureItem}>
-          <FontAwesome name="camera" size={24} color={primaryColor} />
-          <Text style={[styles.featureText, {color: textColor}]}>Camera</Text>
+        {/* Product image would go here */}
+        <Image
+          source={require('../assets/glasses/mentra_live.png')}
+          style={styles.guideImage}
+          // Fallback if image doesn't exist
+          onError={e => console.log('Image failed to load')}
+        />
+        {/* Feature highlights */}
+        <View style={[styles.featuresContainer]}>
+          <View style={[styles.featuresRow]}>
+            <View style={styles.featureItem}>
+              <FontAwesome name="camera" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Camera</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <FontAwesome name="microphone" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Microphone</Text>
+            </View>
+          </View>
+          <View style={[styles.featuresRow]}>
+            <View style={styles.featureItem}>
+              <FontAwesome name="volume-up" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Speakers</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <FontAwesome name="bluetooth" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Bluetooth</Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.featureItem}>
-          <FontAwesome name="microphone" size={24} color={primaryColor} />
-          <Text style={[styles.featureText, {color: textColor}]}>Microphone</Text>
-        </View>
-        <View style={styles.featureItem}>
-          <FontAwesome name="volume-up" size={24} color={primaryColor} />
-          <Text style={[styles.featureText, {color: textColor}]}>Speakers</Text>
-        </View>
-        <View style={styles.featureItem}>
-          <FontAwesome name="bluetooth" size={24} color={primaryColor} />
-          <Text style={[styles.featureText, {color: textColor}]}>Bluetooth</Text>
-        </View>
-      </View>
 
-      {/* Marketing description */}
-      <Text style={[styles.guideDescription, {color: textColor}]}>
-        Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see, you
-        can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
-        developers creating the next generation of augmented reality experiences.
-      </Text>
+        {/* Marketing description */}
+        <Text style={[styles.guideDescription, {color: textColor}]}>
+          Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see,
+          you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
+          developers creating the next generation of augmented reality experiences.
+        </Text>
+      </ScrollView>
 
-      {/* Pricing and buy button */}
       <View style={styles.buySection}>
         <View style={styles.pricingContainer}>
           <Text style={[styles.originalPrice, {color: textColor}]}>$269</Text>
@@ -241,19 +246,23 @@ const styles = StyleSheet.create({
     marginVertical: 15,
   },
   featuresContainer: {
+    backgroundColor: '#ccc',
+    flexDirection: 'column',
+    alignItems: 'center',
+    borderRadius: 16,
+    padding: 12,
+    paddingLeft: 36,
+  },
+  featuresRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    flexWrap: 'wrap',
-    marginTop: 15,
-    marginBottom: 15,
-    padding: 8,
-    borderRadius: 16,
   },
   featureItem: {
-    width: '48%',
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'center',
     marginBottom: 12,
+    flex: 1,
   },
   featureText: {
     marginLeft: 10,

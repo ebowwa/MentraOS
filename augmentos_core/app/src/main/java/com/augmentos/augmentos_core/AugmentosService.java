@@ -1190,23 +1190,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             // Adding glasses settings
             JSONObject glassesSettings = new JSONObject();
             glassesSettings.put("auto_brightness", autoBrightness);
-            glassesSettings.put("headUp_angle", headUpAngle);
+            glassesSettings.put("head_up_angle", headUpAngle);
             glassesSettings.put("dashboard_height", 4);// TODO
             glassesSettings.put("depth", 5);// TODO
-
-            String brightnessString;
             if (brightnessLevel == null) {
-                brightnessString = "-";
-            } else if (brightnessLevel == -1){
-                brightnessString = "AUTO";
-            } else {
-                brightnessString = brightnessLevel + "%";
+                brightnessLevel = 50;
             }
-            connectedGlasses.put("brightness", brightnessString);
+            glassesSettings.put("brightness", brightnessLevel);
             if (headUpAngle == null) {
                 headUpAngle = 20;
             }
-            connectedGlasses.put("headUp_angle", headUpAngle);
+            glassesSettings.put("head_up_angle", headUpAngle);
             status.put("glasses_settings", glassesSettings);
             
             
@@ -1753,6 +1747,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.brightnessLevel = brightness;
         this.autoBrightness = false;
         sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override
@@ -1763,6 +1758,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
         this.autoBrightness = autoBrightness;
         sendStatusToBackend();
+        sendStatusToAugmentOsManager();
     }
 
     @Override

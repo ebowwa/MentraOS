@@ -723,7 +723,7 @@ struct ViewState {
       case forgetSmartGlasses = "forget_smart_glasses"
       case startApp = "start_app"
       case stopApp = "stop_app"
-      case updateGlassesHeadUpAngle = "update_glasses_headUp_angle"
+      case updateGlassesHeadUpAngle = "update_glasses_head_up_angle"
       case updateGlassesBrightness = "update_glasses_brightness"
       case updateGlassesDashboardHeight = "update_glasses_dashboard_height"
       case updateGlassesDepth = "update_glasses_depth"
@@ -848,7 +848,7 @@ struct ViewState {
           break
         case .updateGlassesHeadUpAngle:
           guard let params = params, let value = params["headUpAngle"] as? Int else {
-            print("update_glasses_headUp_angle invalid params")
+            print("update_glasses_head_up_angle invalid params")
             break
           }
           self.headUpAngle = value
@@ -1028,7 +1028,7 @@ struct ViewState {
         "auto_brightness": self.autoBrightness,
         "dashboard_height": self.dashboardHeight,
         "depth": self.depth,
-        "headUp_angle": self.headUpAngle,
+        "head_up_angle": self.headUpAngle,
     ]
     
     let cloudConnectionStatus = self.serverComms.isWebSocketConnected() ? "CONNECTED" : "DISCONNECTED"

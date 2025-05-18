@@ -168,20 +168,11 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
       : styles.connectButton;
   };
 
-  let b = parseInt(status?.glasses_settings?.brightness);
-  if (isNaN(b)) {
-    b = 50;
-  }
-
   let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true);
-  let [brightness, setBrightness] = useState(b);
+  let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50);
   
   useEffect(() => {
-    let b = parseInt(status?.glasses_settings?.brightness);
-    if (isNaN(b)) {
-      b = 50;
-    }
-    setBrightness(b);
+    setBrightness(status?.glasses_settings?.brightness ?? 50);
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true);
   }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness]);
 
