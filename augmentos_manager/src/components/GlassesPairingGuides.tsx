@@ -74,69 +74,71 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({isDa
 
   return (
     <View style={styles.guideContainer}>
-      <ScrollView style={{flex: 1}}>
-        <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Live [Beta]</Text>
+      <View style={{flex: 1, justifyContent: 'space-between', flexDirection: 'column'}}>
+        {/* <ScrollView style={{}} nestedScrollEnabled={true}> */}
+          <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Live [Beta]</Text>
 
-        {/* <Text style={[styles.guideStep, {color: textColor}]}>
+          {/* <Text style={[styles.guideStep, {color: textColor}]}>
         1. Make sure your Mentra Live is fully charged and turned on.
-      </Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        2. Make sure your Mentra Live is not already paired to a different device.
-      </Text> */}
-
-        {/* Product image would go here */}
-        <Image
-          source={require('../assets/glasses/mentra_live.png')}
-          style={styles.guideImage}
-          // Fallback if image doesn't exist
-          onError={e => console.log('Image failed to load')}
-        />
-        {/* Feature highlights */}
-        <View style={[styles.featuresContainer]}>
-          <View style={[styles.featuresRow]}>
-            <View style={styles.featureItem}>
-              <FontAwesome name="camera" size={24} color={primaryColor} />
-              <Text style={[styles.featureText, {color: textColor}]}>Camera</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <FontAwesome name="microphone" size={24} color={primaryColor} />
-              <Text style={[styles.featureText, {color: textColor}]}>Microphone</Text>
-            </View>
-          </View>
-          <View style={[styles.featuresRow]}>
-            <View style={styles.featureItem}>
-              <FontAwesome name="volume-up" size={24} color={primaryColor} />
-              <Text style={[styles.featureText, {color: textColor}]}>Speakers</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <FontAwesome name="bluetooth" size={24} color={primaryColor} />
-              <Text style={[styles.featureText, {color: textColor}]}>Bluetooth</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Marketing description */}
-        <Text style={[styles.guideDescription, {color: textColor}]}>
-          Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see,
-          you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
-          developers creating the next generation of augmented reality experiences.
         </Text>
-      </ScrollView>
+        <Text style={[styles.guideStep, {color: textColor}]}>
+        2. Make sure your Mentra Live is not already paired to a different device.
+        </Text> */}
 
-      <View style={styles.buySection}>
-        <View style={styles.pricingContainer}>
-          <Text style={[styles.originalPrice, {color: textColor}]}>$269</Text>
-          <Text style={styles.currentPrice}>$219</Text>
+          {/* Product image would go here */}
+          <Image
+            source={require('../assets/glasses/mentra_live.png')}
+            style={styles.guideImage}
+            // Fallback if image doesn't exist
+            onError={e => console.log('Image failed to load')}
+          />
+          {/* Feature highlights */}
+          <View style={[styles.featuresContainer]}>
+            <View style={[styles.featuresRow]}>
+              <View style={styles.featureItem}>
+                <FontAwesome name="camera" size={24} color={primaryColor} />
+                <Text style={[styles.featureText, {color: textColor}]}>Camera</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <FontAwesome name="microphone" size={24} color={primaryColor} />
+                <Text style={[styles.featureText, {color: textColor}]}>Microphone</Text>
+              </View>
+            </View>
+            <View style={[styles.featuresRow]}>
+              <View style={styles.featureItem}>
+                <FontAwesome name="volume-up" size={24} color={primaryColor} />
+                <Text style={[styles.featureText, {color: textColor}]}>Speakers</Text>
+              </View>
+              <View style={styles.featureItem}>
+                <FontAwesome name="bluetooth" size={24} color={primaryColor} />
+                <Text style={[styles.featureText, {color: textColor}]}>Bluetooth</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Marketing description */}
+          <Text style={[styles.guideDescription, {color: textColor}]}>
+            Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see,
+            you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
+            developers creating the next generation of augmented reality experiences.
+          </Text>
+        {/* </ScrollView> */}
+
+        <View style={styles.buySection}>
+          <View style={styles.pricingContainer}>
+            <Text style={[styles.originalPrice, {color: textColor}]}>$269</Text>
+            <Text style={styles.currentPrice}>$219</Text>
+          </View>
+
+          <TouchableOpacity
+            style={[styles.buyButton, {backgroundColor: primaryColor}]}
+            onPress={() => {
+              Linking.openURL('https://mentra.glass/live');
+            }}>
+            <Text style={styles.buyButtonText}>PREORDER NOW</Text>
+            <Text style={styles.shippingText}>Ships September 2025</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity
-          style={[styles.buyButton, {backgroundColor: primaryColor}]}
-          onPress={() => {
-            Linking.openURL('https://mentra.glass/live');
-          }}>
-          <Text style={styles.buyButtonText}>PREORDER NOW</Text>
-          <Text style={styles.shippingText}>Ships September 2025</Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
@@ -273,8 +275,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderTopWidth: 1,
     borderTopColor: '#ddd',
-    paddingTop: 20,
-    paddingBottom: 20,
   },
   pricingContainer: {
     flexDirection: 'row',
