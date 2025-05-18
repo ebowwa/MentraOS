@@ -319,7 +319,6 @@ export class WebSocketService {
 
         // Log detailed information about the upgrade request
         logger.debug({
-          msg: 'WebSocket upgrade request received',
           path: url.pathname,
           headers: {
             host: request.headers.host,
@@ -330,86 +329,80 @@ export class WebSocketService {
             secWebSocketVersion: request.headers['sec-websocket-version']
           },
           remoteAddress: request.socket.remoteAddress
-        });
+        }, 'WebSocket upgrade request received');
 
         if (url.pathname === '/glasses-ws') {
-          logger.debug({ msg: 'Processing glasses-ws upgrade request' });
+          logger.debug({}, 'Processing glasses-ws upgrade request');
 
           try {
             this.glassesWss.handleUpgrade(request, socket, head, ws => {
-              logger.debug({ msg: 'Glasses WebSocket upgrade successful' });
+              logger.debug({}, 'Glasses WebSocket upgrade successful');
               this.glassesWss.emit('connection', ws, request);
             });
           } catch (upgradeError) {
             logger.error({
-              msg: 'Failed to upgrade glasses WebSocket connection',
               error: upgradeError
-            });
+            }, 'Failed to upgrade glasses WebSocket connection');
             socket.destroy();
           }
 
         } else if (url.pathname === '/tpa-ws') {
-          logger.debug({ msg: 'Processing tpa-ws upgrade request' });
+          logger.debug({}, 'Processing tpa-ws upgrade request');
 
           try {
             this.tpaWss.handleUpgrade(request, socket, head, ws => {
-              logger.debug({ msg: 'TPA WebSocket upgrade successful' });
+              logger.debug({}, 'TPA WebSocket upgrade successful');
               this.tpaWss.emit('connection', ws, request);
             });
           } catch (upgradeError) {
             logger.error({
-              msg: 'Failed to upgrade TPA WebSocket connection',
               error: upgradeError
-            });
+            }, 'Failed to upgrade TPA WebSocket connection');
             socket.destroy();
           }
 
         } else {
           logger.debug({
-            msg: 'Unknown WebSocket path, destroying socket',
             path: url.pathname
-          });
+          }, 'Unknown WebSocket path, destroying socket');
           socket.destroy();
         }
       } catch (error) {
         logger.error({
-          msg: 'Error in WebSocket upgrade handler',
           error,
           url: request.url
-        });
+        }, 'Error in WebSocket upgrade handler');
         socket.destroy();
       }
     });
 
     // Glasses connection handler with enhanced error logging
     this.glassesWss.on('connection', (ws, request) => {
-      logger.info({ msg: 'New glasses WebSocket connection established' });
+      logger.info({}, 'New glasses WebSocket connection established');
 
       this.handleGlassesConnection(ws, request).catch(error => {
         logger.error({
-          msg: 'Error handling glasses connection',
           error: {
             name: error.name,
             message: error.message,
             stack: error.stack
           }
-        });
+        }, 'Error handling glasses connection');
       });
     });
 
     // TPA connection handler with enhanced error logging
     this.tpaWss.on('connection', (ws, request) => {
-      logger.info({ msg: 'New TPA WebSocket connection established' });
+      logger.info({}, 'New TPA WebSocket connection established');
 
       this.handleTpaConnection(ws, request).catch(error => {
         logger.error({
-          msg: 'Error handling TPA connection',
           error: {
             name: error.name,
             message: error.message,
             stack: error.stack
           }
-        });
+        }, 'Error handling TPA connection');
       });
     });
   }
@@ -613,7 +606,7 @@ export class WebSocketService {
 
     // Store pending session.
     userSession.loadingApps.add(packageName);
-    userSession.logger.debug({ loadingApps: userSession.loadingApps }, `[websocket.service]: Current Loading Apps:`,);
+    userSession.logger.debug({ loadingApps: userSession.loadingApps }, '[websocket.service]: Current Loading Apps');
 
     try {
       // Trigger TPA webhook 
@@ -1607,11 +1600,10 @@ export class WebSocketService {
 
       if (isBinary) {
         logger.warn({
-          msg: 'Received unexpected binary message from TPA',
           binaryLength: data instanceof Buffer ? data.length : 'unknown',
           userSessionId,
           currentAppSession
-        });
+        }, 'Received unexpected binary message from TPA');
         return;
       }
 
@@ -1619,40 +1611,36 @@ export class WebSocketService {
         // Log the raw message for debugging (truncated for safety)
         const messageStr = data.toString();
         logger.debug({
-          msg: 'Received TPA message data',
           dataLength: messageStr.length,
           dataSample: messageStr.length > 100 ? messageStr.substring(0, 100) + '...' : messageStr,
           userSessionId,
           currentAppSession
-        });
+        }, 'Received TPA message data');
 
         const message = JSON.parse(messageStr) as TpaToCloudMessage;
 
         logger.debug({
-          msg: 'Parsed TPA message',
           messageType: message.type,
           packageName: message.packageName,
           sessionId: message.sessionId
-        });
+        }, 'Parsed TPA message');
 
         if (message.sessionId) {
           userSessionId = message.sessionId.split('-')[0];
-          logger.debug({ msg: 'Extracted user session ID', userSessionId });
+          logger.debug({ userSessionId }, 'Extracted user session ID');
 
           userSession = this.getSessionService().getSession(userSessionId);
 
           if (userSession) {
             logger.debug({
-              msg: 'Retrieved user session',
               userId: userSession.userId,
               sessionId: userSession.sessionId
-            });
+            }, 'Retrieved user session');
           } else {
             logger.warn({
-              msg: 'User session not found',
               userSessionId,
               messageSessionId: message.sessionId
-            });
+            }, 'User session not found');
           }
         }
 

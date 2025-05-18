@@ -28,7 +28,7 @@ const RECONNECT_GRACE_PERIOD_MS = 1000 * 30; // 30 seconds
 const LOG_AUDIO = false;
 const DEBUG_AUDIO = false;
 export const IS_LC3 = false;
-const logger = rootLogger.child({ module: 'session.service' });
+const logger = rootLogger.child({ service: 'session.service' });
 
 logger.info("🔈🔈🔈🔈🔈🔈🔈🔈 IS_LC3", IS_LC3);
 

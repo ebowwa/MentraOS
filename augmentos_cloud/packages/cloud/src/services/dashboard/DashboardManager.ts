@@ -86,7 +86,7 @@ export class DashboardManager {
   private userSession: ExtendedUserSession;
 
   // child logger for this manager
-  private logger: Logger;// = logger.child({ module: 'DashboardManager', sessionId: this.userSession.sessionId });
+  private logger: Logger;// = logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
 
   /**
    * Create a new DashboardManager for a specific user session
@@ -109,7 +109,7 @@ export class DashboardManager {
     // this.startUpdateInterval();
 
     // Create a child logger for this manager
-    this.logger = userSession.logger.child({ module: 'DashboardManager', sessionId: this.userSession.sessionId });
+    this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
     this.logger.info(`Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
 
   }

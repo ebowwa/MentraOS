@@ -45,7 +45,7 @@ import path from 'path';
 import * as mongoConnection from "./connections/mongodb.connection";
 // import { logger } from "@augmentos/utils";
 import { logger as rootLogger } from './services/logging/pino-logger';
-const logger = rootLogger.child({ module: 'index' });
+const logger = rootLogger.child({ service: 'index' });
 
 // Initialize MongoDB connection
 mongoConnection.init()
