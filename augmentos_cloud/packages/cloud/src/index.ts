@@ -16,7 +16,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 // Import services
-import { healthMonitorService } from './services/core/health-monitor.service';
+// import { healthMonitorService } from './services/core/health-monitor.service'; // TODO(isaiah): Deprecated, replaced by HeartbeatManager. 
 import { photoRequestService } from './services/core/photo-request.service';
 import { DebugService } from './services/debug/debug-service';
 import { SessionService, initializeSessionService } from './services/core/session.service';

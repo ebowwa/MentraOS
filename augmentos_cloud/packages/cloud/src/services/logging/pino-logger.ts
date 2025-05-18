@@ -23,8 +23,8 @@ const prettyTransport = pino.transport({
     colorize: true,
     translateTime: 'SYS:standard',
     // translateTime: 'mm/dd/yyyy, hh:MM:ss TT',
-    ignore: 'pid,hostname,env,service,module',
-    messageFormat: '{module}:\n{msg}',
+    ignore: 'pid,hostname,env,module,server',
+    messageFormat: '{msg}',
     errorProps: '*',
     customPrettifiers: {
       // Add custom prettifiers here if needed

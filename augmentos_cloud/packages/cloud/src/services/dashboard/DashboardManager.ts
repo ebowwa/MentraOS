@@ -22,7 +22,7 @@ import {
   TpaToCloudMessage,
   UserSession
 } from '@augmentos/sdk';
-import { logger } from '@augmentos/utils';
+import { logger as rootLogger } from '../logging/pino-logger';
 import { systemApps } from '../core/system-apps';
 import { ExtendedUserSession } from '../core/session.service';
 import { Logger } from 'pino';
@@ -110,7 +110,7 @@ export class DashboardManager {
 
     // Create a child logger for this manager
     this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
-    this.logger.info(`Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
+    this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
 
   }
 
@@ -160,7 +160,7 @@ export class DashboardManager {
           return false; // Not a dashboard message
       }
     } catch (error) {
-      this.logger.error('Error handling dashboard message', error);
+      this.logger.error({ error }, `Error handling dashboard message`);
       return false;
     }
   }
@@ -172,7 +172,7 @@ export class DashboardManager {
   public handleTpaDisconnected(packageName: string): void {
     // Clean up content when a TPA disconnects
     this.cleanupAppContent(packageName);
-    logger.info(`Cleaned up dashboard content for disconnected TPA: ${packageName}`);
+    this.logger.info({ packageName }, `Cleaned up dashboard content for disconnected TPA: ${packageName}`);
   }
 
   /**
@@ -182,10 +182,10 @@ export class DashboardManager {
   public handleDashboardContentUpdate(message: DashboardContentUpdate): void {
     const { packageName, content, modes, timestamp } = message;
 
-    this.logger.debug(`Dashboard content update from ${packageName}`, {
+    this.logger.debug({
       modes,
       timestamp: new Date(timestamp).toISOString()
-    });
+    }, `Dashboard content update from ${packageName} for modes [${modes.join(', ')}]`);
 
     // Track if we need to update the always-on dashboard
     let alwaysOnUpdated = false;
@@ -226,11 +226,11 @@ export class DashboardManager {
 
     // Only allow system dashboard to change mode
     if (packageName !== systemApps.dashboard.packageName) {
-      this.logger.warn(`Unauthorized dashboard mode change from ${packageName}`);
+      this.logger.warn({ packageName }, `Unauthorized dashboard mode change attempt from ${packageName}`);
       return;
     }
 
-    this.logger.info(`Dashboard mode changed to ${mode}`);
+    this.logger.info({ mode }, `Dashboard mode changed to ${mode}`);
 
     // Update mode
     this.setDashboardMode(mode);
@@ -245,11 +245,11 @@ export class DashboardManager {
 
     // Only allow system dashboard to update system sections
     if (packageName !== systemApps.dashboard.packageName) {
-      this.logger.warn(`Unauthorized system dashboard update from ${packageName}`);
+      this.logger.warn({ packageName, section }, `Unauthorized system dashboard update attempt for section ${section} from ${packageName}`);
       return;
     }
 
-    this.logger.debug(`System dashboard update for ${section} from ${packageName}`);
+    this.logger.debug({ section, contentLength: content?.length || 0 }, `System dashboard section '${section}' updated from ${packageName}`);
 
     // Update the appropriate section
     this.systemContent[section] = content;
@@ -262,16 +262,17 @@ export class DashboardManager {
    * Update regular dashboard display based on current mode and content
    */
   private updateDashboard(): void {
-    this.logger.debug(`🔄 Dashboard update triggered for session ${this.userSession.sessionId}`, {
+    this.logger.debug({
+      sessionId: this.userSession.sessionId,
       currentMode: this.currentMode,
       mainContentCount: this.mainContent.size,
       expandedContentCount: this.expandedContent.size,
       userDatetime: this.userSession.userDatetime
-    });
+    }, 'Dashboard update triggered');
     
     // Skip if mode is none
     if (this.currentMode === 'none') {
-      this.logger.debug(`⏭️ Dashboard update skipped - mode is 'none'`);
+      this.logger.debug({}, `[${this.userSession.userId}] Dashboard update skipped - mode is none`);
       return;
     }
 
@@ -281,15 +282,15 @@ export class DashboardManager {
 
       switch (this.currentMode) {
         case DashboardMode.MAIN:
-          this.logger.debug(`📊 Generating MAIN dashboard layout`);
+          this.logger.debug({}, `[${this.userSession.userId}] Generating MAIN dashboard layout`);
           layout = this.generateMainLayout();
           break;
         case DashboardMode.EXPANDED:
-          this.logger.debug(`📊 Generating EXPANDED dashboard layout`);
+          this.logger.debug({}, `[${this.userSession.userId}] Generating EXPANDED dashboard layout`);
           layout = this.generateExpandedLayout();
           break;
         default:
-          this.logger.warn(`⏭️ Unknown dashboard mode: ${this.currentMode}`);
+          this.logger.warn({ mode: this.currentMode }, `[${this.userSession.userId}] Unknown dashboard mode: ${this.currentMode}`);
           return;
       }
 
@@ -306,17 +307,15 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      this.logger.error('❌ Error updating dashboard', error);
-      
-      // Log more details about the current state to help with debugging
-      this.logger.error('Dashboard state during error:', {
+      this.logger.error({ 
+        error,
         currentMode: this.currentMode,
         systemContentIsEmpty: Object.values(this.systemContent).every(v => !v),
         systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
         systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
         mainContentCount: this.mainContent.size,
         expandedContentCount: this.expandedContent.size
-      });
+      }, 'Error updating dashboard');
     }
   }
   
@@ -325,20 +324,21 @@ export class DashboardManager {
    * This runs independently of the regular dashboard views
    */
   private updateAlwaysOnDashboard(): void {
-    this.logger.info(`🔄 Always-on dashboard update triggered for session ${this.userSession.sessionId}`, {
+    this.logger.info({
+      sessionId: this.userSession.sessionId,
       alwaysOnEnabled: this.alwaysOnEnabled,
       alwaysOnContentCount: this.alwaysOnContent.size
-    });
+    }, 'Always-on dashboard update triggered');
     
     // Skip if always-on is disabled
     if (!this.alwaysOnEnabled) {
-      this.logger.info(`⏭️ Always-on dashboard update skipped - disabled`);
+      this.logger.info({}, `[${this.userSession.userId}] Always-on dashboard update skipped - disabled`);
       return;
     }
 
     try {
       // Generate always-on layout
-      this.logger.info(`📊 Generating ALWAYS_ON dashboard layout`);
+      this.logger.info({}, `[${this.userSession.userId}] Generating ALWAYS_ON dashboard layout`);
       const layout = this.generateAlwaysOnLayout();
 
       // Create a display request specifically for always-on with the new view type
@@ -358,17 +358,15 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       // this.sendDisplayRequest(displayRequest);
       // this.logger.info(`✅ Always-on dashboard updated successfully`);
-      this.logger.warn('\n\n⚠️⚠️⚠️⚠️ Always-on dashboard update is not yet implemented in the client. Not sending display request. ⚠️⚠️⚠️⚠️\n\n');
+      this.logger.warn({}, 'Always-on dashboard update is not yet implemented in the client');
     } catch (error) {
-      this.logger.error('❌ Error updating always-on dashboard', error);
-      
-      // Log more details about the always-on state to help with debugging
-      this.logger.error('Always-on dashboard state during error:', {
+      this.logger.error({
+        error,
         alwaysOnEnabled: this.alwaysOnEnabled,
         systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
         systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
         alwaysOnContentCount: this.alwaysOnContent.size
-      });
+      }, 'Error updating always-on dashboard');
     }
   }
 
@@ -379,36 +377,38 @@ export class DashboardManager {
   private sendDisplayRequest(displayRequest: DisplayRequest): void {
     try {
       // Add detailed logging to track what we're sending
-      this.logger.debug(`🔍 Sending dashboard display request to session ${this.userSession.sessionId}`, {
-        displayRequest,
-
-      });
+      this.logger.debug({
+        sessionId: this.userSession.sessionId,
+        packageName: displayRequest.packageName,
+        layoutType: displayRequest.layout.layoutType,
+        view: displayRequest.view
+      }, 'Sending dashboard display request');
       
       // Log the actual content being sent
       if (displayRequest.layout.layoutType === LayoutType.DOUBLE_TEXT_WALL) {
         const layout = displayRequest.layout as any;
-        this.logger.debug(`📋 Content for DoubleTextWall:`, {
+        this.logger.debug({
           leftSide: layout.topText?.substring(0, 50) + (layout.topText?.length > 50 ? '...' : ''),
           rightSide: layout.bottomText?.substring(0, 50) + (layout.bottomText?.length > 50 ? '...' : '')
-        });
+        }, 'Content for DoubleTextWall');
       } else if (displayRequest.layout.layoutType === LayoutType.TEXT_WALL) {
         const layout = displayRequest.layout as any;
-        this.logger.debug(`📋 Content for TextWall:`, {
+        this.logger.debug({
           text: layout.text?.substring(0, 100) + (layout.text?.length > 100 ? '...' : '')
-        });
+        }, 'Content for TextWall');
       } else if (displayRequest.layout.layoutType === LayoutType.DASHBOARD_CARD) {
         const layout = displayRequest.layout as any;
-        this.logger.debug(`📋 Content for DashboardCard:`, {
+        this.logger.debug({
           leftText: layout.leftText?.substring(0, 50) + (layout.leftText?.length > 50 ? '...' : ''),
           rightText: layout.rightText?.substring(0, 50) + (layout.rightText?.length > 50 ? '...' : '')
-        });
+        }, 'Content for DashboardCard');
       }
       
       // Use the DisplayManager to send the display request
       this.userSession.displayManager.handleDisplayEvent(displayRequest, this.userSession);
-      this.logger.info(`✅ Successfully sent dashboard display request`);
+      this.logger.info({ packageName: displayRequest.packageName }, 'Dashboard display request sent successfully');
     } catch (error) {
-      this.logger.error(`❌ Error sending dashboard display request`, error);
+      this.logger.error({ error }, 'Error sending dashboard display request');
     }
   }
 
@@ -627,7 +627,7 @@ export class DashboardManager {
       this.updateAlwaysOnDashboard();
     }
     
-    this.logger.info(`Cleaned up dashboard content for TPA: ${packageName}`);
+    this.logger.info({ packageName }, 'Cleaned up dashboard content for TPA');
   }
 
   /**
@@ -660,7 +660,7 @@ export class DashboardManager {
     // Update state
     this.alwaysOnEnabled = enabled;
     
-    this.logger.info(`Always-on dashboard ${enabled ? 'enabled' : 'disabled'} for session ${this.userSession.sessionId}`);
+    this.logger.info({ enabled, sessionId: this.userSession.sessionId }, `Always-on dashboard ${enabled ? 'enabled' : 'disabled'}`);
 
     // Notify TPAs of state change
     const alwaysOnMessage = {
@@ -681,7 +681,7 @@ export class DashboardManager {
     } else {
       // If disabled, send a clear command for the always-on view
       // This ensures the always-on dashboard is removed from display
-      this.logger.info(`Clearing always-on dashboard for session ${this.userSession.sessionId}`);
+      this.logger.info({ sessionId: this.userSession.sessionId }, 'Clearing always-on dashboard');
       
       // Send an empty layout to clear the always-on view
       const clearRequest: DisplayRequest = {
@@ -718,11 +718,11 @@ export class DashboardManager {
             ws.send(JSON.stringify(tpaMessage));
           }
         } catch (error) {
-          this.logger.error(`Error sending dashboard message to TPA ${packageName}`, error);
+          this.logger.error({ error, packageName }, 'Error sending dashboard message to TPA');
         }
       });
     } catch (error) {
-      this.logger.error(`Error broadcasting dashboard message`, error);
+      this.logger.error({ error }, 'Error broadcasting dashboard message');
     }
   }
 
@@ -757,6 +757,6 @@ export class DashboardManager {
     this.expandedContent.clear();
     this.alwaysOnContent.clear();
 
-    logger.info('Dashboard Manager disposed');
+    this.logger.info({}, 'Dashboard Manager disposed');
   }
 }
