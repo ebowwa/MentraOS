@@ -149,16 +149,14 @@ const GlassesPairingGuidePreparationScreen: React.FC<GlassesPairingGuidePreparat
       
       // Cross-platform permissions needed for both iOS and Android
 
-      if (!glassesModelName.includes("Simulated")) {
-        const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH);
-        if (!hasBluetoothPermission) {
-          showAlert(
-            'Bluetooth Permission Required',
-            'Bluetooth permission is required to connect to smart glasses.',
-            [{ text: 'OK' }]
-          );
-          return; // Stop the connection process
-        }
+      const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH);
+      if (!hasBluetoothPermission) {
+        showAlert(
+          'Bluetooth Permission Required',
+          'Bluetooth permission is required to connect to smart glasses.',
+          [{ text: 'OK' }]
+        );
+        return; // Stop the connection process
       }
       
       // Request microphone permission (needed for both platforms)
