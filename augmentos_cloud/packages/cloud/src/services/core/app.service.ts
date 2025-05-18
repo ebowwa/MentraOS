@@ -625,13 +625,6 @@ export class AppService {
   }
 
   /**
-   * Get apps by developer ID
-   */
-  async getAppsByDeveloperId(developerId: string): Promise<AppI[]> {
-    return App.find({ developerId }).lean();
-  }
-
-  /**
    * Get app by package name
    */
   async getAppByPackageName(packageName: string, developerId?: string): Promise<AppI | null> {
@@ -883,6 +876,33 @@ export class AppService {
     app.sharedWithEmails = validEmails;
     await app.save();
     return app.toObject();
+  }
+
+  /**
+   * Get apps by developer ID
+   */
+  async getAppsByDeveloperId(developerId: string): Promise<AppI[]> {
+    return App.find({ developerId }).lean();
+  }
+
+  /**
+   * Get apps shared with a user by email
+   */
+  async getAppsSharedWithEmail(email: string): Promise<AppI[]> {
+    return App.find({ sharedWithEmails: email }).lean();
+  }
+
+  /**
+   * Get apps created by or shared with a user (deduplicated)
+   */
+  async getAppsCreatedOrSharedWith(email: string): Promise<AppI[]> {
+    const createdApps = await this.getAppsByDeveloperId(email);
+    const sharedApps = await this.getAppsSharedWithEmail(email);
+
+    const appMap = new Map<string, AppI>();
+    createdApps.forEach(app => appMap.set(app.packageName, app));
+    sharedApps.forEach(app => appMap.set(app.packageName, app));
+    return Array.from(appMap.values());
   }
 
 }

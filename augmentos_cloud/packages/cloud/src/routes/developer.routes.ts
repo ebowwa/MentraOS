@@ -88,9 +88,11 @@ const getAuthenticatedUser = async (req: Request, res: Response) => {
 const getDeveloperApps = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
-    const apps = await appService.getAppsByDeveloperId(email);
-    
-    res.json(apps);
+
+    // Fetch all apps created by or shared with the user (deduplicated)
+    const allApps = await appService.getAppsCreatedOrSharedWith(email);
+
+    res.json(allApps);
   } catch (error) {
     console.error('Error fetching developer TPAs:', error);
     res.status(500).json({ error: 'Failed to fetch TPAs' });
