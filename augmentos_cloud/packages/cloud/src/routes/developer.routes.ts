@@ -134,6 +134,7 @@ const createApp = async (req: Request, res: Response) => {
       });
     }
     
+    // Pass sharedWithOrganization to service
     const result = await appService.createApp(tpaData, email);
     res.status(201).json(result);
   } catch (error: any) {
@@ -360,6 +361,33 @@ const updateDeveloperProfile = async (req: Request, res: Response) => {
   }
 };
 
+// Add endpoint to update app visibility
+const updateAppVisibility = async (req: Request, res: Response) => {
+  try {
+    const email = (req as DevPortalRequest).developerEmail;
+    const { packageName } = req.params;
+    const { sharedWithOrganization } = req.body;
+    const updatedApp = await appService.updateAppVisibility(packageName, email, sharedWithOrganization);
+    res.json(updatedApp);
+  } catch (error: any) {
+    console.error('Error updating app visibility:', error);
+    res.status(500).json({ error: error.message || 'Failed to update app visibility' });
+  }
+};
+
+// Update sharedWithEmails
+router.patch('/apps/:packageName/share-emails', validateSupabaseToken, async (req, res) => {
+  try {
+    const { packageName } = req.params;
+    const { emails } = req.body;
+    const developerEmail = (req as DevPortalRequest).developerEmail;
+    const updatedApp = await appService.updateSharedWithEmails(packageName, emails, developerEmail);
+    res.json(updatedApp);
+  } catch (error) {
+    res.status(400).json({ error: (error as any).message });
+  }
+});
+
 // ------------- ROUTES REGISTRATION -------------
 
 // Auth routes
@@ -390,5 +418,6 @@ router.post('/apps/:packageName/api-key', validateSupabaseToken, regenerateApiKe
 router.get('/apps/:packageName/share', validateSupabaseToken, getShareableLink);
 router.post('/apps/:packageName/share', validateSupabaseToken, trackSharing);
 router.post('/apps/:packageName/publish', validateSupabaseToken, publishApp);
+router.patch('/apps/:packageName/visibility', validateSupabaseToken, updateAppVisibility);
 
 export default router;

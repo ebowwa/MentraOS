@@ -387,11 +387,27 @@ export class AppService {
         throw new Error(`Invalid tool definitions: ${error.message}`);
       }
     }
-    
+
+    // Determine organization domain if shared
+    let organizationDomain = null;
+    let sharedWithOrganization = false;
+    let visibility: 'private' | 'organization' = 'private';
+    if (appData.sharedWithOrganization) {
+      const emailParts = developerId.split('@');
+      if (emailParts.length === 2) {
+        organizationDomain = emailParts[1].toLowerCase();
+        sharedWithOrganization = true;
+        visibility = 'organization';
+      }
+    }
+
     // Create app
     const app = await App.create({
       ...appData,
       developerId,
+      organizationDomain,
+      sharedWithOrganization,
+      visibility,
       hashedApiKey
     });
 
@@ -403,22 +419,26 @@ export class AppService {
    * Update an app
    */
   async updateApp(packageName: string, appData: any, developerId: string): Promise<AppI> {
-    // Ensure developer owns the app
+    // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
-
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
     }
-
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-
     if (!app.developerId) {
       throw new Error('Developer ID not found for this app');
     }
-
-    if (app.developerId.toString() !== developerId) {
+    const isOwner = app.developerId.toString() === developerId;
+    let isOrgMember = false;
+    if (app.sharedWithOrganization && app.organizationDomain) {
+      const emailParts = developerId.split('@');
+      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
+        isOrgMember = true;
+      }
+    }
+    if (!isOwner && !isOrgMember) {
       throw new Error('You do not have permission to update this app');
     }
     
@@ -461,22 +481,26 @@ export class AppService {
    * Publish an app to the app store
    */
   async publishApp(packageName: string, developerId: string): Promise<AppI> {
-    // Ensure developer owns the app
+    // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
-
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
     }
-
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-
     if (!app.developerId) {
       throw new Error('Developer ID not found for this app');
     }
-
-    if (app.developerId.toString() !== developerId) {
+    const isOwner = app.developerId.toString() === developerId;
+    let isOrgMember = false;
+    if (app.sharedWithOrganization && app.organizationDomain) {
+      const emailParts = developerId.split('@');
+      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
+        isOrgMember = true;
+      }
+    }
+    if (!isOwner && !isOrgMember) {
       throw new Error('You do not have permission to publish this app');
     }
 
@@ -505,26 +529,28 @@ export class AppService {
    * Delete an app
    */
   async deleteApp(packageName: string, developerId: string): Promise<void> {
-    // Ensure developer owns the app
+    // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
-
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
     }
-
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-
     if (!app.developerId) {
       throw new Error('Developer ID not found for this app');
     }
-
-
-    if (app.developerId.toString() !== developerId) {
+    const isOwner = app.developerId.toString() === developerId;
+    let isOrgMember = false;
+    if (app.sharedWithOrganization && app.organizationDomain) {
+      const emailParts = developerId.split('@');
+      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
+        isOrgMember = true;
+      }
+    }
+    if (!isOwner && !isOrgMember) {
       throw new Error('You do not have permission to delete this app');
     }
-
     await App.findOneAndDelete({ packageName });
   }
 
@@ -532,22 +558,26 @@ export class AppService {
    * Regenerate API key for an app
    */
   async regenerateApiKey(packageName: string, developerId: string): Promise<string> {
-    // Ensure developer owns the app
+    // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
-
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
     }
-
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-
     if (!app.developerId) {
       throw new Error('Developer ID not found for this app');
     }
-
-    if (app.developerId.toString() !== developerId) {
+    const isOwner = app.developerId.toString() === developerId;
+    let isOrgMember = false;
+    if (app.sharedWithOrganization && app.organizationDomain) {
+      const emailParts = developerId.split('@');
+      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
+        isOrgMember = true;
+      }
+    }
+    if (!isOwner && !isOrgMember) {
       throw new Error('You do not have permission to update this app');
     }
 
@@ -799,6 +829,57 @@ export class AppService {
       }
       return [];
     }
+  }
+
+  // Add a method to update app visibility
+  async updateAppVisibility(packageName: string, developerId: string, sharedWithOrganization: boolean): Promise<AppI> {
+    // Ensure developer owns the app
+    const app = await App.findOne({ packageName });
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+    if (!developerId || app.developerId.toString() !== developerId) {
+      throw new Error('You do not have permission to update this app');
+    }
+    let organizationDomain = null;
+    let visibility: 'private' | 'organization' = 'private';
+    if (sharedWithOrganization) {
+      const emailParts = developerId.split('@');
+      if (emailParts.length === 2) {
+        organizationDomain = emailParts[1].toLowerCase();
+        visibility = 'organization';
+      }
+    }
+    app.sharedWithOrganization = sharedWithOrganization;
+    app.organizationDomain = organizationDomain;
+    app.visibility = visibility;
+    await app.save();
+    return app;
+  }
+
+  async updateSharedWithEmails(packageName: string, emails: string[], developerId: string): Promise<AppI> {
+    // Ensure developer owns the app or is in the org if shared
+    const app = await App.findOne({ packageName });
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found`);
+    }
+    if (!developerId) {
+      throw new Error('Developer ID is required');
+    }
+    const isOwner = app.developerId.toString() === developerId;
+    let isOrgMember = false;
+    if (app.sharedWithOrganization && app.organizationDomain) {
+      const emailDomain = developerId.split('@')[1]?.toLowerCase();
+      isOrgMember = emailDomain === app.organizationDomain;
+    }
+    if (!isOwner && !isOrgMember) {
+      throw new Error('Not authorized to update sharing list');
+    }
+    // Validate emails (basic)
+    const validEmails = emails.filter(email => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
+    app.sharedWithEmails = validEmails;
+    await app.save();
+    return app.toObject();
   }
 
 }
