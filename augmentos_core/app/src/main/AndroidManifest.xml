@@ -32,6 +32,7 @@
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
   <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
   <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
@@ -116,7 +117,7 @@
           android:exported="false"
           android:foregroundServiceType="camera|microphone" />
     <service android:name="com.augmentos.augmentos_core.AugmentosService"
-        android:foregroundServiceType="connectedDevice|location"
+        android:foregroundServiceType="dataSync"
         android:exported="true"
         android:label="AugmentOS Main"
         android:theme="@style/AppTheme">
@@ -130,6 +131,12 @@
     </service>
     <service android:name=".microphone.MicrophoneService"
         android:foregroundServiceType="microphone"
+        android:exported="false" />
+    <service android:name=".smarterglassesmanager.SmartGlassesManager"
+        android:foregroundServiceType="connectedDevice"
+        android:exported="false" />
+    <service android:name=".LocationSystem"
+        android:foregroundServiceType="location"
         android:exported="false" />
 
     <receiver

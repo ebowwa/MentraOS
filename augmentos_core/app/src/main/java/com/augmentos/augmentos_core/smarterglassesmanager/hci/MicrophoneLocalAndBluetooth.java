@@ -218,9 +218,28 @@ public class MicrophoneLocalAndBluetooth {
     private void stopMicrophoneService(Context context) {
         if (context == null) return;
         
-        Intent intent = new Intent(context, MicrophoneService.class);
-        context.stopService(intent);
-        Log.d(TAG, "Stopped MicrophoneService");
+        // On Android 14 (SDK 34+), we need to ensure the service has enough time to call
+        // startForeground() before stopping it, otherwise we'll get a ForegroundServiceDidNotStartInTimeException
+        
+        try {
+            // Instead of immediately stopping, wait briefly to ensure startForeground() has been called
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.postDelayed(() -> {
+                try {
+                    if (context != null) {
+                        Intent intent = new Intent(context, MicrophoneService.class);
+                        context.stopService(intent);
+                        Log.d(TAG, "Stopped MicrophoneService after delay");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error stopping MicrophoneService", e);
+                }
+            }, 500); // 500ms delay to allow startForeground() to complete
+            
+            Log.d(TAG, "Scheduled MicrophoneService stop with delay");
+        } catch (Exception e) {
+            Log.e(TAG, "Error in delayed MicrophoneService stop", e);
+        }
     }
 
     private void initCountDownTimer() {

@@ -32,8 +32,22 @@ public class MicrophoneService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "Starting MicrophoneService as foreground service");
-        createNotificationChannel();
-        startForeground(NOTIFICATION_ID, createNotification());
+        
+        // On Android 14+, we need to start in foreground immediately
+        // to avoid ForegroundServiceDidNotStartInTimeException
+        try {
+            // Create channel first to ensure notification works
+            createNotificationChannel();
+            
+            // Call startForeground immediately - this is critical for Android 14 (SDK 34)
+            Notification notification = createNotification();
+            startForeground(NOTIFICATION_ID, notification);
+            
+            Log.d(TAG, "Successfully started MicrophoneService in foreground");
+        } catch (Exception e) {
+            Log.e(TAG, "Error starting foreground service", e);
+        }
+        
         return START_NOT_STICKY; // Don't restart if killed
     }
 
