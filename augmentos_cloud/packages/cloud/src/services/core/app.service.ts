@@ -102,8 +102,11 @@ export class AppService {
       // Fetch the apps from the appstore.
       const _appstoreApps = await App.find({ packageName: { $in: _installedApps } }) as AppI[];
 
+      // Fetch apps shared with this user by email
+      const _sharedWithUser = await App.find({ sharedWithEmails: userId }) as AppI[];
+
       // remove duplicates.
-      const _allApps = [..._madeByUser, ..._appstoreApps];
+      const _allApps = [..._madeByUser, ..._appstoreApps, ..._sharedWithUser];
       const _appMap = new Map<string, AppI>();
       _allApps.forEach(app => {
         _appMap.set(app.packageName, app);
