@@ -242,18 +242,19 @@ export default GlassesPairingGuidePreparationScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: 20,
   },
   scrollViewContainer: {
     flex: 1,
   },
   contentContainer: {
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   buttonContainer: {
     alignItems: 'center',
-    marginBottom: 65,
+    marginBottom: 64,
+    marginTop: 16,
   },
   text: {
     fontSize: 16,

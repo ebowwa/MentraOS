@@ -1741,21 +1741,23 @@ export class WebSocketService {
               // Send cached calendar event if app just subscribed to calendar events
               if (isNewCalendarSubscription) {
                 console.log("🔥🔥🔥: isNewCalendarSubscription:", isNewCalendarSubscription);
-                const lastCalendarEvent = subscriptionService.getLastCalendarEvent(userSessionId);
-                if (lastCalendarEvent) {
-                  userSession.logger.info(`Sending cached calendar event to newly subscribed app ${message.packageName}`);
+                const allCalendarEvents = subscriptionService.getAllCalendarEvents(userSessionId);
+                if (allCalendarEvents.length > 0) {
+                  userSession.logger.info(`Sending ${allCalendarEvents.length} cached calendar events to newly subscribed app ${message.packageName}`);
                   const tpaSessionId = `${userSessionId}-${message.packageName}`;
                   const tpaWs = userSession.appConnections.get(message.packageName);
 
                   if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
-                    const dataStream: DataStream = {
-                      type: CloudToTpaMessageType.DATA_STREAM,
-                      sessionId: tpaSessionId,
-                      streamType: StreamType.CALENDAR_EVENT,
-                      data: lastCalendarEvent,
-                      timestamp: new Date()
-                    };
-                    tpaWs.send(JSON.stringify(dataStream));
+                    for (const event of allCalendarEvents) {
+                      const dataStream: DataStream = {
+                        type: CloudToTpaMessageType.DATA_STREAM,
+                        sessionId: tpaSessionId,
+                        streamType: StreamType.CALENDAR_EVENT,
+                        data: event,
+                        timestamp: new Date()
+                      };
+                      tpaWs.send(JSON.stringify(dataStream));
+                    }
                   }
                 }
               }
@@ -1787,6 +1789,31 @@ export class WebSocketService {
                     };
                     tpaWs.send(JSON.stringify(dataStream));
                   }
+                }
+              }
+
+              // Send cached userDatetime if app just subscribed to custom_message
+              const isNewCustomMessageSubscription = subMessage.subscriptions.includes(StreamType.CUSTOM_MESSAGE);
+
+              // console.log('🔥🔥🔥: userSession:', message.packageName);
+              // console.log('🔥🔥🔥: subMessage:', subMessage.subscriptions);
+
+              // console.log('🔥🔥🔥: isNewCustomMessageSubscription:', isNewCustomMessageSubscription);
+              if (isNewCustomMessageSubscription && (userSession as ExtendedUserSession).userDatetime) {
+                userSession.logger.info(`Sending cached userDatetime to app ${message.packageName} on custom_message subscription`);
+                const tpaSessionId = `${userSessionId}-${message.packageName}`;
+                const tpaWs = userSession.appConnections.get(message.packageName);
+                if (tpaWs && tpaWs.readyState === WebSocket.OPEN) {
+                  const customMessage = {
+                    type: CloudToTpaMessageType.CUSTOM_MESSAGE,
+                    action: 'update_datetime',
+                    payload: {
+                      datetime: (userSession as ExtendedUserSession).userDatetime,
+                      section: 'topLeft'
+                    },
+                    timestamp: new Date()
+                  };
+                  tpaWs.send(JSON.stringify(customMessage));
                 }
               }
 
@@ -2445,16 +2472,16 @@ export class WebSocketService {
   /**
    * 😬 Sends an error message to a WebSocket client.
    * @param ws - WebSocket connection
-   * @param error - Error details
+   * @param errorDetails - Object containing the error type and message
    * @private
    */
-  private sendError(ws: WebSocket, error: ConnectionError | AuthError | TpaConnectionError): void {
-    const errorMessage: CloudToGlassesMessage | CloudToTpaMessage = {
-      type: CloudToGlassesMessageType.CONNECTION_ERROR,
-      message: error.message,
+  private sendError(ws: WebSocket, errorDetails: { type: CloudToGlassesMessageType | CloudToTpaMessageType; message: string }): void {
+    const errorMessageToSend = {
+      type: errorDetails.type,
+      message: errorDetails.message,
       timestamp: new Date()
     };
-    ws.send(JSON.stringify(errorMessage));
+    ws.send(JSON.stringify(errorMessageToSend));
   }
 }
 
