@@ -1,8 +1,20 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, ScrollView} from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ActivityIndicator,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import NavigationBar from '../components/NavigationBar';
 import {supabase} from '../supabaseClient';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import BackendServerComms from '../backend_comms/BackendServerComms';
+import { useAuth } from '../AuthContext';
 
 interface ProfileSettingsPageProps {
   isDarkTheme: boolean;
@@ -25,6 +37,8 @@ const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({isDarkTheme, n
   const [passwordMatched, setPasswordMatched] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const {logout} = useAuth();
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -65,10 +79,30 @@ const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({isDarkTheme, n
 
   const handleRequestDataExport = () => {
     console.log('Requesting data export');
+    // BackendServerComms.getInstance().requestDataExport();
+    // show an alert saying the user will receive an email with a link to download the data
+    Alert.alert('Data export requested', 'You will receive an email with a link to download the data.', [
+      {text: 'OK', style: 'default'},
+    ]);
   };
 
   const handleDeleteAccount = () => {
     console.log('Deleting account');
+    Alert.alert('Are you sure you want to delete your account?', 'This action cannot be undone.', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await BackendServerComms.getInstance().requestAccountDeletion();
+          } catch (error) {
+            console.error(error);
+          }
+          await logout();
+        },
+      },
+    ]);
   };
 
   const containerStyle = isDarkTheme ? styles.darkContainer : styles.lightContainer;
