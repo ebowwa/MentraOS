@@ -63,6 +63,14 @@ const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({isDarkTheme, n
     fetchUserData();
   }, []);
 
+  const handleRequestDataExport = () => {
+    console.log('Requesting data export');
+  };
+
+  const handleDeleteAccount = () => {
+    console.log('Deleting account');
+  };
+
   const containerStyle = isDarkTheme ? styles.darkContainer : styles.lightContainer;
   const textStyle = isDarkTheme ? styles.darkText : styles.lightText;
   const profilePlaceholderStyle = isDarkTheme ? styles.darkProfilePlaceholder : styles.lightProfilePlaceholder;
@@ -205,6 +213,14 @@ const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({isDarkTheme, n
                 </TouchableOpacity>
               </View>
             )}
+
+            <TouchableOpacity style={styles.requestDataExportButton} onPress={handleRequestDataExport}>
+              <Text style={styles.deleteAccountButtonText}>Request Data Export</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+              <Text style={styles.deleteAccountButtonText}>Delete Account</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <Text style={textStyle}>Error, while getting User info</Text>
@@ -228,6 +244,24 @@ const styles = StyleSheet.create({
   },
   darkContainer: {
     backgroundColor: '#000000',
+  },
+  deleteAccountButton: {
+    backgroundColor: '#FF0000',
+    padding: 10,
+    borderRadius: 5,
+  },
+  requestDataExportButton: {
+    backgroundColor: '#2196F3',
+    padding: 10,
+    marginTop: 24,
+    marginBottom: 24,
+    borderRadius: 5,
+  },
+  requestDataExportButtonText: {
+    color: '#ffffff',
+  },
+  deleteAccountButtonText: {
+    color: '#ffffff',
   },
   headerContainer: {
     flexDirection: 'row',
