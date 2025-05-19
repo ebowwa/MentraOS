@@ -1024,7 +1024,7 @@ struct ViewState {
     }
 
     glassesSettings = [
-        "brightness": self.autoBrightness ? "AUTO" : "\(self.brightness)%",
+        "brightness": self.brightness,
         "auto_brightness": self.autoBrightness,
         "dashboard_height": self.dashboardHeight,
         "depth": self.depth,
