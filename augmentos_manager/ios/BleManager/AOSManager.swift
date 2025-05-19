@@ -41,7 +41,7 @@ struct ViewState {
   private var headUpAngle = 30;
   private var brightness = 50;
   private var batteryLevel = -1;
-  private var autoBrightness: Bool = false;
+  private var autoBrightness: Bool = true;
   private var dashboardHeight: Int = 4;
   private var depth: Int = 5;
   private var sensingEnabled: Bool = true;
@@ -733,6 +733,7 @@ struct ViewState {
       case bypassAudioEncoding = "bypass_audio_encoding_for_debugging"
       case setServerUrl = "set_server_url"
       case setMetricSystemEnabled = "set_metric_system_enabled"
+      case showDashboard = "show_dashboard"
       case unknown
     }
     
@@ -892,6 +893,10 @@ struct ViewState {
           saveSettings()
           handleRequestStatus()// to update the UI
           break
+        case .showDashboard:
+          Task {
+            await self.g1Manager?.RN_showDashboard()
+          }
         case .updateGlassesDepth:
           guard let params = params, let value = params["depth"] as? Int else {
             print("update_glasses_depth invalid params")
@@ -1169,10 +1174,8 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
-      try? await Task.sleep(nanoseconds: 400_000_000)
-      // self.g1Manager?.RN_setDepth(depth)
-      // try? await Task.sleep(nanoseconds: 400_000_000)
+     self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+     try? await Task.sleep(nanoseconds: 400_000_000)
 //      playStartupSequence()
       sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
@@ -1318,6 +1321,7 @@ struct ViewState {
     UserDefaults.standard.register(defaults: [SettingsKeys.brightness: 50])
     UserDefaults.standard.register(defaults: [SettingsKeys.headUpAngle: 30])
     UserDefaults.standard.register(defaults: [SettingsKeys.metricSystemEnabled: false])
+    UserDefaults.standard.register(defaults: [SettingsKeys.autoBrightness: true])
     
     let defaults = UserDefaults.standard
     

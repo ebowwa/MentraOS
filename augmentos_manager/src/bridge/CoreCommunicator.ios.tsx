@@ -538,6 +538,12 @@ export class CoreCommunicator extends EventEmitter {
     });
   }
 
+  async showDashboard() {
+    return await this.sendData({
+      command: 'show_dashboard',
+    });
+  }
+
   async startAppByPackageName(packageName: string) {
     await this.sendData({
       command: 'start_app',
