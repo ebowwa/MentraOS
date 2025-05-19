@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, ActivityIndicator, TouchableOpacity } from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, ScrollView} from 'react-native';
 import NavigationBar from '../components/NavigationBar';
-import { supabase } from '../supabaseClient';
+import {supabase} from '../supabaseClient';
 import Icon from 'react-native-vector-icons/FontAwesome';
 
 interface ProfileSettingsPageProps {
@@ -9,7 +9,7 @@ interface ProfileSettingsPageProps {
   navigation: any;
 }
 
-const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({ isDarkTheme, navigation }) => {
+const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({isDarkTheme, navigation}) => {
   const [userData, setUserData] = useState<{
     fullName: string | null;
     avatarUrl: string | null;
@@ -19,23 +19,27 @@ const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({ isDarkTheme, 
   } | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordMatched, setPasswordMatched] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   useEffect(() => {
     const fetchUserData = async () => {
       setLoading(true);
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const {
+          data: {user},
+          error,
+        } = await supabase.auth.getUser();
         if (error) {
           console.error(error);
           setUserData(null);
         } else if (user) {
-          const fullName =
-            user.user_metadata?.full_name ||
-            user.user_metadata?.name ||
-            null;
-          const avatarUrl =
-            user.user_metadata?.avatar_url ||
-            user.user_metadata?.picture ||
-            null;
+          const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null;
+          const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
           const email = user.email || null;
           const createdAt = user.created_at || null;
           const provider = user.app_metadata?.provider || null;
@@ -65,76 +69,150 @@ const ProfileSettingsPage: React.FC<ProfileSettingsPageProps> = ({ isDarkTheme, 
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {loading ? (
-        <ActivityIndicator size="large" color={isDarkTheme ? '#ffffff' : '#0000ff'} />
-      ) : userData ? (
-        <>
-          {userData.avatarUrl ? (
-            <Image source={{ uri: userData.avatarUrl }} style={styles.profileImage} />
-          ) : (
-            <View style={[styles.profilePlaceholder, profilePlaceholderStyle]}>
-              <Text style={[styles.profilePlaceholderText, textStyle]}>No Profile Picture</Text>
+      <ScrollView style={[styles.container, containerStyle]} contentContainerStyle={{paddingBottom: 100}}>
+        {loading ? (
+          <ActivityIndicator size="large" color={isDarkTheme ? '#ffffff' : '#0000ff'} />
+        ) : userData ? (
+          <>
+            {userData.avatarUrl ? (
+              <Image source={{uri: userData.avatarUrl}} style={styles.profileImage} />
+            ) : (
+              <View style={[styles.profilePlaceholder, profilePlaceholderStyle]}>
+                <Text style={[styles.profilePlaceholderText, textStyle]}>No Profile Picture</Text>
+              </View>
+            )}
+
+            <View style={styles.infoContainer}>
+              <Text style={[styles.label, textStyle]}>Name:</Text>
+              <Text style={[styles.infoText, textStyle]}>{userData.fullName || 'N/A'}</Text>
             </View>
-          )}
 
-          <View style={styles.infoContainer}>
-            <Text style={[styles.label, textStyle]}>Name:</Text>
-            <Text style={[styles.infoText, textStyle]}>{userData.fullName || 'N/A'}</Text>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <Text style={[styles.label, textStyle]}>Email:</Text>
-            <Text style={[styles.infoText, textStyle]}>{userData.email || 'N/A'}</Text>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <Text style={[styles.label, textStyle]}>Created at:</Text>
-            <Text style={[styles.infoText, textStyle]}>
-              {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : 'N/A'}
-            </Text>
-          </View>
-
-          <View style={styles.infoContainer}>
-            <Text style={[styles.label, textStyle]}>Provider:</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
-              {userData.provider === 'google' && (
-                <>
-                  <Icon name="google" size={18} color={isDarkTheme ? '#fff' : '#4285F4'} />
-                  <View style={{ width: 6 }} />
-                </>
-              )}
-              {userData.provider === 'apple' && (
-                <>
-                  <Icon name="apple" size={18} color={isDarkTheme ? '#fff' : '#000'} />
-                  <View style={{ width: 6 }} />
-                </>
-              )}
-              {userData.provider === 'facebook' && (
-                <>
-                  <Icon name="facebook" size={18} color="#4267B2" />
-                  <View style={{ width: 6 }} />
-                </>
-              )}
-              {!userData.provider && (
-                <>
-                  <Icon name="envelope" size={18} color={isDarkTheme ? '#fff' : '#666'} />
-                  <View style={{ width: 6 }} />
-                  <Text style={[styles.infoText, textStyle]}>N/A</Text>
-                </>
-              )}
-             
+            <View style={styles.infoContainer}>
+              <Text style={[styles.label, textStyle]}>Email:</Text>
+              <Text style={[styles.infoText, textStyle]}>{userData.email || 'N/A'}</Text>
             </View>
-          </View>
-        </>
-      ) : (
-        <Text style={textStyle}>Error, while getting User info</Text>
-      )}
+
+            <View style={styles.infoContainer}>
+              <Text style={[styles.label, textStyle]}>Created at:</Text>
+              <Text style={[styles.infoText, textStyle]}>
+                {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : 'N/A'}
+              </Text>
+            </View>
+
+            <View style={styles.infoContainer}>
+              <Text style={[styles.label, textStyle]}>Provider:</Text>
+              <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
+                {userData.provider === 'google' && (
+                  <>
+                    <Icon name="google" size={18} color={isDarkTheme ? '#fff' : '#4285F4'} />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+                {userData.provider === 'apple' && (
+                  <>
+                    <Icon name="apple" size={18} color={isDarkTheme ? '#fff' : '#000'} />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+                {userData.provider === 'facebook' && (
+                  <>
+                    <Icon name="facebook" size={18} color="#4267B2" />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+                {userData.provider === 'email' && (
+                  <>
+                    <Icon name="envelope" size={18} color={isDarkTheme ? '#fff' : '#666'} />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+              </View>
+            </View>
+
+            {userData.provider == 'email' && (
+              <TouchableOpacity
+                onPress={() => setShowChangePassword(!showChangePassword)}
+                style={styles.changePasswordButton}>
+                <Text style={styles.changePasswordButtonText}>Change Password</Text>
+              </TouchableOpacity>
+            )}
+
+            {showChangePassword && (
+              <View style={styles.passwordChangeContainer}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>New Password</Text>
+                  <View style={styles.enhancedInputContainer}>
+                    <Icon name="lock" size={16} color="#6B7280" style={styles.inputIcon} />
+                    <TextInput
+                      hitSlop={{top: 16, bottom: 16}}
+                      style={styles.enhancedInput}
+                      placeholder="Enter new password"
+                      value={newPassword}
+                      autoCapitalize="none"
+                      onChangeText={text => {
+                        setNewPassword(text);
+                        setPasswordMatched(text === confirmPassword);
+                      }}
+                      secureTextEntry={!showNewPassword}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                    <TouchableOpacity
+                      hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
+                      onPress={() => setShowNewPassword(!showNewPassword)}>
+                      <Icon name={showNewPassword ? 'eye' : 'eye-slash'} size={18} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Confirm Password</Text>
+                  <View style={styles.enhancedInputContainer}>
+                    <Icon name="lock" size={16} color="#6B7280" style={styles.inputIcon} />
+                    <TextInput
+                      hitSlop={{top: 16, bottom: 16}}
+                      style={styles.enhancedInput}
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      autoCapitalize="none"
+                      onChangeText={text => {
+                        setConfirmPassword(text);
+                        setPasswordMatched(text === newPassword);
+                      }}
+                      secureTextEntry={!showConfirmPassword}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                    <TouchableOpacity
+                      hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                      <Icon name={showConfirmPassword ? 'eye' : 'eye-slash'} size={18} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.updatePasswordButton,
+                    passwordMatched ? styles.activeUpdatePasswordButton : styles.disabledUpdatePasswordButton,
+                  ]}
+                  disabled={!passwordMatched}
+                  onPress={() => {
+                    console.log('Password updated:', newPassword);
+                    setShowChangePassword(false);
+                    setNewPassword('');
+                    setConfirmPassword('');
+                  }}>
+                  <Text style={styles.updatePasswordButtonText}>Update Password</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
+        ) : (
+          <Text style={textStyle}>Error, while getting User info</Text>
+        )}
+      </ScrollView>
 
       <View style={styles.navigationBarContainer}>
-        <NavigationBar
-          toggleTheme={() => {}}
-          isDarkTheme={isDarkTheme}
-        />
+        <NavigationBar toggleTheme={() => {}} isDarkTheme={isDarkTheme} />
       </View>
     </View>
   );
@@ -177,6 +255,9 @@ const styles = StyleSheet.create({
   darkText: {
     color: '#ffffff',
   },
+  inputGroup: {
+    marginBottom: 16,
+  },
   profileImage: {
     width: 100,
     height: 100,
@@ -218,6 +299,69 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+  },
+  changePasswordButton: {
+    alignSelf: 'auto',
+    marginVertical: 10,
+  },
+  changePasswordButtonText: {
+    fontSize: 16,
+    color: '#2196F3',
+    textDecorationLine: 'underline',
+  },
+  passwordChangeContainer: {
+    marginVertical: 20,
+  },
+  updatePasswordButton: {
+    marginTop: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  activeUpdatePasswordButton: {
+    backgroundColor: '#2196F3',
+  },
+  disabledUpdatePasswordButton: {
+    backgroundColor: '#cccccc',
+  },
+  updatePasswordButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 8,
+    fontFamily: 'Montserrat-Medium',
+  },
+  enhancedInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 48,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  inputIcon: {
+    marginRight: 12,
+  },
+  enhancedInput: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: 'Montserrat-Regular',
+    color: '#111827',
   },
 });
 
