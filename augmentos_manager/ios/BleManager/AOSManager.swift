@@ -43,7 +43,7 @@ struct ViewState {
   private var batteryLevel = -1;
   private var autoBrightness: Bool = true;
   private var dashboardHeight: Int = 4;
-  private var depth: Int = 5;
+  private var dashboardDepth: Int = 5;
   private var sensingEnabled: Bool = true;
   private var isSearching: Bool = true;
   private var alwaysOnStatusBar: Bool = false;
@@ -885,7 +885,7 @@ struct ViewState {
           }
           self.dashboardHeight = value
           Task {
-            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
             // sendText("Set dashboard position to \(value)")
             // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
             // sendText(" ")// clear screen
@@ -902,13 +902,9 @@ struct ViewState {
             print("update_glasses_depth invalid params")
             break
           }
-          self.depth = value
+          self.dashboardDepth = value
           Task {
-            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
-            // sendText("Set dashboard position to \(value)")
-            // try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
-            // sendText(" ")// clear screen
-            // todo: update the depth
+            await self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
           }
           saveSettings()
         case .enableSensing:
@@ -1032,7 +1028,7 @@ struct ViewState {
         "brightness": self.brightness,
         "auto_brightness": self.autoBrightness,
         "dashboard_height": self.dashboardHeight,
-        "depth": self.depth,
+        "dashboard_depth": self.dashboardDepth,
         "head_up_angle": self.headUpAngle,
     ]
     
@@ -1174,7 +1170,7 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-     self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.depth)
+      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
      try? await Task.sleep(nanoseconds: 400_000_000)
 //      playStartupSequence()
       sendText("// AUGMENTOS CONNECTED")
@@ -1265,7 +1261,7 @@ struct ViewState {
     static let autoBrightness = "autoBrightness"
     static let sensingEnabled = "sensingEnabled"
     static let dashboardHeight = "dashboardHeight"
-    static let depth = "depth"
+    static let dashboardDepth = "dashboardDepth"
     static let alwaysOnStatusBar = "alwaysOnStatusBar"
     static let bypassVad = "bypassVad"
     static let bypassAudioEncoding = "bypassAudioEncoding"
@@ -1297,7 +1293,7 @@ struct ViewState {
     defaults.set(autoBrightness, forKey: SettingsKeys.autoBrightness)
     defaults.set(sensingEnabled, forKey: SettingsKeys.sensingEnabled)
     defaults.set(dashboardHeight, forKey: SettingsKeys.dashboardHeight)
-    defaults.set(depth, forKey: SettingsKeys.depth)
+    defaults.set(dashboardDepth, forKey: SettingsKeys.dashboardDepth)
     defaults.set(alwaysOnStatusBar, forKey: SettingsKeys.alwaysOnStatusBar)
     defaults.set(bypassVad, forKey: SettingsKeys.bypassVad)
     defaults.set(bypassAudioEncoding, forKey: SettingsKeys.bypassAudioEncoding)
@@ -1333,7 +1329,7 @@ struct ViewState {
     autoBrightness = defaults.bool(forKey: SettingsKeys.autoBrightness)
     sensingEnabled = defaults.bool(forKey: SettingsKeys.sensingEnabled)
     dashboardHeight = defaults.integer(forKey: SettingsKeys.dashboardHeight)
-    depth = defaults.integer(forKey: SettingsKeys.depth)
+    dashboardDepth = defaults.integer(forKey: SettingsKeys.dashboardDepth)
     alwaysOnStatusBar = defaults.bool(forKey: SettingsKeys.alwaysOnStatusBar)
     bypassVad = defaults.bool(forKey: SettingsKeys.bypassVad)
     bypassAudioEncoding = defaults.bool(forKey: SettingsKeys.bypassAudioEncoding)
