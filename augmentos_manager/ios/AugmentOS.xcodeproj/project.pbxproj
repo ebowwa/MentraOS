@@ -7,16 +7,16 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		00E356F31AD99517003FC87E /* AugmentOS_ManagerTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* AugmentOS_ManagerTests.m */; };
+		00E356F31AD99517003FC87E /* AugmentOSTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 00E356F21AD99517003FC87E /* AugmentOSTests.m */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		15F4DB6E1F1A7D6673F04FF1 /* libPods-AugmentOS_Manager.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 1CFF0227A892A40A1C4AC637 /* libPods-AugmentOS_Manager.a */; };
+		2C6E2ACD5A866041DFC29A4C /* libPods-AugmentOS-AugmentOSTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = AA0326F611A4F0F4FBBE7ABA /* libPods-AugmentOS-AugmentOSTests.a */; };
 		30C6EEA65F2C40649EF067EB /* Montserrat-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 7BFAFAC57807483494D4A11A /* Montserrat-Bold.ttf */; };
 		4EED8A3312A7C8A950492018 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = FE140319366160A1E25CF788 /* PrivacyInfo.xcprivacy */; };
 		59E61647C0F7495D97C990AD /* Montserrat-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2217E0C51BEC4E8E87F34504 /* Montserrat-Regular.ttf */; };
-		603FB0CDA0CB59322C3505D6 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 7B4315DBC5CFD1EFBECBFF06 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		9DD2E831CD1117E102F9252F /* libPods-AugmentOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 578833B5B52BF706D8BA80F8 /* libPods-AugmentOS.a */; };
 		C51385B92D7F6DFE00710042 /* VADType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385A22D7F6DFE00710042 /* VADType.swift */; };
 		C51385BA2D7F6DFE00710042 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385AC2D7F6DFE00710042 /* Configuration.swift */; };
 		C51385BB2D7F6DFE00710042 /* VADStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C51385A12D7F6DFE00710042 /* VADStrategy.swift */; };
@@ -72,25 +72,29 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		00E356EE1AD99517003FC87E /* AugmentOS_ManagerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AugmentOS_ManagerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		00E356EE1AD99517003FC87E /* AugmentOSTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AugmentOSTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		00E356F11AD99517003FC87E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		00E356F21AD99517003FC87E /* AugmentOS_ManagerTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AugmentOS_ManagerTests.m; sourceTree = "<group>"; };
+		00E356F21AD99517003FC87E /* AugmentOSTests.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AugmentOSTests.m; sourceTree = "<group>"; };
 		0BB9B4E34B2187FA1E9F3DE2 /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig"; sourceTree = "<group>"; };
-		13B07F961A680F5B00A75B9A /* AugmentOS_Manager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentOS_Manager.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		111B227623D50BFA15913EC7 /* Pods-AugmentOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS.debug.xcconfig"; path = "Target Support Files/Pods-AugmentOS/Pods-AugmentOS.debug.xcconfig"; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* AugmentOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = AugmentOS_Manager/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = AugmentOS_Manager/AppDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = AugmentOS_Manager/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = AugmentOS_Manager/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = AugmentOS_Manager/main.m; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = AugmentOS_Manager/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		1CFF0227A892A40A1C4AC637 /* libPods-AugmentOS_Manager.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AugmentOS_Manager.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		1B4A0C720C2CC15906C10425 /* Pods-AugmentOS-AugmentOSTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS-AugmentOSTests.debug.xcconfig"; path = "Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests.debug.xcconfig"; sourceTree = "<group>"; };
 		2217E0C51BEC4E8E87F34504 /* Montserrat-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Regular.ttf"; path = "../src/assets/fonts/Montserrat-Regular.ttf"; sourceTree = "<group>"; };
+		256A9E5BBC920F18C66034B6 /* Pods-AugmentOS-AugmentOSTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS-AugmentOSTests.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests.release.xcconfig"; sourceTree = "<group>"; };
+		305B6FD1175E1545623975CB /* Pods-AugmentOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS/Pods-AugmentOS.release.xcconfig"; sourceTree = "<group>"; };
 		3BE21BF318A2EF469959B54D /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager-AugmentOS_ManagerTests.debug.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests.debug.xcconfig"; sourceTree = "<group>"; };
-		7B4315DBC5CFD1EFBECBFF06 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		578833B5B52BF706D8BA80F8 /* libPods-AugmentOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AugmentOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7BFAFAC57807483494D4A11A /* Montserrat-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Bold.ttf"; path = "../src/assets/fonts/Montserrat-Bold.ttf"; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = AugmentOS_Manager/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		833029AF6BED9854BF3A24E2 /* Pods-AugmentOS_Manager.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager.release.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager.release.xcconfig"; sourceTree = "<group>"; };
 		8ED6F1C558E4155DF97D5615 /* Pods-AugmentOS_Manager.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AugmentOS_Manager.debug.xcconfig"; path = "Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager.debug.xcconfig"; sourceTree = "<group>"; };
+		AA0326F611A4F0F4FBBE7ABA /* libPods-AugmentOS-AugmentOSTests.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-AugmentOS-AugmentOSTests.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C513859F2D7F6DFE00710042 /* VADQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADQuality.swift; sourceTree = "<group>"; };
 		C51385A02D7F6DFE00710042 /* VADState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADState.swift; sourceTree = "<group>"; };
 		C51385A12D7F6DFE00710042 /* VADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADStrategy.swift; sourceTree = "<group>"; };
@@ -167,7 +171,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				603FB0CDA0CB59322C3505D6 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a in Frameworks */,
+				2C6E2ACD5A866041DFC29A4C /* libPods-AugmentOS-AugmentOSTests.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,20 +179,20 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				15F4DB6E1F1A7D6673F04FF1 /* libPods-AugmentOS_Manager.a in Frameworks */,
+				9DD2E831CD1117E102F9252F /* libPods-AugmentOS.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		00E356EF1AD99517003FC87E /* AugmentOS_ManagerTests */ = {
+		00E356EF1AD99517003FC87E /* AugmentOSTests */ = {
 			isa = PBXGroup;
 			children = (
-				00E356F21AD99517003FC87E /* AugmentOS_ManagerTests.m */,
+				00E356F21AD99517003FC87E /* AugmentOSTests.m */,
 				00E356F01AD99517003FC87E /* Supporting Files */,
 			);
-			path = AugmentOS_ManagerTests;
+			path = AugmentOSTests;
 			sourceTree = "<group>";
 		};
 		00E356F01AD99517003FC87E /* Supporting Files */ = {
@@ -199,7 +203,7 @@
 			name = "Supporting Files";
 			sourceTree = "<group>";
 		};
-		13B07FAE1A68108700A75B9A /* AugmentOS_Manager */ = {
+		13B07FAE1A68108700A75B9A /* AugmentOS */ = {
 			isa = PBXGroup;
 			children = (
 				C5DC28DD2D70EC5100B3F8D3 /* BleManager */,
@@ -214,15 +218,15 @@
 				C5DC29822D77936900B3F8D3 /* CoreCommsService.m */,
 				C5DC29842D77938700B3F8D3 /* CoreCommsService.swift */,
 			);
-			name = AugmentOS_Manager;
+			name = AugmentOS;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				1CFF0227A892A40A1C4AC637 /* libPods-AugmentOS_Manager.a */,
-				7B4315DBC5CFD1EFBECBFF06 /* libPods-AugmentOS_Manager-AugmentOS_ManagerTests.a */,
+				578833B5B52BF706D8BA80F8 /* libPods-AugmentOS.a */,
+				AA0326F611A4F0F4FBBE7ABA /* libPods-AugmentOS-AugmentOSTests.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -239,9 +243,9 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* AugmentOS_Manager */,
+				13B07FAE1A68108700A75B9A /* AugmentOS */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
-				00E356EF1AD99517003FC87E /* AugmentOS_ManagerTests */,
+				00E356EF1AD99517003FC87E /* AugmentOSTests */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
@@ -255,8 +259,8 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* AugmentOS_Manager.app */,
-				00E356EE1AD99517003FC87E /* AugmentOS_ManagerTests.xctest */,
+				13B07F961A680F5B00A75B9A /* AugmentOS.app */,
+				00E356EE1AD99517003FC87E /* AugmentOSTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -277,6 +281,10 @@
 				833029AF6BED9854BF3A24E2 /* Pods-AugmentOS_Manager.release.xcconfig */,
 				3BE21BF318A2EF469959B54D /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.debug.xcconfig */,
 				0BB9B4E34B2187FA1E9F3DE2 /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */,
+				111B227623D50BFA15913EC7 /* Pods-AugmentOS.debug.xcconfig */,
+				305B6FD1175E1545623975CB /* Pods-AugmentOS.release.xcconfig */,
+				1B4A0C720C2CC15906C10425 /* Pods-AugmentOS-AugmentOSTests.debug.xcconfig */,
+				256A9E5BBC920F18C66034B6 /* Pods-AugmentOS-AugmentOSTests.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -427,9 +435,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		00E356ED1AD99517003FC87E /* AugmentOS_ManagerTests */ = {
+		00E356ED1AD99517003FC87E /* AugmentOSTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "AugmentOS_ManagerTests" */;
+			buildConfigurationList = 00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "AugmentOSTests" */;
 			buildPhases = (
 				0BDD33CD4B31C5A60DA0AF41 /* [CP] Check Pods Manifest.lock */,
 				00E356EA1AD99517003FC87E /* Sources */,
@@ -443,14 +451,14 @@
 			dependencies = (
 				00E356F51AD99517003FC87E /* PBXTargetDependency */,
 			);
-			name = AugmentOS_ManagerTests;
+			name = AugmentOSTests;
 			productName = AugmentOS_ManagerTests;
-			productReference = 00E356EE1AD99517003FC87E /* AugmentOS_ManagerTests.xctest */;
+			productReference = 00E356EE1AD99517003FC87E /* AugmentOSTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		13B07F861A680F5B00A75B9A /* AugmentOS_Manager */ = {
+		13B07F861A680F5B00A75B9A /* AugmentOS */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AugmentOS_Manager" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AugmentOS" */;
 			buildPhases = (
 				ACA551E4F02016D78160D035 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
@@ -464,9 +472,9 @@
 			);
 			dependencies = (
 			);
-			name = AugmentOS_Manager;
+			name = AugmentOS;
 			productName = AugmentOS_Manager;
-			productReference = 13B07F961A680F5B00A75B9A /* AugmentOS_Manager.app */;
+			productReference = 13B07F961A680F5B00A75B9A /* AugmentOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -486,7 +494,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AugmentOS_Manager" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AugmentOS" */;
 			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -505,8 +513,8 @@
 			);
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* AugmentOS_Manager */,
-				00E356ED1AD99517003FC87E /* AugmentOS_ManagerTests */,
+				13B07F861A680F5B00A75B9A /* AugmentOS */,
+				00E356ED1AD99517003FC87E /* AugmentOSTests */,
 			);
 		};
 /* End PBXProject section */
@@ -568,7 +576,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-AugmentOS-AugmentOSTests-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -581,15 +589,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS/Pods-AugmentOS-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS/Pods-AugmentOS-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS/Pods-AugmentOS-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		72D6B7CCDEEC15EA7AA89F57 /* [CP] Copy Pods Resources */ = {
@@ -598,15 +606,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		ACA551E4F02016D78160D035 /* [CP] Check Pods Manifest.lock */ = {
@@ -624,7 +632,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-AugmentOS_Manager-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-AugmentOS-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -637,15 +645,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS/Pods-AugmentOS-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS/Pods-AugmentOS-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager/Pods-AugmentOS_Manager-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS/Pods-AugmentOS-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		EC2BC4C0001FD3C396001F71 /* [CP] Embed Pods Frameworks */ = {
@@ -654,15 +662,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS_Manager-AugmentOS_ManagerTests/Pods-AugmentOS_Manager-AugmentOS_ManagerTests-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-AugmentOS-AugmentOSTests/Pods-AugmentOS-AugmentOSTests-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -672,7 +680,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				00E356F31AD99517003FC87E /* AugmentOS_ManagerTests.m in Sources */,
+				00E356F31AD99517003FC87E /* AugmentOSTests.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -729,7 +737,7 @@
 /* Begin PBXTargetDependency section */
 		00E356F51AD99517003FC87E /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 13B07F861A680F5B00A75B9A /* AugmentOS_Manager */;
+			target = 13B07F861A680F5B00A75B9A /* AugmentOS */;
 			targetProxy = 00E356F41AD99517003FC87E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -737,7 +745,7 @@
 /* Begin XCBuildConfiguration section */
 		00E356F61AD99517003FC87E /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 3BE21BF318A2EF469959B54D /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.debug.xcconfig */;
+			baseConfigurationReference = 1B4A0C720C2CC15906C10425 /* Pods-AugmentOS-AugmentOSTests.debug.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -758,13 +766,13 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AugmentOS_Manager.app/AugmentOS_Manager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AugmentOS.app/AugmentOS";
 			};
 			name = Debug;
 		};
 		00E356F71AD99517003FC87E /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 0BB9B4E34B2187FA1E9F3DE2 /* Pods-AugmentOS_Manager-AugmentOS_ManagerTests.release.xcconfig */;
+			baseConfigurationReference = 256A9E5BBC920F18C66034B6 /* Pods-AugmentOS-AugmentOSTests.release.xcconfig */;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				COPY_PHASE_STRIP = NO;
@@ -782,13 +790,13 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AugmentOS_Manager.app/AugmentOS_Manager";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AugmentOS.app/AugmentOS";
 			};
 			name = Release;
 		};
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8ED6F1C558E4155DF97D5615 /* Pods-AugmentOS_Manager.debug.xcconfig */;
+			baseConfigurationReference = 111B227623D50BFA15913EC7 /* Pods-AugmentOS.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -897,7 +905,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentos;
-				PRODUCT_NAME = AugmentOS_Manager;
+				PRODUCT_NAME = AugmentOS;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AugmentOS_Manager-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -908,7 +916,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 833029AF6BED9854BF3A24E2 /* Pods-AugmentOS_Manager.release.xcconfig */;
+			baseConfigurationReference = 305B6FD1175E1545623975CB /* Pods-AugmentOS.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -1016,7 +1024,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentos;
-				PRODUCT_NAME = AugmentOS_Manager;
+				PRODUCT_NAME = AugmentOS;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AugmentOS_Manager-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
@@ -1187,7 +1195,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "AugmentOS_ManagerTests" */ = {
+		00E357021AD99517003FC87E /* Build configuration list for PBXNativeTarget "AugmentOSTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				00E356F61AD99517003FC87E /* Debug */,
@@ -1196,7 +1204,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AugmentOS_Manager" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "AugmentOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -1205,7 +1213,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AugmentOS_Manager" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "AugmentOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
