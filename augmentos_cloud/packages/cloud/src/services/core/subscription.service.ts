@@ -356,13 +356,18 @@ export class SubscriptionService {
       }
     }
 
-    logger.debug({
-      sessionId,
-      userId: sessionId,
-      requestedSubscription: subscription,
-      subscribedApps,
-      subscriptionMatches
-    }, 'Retrieved subscribed apps for stream');
+    // TODO(isaiah): Wow this is extremly verbose when anything is subscribed to any audio related stream, 
+    // this is a huge issue and points out a big inefficency in the way we're storing subscriptions and calculating what is subscribed to what.
+    // 1. we should refactor this to be a subscription manager attached to a user's session instead of a global service.
+    // 2. we should be caching what streams are subscribed to what apps, so we can quickly look up the apps for a stream without iterating over all subscriptions.
+    
+    // logger.debug({
+    //   sessionId,
+    //   userId: sessionId,
+    //   requestedSubscription: subscription,
+    //   subscribedApps,
+    //   subscriptionMatches
+    // }, 'Retrieved subscribed apps for stream');
 
     return subscribedApps;
   }

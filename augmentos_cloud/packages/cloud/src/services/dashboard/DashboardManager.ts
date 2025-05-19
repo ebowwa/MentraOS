@@ -382,7 +382,7 @@ export class DashboardManager {
         packageName: displayRequest.packageName,
         layoutType: displayRequest.layout.layoutType,
         view: displayRequest.view
-      }, 'Sending dashboard display request');
+      }, `Sending display request for user: ${this.userSession.userId}, package: ${displayRequest.packageName}, view: ${displayRequest.view}`);
       
       // Log the actual content being sent
       if (displayRequest.layout.layoutType === LayoutType.DOUBLE_TEXT_WALL) {
@@ -390,7 +390,7 @@ export class DashboardManager {
         this.logger.debug({
           leftSide: layout.topText?.substring(0, 50) + (layout.topText?.length > 50 ? '...' : ''),
           rightSide: layout.bottomText?.substring(0, 50) + (layout.bottomText?.length > 50 ? '...' : '')
-        }, 'Content for DoubleTextWall');
+        }, `Content for DoubleTextWall layout for user: ${this.userSession.userId} package: ${displayRequest.packageName}`);
       } else if (displayRequest.layout.layoutType === LayoutType.TEXT_WALL) {
         const layout = displayRequest.layout as any;
         this.logger.debug({
@@ -403,10 +403,16 @@ export class DashboardManager {
           rightText: layout.rightText?.substring(0, 50) + (layout.rightText?.length > 50 ? '...' : '')
         }, 'Content for DashboardCard');
       }
-      
+
       // Use the DisplayManager to send the display request
-      this.userSession.displayManager.handleDisplayEvent(displayRequest, this.userSession);
-      this.logger.info({ packageName: displayRequest.packageName }, 'Dashboard display request sent successfully');
+      const sent = this.userSession.displayManager.handleDisplayEvent(displayRequest, this.userSession);
+      if (!sent) {
+        this.logger.warn({ displayRequest }, `Display request not sent - DisplayManager is not ready for user: ${this.userSession.userId}`);
+        return;
+      }
+
+      // Log successful sending
+      this.logger.debug({ packageName: displayRequest.packageName }, `Display request sent successfully for user: ${this.userSession.userId}, package ${displayRequest.packageName}`);
     } catch (error) {
       this.logger.error({ error }, 'Error sending dashboard display request');
     }

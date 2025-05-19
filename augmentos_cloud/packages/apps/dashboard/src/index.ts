@@ -89,6 +89,23 @@ class DashboardServer extends TpaServer {
       timestamp: new Date().toISOString()
     });
     
+    // Check if session already exists, if so clean it up.
+    if (this._activeSessions.has(sessionId)) {
+      logger.warn(`Session ${sessionId} already exists, cleaning up previous session data.`);
+      const existingSession = this._activeSessions.get(sessionId);
+      if (existingSession?.updateInterval) {
+        clearInterval(existingSession.updateInterval);
+        logger.info(`Cleared existing update interval for session ${sessionId}`);
+      }
+      this._activeSessions.delete(sessionId);
+      logger.info(`Previous session data cleaned up for ${sessionId}`);
+    }
+    // Log session creation
+    logger.info(`📊 Initializing dashboard session for user ${userId}`, {
+      sessionId,
+      timestamp: new Date().toISOString()
+    });
+
     // Initialize session metadata
     this._activeSessions.set(sessionId, {
       userId,
@@ -134,6 +151,10 @@ class DashboardServer extends TpaServer {
     // Store the interval reference for cleanup
     const sessionInfo = this._activeSessions.get(sessionId);
     if (sessionInfo) {
+      // if sessionInfo already has an interval, clear it first
+      if (sessionInfo.updateInterval) {
+        clearInterval(sessionInfo.updateInterval);
+      }
       sessionInfo.updateInterval = updateInterval;
       logger.info(`✅ Dashboard update interval scheduled for session ${sessionId}`);
     }

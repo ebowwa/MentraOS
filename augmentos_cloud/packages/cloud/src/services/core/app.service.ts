@@ -7,7 +7,7 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -108,7 +108,7 @@ export class AppService {
       _allApps.forEach(app => {
         _appMap.set(app.packageName, app);
       });
-      
+
       usersApps.push(..._appMap.values());
       // Filter out any that are already in the LOCAL_APPS map since those would have already been fetched.
       usersApps = usersApps.filter(app => !LOCAL_APPS.some(localApp => localApp.packageName === app.packageName));
@@ -139,7 +139,7 @@ export class AppService {
       if (!app) {
         // Check if the app is in the app store
         logger.debug('Checking app store for app:', packageName);
-        
+
         // Use lean() to get a plain JavaScript object instead of a Mongoose document
         app = await App.findOne({
           packageName: packageName
@@ -214,6 +214,30 @@ export class AppService {
       status: response.status,
       data: response.data
     };
+  }
+
+  async triggerStopByPackageName(packageName: string, userId: string): Promise<void> {
+    // Look up the TPA by packageName
+    const app = await this.getApp(packageName);
+    const tpaSessionId = `${userId}-${packageName}`;
+
+    const payload: StopWebhookRequest = {
+      type: WebhookRequestType.STOP_REQUEST,
+      sessionId: tpaSessionId,
+      userId: userId,
+      reason: 'user_disabled',
+      timestamp: new Date().toISOString()
+    }
+
+    if (!app) {
+      throw new Error(`App ${packageName} not found`);
+    }
+
+    if (!app.publicUrl) {
+      throw new Error(`App ${packageName} does not have a public URL`);
+    }
+
+    await this.triggerStopWebhook(app.publicUrl, payload);
   }
 
   isSystemApp(packageName: string, apiKey?: string): boolean {
@@ -319,49 +343,49 @@ export class AppService {
     if (!Array.isArray(tools)) {
       throw new Error('Tools must be an array');
     }
-    
+
     return tools.map(tool => {
       // Validate required fields
       if (!tool.id || typeof tool.id !== 'string') {
         throw new Error('Tool id is required and must be a string');
       }
-      
+
       if (!tool.description || typeof tool.description !== 'string') {
         throw new Error('Tool description is required and must be a string');
       }
-      
+
       // Activation phrases can be null or empty, no validation needed
       // We'll just ensure it's an array if provided
       if (tool.activationPhrases && !Array.isArray(tool.activationPhrases)) {
         throw new Error('Tool activationPhrases must be an array if provided');
       }
-      
+
       // Validate parameters if they exist
       const validatedParameters: Record<string, ToolParameterSchema> = {};
-      
+
       if (tool.parameters) {
         Object.entries(tool.parameters).forEach(([key, param]: [string, any]) => {
           if (!param.type || !['string', 'number', 'boolean'].includes(param.type)) {
             throw new Error(`Parameter ${key} has invalid type. Must be string, number, or boolean`);
           }
-          
+
           if (!param.description || typeof param.description !== 'string') {
             throw new Error(`Parameter ${key} requires a description`);
           }
-          
+
           validatedParameters[key] = {
             type: param.type as 'string' | 'number' | 'boolean',
             description: param.description,
             required: !!param.required
           };
-          
+
           // Add enum values if present
           if (param.enum && Array.isArray(param.enum)) {
             validatedParameters[key].enum = param.enum;
           }
         });
       }
-      
+
       return {
         id: tool.id,
         description: tool.description,
@@ -378,7 +402,7 @@ export class AppService {
     // Generate API key
     const apiKey = crypto.randomBytes(32).toString('hex');
     const hashedApiKey = this.hashApiKey(apiKey);
-    
+
     // Parse and validate tools if present
     if (appData.tools) {
       try {
@@ -387,7 +411,7 @@ export class AppService {
         throw new Error(`Invalid tool definitions: ${error.message}`);
       }
     }
-    
+
     // Create app
     const app = await App.create({
       ...appData,
@@ -421,7 +445,7 @@ export class AppService {
     if (app.developerId.toString() !== developerId) {
       throw new Error('You do not have permission to update this app');
     }
-    
+
     // Parse and validate tools if present
     if (appData.tools) {
       try {
@@ -430,7 +454,7 @@ export class AppService {
         throw new Error(`Invalid tool definitions: ${error.message}`);
       }
     }
-    
+
     // If developerInfo is provided, ensure it's properly structured
     if (appData.developerInfo) {
       // Make sure only valid fields are included
@@ -579,11 +603,11 @@ export class AppService {
    */
   async hashWithApiKey(stringToHash: string, packageName: string): Promise<string> {
     const app = await App.findOne({ packageName });
-    
+
     if (!app || !app.hashedApiKey) {
       throw new Error(`App ${packageName} not found or has no API key`);
     }
-    
+
     // Create a hash using the provided string and the app's hashed API key
     return crypto.createHash('sha256')
       .update(stringToHash)
@@ -657,35 +681,35 @@ export class AppService {
     const app = await this.getApp(packageName);
 
     logger.debug('🔨 Triggering tool webhook for:', packageName);
-    
+
     if (!app) {
       throw new Error(`App ${packageName} not found`);
     }
-    
+
     if (!app.publicUrl) {
       throw new Error(`App ${packageName} does not have a public URL`);
     }
-    
+
     // Get the app document from MongoDB
     const appDoc = await App.findOne({ packageName });
     if (!appDoc) {
       throw new Error(`App ${packageName} not found in database`);
     }
-    
+
     // For security reasons, we can't retrieve the original API key
     // Instead, we'll use a special header that identifies this as a system request
     // The TPA server will need to validate this using the hashedApiKey
-    
+
     // Construct the webhook URL from the app's public URL
     const webhookUrl = `${app.publicUrl}/tool`;
-    
+
     // Set up retry configuration
     const maxRetries = 2;
     const baseDelay = 1000; // 1 second
 
     logger.debug('🔨 Sending tool webhook to:', webhookUrl);
     logger.debug('🔨 Payload:', payload);
-    
+
     // Attempt to send the webhook with retries
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
@@ -696,7 +720,7 @@ export class AppService {
           },
           timeout: 20000 // 10 second timeout
         });
-        
+
         // Return successful response
         return {
           status: response.status,
@@ -716,7 +740,7 @@ export class AppService {
                 data: axiosError.response?.data
               }
             );
-            
+
             // Return a standardized error response
             return {
               status: axiosError.response?.status || 500,
@@ -738,12 +762,12 @@ export class AppService {
             };
           }
         }
-        
+
         // Exponential backoff before retry
         await new Promise(resolve => setTimeout(resolve, baseDelay * Math.pow(2, attempt)));
       }
     }
-    
+
     // This should never be reached due to the error handling above,
     // but TypeScript requires a return value
     return {
@@ -764,17 +788,17 @@ export class AppService {
   async getTpaTools(packageName: string): Promise<ToolSchema[]> {
     // Look up the TPA by packageName
     const app = await this.getApp(packageName);
-    
+
     if (!app) {
       throw new Error(`App ${packageName} not found`);
     }
-    
+
     if (!app.publicUrl) {
       throw new Error(`App ${packageName} does not have a public URL`);
     }
 
     logger.debug('Getting TPA tools for:', packageName);
-    
+
     try {
       // Fetch the tpa_config.json from the app's publicUrl
       const configUrl = `${app.publicUrl}/tpa_config.json`;
@@ -787,7 +811,7 @@ export class AppService {
         logger.debug(`Found ${config.tools.length} tools in ${packageName}, validating...`);
         return this.validateToolDefinitions(config.tools);
       }
-      
+
       // If no tools found, return empty array
       return [];
     } catch (error) {

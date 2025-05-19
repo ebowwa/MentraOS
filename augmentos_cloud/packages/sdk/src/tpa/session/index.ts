@@ -508,7 +508,8 @@ export class TpaSession {
           // https://developer.mozilla.org/en-US/docs/Web/API/CloseEvent/code
           // 1000 (Normal Closure) and 1001 (Going Away) are normal
           // 1002-1015 are abnormal, and reason "App stopped" means intentional closure
-          const isNormalClosure = (code === 1000 || code === 1001);
+          // 1008 usually when the userSession no longer exists on server. i.e user disconnected from cloud.
+          const isNormalClosure = (code === 1000 || code === 1001 || code === 1008);
           const isManualStop = reason && reason.includes('App stopped');
           
           // Log closure details for diagnostics
