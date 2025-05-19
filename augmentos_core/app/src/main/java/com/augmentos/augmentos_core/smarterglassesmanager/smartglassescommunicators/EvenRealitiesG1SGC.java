@@ -2095,6 +2095,30 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         EventBus.getDefault().post(new HeadUpAngleEvent(headUpAngle));
     }
 
+    public void sendDashboardPositionCommand(int height, int depth) {
+        // clamp height and depth to 0-8 and 1-9 respectively:
+        height = Math.max(0, Math.min(height, 8));
+        depth = Math.max(1, Math.min(depth, 9));
+
+        int globalCounter = 0;// TODO: must be incremented each time this command is sent!
+
+        ByteBuffer buffer = ByteBuffer.allocate(8);
+        buffer.put((byte) 0x26);        // Command for dashboard height
+        buffer.put((byte) 0x08);     // Length
+        buffer.put((byte) 0x00);     // Sequence
+        buffer.put((byte) (globalCounter & 0xFF));// counter
+        buffer.put((byte) 0x02);     // Fixed value
+        buffer.put((byte) 0x01);     // State ON
+        buffer.put((byte) height);     // Height value (0-8)
+        buffer.put((byte) depth);     // Depth value (0-9)
+        
+        sendDataSequentially(buffer.array(), false, 100);
+
+        Log.d(TAG, "Sent dashboard height/depth command => Height: " + height + ", Depth: " + depth);
+        // EventBus.getDefault().post(new DashboardPositionEvent(height, depth));
+    }
+    
+
     @Override
     public void updateGlassesBrightness(int brightness) {
         Log.d(TAG, "Updating glasses brightness: " + brightness);
@@ -2111,6 +2135,19 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     public void updateGlassesHeadUpAngle(int headUpAngle) {
         sendHeadUpAngleCommand(headUpAngle);
     }
+
+    @Override
+    public void updateGlassesDashboardHeight(int height) {
+        // TODO: get depth from settings!
+        sendDashboardPositionCommand(height, 0);
+    }
+
+    @Override
+    public void updateGlassesDepth(int depth) {
+        // TODO: get height from settings!
+        sendDashboardPositionCommand(0, depth);
+    }
+    
 
     private static String bytesToHex(byte[] bytes) {
         StringBuilder sb = new StringBuilder();

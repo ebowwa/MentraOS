@@ -1516,6 +1516,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         headUpAngle = settings.getInt("headUpAngle");
                         smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
                     }
+
+                    if (settings.has("dashboardHeight")) {
+                        dashboardHeight = settings.getInt("dashboardHeight");
+                        smartGlassesManager.updateGlassesDashboardHeight(dashboardHeight);
+                    }
+
+                    if (settings.has("depth")) {
+                        depth = settings.getInt("depth");
+                        smartGlassesManager.updateGlassesDepth(depth);
+                    }
+                    
                     // if (settings.has("useOnboardMic")) {
                     //     useOnboardMic = settings.getBoolean("useOnboardMic");
                     //     if (useOnboardMic) {
@@ -1898,6 +1909,33 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             sendStatusToAugmentOsManager();
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
+        }
+    }
+
+    @Override
+    public void updateGlassesDashboardHeight(int dashboardHeight) {
+        Log.d("AugmentOsService", "Updating glasses dashboard height: " + dashboardHeight);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.updateGlassesDashboardHeight(dashboardHeight);
+            this.dashboardHeight = dashboardHeight;
+            sendStatusToBackend();
+            sendStatusToAugmentOsManager();
+        } else {
+            blePeripheral.sendNotifyManager("Connect glasses to update dashboard height", "error");
+        }
+    }
+
+
+    @Override
+    public void updateGlassesDepth(int depth) {
+        Log.d("AugmentOsService", "Updating glasses depth: " + depth);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.updateGlassesDepth(depth);
+            this.depth = depth;
+            sendStatusToBackend();
+            sendStatusToAugmentOsManager();
+        } else {
+            blePeripheral.sendNotifyManager("Connect glasses to update depth", "error");
         }
     }
     
