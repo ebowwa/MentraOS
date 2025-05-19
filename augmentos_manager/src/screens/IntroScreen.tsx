@@ -102,10 +102,10 @@ const IntroScreen: React.FC<IntroScreenProps> = ({navigation}) => {
           </Animated.Text>
           <Animated.View
             style={[styles.header, {opacity, transform: [{translateY}]}]}>
-            <Animated.Image
-              source={require('../assets/AOS.png')}
+            {/* <Animated.Image
+              source={require('assets/AOS.png')}
               style={[styles.image, {opacity, transform: [{translateY}]}]}
-            />
+            /> */}
           </Animated.View>
 
           <Animated.View
