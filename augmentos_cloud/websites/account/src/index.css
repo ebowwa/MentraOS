@@ -1,0 +1,22 @@
+/* Import Cuprum font */
+@import url('https://fonts.googleapis.com/css2?family=Cuprum:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-secondary text-primary;
+  }
+
+  /* Standardize focus styles */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary/50 ring-offset-2;
+  }
+}
+
+/* Add font-cuprum class */
+.font-cuprum {
+  font-family: 'Cuprum', sans-serif;
+}
