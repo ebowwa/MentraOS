@@ -308,7 +308,7 @@ enum GlassesError: Error {
         0x01            // max pages
       ]
       command.append(contentsOf: Array(textData))
-//      self.queueChunks([command])
+      self.queueChunks([command])
     }
     
     // @@@@@@@@ just for testing:
@@ -332,13 +332,13 @@ enum GlassesError: Error {
   
   @objc public func RN_sendTextWall(_ text: String) -> Void {
     let chunks = textHelper.createTextWallChunks(text)
-//    queueChunks(chunks, sleepAfterMs: 50)
+    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   
   @objc public func RN_sendDoubleTextWall(_ top: String, _ bottom: String) -> Void {
     let chunks = textHelper.createDoubleTextWallChunks(textTop: top, textBottom: bottom)
-//    queueChunks(chunks, sleepAfterMs: 50)
+    queueChunks(chunks, sleepAfterMs: 50)
   }
   
   public func setReadiness(left: Bool?, right: Bool?) {
@@ -881,13 +881,13 @@ extension ERG1Manager {
   
   public func sendCommandToSide(_ command: [UInt8], side: String) async {
     // Ensure command is exactly 20 bytes
-    var paddedCommand = command
-    while paddedCommand.count < 20 {
-      paddedCommand.append(0x00)
-    }
+//    var paddedCommand = command
+//    while paddedCommand.count < 20 {
+//      paddedCommand.append(0x00)
+//    }
     
     // Convert to Data
-    let commandData = Data(paddedCommand)
+    let commandData = Data(command)
     //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     if (side == "left") {
@@ -908,40 +908,6 @@ extension ERG1Manager {
         .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
         rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
       }
-    }
-  }
-  
-  
-  public func sendCommand(_ command: [UInt8]) async {
-    // Ensure command is exactly 20 bytes
-    var paddedCommand = command
-    while paddedCommand.count < 20 {
-      paddedCommand.append(0x00)
-    }
-    
-    // Convert to Data
-    let commandData = Data(paddedCommand)
-    //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
-    
-    
-    // send to left
-    if let leftPeripheral = leftPeripheral,
-       let characteristic = leftPeripheral.services?
-      .first(where: { $0.uuid == UART_SERVICE_UUID })?
-      .characteristics?
-      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-      leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
-    }
-    
-    // send to right
-    if let rightPeripheral = rightPeripheral,
-       let characteristic = rightPeripheral.services?
-      .first(where: { $0.uuid == UART_SERVICE_UUID })?
-      .characteristics?
-      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-      rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
     }
   }
   
@@ -1062,56 +1028,7 @@ extension ERG1Manager {
   }
   
   @objc public func RN_showDashboard() {
-    incrementGlobalCounter()
-    
-    print("Attempting to show dashboard!!! \(globalCounter)")
-    // var command = Data()
-    // command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
-    // command.append(0x08) // Length
-    // command.append(0x00) // Sequence
-    // command.append(globalCounter) // Fixed value
-    // command.append(0x02) // Fixed value
-    // command.append(0x01) // State ON
-    // command.append(0x01) // height
-    // command.append(0x01) // depth
-    
-    // let commandArray = command.map { $0 }
-//    queueChunks([commandArray])
-    
-    // let commandArray2: [UInt8] = [0x06, 0x90, 0x00, 0xac, 0x07, 0x01, 0x00, 0x01, 0x00, 0x00, 0x04, 0x03, 0x84, 0x00, 0x34, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-    // let commandArray2: [UInt8] = [0x06, 0x07, 0x00, 0xB6, 0x06, 0x00, 0x04]
-//    0x06, 0x07, 0x00, 0x08, 0x06, 0x00
-    
-    // queueChunks([[0x06, 0x07, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
-
-    
-
-    // queueChunks([[0x06, 0x0C, 0x00, /*0x08*/globalCounter, 0x06, 0x00]])
-    
-    // 2606001e02c90000000000000000000000000000
-
-    // let commandArray2: [UInt8] = [0x26, 0x06, 0x00, /*0x01*/globalCounter, 0x02, 0xC9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
-    // queueChunks([commandArray2])
-    
-    // var cmd22 = [0x22, 0x05, 0x00, /*0x78*/globalCounter, 0x01]
-    var cmd22: [UInt8] = [0x22, 0x0A, 0x00, 0x00, 0x01, 0x03, 0x00, 0x01, 0x00, 0x01]
-    while cmd22.count < 20 {
-      cmd22.append(0x00)
-    }
-    queueChunks([cmd22])
-    incrementGlobalCounter()
-
-//    var cmd39: [UInt8] = [0x39, 0x05, 0x00, /*0x78*/globalCounter, 0x01, 0x00]
-//    queueChunks([cmd39])
-//    incrementGlobalCounter()
-//    
-//    var cmd50: [UInt8] = [0x50, 0x06, 0x00, 0x00, 0x01, 0x01]
-//    queueChunks([cmd50], sendLeft: false, sendRight: true)
-//    incrementGlobalCounter()
-//    
-//    var cmd26: [UInt8] = [0x26, 0x08, 0x00, /*0x01*/globalCounter, 0x02, 0x01, 0x08, 0x09]
-//    queueChunks([cmd26])
-//    incrementGlobalCounter()
+    // nothing for now
   }
   
   public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
@@ -1121,11 +1038,6 @@ extension ERG1Manager {
           let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
       return false
     }
-    
-//    sent status 26  L 0 , sent size: 8  sent: 26 08 00 02 02 00 03 01
-    
-//    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
-//    queueChunks([showDashboard], sleepAfterMs: 300)
     
     incrementGlobalCounter()
     
@@ -1137,26 +1049,24 @@ extension ERG1Manager {
     command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
     command.append(0x08) // Length
     command.append(0x00) // Sequence
-    command.append(globalCounter) // Fixed value
+    command.append(globalCounter & 0xFF) // Fixed value
     command.append(0x02) // Fixed value
     command.append(0x01) // State ON
     command.append(h) // height
     command.append(d) // depth
     
-    print("height \(h)")
-    
-    while command.count < 20 {
-      command.append(0x00)
-    }
+//    while command.count < 20 {
+//      command.append(0x00)
+//    }
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }
-//    queueChunks([commandArray])
+    queueChunks([commandArray])
     
-    //    // Send command to both glasses with proper timing
-    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
-    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+//    //    // Send command to both glasses with proper timing
+//    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
+//    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
+//    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
     return true
   }
   
