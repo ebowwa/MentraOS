@@ -27,7 +27,6 @@
     "@supabase/auth-ui-react": "^0.4.7",
     "@supabase/auth-ui-shared": "^0.1.8",
     "@supabase/supabase-js": "^2.49.1",
-    "@tailwindcss/postcss": "^4.1.7",
     "@tailwindcss/vite": "^4.0.8",
     "axios": "^1.8.1",
     "class-variance-authority": "^0.7.1",
@@ -58,5 +57,8 @@
     "tailwindcss": "^4.0.8",
     "typescript": "~5.7.2",
     "vite": "^6.2.0"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-linux-x64-gnu": "^4.41.0"
   }
 }
