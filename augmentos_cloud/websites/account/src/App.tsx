@@ -62,6 +62,10 @@ function App() {
           
           <Route path="/" element={<Navigate to="/account" replace />} />
           
+          {/* Catch-all route for authenticated users */}
+          <Route path="/verified-email" element={<Navigate to="/account" replace />} />
+          
+          {/* General 404 route */}
           <Route path="*" element={
             <div className="flex flex-col items-center justify-center min-h-screen">
               <h1 className="text-4xl font-bold mb-4">404 - Page Not Found</h1>
