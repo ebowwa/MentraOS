@@ -15,7 +15,7 @@ import { useOrganization } from '@/context/OrganizationContext';
  * Organization settings page - allows editing the current organization's profile
  */
 const OrganizationSettings: React.FC = () => {
-  const { currentOrg, refreshOrgs } = useOrganization();
+  const { currentOrg, refreshOrgs, ensurePersonalOrg, loading: orgLoading } = useOrganization();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -32,6 +32,27 @@ const OrganizationSettings: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
+  const [isCreatingOrg, setIsCreatingOrg] = useState(false);
+
+  // Handle missing organization by creating a personal one
+  useEffect(() => {
+    const createPersonalOrg = async () => {
+      if (!currentOrg && !orgLoading && !isCreatingOrg) {
+        setIsCreatingOrg(true);
+        try {
+          await ensurePersonalOrg();
+          toast.success('A personal organization has been created for you.');
+        } catch (err) {
+          console.error('Error creating personal organization:', err);
+          toast.error('Failed to create a personal organization. Please try again.');
+        } finally {
+          setIsCreatingOrg(false);
+        }
+      }
+    };
+
+    createPersonalOrg();
+  }, [currentOrg, orgLoading, ensurePersonalOrg, isCreatingOrg]);
 
   // Fetch organization data
   useEffect(() => {
@@ -71,7 +92,8 @@ const OrganizationSettings: React.FC = () => {
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const name = e.target.name as string;
+    const value = e.target.value;
 
     if (name === 'name') {
       setFormData(prev => ({
@@ -154,6 +176,7 @@ const OrganizationSettings: React.FC = () => {
     }
   };
 
+  // If no organization selected but we're creating one, show loading state
   if (!currentOrg) {
     return (
       <DashboardLayout>
@@ -161,15 +184,26 @@ const OrganizationSettings: React.FC = () => {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle className="text-2xl">Organization Settings</CardTitle>
-              <CardDescription>No organization selected</CardDescription>
+              <CardDescription>
+                {isCreatingOrg
+                  ? 'Creating a personal organization for you...'
+                  : 'No organization selected'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  You don't have an active organization. Please create or join an organization first.
-                </AlertDescription>
-              </Alert>
+              {isCreatingOrg ? (
+                <div className="flex flex-col items-center justify-center p-6">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                  <p className="text-muted-foreground">Creating your personal organization...</p>
+                </div>
+              ) : (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You don't have an active organization. Please wait while we create one for you.
+                  </AlertDescription>
+                </Alert>
+              )}
             </CardContent>
           </Card>
         </div>

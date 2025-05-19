@@ -15,7 +15,7 @@ interface InstalledApp {
 }
 
 // Extend Document for TypeScript support
-interface UserDocument extends Document {
+export interface UserDocument extends Document {
   email: string;
   runningApps: string[];
   appSettings: Map<string, AppSetting[]>;

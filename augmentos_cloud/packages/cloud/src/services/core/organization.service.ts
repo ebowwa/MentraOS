@@ -1,20 +1,8 @@
 import { Types } from 'mongoose';
 import { Organization, OrganizationDocument, OrgMember } from '../../models/organization.model';
-import { User } from '../../models/user.model';
+import { User, UserDocument } from '../../models/user.model';
+import { InviteService } from './invite.service';
 
-// Since UserDocument is not exported directly, define type based on User model
-type UserDocument = {
-  _id: Types.ObjectId;
-  email: string;
-  displayName?: string;
-  profile?: {
-    website?: string;
-    description?: string;
-    logo?: string;
-  };
-  organizations?: Types.ObjectId[];
-  defaultOrg?: Types.ObjectId;
-};
 
 /**
  * Custom error class with status code for HTTP responses
@@ -62,7 +50,7 @@ export class OrganizationService {
    * @returns The ID of the created organization
    */
   public static async createPersonalOrg(user: UserDocument): Promise<Types.ObjectId> {
-    const personalOrgName = `${user.displayName || user.email.split('@')[0]}'s Org`;
+    const personalOrgName = `${user.profile?.company || user.email.split('@')[0]}'s Org`;
     const slug = await generateSlug(personalOrgName);
 
     // Create personal organization with user as owner
@@ -222,10 +210,9 @@ export class OrganizationService {
       throw new ApiError(400, 'User is already a member of this organization');
     }
 
-    // This would typically use a dedicated InviteService to generate a token
-    // For now, return a placeholder - this should be implemented properly
-    // Refer to section 6 in the documentation for full implementation
-    return `invite-token-for-${email}-to-${orgId}-as-${role}`;
+    // Use InviteService to generate a token and send invitation email
+    const { token } = await InviteService.generate(orgId, email, role, inviterUser);
+    return token;
   }
 
   /**
@@ -235,50 +222,52 @@ export class OrganizationService {
    * @returns The updated organization
    */
   public static async acceptInvite(token: string, user: UserDocument): Promise<OrganizationDocument> {
-    // In a full implementation, this would validate the token and extract orgId and role
-    // For this implementation, we'll parse our placeholder token format
+    try {
+      // Verify and decode token
+      const tokenData = InviteService.verify(token);
 
-    const tokenParts = token.split('-');
-    if (!tokenParts || tokenParts[0] !== 'invite') {
-      throw new ApiError(400, 'Invalid invite token');
+      // Validate email matches
+      if (tokenData.email !== user.email) {
+        throw new ApiError(403, 'Invite token was issued for a different email address');
+      }
+
+      // Add user to organization
+      const org = await Organization.findById(tokenData.orgId);
+      if (!org) {
+        throw new ApiError(404, 'Organization not found');
+      }
+
+      // Check if already a member
+      const isMember = org.members.some(m =>
+        m.user.toString() === user._id.toString()
+      );
+
+      if (isMember) {
+        throw new ApiError(400, 'User is already a member of this organization');
+      }
+
+      // Add member
+      org.members.push({
+        user: user._id,
+        role: tokenData.role as OrgMember['role'],
+        joinedAt: new Date()
+      });
+
+      await org.save();
+
+      // Add org to user's organizations
+      await User.updateOne(
+        { _id: user._id },
+        { $addToSet: { organizations: org._id } }
+      );
+
+      return org;
+    } catch (error: any) {
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      throw new ApiError(400, error.message || 'Invalid invitation token');
     }
-
-    const email = tokenParts[2];
-    const orgId = tokenParts[4];
-    const role = tokenParts[6] as OrgMember['role'];
-
-    if (email !== user.email) {
-      throw new ApiError(403, 'Invite token was issued for a different email address');
-    }
-
-    // Add user to organization
-    const org = await Organization.findById(orgId);
-    if (!org) {
-      throw new ApiError(404, 'Organization not found');
-    }
-
-    // Check if already a member
-    const isMember = org.members.some(m => m.user.toString() === user._id.toString());
-    if (isMember) {
-      throw new ApiError(400, 'User is already a member of this organization');
-    }
-
-    // Add member
-    org.members.push({
-      user: user._id,
-      role,
-      joinedAt: new Date()
-    });
-
-    await org.save();
-
-    // Add org to user's organizations
-    await User.updateOne(
-      { _id: user._id },
-      { $addToSet: { organizations: org._id } }
-    );
-
-    return org;
   }
 
   /**

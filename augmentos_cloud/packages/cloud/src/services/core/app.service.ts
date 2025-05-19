@@ -924,4 +924,3 @@ export const appService = new AppService();
 logger.info('✅ App Service initialized');
 
 export default appService;
-export default appService;

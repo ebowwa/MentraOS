@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import api, { Organization } from '../services/api.service';
-import { useAuth } from './AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { toast } from 'sonner';
 
 /**
  * Organization context type definition
@@ -18,6 +19,8 @@ interface OrganizationContextType {
   loading: boolean;
   /** Any error that occurred while loading organizations */
   error: Error | null;
+  /** Ensures the user has at least one organization */
+  ensurePersonalOrg: () => Promise<void>;
 }
 
 // Create the context with undefined default value
@@ -40,6 +43,35 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const { user, loading: authLoading } = useAuth();
 
   /**
+   * Creates a personal organization for the user if none exists
+   * @returns Promise that resolves when the personal organization is created
+   */
+  const ensurePersonalOrg = async (): Promise<void> => {
+    if (!user || !user.email) return;
+
+    try {
+      setLoading(true);
+      // Create a default personal organization with a safe name
+      const emailLocalPart = user.email.split('@')[0] || 'User';
+      const personalOrgName = `${emailLocalPart}'s Organization`;
+      const newOrg = await api.orgs.create(personalOrgName);
+
+      // Update the organizations list
+      setOrgs(prev => [...prev, newOrg]);
+
+      // Set as current organization
+      setCurrentOrgState(newOrg);
+      localStorage.setItem(CURRENT_ORG_STORAGE_KEY, newOrg.id);
+    } catch (err) {
+      console.error('Error creating personal organization:', err);
+      setError(err instanceof Error ? err : new Error('Failed to create personal organization'));
+      toast.error('Failed to create organization');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
    * Loads the list of organizations from the API
    */
   const loadOrganizations = async () => {
@@ -52,6 +84,12 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
       // Fetch organizations from API
       const organizations = await api.orgs.list();
       setOrgs(organizations);
+
+      // If user has no organizations, create a personal one
+      if (organizations.length === 0) {
+        await ensurePersonalOrg();
+        return; // ensurePersonalOrg already handles setting currentOrg
+      }
 
       // Restore current org from localStorage or set to first available
       const storedOrgId = localStorage.getItem(CURRENT_ORG_STORAGE_KEY);
@@ -69,10 +107,6 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         // No stored org or empty list, use the first one
         setCurrentOrgState(organizations[0]);
         localStorage.setItem(CURRENT_ORG_STORAGE_KEY, organizations[0].id);
-      } else {
-        // No organizations available
-        setCurrentOrgState(null);
-        localStorage.removeItem(CURRENT_ORG_STORAGE_KEY);
       }
     } catch (err) {
       console.error('Error loading organizations:', err);
@@ -111,7 +145,8 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     setCurrentOrg,
     refreshOrgs,
     loading,
-    error
+    error,
+    ensurePersonalOrg
   };
 
   return (
