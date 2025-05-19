@@ -1032,17 +1032,11 @@ extension ERG1Manager {
   }
   
   public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
-    guard let rightGlass = rightPeripheral,
-          let leftGlass = leftPeripheral,
-          let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
-          let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
-      return false
-    }
-    
-    incrementGlobalCounter()
     
     let h: UInt8 = min(max(height, 0), 8)
     let d: UInt8 = min(max(depth, 1), 9)
+    
+    incrementGlobalCounter()
     
     // Build dashboard position command
     var command = Data()
@@ -1062,11 +1056,6 @@ extension ERG1Manager {
     // convert command to array of UInt8
     let commandArray = command.map { $0 }
     queueChunks([commandArray])
-    
-//    //    // Send command to both glasses with proper timing
-//    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
-//    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-//    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
     return true
   }
   
@@ -1078,10 +1067,6 @@ extension ERG1Manager {
   }
   
   public func setMicEnabled(enabled: Bool) async -> Bool {
-    guard let rightGlass = rightPeripheral,
-          let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) else {
-      return false
-    }
     
     var micOnData = Data()
     micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)
