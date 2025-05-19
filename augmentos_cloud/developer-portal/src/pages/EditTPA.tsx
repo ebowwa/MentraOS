@@ -19,6 +19,7 @@ import { TpaType } from '@augmentos/sdk';
 import { normalizeUrl } from '@/libs/utils';
 import PermissionsForm from '../components/forms/PermissionsForm';
 import { useAuth } from '../hooks/useAuth';
+import { useOrganization } from '@/context/OrganizationContext';
 import publicEmailDomains from 'email-providers/all.json';
 
 // Extend TPA type locally to include sharedWithOrganization
@@ -30,7 +31,8 @@ const EditTPA: React.FC = () => {
   const navigate = useNavigate();
   const { packageName } = useParams<{ packageName: string }>();
   const { user } = useAuth();
-  
+  const { currentOrg } = useOrganization();
+
   // Form state
   const [formData, setFormData] = useState<EditableTPA>({
     id: '',
@@ -46,10 +48,10 @@ const EditTPA: React.FC = () => {
     updatedAt: new Date().toISOString(), // Default value for AppResponse compatibility
     permissions: [], // Initialize permissions as empty array
   });
-  
+
   // Permissions state
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(false);
-  
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,35 +64,35 @@ const EditTPA: React.FC = () => {
   const [isRegeneratingKey, setIsRegeneratingKey] = useState(false);
   const [isLoadingShareLink, setIsLoadingShareLink] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
-  
+
   // Add sharedWithOrganization state
   const [sharedWithOrganization, setSharedWithOrganization] = useState(false);
   const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
-  
+
   // Add sharedWithEmails state
   const [sharedWithEmails, setSharedWithEmails] = useState<string[]>([]);
   const [newShareEmail, setNewShareEmail] = useState('');
   const [isUpdatingEmails, setIsUpdatingEmails] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
-  
+
   // Helper to get org domain from user email
   const orgDomain = user?.email?.split('@')[1] || '';
   // Check if orgDomain is a public email provider
   const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
-  
+
   // Fetch TPA data and permissions from API
   useEffect(() => {
     const fetchData = async () => {
-      if (!packageName) return;
-      
+      if (!packageName || !currentOrg) return;
+
       try {
         setIsLoading(true);
         setIsLoadingPermissions(true);
         setError(null);
-        
-        // Fetch TPA data
-        const tpaData = await api.apps.getByPackageName(packageName);
-        
+
+        // Fetch TPA data using organization ID
+        const tpaData = await api.apps.getByPackageName(packageName, currentOrg.id);
+
         // Convert API response to TPA type
         const tpa: EditableTPA = {
           id: tpaData.packageName, // Using packageName as id since API doesn't return id
@@ -109,9 +111,9 @@ const EditTPA: React.FC = () => {
           reviewedBy: tpaData.reviewedBy,
           reviewedAt: tpaData.reviewedAt,
         };
-        
+
         setFormData(tpa);
-        
+
         // Fetch permissions
         try {
           const permissionsData = await api.apps.permissions.get(packageName);
@@ -124,7 +126,7 @@ const EditTPA: React.FC = () => {
         } finally {
           setIsLoadingPermissions(false);
         }
-        
+
         // After fetching TPA data, set sharedWithOrganization
         if (tpa && typeof tpa.sharedWithOrganization === 'boolean') {
           setSharedWithOrganization(tpa.sharedWithOrganization);
@@ -140,25 +142,25 @@ const EditTPA: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
-  }, [packageName]);
-  
+  }, [packageName, currentOrg]);
+
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
+
     // For URL fields, normalize on blur instead of on every keystroke
     setFormData(prev => ({
       ...prev,
       [name]: value
     }));
   };
-  
+
   // Handle URL field blur event to normalize URLs
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    
+
     // Only normalize URL fields
     if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
       if (value) {
@@ -175,7 +177,7 @@ const EditTPA: React.FC = () => {
       }
     }
   };
-  
+
   // Handle permissions changes
   const handlePermissionsChange = (permissions: Permission[]) => {
     setFormData(prev => ({
@@ -183,78 +185,67 @@ const EditTPA: React.FC = () => {
       permissions
     }));
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setError(null);
     setIsSaved(false);
-    
+
     try {
       if (!packageName) throw new Error('Package name is missing');
-      
+      if (!currentOrg) throw new Error('No organization selected');
+
       // Normalize URLs before submission
       const normalizedData = {
         name: formData.name,
         description: formData.description,
-        publicUrl: normalizeUrl(formData.publicUrl),
-        logoURL: formData.logoURL,
-        webviewURL: formData.webviewURL ? normalizeUrl(formData.webviewURL) : undefined
+        publicUrl: formData.publicUrl ? normalizeUrl(formData.publicUrl) : '',
+        logoURL: formData.logoURL ? normalizeUrl(formData.logoURL) : '',
+        webviewURL: formData.webviewURL ? normalizeUrl(formData.webviewURL) : '',
+        tpaType: formData.tpaType,
       };
-      
-      // Update TPA via API
-      await api.apps.update(packageName, normalizedData);
-      
-      // Update permissions separately if they exist
-      if (formData.permissions && formData.permissions.length > 0) {
-        try {
-          await api.apps.permissions.update(packageName, formData.permissions);
-        } catch (permError) {
-          console.error('Error updating permissions:', permError);
-          toast.error('App updated but permissions failed to update');
-          setError('App updated but permissions failed to update. Please try again.');
-          setIsSaving(false);
-          return;
-        }
-      }
-      
+
+      // Update TPA data
+      await api.apps.update(packageName, normalizedData, currentOrg.id);
+
+      // Update permissions
+      await api.apps.permissions.update(packageName, formData.permissions);
+
       // Show success message
       setIsSaved(true);
-      
-      // Create a specific timeout ID to identify this toast
-      const toastId = 'update-success-' + Date.now();
-      toast.success('App updated successfully', { id: toastId });
-      
+      toast.success('App updated successfully');
+
       // Reset saved status after 3 seconds
       setTimeout(() => {
         setIsSaved(false);
       }, 3000);
     } catch (err) {
       console.error('Error updating TPA:', err);
-      setError('Failed to update App. Please try again.');
-      toast.error('Failed to update App');
+      setError('Failed to update app. Please try again.');
+      toast.error('Failed to update app');
     } finally {
       setIsSaving(false);
     }
   };
-  
+
   // Handle API key regeneration
   const handleRegenerateApiKey = async () => {
     try {
-      setIsRegeneratingKey(true);
       if (!packageName) throw new Error('Package name is missing');
-      
-      const response = await api.apps.apiKey.regenerate(packageName);
-      
-      // Set the API key with the actual value from the server
+      if (!currentOrg) throw new Error('No organization selected');
+
+      setIsRegeneratingKey(true);
+      setError(null);
+
+      // Regenerate API key via API
+      const response = await api.apps.apiKey.regenerate(packageName, currentOrg.id);
+
+      // Update local state with new API key
       setApiKey(response.apiKey);
-      
-      // Dismiss any existing toasts first
-      toast.dismiss();
-      
-      // Open the dialog to show the key - dialog itself will show success message
-      setIsApiKeyDialogOpen(true);
+
+      toast.success('API key regenerated successfully');
     } catch (err) {
       console.error('Error regenerating API key:', err);
       toast.error('Failed to regenerate API key');
@@ -262,16 +253,16 @@ const EditTPA: React.FC = () => {
       setIsRegeneratingKey(false);
     }
   };
-  
+
   // Handle opening the API key dialog without regenerating
   const handleViewApiKey = () => {
     // We just open the dialog with the placeholder key
     // For security reasons, we don't fetch the real key
     setApiKey(""); // Use empty string to get placeholder
-    
+
     // Clear any existing success messages
     setIsSaved(false);
-    
+
     // Dismiss ALL existing toasts
     const allToasts = document.querySelectorAll('[role="status"]');
     allToasts.forEach(toast => {
@@ -280,86 +271,125 @@ const EditTPA: React.FC = () => {
       }
     });
     toast.dismiss();
-    
+
     // Then open the dialog
     setIsApiKeyDialogOpen(true);
   };
-  
+
   // Handle getting and copying share link
   const handleGetShareLink = async () => {
-    if (!packageName) return;
-    
-    setIsLoadingShareLink(true);
     try {
-      const link = await api.sharing.getInstallLink(packageName);
-      setShareLink(link);
-      
-      // Open the sharing dialog
+      if (!packageName) throw new Error('Package name is missing');
+      if (!currentOrg) throw new Error('No organization selected');
+
+      setIsLoadingShareLink(true);
+      setError(null);
+
+      // Get share link via API
+      const shareUrl = await api.sharing.getInstallLink(packageName, currentOrg.id);
+
+      // Update local state with share link
+      setShareLink(shareUrl);
+
+      // Open sharing dialog
       setIsSharingDialogOpen(true);
     } catch (err) {
-      console.error('Error getting share link:', err);
-      toast.error('Failed to get share link');
+      console.error('Error generating share link:', err);
+      toast.error('Failed to generate sharing link');
     } finally {
       setIsLoadingShareLink(false);
     }
   };
-  
+
   // Handle opening publish dialog
   const handleOpenPublishDialog = () => {
     setIsPublishDialogOpen(true);
   };
-  
+
   // Handle successful publish (called after dialog completes)
   const handlePublishComplete = async () => {
-    if (!packageName) return;
-    
+    if (!packageName || !currentOrg) return;
+
     try {
-      // Just refresh the TPA data to get updated status
-      const updatedTpa = await api.apps.getByPackageName(packageName);
+      // Refresh TPA data to get updated app status
+      const updatedTpa = await api.apps.getByPackageName(packageName, currentOrg.id);
+
+      // Update form data with new app status
       setFormData(prev => ({
         ...prev,
-        appStoreStatus: updatedTpa.appStoreStatus
+        appStoreStatus: updatedTpa.appStoreStatus || prev.appStoreStatus
       }));
+
+      toast.success('Publication status updated');
     } catch (err) {
-      console.error('Error refreshing app data after publish:', err);
+      console.error('Error refreshing TPA status:', err);
     }
   };
-  
+
   // Add handler for toggling sharedWithOrganization
   const handleToggleSharedWithOrg = async (checked: boolean) => {
-    if (!packageName) return;
-    setIsUpdatingVisibility(true);
     try {
+      if (!packageName) throw new Error('Package name is missing');
+      if (!currentOrg) throw new Error('No organization selected');
+
+      setIsUpdatingVisibility(true);
+      setError(null);
+
+      // Update visibility via API
       await api.apps.updateVisibility(packageName, checked);
+
+      // Update local state
       setSharedWithOrganization(checked);
-      toast.success(`App is now ${checked ? 'shared with' : 'private to'} your organization${checked && orgDomain ? ' (' + orgDomain + ')' : ''}`);
+
+      toast.success(`App is now ${checked ? 'shared with' : 'private to'} your organization`);
     } catch (err) {
-      toast.error('Failed to update sharing setting');
+      console.error('Error updating visibility:', err);
+      toast.error('Failed to update visibility');
     } finally {
       setIsUpdatingVisibility(false);
     }
   };
-  
+
   // Handler to add a new email to the share list
   const handleAddShareEmail = async () => {
-    setEmailError(null);
-    const email = newShareEmail.trim().toLowerCase();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-      setEmailError('Please enter a valid email address');
-      return;
-    }
-    if (sharedWithEmails.includes(email)) {
-      setEmailError('This email is already shared');
-      return;
-    }
-    const updatedEmails = [...sharedWithEmails, email];
-    setIsUpdatingEmails(true);
     try {
-      await api.apps.updateSharedEmails(packageName!, updatedEmails);
+      if (!packageName) throw new Error('Package name is missing');
+      if (!currentOrg) throw new Error('No organization selected');
+      if (!newShareEmail.trim()) return;
+
+      setIsUpdatingEmails(true);
+      setEmailError(null);
+
+      // Validate email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newShareEmail)) {
+        setEmailError('Please enter a valid email address');
+        setIsUpdatingEmails(false);
+        return;
+      }
+
+      // Check if email already in list
+      if (sharedWithEmails.includes(newShareEmail)) {
+        setEmailError('This email is already in the list');
+        setIsUpdatingEmails(false);
+        return;
+      }
+
+      // Update emails via API
+      const updatedEmails = [...sharedWithEmails, newShareEmail];
+      await api.apps.updateSharedEmails(packageName, updatedEmails);
+
+      // Update local state
       setSharedWithEmails(updatedEmails);
       setNewShareEmail('');
-    } catch (err: any) {
-      setEmailError(err?.response?.data?.error || 'Failed to update sharing list');
+
+      toast.success(`Shared with ${newShareEmail}`);
+
+      // Also track via the sharing API
+      await api.sharing.trackSharing(packageName, [newShareEmail], currentOrg.id);
+    } catch (err) {
+      console.error('Error adding share email:', err);
+      toast.error('Failed to add email');
     } finally {
       setIsUpdatingEmails(false);
     }
@@ -367,19 +397,30 @@ const EditTPA: React.FC = () => {
 
   // Handler to remove an email from the share list
   const handleRemoveShareEmail = async (email: string) => {
-    const updatedEmails = sharedWithEmails.filter(e => e !== email);
-    setIsUpdatingEmails(true);
-    setEmailError(null);
     try {
-      await api.apps.updateSharedEmails(packageName!, updatedEmails);
+      if (!packageName) throw new Error('Package name is missing');
+      if (!currentOrg) throw new Error('No organization selected');
+
+      setIsUpdatingEmails(true);
+
+      // Filter out the email to remove
+      const updatedEmails = sharedWithEmails.filter(e => e !== email);
+
+      // Update emails via API
+      await api.apps.updateSharedEmails(packageName, updatedEmails);
+
+      // Update local state
       setSharedWithEmails(updatedEmails);
-    } catch (err: any) {
-      setEmailError(err?.response?.data?.error || 'Failed to update sharing list');
+
+      toast.success(`Removed ${email} from shared list`);
+    } catch (err) {
+      console.error('Error removing share email:', err);
+      toast.error('Failed to remove email');
     } finally {
       setIsUpdatingEmails(false);
     }
   };
-  
+
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
@@ -389,7 +430,7 @@ const EditTPA: React.FC = () => {
             Back to apps
           </Link>
         </div>
-        
+
         <Card className="shadow-sm">
           {isLoading ? (
             <div className="p-8 text-center">
@@ -411,18 +452,18 @@ const EditTPA: React.FC = () => {
                     <AlertDescription>{error}</AlertDescription>
                   </Alert>
                 )}
-                
+
                 {isSaved && (
                   <Alert className="bg-green-50 text-green-800 border-green-200">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-700">TPA updated successfully!</AlertDescription>
                   </Alert>
                 )}
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="packageName">Package Name</Label>
-                  <Input 
-                    id="packageName" 
+                  <Input
+                    id="packageName"
                     name="packageName"
                     value={formData.packageName}
                     disabled
@@ -432,45 +473,45 @@ const EditTPA: React.FC = () => {
                     Package names cannot be changed after creation.
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="name">Display Name</Label>
-                  <Input 
-                    id="name" 
+                  <Input
+                    id="name"
                     name="name"
                     value={formData.name}
                     onChange={handleChange}
-                    placeholder="e.g., My Awesome App" 
+                    placeholder="e.g., My Awesome App"
                   />
                   <p className="text-xs text-gray-500">
                     The name that will be displayed to users in the AugmentOS app store.
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea 
-                    id="description" 
+                  <Textarea
+                    id="description"
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    placeholder="Describe what your app does..." 
+                    placeholder="Describe what your app does..."
                     rows={3}
                   />
                   <p className="text-xs text-gray-500">
                     Provide a clear, concise description of your application's functionality.
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="publicUrl">Server URL</Label>
-                  <Input 
-                    id="publicUrl" 
+                  <Input
+                    id="publicUrl"
                     name="publicUrl"
                     value={formData.publicUrl}
                     onChange={handleChange}
                     onBlur={handleUrlBlur}
-                    placeholder="yourserver.com" 
+                    placeholder="yourserver.com"
                   />
                   <p className="text-xs text-gray-500">
                     The base URL of your server where AugmentOS will communicate with your app.
@@ -479,39 +520,39 @@ const EditTPA: React.FC = () => {
                     Do not include a trailing slash - it will be automatically removed.
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="logoURL">Logo URL</Label>
-                  <Input 
-                    id="logoURL" 
+                  <Input
+                    id="logoURL"
                     name="logoURL"
                     value={formData.logoURL}
                     onChange={handleChange}
                     onBlur={handleUrlBlur}
-                    placeholder="yourserver.com/logo.png" 
+                    placeholder="yourserver.com/logo.png"
                   />
                   <p className="text-xs text-gray-500">
                     URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
                     HTTPS is required and will be added automatically if not specified.
                   </p>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="webviewURL">Webview URL (Optional)</Label>
-                  <Input 
-                    id="webviewURL" 
+                  <Input
+                    id="webviewURL"
                     name="webviewURL"
                     value={formData.webviewURL || ''}
                     onChange={handleChange}
                     onBlur={handleUrlBlur}
-                    placeholder="yourserver.com/webview" 
+                    placeholder="yourserver.com/webview"
                   />
                   <p className="text-xs text-gray-500">
                     If your app has a companion mobile interface, provide the URL here.
                     HTTPS is required and will be added automatically if not specified.
                   </p>
                 </div>
-                
+
                 {/* App Sharing Section */}
                 <div className="space-y-8 mt-6">
                   {/* Share with Editors */}
@@ -525,7 +566,7 @@ const EditTPA: React.FC = () => {
                     </p>
                     {/* Share with Organization */}
                     <div className="flex items-center space-x-3 mb-4 ml-9">
-                      <div className={`flex items-center gap-3 ${isPublicEmailDomain ? 'opacity-50 pointer-events-none' : ''}`}> 
+                      <div className={`flex items-center gap-3 ${isPublicEmailDomain ? 'opacity-50 pointer-events-none' : ''}`}>
                         <input
                           type="checkbox"
                           id="sharedWithOrganization"
@@ -603,7 +644,7 @@ const EditTPA: React.FC = () => {
                       Anyone with this link can access and test the app (read-only access).
                     </p>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2 ml-9 mt-2">
-                      <Button 
+                      <Button
                         onClick={handleGetShareLink}
                         className="gap-2"
                         type="button"
@@ -628,29 +669,29 @@ const EditTPA: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* API Key section */}
                 <div className="border rounded-md p-4 mt-6">
                   <h3 className="text-lg font-medium mb-2 flex items-center">
                     <KeyRound className="h-5 w-5 mr-2" />
                     API Key
                   </h3>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">
                     Your API key is used to authenticate your app with AugmentOS cloud services.
                     Keep it secure and never share it publicly.
                   </p>
-                  
+
                   <div className="flex items-center justify-end">
-                    <Button 
+                    <Button
                       onClick={handleViewApiKey}
                       className="mr-2"
                       variant="outline" /* Explicitly set type to button to prevent form submission */
                     >
                       View Key
                     </Button>
-                    
-                    <Button 
+
+                    <Button
                       onClick={handleRegenerateApiKey}
                       disabled={isRegeneratingKey}
                       variant="secondary"
@@ -670,7 +711,7 @@ const EditTPA: React.FC = () => {
                     </Button>
                   </div>
                 </div>
-                
+
                 {/* Status information */}
                 <div className="border rounded-md p-4 mt-6">
                   <h3 className="text-lg font-medium mb-2 flex items-center">
@@ -681,17 +722,17 @@ const EditTPA: React.FC = () => {
                     formData.appStoreStatus === 'REJECTED' ? 'Rejected' :
                     formData.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'
                   }</h3>
-                  
+
                   <p className="text-sm text-gray-600 mb-4">
-                    {formData.appStoreStatus === 'DEVELOPMENT' 
+                    {formData.appStoreStatus === 'DEVELOPMENT'
                       ? 'Your app is currently in development. Publish it when ready to submit for review.'
-                      : formData.appStoreStatus === 'SUBMITTED' 
+                      : formData.appStoreStatus === 'SUBMITTED'
                       ? 'Your app has been submitted for review. Once approved, it will be published to the App Store.'
-                      : formData.appStoreStatus === 'REJECTED' 
+                      : formData.appStoreStatus === 'REJECTED'
                       ? 'Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting.'
                       : 'Your app is published and available to all AugmentOS users in the App Store.'}
                   </p>
-                  
+
                   {formData.appStoreStatus === 'REJECTED' && formData.reviewNotes && (
                     <div className="bg-red-50 border border-red-200 rounded-md p-3 mt-2 mb-4">
                       <h4 className="text-sm font-medium text-red-800 mb-1">Rejection Reason:</h4>
@@ -703,10 +744,10 @@ const EditTPA: React.FC = () => {
                       )}
                     </div>
                   )}
-                  
+
                   {(formData.appStoreStatus === 'DEVELOPMENT' || formData.appStoreStatus === 'REJECTED') && (
                     <div className="flex items-center justify-end">
-                      <Button 
+                      <Button
                         onClick={handleOpenPublishDialog}
                         className="gap-2"
                         type="button"
@@ -717,13 +758,13 @@ const EditTPA: React.FC = () => {
                     </div>
                   )}
                 </div>
-                
+
                 {/* Permissions Section */}
                 <div className="mt-6">
                   <h3 className="text-lg font-medium mb-4">Required Permissions</h3>
-                  <PermissionsForm 
-                    permissions={formData.permissions || []} 
-                    onChange={handlePermissionsChange} 
+                  <PermissionsForm
+                    permissions={formData.permissions || []}
+                    onChange={handlePermissionsChange}
                   />
                 </div>
               </CardContent>
@@ -744,7 +785,7 @@ const EditTPA: React.FC = () => {
           )}
         </Card>
       </div>
-      
+
       {/* Dialogs */}
       {packageName && (
         <>
@@ -754,29 +795,20 @@ const EditTPA: React.FC = () => {
             onOpenChange={setIsApiKeyDialogOpen}
             apiKey={apiKey}
           />
-          
+
           <SharingDialog
             tpa={formData}
             open={isSharingDialogOpen}
             onOpenChange={setIsSharingDialogOpen}
           />
-          
+
           <PublishDialog
             tpa={formData}
             open={isPublishDialogOpen}
             onOpenChange={(open) => {
               setIsPublishDialogOpen(open);
             }}
-            onPublishComplete={(updatedTpa) => {
-              // Update the form data immediately with the new status
-              setFormData(prev => ({
-                ...prev,
-                appStoreStatus: updatedTpa.appStoreStatus
-              }));
-              
-              // Show success message that status has changed
-              toast.success(`App status updated to: ${updatedTpa.appStoreStatus === 'SUBMITTED' ? 'Submitted for Review' : updatedTpa.appStoreStatus}`);
-            }}
+            onPublishComplete={handlePublishComplete}
           />
         </>
       )}

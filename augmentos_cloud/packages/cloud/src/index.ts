@@ -40,6 +40,7 @@ import audioRoutes from './routes/audio.routes';
 import userDataRoutes from './routes/user-data.routes';
 import permissionsRoutes from './routes/permissions.routes';
 import accountRoutes from './routes/account.routes';
+import organizationRoutes from './routes/organization.routes';
 
 import path from 'path';
 
@@ -149,6 +150,7 @@ app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/orgs', organizationRoutes);
 // app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);

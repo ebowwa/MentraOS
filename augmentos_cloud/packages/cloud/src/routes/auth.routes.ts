@@ -26,12 +26,18 @@ router.post('/exchange-token', async (req: Request, res: Response) => {
     // Verify the token using your Supabase JWT secret
     const decoded = jwt.verify(supabaseToken, SUPABASE_JWT_SECRET);
     const subject = decoded.sub;
-    // `decoded` will contain the user’s claims from Supabase
-    // e.g. user ID, role, expiration, etc.
+    const email = (decoded as jwt.JwtPayload).email;
+
+    // Find user document to get organization information
+    const User = require('../models/user.model').User;
+    const user = await User.findOrCreateUser(email);
 
     const newData = {
         sub: subject,
-        email: (decoded as jwt.JwtPayload).email,
+        email: email,
+        // Include organization info in token
+        organizations: user.organizations || [],
+        defaultOrg: user.defaultOrg || null
     }
 
     // Generate your own custom token (JWT or otherwise)
@@ -106,16 +112,23 @@ router.post('/exchange-store-token', async (req: Request, res: Response) => {
       // For store webview, we need to return the actual tokens
       // Generate a new Supabase token
       const supabaseToken = JOE_MAMA_USER_JWT; // Using existing user token for now
-      
-      // Generate a core token as well
+
+      // Get user to include organization information
+      const User = require('../models/user.model').User;
+      const user = await User.findByEmail(result.userId);
+
+      // Generate a core token with org information
       const userData = {
         sub: result.userId,
         email: result.userId,
+        // Include organization info in token
+        organizations: user?.organizations || [],
+        defaultOrg: user?.defaultOrg || null
       };
       const coreToken = jwt.sign(userData, AUGMENTOS_AUTH_JWT_SECRET);
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         userId: result.userId,
         tokens: {
           supabaseToken,
