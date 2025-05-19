@@ -1,0 +1,1 @@
+{"root":["./src/app.tsx","./src/main.tsx","./src/vite-env.d.ts","./src/components/accountlayout.tsx","./src/context/authcontext.tsx","./src/hooks/useauth.tsx","./src/pages/dataexportpage.tsx","./src/pages/deleteaccountpage.tsx","./src/pages/loginpage.tsx","./src/pages/profilepage.tsx","./src/services/api.service.ts","./src/utils/supabase.ts"],"errors":true,"version":"5.8.3"}
