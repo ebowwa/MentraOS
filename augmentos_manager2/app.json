@@ -1,14 +1,14 @@
 {
-  "name": "AOS",
-  "displayName": "AOS",
+  "name": "AugmentOS",
+  "displayName": "AugmentOS",
   "expo": {
-    "name": "AOS",
-    "slug": "AOS",
-    "scheme": "aos",
+    "name": "AugmentOS",
+    "slug": "AugmentOS",
+    "scheme": "augmentos",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "icon": "./assets/images/app-icon-all.png",
+    "icon": "./assets/app-icons/ic_launcher.png",
     "updates": {
       "fallbackToCacheTimeout": 0
     },
@@ -18,16 +18,16 @@
       "**/*"
     ],
     "android": {
-      "icon": "./assets/images/app-icon-android-legacy.png",
+      "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.augmentos.augmentos",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/app-icon-android-adaptive-foreground.png",
-        "backgroundImage": "./assets/images/app-icon-android-adaptive-background.png"
+        "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
+        "backgroundImage": "./assets/app-icons/ic_launcher.png"
       },
       "allowBackup": false
     },
     "ios": {
-      "icon": "./assets/images/app-icon-ios.png",
+      "icon": "./assets/app-icons/ic_launcher.png",
       "supportsTablet": true,
       "bundleIdentifier": "com.augmentos.augmentos"
     },

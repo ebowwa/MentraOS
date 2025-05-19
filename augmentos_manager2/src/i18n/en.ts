@@ -1,10 +1,28 @@
 import demoEn from "./demo-en"
 
 const en = {
+  loginScreen: {
+    title: "AugmentOS",
+    subtitle: "The future of smart glasses starts here",
+    email: "Email",
+    password: "Password",
+    signIn: "Sign In",
+    signUp: "Sign Up",
+    forgotPassword: "Forgot Password?",
+    continueWithGoogle: "Continue with Google",
+    continueWithApple: "Continue with Apple",
+    continueWithEmail: "Continue with Email",
+    termsText: "By signing in, you agree to our terms of service and privacy policy.",
+    emailPlaceholder: "you@example.com",
+    passwordPlaceholder: "********",
+    createAccount: "Create Account",
+    login: "Login",
+  },
   common: {
     ok: "OK!",
     cancel: "Cancel",
     back: "Back",
+    or: "OR",
     logOut: "Log Out",
   },
   welcomeScreen: {
@@ -31,17 +49,6 @@ const en = {
 
   errors: {
     invalidEmail: "Invalid email address.",
-  },
-  loginScreen: {
-    logIn: "Log In",
-    enterDetails:
-      "Enter your details below to unlock top secret info. You'll never guess what we've got waiting. Or maybe you will; it's not rocket science here.",
-    emailFieldLabel: "Email",
-    passwordFieldLabel: "Password",
-    emailFieldPlaceholder: "Enter your email address",
-    passwordFieldPlaceholder: "Super secret password here",
-    tapToLogIn: "Tap to log in!",
-    hint: "Hint: you can use any email address and your favorite password :)",
   },
   demoNavigator: {
     componentsTab: "Components",
