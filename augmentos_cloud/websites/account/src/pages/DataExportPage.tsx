@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import AccountLayout from '../components/AccountLayout';
 import { toast } from 'sonner';
-import api from '../services/api.service';
+// import api from '../services/api.service';
 
 // Status for the export request
 type ExportStatus = 'idle' | 'requested' | 'processing' | 'completed' | 'failed';
@@ -24,7 +24,7 @@ const DataExportPage: React.FC = () => {
   const [refreshInterval, setRefreshInterval] = useState<number | null>(null);
 
   // Simulated function to check export status
-  const checkExportStatus = async (exportId: string) => {
+  const checkExportStatus = async (_exportId: string) => {
     try {
       // Simulate API call to check export status
       // In a real implementation, we would use:

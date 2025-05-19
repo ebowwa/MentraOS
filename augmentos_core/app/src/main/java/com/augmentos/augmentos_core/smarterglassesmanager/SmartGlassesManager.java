@@ -244,8 +244,8 @@ public class SmartGlassesManager extends Service {
      * Create notification for the foreground service
      */
     private Notification createNotification() {
-        String title = "Smart Glasses";
-        String content = "Searching for glasses";
+        String title = "Smart Glasses Connection Service";
+        String content = "";
         
         if (smartGlassesRepresentative != null && 
             smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {

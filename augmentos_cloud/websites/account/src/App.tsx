@@ -5,7 +5,7 @@ import LoginPage from './pages/LoginPage'
 import AccountPage from './pages/AccountPage'
 import DeleteAccountPage from './pages/DeleteAccountPage'
 import ExportDataPage from './pages/ExportDataPage'
-import DashboardLayout from './components/DashboardLayout'
+// import DashboardLayout from './components/DashboardLayout'
 import { useAuth } from './hooks/useAuth'
 
 // Protected route component

@@ -3,10 +3,11 @@ import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../utils/supabase'
 import axios from 'axios'
 
-type AuthContextType = {
+export type AuthContextType = {
   session: Session | null
   user: User | null
   loading: boolean
+  isLoading: boolean
   isAuthenticated: boolean
   supabaseToken: string | null
   coreToken: string | null
@@ -275,6 +276,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       user,
       loading,
+      isLoading: loading,
       isAuthenticated,
       supabaseToken,
       coreToken,
@@ -288,10 +290,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   )
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
-}
+// Remove duplicate useAuth - it's already defined in hooks/useAuth.tsx

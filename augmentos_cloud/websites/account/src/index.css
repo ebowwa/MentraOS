@@ -5,15 +5,15 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer base {
-  body {
-    @apply bg-secondary text-primary;
-  }
+body {
+  background-color: #f3f4f6;
+  color: #111827;
+}
 
-  /* Standardize focus styles */
-  *:focus-visible {
-    @apply outline-none ring-2 ring-primary/50 ring-offset-2;
-  }
+/* Standardize focus styles */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.5), 0 0 0 4px rgba(255, 255, 255, 1);
 }
 
 /* Add font-cuprum class */
