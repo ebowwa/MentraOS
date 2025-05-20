@@ -349,7 +349,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
         );
       case 'text':
         return (
-          <TextSettingNoSave
+          <TextSetting
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
@@ -363,8 +363,9 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
-            onChangeText={text => handleSettingChange(setting.key, text)}
+            onChangeTextFn={text => handleSettingChange(setting.key, text)}
             theme={theme}
+            {...(packageName === 'com.augmentos.displaytext' ? { maxLines: 5 } : {})}
           />
         );
       case 'slider':
@@ -726,6 +727,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     fontFamily: 'Montserrat-Bold',
+  },
+  modalInput: {
+    flexShrink: 1,
+    fontSize: 16,
+    borderWidth: Platform.OS === 'ios' ? 0.5 : 1,
+    borderRadius: Platform.OS === 'ios' ? 10 : 4,
+    padding: 16,
+    margin: 16,
+    textAlignVertical: 'top',
+    backgroundColor: Platform.OS === 'ios' ? '#f8f8f8' : 'transparent',
+    minHeight: 136,
+    maxHeight: 136,
   },
 });
 
