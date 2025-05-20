@@ -240,8 +240,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // This helps cases where the Auth UI's redirectTo doesn't trigger
             if (window.location.pathname.includes('/signin') || 
                 window.location.pathname.includes('/login') ||
-                window.location.pathname.includes('/signup') ||
-                window.location.pathname.includes('/verified-email')) {
+                window.location.pathname.includes('/signup')) {
               // Redirecting to account
               window.location.href = `${window.location.origin}/account`
             }
