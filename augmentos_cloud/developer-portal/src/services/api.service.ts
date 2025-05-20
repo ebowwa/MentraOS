@@ -216,7 +216,16 @@ const api = {
     acceptInvite: async (token: string): Promise<Organization> => {
       const response = await axios.post(`/api/orgs/accept/${token}`);
       return response.data.data;
-    }
+    },
+
+    /**
+     * Delete an organization
+     * @param orgId - The organization ID
+     */
+    delete: async (orgId: string): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.delete(`/api/orgs/${orgId}`);
+      return response.data;
+    },
   },
 
   // TPA management endpoints

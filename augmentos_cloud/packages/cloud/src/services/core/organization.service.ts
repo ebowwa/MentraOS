@@ -489,4 +489,104 @@ export class OrganizationService {
 
     return !!org;
   }
+
+  public static async deleteOrg(
+    orgId: string | Types.ObjectId,
+    actorUser: UserDocument
+  ): Promise<void> {
+    // Verify the actor is an admin of the organization
+    const isAdmin = await this.isOrgAdmin(actorUser, orgId);
+    if (!isAdmin) {
+      throw new ApiError(403, 'Insufficient permissions to delete organization');
+    }
+
+    // Check if the organization has any TPAs/apps
+    const App = require('../../models/app.model').default;
+    const appCount = await App.countDocuments({ organizationId: orgId });
+    if (appCount > 0) {
+      throw new ApiError(400, 'Organization cannot be deleted while it owns one or more applications');
+    }
+
+    // Fetch the organization with populated members for further checks
+    const org = await this.getOrgById(orgId);
+    if (!org) {
+      throw new ApiError(404, 'Organization not found');
+    }
+
+    // Ensure every member is an admin in at least one other organization
+    for (const member of org.members) {
+      const userId = (member.user as any)._id ?? member.user; // supports populated & ref
+      // Find other orgs where this user is an admin (excluding the current one)
+      const otherAdminOrg = await Organization.findOne({
+        _id: { $ne: orgId },
+        members: { $elemMatch: { user: userId, role: 'admin' } }
+      }).lean();
+
+      if (!otherAdminOrg) {
+        const memberUser = member.user as any;
+        const email = typeof memberUser === 'string' ? memberUser : memberUser.email;
+        throw new ApiError(
+          400,
+          `Member ${email || userId.toString()} must be an admin of at least one other organization before deletion`
+        );
+      }
+    }
+
+    // All checks passed – proceed with deletion
+
+    // Remove the organization document
+    await Organization.findByIdAndDelete(orgId);
+
+    // Update each member – pull org from their organizations list and fix defaultOrg
+    for (const member of org.members) {
+      const userId = (member.user as any)._id ?? member.user;
+      const user = await User.findById(userId);
+      if (!user) continue;
+
+      // Remove org from organizations array
+      if (user.organizations) {
+        user.organizations = user.organizations.filter(id => id.toString() !== org._id.toString());
+      }
+
+      // Fix defaultOrg if it was the deleted one
+      if (user.defaultOrg?.toString() === org._id.toString()) {
+        // Choose first org that the user is an admin of
+        let adminOrgFound = false;
+
+        if (user.organizations && user.organizations.length > 0) {
+          // Look through each org the user is a member of
+          for (const userOrgId of user.organizations) {
+            // Skip if this is the org being deleted
+            if (userOrgId.toString() === org._id.toString()) continue;
+
+            // Check if user is admin in this org
+            const userOrg = await Organization.findOne({
+              _id: userOrgId,
+              members: {
+                $elemMatch: {
+                  user: user._id,
+                  role: 'admin'
+                }
+              }
+            });
+
+            if (userOrg) {
+              // Found an org where user is admin, set as default
+              user.defaultOrg = userOrgId;
+              adminOrgFound = true;
+              break;
+            }
+          }
+        }
+
+        // If no admin org found, fall back to first org or undefined
+        if (!adminOrgFound) {
+          user.defaultOrg = user.organizations && user.organizations.length > 0 ?
+            user.organizations[0] : undefined;
+        }
+      }
+
+      await user.save();
+    }
+  }
 }

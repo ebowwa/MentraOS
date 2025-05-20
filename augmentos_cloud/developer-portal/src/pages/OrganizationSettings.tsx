@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Loader2, Building, Globe, Mail, FileText, Image, AlertTriangle, LockIcon } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Building, Globe, Mail, FileText, Image, AlertTriangle, LockIcon, Trash } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from '@/services/api.service';
 import { toast } from 'sonner';
@@ -35,6 +35,9 @@ const OrganizationSettings: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [isCreatingOrg, setIsCreatingOrg] = useState(false);
+  // Delete org state
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Handle missing organization by creating a personal one
   useEffect(() => {
@@ -94,8 +97,7 @@ const OrganizationSettings: React.FC = () => {
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const name = e.target.name as string;
-    const value = e.target.value;
+    const { name, value } = e.currentTarget as any;
 
     if (name === 'name') {
       setFormData(prev => ({
@@ -175,6 +177,38 @@ const OrganizationSettings: React.FC = () => {
       toast.error('Failed to update organization');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handle organization deletion
+  const handleDeleteOrg = async () => {
+    if (!currentOrg) return;
+
+    const confirmed = typeof globalThis !== 'undefined' && typeof (globalThis as any).confirm === 'function'
+      ? (globalThis as any).confirm(
+          `Are you sure you want to permanently delete the organization "${currentOrg.name}"? This action cannot be undone.`
+        )
+      : false;
+
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      setDeleteError(null);
+
+      await api.orgs.delete(currentOrg.id);
+
+      toast.success('Organization deleted successfully');
+
+      // Refresh organizations list; OrganizationContext will handle currentOrg selection
+      await refreshOrgs();
+    } catch (err: any) {
+      console.error('Error deleting organization:', err);
+      const message = err?.response?.data?.message || 'Failed to delete organization.';
+      setDeleteError(message);
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -345,20 +379,49 @@ const OrganizationSettings: React.FC = () => {
                     A URL to your organization logo (recommended: square format, 512x512 PNG).
                   </p>
                 </div>
+
+                {/* Delete organization section (admins only) */}
+                {deleteError && (
+                      <Alert variant="destructive" className="mb-4">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription>{deleteError}</AlertDescription>
+                      </Alert>
+                    )}
               </CardContent>
               <CardFooter className="flex justify-end p-6">
-                {isAdmin ? (
-                  <Button type="submit" disabled={isSaving}>
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      'Save Changes'
-                    )}
-                  </Button>
-                ) : (
+                                  {isAdmin ? (
+                                    <div className="flex gap-4">
+                                      <Button
+                                        type="button"
+                                        variant="destructive"
+                                        onClick={handleDeleteOrg}
+                                        disabled={isDeleting}
+                                        className="gap-2"
+                                      >
+                                        {isDeleting ? (
+                                          <>
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                            Deleting...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Trash className="h-4 w-4" />
+                                            Delete Organization
+                                          </>
+                                        )}
+                                      </Button>
+                                      <Button type="submit" disabled={isSaving}>
+                                        {isSaving ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Saving...
+                                          </>
+                                        ) : (
+                                          'Save Changes'
+                                        )}
+                                      </Button>
+                                    </div>
+                                  ) : (
                   <p className="text-sm text-muted-foreground">
                     Contact an administrator to make changes
                   </p>

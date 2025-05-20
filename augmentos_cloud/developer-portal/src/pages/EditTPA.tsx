@@ -621,51 +621,6 @@ const EditTPA: React.FC = () => {
 
                 {/* App Sharing Section */}
                 <div className="space-y-8 mt-6">
-                  {/* Share with Editors */}
-                  <div className="border rounded-lg bg-white p-8 shadow-sm">
-
-                    {/* Share with Users by Email */}
-                    <div className="mb-4 ml-9">
-                      <Label className="font-medium">Share with Specific Users (by Email)</Label>
-                      <p className="text-xs text-gray-500 mb-2 ml-1 pt-2">Add email addresses to grant edit/manage access to specific users, even if not in your organization.</p>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Input
-                          type="email"
-                          placeholder="user@example.com"
-                          value={newShareEmail}
-                          onChange={e => setNewShareEmail(e.currentTarget.value)}
-                          disabled={isUpdatingEmails}
-                          className="w-64"
-                        />
-                        <Button
-                          type="button"
-                          onClick={handleAddShareEmail}
-                          disabled={isUpdatingEmails || !newShareEmail.trim()}
-                        >
-                          Add
-                        </Button>
-                      </div>
-                      {emailError && <div className="text-xs text-red-500 font-bold mb-2 ml-1">{emailError}</div>}
-                      <ul className="list-disc pl-6">
-                        {sharedWithEmails.length === 0 && <li className="text-xs text-gray-400 ml-2">No users have been added yet.</li>}
-                        {sharedWithEmails.map(email => (
-                          <li key={email} className="flex items-center gap-2 mb-1">
-                            <span>{email}</span>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="text-xs px-2 py-0"
-                              onClick={() => handleRemoveShareEmail(email)}
-                              disabled={isUpdatingEmails}
-                            >
-                              Remove
-                            </Button>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
                   {/* Share with Testers */}
                   <div className="border rounded-lg bg-white p-8 shadow-sm">
                     <h3 className="text-lg font-semibold mb-4 flex items-center">
