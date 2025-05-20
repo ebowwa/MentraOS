@@ -25,7 +25,8 @@ extension Data {
   }
   
   func hexEncodedString() -> String {
-    return map { String(format: "%02x", $0) }.joined()
+    return map { String(format: "%02x", $0) }.joined(separator: " ")
+//    return map { String(format: "%02x", $0) }.joined(separator: ", ")
   }
 }
 
@@ -97,6 +98,7 @@ enum GlassesError: Error {
   private var reconnectionAttempts: Int = 0
   private let maxReconnectionAttempts: Int = -1 // unlimited reconnection attempts
   private let reconnectionInterval: TimeInterval = 30.0 // Seconds between reconnection attempts
+  private var globalCounter: UInt8 = 0
   
   enum AiMode: String {
     case AI_REQUESTED
@@ -147,8 +149,6 @@ enum GlassesError: Error {
   private var rightInitialized: Bool = false
   @Published public var isHeadUp = false
   
-  private var aiTriggerTimeoutTimer: Timer?
-  
   private var leftGlassUUID: UUID? {
       get {
           if let uuidString = UserDefaults.standard.string(forKey: "leftGlassUUID") {
@@ -183,9 +183,25 @@ enum GlassesError: Error {
   
   override init() {
     super.init()
-    // centralManager = CBCentralManager(delegate: self, queue: ERG1Manager._bluetoothQueue)
-    // setupCommandQueue()
     startHeartbeatTimer()
+  }
+  
+  deinit {
+      // Stop the heartbeat timer
+      heartbeatTimer?.invalidate()
+      heartbeatTimer = nil
+      
+      // Stop the reconnection timer if active
+      stopReconnectionTimer()
+      
+      // Clean up central manager delegate
+      centralManager?.delegate = nil
+      
+      // Clean up peripheral delegates
+      leftPeripheral?.delegate = nil
+      rightPeripheral?.delegate = nil
+      
+      print("ERG1Manager deinitialized")
   }
   
   // @@@ REACT NATIVE FUNCTIONS @@@
@@ -276,15 +292,6 @@ enum GlassesError: Error {
   }
   
   @objc public func RN_sendText(_ text: String) -> Void {
-
-
-//    if (text == " " || text == "") {
-//      let command: [UInt8] = [0x18]
-////      let command: [UInt8] = [0x20, 0xCA]
-//      queueChunks([command])
-//      return;
-//    }
-
     Task {
       let displayText = "\(text)"
       guard let textData = displayText.data(using: .utf8) else { return }
@@ -385,38 +392,6 @@ enum GlassesError: Error {
   // @@@ END REACT NATIVE FUNCTIONS
   
   
-  //  private func setupCommandQueue() {
-  //    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-  //      guard let self = self else { return }
-  //
-  //      while true {
-  //        var commandToProcess: BufferedCommand?
-  //
-  //        // Try to get a number from the queue
-  //        self.queueLock.wait()
-  //        if !self.commandQueue.isEmpty {
-  //          commandToProcess = self.commandQueue.removeFirst()  // FIFO - remove from the front
-  //        }
-  //        self.queueLock.signal()
-  //
-  //        // If no command, just poll again after a short delay
-  //        guard let command = commandToProcess else {
-  //          Thread.sleep(forTimeInterval: 0.1)  // Simple polling
-  //          continue
-  //        }
-  //
-  //        let semaphore = DispatchSemaphore(value: 0)
-  //        Task {
-  //          await self.processCommand(command)
-  //          semaphore.signal()
-  //        }
-  //        semaphore.wait()// waits until the command is done processing
-  //      }
-  //    }
-  //
-  //  }
-  
-  
   actor CommandQueue {
     private var commands: [BufferedCommand] = []
     
@@ -477,11 +452,15 @@ enum GlassesError: Error {
     var attempts: Int = 0
     var result: Bool = false
     var semaphore = side == "left" ? leftSemaphore : rightSemaphore
+    var s = side == "left" ? "L" : "R"
     
     while attempts < maxAttempts && !result {
       if (attempts > 0) {
         print("trying again to send to left: \(attempts)")
       }
+      let data = Data(chunks[0])
+      print("SEND (\(s)) \(data.hexEncodedString())")
+      
       if self.isDisconnecting {
         // forget whatever we were doing since we're disconnecting:
         break
@@ -548,28 +527,6 @@ enum GlassesError: Error {
     return result == .success
   }
   
-  //  private func startAITriggerTimeoutTimer() {
-  //    let backgroundQueue = DispatchQueue(label: "com.sample.aiTriggerTimerQueue", qos: .default)
-  //
-  //    backgroundQueue.async { [weak self] in
-  //      self?.aiTriggerTimeoutTimer = Timer(timeInterval: 6.0, repeats: false) { [weak self] _ in
-  //        guard let self = self else { return }
-  //        guard let rightPeripheral = self.rightPeripheral else { return }
-  //        guard let leftPeripheral = self.leftPeripheral else { return }
-  //        sendMicOn(to: rightPeripheral, isOn: false)
-  //
-  //        if let leftChar = getWriteCharacteristic(for: leftPeripheral),
-  //           let rightChar = getWriteCharacteristic(for: rightPeripheral) {
-  //          exitAllFunctions(to: leftPeripheral, characteristic: leftChar)
-  //          exitAllFunctions(to: rightPeripheral, characteristic: rightChar)
-  //        }
-  //      }
-  //
-  //      RunLoop.current.add((self?.aiTriggerTimeoutTimer)!, forMode: .default)
-  //      RunLoop.current.run()
-  //    }
-  //  }
-  
   func startHeartbeatTimer() {
     
     // Check if a timer is already running
@@ -626,7 +583,8 @@ enum GlassesError: Error {
     guard let command = data.first else { return }// ensure the data isn't empty
     
     let side = peripheral == leftPeripheral ? "left" : "right"
-    print("received from G1 (\(side)): \(data.hexEncodedString())")
+    let s = peripheral == leftPeripheral ? "L" : "R"
+    print("RECV (\(s)) \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:
@@ -645,7 +603,7 @@ enum GlassesError: Error {
       // 0x06 seems arbitrary :/
       handleAck(from: peripheral, success: data[1] == 0x06)
     case .DASHBOARD_SHOW:
-      handleAck(from: peripheral, success: data[1] == 0x07)
+      handleAck(from: peripheral, success: data[1] == 0x07 || data[1] == 0x90 || data[1] == 0x0C)
     case .HEAD_UP_ANGLE:
       handleAck(from: peripheral, success: data[1] == CommandResponse.ACK.rawValue)
     // head up angle ack
@@ -654,6 +612,10 @@ enum GlassesError: Error {
       self.compressedVoiceData = data
       //                print("Got voice data: " + String(data.count))
       break
+    case .UNK_1:
+      handleAck(from: peripheral, success: true)
+    case .UNK_2:
+      handleAck(from: peripheral, success: true)
     case .BLE_REQ_HEARTBEAT:
       // TODO: ios handle semaphores correctly here
       // battery info
@@ -919,13 +881,13 @@ extension ERG1Manager {
   
   public func sendCommandToSide(_ command: [UInt8], side: String) async {
     // Ensure command is exactly 20 bytes
-    var paddedCommand = command
-    while paddedCommand.count < 20 {
-      paddedCommand.append(0x00)
-    }
+//    var paddedCommand = command
+//    while paddedCommand.count < 20 {
+//      paddedCommand.append(0x00)
+//    }
     
     // Convert to Data
-    let commandData = Data(paddedCommand)
+    let commandData = Data(command)
     //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
     
     if (side == "left") {
@@ -949,42 +911,8 @@ extension ERG1Manager {
     }
   }
   
-  
-  public func sendCommand(_ command: [UInt8]) async {
-    // Ensure command is exactly 20 bytes
-    var paddedCommand = command
-    while paddedCommand.count < 20 {
-      paddedCommand.append(0x00)
-    }
-    
-    // Convert to Data
-    let commandData = Data(paddedCommand)
-    //    print("Sending command to glasses: \(paddedCommand.map { String(format: "%02X", $0) }.joined(separator: " "))")
-    
-    
-    // send to left
-    if let leftPeripheral = leftPeripheral,
-       let characteristic = leftPeripheral.services?
-      .first(where: { $0.uuid == UART_SERVICE_UUID })?
-      .characteristics?
-      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-      leftPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
-    }
-    
-    // send to right
-    if let rightPeripheral = rightPeripheral,
-       let characteristic = rightPeripheral.services?
-      .first(where: { $0.uuid == UART_SERVICE_UUID })?
-      .characteristics?
-      .first(where: { $0.uuid == UART_TX_CHAR_UUID }) {
-      rightPeripheral.writeValue(commandData, for: characteristic, type: .withResponse)
-      try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay after sending
-    }
-  }
-  
-  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0) {
-    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs);
+  public func queueChunks(_ chunks: [[UInt8]], sendLeft: Bool = true, sendRight: Bool = true, sleepAfterMs: Int = 0, ignoreAck: Bool = false) {
+    let bufferedCommand = BufferedCommand(chunks: chunks, sendLeft: sendLeft, sendRight: sendRight, waitTime: sleepAfterMs, ignoreAck: ignoreAck);
     Task {
       await commandQueue.enqueue(bufferedCommand)
     }
@@ -1090,59 +1018,44 @@ extension ERG1Manager {
       await setDashboardPosition(UInt8(height), UInt8(depth))
     }
   }
+
+  public func incrementGlobalCounter() {
+    if globalCounter < 255 {
+      globalCounter += 1
+    } else {
+      globalCounter = 0
+    }
+  }
+  
+  @objc public func RN_showDashboard() {
+    // nothing for now
+  }
   
   public func setDashboardPosition(_ height: UInt8, _ depth: UInt8) async -> Bool {
-    guard let rightGlass = rightPeripheral,
-          let leftGlass = leftPeripheral,
-          let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass),
-          let leftTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: leftGlass) else {
-      return false
-    }
     
-    let showDashboard: [UInt8] = [0x06, 0x07, 0x00, 0x02, 0x06, 0x00, 0x00]
-    queueChunks([showDashboard], sleepAfterMs: 300)
-    
-    let h: UInt8 = min(max(height, 1), 8)
+    let h: UInt8 = min(max(height, 0), 8)
     let d: UInt8 = min(max(depth, 1), 9)
     
+    incrementGlobalCounter()
+    
     // Build dashboard position command
-//    var command = Data()
-//    command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
-//    command.append(0x08) // Length
-//    command.append(0x00) // Sequence
-//    command.append(0x01) // Fixed value
-//    command.append(0x02) // Fixed value
-//    command.append(0x01) // State ON
-//    command.append(h.rawValue) // height
-//    command.append(d.rawValue) // depth
-    
-    print("height \(h)")
-    
     var command = Data()
     command.append(Commands.DASHBOARD_LAYOUT_COMMAND.rawValue)
-//    command.append(0x80) // Length high byte
-//    command.append(0x00) // Length low byte
-//    command.append(0x00) // Sequence number
-//    command.append(0x02) // Sub-command
-//    command.append(0x01) // Active state
-//    command.append(0x04) // height
-//    command.append(d) // depth
-    command.append(0x07) // Length
+    command.append(0x08) // Length
     command.append(0x00) // Sequence
-    command.append(0x01) // Fixed value
+    command.append(globalCounter & 0xFF) // Fixed value
     command.append(0x02) // Fixed value
     command.append(0x01) // State ON
     command.append(h) // height
-////    command.append(d.rawValue) // depthself.isSearching = false
+    command.append(d) // depth
+    
+//    while command.count < 20 {
+//      command.append(0x00)
+//    }
     
     // convert command to array of UInt8
     let commandArray = command.map { $0 }
     queueChunks([commandArray])
-    
-    //    // Send command to both glasses with proper timing
-    //    rightGlass.writeValue(command, for: rightTxChar, type: .withResponse)
-    //    try? await Task.sleep(nanoseconds: 50 * 1_000_000) // 50ms delay
-    //    leftGlass.writeValue(command, for: leftTxChar, type: .withResponse)
     return true
   }
   
@@ -1154,10 +1067,6 @@ extension ERG1Manager {
   }
   
   public func setMicEnabled(enabled: Bool) async -> Bool {
-    guard let rightGlass = rightPeripheral,
-          let rightTxChar = findCharacteristic(uuid: UART_TX_CHAR_UUID, peripheral: rightGlass) else {
-      return false
-    }
     
     var micOnData = Data()
     micOnData.append(Commands.BLE_REQ_MIC_ON.rawValue)

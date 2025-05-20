@@ -364,7 +364,7 @@ const Routes: React.FC<{ isDarkTheme: boolean, toggleTheme: () => void }> = ({ i
             <Stack.Screen
               name="ProfileSettings"
               options={{
-                headerShown: false,
+                headerShown: true,
                 title: 'Profile Settings',
                 headerStyle: {
                   backgroundColor: isDarkTheme

@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, StyleSheet, Switch, ScrollView, Alert, Platform} from 'react-native';
+import {View, Text, StyleSheet, Switch, ScrollView, Alert, Platform, Button} from 'react-native';
 import {useStatus} from '../providers/AugmentOSStatusProvider.tsx';
 import coreCommunicator from '../bridge/CoreCommunicator';
 import {Slider} from 'react-native-elements';
@@ -41,8 +41,8 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
   }, [status.glasses_settings.auto_brightness]);
 
   useEffect(() => {
-    setDepth(status.glasses_settings.depth);
-  }, [status.glasses_settings.depth]);
+    setDepth(status.glasses_settings.dashboard_depth);
+  }, [status.glasses_settings.dashboard_depth]);
 
   useEffect(() => {
     setHeight(status.glasses_settings.dashboard_height);
@@ -180,7 +180,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
           </View>
         )}
 
-        {/* <View style={styles.settingItem}>
+        <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
             <Text style={[styles.label, isDarkTheme ? styles.lightText : styles.darkText]}>Depth</Text>
             <Text style={[styles.value, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
@@ -198,7 +198,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
             </Text>
             <Slider {...heightSliderProps} />
           </View>
-        </View> */}
+        </View>
       </ScrollView>
     </View>
   );

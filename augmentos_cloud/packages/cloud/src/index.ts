@@ -39,6 +39,7 @@ import hardwareRoutes from './routes/hardware.routes';
 import audioRoutes from './routes/audio.routes';
 import userDataRoutes from './routes/user-data.routes';
 import permissionsRoutes from './routes/permissions.routes';
+import accountRoutes from './routes/account.routes';
 
 import path from 'path';
 
@@ -129,6 +130,7 @@ app.use(cors({
 
     "https://appstore.augmentos.org",
     "https://console.augmentos.org",
+    "https://account.augmentos.org",
 
     "https://augmentos.pages.dev",
     "https://augmentos-appstore-2.pages.dev",
@@ -160,6 +162,7 @@ app.use(errorReportRoutes);
 app.use(transcriptRoutes);
 app.use(audioRoutes);
 app.use('/api/user-data', userDataRoutes);
+app.use('/api/account', accountRoutes);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

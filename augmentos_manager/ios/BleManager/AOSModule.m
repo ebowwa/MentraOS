@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 #import "./AOSModule.h"
-#import "AugmentOS_Manager-Swift.h"
+#import "AugmentOS-Swift.h"
 
 @interface AOSModule ()
 @property (nonatomic, strong) AOSManager *aosManager;

@@ -168,20 +168,12 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
       : styles.connectButton;
   };
 
-  let b = parseInt(status?.glasses_settings?.brightness);
-  if (isNaN(b)) {
-    b = 50;
-  }
-
   let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true);
-  let [brightness, setBrightness] = useState(b);
-  
+  let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50);
+
   useEffect(() => {
-    let b = parseInt(status?.glasses_settings?.brightness);
-    if (isNaN(b)) {
-      b = 50;
-    }
-    setBrightness(b);
+    console.log('status?.glasses_settings?.brightness', status?.glasses_settings?.brightness);
+    setBrightness(status?.glasses_settings?.brightness ?? 50);
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true);
   }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness]);
 
@@ -248,23 +240,43 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
               {!autoBrightness ? (
                 <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}>{brightness}%</Text>
               ) : (
-                <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}>Auto</Text>
+                <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}></Text>
               )}
             </View>
-            <Slider
-              style={{width: '100%'}}
-              value={brightness}
-              minimumValue={0}
-              maximumValue={100}
-              step={1}
-              thumbStyle={{height: 20, width: 20}}
-              thumbTouchSize={{width: 40, height: 40}}
-              thumbTintColor="#FFFFFF"
-              trackStyle={{height: 5}}
-              onSlidingComplete={value => {
-                coreCommunicator.setGlassesBrightnessMode(value, autoBrightness);
-              }}
-            />
+            {/* this is so dumb but it doesn't want to work any other way */}
+            {autoBrightness && (
+              <Slider
+                disabled={true}
+                style={{width: '100%'}}
+                value={100}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
+                thumbStyle={{height: 20, width: 20, backgroundColor: 'transparent'}}
+                thumbTouchSize={{width: 40, height: 40}}
+                thumbTintColor='transparent'
+                trackStyle={{height: 5}}
+                minimumTrackTintColor='transparent'
+              />
+            )}
+            {!autoBrightness && (
+              <Slider
+                disabled={false}
+                allowTouchTrack={false}
+                style={{width: '100%'}}
+                value={brightness}
+                minimumValue={0}
+                maximumValue={100}
+                step={1}
+                thumbStyle={{height: 20, width: 20}}
+                thumbTouchSize={{width: 40, height: 40}}
+                thumbTintColor="#FFFFFF"
+                trackStyle={{height: 5}}
+                onSlidingComplete={value => {
+                  coreCommunicator.setGlassesBrightnessMode(value, autoBrightness);
+                }}
+              />
+            )}
           </View>
 
           <View style={[{flex: 2, alignItems: 'center', gap: 4, flexDirection: 'column', paddingTop: 0}]}>
