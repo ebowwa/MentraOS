@@ -18,6 +18,7 @@ type TextSettingNoSaveProps = {
   value: string;
   onChangeTextFn: (text: string) => void;
   theme: any;
+  maxLines?: number;
 };
 
 const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
@@ -25,6 +26,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
   value,
   onChangeTextFn,
   theme,
+  maxLines,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [tempValue, setTempValue] = useState(value);
@@ -33,7 +35,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
   useEffect(() => {
     const handler = setTimeout(() => {
       onChangeTextFn(tempValue);
-    }, 400);
+    }, 500);
     return () => clearTimeout(handler);
   }, [tempValue]);
 
@@ -129,15 +131,24 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
                 styles.modalInput,
                 {
                   color: theme.textColor,
-                  borderColor:
-                    Platform.OS === 'ios' ? '#e0e0e0' : theme.textColor,
+                  borderColor: Platform.OS === 'ios' ? '#e0e0e0' : theme.textColor,
+                  minHeight: maxLines ? 22 * maxLines + 32 : undefined,
+                  maxHeight: maxLines ? 22 * maxLines + 32 : undefined,
                 },
               ]}
               value={tempValue}
               onChangeText={text => {
-                setTempValue(text);
+                if (maxLines) {
+                  const lines = text.split('\n');
+                  if (lines.length <= maxLines) {
+                    setTempValue(text);
+                  }
+                } else {
+                  setTempValue(text);
+                }
               }}
               multiline
+              numberOfLines={maxLines || 5}
               maxLength={10000}
               textAlignVertical="top"
               autoFocus
@@ -227,12 +238,15 @@ const styles = StyleSheet.create({
   modalInput: {
     flexShrink: 1,
     fontSize: 16,
+    lineHeight: 22,
     borderWidth: Platform.OS === 'ios' ? 0.5 : 1,
     borderRadius: Platform.OS === 'ios' ? 10 : 4,
     padding: 16,
     margin: 16,
     textAlignVertical: 'top',
     backgroundColor: Platform.OS === 'ios' ? '#f8f8f8' : 'transparent',
+    minHeight: 142,
+    maxHeight: 142,
   },
 });
 
