@@ -130,6 +130,8 @@ public abstract class SmartGlassesCommunicator {
     public void updateGlassesBrightness(int brightness) {}
     public void updateGlassesAutoBrightness(boolean autoBrightness) {}
     public void updateGlassesHeadUpAngle(int headUpAngle) {}
+    public void updateGlassesDashboardHeight(int height) {}
+    public void updateGlassesDepth(int depth) {}
 
     public void changeSmartGlassesMicrophoneState(boolean isMicrophoneEnabled) {}
     
