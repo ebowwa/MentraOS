@@ -194,6 +194,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private Integer brightnessLevel;
     private Boolean autoBrightness;
     private Integer headUpAngle;
+    private Integer dashboardHeight;
+    private Integer dashboardDepth;
     
     // WiFi status for glasses that require WiFi (e.g., Mentra Live)
     private boolean glassesNeedWifiCredentials = false;
@@ -450,6 +452,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         brightnessLevel = 50;
         autoBrightness = false;
         headUpAngle = 20;
+        dashboardHeight = 4;
+        dashboardDepth = 5;
 
         // Request settings from server
         ServerComms.getInstance().requestSettingsFromServer();
@@ -1288,8 +1292,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             JSONObject glassesSettings = new JSONObject();
             glassesSettings.put("auto_brightness", autoBrightness);
             glassesSettings.put("head_up_angle", headUpAngle);
-            glassesSettings.put("dashboard_height", 4);// TODO
-            glassesSettings.put("depth", 5);// TODO
+            glassesSettings.put("dashboard_height", 4);// TODO: get from settings
+            glassesSettings.put("dashboard_depth", 5);// TODO: get from settings
             if (brightnessLevel == null) {
                 brightnessLevel = 50;
             }
@@ -1516,6 +1520,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         headUpAngle = settings.getInt("headUpAngle");
                         smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
                     }
+
+                    if (settings.has("dashboardHeight")) {
+                        dashboardHeight = settings.getInt("dashboardHeight");
+                        smartGlassesManager.updateGlassesDashboardHeight(dashboardHeight);
+                    }
+
+                    if (settings.has("dashboardDepth")) {
+                        dashboardDepth = settings.getInt("dashboardDepth");
+                        smartGlassesManager.updateGlassesDepth(dashboardDepth);
+                    }
+                    
                     // if (settings.has("useOnboardMic")) {
                     //     useOnboardMic = settings.getBoolean("useOnboardMic");
                     //     if (useOnboardMic) {
@@ -1898,6 +1913,33 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             sendStatusToAugmentOsManager();
         } else {
             blePeripheral.sendNotifyManager("Connect glasses to update head up angle", "error");
+        }
+    }
+
+    @Override
+    public void updateGlassesDashboardHeight(int dashboardHeight) {
+        Log.d("AugmentOsService", "Updating glasses dashboard height: " + dashboardHeight);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.updateGlassesDashboardHeight(dashboardHeight);
+            this.dashboardHeight = dashboardHeight;
+            sendStatusToBackend();
+            sendStatusToAugmentOsManager();
+        } else {
+            blePeripheral.sendNotifyManager("Connect glasses to update dashboard height", "error");
+        }
+    }
+
+
+    @Override
+    public void updateGlassesDepth(int depth) {
+        Log.d("AugmentOsService", "Updating glasses depth: " + depth);
+        if (smartGlassesManager != null) {
+            smartGlassesManager.updateGlassesDepth(depth);
+            this.dashboardDepth = depth;
+            sendStatusToBackend();
+            sendStatusToAugmentOsManager();
+        } else {
+            blePeripheral.sendNotifyManager("Connect glasses to update depth", "error");
         }
     }
     
