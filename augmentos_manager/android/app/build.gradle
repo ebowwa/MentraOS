@@ -43,7 +43,7 @@ android {
         applicationId "com.augmentos.augmentos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 23
+        versionCode 30
         versionName "1.9.0"
         multiDexEnabled true  // Add this if your app exceeds 64K method limit
     }
@@ -55,10 +55,10 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+            storeFile file('../credentials/upload-keystore.jks')
+            storePassword AUGMENTOS_UPLOAD_STORE_PASSWORD
+            keyAlias "upload"
+            keyPassword AUGMENTOS_UPLOAD_KEY_PASSWORD
         }
     }
     buildTypes {

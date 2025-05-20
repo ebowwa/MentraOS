@@ -1,12 +1,5 @@
 import React, {useState} from "react"
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  ViewStyle,
-  TextStyle,
-} from "react-native"
+import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle} from "react-native"
 import {FontAwesome} from "@expo/vector-icons"
 import {Screen, Header, Icon} from "@/components/ignite"
 import {router} from "expo-router"
@@ -191,6 +184,18 @@ export default function SettingsPage() {
             </View>
           )}
         </View>
+
+        {/* Proofile Settings */}
+        <TouchableOpacity
+          style={themed($settingItem)}
+          onPress={() => {
+            router.push("/settings/profile")
+          }}>
+          <View style={themed($settingTextContainer)}>
+            <Text style={[themed($label)]}>Profile Settings</Text>
+          </View>
+          <Icon name="angle-right" size={20} color={themed($iconColor)} />
+        </TouchableOpacity>
 
         {/* Privacy Settings */}
         <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/privacy")}>
