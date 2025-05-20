@@ -303,6 +303,32 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </View>
           )} */}
 
+          {/* Proofile Settings */}
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => {
+              navigation.navigate('ProfileSettings');
+            }}>
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  isDarkTheme ? styles.lightText : styles.darkText,
+                ]}>
+                Profile Settings
+              </Text>
+            </View>
+            <Icon
+              name="angle-right"
+              size={20}
+              color={
+                isDarkTheme ? styles.lightIcon.color : styles.darkIcon.color
+              }
+            />
+          </TouchableOpacity>
+
+
+
           {/* Privacy Settings */}
           <TouchableOpacity
             style={styles.settingItem}

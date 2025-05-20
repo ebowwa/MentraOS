@@ -112,7 +112,9 @@ export class NotificationSummaryAgent implements Agent {
   /**
    * Handles the context which is expected to include a "notifications" field (an array).
    */
-  public async handleContext(userContext: Record<string, any>): Promise<any> {
+  public async handleContext(
+    userContext: Record<string, any>
+  ): Promise<any> {
     try {
       let notifications: any[] = userContext.notifications;
       if (!notifications || !Array.isArray(notifications) || notifications.length === 0) {
@@ -134,9 +136,6 @@ export class NotificationSummaryAgent implements Agent {
       // Convert notifications array to a JSON string.
       const notificationsStr = JSON.stringify(notifications, null, 2);
 
-      // console.log("NOTIFICATIONS STR:");
-      // console.log(notificationsStr);
-
       // Prepare the prompt using the notifications string.
       const promptTemplate = new PromptTemplate({
         template: this.agentPrompt,
@@ -147,19 +146,26 @@ export class NotificationSummaryAgent implements Agent {
         notifications: notificationsStr 
       });
       // Initialize LLM with settings.
-      const llm = LLMProvider.getLLM();
+      const llmOptions: any = {};
+      llmOptions.responseFormat = { type: "json_object" };
+      const llm = LLMProvider.getLLM(llmOptions);
 
       // Call the LLM.
       const response = await llm.invoke(finalPrompt);
       
       // Expect the LLM response to have a "content" property.
       if (!response || !response.content) {
-        console.error("LLM response missing content");
-        return [];
+        // Fallback: return original notifications with default summary/rank
+        return notifications.map((n) => ({
+          uuid: n.uuid,
+          summary: (n.title + ": " + n.text || "").substring(0, 30),
+          rank: 10,
+          appName: n.appName || "",
+          title: n.title || "",
+          text: n.text || "",
+          timestamp: n.timestamp || "",
+        }));
       }
-
-      // console.log("RESPONSE:");
-      // console.log(response);
 
       const content = typeof response.content === 'string' 
         ? response.content 
@@ -171,6 +177,19 @@ export class NotificationSummaryAgent implements Agent {
 
       const parsedOutput = this.parseOutput(content);
       const rankingList = parsedOutput.notification_ranking;
+
+      // If parsing failed or rankingList is empty, fallback to original notifications
+      if (!rankingList || rankingList.length === 0) {
+        return notifications.map((n) => ({
+          uuid: n.uuid,
+          summary: (n.title + ": " + n.text || "").substring(0, 30),
+          rank: 10,
+          appName: n.appName || "",
+          title: n.title || "",
+          text: n.text || "",
+          timestamp: n.timestamp || "",
+        }));
+      }
 
       // Create a lookup of original notifications by uuid.
       const notificationsMap: { [key: string]: any } = {};
@@ -195,7 +214,29 @@ export class NotificationSummaryAgent implements Agent {
       return enrichedRankingList;
     } catch (err) {
       console.error("[NotificationSummaryAgent] Error:", err);
-      return [];
+      // Fallback: return original notifications with default summary/rank
+      let notifications: any[] = userContext.notifications;
+      if (!notifications || !Array.isArray(notifications) || notifications.length === 0) {
+        return [];
+      }
+      notifications = notifications.map((notification) => {
+        if (notification.timestamp && typeof notification.timestamp === "number") {
+          notification.timestamp = new Date(notification.timestamp)
+            .toISOString()
+            .replace("T", " ")
+            .substring(0, 19);
+        }
+        return notification;
+      });
+      return notifications.map((n) => ({
+        uuid: n.uuid,
+        summary: (n.title + ": " + n.text || "").substring(0, 30),
+        rank: 10,
+        appName: n.appName || "",
+        title: n.title || "",
+        text: n.text || "",
+        timestamp: n.timestamp || "",
+      }));
     }
   }
 }

@@ -637,6 +637,18 @@ public class SmartGlassesManager extends Service {
         }
     }
 
+    public void updateGlassesDashboardHeight(int height) {
+        if (smartGlassesRepresentative != null) {
+            smartGlassesRepresentative.updateGlassesDashboardHeight(height);
+        }
+    }
+
+    public void updateGlassesDepth(int depth) {
+        if (smartGlassesRepresentative != null) {
+            smartGlassesRepresentative.updateGlassesDepth(depth);
+        }
+    }
+
     public void sendReferenceCard(String title, String body) {
         if (smartGlassesRepresentative != null && smartGlassesRepresentative.smartGlassesCommunicator != null) {
             smartGlassesRepresentative.smartGlassesCommunicator.displayReferenceCardSimple(title, body);
