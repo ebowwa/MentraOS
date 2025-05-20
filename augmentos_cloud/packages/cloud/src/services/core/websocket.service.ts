@@ -1723,7 +1723,7 @@ export class WebSocketService {
 
                 // Check if we need to update microphone state based on media subscriptions
                 const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSessionId);
-                userSession.logger.info('Media subscriptions after update:', mediaSubscriptions);
+                userSession.logger.info({mediaSubscriptions}, 'Media subscriptions after update for user session: ' + userSessionId);
 
                 if (mediaSubscriptions) {
                   userSession.logger.info('Media subscriptions exist, ensuring microphone is enabled');
