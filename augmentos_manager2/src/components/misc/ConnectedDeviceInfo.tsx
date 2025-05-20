@@ -292,17 +292,17 @@ export default function ConnectedDeviceInfo() {
   };
 
   const renderStatusBars = () => {
-    if (!status.core_info.puck_connected) {
-      return (
-        <View style={styles.disconnectedContent}>
-          <Text style={[styles.connectText, {color: themeStyles.textColor}]}>{'Core service not connected'}</Text>
-          <TouchableOpacity style={styles.connectButton} onPress={handleConnectToCore}>
-            <Icon name="wifi" size={16} color="white" style={styles.icon} />
-            <Text style={styles.buttonText}>Connect to Core</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
+    // if (!status.core_info.puck_connected) {
+    //   return (
+    //     <View style={styles.disconnectedContent}>
+    //       <Text style={[styles.connectText, {color: themeStyles.textColor}]}>{'Core service not connected'}</Text>
+    //       <TouchableOpacity style={styles.connectButton} onPress={handleConnectToCore}>
+    //         <Icon name="wifi" size={16} color="white" style={styles.icon} />
+    //         <Text style={styles.buttonText}>Connect to Core</Text>
+    //       </TouchableOpacity>
+    //     </View>
+    //   );
+    // }
 
     if (!status.core_info.default_wearable) {
       if (status.core_info.is_searching) {

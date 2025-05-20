@@ -8,7 +8,6 @@
 #ifndef AOSModule_h
 #define AOSModule_h
 
-
 #import <Foundation/Foundation.h>
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>

@@ -1,19 +1,13 @@
-import { ReactElement } from "react"
-import {
-  StyleProp,
-  TextStyle,
-  TouchableOpacity,
-  TouchableOpacityProps,
-  View,
-  ViewStyle,
-} from "react-native"
-import { isRTL, translate } from "@/i18n"
-import { $styles } from "@/theme"
-import { ExtendedEdge, useSafeAreaInsetsStyle } from "@/utils/useSafeAreaInsetsStyle"
-import { IconTypes, PressableIcon } from "./Icon"
-import { Text, TextProps } from "./Text"
-import { useAppTheme } from "@/utils/useAppTheme"
-import type { ThemedStyle } from "@/theme"
+import {ReactElement} from "react"
+import {StyleProp, TextStyle, TouchableOpacity, TouchableOpacityProps, View, ViewStyle} from "react-native"
+import {isRTL, translate} from "@/i18n"
+import {$styles} from "@/theme"
+import {ExtendedEdge, useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
+import {IconTypes, PressableIcon} from "./Icon"
+import {Text, TextProps} from "./Text"
+import {useAppTheme} from "@/utils/useAppTheme"
+import type {ThemedStyle} from "@/theme"
+import {LinearGradient} from "expo-linear-gradient"
 
 export interface HeaderProps {
   /**
@@ -147,11 +141,11 @@ interface HeaderActionProps {
  */
 export function Header(props: HeaderProps) {
   const {
-    theme: { colors },
+    theme: {colors},
     themed,
   } = useAppTheme()
   const {
-    backgroundColor = colors.background,
+    backgroundColor = 'transparent',
     LeftActionComponent,
     leftIcon,
     leftIconColor,
@@ -177,54 +171,63 @@ export function Header(props: HeaderProps) {
     containerStyle: $containerStyleOverride,
   } = props
 
-  const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges)
+  const $containerInsets = useSafeAreaInsetsStyle(safeAreaEdges, "margin")
 
   const titleContent = titleTx ? translate(titleTx, titleTxOptions) : title
 
+  const {theme} = useAppTheme()
+
   return (
-    <View style={[$container, $containerInsets, { backgroundColor }, $containerStyleOverride]}>
-      <View style={[$styles.row, $wrapper, $styleOverride]}>
-        <HeaderAction
-          tx={leftTx}
-          text={leftText}
-          icon={leftIcon}
-          iconColor={leftIconColor}
-          onPress={onLeftPress}
-          txOptions={leftTxOptions}
-          backgroundColor={backgroundColor}
-          ActionComponent={LeftActionComponent}
-        />
 
-        {!!titleContent && (
-          <View
-            style={[
-              titleMode === "center" && themed($titleWrapperCenter),
-              titleMode === "flex" && $titleWrapperFlex,
-              $titleContainerStyleOverride,
-            ]}
-            pointerEvents="none"
-          >
-            <Text
-              weight="medium"
-              size="md"
-              text={titleContent}
-              style={[$title, $titleStyleOverride]}
-            />
-          </View>
-        )}
+      <View style={[$container, $containerInsets, {backgroundColor}, $containerStyleOverride]}>
+        <View style={[$styles.row, $wrapper, $styleOverride]}>
+            {/* <LinearGradient
+      colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
+      style={{
+        position: "absolute",
+        left: 0,
+        right: 0,
+        top: 0,
+        bottom: 0,
+      }}
+      start={{x: 0, y: 0}}
+      end={{x: 0, y: 1}}> */}
+          <HeaderAction
+            tx={leftTx}
+            text={leftText}
+            icon={leftIcon}
+            iconColor={leftIconColor}
+            onPress={onLeftPress}
+            txOptions={leftTxOptions}
+            backgroundColor={backgroundColor}
+            ActionComponent={LeftActionComponent}
+          />
 
-        <HeaderAction
-          tx={rightTx}
-          text={rightText}
-          icon={rightIcon}
-          iconColor={rightIconColor}
-          onPress={onRightPress}
-          txOptions={rightTxOptions}
-          backgroundColor={backgroundColor}
-          ActionComponent={RightActionComponent}
-        />
+          {!!titleContent && (
+            <View
+              style={[
+                titleMode === "center" && themed($titleWrapperCenter),
+                titleMode === "flex" && $titleWrapperFlex,
+                $titleContainerStyleOverride,
+              ]}
+              pointerEvents="none">
+              <Text weight="medium" size="md" text={titleContent} style={[$title, $titleStyleOverride]} />
+            </View>
+          )}
+
+          <HeaderAction
+            tx={rightTx}
+            text={rightText}
+            icon={rightIcon}
+            iconColor={rightIconColor}
+            onPress={onRightPress}
+            txOptions={rightTxOptions}
+            backgroundColor={backgroundColor}
+            ActionComponent={RightActionComponent}
+          />
+    {/* </LinearGradient> */}
+        </View>
       </View>
-    </View>
   )
 }
 
@@ -233,8 +236,8 @@ export function Header(props: HeaderProps) {
  * @returns {JSX.Element} The rendered `HeaderAction` component.
  */
 function HeaderAction(props: HeaderActionProps) {
-  const { backgroundColor, icon, text, tx, txOptions, onPress, ActionComponent, iconColor } = props
-  const { themed } = useAppTheme()
+  const {backgroundColor, icon, text, tx, txOptions, onPress, ActionComponent, iconColor} = props
+  const {themed} = useAppTheme()
 
   const content = tx ? translate(tx, txOptions) : text
 
@@ -243,11 +246,10 @@ function HeaderAction(props: HeaderActionProps) {
   if (content) {
     return (
       <TouchableOpacity
-        style={themed([$actionTextContainer, { backgroundColor }])}
+        style={themed([$actionTextContainer, {backgroundColor}])}
         onPress={onPress}
         disabled={!onPress}
-        activeOpacity={0.8}
-      >
+        activeOpacity={0.8}>
         <Text weight="medium" size="md" text={content} style={themed($actionText)} />
       </TouchableOpacity>
     )
@@ -260,13 +262,13 @@ function HeaderAction(props: HeaderActionProps) {
         icon={icon}
         color={iconColor}
         onPress={onPress}
-        containerStyle={themed([$actionIconContainer, { backgroundColor }])}
-        style={isRTL ? { transform: [{ rotate: "180deg" }] } : {}}
+        containerStyle={themed([$actionIconContainer, {backgroundColor}])}
+        style={isRTL ? {transform: [{rotate: "180deg"}]} : {}}
       />
     )
   }
 
-  return <View style={[$actionFillerContainer, { backgroundColor }]} />
+  return <View style={[$actionFillerContainer, {backgroundColor}]} />
 }
 
 const $wrapper: ViewStyle = {
@@ -283,7 +285,7 @@ const $title: TextStyle = {
   textAlign: "center",
 }
 
-const $actionTextContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $actionTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexGrow: 0,
   alignItems: "center",
   justifyContent: "center",
@@ -292,11 +294,11 @@ const $actionTextContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   zIndex: 2,
 })
 
-const $actionText: ThemedStyle<TextStyle> = ({ colors }) => ({
+const $actionText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.tint,
 })
 
-const $actionIconContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $actionIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexGrow: 0,
   alignItems: "center",
   justifyContent: "center",
@@ -309,7 +311,7 @@ const $actionFillerContainer: ViewStyle = {
   width: 16,
 }
 
-const $titleWrapperCenter: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $titleWrapperCenter: ThemedStyle<ViewStyle> = ({spacing}) => ({
   alignItems: "center",
   justifyContent: "center",
   height: "100%",

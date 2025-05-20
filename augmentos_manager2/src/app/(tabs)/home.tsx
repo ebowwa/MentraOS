@@ -201,17 +201,17 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto">
+    <Screen preset="auto" style={{paddingHorizontal: 20}}>
       <AnimatedSection>
         <Header leftTx="homeScreen:title" />
       </AnimatedSection>
-      <ScrollView
+      {/* <ScrollView
         style={{flex: 1, paddingHorizontal: 16}}
         contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
-      >
+      > */}
         {status.core_info.cloud_connection_status !== "CONNECTED" && (
           <AnimatedSection>
-            <CloudConnection isDarkTheme={theme.isDark} />
+            <CloudConnection />
           </AnimatedSection>
         )}
 
@@ -273,15 +273,11 @@ export default function Homepage() {
             )}
           </>
         )}
-      </ScrollView>
+        {/* <View style={{height: 1000}} /> */}
+      {/* </ScrollView> */}
     </Screen>
   )
 }
-
-const $screenContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  backgroundColor: colors.background,
-})
 
 const $contentContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   paddingBottom: 0,

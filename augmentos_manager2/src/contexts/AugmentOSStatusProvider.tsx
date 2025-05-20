@@ -93,7 +93,7 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
 
     // Initialize the Core communication
     const initializeCoreConnection = React.useCallback(() => {
-        console.log("Initializing Core communication");
+        console.log("initializeCoreConnection()");
         coreCommunicator.initialize();
         setIsInitialized(true);
     }, []);

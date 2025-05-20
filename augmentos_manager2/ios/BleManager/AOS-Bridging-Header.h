@@ -3,8 +3,10 @@
 //
 
 #import <React/RCTBridgeModule.h>
-#import "Converter/PcmConverter.h"
-//#import "Packages/CoreObjC/PcmConverter.h"
+
+//#import "Converter/PcmConverter.h"
+
+#import "../Packages/CoreObjC/PcmConverter.h"
 
 // environment variables:
 #import "RNCConfig.h"

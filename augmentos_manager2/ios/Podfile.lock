@@ -19,6 +19,8 @@ PODS:
     - ExpoModulesCore
   - ExpoKeepAwake (14.0.3):
     - ExpoModulesCore
+  - ExpoLinearGradient (14.0.2):
+    - ExpoModulesCore
   - ExpoLinking (7.0.5):
     - ExpoModulesCore
   - ExpoLocalization (16.0.1):
@@ -57,6 +59,11 @@ PODS:
   - hermes-engine (0.76.9):
     - hermes-engine/Pre-built (= 0.76.9)
   - hermes-engine/Pre-built (0.76.9)
+  - onnxruntime-c (1.18.0)
+  - onnxruntime-objc (1.18.0):
+    - onnxruntime-objc/Core (= 1.18.0)
+  - onnxruntime-objc/Core (1.18.0):
+    - onnxruntime-c (= 1.18.0)
   - RCT-Folly (2024.10.14.00):
     - boost
     - DoubleConversion
@@ -2046,6 +2053,7 @@ DEPENDENCIES:
   - ExpoFont (from `../node_modules/expo-font/ios`)
   - ExpoHead (from `../node_modules/expo-router/ios`)
   - ExpoKeepAwake (from `../node_modules/expo-keep-awake/ios`)
+  - ExpoLinearGradient (from `../node_modules/expo-linear-gradient/ios`)
   - ExpoLinking (from `../node_modules/expo-linking/ios`)
   - ExpoLocalization (from `../node_modules/expo-localization/ios`)
   - ExpoModulesCore (from `../node_modules/expo-modules-core`)
@@ -2056,6 +2064,7 @@ DEPENDENCIES:
   - fmt (from `../node_modules/react-native/third-party-podspecs/fmt.podspec`)
   - glog (from `../node_modules/react-native/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - onnxruntime-objc (= 1.18.0)
   - RCT-Folly (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCT-Folly/Fabric (from `../node_modules/react-native/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
@@ -2132,6 +2141,8 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
+    - onnxruntime-c
+    - onnxruntime-objc
     - SocketRocket
 
 EXTERNAL SOURCES:
@@ -2157,6 +2168,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/expo-router/ios"
   ExpoKeepAwake:
     :path: "../node_modules/expo-keep-awake/ios"
+  ExpoLinearGradient:
+    :path: "../node_modules/expo-linear-gradient/ios"
   ExpoLinking:
     :path: "../node_modules/expo-linking/ios"
   ExpoLocalization:
@@ -2333,6 +2346,7 @@ SPEC CHECKSUMS:
   ExpoFont: f354e926f8feae5e831ec8087f36652b44a0b188
   ExpoHead: df924203fbf8e0913fc38b0f6aec71f9a9115482
   ExpoKeepAwake: b0171a73665bfcefcfcc311742a72a956e6aa680
+  ExpoLinearGradient: 35ebd83b16f80b3add053a2fd68cc328ed927f60
   ExpoLinking: 8d12bee174ba0cdf31239706578e29e74a417402
   ExpoLocalization: 7776ea3bdb112125390745bbaf919b734b2ad1c7
   ExpoModulesCore: c25d77625038b1968ea1afefc719862c0d8dd993
@@ -2343,6 +2357,8 @@ SPEC CHECKSUMS:
   fmt: 01b82d4ca6470831d1cc0852a1af644be019e8f6
   glog: 08b301085f15bcbb6ff8632a8ebaf239aae04e6a
   hermes-engine: 9e868dc7be781364296d6ee2f56d0c1a9ef0bb11
+  onnxruntime-c: a909204639a1f035f575127ac406f781ac797c9c
+  onnxruntime-objc: b6fab0f1787aa6f7190c2013f03037df4718bd8b
   RCT-Folly: ea9d9256ba7f9322ef911169a9f696e5857b9e17
   RCTDeprecation: ebe712bb05077934b16c6bf25228bdec34b64f83
   RCTRequired: ca91e5dd26b64f577b528044c962baf171c6b716
@@ -2416,6 +2432,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: feb4910aba9742cfedc059e2b2902e22ffe9954a
 
-PODFILE CHECKSUM: 32f60fed8ffb94812d9d7ecdaa5534f190f80464
+PODFILE CHECKSUM: d9d80e807e97c8dee1c61165d850a75ab559d428
 
 COCOAPODS: 1.16.2

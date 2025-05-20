@@ -15,11 +15,53 @@
 		A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
+		C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978A2DDD0EA80032FC99 /* AOSModule.m */; };
+		C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97882DDD0EA80032FC99 /* AOSManager.swift */; };
+		C5DE97A02DDD0EA80032FC99 /* ERG1Manager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */; };
+		C5DE97A12DDD0EA80032FC99 /* ServerComms.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97982DDD0EA80032FC99 /* ServerComms.swift */; };
+		C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97952DDD0EA80032FC99 /* MediaManager.swift */; };
+		C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97942DDD0EA80032FC99 /* LocationManager.swift */; };
+		C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97972DDD0EA80032FC99 /* Models.swift */; };
+		C5DE97A72DDD0EA80032FC99 /* CoreCommsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978E2DDD0EA80032FC99 /* CoreCommsService.swift */; };
+		C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978F2DDD0EA80032FC99 /* Enums.swift */; };
+		C5DE97AB2DDD0EA80032FC99 /* CoreCommsService.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978D2DDD0EA80032FC99 /* CoreCommsService.m */; };
+		C5DE97AD2DDD0EA80032FC99 /* G1Text.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97932DDD0EA80032FC99 /* G1Text.swift */; };
+		C5DE97AE2DDD0EA80032FC99 /* MicrophoneManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */; };
+		C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */; };
+		C5DE97B02DDD0EA80032FC99 /* CalendarManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */; };
+		C5DE98442DDD0F420032FC99 /* meson.build in Resources */ = {isa = PBXBuildFile; fileRef = C5DE98202DDD0F420032FC99 /* meson.build */; };
+		C5DE98452DDD0F420032FC99 /* silero_vad.onnx in Resources */ = {isa = PBXBuildFile; fileRef = C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */; };
+		C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */ = {isa = PBXBuildFile; fileRef = C5DE981C2DDD0F420032FC99 /* makefile.mk */; };
+		C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */; };
+		C5DE98482DDD0F420032FC99 /* lc3.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98152DDD0F420032FC99 /* lc3.c */; };
+		C5DE98492DDD0F420032FC99 /* ContentData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98362DDD0F420032FC99 /* ContentData.swift */; };
+		C5DE984A2DDD0F420032FC99 /* ltpf.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98192DDD0F420032FC99 /* ltpf.c */; };
+		C5DE984B2DDD0F420032FC99 /* tns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE982D2DDD0F420032FC99 /* tns.c */; };
+		C5DE984C2DDD0F420032FC99 /* FrameSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98372DDD0F420032FC99 /* FrameSize.swift */; };
+		C5DE984D2DDD0F420032FC99 /* VADStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98312DDD0F420032FC99 /* VADStrategy.swift */; };
+		C5DE984E2DDD0F420032FC99 /* energy.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98122DDD0F420032FC99 /* energy.c */; };
+		C5DE984F2DDD0F420032FC99 /* Record.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98382DDD0F420032FC99 /* Record.swift */; };
+		C5DE98502DDD0F420032FC99 /* VADType.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98322DDD0F420032FC99 /* VADType.swift */; };
+		C5DE98512DDD0F420032FC99 /* spec.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98292DDD0F420032FC99 /* spec.c */; };
+		C5DE98522DDD0F420032FC99 /* tables.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE982B2DDD0F420032FC99 /* tables.c */; };
+		C5DE98532DDD0F420032FC99 /* attdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980A2DDD0F420032FC99 /* attdet.c */; };
+		C5DE98542DDD0F420032FC99 /* mdct.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE981E2DDD0F420032FC99 /* mdct.c */; };
+		C5DE98552DDD0F420032FC99 /* plc.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98242DDD0F420032FC99 /* plc.c */; };
+		C5DE98562DDD0F420032FC99 /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98392DDD0F420032FC99 /* Result.swift */; };
+		C5DE98572DDD0F420032FC99 /* VADQuality.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE982F2DDD0F420032FC99 /* VADQuality.swift */; };
+		C5DE98582DDD0F420032FC99 /* SampleRate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE983A2DDD0F420032FC99 /* SampleRate.swift */; };
+		C5DE98592DDD0F420032FC99 /* SileroVADStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */; };
+		C5DE985A2DDD0F420032FC99 /* Configuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98352DDD0F420032FC99 /* Configuration.swift */; };
+		C5DE985B2DDD0F420032FC99 /* PcmConverter.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98222DDD0F420032FC99 /* PcmConverter.m */; };
+		C5DE985C2DDD0F420032FC99 /* bits.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980C2DDD0F420032FC99 /* bits.c */; };
+		C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE980E2DDD0F420032FC99 /* bwdet.c */; };
+		C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98302DDD0F420032FC99 /* VADState.swift */; };
+		C5DE985F2DDD0F420032FC99 /* sns.c in Sources */ = {isa = PBXBuildFile; fileRef = C5DE98272DDD0F420032FC99 /* sns.c */; };
 		F314884EB5724196A394670E /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14C4353E097941A5AC9B6A09 /* noop-file.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		13B07F961A680F5B00A75B9A /* AOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07F961A680F5B00A75B9A /* AugmentOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AugmentOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FAF1A68108700A75B9A /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AppDelegate.h; path = AOS/AppDelegate.h; sourceTree = "<group>"; };
 		13B07FB01A68108700A75B9A /* AppDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = AppDelegate.mm; path = AOS/AppDelegate.mm; sourceTree = "<group>"; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = AOS/Images.xcassets; sourceTree = "<group>"; };
@@ -31,8 +73,73 @@
 		7A4D352CD337FB3A3BF06240 /* Pods-AOS.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AOS.release.xcconfig"; path = "Target Support Files/Pods-AOS/Pods-AOS.release.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = AOS/SplashScreen.storyboard; sourceTree = "<group>"; };
 		B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = AOS/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		B7B6ACCF8B824AB488779DB6 /* AOS-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "AOS-Bridging-Header.h"; path = "AOS/AOS-Bridging-Header.h"; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
+		C5DE97882DDD0EA80032FC99 /* AOSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AOSManager.swift; sourceTree = "<group>"; };
+		C5DE97892DDD0EA80032FC99 /* AOSModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AOSModule.h; sourceTree = "<group>"; };
+		C5DE978A2DDD0EA80032FC99 /* AOSModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AOSModule.m; sourceTree = "<group>"; };
+		C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
+		C5DE978D2DDD0EA80032FC99 /* CoreCommsService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreCommsService.m; sourceTree = "<group>"; };
+		C5DE978E2DDD0EA80032FC99 /* CoreCommsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreCommsService.swift; sourceTree = "<group>"; };
+		C5DE978F2DDD0EA80032FC99 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
+		C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ERG1Manager.swift; sourceTree = "<group>"; };
+		C5DE97932DDD0EA80032FC99 /* G1Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G1Text.swift; sourceTree = "<group>"; };
+		C5DE97942DDD0EA80032FC99 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManager.swift; sourceTree = "<group>"; };
+		C5DE97952DDD0EA80032FC99 /* MediaManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaManager.swift; sourceTree = "<group>"; };
+		C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MicrophoneManager.swift; sourceTree = "<group>"; };
+		C5DE97972DDD0EA80032FC99 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		C5DE97982DDD0EA80032FC99 /* ServerComms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerComms.swift; sourceTree = "<group>"; };
+		C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketManager.swift; sourceTree = "<group>"; };
+		C5DE98092DDD0F420032FC99 /* attdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = attdet.h; sourceTree = "<group>"; };
+		C5DE980A2DDD0F420032FC99 /* attdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = attdet.c; sourceTree = "<group>"; };
+		C5DE980B2DDD0F420032FC99 /* bits.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bits.h; sourceTree = "<group>"; };
+		C5DE980C2DDD0F420032FC99 /* bits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bits.c; sourceTree = "<group>"; };
+		C5DE980D2DDD0F420032FC99 /* bwdet.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bwdet.h; sourceTree = "<group>"; };
+		C5DE980E2DDD0F420032FC99 /* bwdet.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = bwdet.c; sourceTree = "<group>"; };
+		C5DE980F2DDD0F420032FC99 /* common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
+		C5DE98102DDD0F420032FC99 /* CoreObjC.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; path = CoreObjC.xcodeproj; sourceTree = "<group>"; };
+		C5DE98112DDD0F420032FC99 /* energy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = energy.h; sourceTree = "<group>"; };
+		C5DE98122DDD0F420032FC99 /* energy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = energy.c; sourceTree = "<group>"; };
+		C5DE98132DDD0F420032FC99 /* fastmath.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = fastmath.h; sourceTree = "<group>"; };
+		C5DE98142DDD0F420032FC99 /* lc3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lc3.h; sourceTree = "<group>"; };
+		C5DE98152DDD0F420032FC99 /* lc3.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = lc3.c; sourceTree = "<group>"; };
+		C5DE98162DDD0F420032FC99 /* lc3_cpp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lc3_cpp.h; sourceTree = "<group>"; };
+		C5DE98172DDD0F420032FC99 /* lc3_private.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = lc3_private.h; sourceTree = "<group>"; };
+		C5DE98182DDD0F420032FC99 /* ltpf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ltpf.h; sourceTree = "<group>"; };
+		C5DE98192DDD0F420032FC99 /* ltpf.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = ltpf.c; sourceTree = "<group>"; };
+		C5DE981A2DDD0F420032FC99 /* ltpf_arm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ltpf_arm.h; sourceTree = "<group>"; };
+		C5DE981B2DDD0F420032FC99 /* ltpf_neon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ltpf_neon.h; sourceTree = "<group>"; };
+		C5DE981C2DDD0F420032FC99 /* makefile.mk */ = {isa = PBXFileReference; lastKnownFileType = text; path = makefile.mk; sourceTree = "<group>"; };
+		C5DE981D2DDD0F420032FC99 /* mdct.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mdct.h; sourceTree = "<group>"; };
+		C5DE981E2DDD0F420032FC99 /* mdct.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = mdct.c; sourceTree = "<group>"; };
+		C5DE981F2DDD0F420032FC99 /* mdct_neon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mdct_neon.h; sourceTree = "<group>"; };
+		C5DE98202DDD0F420032FC99 /* meson.build */ = {isa = PBXFileReference; lastKnownFileType = text; path = meson.build; sourceTree = "<group>"; };
+		C5DE98212DDD0F420032FC99 /* PcmConverter.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PcmConverter.h; sourceTree = "<group>"; };
+		C5DE98222DDD0F420032FC99 /* PcmConverter.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PcmConverter.m; sourceTree = "<group>"; };
+		C5DE98232DDD0F420032FC99 /* plc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = plc.h; sourceTree = "<group>"; };
+		C5DE98242DDD0F420032FC99 /* plc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = plc.c; sourceTree = "<group>"; };
+		C5DE98252DDD0F420032FC99 /* rnnoise.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = rnnoise.h; sourceTree = "<group>"; };
+		C5DE98262DDD0F420032FC99 /* sns.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sns.h; sourceTree = "<group>"; };
+		C5DE98272DDD0F420032FC99 /* sns.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = sns.c; sourceTree = "<group>"; };
+		C5DE98282DDD0F420032FC99 /* spec.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = spec.h; sourceTree = "<group>"; };
+		C5DE98292DDD0F420032FC99 /* spec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = spec.c; sourceTree = "<group>"; };
+		C5DE982A2DDD0F420032FC99 /* tables.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tables.h; sourceTree = "<group>"; };
+		C5DE982B2DDD0F420032FC99 /* tables.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tables.c; sourceTree = "<group>"; };
+		C5DE982C2DDD0F420032FC99 /* tns.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = tns.h; sourceTree = "<group>"; };
+		C5DE982D2DDD0F420032FC99 /* tns.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = tns.c; sourceTree = "<group>"; };
+		C5DE982F2DDD0F420032FC99 /* VADQuality.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADQuality.swift; sourceTree = "<group>"; };
+		C5DE98302DDD0F420032FC99 /* VADState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADState.swift; sourceTree = "<group>"; };
+		C5DE98312DDD0F420032FC99 /* VADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADStrategy.swift; sourceTree = "<group>"; };
+		C5DE98322DDD0F420032FC99 /* VADType.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VADType.swift; sourceTree = "<group>"; };
+		C5DE98352DDD0F420032FC99 /* Configuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Configuration.swift; sourceTree = "<group>"; };
+		C5DE98362DDD0F420032FC99 /* ContentData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentData.swift; sourceTree = "<group>"; };
+		C5DE98372DDD0F420032FC99 /* FrameSize.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FrameSize.swift; sourceTree = "<group>"; };
+		C5DE98382DDD0F420032FC99 /* Record.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Record.swift; sourceTree = "<group>"; };
+		C5DE98392DDD0F420032FC99 /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
+		C5DE983A2DDD0F420032FC99 /* SampleRate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleRate.swift; sourceTree = "<group>"; };
+		C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */ = {isa = PBXFileReference; lastKnownFileType = file; path = silero_vad.onnx; sourceTree = "<group>"; };
+		C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVAD.swift; sourceTree = "<group>"; };
+		C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SileroVADStrategy.swift; sourceTree = "<group>"; };
+		C5DE98672DDD1FB00032FC99 /* AOS-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "AOS-Bridging-Header.h"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-AOS/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -52,15 +159,17 @@
 		13B07FAE1A68108700A75B9A /* AOS */ = {
 			isa = PBXGroup;
 			children = (
+				C5DE979D2DDD0EA80032FC99 /* BleManager */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
+				C5DE978D2DDD0EA80032FC99 /* CoreCommsService.m */,
+				C5DE978E2DDD0EA80032FC99 /* CoreCommsService.swift */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				14C4353E097941A5AC9B6A09 /* noop-file.swift */,
-				B7B6ACCF8B824AB488779DB6 /* AOS-Bridging-Header.h */,
 				B18D5B1AA3EE1022A1FC3B30 /* PrivacyInfo.xcprivacy */,
 			);
 			name = AOS;
@@ -78,6 +187,8 @@
 		832341AE1AAA6A7D00B99B32 /* Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				C5DE982E2DDD0F420032FC99 /* CoreObjC */,
+				C5DE98412DDD0F420032FC99 /* VAD */,
 			);
 			name = Libraries;
 			sourceTree = "<group>";
@@ -100,7 +211,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* AOS.app */,
+				13B07F961A680F5B00A75B9A /* AugmentOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -120,6 +231,140 @@
 			);
 			name = Supporting;
 			path = AOS/Supporting;
+			sourceTree = "<group>";
+		};
+		C5DE979D2DDD0EA80032FC99 /* BleManager */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE97882DDD0EA80032FC99 /* AOSManager.swift */,
+				C5DE97892DDD0EA80032FC99 /* AOSModule.h */,
+				C5DE978A2DDD0EA80032FC99 /* AOSModule.m */,
+				C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */,
+				C5DE978F2DDD0EA80032FC99 /* Enums.swift */,
+				C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */,
+				C5DE97932DDD0EA80032FC99 /* G1Text.swift */,
+				C5DE97942DDD0EA80032FC99 /* LocationManager.swift */,
+				C5DE97952DDD0EA80032FC99 /* MediaManager.swift */,
+				C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */,
+				C5DE97972DDD0EA80032FC99 /* Models.swift */,
+				C5DE97982DDD0EA80032FC99 /* ServerComms.swift */,
+				C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */,
+				C5DE98672DDD1FB00032FC99 /* AOS-Bridging-Header.h */,
+			);
+			path = BleManager;
+			sourceTree = "<group>";
+		};
+		C5DE982E2DDD0F420032FC99 /* CoreObjC */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE98092DDD0F420032FC99 /* attdet.h */,
+				C5DE980A2DDD0F420032FC99 /* attdet.c */,
+				C5DE980B2DDD0F420032FC99 /* bits.h */,
+				C5DE980C2DDD0F420032FC99 /* bits.c */,
+				C5DE980D2DDD0F420032FC99 /* bwdet.h */,
+				C5DE980E2DDD0F420032FC99 /* bwdet.c */,
+				C5DE980F2DDD0F420032FC99 /* common.h */,
+				C5DE98102DDD0F420032FC99 /* CoreObjC.xcodeproj */,
+				C5DE98112DDD0F420032FC99 /* energy.h */,
+				C5DE98122DDD0F420032FC99 /* energy.c */,
+				C5DE98132DDD0F420032FC99 /* fastmath.h */,
+				C5DE98142DDD0F420032FC99 /* lc3.h */,
+				C5DE98152DDD0F420032FC99 /* lc3.c */,
+				C5DE98162DDD0F420032FC99 /* lc3_cpp.h */,
+				C5DE98172DDD0F420032FC99 /* lc3_private.h */,
+				C5DE98182DDD0F420032FC99 /* ltpf.h */,
+				C5DE98192DDD0F420032FC99 /* ltpf.c */,
+				C5DE981A2DDD0F420032FC99 /* ltpf_arm.h */,
+				C5DE981B2DDD0F420032FC99 /* ltpf_neon.h */,
+				C5DE981C2DDD0F420032FC99 /* makefile.mk */,
+				C5DE981D2DDD0F420032FC99 /* mdct.h */,
+				C5DE981E2DDD0F420032FC99 /* mdct.c */,
+				C5DE981F2DDD0F420032FC99 /* mdct_neon.h */,
+				C5DE98202DDD0F420032FC99 /* meson.build */,
+				C5DE98212DDD0F420032FC99 /* PcmConverter.h */,
+				C5DE98222DDD0F420032FC99 /* PcmConverter.m */,
+				C5DE98232DDD0F420032FC99 /* plc.h */,
+				C5DE98242DDD0F420032FC99 /* plc.c */,
+				C5DE98252DDD0F420032FC99 /* rnnoise.h */,
+				C5DE98262DDD0F420032FC99 /* sns.h */,
+				C5DE98272DDD0F420032FC99 /* sns.c */,
+				C5DE98282DDD0F420032FC99 /* spec.h */,
+				C5DE98292DDD0F420032FC99 /* spec.c */,
+				C5DE982A2DDD0F420032FC99 /* tables.h */,
+				C5DE982B2DDD0F420032FC99 /* tables.c */,
+				C5DE982C2DDD0F420032FC99 /* tns.h */,
+				C5DE982D2DDD0F420032FC99 /* tns.c */,
+			);
+			name = CoreObjC;
+			path = Packages/CoreObjC;
+			sourceTree = "<group>";
+		};
+		C5DE98332DDD0F420032FC99 /* VAD */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE982F2DDD0F420032FC99 /* VADQuality.swift */,
+				C5DE98302DDD0F420032FC99 /* VADState.swift */,
+				C5DE98312DDD0F420032FC99 /* VADStrategy.swift */,
+				C5DE98322DDD0F420032FC99 /* VADType.swift */,
+			);
+			path = VAD;
+			sourceTree = "<group>";
+		};
+		C5DE98342DDD0F420032FC99 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE98332DDD0F420032FC99 /* VAD */,
+			);
+			path = Common;
+			sourceTree = "<group>";
+		};
+		C5DE983B2DDD0F420032FC99 /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE98352DDD0F420032FC99 /* Configuration.swift */,
+				C5DE98362DDD0F420032FC99 /* ContentData.swift */,
+				C5DE98372DDD0F420032FC99 /* FrameSize.swift */,
+				C5DE98382DDD0F420032FC99 /* Record.swift */,
+				C5DE98392DDD0F420032FC99 /* Result.swift */,
+				C5DE983A2DDD0F420032FC99 /* SampleRate.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		C5DE983D2DDD0F420032FC99 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE983C2DDD0F420032FC99 /* silero_vad.onnx */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		C5DE98402DDD0F420032FC99 /* Silero */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE983D2DDD0F420032FC99 /* Model */,
+				C5DE983E2DDD0F420032FC99 /* SileroVAD.swift */,
+				C5DE983F2DDD0F420032FC99 /* SileroVADStrategy.swift */,
+			);
+			path = Silero;
+			sourceTree = "<group>";
+		};
+		C5DE98412DDD0F420032FC99 /* VAD */ = {
+			isa = PBXGroup;
+			children = (
+				C5DE98342DDD0F420032FC99 /* Common */,
+				C5DE983B2DDD0F420032FC99 /* Data */,
+				C5DE98402DDD0F420032FC99 /* Silero */,
+			);
+			name = VAD;
+			path = Packages/VAD;
+			sourceTree = "<group>";
+		};
+		C5DE98422DDD0F420032FC99 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Products;
 			sourceTree = "<group>";
 		};
 		D65327D7A22EEC0BE12398D9 /* Pods */ = {
@@ -161,7 +406,7 @@
 			);
 			name = AOS;
 			productName = AOS;
-			productReference = 13B07F961A680F5B00A75B9A /* AOS.app */;
+			productReference = 13B07F961A680F5B00A75B9A /* AugmentOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -188,6 +433,12 @@
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = C5DE98422DDD0F420032FC99 /* Products */;
+					ProjectRef = C5DE98102DDD0F420032FC99 /* CoreObjC.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* AOS */,
@@ -203,6 +454,9 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
+				C5DE98442DDD0F420032FC99 /* meson.build in Resources */,
+				C5DE98452DDD0F420032FC99 /* silero_vad.onnx in Resources */,
+				C5DE98462DDD0F420032FC99 /* makefile.mk in Resources */,
 				A1C4A5080DE65B36D4AECB21 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -335,6 +589,45 @@
 			files = (
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
+				C5DE979E2DDD0EA80032FC99 /* AOSModule.m in Sources */,
+				C5DE979F2DDD0EA80032FC99 /* AOSManager.swift in Sources */,
+				C5DE97A02DDD0EA80032FC99 /* ERG1Manager.swift in Sources */,
+				C5DE97A12DDD0EA80032FC99 /* ServerComms.swift in Sources */,
+				C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */,
+				C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */,
+				C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */,
+				C5DE97A72DDD0EA80032FC99 /* CoreCommsService.swift in Sources */,
+				C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */,
+				C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */,
+				C5DE98482DDD0F420032FC99 /* lc3.c in Sources */,
+				C5DE98492DDD0F420032FC99 /* ContentData.swift in Sources */,
+				C5DE984A2DDD0F420032FC99 /* ltpf.c in Sources */,
+				C5DE984B2DDD0F420032FC99 /* tns.c in Sources */,
+				C5DE984C2DDD0F420032FC99 /* FrameSize.swift in Sources */,
+				C5DE984D2DDD0F420032FC99 /* VADStrategy.swift in Sources */,
+				C5DE984E2DDD0F420032FC99 /* energy.c in Sources */,
+				C5DE984F2DDD0F420032FC99 /* Record.swift in Sources */,
+				C5DE98502DDD0F420032FC99 /* VADType.swift in Sources */,
+				C5DE98512DDD0F420032FC99 /* spec.c in Sources */,
+				C5DE98522DDD0F420032FC99 /* tables.c in Sources */,
+				C5DE98532DDD0F420032FC99 /* attdet.c in Sources */,
+				C5DE98542DDD0F420032FC99 /* mdct.c in Sources */,
+				C5DE98552DDD0F420032FC99 /* plc.c in Sources */,
+				C5DE98562DDD0F420032FC99 /* Result.swift in Sources */,
+				C5DE98572DDD0F420032FC99 /* VADQuality.swift in Sources */,
+				C5DE98582DDD0F420032FC99 /* SampleRate.swift in Sources */,
+				C5DE98592DDD0F420032FC99 /* SileroVADStrategy.swift in Sources */,
+				C5DE985A2DDD0F420032FC99 /* Configuration.swift in Sources */,
+				C5DE985B2DDD0F420032FC99 /* PcmConverter.m in Sources */,
+				C5DE985C2DDD0F420032FC99 /* bits.c in Sources */,
+				C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */,
+				C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */,
+				C5DE985F2DDD0F420032FC99 /* sns.c in Sources */,
+				C5DE97AB2DDD0EA80032FC99 /* CoreCommsService.m in Sources */,
+				C5DE97AD2DDD0EA80032FC99 /* G1Text.swift in Sources */,
+				C5DE97AE2DDD0EA80032FC99 /* MicrophoneManager.swift in Sources */,
+				C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */,
+				C5DE97B02DDD0EA80032FC99 /* CalendarManager.swift in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
 				F314884EB5724196A394670E /* noop-file.swift in Sources */,
 			);
@@ -372,7 +665,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentos;
 				PRODUCT_NAME = AugmentOS;
-				SWIFT_OBJC_BRIDGING_HEADER = "AOS/AOS-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -404,7 +697,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentos;
 				PRODUCT_NAME = AugmentOS;
-				SWIFT_OBJC_BRIDGING_HEADER = "AOS/AOS-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
@@ -458,6 +751,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,
@@ -517,6 +811,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					/usr/lib/swift,

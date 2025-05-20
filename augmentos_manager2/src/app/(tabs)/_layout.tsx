@@ -7,6 +7,7 @@ import {TextStyle, View, ViewStyle} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
+import { LinearGradient } from 'expo-linear-gradient'
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
@@ -41,6 +42,8 @@ export default function Layout() {
   //   settings: 'dots-horizontal',
   // },
 
+  const {theme} = useAppTheme()
+
   return (
     <Tabs
       screenOptions={{
@@ -49,7 +52,7 @@ export default function Layout() {
         tabBarStyle: [
           themed($tabBar),
           {
-            paddingBottom: bottom + 32,
+            paddingBottom: bottom + 48,
           },
         ],
         // tabBarActiveTintColor: themed(({ colors }) => colors.text),
@@ -60,6 +63,20 @@ export default function Layout() {
         // tabBarPosition: 'left',
         // animation: 'shift',
         // tabBarBackground: () => <View />,
+        tabBarBackground: () => (
+          <LinearGradient
+            colors={theme.isDark ? ['#090A14', '#080D33'] : ['#090A14', '#080D33']}
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+            }}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          />
+        ),
       }}>
       <Tabs.Screen
         name="home"

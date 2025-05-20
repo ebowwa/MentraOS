@@ -165,10 +165,8 @@ export default function SettingsPage() {
   }
 
   return (
-    <Screen preset="fixed" safeAreaEdges={["top"]} contentContainerStyle={themed($screenContainer)}>
-      <Header titleTx="settingsScreen:title" safeAreaEdges={[]} />
-
-      <ScrollView style={themed($scrollContainer)}>
+    <Screen preset="scroll" style={{paddingHorizontal: 20}}>
+      <Header titleTx="settingsScreen:title" />
         <View style={themed($settingItem2)}>
           {/* <SelectSetting
             theme={'dark' as any}
@@ -295,7 +293,6 @@ export default function SettingsPage() {
             <Text style={themed($dangerLabel)}>Sign Out</Text>
           </View>
         </TouchableOpacity>
-      </ScrollView>
     </Screen>
   )
 }

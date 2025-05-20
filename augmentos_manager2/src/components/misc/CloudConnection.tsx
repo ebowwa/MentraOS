@@ -3,12 +3,11 @@ import {View, Text, StyleSheet} from "react-native"
 import LinearGradient from "react-native-linear-gradient"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import { useAppTheme } from "@/utils/useAppTheme"
 
-interface CloudConnectionProps {
-  isDarkTheme: boolean
-}
 
-const CloudConnection: React.FC<CloudConnectionProps> = ({isDarkTheme}) => {
+
+export default function CloudConnection() {
   const {status} = useStatus()
 
   useEffect(() => {
@@ -49,7 +48,9 @@ const CloudConnection: React.FC<CloudConnectionProps> = ({isDarkTheme}) => {
     }
   }
 
-  const currentStyles = isDarkTheme ? darkThemeStyles : lightThemeStyles
+  const {theme} = useAppTheme()
+
+  const currentStyles = theme.isDark ? darkThemeStyles : lightThemeStyles
   const {name: iconName, color: iconColor, label: statusLabel} = getIcon(status.core_info.cloud_connection_status)
 
   return (
@@ -110,5 +111,3 @@ const darkThemeStyles = StyleSheet.create({
     color: "#fff",
   },
 })
-
-export default CloudConnection

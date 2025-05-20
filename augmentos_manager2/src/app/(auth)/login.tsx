@@ -25,12 +25,9 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {FontAwesome} from "@expo/vector-icons"
 import GoogleIcon from "assets/icons/GoogleIcon"
 import AppleIcon from "assets/icons/AppleIcon"
+import { router } from "expo-router"
 
-interface LoginScreenProps {
-  navigation: any
-}
-
-const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
+export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -128,6 +125,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({navigation}) => {
       console.log("Deep link received, hiding auth overlay")
       setIsAuthLoading(false)
       authOverlayOpacity.setValue(0)
+      router.replace("/(tabs)/home")// TODO: this is a hack
     }
 
     const linkingSubscription = Linking.addEventListener("url", handleDeepLink)
@@ -825,5 +823,3 @@ const $termsText: ThemedStyle<TextStyle> = ({colors}) => ({
   textAlign: "center",
   marginTop: 8,
 })
-
-export default LoginScreen

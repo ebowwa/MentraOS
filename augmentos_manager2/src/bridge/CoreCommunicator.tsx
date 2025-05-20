@@ -11,8 +11,8 @@ import {check, PERMISSIONS, RESULTS} from 'react-native-permissions';
 // import BleManager from 'react-native-ble-manager';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 
-// const {CoreCommsService, AOSModule} = NativeModules;
-// const eventEmitter = new NativeEventEmitter(CoreCommsService);
+const {CoreCommsService, AOSModule} = NativeModules;
+const eventEmitter = new NativeEventEmitter(CoreCommsService);
 
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null;
@@ -158,9 +158,11 @@ export class CoreCommunicator extends EventEmitter {
     //   console.warn('Failed to initialize BleManager:', error);
     // }
 
-    // setTimeout(() => {
-    //   AOSModule.sendCommand(JSON.stringify({command: 'connect_wearable'}));
-    // }, 3000);
+    console.log('coreCommunicator.initialize()');
+
+    setTimeout(() => {
+      AOSModule.sendCommand(JSON.stringify({command: 'connect_wearable'}));
+    }, 3000);
 
     // Start the external service
     startExternalService();

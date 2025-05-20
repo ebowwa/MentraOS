@@ -35,12 +35,7 @@ import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetti
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 
-type AppSettingsProps = NativeStackScreenProps<RootStackParamList, "AppSettings"> & {
-  isDarkTheme: boolean
-  toggleTheme: () => void
-}
-
-const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme, toggleTheme}) => {
+export default function AppSettings() {
   const {packageName, appName} = route.params
   const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
@@ -432,18 +427,10 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
   }
 
   return (
-    <SafeAreaView style={[styles.safeArea, {backgroundColor: theme.backgroundColor}]}>
+    <Screen preset="scroll">
       {isUninstalling && (
         <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} isDarkTheme={isDarkTheme} />
       )}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={{flex: 1}}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 20}>
-        <ScrollView
-          contentContainerStyle={styles.mainContainer}
-          automaticallyAdjustKeyboardInsets={true}
-          keyboardShouldPersistTaps="always">
           {/* App Info Header Section */}
           <View
             style={[
@@ -571,9 +558,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
               )}
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 
@@ -730,5 +715,3 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat-Bold",
   },
 })
-
-export default AppSettings

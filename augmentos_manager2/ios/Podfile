@@ -59,6 +59,8 @@ target 'AOS' do
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
+  pod 'onnxruntime-objc', '1.18.0', :modular_headers => true
+
   post_install do |installer|
     react_native_post_install(
       installer,

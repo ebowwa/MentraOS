@@ -504,10 +504,9 @@ class ServerComms {
   // MARK: - Helper methods
   
   private func getServerUrl() -> String {
-    let host = RNCConfig.env(for: "AUGMENTOS_HOST")!;
-    let port = RNCConfig.env(for: "AUGMENTOS_PORT")!;
-    let secure = RNCConfig.env(for: "AUGMENTOS_SECURE")!
-    let secureServer = secure.contains("true")
+    let host = "global.augmentos.cloud"
+    let port = 443;
+    let secureServer = true
     let url = "\(secureServer ? "wss" : "ws")://\(host):\(port)/glasses-ws"
     print("ServerComms: getServerUrl(): \(url)")
     return url
