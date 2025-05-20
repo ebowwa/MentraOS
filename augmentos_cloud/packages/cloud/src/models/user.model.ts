@@ -436,13 +436,17 @@ UserSchema.statics.findOrCreateUser = async function (email: string): Promise<Us
   if (!user) {
     user = await this.create({ email });
 
-    // Create personal organization for new user
+    // Create personal organization for new user if they don't have one
     // Import OrganizationService to avoid circular dependency
     const { OrganizationService } = require('../services/core/organization.service');
-    const personalOrgId = await OrganizationService.createPersonalOrg(user);
-    user.organizations = [personalOrgId];
-    user.defaultOrg = personalOrgId;
-    await user.save();
+
+    // Check if the user already has organizations
+    if (!user.organizations || user.organizations.length === 0) {
+      const personalOrgId = await OrganizationService.createPersonalOrg(user);
+      user.organizations = [personalOrgId];
+      user.defaultOrg = personalOrgId;
+      await user.save();
+    }
   }
   return user;
 };
@@ -558,6 +562,14 @@ UserSchema.statics.ensurePersonalOrg = async function(user: UserDocument): Promi
 
   if (user.defaultOrg) {
     // User already has a default org, return it
+    return user.defaultOrg;
+  }
+
+  // Check if user has any organizations
+  if (user.organizations && user.organizations.length > 0) {
+    // User has organizations but no default, set the first one as default
+    user.defaultOrg = user.organizations[0];
+    await user.save();
     return user.defaultOrg;
   }
 

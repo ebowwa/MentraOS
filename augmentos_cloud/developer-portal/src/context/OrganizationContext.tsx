@@ -39,8 +39,8 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Get auth context to determine when user is authenticated
-  const { user, loading: authLoading } = useAuth();
+  // Use isLoading from Auth context; alias to authLoading for clarity
+  const { user, isLoading: authLoading, refreshUser, tokenReady } = useAuth();
 
   /**
    * Creates a personal organization for the user if none exists
@@ -51,17 +51,40 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
     try {
       setLoading(true);
-      // Create a default personal organization with a safe name
+
+      // First check if the user already has any organizations
+      const organizations = await api.orgs.list();
+
+      if (organizations.length > 0) {
+        // User already has at least one organization
+        setOrgs(organizations);
+
+        // Set the first org as current if none selected
+        if (!currentOrg) {
+          setCurrentOrgState(organizations[0]);
+          localStorage.setItem(CURRENT_ORG_STORAGE_KEY, organizations[0].id);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      // Only create a new organization if the user has none
       const emailLocalPart = user.email.split('@')[0] || 'User';
       const personalOrgName = `${emailLocalPart}'s Organization`;
       const newOrg = await api.orgs.create(personalOrgName);
 
       // Update the organizations list
-      setOrgs(prev => [...prev, newOrg]);
+      setOrgs([newOrg]);
 
       // Set as current organization
       setCurrentOrgState(newOrg);
       localStorage.setItem(CURRENT_ORG_STORAGE_KEY, newOrg.id);
+
+      // Refresh user to update organizations in user data
+      if (refreshUser) {
+        await refreshUser();
+      }
     } catch (err) {
       console.error('Error creating personal organization:', err);
       setError(err instanceof Error ? err : new Error('Failed to create personal organization'));
@@ -108,6 +131,12 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
         setCurrentOrgState(organizations[0]);
         localStorage.setItem(CURRENT_ORG_STORAGE_KEY, organizations[0].id);
       }
+
+      // (Removed) refreshUser() call here caused a feedback loop because it
+      // sets a new `user` object on every call, which retriggers this
+      // effect. Organization data is already available, and AuthProvider
+      // will refresh user info periodically, so this extra call is not
+      // necessary and leads to infinite re-renders.
     } catch (err) {
       console.error('Error loading organizations:', err);
       setError(err instanceof Error ? err : new Error('Failed to load organizations'));
@@ -133,10 +162,10 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
 
   // Load organizations when the user changes or auth loading completes
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && tokenReady && user) {
       loadOrganizations();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, tokenReady]);
 
   // Context value that will be provided to consumers
   const contextValue: OrganizationContextType = {

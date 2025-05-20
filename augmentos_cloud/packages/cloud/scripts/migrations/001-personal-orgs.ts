@@ -5,12 +5,14 @@
  * 1. Creates a personal organization for each user
  * 2. Copies user profile data to the organization profile
  * 3. Updates all apps created by a user to reference their organization
- * 4. Makes each user a member/owner of their personal organization
+ * 4. Makes each user an admin of their personal organization
  *
  * Usage:
  * ts-node -r tsconfig-paths/register scripts/migrations/001-personal-orgs.ts
  *
  * Add --dry-run to check what would happen without making changes
+ * Add --email-filter=pattern to only process users with matching email (supports regex)
+ * Add --force to migrate users even if they already have organizations
  */
 
 import mongoose from 'mongoose';
@@ -25,13 +27,28 @@ dotenv.config();
 
 const logger = rootLogger.child({ migration: '001-personal-orgs' });
 const DRY_RUN = process.argv.includes('--dry-run');
+const FORCE_MODE = process.argv.includes('--force');
+
+// Parse email filter from command line arguments
+const EMAIL_FILTER_ARG = process.argv.find(arg => arg.startsWith('--email-filter='));
+const EMAIL_FILTER = EMAIL_FILTER_ARG ? EMAIL_FILTER_ARG.split('=')[1] : null;
 
 if (DRY_RUN) {
   logger.info('DRY RUN MODE: No changes will be made to the database');
 }
 
+if (EMAIL_FILTER) {
+  logger.info(`Email filter mode: Only processing users with email matching: ${EMAIL_FILTER}`);
+}
+
+if (FORCE_MODE) {
+  logger.info('Force mode: Will create new personal orgs even for users who already have organizations');
+}
+
 /**
  * Creates a URL-safe slug from an organization name
+ * @param name - The name to convert to a slug
+ * @returns A URL-safe slug string
  */
 function generateSlug(name: string): string {
   return name
@@ -57,21 +74,33 @@ async function migrate() {
     let orgCount = 0;
     let appCount = 0;
     let errorCount = 0;
+    let skippedCount = 0;
     const errors: any[] = [];
 
-    // Process each user
+    // Construct query filter based on email pattern if provided
+    const query: any = {};
+    if (EMAIL_FILTER) {
+      query.email = { $regex: EMAIL_FILTER };
+    }
+
+    // Process each user matching the filter
     logger.info('Starting user migration...');
-    const userCursor = User.find().cursor();
+    const userCursor = User.find(query).cursor();
 
     for await (const user of userCursor) {
       userCount++;
       logger.info(`Processing user ${userCount}: ${user.email}`);
 
       try {
-        // Skip users who already have organizations linked
-        if (user.organizations && user.organizations.length > 0) {
+        // Skip users who already have organizations linked (unless in force mode)
+        if (!FORCE_MODE && user.organizations && user.organizations.length > 0) {
           logger.info(`User ${user.email} already has organizations, skipping`);
+          skippedCount++;
           continue;
+        }
+
+        if (FORCE_MODE && user.organizations && user.organizations.length > 0) {
+          logger.info(`User ${user.email} already has organizations, but force mode is enabled. Creating new org.`);
         }
 
         // 1. Create a personal org for this user
@@ -104,7 +133,7 @@ async function migrate() {
           },
           members: [{
             user: user._id,
-            role: 'owner',
+            role: 'admin',
             joinedAt: new Date()
           }]
         };
@@ -123,7 +152,13 @@ async function migrate() {
 
         // 2. Update user with organization reference
         if (!DRY_RUN) {
-          user.organizations = [personalOrg._id];
+          // If in force mode and user already has organizations, we add the new one
+          // Otherwise, we replace the existing list with the new org
+          if (FORCE_MODE && user.organizations && user.organizations.length > 0) {
+            user.organizations.push(personalOrg._id);
+          } else {
+            user.organizations = [personalOrg._id];
+          }
           user.defaultOrg = personalOrg._id;
           await user.save();
           logger.info(`Updated user ${user.email} with organization reference`);
@@ -162,6 +197,7 @@ async function migrate() {
     logger.info(`Processed ${userCount} users`);
     logger.info(`Created ${orgCount} organizations`);
     logger.info(`Updated ${appCount} apps`);
+    logger.info(`Skipped ${skippedCount} users (already had organizations)`);
     logger.info(`Encountered ${errorCount} errors`);
 
     if (errorCount > 0) {

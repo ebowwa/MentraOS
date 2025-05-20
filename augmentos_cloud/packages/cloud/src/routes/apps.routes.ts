@@ -13,6 +13,7 @@ const logger = rootLogger.child({ service: 'apps.routes' });
 // Extended app interface for API responses that include developer profile
 interface AppWithDeveloperProfile extends AppI {
   developerProfile?: DeveloperProfile;
+  orgName?: string; // Organization name
 }
 
 // Enhanced app interface with running state properties
@@ -315,6 +316,8 @@ async function getPublicApps(req: Request, res: Response) {
 async function searchApps(req: Request, res: Response) {
   try {
     const query = req.query.q as string;
+    const organizationId = req.query.organizationId as string;
+
     if (!query) {
       return res.status(400).json({
         success: false,
@@ -323,10 +326,21 @@ async function searchApps(req: Request, res: Response) {
     }
 
     const apps = await appService.getAllApps();
-    const searchResults = apps.filter(app =>
+
+    // First filter by search query
+    let searchResults = apps.filter(app =>
       app.name.toLowerCase().includes(query.toLowerCase()) ||
       (app.description && app.description.toLowerCase().includes(query.toLowerCase()))
     );
+
+    // Then filter by organization if specified
+    if (organizationId) {
+      searchResults = searchResults.filter(app =>
+        app.organizationId && app.organizationId.toString() === organizationId
+      );
+
+      logger.debug(`Filtered search results by organizationId: ${organizationId}, found ${searchResults.length} results`);
+    }
 
     res.json({
       success: true,
@@ -747,7 +761,17 @@ async function getAppDetails(req: Request, res: Response) {
 
 async function getAvailableApps(req: Request, res: Response) {
   try {
-    const apps = await appService.getAvailableApps();
+    const organizationId = req.query.organizationId as string;
+    let apps = await appService.getAvailableApps();
+
+    // Filter by organization if specified
+    if (organizationId) {
+      apps = apps.filter(app =>
+        app.organizationId && app.organizationId.toString() === organizationId
+      );
+
+      logger.debug(`Filtered available apps by organizationId: ${organizationId}, found ${apps.length} apps`);
+    }
 
     // Enhance apps with organization profiles
     const enhancedApps = await Promise.all(apps.map(async (app) => {

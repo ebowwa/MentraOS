@@ -4,7 +4,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Building, CheckIcon, Plus, ChevronDown } from "lucide-react";
@@ -36,29 +38,24 @@ export function OrgSwitcher() {
             <ChevronDown className="h-4 w-4 opacity-50" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56">
-          {orgs.map((org) => (
-            <DropdownMenuItem
-              key={org.id}
-              onClick={() => setCurrentOrg(org)}
-              className="flex items-center justify-between"
-            >
-              <span className="truncate">{org.name}</span>
-              {currentOrg?.id === org.id && <CheckIcon className="h-4 w-4 text-primary" />}
-            </DropdownMenuItem>
-          ))}
-
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem onClick={() => navigate('/orgs/new')}>
-            <Plus className="h-4 w-4 mr-2" />
-            <span>Create Organization</span>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem onClick={() => navigate('/org-settings')}>
-            <Building className="h-4 w-4 mr-2" />
-            <span>Organization Settings</span>
-          </DropdownMenuItem>
+        <DropdownMenuContent
+          align="start"
+          side="bottom"
+          sideOffset={4}
+          className="w-56"
+        >
+          <DropdownMenuGroup>
+            {orgs.map((org) => (
+              <DropdownMenuItem
+                key={org.id}
+                onClick={() => setCurrentOrg(org)}
+                className="flex items-center justify-between"
+              >
+                <span className="truncate">{org.name}</span>
+                {currentOrg?.id === org.id && <CheckIcon className="h-4 w-4 text-primary" />}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

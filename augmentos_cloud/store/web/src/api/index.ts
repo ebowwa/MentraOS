@@ -36,6 +36,11 @@ export interface User {
   createdAt?: string;
 }
 
+// Filter options interface
+export interface AppFilterOptions {
+  organizationId?: string;
+}
+
 // App service functions
 const appService = {
   /**
@@ -57,12 +62,18 @@ const appService = {
   /**
    * Get all available apps (auth required)
    * Uses store backend
+   * @param options Optional filter options
    */
-  getAvailableApps: async (): Promise<AppI[]> => {
+  getAvailableApps: async (options?: AppFilterOptions): Promise<AppI[]> => {
     try {
-      const response = await axios.get<ApiResponse<AppI[]>>(
-        `/api/apps/available`
-      );
+      let url = `/api/apps/available`;
+
+      // Add organization filter if provided
+      if (options?.organizationId) {
+        url += `?organizationId=${encodeURIComponent(options.organizationId)}`;
+      }
+
+      const response = await axios.get<ApiResponse<AppI[]>>(url);
       return response.data.data;
     } catch (error) {
       console.error("Error fetching available apps:", error);
@@ -130,7 +141,7 @@ const appService = {
       //   throw new Error(`Failed to stop app ${packageName} before uninstallation`);
       // }
       // backend will stop the app automatically if it is running.
-      
+
       // Then uninstall it
       const response = await axios.post<ApiResponse<null>>(
         `/api/apps/uninstall/${packageName}`
@@ -177,12 +188,19 @@ const appService = {
   /**
    * Search for apps (no auth required)
    * Uses store backend
+   * @param query Search query string
+   * @param options Optional filter options
    */
-  searchApps: async (query: string): Promise<AppI[]> => {
+  searchApps: async (query: string, options?: AppFilterOptions): Promise<AppI[]> => {
     try {
-      const response = await axios.get<ApiResponse<AppI[]>>(
-        `/api/apps/search?q=${encodeURIComponent(query)}`
-      );
+      let url = `/api/apps/search?q=${encodeURIComponent(query)}`;
+
+      // Add organization filter if provided
+      if (options?.organizationId) {
+        url += `&organizationId=${encodeURIComponent(options.organizationId)}`;
+      }
+
+      const response = await axios.get<ApiResponse<AppI[]>>(url);
       return response.data.data || [];
     } catch (error) {
       console.error(`Error searching apps with query "${query}":`, error);
@@ -226,7 +244,7 @@ const authService = {
           headers: { 'Content-Type': 'application/json' }
         }
       );
-      
+
       if (response.status === 200 && response.data.coreToken) {
         return response.data.coreToken;
       } else {
@@ -253,26 +271,26 @@ const authService = {
           headers: { 'Content-Type': 'application/json' }
         }
       );
-      
+
       if (response.status === 200 && response.data.success) {
         return response.data;
       } else {
-        return { 
-          success: false, 
-          error: response.data.error || `Failed with status ${response.status}` 
+        return {
+          success: false,
+          error: response.data.error || `Failed with status ${response.status}`
         };
       }
     } catch (error) {
       console.error("Error exchanging temporary token:", error);
       if (axios.isAxiosError(error) && error.response) {
-        return { 
-          success: false, 
-          error: error.response.data?.error || error.message 
+        return {
+          success: false,
+          error: error.response.data?.error || error.message
         };
       }
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : "Unknown error" 
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error"
       };
     }
   }

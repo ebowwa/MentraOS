@@ -5,17 +5,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Loader2, Building, Globe, Mail, FileText, Image } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Building, Globe, Mail, FileText, Image, AlertTriangle, LockIcon } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from '@/services/api.service';
 import { toast } from 'sonner';
 import { useOrganization } from '@/context/OrganizationContext';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
 
 /**
  * Organization settings page - allows editing the current organization's profile
  */
 const OrganizationSettings: React.FC = () => {
   const { currentOrg, refreshOrgs, ensurePersonalOrg, loading: orgLoading } = useOrganization();
+  const { isAdmin, loading: permissionsLoading } = useOrgPermissions();
 
   // Form state
   const [formData, setFormData] = useState({
@@ -215,7 +217,7 @@ const OrganizationSettings: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
         <Card className="shadow-sm">
-          {isLoading ? (
+          {isLoading || permissionsLoading ? (
             <div className="p-8 text-center">
               <div className="animate-spin mx-auto h-8 w-8 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
               <p className="mt-2 text-gray-500">Loading organization data...</p>
@@ -225,7 +227,9 @@ const OrganizationSettings: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-2xl">Organization Settings</CardTitle>
                 <CardDescription>
-                  Update your organization information which will be displayed on your app's page in the App Store.
+                  {isAdmin
+                    ? "Update your organization information which will be displayed on your app's page in the App Store."
+                    : "View organization information (read-only). Only administrators can update these settings."}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -255,6 +259,8 @@ const OrganizationSettings: React.FC = () => {
                     onChange={handleChange}
                     placeholder="Your organization name"
                     required
+                    readOnly={!isAdmin}
+                    className={!isAdmin ? "bg-gray-50 text-gray-500" : ""}
                   />
                   <p className="text-xs text-gray-500">
                     The name of your organization that will be displayed to users. Required to publish apps.
@@ -272,6 +278,8 @@ const OrganizationSettings: React.FC = () => {
                     value={formData.profile.website}
                     onChange={handleChange}
                     placeholder="https://example.com"
+                    readOnly={!isAdmin}
+                    className={!isAdmin ? "bg-gray-50 text-gray-500" : ""}
                   />
                   <p className="text-xs text-gray-500">
                     Your organization's website URL.
@@ -291,6 +299,8 @@ const OrganizationSettings: React.FC = () => {
                     placeholder="support@example.com"
                     required
                     type="email"
+                    readOnly={!isAdmin}
+                    className={!isAdmin ? "bg-gray-50 text-gray-500" : ""}
                   />
                   <p className="text-xs text-gray-500">
                     An email address where users can contact you for support or inquiries. Required to publish apps.
@@ -309,6 +319,8 @@ const OrganizationSettings: React.FC = () => {
                     onChange={handleChange}
                     placeholder="Tell users about your organization"
                     rows={4}
+                    readOnly={!isAdmin}
+                    className={!isAdmin ? "bg-gray-50 text-gray-500" : ""}
                   />
                   <p className="text-xs text-gray-500">
                     A short description of your organization.
@@ -326,23 +338,31 @@ const OrganizationSettings: React.FC = () => {
                     value={formData.profile.logo}
                     onChange={handleChange}
                     placeholder="https://example.com/logo.png"
+                    readOnly={!isAdmin}
+                    className={!isAdmin ? "bg-gray-50 text-gray-500" : ""}
                   />
                   <p className="text-xs text-gray-500">
                     A URL to your organization logo (recommended: square format, 512x512 PNG).
                   </p>
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end border-t p-6">
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Changes'
-                  )}
-                </Button>
+              <CardFooter className="flex justify-end p-6">
+                {isAdmin ? (
+                  <Button type="submit" disabled={isSaving}>
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      'Save Changes'
+                    )}
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Contact an administrator to make changes
+                  </p>
+                )}
               </CardFooter>
             </form>
           )}

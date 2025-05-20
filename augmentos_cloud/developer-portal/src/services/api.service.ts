@@ -79,7 +79,7 @@ export interface DeveloperUser {
 /**
  * Organization member role
  */
-export type OrgRole = 'owner' | 'admin' | 'member';
+export type OrgRole = 'admin' | 'member';
 
 /**
  * Organization member interface
@@ -262,6 +262,16 @@ const api = {
     publish: async (packageName: string, orgId?: string): Promise<AppResponse> => {
       const config = orgId ? { headers: { 'x-org-id': orgId } } : undefined;
       const response = await axios.post(`/api/dev/apps/${packageName}/publish`, {}, config);
+      return response.data;
+    },
+
+    // Move a TPA to a different organization
+    moveToOrg: async (packageName: string, targetOrgId: string, sourceOrgId: string): Promise<AppResponse> => {
+      const response = await axios.post(
+        `/api/dev/apps/${packageName}/move-org`,
+        { targetOrgId },
+        { headers: { 'x-org-id': sourceOrgId } }
+      );
       return response.data;
     },
 

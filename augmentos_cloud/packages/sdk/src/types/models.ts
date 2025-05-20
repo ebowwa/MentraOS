@@ -65,7 +65,7 @@ export interface AppI {
    * @deprecated Use organizationId instead. Will be removed after migration.
    */
   developerId?: string;           // ID of the developer who created the app
-  organizationId?: string;        // ID of the organization that owns this app
+  organizationId?: any;        // ID of the organization that owns this app
 
   // Auth
   hashedEndpointSecret?: string;

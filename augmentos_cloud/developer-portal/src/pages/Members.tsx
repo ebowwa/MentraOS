@@ -19,11 +19,13 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Mail, UserPlus, AlertCircle, CheckCircle2, Loader2, Shield, User, UserCog } from "lucide-react";
+import { Mail, UserPlus, AlertCircle, CheckCircle2, Loader2, Shield, User, UserCog, AlertTriangle } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import api, { OrgMember, OrgRole } from '@/services/api.service';
 import { useOrganization } from '@/context/OrganizationContext';
 import { toast } from 'sonner';
+import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import { useAuth } from '@/hooks/useAuth';
 
 /**
  * Members page for managing organization members
@@ -31,6 +33,8 @@ import { toast } from 'sonner';
  */
 const Members: React.FC = () => {
   const { currentOrg, refreshOrgs } = useOrganization();
+  const { isAdmin, loading: permissionsLoading } = useOrgPermissions();
+  const { user } = useAuth();
 
   // Member list state
   const [members, setMembers] = useState<OrgMember[]>([]);
@@ -147,8 +151,6 @@ const Members: React.FC = () => {
   // Render role icon based on role
   const RoleIcon = ({ role }: { role: OrgRole }) => {
     switch (role) {
-      case 'owner':
-        return <Shield className="h-4 w-4 text-indigo-600" />;
       case 'admin':
         return <UserCog className="h-4 w-4 text-blue-600" />;
       default:
@@ -188,11 +190,13 @@ const Members: React.FC = () => {
           <CardHeader>
             <CardTitle className="text-2xl">Organization Members</CardTitle>
             <CardDescription>
-              Manage members of {currentOrg.name}
+              {isAdmin
+                ? `Manage members of ${currentOrg?.name}`
+                : `Members of ${currentOrg?.name} (read-only view)`}
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {loadingMembers ? (
+            {loadingMembers || permissionsLoading ? (
               <div className="p-8 text-center">
                 <div className="animate-spin mx-auto h-8 w-8 border-t-2 border-b-2 border-blue-500 rounded-full"></div>
                 <p className="mt-2 text-gray-500">Loading members...</p>
@@ -203,16 +207,15 @@ const Members: React.FC = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Email</TableHead>
-                      <TableHead>Name</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Joined</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                      {isAdmin && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {members.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={5} className="text-center py-4 text-gray-500">
+                        <TableCell colSpan={isAdmin ? 4 : 3} className="text-center py-4 text-gray-500">
                           No members found
                         </TableCell>
                       </TableRow>
@@ -220,34 +223,55 @@ const Members: React.FC = () => {
                       members.map((member) => (
                         <TableRow key={member.user.id}>
                           <TableCell>{member.user.email}</TableCell>
-                          <TableCell>{member.user.displayName || '—'}</TableCell>
                           <TableCell className="flex items-center gap-1">
                             <RoleIcon role={member.role} />
-                            <Select
-                              value={member.role}
-                              onValueChange={(value: OrgRole) => handleRoleChange(member.user.id, value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue placeholder={member.role} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="owner">Owner</SelectItem>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="member">Member</SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {isAdmin ? (
+                              // Prevent modifying your own role
+                              user?.email?.toLowerCase() === member.user.email.toLowerCase() ? (
+                                <div className="ml-2 flex items-center">
+                                  <span className="capitalize text-sm">{member.role}</span>
+                                </div>
+                              ) : (
+                                <Select
+                                  value={member.role}
+                                  onValueChange={(value: OrgRole) => handleRoleChange(member.user.id, value)}
+                                >
+                                  <SelectTrigger className="w-32">
+                                    <SelectValue placeholder={member.role} />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="member">Member</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )
+                            ) : (
+                              <span className="ml-2 capitalize text-sm">{member.role}</span>
+                            )}
                           </TableCell>
                           <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleRemoveMember(member.user.id)}
-                              disabled={member.role === 'owner'}
-                            >
-                              Remove
-                            </Button>
-                          </TableCell>
+                          {isAdmin && (
+                            <TableCell className="text-right">
+                              {user?.email?.toLowerCase() === member.user.email.toLowerCase() ? (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled
+                                  title="You cannot remove yourself from the organization"
+                                >
+                                  Remove
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveMember(member.user.id)}
+                                >
+                                  Remove
+                                </Button>
+                              )}
+                            </TableCell>
+                          )}
                         </TableRow>
                       ))
                     )}
@@ -258,87 +282,87 @@ const Members: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Invite form */}
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-xl">Invite New Member</CardTitle>
-            <CardDescription>
-              Send an invitation to join your organization
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleInvite} className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+        {/* Only show the invite form for admins */}
+        {isAdmin && (
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-xl">Invite New Member</CardTitle>
+              <CardDescription>
+                Send an invitation to join your organization
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleInvite} className="space-y-4">
+                {error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                )}
 
-              {inviteSuccess && (
-                <Alert className="bg-green-50 text-green-800 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertDescription className="text-green-700">
-                    Invitation sent successfully!
-                  </AlertDescription>
-                </Alert>
-              )}
+                {inviteSuccess && (
+                  <Alert className="bg-green-50 text-green-800 border-green-200">
+                    <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-700">
+                      Invitation sent successfully!
+                    </AlertDescription>
+                  </Alert>
+                )}
 
-              <div className="space-y-2">
-                <Label htmlFor="inviteEmail" className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  Email Address
-                </Label>
-                <Input
-                  id="inviteEmail"
-                  type="email"
-                  placeholder="colleague@example.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  required
-                />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inviteEmail" className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    Email Address
+                  </Label>
+                  <Input
+                    id="inviteEmail"
+                    type="email"
+                    placeholder="colleague@example.com"
+                    value={inviteEmail}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInviteEmail(e.currentTarget.value)}
+                    required
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="inviteRole" className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Role
-                </Label>
-                <Select value={inviteRole} onValueChange={(value: OrgRole) => setInviteRole(value)}>
-                  <SelectTrigger id="inviteRole" className="w-full">
-                    <SelectValue placeholder="Select a role" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="owner">Owner (full control, can delete org)</SelectItem>
-                    <SelectItem value="admin">Admin (can manage members and apps)</SelectItem>
-                    <SelectItem value="member">Member (can use apps)</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-gray-500">
-                  {inviteRole === 'owner' && 'Owners have full control over the organization, including deleting it.'}
-                  {inviteRole === 'admin' && 'Admins can manage members and apps, but cannot delete the organization.'}
-                  {inviteRole === 'member' && 'Members can use organization apps, but cannot manage them.'}
-                </p>
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="inviteRole" className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Role
+                  </Label>
+                  <Select value={inviteRole} onValueChange={(value: OrgRole) => setInviteRole(value)}>
+                    <SelectTrigger id="inviteRole" className="w-full">
+                      <SelectValue placeholder="Select a role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="admin">Admin (full control)</SelectItem>
+                      <SelectItem value="member">Member (manage apps)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500">
+                    {inviteRole === 'admin' && 'Admins have full control over the organization, including managing members and apps.'}
+                    {inviteRole === 'member' && 'Members can manage apps, but cannot manage the organization or its members.'}
+                  </p>
+                </div>
 
-              <div className="flex justify-end pt-2">
-                <Button type="submit" disabled={isInviting}>
-                  {isInviting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Send Invitation
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" disabled={isInviting}>
+                    {isInviting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Send Invitation
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

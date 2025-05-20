@@ -15,7 +15,7 @@ export interface OrgMember {
   /** Reference to user document */
   user: Types.ObjectId;
   /** Role of user in organization */
-  role: 'owner' | 'admin' | 'member';
+  role: 'admin' | 'member';
   /** Date when user joined the organization */
   joinedAt: Date;
 }
@@ -102,7 +102,7 @@ const OrganizationSchema = new Schema<OrganizationDocument>({
     },
     role: {
       type: String,
-      enum: ['owner', 'admin', 'member'],
+      enum: ['admin', 'member'],
       default: 'member'
     },
     joinedAt: {

@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, RefreshCw, Share2, LinkIcon, Upload } from "lucide-react";
+import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, RefreshCw, Share2, LinkIcon, Upload, MoveIcon } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import api from '@/services/api.service';
+import api, { Organization } from '@/services/api.service';
 import { TPA, Permission } from '@/types/tpa';
 import { toast } from 'sonner';
 import ApiKeyDialog from '../components/dialogs/ApiKeyDialog';
@@ -21,6 +21,7 @@ import PermissionsForm from '../components/forms/PermissionsForm';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
 import publicEmailDomains from 'email-providers/all.json';
+import MoveOrgDialog from '../components/dialogs/MoveOrgDialog';
 
 // Extend TPA type locally to include sharedWithOrganization
 interface EditableTPA extends TPA {
@@ -65,22 +66,23 @@ const EditTPA: React.FC = () => {
   const [isLoadingShareLink, setIsLoadingShareLink] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // Add sharedWithOrganization state
-  const [sharedWithOrganization, setSharedWithOrganization] = useState(false);
-  const [isUpdatingVisibility, setIsUpdatingVisibility] = useState(false);
-
   // Add sharedWithEmails state
   const [sharedWithEmails, setSharedWithEmails] = useState<string[]>([]);
   const [newShareEmail, setNewShareEmail] = useState('');
   const [isUpdatingEmails, setIsUpdatingEmails] = useState(false);
   const [emailError, setEmailError] = useState<string | null>(null);
 
+  // State for organization transfer
+  const [isMoveOrgDialogOpen, setIsMoveOrgDialogOpen] = useState(false);
+  const [eligibleOrgs, setEligibleOrgs] = useState<Organization[]>([]);
+  const [isMovingOrg, setIsMovingOrg] = useState(false);
+
   // Helper to get org domain from user email
   const orgDomain = user?.email?.split('@')[1] || '';
   // Check if orgDomain is a public email provider
   const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
-  // Fetch TPA data and permissions from API
+  // Fetch TPA data and permissions from API + check for eligible orgs for transfer
   useEffect(() => {
     const fetchData = async () => {
       if (!packageName || !currentOrg) return;
@@ -127,13 +129,60 @@ const EditTPA: React.FC = () => {
           setIsLoadingPermissions(false);
         }
 
-        // After fetching TPA data, set sharedWithOrganization
-        if (tpa && typeof tpa.sharedWithOrganization === 'boolean') {
-          setSharedWithOrganization(tpa.sharedWithOrganization);
-        }
         // Set sharedWithEmails
         if (Array.isArray(tpaData.sharedWithEmails)) {
           setSharedWithEmails(tpaData.sharedWithEmails);
+        }
+
+        // Fetch all orgs where the user has admin access
+        try {
+          const allOrgs = await api.orgs.list();
+          console.log("All organizations:", allOrgs);
+          console.log("Current user email:", user?.email);
+
+          // Get the user's full profile to access ID
+          let userId = '';
+          try {
+            const userProfile = await api.auth.me();
+            userId = userProfile.id;
+            console.log("Current user ID:", userId);
+          } catch (err) {
+            console.error("Failed to fetch user profile:", err);
+          }
+
+          // Filter to only include orgs where the user has admin/owner access
+          const adminOrgs = allOrgs.filter(org => {
+            // Log each org and its members for debugging
+            console.log(`Organization ${org.name} (${org.id}) members:`, org.members);
+
+            // Handle member structure
+            if (Array.isArray(org.members)) {
+              for (const member of org.members) {
+                // Log the entire member structure
+                console.log(`Member in ${org.name}:`, member);
+
+                const role = member.role;
+
+                // Case 1: Direct string comparison with user ID
+                if (userId && typeof member.user === 'string' && member.user === userId) {
+                  console.log(`Found user match in org ${org.name} with role: ${role} (by ID)`);
+                  return role === 'admin' || role === 'owner';
+                }
+
+                // Case 2: Compare with user object with email
+                if (typeof member.user === 'object' && member.user && member.user.email === user?.email) {
+                  console.log(`Found user match in org ${org.name} with role: ${role} (by email)`);
+                  return role === 'admin' || role === 'owner';
+                }
+              }
+            }
+            return false;
+          });
+
+          console.log("Eligible organizations:", adminOrgs);
+          setEligibleOrgs(adminOrgs);
+        } catch (orgError) {
+          console.error('Error fetching organizations:', orgError);
         }
       } catch (err) {
         console.error('Error fetching TPA:', err);
@@ -144,11 +193,11 @@ const EditTPA: React.FC = () => {
     };
 
     fetchData();
-  }, [packageName, currentOrg]);
+  }, [packageName, currentOrg, user?.email]);
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.currentTarget;
 
     // For URL fields, normalize on blur instead of on every keystroke
     setFormData(prev => ({
@@ -159,7 +208,7 @@ const EditTPA: React.FC = () => {
 
   // Handle URL field blur event to normalize URLs
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.currentTarget;
 
     // Only normalize URL fields
     if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
@@ -211,7 +260,9 @@ const EditTPA: React.FC = () => {
       await api.apps.update(packageName, normalizedData, currentOrg.id);
 
       // Update permissions
-      await api.apps.permissions.update(packageName, formData.permissions);
+      if (formData.permissions) {
+        await api.apps.permissions.update(packageName, formData.permissions);
+      }
 
       // Show success message
       setIsSaved(true);
@@ -264,12 +315,15 @@ const EditTPA: React.FC = () => {
     setIsSaved(false);
 
     // Dismiss ALL existing toasts
-    const allToasts = document.querySelectorAll('[role="status"]');
-    allToasts.forEach(toast => {
-      if (toast.parentNode) {
-        toast.parentNode.removeChild(toast);
-      }
-    });
+    // Check if document is available (browser environment)
+    if (typeof document !== 'undefined') {
+      const allToasts = document.querySelectorAll('[role="status"]');
+      allToasts.forEach((toast) => {
+        if (toast.parentElement) {
+          toast.parentElement.removeChild(toast);
+        }
+      });
+    }
     toast.dismiss();
 
     // Then open the dialog
@@ -323,30 +377,6 @@ const EditTPA: React.FC = () => {
       toast.success('Publication status updated');
     } catch (err) {
       console.error('Error refreshing TPA status:', err);
-    }
-  };
-
-  // Add handler for toggling sharedWithOrganization
-  const handleToggleSharedWithOrg = async (checked: boolean) => {
-    try {
-      if (!packageName) throw new Error('Package name is missing');
-      if (!currentOrg) throw new Error('No organization selected');
-
-      setIsUpdatingVisibility(true);
-      setError(null);
-
-      // Update visibility via API
-      await api.apps.updateVisibility(packageName, checked);
-
-      // Update local state
-      setSharedWithOrganization(checked);
-
-      toast.success(`App is now ${checked ? 'shared with' : 'private to'} your organization`);
-    } catch (err) {
-      console.error('Error updating visibility:', err);
-      toast.error('Failed to update visibility');
-    } finally {
-      setIsUpdatingVisibility(false);
     }
   };
 
@@ -421,6 +451,31 @@ const EditTPA: React.FC = () => {
     }
   };
 
+  // Handle TPA organization move
+  const handleMoveToOrg = async (targetOrgId: string) => {
+    if (!packageName || !currentOrg) return;
+
+    try {
+      setIsMovingOrg(true);
+
+      // Call API to move TPA to the target organization
+      await api.apps.moveToOrg(packageName, targetOrgId, currentOrg.id);
+
+      // Show success message
+      toast.success(`App moved to new organization successfully`);
+
+      // Redirect to the TPAs list after a short delay
+      setTimeout(() => {
+        navigate('/tpas');
+      }, 1500);
+    } catch (err) {
+      console.error('Error moving TPA to new organization:', err);
+      throw new Error('Failed to move app to the new organization. Please try again.');
+    } finally {
+      setIsMovingOrg(false);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
@@ -444,6 +499,28 @@ const EditTPA: React.FC = () => {
                 <CardDescription>
                   Update your apps for AugmentOS.
                 </CardDescription>
+                {currentOrg && (
+                  <div className="mt-2 mb-3 text-sm flex items-center justify-between">
+                    <div>
+                      <span className="text-gray-500">Organization: </span>
+                      <span className="font-medium">{currentOrg.name}</span>
+                    </div>
+
+                    {/* Move Organization button - only show if user has admin access to multiple orgs */}
+                    {eligibleOrgs.length > 1 && (
+                      <Button
+                        onClick={() => setIsMoveOrgDialogOpen(true)}
+                        className="gap-2"
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                      >
+                        <MoveIcon className="h-4 w-4" />
+                        Move to Org
+                      </Button>
+                    )}
+                  </div>
+                )}
               </CardHeader>
               <CardContent className="space-y-6 pb-5">
                 {error && (
@@ -557,41 +634,7 @@ const EditTPA: React.FC = () => {
                 <div className="space-y-8 mt-6">
                   {/* Share with Editors */}
                   <div className="border rounded-lg bg-white p-8 shadow-sm">
-                    <h3 className="text-lg font-semibold mb-4 flex items-center">
-                      <span className="inline-block bg-blue-100 rounded-full p-2 mr-2"><Share2 className="h-5 w-5 text-blue-600" /></span>
-                      Share with Editors
-                    </h3>
-                    <p className="text-sm text-gray-600 mb-6 ml-9">
-                      Grant edit/manage access to your app for your organization or specific users.
-                    </p>
-                    {/* Share with Organization */}
-                    <div className="flex items-center space-x-3 mb-4 ml-9">
-                      <div className={`flex items-center gap-3 ${isPublicEmailDomain ? 'opacity-50 pointer-events-none' : ''}`}>
-                        <input
-                          type="checkbox"
-                          id="sharedWithOrganization"
-                          checked={sharedWithOrganization}
-                          onChange={e => handleToggleSharedWithOrg(e.target.checked)}
-                          className="form-checkbox h-5 w-5 text-blue-600"
-                          disabled={isPublicEmailDomain}
-                        />
-                        <Label htmlFor="sharedWithOrganization" className="mb-0 cursor-pointer font-medium">
-                          Share with my organization
-                        </Label>
-                        {orgDomain && !isPublicEmailDomain && (
-                          <span className="ml-2 text-xs text-gray-500">({orgDomain})</span>
-                        )}
-                      </div>
-                      {isPublicEmailDomain && (
-                        <span className="ml-2 text-xs text-red-500 font-bold">Cannot share with organization using a public email provider ({orgDomain})</span>
-                      )}
-                      {isUpdatingVisibility && (
-                        <span className="ml-2 text-xs text-blue-500">Updating...</span>
-                      )}
-                    </div>
-                    <p className="text-xs text-gray-500 mb-6 ml-16">All users with an <span className="font-mono">@{orgDomain}</span> email will have access.</p>
-                    {/* Divider */}
-                    <div className="border-t border-gray-200 my-6" />
+
                     {/* Share with Users by Email */}
                     <div className="mb-4 ml-9">
                       <Label className="font-medium">Share with Specific Users (by Email)</Label>
@@ -601,7 +644,7 @@ const EditTPA: React.FC = () => {
                           type="email"
                           placeholder="user@example.com"
                           value={newShareEmail}
-                          onChange={e => setNewShareEmail(e.target.value)}
+                          onChange={e => setNewShareEmail(e.currentTarget.value)}
                           disabled={isUpdatingEmails}
                           className="w-64"
                         />
@@ -794,12 +837,14 @@ const EditTPA: React.FC = () => {
             open={isApiKeyDialogOpen}
             onOpenChange={setIsApiKeyDialogOpen}
             apiKey={apiKey}
+            orgId={currentOrg?.id}
           />
 
           <SharingDialog
             tpa={formData}
             open={isSharingDialogOpen}
             onOpenChange={setIsSharingDialogOpen}
+            orgId={currentOrg?.id}
           />
 
           <PublishDialog
@@ -809,7 +854,22 @@ const EditTPA: React.FC = () => {
               setIsPublishDialogOpen(open);
             }}
             onPublishComplete={handlePublishComplete}
+            orgId={currentOrg?.id}
           />
+
+          {currentOrg && (
+            <MoveOrgDialog
+              tpa={formData}
+              open={isMoveOrgDialogOpen}
+              onOpenChange={setIsMoveOrgDialogOpen}
+              eligibleOrgs={eligibleOrgs}
+              currentOrgId={currentOrg.id}
+              onMoveComplete={() => {
+                // Handled by redirect in handleMoveToOrg
+              }}
+              onMove={handleMoveToOrg}
+            />
+          )}
         </>
       )}
     </DashboardLayout>

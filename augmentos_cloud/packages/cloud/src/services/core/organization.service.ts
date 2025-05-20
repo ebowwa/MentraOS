@@ -68,7 +68,7 @@ export class OrganizationService {
       },
       members: [{
         user: user._id,
-        role: 'owner',
+        role: 'admin',
         joinedAt: new Date()
       }]
     });
@@ -94,7 +94,7 @@ export class OrganizationService {
       },
       members: [{
         user: creatorUser._id,
-        role: 'owner',
+        role: 'admin',
         joinedAt: new Date()
       }]
     });
@@ -202,9 +202,15 @@ export class OrganizationService {
       throw new ApiError(404, 'Organization not found');
     }
 
-    const existingMember = org.members.find(member =>
-      member.user && (member.user as any).email === email
-    );
+    // Case-insensitive email check for existing members
+    const lowerCaseEmail = email.toLowerCase();
+    const existingMember = org.members.find(member => {
+      // Handle cases where member.user might be populated or a reference
+      const memberUser = member.user as any;
+      return memberUser &&
+             ((memberUser.email && memberUser.email.toLowerCase() === lowerCaseEmail) ||
+              (typeof memberUser === 'string' && memberUser.toString() === email));
+    });
 
     if (existingMember) {
       throw new ApiError(400, 'User is already a member of this organization');
@@ -222,31 +228,63 @@ export class OrganizationService {
    * @returns The updated organization
    */
   public static async acceptInvite(token: string, user: UserDocument): Promise<OrganizationDocument> {
+    console.log('[organization.service] Starting acceptInvite process', { userEmail: user.email });
+
     try {
       // Verify and decode token
       const tokenData = InviteService.verify(token);
+      console.log('[organization.service] Invite token verified successfully', { tokenData });
 
       // Validate email matches
       if (tokenData.email !== user.email) {
+        console.error('[organization.service] Email mismatch in invite token', {
+          tokenEmail: tokenData.email,
+          userEmail: user.email
+        });
         throw new ApiError(403, 'Invite token was issued for a different email address');
       }
 
       // Add user to organization
       const org = await Organization.findById(tokenData.orgId);
       if (!org) {
+        console.error('[organization.service] Organization not found', { orgId: tokenData.orgId });
         throw new ApiError(404, 'Organization not found');
       }
 
-      // Check if already a member
-      const isMember = org.members.some(m =>
+      console.log('[organization.service] Found organization', {
+        orgId: org._id.toString(),
+        orgName: org.name,
+        memberCount: org.members.length
+      });
+
+      // Check if already a member - by ID or by email
+      const isMemberById = org.members.some(m =>
         m.user.toString() === user._id.toString()
       );
 
-      if (isMember) {
-        throw new ApiError(400, 'User is already a member of this organization');
+      const isMemberByEmail = org.members.some(m => {
+        const memberUser = m.user as any; // Handle both populated and reference cases
+        return memberUser.email && memberUser.email.toLowerCase() === user.email.toLowerCase();
+      });
+
+      if (isMemberById || isMemberByEmail) {
+        console.warn('[organization.service] User is already a member of this organization', {
+          userId: user._id.toString(),
+          userEmail: user.email,
+          orgId: org._id.toString()
+        });
+
+        // Return the org anyway, treating this as a successful operation
+        // This prevents error messages when users click an invite link multiple times
+        return org;
       }
 
       // Add member
+      console.log('[organization.service] Adding user to organization', {
+        userId: user._id.toString(),
+        role: tokenData.role
+      });
+
       org.members.push({
         user: user._id,
         role: tokenData.role as OrgMember['role'],
@@ -254,15 +292,38 @@ export class OrganizationService {
       });
 
       await org.save();
+      console.log('[organization.service] Organization saved with new member');
 
       // Add org to user's organizations
-      await User.updateOne(
-        { _id: user._id },
-        { $addToSet: { organizations: org._id } }
+      console.log('[organization.service] Adding org to user.organizations', {
+        userId: user._id.toString(),
+        orgId: org._id.toString(),
+        currentOrgs: user.organizations?.map(o => o.toString()) || []
+      });
+
+      // Ensure the organizations array exists
+      if (!user.organizations) {
+        user.organizations = [];
+      }
+
+      // Check if org is already in the user's organizations
+      const orgAlreadyInUserOrgs = user.organizations.some(
+        orgId => orgId.toString() === org._id.toString()
       );
+
+      if (!orgAlreadyInUserOrgs) {
+        user.organizations.push(org._id);
+        await user.save();
+        console.log('[organization.service] User saved with new organization', {
+          updatedOrgs: user.organizations.map(o => o.toString())
+        });
+      } else {
+        console.warn('[organization.service] Organization was already in user.organizations array, skipping update');
+      }
 
       return org;
     } catch (error: any) {
+      console.error('[organization.service] Error in acceptInvite', error);
       if (error instanceof ApiError) {
         throw error;
       }
@@ -294,7 +355,7 @@ export class OrganizationService {
       throw new ApiError(404, 'Organization not found');
     }
 
-    // Check if removing last owner
+    // Find the member to remove
     const targetMemberIdx = org.members.findIndex(m => m.user._id.toString() === memberId.toString());
     if (targetMemberIdx === -1) {
       throw new ApiError(404, 'Member not found in organization');
@@ -302,11 +363,11 @@ export class OrganizationService {
 
     const targetMember = org.members[targetMemberIdx];
 
-    if (targetMember.role === 'owner') {
-      // Count owners
-      const ownerCount = org.members.filter(m => m.role === 'owner').length;
-      if (ownerCount <= 1) {
-        throw new ApiError(400, 'Cannot remove the last owner of an organization');
+    // Check if removing last admin
+    if (targetMember.role === 'admin') {
+      const adminCount = org.members.filter(m => m.role === 'admin').length;
+      if (adminCount <= 1) {
+        throw new ApiError(400, 'Cannot remove the last admin of an organization');
       }
     }
 
@@ -372,11 +433,11 @@ export class OrganizationService {
 
     const currentRole = org.members[targetMemberIdx].role;
 
-    // If demoting from owner, check if it's the last owner
-    if (currentRole === 'owner' && newRole !== 'owner') {
-      const ownerCount = org.members.filter(m => m.role === 'owner').length;
-      if (ownerCount <= 1) {
-        throw new ApiError(400, 'Cannot demote the last owner of an organization');
+    // Check if demoting the last admin
+    if (currentRole === 'admin' && newRole !== 'admin') {
+      const adminCount = org.members.filter(m => m.role === 'admin').length;
+      if (adminCount <= 1) {
+        throw new ApiError(400, 'Cannot demote the last admin of an organization');
       }
     }
 
@@ -406,10 +467,10 @@ export class OrganizationService {
   }
 
   /**
-   * Checks if a user is an admin or owner of an organization
+   * Checks if a user is an admin of an organization
    * @param user - User to check
    * @param orgId - Organization ID
-   * @returns Whether the user is an admin or owner
+   * @returns Whether the user is an admin
    */
   public static async isOrgAdmin(
     user: UserDocument,
@@ -421,7 +482,7 @@ export class OrganizationService {
       'members': {
         $elemMatch: {
           user: user._id,
-          role: { $in: ['admin', 'owner'] }
+          role: 'admin'
         }
       }
     });

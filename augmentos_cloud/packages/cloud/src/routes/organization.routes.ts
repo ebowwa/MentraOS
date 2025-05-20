@@ -61,9 +61,9 @@ const authMiddleware = async (req: Request, res: Response, next: NextFunction) =
 };
 
 /**
- * Authorization middleware - checks if user has admin/owner role in organization
+ * Authorization middleware - checks if user has admin role in organization
  */
-const authz = (requiredRole: 'admin' | 'owner' | 'member' = 'admin') => {
+const authz = (requiredRole: 'admin' | 'member' = 'admin') => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const orgId = req.params.orgId;
     if (!orgId) {
@@ -310,10 +310,10 @@ const invite = async (req: Request, res: Response) => {
     }
 
     // Validate role
-    if (!['owner', 'admin', 'member'].includes(role)) {
+    if (!['admin', 'member'].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be owner, admin, or member'
+        message: 'Invalid role. Must be admin or member'
       });
     }
 
@@ -381,10 +381,10 @@ const changeRole = async (req: Request, res: Response) => {
     }
 
     // Validate role
-    if (!['owner', 'admin', 'member'].includes(role)) {
+    if (!['admin', 'member'].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Must be owner, admin, or member'
+        message: 'Invalid role. Must be admin or member'
       });
     }
 

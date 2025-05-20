@@ -848,7 +848,7 @@ export class AppService {
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
     }
-    if (!developerId || app.developerId.toString() !== developerId) {
+    if (!developerId || !app.developerId || app.developerId.toString() !== developerId) {
       throw new Error('You do not have permission to update this app');
     }
     let organizationDomain = null;
@@ -876,7 +876,7 @@ export class AppService {
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-    const isOwner = app.developerId.toString() === developerId;
+    const isOwner = app.developerId && app.developerId.toString() === developerId;
     let isOrgMember = false;
     if (app.sharedWithOrganization && app.organizationDomain) {
       const emailDomain = developerId.split('@')[1]?.toLowerCase();
@@ -915,6 +915,46 @@ export class AppService {
   async getAppsCreatedOrSharedWith(email: string): Promise<AppI[]> {
     // Now just returns apps by developer ID for backward compatibility
     return this.getAppsByDeveloperId(email);
+  }
+
+  /**
+   * Move an app from one organization to another
+   * @param packageName - The package name of the app to move
+   * @param sourceOrgId - The ID of the source organization
+   * @param targetOrgId - The ID of the target organization
+   * @param userEmail - The email of the user performing the action
+   * @returns The updated app
+   * @throws Error if app not found or user doesn't have permission
+   */
+  async moveApp(
+    packageName: string,
+    sourceOrgId: Types.ObjectId,
+    targetOrgId: Types.ObjectId,
+    userEmail: string
+  ): Promise<AppI> {
+    // Find the app in the source organization
+    const app = await App.findOne({
+      packageName,
+      organizationId: sourceOrgId
+    });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found in source organization`);
+    }
+
+    // Update organization ID
+    app.organizationId = targetOrgId;
+    await app.save();
+
+    // Log the move operation
+    logger.info({
+      packageName,
+      sourceOrgId: sourceOrgId.toString(),
+      targetOrgId: targetOrgId.toString(),
+      userEmail
+    }, 'App moved to new organization');
+
+    return app;
   }
 
 }

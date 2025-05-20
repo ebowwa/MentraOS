@@ -22,6 +22,7 @@ interface PublishDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onPublishComplete?: (updatedTpa: AppResponse) => void;
+  orgId?: string;
 }
 
 const PublishDialog: React.FC<PublishDialogProps> = ({
@@ -29,6 +30,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
   open,
   onOpenChange,
   onPublishComplete,
+  orgId,
 }) => {
   const [isPublishing, setIsPublishing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,10 +64,12 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
       setIsPublishing(true);
       setError(null);
 
-      const result = await api.apps.publish(tpa.packageName, currentOrg?.id);
+      // Use the provided orgId if available, otherwise fall back to currentOrg.id
+      const effectiveOrgId = orgId || currentOrg?.id;
+      const result = await api.apps.publish(tpa.packageName, effectiveOrgId);
 
       // Get the updated app data
-      const updatedTpa = await api.apps.getByPackageName(tpa.packageName, currentOrg?.id);
+      const updatedTpa = await api.apps.getByPackageName(tpa.packageName, effectiveOrgId);
 
       toast.success('App submitted for publication!');
 
