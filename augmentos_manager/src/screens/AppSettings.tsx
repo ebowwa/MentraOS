@@ -353,7 +353,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
-            onChangeText={text => handleSettingChange(setting.key, text)}
+            onChangeTextFn={text => handleSettingChange(setting.key, text)}
             theme={theme}
           />
         );
@@ -363,7 +363,7 @@ const AppSettings: React.FC<AppSettingsProps> = ({route, navigation, isDarkTheme
             key={index}
             label={setting.label}
             value={settingsState[setting.key]}
-            onChangeText={text => handleSettingChange(setting.key, text)}
+            onChangeTextFn={text => handleSettingChange(setting.key, text)}
             theme={theme}
           />
         );

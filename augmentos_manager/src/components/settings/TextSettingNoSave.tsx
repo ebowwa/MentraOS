@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -16,31 +16,38 @@ import {
 type TextSettingNoSaveProps = {
   label: string;
   value: string;
-  onChangeText: (text: string) => void;
+  onChangeTextFn: (text: string) => void;
   theme: any;
 };
 
 const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
   label,
   value,
-  onChangeText,
+  onChangeTextFn,
   theme,
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [tempValue, setTempValue] = useState(value);
+
+  // Debounce updates to parent
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      onChangeTextFn(tempValue);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [tempValue]);
 
   const handleOpenModal = () => {
     setTempValue(value);
     setModalVisible(true);
   };
 
-  const handleSave = () => {
-    onChangeText(tempValue);
+  const handleCancel = () => {
+    setTempValue(value);
     setModalVisible(false);
   };
 
-  const handleCancel = () => {
-    setTempValue(value);
+  const handleDone = () => {
     setModalVisible(false);
   };
 
@@ -100,7 +107,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
               </Text>
 
               <Pressable
-                onPress={handleSave}
+                onPress={handleDone}
                 style={({pressed}) => [
                   styles.headerButton,
                   Platform.OS === 'ios' && styles.iosDoneButton,
@@ -127,7 +134,9 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({
                 },
               ]}
               value={tempValue}
-              onChangeText={setTempValue}
+              onChangeText={text => {
+                setTempValue(text);
+              }}
               multiline
               maxLength={10000}
               textAlignVertical="top"
