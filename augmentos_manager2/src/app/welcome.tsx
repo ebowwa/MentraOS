@@ -1,12 +1,12 @@
 import { Image, ImageStyle, TextStyle, View, ViewStyle } from "react-native"
-import { Screen, Text } from "@/components"
+import { Screen, Text } from "@/components/ignite"
 import { isRTL } from "@/i18n"
 import { ThemedStyle } from "@/theme"
 import { useSafeAreaInsetsStyle } from "@/utils/useSafeAreaInsetsStyle"
 import { useAppTheme } from "@/utils/useAppTheme"
 
-const welcomeLogo = require("../../assets/images/logo.png")
-const welcomeFace = require("../../assets/images/welcome-face.png")
+// const welcomeLogo = require("../../assets/images/logo.png")
+// const welcomeFace = require("../../assets/images/welcome-face.png")
 
 export default function WelcomeScreen() {
   const $bottomContainerInsets = useSafeAreaInsetsStyle(["bottom"])
@@ -15,7 +15,7 @@ export default function WelcomeScreen() {
   return (
     <Screen safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
       <View style={themed($topContainer)}>
-        <Image style={themed($welcomeLogo)} source={welcomeLogo} resizeMode="contain" />
+        {/* <Image style={themed($welcomeLogo)} source={welcomeLogo} resizeMode="contain" /> */}
         <Text
           testID="welcome-heading"
           style={themed($welcomeHeading)}
@@ -23,12 +23,12 @@ export default function WelcomeScreen() {
           preset="heading"
         />
         <Text tx="welcomeScreen:exciting" preset="subheading" />
-        <Image
+        {/* <Image
           style={$welcomeFace}
           source={welcomeFace}
           resizeMode="contain"
           tintColor={theme.isDark ? theme.colors.palette.neutral900 : undefined}
-        />
+        /> */}
       </View>
 
       <View style={[themed($bottomContainer), $bottomContainerInsets]}>

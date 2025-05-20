@@ -17,7 +17,7 @@ import {
 import LinearGradient from "react-native-linear-gradient"
 import {supabase} from "@/supabase/supabaseClient"
 import {Linking} from "react-native"
-import {Screen, Text, Button, Icon} from "@/components"
+import {Screen, Text, Button, Icon} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"

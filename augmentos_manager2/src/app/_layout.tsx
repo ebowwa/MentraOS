@@ -7,7 +7,7 @@ import { customFontsToLoad } from "@/theme"
 import { initI18n } from "@/i18n"
 import { loadDateFnsLocale } from "@/utils/formatDate"
 import { useThemeProvider } from "@/utils/useAppTheme"
-import { AllProviders } from "@/utils/all-providers"
+import { AllProviders } from "@/utils/allProviders"
 
 SplashScreen.preventAutoHideAsync()
 
