@@ -30,11 +30,9 @@ const AuthPage: React.FC = () => {
    */
   const handleInvite = async (token: string) => {
     try {
-      console.log('Accepting invite with token:', token);
 
       // Accept the invitation using the orgs.acceptInvite method
       const orgResponse = await api.orgs.acceptInvite(token);
-      console.log('Organization invite accepted:', orgResponse);
 
       // Show success message with the organization name
       toast.success(`You have been added to ${orgResponse.name}!`);
@@ -42,7 +40,6 @@ const AuthPage: React.FC = () => {
 
       // Refresh user data to update organization membership
       await refreshUser();
-      console.log('User data refreshed after invite acceptance');
 
       // Force a page reload to ensure all context data is refreshed
       setTimeout(() => {

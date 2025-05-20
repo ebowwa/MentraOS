@@ -137,8 +137,6 @@ const EditTPA: React.FC = () => {
         // Fetch all orgs where the user has admin access
         try {
           const allOrgs = await api.orgs.list();
-          console.log("All organizations:", allOrgs);
-          console.log("Current user email:", user?.email);
 
           // Get the user's full profile to access ID
           let userId = '';
@@ -152,34 +150,25 @@ const EditTPA: React.FC = () => {
 
           // Filter to only include orgs where the user has admin/owner access
           const adminOrgs = allOrgs.filter(org => {
-            // Log each org and its members for debugging
-            console.log(`Organization ${org.name} (${org.id}) members:`, org.members);
 
             // Handle member structure
             if (Array.isArray(org.members)) {
               for (const member of org.members) {
-                // Log the entire member structure
-                console.log(`Member in ${org.name}:`, member);
-
                 const role = member.role;
 
                 // Case 1: Direct string comparison with user ID
                 if (userId && typeof member.user === 'string' && member.user === userId) {
-                  console.log(`Found user match in org ${org.name} with role: ${role} (by ID)`);
                   return role === 'admin' || role === 'owner';
                 }
 
                 // Case 2: Compare with user object with email
                 if (typeof member.user === 'object' && member.user && member.user.email === user?.email) {
-                  console.log(`Found user match in org ${org.name} with role: ${role} (by email)`);
                   return role === 'admin' || role === 'owner';
                 }
               }
             }
             return false;
           });
-
-          console.log("Eligible organizations:", adminOrgs);
           setEligibleOrgs(adminOrgs);
         } catch (orgError) {
           console.error('Error fetching organizations:', orgError);
