@@ -96,7 +96,13 @@
         {
           "iosPermissions": [
             "Camera",
-            "Microphone"
+            "Microphone",
+            "Calendars",
+            "Bluetooth",
+            "LocationAccuracy",
+            "LocationWhenInUse",
+            "Notifications",
+            "PhotoLibrary"
           ]
         }
       ]

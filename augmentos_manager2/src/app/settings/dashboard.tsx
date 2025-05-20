@@ -11,6 +11,8 @@ import {
   Modal,
   SafeAreaView,
   ActivityIndicator,
+  ViewStyle,
+  TextStyle,
 } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {useNavigation} from "@react-navigation/native"
@@ -20,14 +22,13 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
+import {Header} from "@/components/ignite"
+import {router} from "expo-router"
+import {Screen} from "@/components/ignite"
+import { ThemedStyle } from "@/theme"
+import { useAppTheme } from "@/utils/useAppTheme"
 
-interface DashboardSettingsScreenProps {
-  navigation: any
-  isDarkTheme: boolean
-  toggleTheme: () => void
-}
-
-const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({navigation, isDarkTheme, toggleTheme}) => {
+export default function DashboardSettingsScreen() {
   const {status} = useStatus()
   const backendServerComms = BackendServerComms.getInstance()
 
@@ -45,6 +46,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({naviga
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null)
   const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(status.core_info.metric_system_enabled)
   const [depth, setDepth] = useState<number | null>(null)
+  const {themed} = useAppTheme()
 
   const dashboardContentOptions = [
     {label: "None", value: "none"},
@@ -162,10 +164,10 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({naviga
       transparent={true}
       animationType="fade"
       onRequestClose={() => !isUpdating && setShowContentPicker(false)}>
-      <View style={[styles.modalOverlay]}>
-        <View style={[styles.pickerContainer]}>
-          <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>Select Dashboard Content</Text>
+      <View style={[themed($modalOverlay)]}>
+        <View style={[themed($pickerContainer)]}>
+          <View style={themed($pickerHeader)}>
+            <Text style={themed($pickerTitle)}>Select Dashboard Content</Text>
             <TouchableOpacity
               onPress={() => !isUpdating && setShowContentPicker(false)}
               style={[styles.closeButton, isUpdating && styles.disabledButton]}
@@ -209,55 +211,48 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({naviga
   )
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          Dashboard Settings
-        </Text>
-      </View> */}
-      <ScrollView style={styles.scrollViewContainer} showsVerticalScrollIndicator={false}>
-        {/* Contextual Dashboard */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>General Settings</Text>
-          <View style={[styles.settingItem, styles.elevatedCard]}>
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.label}>Contextual Dashboard</Text>
-              {status.glasses_info?.model_name && (
-                <Text style={styles.value}>
-                  {`Show a summary of your phone notifications when you ${
-                    status.glasses_info?.model_name.toLowerCase().includes("even")
-                      ? "look up"
-                      : "tap your smart glasses"
-                  }.`}
-                </Text>
-              )}
-            </View>
-            <Switch
-              value={isContextualDashboardEnabled}
-              onValueChange={toggleContextualDashboard}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
-            />
+    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
+      <Header titleTx="dashboardSettings:title" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      {/* Contextual Dashboard */}
+      <View style={themed($section)}>
+        <Text style={themed($sectionTitle)}>General Settings</Text>
+        <View style={themed($settingItem)}>
+          <View style={themed($settingTextContainer)}>
+            <Text style={themed($label)}>Contextual Dashboard</Text>
+            {status.glasses_info?.model_name && (
+              <Text style={styles.value}>
+                {`Show a summary of your phone notifications when you ${
+                  status.glasses_info?.model_name.toLowerCase().includes("even") ? "look up" : "tap your smart glasses"
+                }.`}
+              </Text>
+            )}
           </View>
-
-          <View style={[styles.settingItem, styles.elevatedCard]}>
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.label}>Use Metric System</Text>
-              <Text style={styles.value}>Metric System (°C) or Imperial System (°F).</Text>
-            </View>
-            <Switch
-              value={isMetricSystemEnabled}
-              onValueChange={toggleMetricSystem}
-              trackColor={switchColors.trackColor}
-              thumbColor={switchColors.thumbColor}
-              ios_backgroundColor={switchColors.ios_backgroundColor}
-            />
-          </View>
+          <Switch
+            value={isContextualDashboardEnabled}
+            onValueChange={toggleContextualDashboard}
+            trackColor={switchColors.trackColor}
+            thumbColor={switchColors.thumbColor}
+            ios_backgroundColor={switchColors.ios_backgroundColor}
+          />
         </View>
 
-        {/* Dashboard Content Selection */}
-        {/* <View style={styles.section}>
+        <View style={themed($settingItem)}>
+          <View style={themed($settingTextContainer)}>
+            <Text style={themed($label)}>Use Metric System</Text>
+            <Text style={themed($value)}>Metric System (°C) or Imperial System (°F).</Text>
+          </View>
+          <Switch
+            value={isMetricSystemEnabled}
+            onValueChange={toggleMetricSystem}
+            trackColor={switchColors.trackColor}
+            thumbColor={switchColors.thumbColor}
+            ios_backgroundColor={switchColors.ios_backgroundColor}
+          />
+        </View>
+      </View>
+
+      {/* Dashboard Content Selection */}
+      {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             Content Settings
           </Text>
@@ -294,25 +289,23 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({naviga
           </TouchableOpacity>
         </View> */}
 
-        {/* Display Settings Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Display Settings</Text>
+      {/* Display Settings Section */}
+      <View style={themed($section)}>
+        <Text style={themed($sectionTitle)}>Display Settings</Text>
 
-          {/* Head-Up Angle Setting */}
-          <TouchableOpacity
-            style={[styles.settingItem, styles.elevatedCard]}
-            onPress={() => setHeadUpAngleComponentVisible(true)}>
-            <View style={styles.settingTextContainer}>
-              <Text style={styles.label}>Adjust Head-Up Angle</Text>
-              <Text style={[styles.value]}>
-                Adjust the angle at which the contextual dashboard appears when you look up.
-              </Text>
-            </View>
-            <Icon name="chevron-right" size={16} color="#000000" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-
+        {/* Head-Up Angle Setting */}
+        <TouchableOpacity
+          style={themed($settingItem)}
+          onPress={() => setHeadUpAngleComponentVisible(true)}>
+          <View style={themed($settingTextContainer)}>
+            <Text style={themed($label)}>Adjust Head-Up Angle</Text>
+            <Text style={[themed($value)]}>
+              Adjust the angle at which the contextual dashboard appears when you look up.
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={16} color="#000000" />
+        </TouchableOpacity>
+      </View>
       {renderContentPicker()}
       {headUpAngle !== null && (
         <HeadUpAngleComponent
@@ -322,11 +315,102 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({naviga
           onSave={onSaveHeadUpAngle}
         />
       )}
-    </SafeAreaView>
+    </Screen>
   )
 }
 
-export default DashboardSettingsScreen
+const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $section: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $sectionTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 18,
+  marginBottom: 8,
+  marginTop: 20,
+})
+
+const $modalOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({  
+  backgroundColor: colors.background,
+})
+
+const $pickerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $pickerHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $pickerTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $pickerOptionsContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $pickerOption: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $optionContent: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $optionContentText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $selectedValueContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $selectedValue: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $borderColor: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $label: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+const $value: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+})
+
+// settingItem: {
+//     flexDirection: "row",
+//     alignItems: "center",
+//     justifyContent: "space-between",
+//     padding: 16,
+//   },
+//   settingTextContainer: {
+//     flex: 1,
+//     paddingRight: 12,
+//   },
+
+const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: 16,
+  borderRadius: 12,
+  marginBottom: 12,
+  backgroundColor: colors.palette.neutral300,
+})
+
+const $settingTextContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  paddingRight: 12,
+})
 
 const styles = StyleSheet.create({
   container: {

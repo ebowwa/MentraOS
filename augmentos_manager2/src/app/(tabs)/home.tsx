@@ -20,8 +20,8 @@ import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import {SETTINGS_KEYS} from "@/consts"
 import NonProdWarning from "@/components/misc/NonProdWarning"
 import {ScrollView} from "react-native-gesture-handler"
-import { ThemedStyle } from "@/theme"
-import { useAppTheme } from "@/utils/useAppTheme"
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -232,7 +232,7 @@ export default function Homepage() {
             {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
               <ConnectedSimulatedGlassesInfo isDarkTheme={theme.isDark} />
             ) : (
-              <ConnectedDeviceInfo isDarkTheme={theme.isDark} />
+              <ConnectedDeviceInfo />
             )}
           </AnimatedSection>
         </View>

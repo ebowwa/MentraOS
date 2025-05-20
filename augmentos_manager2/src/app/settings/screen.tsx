@@ -1,14 +1,12 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, Switch, ScrollView, Alert, Platform, Button} from "react-native"
+import {View, Text, StyleSheet, Switch, ScrollView, Alert, Platform, Button, ViewStyle, TextStyle} from "react-native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Slider} from "react-native-elements"
-
-interface ScreenSettingsScreenProps {
-  isDarkTheme: boolean
-  toggleTheme: () => void
-  navigation: any
-}
+import { Header, Screen } from "@/components/ignite"
+import { ThemedStyle } from "@/theme"
+import { useAppTheme } from "@/utils/useAppTheme"
+import { router } from "expo-router"
 
 const parseBrightness = (brightnessStr: string | null | undefined): number => {
   if (typeof brightnessStr === "number") {
@@ -21,7 +19,7 @@ const parseBrightness = (brightnessStr: string | null | undefined): number => {
   return isNaN(parsed) ? 50 : parsed
 }
 
-const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme, toggleTheme, navigation}) => {
+export default function ScreenSettingsScreen() {
   const {status} = useStatus()
 
   // -- States --
@@ -29,6 +27,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
   const [depth, setDepth] = useState<number | null>(null)
   const [height, setHeight] = useState<number | null>(null)
+  const {themed} = useAppTheme()
 
   // -- Effects --
   useEffect(() => {
@@ -82,11 +81,11 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
   // Switch track colors
   const switchColors = {
     trackColor: {
-      false: isDarkTheme ? "#666666" : "#D1D1D6",
+      false: "#666666",
       true: "#2196F3",
     },
-    thumbColor: Platform.OS === "ios" ? undefined : isDarkTheme ? "#FFFFFF" : "#FFFFFF",
-    ios_backgroundColor: isDarkTheme ? "#666666" : "#D1D1D6",
+    thumbColor: Platform.OS === "ios" ? undefined : "#FFFFFF",
+    ios_backgroundColor: "#666666",
   }
 
   // Fixed slider props to avoid warning
@@ -98,9 +97,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
     onSlidingComplete: (value: number) => changeBrightness(value),
     value: brightness ?? 50,
     minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: isDarkTheme
-      ? styles.maximumTrackTintColorDark.color
-      : styles.maximumTrackTintColorLight.color,
+    maximumTrackTintColor: styles.maximumTrackTintColorDark.color,
     thumbTintColor: styles.thumbTintColor.color,
     // Using inline objects instead of defaultProps
     thumbTouchSize: {width: 40, height: 40},
@@ -116,9 +113,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
     onSlidingComplete: (value: number) => changeDepth(value),
     value: depth ?? 5,
     minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: isDarkTheme
-      ? styles.maximumTrackTintColorDark.color
-      : styles.maximumTrackTintColorLight.color,
+    maximumTrackTintColor: styles.maximumTrackTintColorDark.color,
     thumbTintColor: styles.thumbTintColor.color,
     // Using inline objects instead of defaultProps
     thumbTouchSize: {width: 40, height: 40},
@@ -134,9 +129,7 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
     onSlidingComplete: (value: number) => changeHeight(value),
     value: height ?? 4,
     minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: isDarkTheme
-      ? styles.maximumTrackTintColorDark.color
-      : styles.maximumTrackTintColorLight.color,
+    maximumTrackTintColor: styles.maximumTrackTintColorDark.color,
     thumbTintColor: styles.thumbTintColor.color,
     // Using inline objects instead of defaultProps
     thumbTouchSize: {width: 40, height: 40},
@@ -145,14 +138,14 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
   }
 
   return (
-    <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
-      <ScrollView style={styles.scrollView}>
+    <Screen preset="scroll" style={{paddingHorizontal: 20}}>
+        <Header title="Screen Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
         {/* Auto Brightness */}
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, isDarkTheme ? styles.lightText : styles.darkText]}>Auto Brightness</Text>
+            <Text style={themed($label)}>Auto Brightness</Text>
             {status.glasses_info?.model_name && (
-              <Text style={[styles.value, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
+              <Text style={[styles.value, styles.darkSubtext]}>
                 Automatically adjust the brightness of your smart glasses based on the ambient light.
               </Text>
             )}
@@ -170,10 +163,8 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
         {!isAutoBrightnessEnabled && (
           <View style={styles.settingItem}>
             <View style={styles.settingTextContainer}>
-              <Text style={[styles.label, isDarkTheme ? styles.lightText : styles.darkText]}>Brightness</Text>
-              <Text style={[styles.value, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
-                {"Adjust the brightness level of your smart glasses."}
-              </Text>
+              <Text style={themed($label)}>Brightness</Text>
+              <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the brightness level of your smart glasses."}</Text>
               <Slider {...sliderProps} />
             </View>
           </View>
@@ -181,29 +172,32 @@ const ScreenSettingsScreen: React.FC<ScreenSettingsScreenProps> = ({isDarkTheme,
 
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, isDarkTheme ? styles.lightText : styles.darkText]}>Depth</Text>
-            <Text style={[styles.value, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
-              {"Adjust the depth of the contextual dashboard."}
-            </Text>
+            <Text style={themed($label)}>Depth</Text>
+            <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the depth of the contextual dashboard."}</Text>
             <Slider {...depthSliderProps} />
           </View>
         </View>
 
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, isDarkTheme ? styles.lightText : styles.darkText]}>Dashboard Height</Text>
-            <Text style={[styles.value, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
-              {"Adjust the height of the contextual dashboard."}
-            </Text>
+            <Text style={themed($label)}>Dashboard Height</Text>
+            <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the height of the contextual dashboard."}</Text>
             <Slider {...heightSliderProps} />
           </View>
         </View>
-      </ScrollView>
-    </View>
+    </Screen>
   )
 }
 
-export default ScreenSettingsScreen
+const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+})
+
+const $label: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  flexWrap: "wrap",
+})
 
 const styles = StyleSheet.create({
   scrollView: {
@@ -269,10 +263,6 @@ const styles = StyleSheet.create({
   settingTextContainer: {
     flex: 1,
     paddingRight: 10,
-  },
-  label: {
-    fontSize: 16,
-    flexWrap: "wrap",
   },
   value: {
     fontSize: 12,

@@ -127,7 +127,6 @@ export default function SettingsPage() {
       ],
       {
         cancelable: false,
-        isDarkTheme: theme.isDark,
       },
     )
   }
@@ -194,7 +193,7 @@ export default function SettingsPage() {
         </View>
 
         {/* Privacy Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => navigateTo("privacysettings")}>
+        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/privacy")}>
           <View style={themed($settingTextContainer)}>
             <Text style={themed($label)}>Privacy Settings</Text>
           </View>
@@ -202,7 +201,7 @@ export default function SettingsPage() {
         </TouchableOpacity>
 
         {/* Dashboard Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => navigateTo("dashboardsettings")}>
+        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/dashboard")}>
           <View style={themed($settingTextContainer)}>
             <Text style={themed($label)}>Dashboard Settings</Text>
             <Text style={themed($value)}>Configure the contextual dashboard and HeadUp settings</Text>
@@ -211,7 +210,7 @@ export default function SettingsPage() {
         </TouchableOpacity>
 
         {/* Screen Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => navigateTo("screensettings")}>
+        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/screen")}>
           <View style={themed($settingTextContainer)}>
             <Text style={themed($label)}>Screen Settings</Text>
             <Text style={themed($value)}>Adjust brightness, auto-brightness, and other display settings.</Text>

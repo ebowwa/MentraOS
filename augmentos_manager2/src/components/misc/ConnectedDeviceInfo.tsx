@@ -1,22 +1,19 @@
 import React, {useEffect, useRef, useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch} from 'react-native';
+import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch, ViewStyle} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {Icon} from '@/components/ignite';
 import coreCommunicator from '@/bridge/CoreCommunicator';
 import {useStatus} from '@/contexts/AugmentOSStatusProvider';
-import {useNavigation} from '@react-navigation/native';
 import {getGlassesImage} from '@/utils/getGlassesImage';
 import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 import {getBatteryColor, getBatteryIcon} from '@/utils/getBatteryIcon';
-import {WIFI_CONFIGURABLE_MODELS} from '@/consts';
 import {Slider} from 'react-native-elements';
 import { router } from "expo-router";
+import { useAppTheme } from '@/utils/useAppTheme';
+import { ThemedStyle } from '@/theme';
 
-interface ConnectedDeviceInfoProps {
-  isDarkTheme: boolean;
-}
 
-const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) => {
+export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const slideAnim = useRef(new Animated.Value(-50)).current;
@@ -26,8 +23,6 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false);
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false);
-
-  
 
   useFocusEffect(
     React.useCallback(() => {
@@ -145,13 +140,15 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
     }
   };
 
+  const {theme, themed} = useAppTheme();
+
   const themeStyles = {
-    backgroundColor: isDarkTheme ? '#333333' : '#F2F2F7',
-    textColor: isDarkTheme ? '#FFFFFF' : '#333333',
-    statusLabelColor: isDarkTheme ? '#CCCCCC' : '#666666',
-    statusValueColor: isDarkTheme ? '#FFFFFF' : '#333333',
+    backgroundColor: theme.colors.palette.neutral300,
+    textColor: theme.colors.text,
+    statusLabelColor: theme.isDark ? '#CCCCCC' : '#666666',
+    statusValueColor: theme.isDark ? '#FFFFFF' : '#333333',
     connectedDotColor: '#28a745',
-    separatorColor: isDarkTheme ? '#666666' : '#999999',
+    separatorColor: theme.isDark ? '#666666' : '#999999',
   };
 
   const formatGlassesTitle = (title: string) => title.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
@@ -344,7 +341,7 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
   };
 
   return (
-    <View style={[styles.deviceInfoContainer]}>
+    <View style={themed($deviceInfoContainer)}>
       {/* Status Indicators Row - Only render if indicators present */}
       {(microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) && (
         <View style={styles.statusIndicatorsRow}>
@@ -383,6 +380,16 @@ const ConnectedDeviceInfo: React.FC<ConnectedDeviceInfoProps> = ({isDarkTheme}) 
     </View>
   );
 };
+
+const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  padding: 16,
+  borderRadius: 12,
+  width: '100%',
+  minHeight: 240,
+  justifyContent: 'center',
+  marginTop: 16, // Increased space above component
+  backgroundColor: colors.palette.neutral300,
+})
 
 const styles = StyleSheet.create({
   deviceInfoContainer: {
@@ -589,5 +596,3 @@ const styles = StyleSheet.create({
     maxWidth: 120,
   },
 });
-
-export default ConnectedDeviceInfo;

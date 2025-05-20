@@ -87,7 +87,7 @@ export class AugmentOSParser {
     },
     glasses_info: null,
     glasses_settings: {
-      brightness: '50%',
+      brightness: 50,
       auto_brightness: false,
       dashboard_height: 4,
       depth: 5,
@@ -131,7 +131,7 @@ export class AugmentOSParser {
       glasses_wifi_ssid: '',
     },
     glasses_settings: {
-      brightness: '87',
+      brightness: 87,
       auto_brightness: false,
       dashboard_height: 4,
       depth: 5,
