@@ -7,7 +7,7 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -218,6 +218,30 @@ export class AppService {
       status: response.status,
       data: response.data
     };
+  }
+
+  async triggerStopByPackageName(packageName: string, userId: string): Promise<void> {
+    // Look up the TPA by packageName
+    const app = await this.getApp(packageName);
+    const tpaSessionId = `${userId}-${packageName}`;
+
+    const payload: StopWebhookRequest = {
+      type: WebhookRequestType.STOP_REQUEST,
+      sessionId: tpaSessionId,
+      userId: userId,
+      reason: 'user_disabled',
+      timestamp: new Date().toISOString()
+    }
+
+    if (!app) {
+      throw new Error(`App ${packageName} not found`);
+    }
+
+    if (!app.publicUrl) {
+      throw new Error(`App ${packageName} does not have a public URL`);
+    }
+
+    await this.triggerStopWebhook(app.publicUrl, payload);
   }
 
   isSystemApp(packageName: string, apiKey?: string): boolean {

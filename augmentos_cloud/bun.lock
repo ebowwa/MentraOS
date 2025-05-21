@@ -111,6 +111,7 @@
       "name": "@augmentos/sdk",
       "version": "1.1.9",
       "dependencies": {
+        "@logtail/pino": "^0.5.4",
         "axios": "^1.8.1",
         "cookie-parser": "^1.4.7",
         "express": "^4.18.2",

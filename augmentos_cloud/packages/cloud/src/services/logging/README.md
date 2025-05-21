@@ -58,7 +58,7 @@ Create child loggers to add context to all logs from a module:
 
 ```typescript
 // Create a module-specific logger
-const moduleLogger = logger.child({ module: 'websocket.service' });
+const moduleLogger = logger.child({ service: 'websocket.service' });
 
 // All logs now include the module name
 moduleLogger.info('WebSocket server initialized');
@@ -72,7 +72,7 @@ For user-specific logging, create a child logger with user context:
 // In session service
 const sessionLogger = logger.child({ 
   userId: userSession.userId,
-  module: 'session.service' 
+  service: 'session.service' 
 });
 
 // All logs now include user ID

@@ -60,14 +60,14 @@ if (!fs.existsSync(EXPORTS_DIR)) {
 // Clean up expired requests periodically
 const cleanupExpiredRequests = () => {
   const now = new Date();
-  
+
   // Clean up deletion requests
   for (const [id, request] of deletionRequests.entries()) {
     if (request.expiresAt < now) {
       deletionRequests.delete(id);
     }
   }
-  
+
   // Clean up old export files (older than 24 hours)
   for (const [id, request] of exportRequests.entries()) {
     if (request.createdAt.getTime() < now.getTime() - 24 * 60 * 60 * 1000) {
@@ -89,29 +89,33 @@ setInterval(cleanupExpiredRequests, 60 * 60 * 1000);
 router.get('/me', validateCoreToken, async (req: Request, res: Response) => {
   try {
     const userEmail = (req as any).email;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     // Get user from Supabase
-    const { data: userData, error } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: userEmail,
-      }
-    });
-    
+    // const { data: userData, error } = await supabase.auth.admin.listUsers({
+    //   filter: {
+    //     email: userEmail,
+    //   }
+    // });
+    const { data: user, error } = await supabase
+      .from('auth.users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+
+
     if (error) {
       logger.error('Error fetching user data:', error);
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-    
-    if (!userData || userData.users.length === 0) {
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    const user = userData.users[0];
-    
+
     // Return user profile data
     res.json({
       id: user.id,
@@ -134,29 +138,45 @@ router.put('/profile', validateCoreToken, async (req: Request, res: Response) =>
   try {
     const userEmail = (req as any).email;
     const { name, displayName, phoneNumber, ...otherFields } = req.body;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     // Find the user by email
-    const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: userEmail,
-      }
-    });
-    
-    if (findError) {
-      logger.error('Error finding user:', findError);
-      return res.status(500).json({ error: 'Failed to find user' });
+    // const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
+    //   filter: {
+    //     email: userEmail,
+    //   }
+    // });
+
+    // if (findError) {
+    //   logger.error('Error finding user:', findError);
+    //   return res.status(500).json({ error: 'Failed to find user' });
+    // }
+
+    // if (!userData || userData.users.length === 0) {
+    //   return res.status(404).json({ error: 'User not found' });
+    // }
+
+    // const user = userData.users[0];
+
+    const { data: user, error } = await supabase
+      .from('auth.users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+
+
+    if (error) {
+      logger.error('Error fetching user data:', error);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-    
-    if (!userData || userData.users.length === 0) {
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    const user = userData.users[0];
-    
+
     // Update user metadata
     const { error: updateError } = await supabase.auth.admin.updateUserById(
       user.id,
@@ -173,12 +193,12 @@ router.put('/profile', validateCoreToken, async (req: Request, res: Response) =>
         }
       }
     );
-    
+
     if (updateError) {
       logger.error('Error updating user:', updateError);
       return res.status(500).json({ error: 'Failed to update user profile' });
     }
-    
+
     // Return updated profile
     res.json({
       id: user.id,
@@ -204,37 +224,53 @@ router.post('/request-deletion', validateCoreToken, async (req: Request, res: Re
   try {
     const userEmail = (req as any).email;
     const { reason } = req.body;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
-    // Find the user by email
-    const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: userEmail,
-      }
-    });
-    
-    if (findError) {
-      logger.error('Error finding user:', findError);
-      return res.status(500).json({ error: 'Failed to find user' });
+
+    // // Find the user by email
+    // const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
+    //   filter: {
+    //     email: userEmail,
+    //   }
+    // });
+
+    // if (findError) {
+    //   logger.error('Error finding user:', findError);
+    //   return res.status(500).json({ error: 'Failed to find user' });
+    // }
+
+    // if (!userData || userData.users.length === 0) {
+    //   return res.status(404).json({ error: 'User not found' });
+    // }
+
+    // const user = userData.users[0];
+
+    const { data: user, error } = await supabase
+      .from('auth.users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+
+
+    if (error) {
+      logger.error('Error fetching user data:', error);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-    
-    if (!userData || userData.users.length === 0) {
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    const user = userData.users[0];
-    
+
     // Generate a random verification code
     const verificationCode = crypto.randomBytes(3).toString('hex').toUpperCase();
-    
+
     // Create deletion request
     const requestId = `req_${crypto.randomBytes(8).toString('hex')}`;
     const now = new Date();
     const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
-    
+
     const deletionRequest: DeletionRequest = {
       id: requestId,
       userId: user.id,
@@ -244,13 +280,13 @@ router.post('/request-deletion', validateCoreToken, async (req: Request, res: Re
       createdAt: now,
       expiresAt
     };
-    
+
     deletionRequests.set(requestId, deletionRequest);
-    
+
     // In a real implementation, send an email with the verification code
     // For now, we'll just log it
     logger.info(`Verification code for account deletion: ${verificationCode}`);
-    
+
     res.json({
       requestId,
       message: 'Deletion request submitted. Please check your email for verification code.'
@@ -269,51 +305,51 @@ router.delete('/confirm-deletion', validateCoreToken, async (req: Request, res: 
   try {
     const userEmail = (req as any).email;
     const { requestId, confirmationCode } = req.body;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     if (!requestId || !confirmationCode) {
       return res.status(400).json({ error: 'Request ID and confirmation code are required' });
     }
-    
+
     // Check if the deletion request exists
     const deletionRequest = deletionRequests.get(requestId);
-    
+
     if (!deletionRequest) {
       return res.status(404).json({ error: 'Deletion request not found' });
     }
-    
+
     // Check if the request has expired
     if (deletionRequest.expiresAt < new Date()) {
       deletionRequests.delete(requestId);
       return res.status(400).json({ error: 'Deletion request has expired' });
     }
-    
+
     // Check if the request belongs to the user
     if (deletionRequest.email !== userEmail) {
       return res.status(403).json({ error: 'Not authorized to confirm this deletion request' });
     }
-    
+
     // Check if the confirmation code is correct
     if (deletionRequest.verificationCode !== confirmationCode) {
       return res.status(400).json({ error: 'Invalid confirmation code' });
     }
-    
+
     // Delete the user from Supabase
     const { error: deleteError } = await supabase.auth.admin.deleteUser(deletionRequest.userId);
-    
+
     if (deleteError) {
       logger.error('Error deleting user:', deleteError);
       return res.status(500).json({ error: 'Failed to delete user account' });
     }
-    
+
     // Remove the deletion request
     deletionRequests.delete(requestId);
-    
+
     // In a real implementation, clean up any additional user data in other systems
-    
+
     res.json({
       message: 'Account deleted successfully'
     });
@@ -331,33 +367,49 @@ router.post('/request-export', validateCoreToken, async (req: Request, res: Resp
   try {
     const userEmail = (req as any).email;
     const { format = 'json' } = req.body;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     // Find the user by email
-    const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: userEmail,
-      }
-    });
-    
-    if (findError) {
-      logger.error('Error finding user:', findError);
-      return res.status(500).json({ error: 'Failed to find user' });
+    // const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
+    //   filter: {
+    //     email: userEmail,
+    //   }
+    // });
+
+    // if (findError) {
+    //   logger.error('Error finding user:', findError);
+    //   return res.status(500).json({ error: 'Failed to find user' });
+    // }
+
+    // if (!userData || userData.users.length === 0) {
+    //   return res.status(404).json({ error: 'User not found' });
+    // }
+
+    // const user = userData.users[0];
+
+    const { data: user, error } = await supabase
+      .from('auth.users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+
+
+    if (error) {
+      logger.error('Error fetching user data:', error);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-    
-    if (!userData || userData.users.length === 0) {
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    const user = userData.users[0];
-    
+
     // Create export request
     const exportId = `export_${crypto.randomBytes(8).toString('hex')}`;
     const now = new Date();
-    
+
     const exportRequest: ExportRequest = {
       id: exportId,
       userId: user.id,
@@ -366,9 +418,9 @@ router.post('/request-export', validateCoreToken, async (req: Request, res: Resp
       status: 'pending',
       createdAt: now
     };
-    
+
     exportRequests.set(exportId, exportRequest);
-    
+
     // Start generating the export asynchronously
     generateExport(exportRequest)
       .then(() => {
@@ -382,7 +434,7 @@ router.post('/request-export', validateCoreToken, async (req: Request, res: Resp
           exportRequests.set(exportId, request);
         }
       });
-    
+
     // Return immediately with the export ID
     res.json({
       id: exportId,
@@ -403,19 +455,19 @@ async function generateExport(exportRequest: ExportRequest): Promise<void> {
     // Update status to processing
     exportRequest.status = 'processing';
     exportRequests.set(exportRequest.id, exportRequest);
-    
+
     // Simulate processing time
     await new Promise(resolve => setTimeout(resolve, 5000));
-    
+
     // Get user data from Supabase
     const { data: userData, error: userError } = await supabase.auth.admin.getUserById(
       exportRequest.userId
     );
-    
+
     if (userError || !userData.user) {
       throw new Error(`Failed to fetch user data: ${userError?.message}`);
     }
-    
+
     // Prepare export data
     const exportData = {
       user: {
@@ -429,11 +481,11 @@ async function generateExport(exportRequest: ExportRequest): Promise<void> {
       devices: [],
       settings: {}
     };
-    
+
     // Create export file
     const filename = `export-${exportRequest.userId}-${Date.now()}.${exportRequest.format}`;
     const filePath = path.join(EXPORTS_DIR, filename);
-    
+
     if (exportRequest.format === 'json') {
       fs.writeFileSync(filePath, JSON.stringify(exportData, null, 2));
     } else {
@@ -441,13 +493,13 @@ async function generateExport(exportRequest: ExportRequest): Promise<void> {
       // For now, just write the JSON as a string
       fs.writeFileSync(filePath, JSON.stringify(exportData));
     }
-    
+
     // Update export request
     exportRequest.status = 'completed';
     exportRequest.completedAt = new Date();
     exportRequest.filePath = filePath;
     exportRequest.downloadUrl = `/api/account/download-export/${exportRequest.id}`;
-    
+
     exportRequests.set(exportRequest.id, exportRequest);
   } catch (error) {
     logger.error('Error generating export:', error);
@@ -465,27 +517,27 @@ router.get('/export-status', validateCoreToken, async (req: Request, res: Respon
   try {
     const userEmail = (req as any).email;
     const { id } = req.query;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     if (!id) {
       return res.status(400).json({ error: 'Export ID is required' });
     }
-    
+
     // Check if the export request exists
     const exportRequest = exportRequests.get(id as string);
-    
+
     if (!exportRequest) {
       return res.status(404).json({ error: 'Export request not found' });
     }
-    
+
     // Check if the request belongs to the user
     if (exportRequest.email !== userEmail) {
       return res.status(403).json({ error: 'Not authorized to access this export' });
     }
-    
+
     // Return export status
     res.json({
       id: exportRequest.id,
@@ -509,43 +561,43 @@ router.get('/download-export/:id', validateCoreToken, async (req: Request, res: 
   try {
     const userEmail = (req as any).email;
     const { id } = req.params;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     // Check if the export request exists
     const exportRequest = exportRequests.get(id);
-    
+
     if (!exportRequest) {
       return res.status(404).json({ error: 'Export not found' });
     }
-    
+
     // Check if the request belongs to the user
     if (exportRequest.email !== userEmail) {
       return res.status(403).json({ error: 'Not authorized to access this export' });
     }
-    
+
     // Check if the export is completed
     if (exportRequest.status !== 'completed') {
       return res.status(400).json({ error: 'Export is not ready for download' });
     }
-    
+
     // Check if the file exists
     if (!exportRequest.filePath || !fs.existsSync(exportRequest.filePath)) {
       return res.status(404).json({ error: 'Export file not found' });
     }
-    
+
     // Set headers for file download
     const filename = path.basename(exportRequest.filePath);
     res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
-    
+
     if (exportRequest.format === 'json') {
       res.setHeader('Content-Type', 'application/json');
     } else {
       res.setHeader('Content-Type', 'text/csv');
     }
-    
+
     // Stream the file to the response
     const fileStream = fs.createReadStream(exportRequest.filePath);
     fileStream.pipe(res);
@@ -562,36 +614,52 @@ router.get('/download-export/:id', validateCoreToken, async (req: Request, res: 
 router.get('/privacy', validateCoreToken, async (req: Request, res: Response) => {
   try {
     const userEmail = (req as any).email;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
+
     // Find the user by email
-    const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: userEmail,
-      }
-    });
-    
-    if (findError) {
-      logger.error('Error finding user:', findError);
-      return res.status(500).json({ error: 'Failed to find user' });
+    // const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
+    //   filter: {
+    //     email: userEmail,
+    //   }
+    // });
+
+    // if (findError) {
+    //   logger.error('Error finding user:', findError);
+    //   return res.status(500).json({ error: 'Failed to find user' });
+    // }
+
+    // if (!userData || userData.users.length === 0) {
+    //   return res.status(404).json({ error: 'User not found' });
+    // }
+
+    // const user = userData.users[0];
+
+    const { data: user, error } = await supabase
+      .from('auth.users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+
+
+    if (error) {
+      logger.error('Error fetching user data:', error);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-    
-    if (!userData || userData.users.length === 0) {
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    const user = userData.users[0];
-    
+
     // Return privacy settings or defaults if not set
     const privacySettings = user.user_metadata?.privacy || {
       shareUsageData: true,
       receiveNotifications: true,
       allowDataCollection: true
     };
-    
+
     res.json(privacySettings);
   } catch (error) {
     logger.error('Error in /account/privacy:', error);
@@ -607,29 +675,45 @@ router.put('/privacy', validateCoreToken, async (req: Request, res: Response) =>
   try {
     const userEmail = (req as any).email;
     const settings = req.body;
-    
+
     if (!userEmail) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
-    
-    // Find the user by email
-    const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
-      filter: {
-        email: userEmail,
-      }
-    });
-    
-    if (findError) {
-      logger.error('Error finding user:', findError);
-      return res.status(500).json({ error: 'Failed to find user' });
+
+    // // Find the user by email
+    // const { data: userData, error: findError } = await supabase.auth.admin.listUsers({
+    //   filter: {
+    //     email: userEmail,
+    //   }
+    // });
+
+    // if (findError) {
+    //   logger.error('Error finding user:', findError);
+    //   return res.status(500).json({ error: 'Failed to find user' });
+    // }
+
+    // if (!userData || userData.users.length === 0) {
+    //   return res.status(404).json({ error: 'User not found' });
+    // }
+
+    // const user = userData.users[0];
+
+    const { data: user, error } = await supabase
+      .from('auth.users')
+      .select('*')
+      .eq('email', userEmail)
+      .single();
+
+
+    if (error) {
+      logger.error('Error fetching user data:', error);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
     }
-    
-    if (!userData || userData.users.length === 0) {
+
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    const user = userData.users[0];
-    
+
     // Update privacy settings
     const { error: updateError } = await supabase.auth.admin.updateUserById(
       user.id,
@@ -640,12 +724,12 @@ router.put('/privacy', validateCoreToken, async (req: Request, res: Response) =>
         }
       }
     );
-    
+
     if (updateError) {
       logger.error('Error updating privacy settings:', updateError);
       return res.status(500).json({ error: 'Failed to update privacy settings' });
     }
-    
+
     res.json(settings);
   } catch (error) {
     logger.error('Error in /account/privacy:', error);
