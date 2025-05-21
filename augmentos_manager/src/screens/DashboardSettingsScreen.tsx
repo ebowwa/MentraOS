@@ -48,6 +48,8 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdating, setIsUpdating] = useState(false);
   const [dashboardHeight, setDashboardHeight] = useState<number | null>(null);
+  const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(status.core_info.metric_system_enabled);
+  const [depth, setDepth] = useState<number | null>(null);
 
   const dashboardContentOptions = [
     { label: 'None', value: 'none' },
@@ -63,6 +65,16 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     const newVal = !isContextualDashboardEnabled;
     await coreCommunicator.sendToggleContextualDashboard(newVal);
     setIsContextualDashboardEnabled(newVal);
+  };
+
+  const toggleMetricSystem = async () => {
+    const newVal = !isMetricSystemEnabled;
+    try {
+      await coreCommunicator.sendSetMetricSystemEnabled(newVal);
+      setIsMetricSystemEnabled(newVal);
+    } catch (error) {
+      console.error('Error toggling metric system:', error);
+    }
   };
 
   const onSaveHeadUpAngle = async (newHeadUpAngle: number) => {
@@ -84,51 +96,59 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
   };
 
   // -- Effects --
+  // useEffect(() => {
+  //   fetchDashboardSettings();
+  // }, []);
+
+  // const fetchDashboardSettings = async () => {
+  //   try {
+  //     setIsLoading(true);
+  //     const data = await backendServerComms.getTpaSettings('com.augmentos.dashboard');
+  //     setServerSettings(data);
+  //     const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
+  //     if (contentSetting) {
+  //       setDashboardContent(contentSetting.selected);
+  //     }
+  //   } catch (error) {
+  //     console.error('Error fetching dashboard settings:', error);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  // const handleDashboardContentChange = async (value: string) => {
+  //   try {
+  //     setIsUpdating(true);
+  //     setDashboardContent(value);
+  //     await backendServerComms.updateTpaSetting('com.augmentos.dashboard', {
+  //       key: 'dashboard_content',
+  //       value: value
+  //     });
+  //   } catch (error) {
+  //     console.error('Error updating dashboard content:', error);
+  //     Alert.alert('Error', 'Failed to update dashboard content');
+  //     setDashboardContent(dashboardContent);
+  //   } finally {
+  //     setIsUpdating(false);
+  //     setShowContentPicker(false);
+  //   }
+  // };
+
   useEffect(() => {
-    fetchDashboardSettings();
-  }, []);
-
-  const fetchDashboardSettings = async () => {
-    try {
-      setIsLoading(true);
-      const data = await backendServerComms.getTpaSettings('com.augmentos.dashboard');
-      setServerSettings(data);
-      const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
-      if (contentSetting) {
-        setDashboardContent(contentSetting.selected);
-      }
-    } catch (error) {
-      console.error('Error fetching dashboard settings:', error);
-    } finally {
-      setIsLoading(false);
+    if (status.glasses_settings.head_up_angle != null) {
+      setHeadUpAngle(status.glasses_settings.head_up_angle);
     }
-  };
+  }, [status.glasses_settings.head_up_angle]);
 
-  const handleDashboardContentChange = async (value: string) => {
-    try {
-      setIsUpdating(true);
-      setDashboardContent(value);
-      await backendServerComms.updateTpaSetting('com.augmentos.dashboard', {
-        key: 'dashboard_content',
-        value: value
-      });
-    } catch (error) {
-      console.error('Error updating dashboard content:', error);
-      Alert.alert('Error', 'Failed to update dashboard content');
-      setDashboardContent(dashboardContent);
-    } finally {
-      setIsUpdating(false);
-      setShowContentPicker(false);
-    }
-  };
-
+  // Update isMetricSystemEnabled when status changes
   useEffect(() => {
-    if (status.glasses_info) {
-      if (status.glasses_info?.headUp_angle != null) {
-        setHeadUpAngle(status.glasses_info.headUp_angle);
-      }
-    }
-  }, [status.glasses_info?.headUp_angle, status.glasses_info]);
+    setIsMetricSystemEnabled(status.core_info.metric_system_enabled);
+  }, [status.core_info.metric_system_enabled]);
+
+  // Update isContextualDashboardEnabled when status changes
+  useEffect(() => {
+    setIsContextualDashboardEnabled(status.core_info.contextual_dashboard_enabled);
+  }, [status.core_info.contextual_dashboard_enabled]);
 
   // Switch track colors
   const switchColors = {
@@ -139,12 +159,6 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
     thumbColor: Platform.OS === 'ios' ? undefined : '#FFFFFF',
     ios_backgroundColor: '#D1D1D6',
   };
-
-  // Condition to disable HeadUp Angle setting
-  const disableHeadUpAngle =
-    !status.glasses_info?.model_name ||
-    status.glasses_info?.brightness === '-' ||
-    !status.glasses_info.model_name.toLowerCase().includes('even');
 
   // ContentPicker Modal
   const renderContentPicker = () => (
@@ -168,7 +182,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
-          <ScrollView style={styles.pickerOptionsContainer}>
+          {/* <ScrollView style={styles.pickerOptionsContainer}>
             {dashboardContentOptions.map((option) => (
               <TouchableOpacity
                 key={option.value}
@@ -197,7 +211,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
                 </View>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </ScrollView> */}
         </View>
       </View>
     </Modal>
@@ -205,11 +219,11 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.header}>
+      {/* <View style={styles.header}>
         <Text style={styles.headerTitle}>
           Dashboard Settings
         </Text>
-      </View>
+      </View> */}
       <ScrollView 
         style={styles.scrollViewContainer}
         showsVerticalScrollIndicator={false}
@@ -244,10 +258,28 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               ios_backgroundColor={switchColors.ios_backgroundColor}
             />
           </View>
+          
+          <View style={[styles.settingItem, styles.elevatedCard]}>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.label}>
+                Use Metric System
+              </Text>
+              <Text style={styles.value}>
+                Metric System (°C) or Imperial System (°F).
+              </Text>
+            </View>
+            <Switch
+              value={isMetricSystemEnabled}
+              onValueChange={toggleMetricSystem}
+              trackColor={switchColors.trackColor}
+              thumbColor={switchColors.thumbColor}
+              ios_backgroundColor={switchColors.ios_backgroundColor}
+            />
+          </View>
         </View>
 
         {/* Dashboard Content Selection */}
-        <View style={styles.section}>
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             Content Settings
           </Text>
@@ -270,7 +302,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               ) : (
                 <>
                   <Text style={styles.selectedValue}>
-                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label || 'Notification Summary'}
+                    {dashboardContentOptions.find(opt => opt.value === dashboardContent)?.label}
                   </Text>
                   <Icon name="chevron-right" size={16} color="#000000" />
                 </>
@@ -282,7 +314,7 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
               </View>
             )}
           </TouchableOpacity>
-        </View>
+        </View> */}
 
         {/* Display Settings Section */}
         <View style={styles.section}>
@@ -295,16 +327,14 @@ const DashboardSettingsScreen: React.FC<DashboardSettingsScreenProps> = ({
             style={[
               styles.settingItem,
               styles.elevatedCard,
-              disableHeadUpAngle && styles.disabledItem,
             ]}
-            disabled={disableHeadUpAngle}
             onPress={() => setHeadUpAngleComponentVisible(true)}
           >
             <View style={styles.settingTextContainer}>
               <Text style={styles.label}>
                 Adjust Head-Up Angle
               </Text>
-              <Text style={[styles.value, disableHeadUpAngle && styles.disabledItem]}>
+              <Text style={[styles.value]}>
                 Adjust the angle at which the contextual dashboard appears when you look up.
               </Text>
             </View>
