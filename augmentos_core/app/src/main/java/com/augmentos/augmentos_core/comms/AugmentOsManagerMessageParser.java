@@ -120,6 +120,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setAuthSecretKey(userId, authKey);
                     break;
 
+                case "set_server_url":
+                    String url = commandObject.getJSONObject("params").getString("url");
+                    callback.setServerUrl(url);
+                    break;
+
                 case "verify_auth_secret_key":
                     callback.verifyAuthSecretKey();
                     break;
@@ -154,6 +159,17 @@ public class AugmentOsManagerMessageParser {
                     int headUpAngle = commandObject.getJSONObject("params").getInt("headUpAngle");
                     callback.updateGlassesHeadUpAngle(headUpAngle);
                     break;
+
+                case "update_glasses_dashboard_height":
+                    int dashboardHeight = commandObject.getJSONObject("params").getInt("height");
+                    callback.updateGlassesDashboardHeight(dashboardHeight);
+                    break;
+
+                case "update_glasses_depth":
+                    int depth = commandObject.getJSONObject("params").getInt("depth");
+                    callback.updateGlassesDepth(depth);
+                    break;
+                    
                     
                 case "send_wifi_credentials":
                     String ssid = commandObject.getJSONObject("params").getString("ssid");

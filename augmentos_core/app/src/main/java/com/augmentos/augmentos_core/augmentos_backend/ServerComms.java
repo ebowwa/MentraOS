@@ -9,6 +9,7 @@ import com.augmentos.augmentos_core.CalendarItem;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.AsrStreamKey;
 import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.augmentos.SpeechRecAugmentos;
 import com.augmentos.augmentoslib.enums.AsrStreamType;
+import com.augmentos.augmentos_core.utils.ServerConfigUtil;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -746,15 +747,14 @@ public class ServerComms {
     }
 
     private String getServerUrl() {
-        String host = BuildConfig.AUGMENTOS_HOST;// EnvHelper.getEnv("AUGMENTOS_HOST");
-        String port = BuildConfig.AUGMENTOS_PORT;// EnvHelper.getEnv("AUGMENTOS_PORT");
-        boolean secureServer = Boolean.parseBoolean(BuildConfig.AUGMENTOS_SECURE);// Boolean.parseBoolean(EnvHelper.getEnv("AUGMENTOS_SECURE"));
-        if (host == null || port == null) {
-            throw new IllegalStateException("AugmentOS Server Config Not Found");
+        String baseUrl = ServerConfigUtil.getServerBaseUrl(context);
+        // Ensure ws/wss for websocket
+        if (baseUrl.startsWith("https://")) {
+            baseUrl = baseUrl.replaceFirst("https://", "wss://");
+        } else if (baseUrl.startsWith("http://")) {
+            baseUrl = baseUrl.replaceFirst("http://", "ws://");
         }
-
-        // Could do "ws://" for dev or "wss://" for secure
-        return String.format("%s://%s:%s/glasses-ws", secureServer ? "wss" : "ws", host, port);
+        return baseUrl + "/glasses-ws";
     }
 
     public static List<ThirdPartyCloudApp> parseAppList(JSONObject msg) {
@@ -875,13 +875,7 @@ public class ServerComms {
 
     // Helper to get the backend server URL, with placeholder for custom URL logic
     private String getServerUrlForRest() {
-        // TODO: If you want to support a custom backend URL (like the TSX module),
-        // you could load it from SharedPreferences or another config here.
-        // For now, use the default logic:
-        String host = BuildConfig.AUGMENTOS_HOST;
-        String port = BuildConfig.AUGMENTOS_PORT;
-        boolean secureServer = Boolean.parseBoolean(BuildConfig.AUGMENTOS_SECURE);
-        return String.format("%s://%s:%s", secureServer ? "https" : "http", host, port);
+        return ServerConfigUtil.getServerBaseUrl(context);
     }
 
     // Add this method to send user datetime to backend

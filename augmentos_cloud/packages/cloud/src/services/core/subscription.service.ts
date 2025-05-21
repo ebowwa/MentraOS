@@ -11,10 +11,12 @@
  */
 
 import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@augmentos/sdk';
-import { logger } from '@augmentos/utils';
+import { logger as rootLogger } from '../logging/pino-logger';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
 import { sessionService } from './session.service';
+
+const logger = rootLogger.child({ service: 'subscription.service' });
 
 /**
  * Record of a subscription change
@@ -78,7 +80,7 @@ export class SubscriptionService {
       this.calendarEventsCache.set(sessionId, []);
     }
     this.calendarEventsCache.get(sessionId)!.push(event);
-    logger.info(`Cached calendar event for session ${sessionId} (total: ${this.calendarEventsCache.get(sessionId)!.length})`);
+    logger.info({ userId: sessionId, sessionId, eventCount: this.calendarEventsCache.get(sessionId)!.length }, 'Cached calendar event');
   }
 
   /**
@@ -96,7 +98,7 @@ export class SubscriptionService {
    */
   clearCalendarEvents(sessionId: string): void {
     this.calendarEventsCache.delete(sessionId);
-    logger.info(`Cleared all calendar events for session ${sessionId}`);
+    logger.info({ sessionId, userId: sessionId }, 'Cleared all calendar events');
   }
 
   /**
@@ -114,7 +116,7 @@ export class SubscriptionService {
    */
   cacheLocation(sessionId: string, location: Location): void {
     this.lastLocationCache.set(sessionId, location);
-    logger.info(`Cached location for session ${sessionId}`);
+    logger.info({ sessionId, location: { lat: location.latitude, lng: location.longitude } }, 'Cached location');
   }
 
   /**
@@ -166,11 +168,11 @@ export class SubscriptionService {
     // Capture the version for this call
     const thisCallVersion = currentVersion;
 
-    logger.info(`[SubscriptionService] updateSubscriptions called for ${key}. Subscriptions received:`, subscriptions);
+    logger.info({ key, subscriptions, userId: sessionId, sessionId }, 'Update subscriptions request received');
     const currentSubs = this.subscriptions.get(key) || new Set();
     const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
 
-    logger.info(`🎤 Updating subscriptions for ${key} with ${subscriptions}`);
+    logger.info({ key, subscriptions, userId: sessionId, sessionId }, 'Processing subscription update');
 
     // Validate subscriptions format
     const processedSubscriptions = subscriptions.map(sub =>
@@ -185,37 +187,42 @@ export class SubscriptionService {
       }
     }
 
-    logger.info("[SubscriptionService] Processed subscriptions:", processedSubscriptions);
+    logger.info({ processedSubscriptions, userId: sessionId, sessionId }, 'Processed and validated subscriptions');
 
     try {
       // Get app details
       const app = await App.findOne({ packageName });
-      
+
       if (!app) {
-        logger.warn(`App ${packageName} not found when checking permissions`);
+        logger.warn({ packageName, userId: sessionId, sessionId }, 'App not found when checking permissions');
         throw new Error(`App ${packageName} not found`);
       }
 
       // Filter subscriptions based on permissions
       const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, processedSubscriptions);
 
-      logger.info(`[SubscriptionService] Subscriptions map after update:`, Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]));
+      logger.debug({ userId: sessionId, sessionId, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Current subscription map after update');
 
-      logger.info(`Updated subscriptions for ${packageName} in session ${sessionId}:`, processedSubscriptions);
+      logger.info({ packageName, sessionId, processedSubscriptions, userId: sessionId }, 'Subscriptions updated after permission check');
 
       // If some subscriptions were rejected, send an error message to the client
       if (rejected.length > 0) {
-        logger.warn(
-          `Rejected ${rejected.length} subscription(s) for ${packageName} due to missing permissions: ` +
-          rejected.map(r => `${r.stream} (requires ${r.requiredPermission})`).join(', ')
-        );
-        
+        logger.warn({
+          packageName,
+          userId: sessionId, sessionId,
+          rejectedCount: rejected.length,
+          rejectedStreams: rejected.map(r => ({
+            stream: r.stream,
+            requiredPermission: r.requiredPermission
+          }))
+        }, 'Rejected subscriptions due to missing permissions');
+
         // Find the user session to get the app connection
         const userSession = sessionService.getSession(sessionId);
-        
+
         if (userSession && userSession.appConnections) {
           const connection = userSession.appConnections.get(packageName);
-          
+
           if (connection && connection.readyState === 1) {
             // Send a detailed error message to the TPA about the rejected subscriptions
             const errorMessage = {
@@ -228,11 +235,11 @@ export class SubscriptionService {
               })),
               timestamp: new Date()
             };
-            
+
             connection.send(JSON.stringify(errorMessage));
           }
         }
-        
+
         // Continue with only the allowed subscriptions
         processedSubscriptions.length = 0;
         processedSubscriptions.push(...allowed);
@@ -242,7 +249,7 @@ export class SubscriptionService {
       // At the end, before setting:
       if (this.subscriptionUpdateVersion.get(key) !== thisCallVersion) {
         // A newer call has started, so abort this update
-        logger.info("🔥🔥🔥: Skipping update as newer call has started");
+        logger.info({ userId: sessionId, sessionId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) }, 'Skipping update as newer call has started');
         return;
       }
 
@@ -256,15 +263,15 @@ export class SubscriptionService {
         action
       });
 
-      logger.info(`Updated subscriptions for ${packageName} in session ${sessionId}:`, processedSubscriptions);
+      logger.info({ packageName, userId: sessionId, sessionId, processedSubscriptions }, 'Updated subscriptions successfully');
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
-      logger.error(`Error checking permissions for ${packageName}:`, error);
-      
+      logger.error({ error, packageName, userId: sessionId, sessionId }, 'Error checking permissions');
+
       // Continue with the subscription update
       this.subscriptions.set(key, new Set(processedSubscriptions));
-      
+
       // Record history
       this.addToHistory(key, {
         timestamp: new Date(),
@@ -279,8 +286,8 @@ export class SubscriptionService {
    * are subscribed to "audio_chunk", "translation", and "transcription".
    */
   hasMediaSubscriptions(sessionId: string): boolean {
-    // console.log("🔥🔥🔥: hasMediaSubscriptions:", sessionId);
-    // console.log("🔥🔥🔥: this.subscriptions:", this.subscriptions.entries());
+    let hasMedia = false;
+    let mediaSubscriptions: Array<{ key: string, subscription: string }> = [];
 
     for (const [key, subs] of this.subscriptions.entries()) {
       // Only consider subscriptions for the given user session.
@@ -293,16 +300,27 @@ export class SubscriptionService {
           sub === StreamType.TRANSLATION ||
           sub === StreamType.TRANSCRIPTION
         ) {
-          return true;
-        }
-        // Check if it's a language-specific subscription.
-        const langInfo = parseLanguageStream(sub as string);
-        if (langInfo && (langInfo.type === StreamType.TRANSLATION || langInfo.type === StreamType.TRANSCRIPTION)) {
-          return true;
+          mediaSubscriptions.push({ key, subscription: sub as string });
+          hasMedia = true;
+        } else {
+          // Check if it's a language-specific subscription.
+          const langInfo = parseLanguageStream(sub as string);
+          if (langInfo && (langInfo.type === StreamType.TRANSLATION || langInfo.type === StreamType.TRANSCRIPTION)) {
+            mediaSubscriptions.push({ key, subscription: sub as string });
+            hasMedia = true;
+          }
         }
       }
     }
-    return false;
+
+    logger.debug({
+      sessionId,
+      userId: sessionId,
+      hasMediaSubscriptions: hasMedia,
+      mediaSubscriptions
+    }, 'Checked session for media subscriptions');
+
+    return hasMedia;
   }
 
   /**
@@ -314,7 +332,9 @@ export class SubscriptionService {
   getSubscribedApps(userSession: UserSession, subscription: ExtendedStreamType): string[] {
     const sessionId = userSession.sessionId;
     const subscribedApps: string[] = [];
-    // console.log("🎤 1111 Subscribed apps: ", this.subscriptions.entries());
+
+    // Track why apps were subscribed for logging
+    const subscriptionMatches: Array<{ packageName: string, matchedOn: string }> = [];
 
     for (const [key, subs] of this.subscriptions.entries()) {
       if (!key.startsWith(`${sessionId}:`)) continue;
@@ -327,10 +347,28 @@ export class SubscriptionService {
           sub === StreamType.WILDCARD
         ) {
           subscribedApps.push(packageName);
+          subscriptionMatches.push({
+            packageName,
+            matchedOn: sub === subscription ? 'exact' : sub as string
+          });
           break;
         }
       }
     }
+
+    // TODO(isaiah): Wow this is extremly verbose when anything is subscribed to any audio related stream, 
+    // this is a huge issue and points out a big inefficency in the way we're storing subscriptions and calculating what is subscribed to what.
+    // 1. we should refactor this to be a subscription manager attached to a user's session instead of a global service.
+    // 2. we should be caching what streams are subscribed to what apps, so we can quickly look up the apps for a stream without iterating over all subscriptions.
+    
+    // logger.debug({
+    //   sessionId,
+    //   userId: sessionId,
+    //   requestedSubscription: subscription,
+    //   subscribedApps,
+    //   subscriptionMatches
+    // }, 'Retrieved subscribed apps for stream');
+
     return subscribedApps;
   }
 
@@ -343,7 +381,14 @@ export class SubscriptionService {
   getAppSubscriptions(sessionId: string, packageName: string): ExtendedStreamType[] {
     const key = this.getKey(sessionId, packageName);
     const subs = this.subscriptions.get(key);
-    return subs ? Array.from(subs) : [];
+    const result = subs ? Array.from(subs) : [];
+    logger.debug({
+      sessionId,
+      userId: sessionId,
+      packageName,
+      subscriptions: result
+    }, 'Retrieved app subscriptions');
+    return result;
   }
 
   /**
@@ -379,7 +424,7 @@ export class SubscriptionService {
         action: 'remove'
       });
 
-      logger.info(`Removed all subscriptions for ${packageName} in session ${userSession.sessionId}`);
+      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed all subscriptions for TPA ${packageName} for user ${userSession.userId}`);
     }
   }
 
@@ -405,11 +450,11 @@ export class SubscriptionService {
 
     // Remove cached calendar events for this session
     this.calendarEventsCache.delete(sessionId);
-    
+
     // Remove cached location for this session
     this.lastLocationCache.delete(sessionId);
 
-    logger.info(`Removed subscription history for session ${sessionId} (${keysToRemove.length} entries)`);
+    logger.info({ userId: sessionId, sessionId, removedEntries: keysToRemove.length }, 'Removed subscription history');
   }
 
   /**
@@ -477,19 +522,19 @@ export class SubscriptionService {
     const subscribedApps: string[] = [];
     const subscription = `augmentos:${settingKey}`;
 
-    logger.info(`[SubscriptionService] getSubscribedAppsForAugmentosSetting called for session ${sessionId}, key '${settingKey}'. Current subscriptions map:`, Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]));
+    logger.debug({ sessionId, settingKey, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Getting subscribed apps for AugmentOS setting');
     for (const [key, subs] of this.subscriptions.entries()) {
       if (!key.startsWith(`${sessionId}:`)) continue;
       const [, packageName] = key.split(':');
       for (const sub of subs) {
         if (sub === subscription || sub === 'augmentos:*' || sub === 'augmentos:all') {
-          logger.info(`[SubscriptionService] App '${packageName}' is subscribed to '${subscription}' (or wildcard) in session ${sessionId}.`);
+          logger.info({ packageName, subscription, sessionId }, 'App is subscribed to AugmentOS setting');
           subscribedApps.push(packageName);
           break;
         }
       }
     }
-    logger.info(`[SubscriptionService] Subscribed apps for AugmentOS setting '${settingKey}' in session ${sessionId}:`, subscribedApps);
+    logger.info({ settingKey, userId: sessionId, sessionId, subscribedApps }, 'AugmentOS setting subscription results');
     return subscribedApps;
   }
 
@@ -515,6 +560,6 @@ export class SubscriptionService {
 
 // Create singleton instance
 export const subscriptionService = new SubscriptionService();
-logger.info('✅ Subscription Service');
+logger.info({}, 'Subscription Service initialized');
 
 export default subscriptionService;
