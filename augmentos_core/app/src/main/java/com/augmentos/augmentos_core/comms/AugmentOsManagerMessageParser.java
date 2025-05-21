@@ -120,6 +120,11 @@ public class AugmentOsManagerMessageParser {
                     callback.setAuthSecretKey(userId, authKey);
                     break;
 
+                case "set_server_url":
+                    String url = commandObject.getJSONObject("params").getString("url");
+                    callback.setServerUrl(url);
+                    break;
+
                 case "verify_auth_secret_key":
                     callback.verifyAuthSecretKey();
                     break;

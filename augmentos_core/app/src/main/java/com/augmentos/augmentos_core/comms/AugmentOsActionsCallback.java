@@ -35,4 +35,5 @@ public interface AugmentOsActionsCallback {
     void setGlassesWifiCredentials(String ssid, String password);
     void requestWifiScan();
     void setPreferredMic(String mic);
+    void setServerUrl(String url);
 }
