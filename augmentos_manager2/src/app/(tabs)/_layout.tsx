@@ -87,11 +87,19 @@ export default function Layout() {
         }}
       />
       <Tabs.Screen
+        name="glasses"
+        options={{
+          href: "/glasses",
+          headerShown: false,
+          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name="glasses" size={28} color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="mirror"
         options={{
           href: "/mirror",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name="glasses" size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name="mirror" size={28} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -117,7 +125,7 @@ export default function Layout() {
 }
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.neutral300,
+  backgroundColor: colors.palette.neutral200,
   // borderTopColor: colors.transparent,
   // borderTopWidth: 1,
   paddingTop: 4,

@@ -404,7 +404,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
   padding: 16,
   borderRadius: 12,
   marginBottom: 12,
-  backgroundColor: colors.palette.neutral300,
+  backgroundColor: colors.palette.neutral200,
 })
 
 const $settingTextContainer: ThemedStyle<ViewStyle> = ({colors}) => ({

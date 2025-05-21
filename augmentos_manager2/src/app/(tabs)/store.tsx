@@ -10,16 +10,20 @@ import FontAwesome from "react-native-vector-icons/FontAwesome"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, usePathname} from "expo-router"
+import {router, useLocalSearchParams, usePathname} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
 
 export default function AppWebView() {
   const {theme, themed} = useAppTheme()
   const route = usePathname()
-  const webviewURL = route.params?.webviewURL
-  const appName = route.params?.appName || "App"
-  const packageName = route.params?.packageName
-  const fromSettings = route.params?.fromSettings === true
+
+  // TODO: fix this
+  var { packageName, appName, fromSettings, webviewURL, fromSettings }: any = useLocalSearchParams()
+  webviewURL = webviewURL
+  appName = appName || "App"
+  packageName = packageName
+  fromSettings = fromSettings === true
+
   const [isLoading, setIsLoading] = useState(true) // For WebView loading itself
   const [hasError, setHasError] = useState(false)
   const webViewRef = useRef<WebView>(null)
@@ -144,22 +148,21 @@ export default function AppWebView() {
   // Render error state if token generation failed
   if (tokenError) {
     return (
-      <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      <Screen preset="fixed" style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
         <InternetConnectionFallbackComponent
           retry={() => {
             /* Implement retry logic if desired, e.g., refetch token */
           }}
-          isDarkTheme={theme.isDark}
         />
         <Text style={[styles.errorText, {color: theme.colors.text}]}>{tokenError}</Text>
-      </View>
+      </Screen>
     )
   }
 
   // Render error state if WebView loading failed after token success
   if (hasError) {
     return (
-      <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+      <Screen preset="fixed" style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
         <InternetConnectionFallbackComponent
           retry={() => {
             setHasError(false)
@@ -168,10 +171,9 @@ export default function AppWebView() {
               webViewRef.current.reload()
             }
           }}
-          isDarkTheme={theme.isDark}
         />
         <Text style={[styles.errorText, {color: theme.colors.text}]}>{tokenError || `Failed to load ${appName}`}</Text>
-      </View>
+      </Screen>
     )
   }
 
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     textAlign: "center",
-    marginTop: -40,
     paddingHorizontal: 20,
+    marginBottom: 64,
   },
 })

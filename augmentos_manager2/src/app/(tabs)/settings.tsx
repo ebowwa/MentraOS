@@ -166,7 +166,7 @@ export default function SettingsPage() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
-      <Header titleTx="settingsScreen:title" />
+      <Header titleTx="settings:title" />
         <View style={themed($settingItem2)}>
           {/* <SelectSetting
             theme={'dark' as any}

@@ -4,6 +4,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
+import { router } from 'expo-router';
 
 interface SensingDisabledWarningProps {
     isSensingEnabled: boolean;
@@ -30,8 +31,7 @@ const SensingDisabledWarning: React.FC<SensingDisabledWarningProps> = ({ isSensi
             <TouchableOpacity 
                 style={styles.settingsButton}
                 onPress={() => {
-                    // Navigate to the Settings page
-                    navigation.navigate('PrivacySettingsScreen');
+                    router.push('/settings/privacy');
                 }}
             >
                 <Text style={styles.settingsButtonTextBlue}>Settings</Text>

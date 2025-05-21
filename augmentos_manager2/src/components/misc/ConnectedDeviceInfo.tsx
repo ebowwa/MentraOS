@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch, ViewStyle} from 'react-native';
 import {useFocusEffect} from '@react-navigation/native';
 import {Icon} from '@/components/ignite';
@@ -25,7 +25,7 @@ export default function ConnectedDeviceInfo() {
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false);
 
   useFocusEffect(
-    React.useCallback(() => {
+    useCallback(() => {
       // Reset animations to initial values
       fadeAnim.setValue(0);
       scaleAnim.setValue(0.8);
@@ -143,7 +143,7 @@ export default function ConnectedDeviceInfo() {
   const {theme, themed} = useAppTheme();
 
   const themeStyles = {
-    backgroundColor: theme.colors.palette.neutral300,
+    backgroundColor: theme.colors.palette.neutral200,
     textColor: theme.colors.text,
     statusLabelColor: theme.isDark ? '#CCCCCC' : '#666666',
     statusValueColor: theme.isDark ? '#FFFFFF' : '#333333',
@@ -388,7 +388,7 @@ const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   minHeight: 240,
   justifyContent: 'center',
   marginTop: 16, // Increased space above component
-  backgroundColor: colors.palette.neutral300,
+  backgroundColor: colors.palette.neutral200,
 })
 
 const styles = StyleSheet.create({

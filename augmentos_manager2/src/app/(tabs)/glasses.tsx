@@ -9,6 +9,7 @@ import RunningAppsList from "@/components/misc/RunningAppsList"
 import YourAppsList from "@/components/misc/YourAppsList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
+// import {ScrollView} from 'react-native-gesture-handler';
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
 import {Config} from "react-native-config"
@@ -18,8 +19,10 @@ import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import {SETTINGS_KEYS} from "@/consts"
 import NonProdWarning from "@/components/misc/NonProdWarning"
+import {ScrollView} from "react-native-gesture-handler"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import DeviceSettings from "@/components/glasses/DeviceSettings"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -201,78 +204,31 @@ export default function Homepage() {
   return (
     <Screen preset="auto" style={{paddingHorizontal: 20}}>
       <AnimatedSection>
-        <Header leftTx="home:title" />
+        <Header leftTx="glasses:title" />
       </AnimatedSection>
       {/* <ScrollView
         style={{flex: 1, paddingHorizontal: 16}}
         contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
       > */}
-        {status.core_info.cloud_connection_status !== "CONNECTED" && (
-          <AnimatedSection>
-            <CloudConnection />
-          </AnimatedSection>
-        )}
-
-        {/* Sensing Disabled Warning */}
+      {status.core_info.cloud_connection_status !== "CONNECTED" && (
         <AnimatedSection>
-          <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
+          <CloudConnection />
         </AnimatedSection>
+      )}
 
-        {nonProdBackend && (
-          <AnimatedSection>
-            <NonProdWarning />
-          </AnimatedSection>
-        )}
+      <View style={{flex: 1}}>
+        <AnimatedSection>
+          {/* Use the simulated version if we're connected to simulated glasses */}
+          {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
+            <ConnectedSimulatedGlassesInfo isDarkTheme={theme.isDark} />
+          ) : (
+            <ConnectedDeviceInfo />
+          )}
+        </AnimatedSection>
+      </View>
 
-        <View style={{flex: 1}}>
-          <AnimatedSection>
-            {/* Use the simulated version if we're connected to simulated glasses */}
-            {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
-              <ConnectedSimulatedGlassesInfo isDarkTheme={theme.isDark} />
-            ) : (
-              <ConnectedDeviceInfo />
-            )}
-          </AnimatedSection>
-        </View>
-        {status.core_info.puck_connected && (
-          <>
-            {appStatus.length > 0 ? (
-              <>
-                <AnimatedSection>
-                  <RunningAppsList isDarkTheme={theme.isDark} />
-                </AnimatedSection>
-
-                <AnimatedSection>
-                  <YourAppsList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
-                </AnimatedSection>
-              </>
-            ) : status.core_info.cloud_connection_status === "CONNECTED" ? (
-              isInitialLoading ? (
-                <AnimatedSection>
-                  <View style={themed($loadingContainer)}>
-                    <Text style={themed($loadingText)}>Loading your apps...</Text>
-                  </View>
-                </AnimatedSection>
-              ) : (
-                <AnimatedSection>
-                  <View style={themed($noAppsContainer)}>
-                    <Text style={themed($noAppsText)}>
-                      Unable to load your apps.{"\n"}Please check your internet connection and try again.
-                    </Text>
-                  </View>
-                </AnimatedSection>
-              )
-            ) : (
-              <AnimatedSection>
-                <Text style={themed($noAppsText)}>
-                  Unable to load apps. Please check your cloud connection to view and manage your apps.
-                </Text>
-              </AnimatedSection>
-            )}
-          </>
-        )}
-        {/* <View style={{height: 1000}} /> */}
-      {/* </ScrollView> */}
+      {/* Device Settings */}
+      <DeviceSettings />
     </Screen>
   )
 }

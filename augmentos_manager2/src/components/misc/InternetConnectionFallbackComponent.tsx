@@ -1,27 +1,24 @@
+import { ThemedStyle } from '@/theme';
+import { useAppTheme } from '@/utils/useAppTheme';
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextStyle } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 interface InternetConnectionFallbackComponentProps {
-  isDarkTheme: boolean;
   retry: () => void;
 }
 
-const InternetConnectionFallbackComponent: React.FC<InternetConnectionFallbackComponentProps> = ({ isDarkTheme, retry }) => {
-  const theme = {
-    textColor: isDarkTheme ? '#FFFFFF' : '#333333',
-    selectedChipBg: isDarkTheme ? '#666666' : '#333333',
-    selectedChipText: isDarkTheme ? '#FFFFFF' : '#FFFFFF',
-  };
+export default function InternetConnectionFallbackComponent({ retry }: InternetConnectionFallbackComponentProps) {
+  const {theme, themed} = useAppTheme();
 
   return (
     <View style={styles.fallbackContainer}>
       <MaterialCommunityIcons
         name="alert-circle-outline"
         size={60}
-        color={theme.textColor}
+        color={theme.colors.text}
       />
-      <Text style={[styles.fallbackText, { color: theme.textColor }]}>
+      <Text style={themed($fallbackText)}>
         AugmentOS Store not yet available in 2.0.
       </Text>
       {/*<TouchableOpacity*/}
@@ -33,7 +30,14 @@ const InternetConnectionFallbackComponent: React.FC<InternetConnectionFallbackCo
       {/*</TouchableOpacity>*/}
     </View>
   );
-};
+}
+
+const $fallbackText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
+  textAlign: 'center',
+  marginVertical: 20,
+})
 
 const styles = StyleSheet.create({
   fallbackContainer: {
@@ -59,5 +63,3 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-SemiBold',
   },
 });
-
-export default InternetConnectionFallbackComponent;
