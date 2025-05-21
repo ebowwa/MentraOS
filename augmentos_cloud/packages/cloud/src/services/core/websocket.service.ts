@@ -76,7 +76,8 @@ import { SessionService } from './session.service';
 import { getSessionService } from './session.service';
 import { DisconnectInfo } from './HeartbeatManager';
 
-const logger = rootLogger.child({ service: 'websocket.service' });
+const SERVICE_NAME = 'websocket.service';
+const logger = rootLogger.child({ service: SERVICE_NAME });
 
 export const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
 export const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
@@ -319,7 +320,6 @@ export class WebSocketService {
 
         // Log detailed information about the upgrade request
         logger.debug({
-          msg: 'WebSocket upgrade request received',
           path: url.pathname,
           headers: {
             host: request.headers.host,
@@ -330,86 +330,80 @@ export class WebSocketService {
             secWebSocketVersion: request.headers['sec-websocket-version']
           },
           remoteAddress: request.socket.remoteAddress
-        });
+        }, 'WebSocket upgrade request received');
 
         if (url.pathname === '/glasses-ws') {
-          logger.debug({ msg: 'Processing glasses-ws upgrade request' });
+          logger.debug({}, 'Processing glasses-ws upgrade request');
 
           try {
             this.glassesWss.handleUpgrade(request, socket, head, ws => {
-              logger.debug({ msg: 'Glasses WebSocket upgrade successful' });
+              logger.debug({}, 'Glasses WebSocket upgrade successful');
               this.glassesWss.emit('connection', ws, request);
             });
           } catch (upgradeError) {
             logger.error({
-              msg: 'Failed to upgrade glasses WebSocket connection',
               error: upgradeError
-            });
+            }, 'Failed to upgrade glasses WebSocket connection');
             socket.destroy();
           }
 
         } else if (url.pathname === '/tpa-ws') {
-          logger.debug({ msg: 'Processing tpa-ws upgrade request' });
+          logger.debug({}, 'Processing tpa-ws upgrade request');
 
           try {
             this.tpaWss.handleUpgrade(request, socket, head, ws => {
-              logger.debug({ msg: 'TPA WebSocket upgrade successful' });
+              logger.debug({}, 'TPA WebSocket upgrade successful');
               this.tpaWss.emit('connection', ws, request);
             });
           } catch (upgradeError) {
             logger.error({
-              msg: 'Failed to upgrade TPA WebSocket connection',
               error: upgradeError
-            });
+            }, 'Failed to upgrade TPA WebSocket connection');
             socket.destroy();
           }
 
         } else {
           logger.debug({
-            msg: 'Unknown WebSocket path, destroying socket',
             path: url.pathname
-          });
+          }, 'Unknown WebSocket path, destroying socket');
           socket.destroy();
         }
       } catch (error) {
         logger.error({
-          msg: 'Error in WebSocket upgrade handler',
           error,
           url: request.url
-        });
+        }, 'Error in WebSocket upgrade handler');
         socket.destroy();
       }
     });
 
     // Glasses connection handler with enhanced error logging
     this.glassesWss.on('connection', (ws, request) => {
-      logger.info({ msg: 'New glasses WebSocket connection established' });
+      logger.info({}, 'New glasses WebSocket connection established');
 
       this.handleGlassesConnection(ws, request).catch(error => {
         logger.error({
-          msg: 'Error handling glasses connection',
           error: {
             name: error.name,
             message: error.message,
             stack: error.stack
           }
-        });
+        }, 'Error handling glasses connection');
       });
     });
 
     // TPA connection handler with enhanced error logging
     this.tpaWss.on('connection', (ws, request) => {
-      logger.info({ msg: 'New TPA WebSocket connection established' });
+      logger.info({}, 'New TPA WebSocket connection established');
 
       this.handleTpaConnection(ws, request).catch(error => {
         logger.error({
-          msg: 'Error handling TPA connection',
           error: {
             name: error.name,
             message: error.message,
             stack: error.stack
           }
-        });
+        }, 'Error handling TPA connection');
       });
     });
   }
@@ -613,7 +607,7 @@ export class WebSocketService {
 
     // Store pending session.
     userSession.loadingApps.add(packageName);
-    userSession.logger.debug({ loadingApps: userSession.loadingApps }, `[websocket.service]: Current Loading Apps:`,);
+    userSession.logger.debug({ loadingApps: userSession.loadingApps }, '[websocket.service]: Current Loading Apps');
 
     try {
       // Trigger TPA webhook 
@@ -647,7 +641,7 @@ export class WebSocketService {
       } else {
         // For non-system apps, use the public host
         augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
-        userSession.logger.info({augmentOSWebsocketUrl, packageName, name}, `Using public URL for app ${packageName}`);
+        userSession.logger.info({ augmentOSWebsocketUrl, packageName, name }, `Using public URL for app ${packageName}`);
       }
 
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server WebSocket URL: ${augmentOSWebsocketUrl}`);
@@ -1050,10 +1044,12 @@ export class WebSocketService {
 
       // Set a timeout to eventually clean up the session if not reconnected
       setTimeout(() => {
-        userSession.logger.info(`[websocket.service]: Grace period expired, checking if we should cleanup session: ${userSession.sessionId}`);
+        userSession.logger.info({ service: SERVICE_NAME }, `[websocket.service]: Grace period expired, checking if we should cleanup session: ${userSession.sessionId}`);
         if (userSession.websocket.readyState === WebSocket.CLOSED || userSession.websocket.readyState === WebSocket.CLOSING) {
-          userSession.logger.info(`[websocket.service]: User disconnected: ${userSession.sessionId}`);
+          userSession.logger.info({ service: SERVICE_NAME }, `[websocket.service]: User still disconnected after Grace period. Cleaning up userSession: ${userSession.sessionId}`);
           this.getSessionService().endSession(userSession);
+        } else {
+          userSession.logger.info({ service: SERVICE_NAME }, `[websocket.service]: User reconnected: ${userSession.sessionId}, keeping session alive`);
         }
       }, RECONNECT_GRACE_PERIOD_MS);
 
@@ -1095,13 +1091,6 @@ export class WebSocketService {
     message: GlassesToCloudMessage
   ): Promise<void> {
     try {
-      // Track the incoming message event
-      PosthogService.trackEvent(message.type, userSession.userId, {
-        sessionId: userSession.sessionId,
-        eventType: message.type,
-        timestamp: new Date().toISOString()
-      });
-
       switch (message.type) {
         // 'connection_init'
         case GlassesToCloudMessageType.CONNECTION_INIT: {
@@ -1229,6 +1218,7 @@ export class WebSocketService {
           userSession.logger.info(`Stopping app ${stopMessage.packageName}`);
 
           try {
+            // TODO: improve this we're we can add duration the app was running.
             // Track event before stopping
             PosthogService.trackEvent(`stop_app:${stopMessage.packageName}`, userSession.userId, {
               sessionId: userSession.sessionId,
@@ -1392,7 +1382,7 @@ export class WebSocketService {
 
         case "settings_update_request": {
           const settingsUpdate = message as AugmentosSettingsUpdateRequest;
-          userSession.logger.info('Received AugmentOS settings update request via WebSocket');
+          userSession.logger.info({ settingsUpdate, service: SERVICE_NAME }, `Received AugmentOS settings update request from user ${userSession.userId}`);
 
           try {
             // Find or create the user
@@ -1400,7 +1390,7 @@ export class WebSocketService {
 
             // Get current settings from database
             const currentSettings = user.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
-            userSession.logger.info('Current settings from database:', currentSettings.brightness);
+            userSession.logger.debug({ currentSettings, settingsUpdate, service: SERVICE_NAME }, `Current AugmentOS settings for user ${userSession.userId}`);
 
             // Send current settings back to the client
             const responseMessage = {
@@ -1523,7 +1513,6 @@ export class WebSocketService {
 
         // All other message types are broadcast to TPAs.
         default: {
-          userSession.logger.info(`[Session ${userSession.sessionId}] Catching and Sending message type:`, message.type);
           this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
           break;
         }
@@ -1607,11 +1596,10 @@ export class WebSocketService {
 
       if (isBinary) {
         logger.warn({
-          msg: 'Received unexpected binary message from TPA',
           binaryLength: data instanceof Buffer ? data.length : 'unknown',
           userSessionId,
           currentAppSession
-        });
+        }, 'Received unexpected binary message from TPA');
         return;
       }
 
@@ -1619,40 +1607,36 @@ export class WebSocketService {
         // Log the raw message for debugging (truncated for safety)
         const messageStr = data.toString();
         logger.debug({
-          msg: 'Received TPA message data',
           dataLength: messageStr.length,
           dataSample: messageStr.length > 100 ? messageStr.substring(0, 100) + '...' : messageStr,
           userSessionId,
           currentAppSession
-        });
+        }, 'Received TPA message data');
 
         const message = JSON.parse(messageStr) as TpaToCloudMessage;
 
         logger.debug({
-          msg: 'Parsed TPA message',
           messageType: message.type,
           packageName: message.packageName,
           sessionId: message.sessionId
-        });
+        }, 'Parsed TPA message');
 
         if (message.sessionId) {
           userSessionId = message.sessionId.split('-')[0];
-          logger.debug({ msg: 'Extracted user session ID', userSessionId });
+          logger.debug({ userSessionId }, 'Extracted user session ID');
 
           userSession = this.getSessionService().getSession(userSessionId);
 
           if (userSession) {
             logger.debug({
-              msg: 'Retrieved user session',
               userId: userSession.userId,
               sessionId: userSession.sessionId
-            });
+            }, 'Retrieved user session');
           } else {
             logger.warn({
-              msg: 'User session not found',
               userSessionId,
               messageSessionId: message.sessionId
-            });
+            }, 'User session not found');
           }
         }
 
@@ -1739,7 +1723,7 @@ export class WebSocketService {
 
                 // Check if we need to update microphone state based on media subscriptions
                 const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSessionId);
-                userSession.logger.info('Media subscriptions after update:', mediaSubscriptions);
+                userSession.logger.info({mediaSubscriptions}, 'Media subscriptions after update for user session: ' + userSessionId);
 
                 if (mediaSubscriptions) {
                   userSession.logger.info('Media subscriptions exist, ensuring microphone is enabled');

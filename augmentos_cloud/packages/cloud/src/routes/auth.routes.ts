@@ -7,7 +7,7 @@ import { validateCoreToken } from '../middleware/supabaseMiddleware';
 import { tokenService } from '../services/core/temp-token.service';
 import { validateTpaApiKey } from '../middleware/validateApiKey';
 import { logger as rootLogger } from '../services/logging/pino-logger';
-const logger = rootLogger.child({ module: 'auth.routes' });
+const logger = rootLogger.child({ service: 'auth.routes' });
 import appService from '../services/core/app.service';
 
 const router = express.Router();

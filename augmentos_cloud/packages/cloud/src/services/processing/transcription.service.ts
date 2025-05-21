@@ -23,9 +23,9 @@ import subscriptionService from '../core/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
 
 // Define module name constant for consistent logging
-const MODULE_NAME = 'transcription.service';
+const SERVICE_NAME = 'transcription.service';
 // Create a module-level logger for system-wide events
-const logger = rootLogger.child({ module: MODULE_NAME });
+const logger = rootLogger.child({ service: SERVICE_NAME });
 
 export const AZURE_SPEECH_REGION = process.env.AZURE_SPEECH_REGION || "";
 export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
@@ -78,7 +78,7 @@ export class TranscriptionService {
   }
 
   updateTranscriptionStreams(userSession: ExtendedUserSession, desiredSubscriptions: ExtendedStreamType[]): void {
-    const sessionLogger = userSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
     
     if (!userSession.transcriptionStreams) {
       userSession.transcriptionStreams = new Map<string, ASRStreamInstance>();
@@ -105,7 +105,7 @@ export class TranscriptionService {
   }
 
   private createASRStreamForSubscription(subscription: ExtendedStreamType, userSession: ExtendedUserSession): ASRStreamInstance {
-    const sessionLogger = userSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
     
     // Use the updated parse logic – which returns transcribeLanguage and translateLanguage.
     const languageInfo = getLanguageInfo(subscription);
@@ -190,7 +190,7 @@ export class TranscriptionService {
   ): void {
     // Use session logger if available, otherwise fall back to module logger
     const loggerToUse = userSession 
-      ? userSession.logger.child({ module: MODULE_NAME }) 
+      ? userSession.logger.child({ service: SERVICE_NAME }) 
       : logger;
     
     if (streamInstance.recognizer) {
@@ -240,7 +240,7 @@ export class TranscriptionService {
     subscription: ExtendedStreamType,
     languageInfo: { type: StreamType; transcribeLanguage: string; translateLanguage?: string }
   ): void {
-    const sessionLogger = userSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
     
     if (languageInfo.type === StreamType.TRANSLATION) {
       // Translation branch: use recognizing and recognized.
@@ -400,7 +400,7 @@ export class TranscriptionService {
   }
 
   private broadcastTranscriptionResult(userSession: ExtendedUserSession, data: TranscriptionData | TranslationData): void {
-    const sessionLogger = userSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
     
     sessionLogger.debug({ 
       streamType: data.type,
@@ -421,7 +421,7 @@ export class TranscriptionService {
   }
 
   feedAudioToTranscriptionStreams(userSession: ExtendedUserSession, audioData: Uint8Array) {
-    const sessionLogger = userSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
     
     if (!userSession.transcriptionStreams) {
       sessionLogger.error({ 
@@ -456,7 +456,7 @@ export class TranscriptionService {
    ***********************/
   startTranscription(userSession: UserSession): void {
     const extSession = userSession as ExtendedUserSession;
-    const sessionLogger = extSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
     
     sessionLogger.info({ 
       sessionId: extSession.sessionId,
@@ -475,7 +475,7 @@ export class TranscriptionService {
 
   stopTranscription(userSession: UserSession): void {
     const extSession = userSession as ExtendedUserSession;
-    const sessionLogger = extSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
     
     sessionLogger.info({ 
       sessionId: extSession.sessionId,
@@ -487,7 +487,7 @@ export class TranscriptionService {
 
   handlePushStreamError(userSession: UserSession, error: any): void {
     const extSession = userSession as ExtendedUserSession;
-    const sessionLogger = extSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
     
     sessionLogger.error({ 
       error, 
@@ -504,7 +504,7 @@ export class TranscriptionService {
     isFinal: boolean,
     language: string = 'en-US'
   ): void {
-    const sessionLogger = userSession.logger.child({ module: MODULE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
     
     // Initialize languageSegments if it doesn't exist
     if (!userSession.transcript.languageSegments) {
