@@ -1,6 +1,6 @@
 /**
  * HeartbeatManager
- * 
+ *
  * Session-scoped manager for WebSocket connection health monitoring.
  * Replaces both the global health monitor service and TPA registration system with
  * a simpler, more targeted approach to connection health tracking and disconnect detection.
@@ -79,13 +79,31 @@ export class HeartbeatManager {
   private connectionStats: Map<WebSocket, ConnectionStats> = new Map();
 
   constructor(private userSession: ExtendedUserSession) {
-    this.userSession.logger.info(`[HeartbeatManager] Initialized for user ${userSession.userId}`);
-    this.startMonitoring();
+    if (!userSession || !userSession.logger) {
+      // If no logger is available, use a fallback
+      const { logger: rootLogger } = require('../logging/pino-logger');
+      (this as any)._logger = rootLogger.child({ service: 'HeartbeatManager', error: 'Missing userSession.logger' });
+      (this as any)._logger.error('userSession or userSession.logger is undefined in HeartbeatManager constructor');
+    } else {
+      this.userSession.logger.info(`[HeartbeatManager] Initialized for user ${userSession.userId}`);
+      this.startMonitoring();
+    }
+  }
+
+  /**
+   * Gets the logger to use - either userSession.logger or fallback
+   * @private
+   */
+  private getLogger() {
+    if ((this as any)._logger) {
+      return (this as any)._logger;
+    }
+    return this.userSession?.logger;
   }
 
   /**
    * Register a glasses connection for health monitoring
-   * 
+   *
    * @param ws WebSocket connection to monitor
    */
   registerGlassesConnection(ws: WebSocket): void {
@@ -94,7 +112,7 @@ export class HeartbeatManager {
 
   /**
    * Register a TPA connection for health monitoring
-   * 
+   *
    * @param ws WebSocket connection to monitor
    * @param packageName Package name of the TPA
    */
@@ -104,7 +122,7 @@ export class HeartbeatManager {
 
   /**
    * General connection registration with optional package name
-   * 
+   *
    * @param ws WebSocket connection to monitor
    * @param packageName Optional package name for TPA connections
    */
@@ -124,14 +142,14 @@ export class HeartbeatManager {
     this.connectionStats.set(ws, stats);
     this.setupListeners(ws);
 
-    this.userSession.logger.info(
+    this.getLogger().info(
       `[HeartbeatManager] Registered ${packageName || 'glasses'} connection`
     );
   }
 
   /**
    * Update activity timestamp for a glasses connection
-   * 
+   *
    * @param ws WebSocket connection that had activity
    * @param messageSize Optional size of the message in bytes
    */
@@ -141,7 +159,7 @@ export class HeartbeatManager {
 
   /**
    * Update activity timestamp for a TPA connection
-   * 
+   *
    * @param ws WebSocket connection that had activity
    * @param messageSize Optional size of the message in bytes
    */
@@ -151,7 +169,7 @@ export class HeartbeatManager {
 
   /**
    * Update activity for any connection type
-   * 
+   *
    * @param ws WebSocket connection that had activity
    * @param messageSize Optional size of the message in bytes
    */
@@ -168,7 +186,7 @@ export class HeartbeatManager {
 
   /**
    * Remove connection from monitoring when closed
-   * 
+   *
    * @param ws WebSocket connection to unregister
    */
   unregisterConnection(ws: WebSocket): void {
@@ -176,7 +194,7 @@ export class HeartbeatManager {
     if (stats) {
       // Log connection stats
       const duration = Date.now() - stats.startTime;
-      this.userSession.logger.info(
+      this.getLogger().info(
         `[HeartbeatManager] Connection stats for ${stats.packageName || 'glasses'}: ` +
         `duration=${duration}ms, messages=${stats.messageCount}, bytes=${stats.totalBytes}`
       );
@@ -201,14 +219,14 @@ export class HeartbeatManager {
       this.sendHeartbeats(true); // true = TPA connections
     }, HEARTBEAT_INTERVAL_MS);
 
-    this.userSession.logger.info(
+    this.getLogger().info(
       `[HeartbeatManager] Started monitoring for session ${this.userSession.sessionId}`
     );
   }
 
   /**
    * Set up event listeners for a connection
-   * 
+   *
    * @param ws WebSocket connection to set up listeners for
    */
   private setupListeners(ws: WebSocket): void {
@@ -248,7 +266,7 @@ export class HeartbeatManager {
 
   /**
    * Remove event listeners from a connection
-   * 
+   *
    * @param ws WebSocket connection to remove listeners from
    */
   private removeListeners(ws: WebSocket): void {
@@ -262,7 +280,7 @@ export class HeartbeatManager {
 
   /**
    * Send heartbeats to a specific connection type
-   * 
+   *
    * @param isTpa Whether to send to TPA connections (true) or glasses connections (false)
    */
   private sendHeartbeats(isTpa: boolean): void {
@@ -292,7 +310,7 @@ export class HeartbeatManager {
           ws.ping(pingData);
         }
       } catch (error) {
-        this.userSession.logger.error(
+        this.getLogger().error(
           `[HeartbeatManager] Error sending ping to ${stats.packageName || 'glasses'}:`,
           error
         );
@@ -302,7 +320,7 @@ export class HeartbeatManager {
 
   /**
    * Handle an inactive connection that has missed too many pings
-   * 
+   *
    * @param ws WebSocket connection that is inactive
    * @param stats Connection statistics
    */
@@ -314,7 +332,7 @@ export class HeartbeatManager {
 
     if (isCritical) {
       // We need to terminate this connection as it's unresponsive
-      this.userSession.logger.warn(
+      this.getLogger().warn(
         `[HeartbeatManager] Connection ${stats.packageName || 'glasses'} unresponsive ` +
         `for ${pongMissingTime}ms, terminating with HEALTH_MONITOR reason`
       );
@@ -335,7 +353,7 @@ export class HeartbeatManager {
           }
         }, 1000);
       } catch (error) {
-        this.userSession.logger.error(
+        this.getLogger().error(
           `[HeartbeatManager] Error terminating connection:`,
           error
         );
@@ -349,7 +367,7 @@ export class HeartbeatManager {
       }
     } else {
       // Connection is inactive but not critical yet, sending one more ping
-      this.userSession.logger.warn(
+      this.getLogger().warn(
         `[HeartbeatManager] Connection ${stats.packageName || 'glasses'} inactive ` +
         `for ${pongMissingTime}ms, sending final ping attempt`
       );
@@ -358,7 +376,7 @@ export class HeartbeatManager {
         ws.ping();
       } catch (error) {
         // If we can't even send a ping, terminate the connection
-        this.userSession.logger.error(`[HeartbeatManager] Final ping failed, terminating connection`);
+        this.getLogger().error(`[HeartbeatManager] Final ping failed, terminating connection`);
         ws.terminate();
       }
     }
@@ -366,7 +384,7 @@ export class HeartbeatManager {
 
   /**
    * Capture detailed information about a disconnection
-   * 
+   *
    * @param ws WebSocket connection that disconnected
    * @param code Close code
    * @param reason Close reason
@@ -397,7 +415,7 @@ export class HeartbeatManager {
     stats.disconnectCode = code;
 
     // Log detailed disconnect information
-    this.userSession.logger.info(
+    this.getLogger().info(
       `[HeartbeatManager] Connection ${stats.packageName || 'glasses'} disconnected: ` +
       `reason=${disconnectReason}, code=${code}, message=${reason}, ` +
       `uptime=${stats.disconnectTime - stats.startTime}ms`
@@ -422,24 +440,24 @@ export class HeartbeatManager {
    * Clean up all resources used by this manager
    */
   dispose(): void {
-    this.userSession.logger.info(`[HeartbeatManager] Disposing for session ${this.userSession.sessionId}`);
-    
+    this.getLogger().info(`[HeartbeatManager] Disposing for session ${this.userSession.sessionId}`);
+
     // Clear intervals
     if (this.glassesPingInterval) {
       clearInterval(this.glassesPingInterval);
       this.glassesPingInterval = null;
     }
-    
+
     if (this.tpaPingInterval) {
       clearInterval(this.tpaPingInterval);
       this.tpaPingInterval = null;
     }
-    
+
     // Clean up any remaining connections
     for (const [ws, stats] of this.connectionStats.entries()) {
       this.removeListeners(ws);
     }
-    
+
     this.connectionStats.clear();
   }
 }
