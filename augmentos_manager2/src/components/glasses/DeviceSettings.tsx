@@ -346,7 +346,6 @@ export default function ConnectedDeviceInfo() {
     <View style={themed($container)}>
       <View style={themed($settingsGroup)}>
         <ToggleSetting label="Auto Brightness" value={autoBrightness} onValueChange={setAutoBrightness} />
-        {/* <ToggleSetting label="Auto Brightness" value={autoBrightness} onValueChange={setAutoBrightness} /> */}
         <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginTop: 12, marginBottom: 4}} />
         <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
           <View style={{flex: 8}}>
@@ -361,9 +360,9 @@ export default function ConnectedDeviceInfo() {
               }}
             />
           </View>
-          <View style={{flex: 2, alignItems: "flex-end", alignSelf: "flex-end", paddingBottom: 12, flexDirection: "row", alignContent: "center"}}>
+          <View style={{flex: 3, alignItems: "center", alignSelf: "flex-end", marginBottom: -4, paddingBottom: 12, flexDirection: "row", alignContent: "center", marginLeft: 12}}>
             <MaterialCommunityIcons name="brightness-7" size={24} color={theme.colors.text} />
-            <Text style={{color: theme.colors.text, fontSize: 16, fontWeight: "bold"}}>
+            <Text style={{color: theme.colors.text, fontSize: 16, fontWeight: "bold", marginLeft: 4}}>
               {brightness}%
             </Text>
           </View>
