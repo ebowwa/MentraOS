@@ -6,13 +6,6 @@ interface Glasses {
   glasses_use_wifi?: boolean; // Flag to indicate if glasses model supports WiFi
   glasses_wifi_connected?: boolean;
   glasses_wifi_ssid?: string;
-  is_searching?: boolean;
-  brightness?: string | number;
-  auto_brightness?: boolean;
-  headUp_angle?: number;
-  dashboard_height?: number;
-  dashboard_distance?: number;
-  dashboard_x_offset?: number;
 }
 
 interface GlassesSettings {
@@ -33,11 +26,6 @@ interface GSMConnection {
   is_connected: boolean;
   carrier: string;
   signal_strength: number; // 0-100
-}
-
-export interface AppInfo {
-  packageName: string;
-  icon?: string | null;
 }
 
 export interface CoreAuthInfo {
@@ -199,22 +187,14 @@ export class AugmentOSParser {
             glasses_use_wifi: glassesInfo.glasses_use_wifi || false,
             glasses_wifi_connected: glassesInfo.glasses_wifi_connected || false,
             glasses_wifi_ssid: glassesInfo.glasses_wifi_ssid || '',
-            is_searching: glassesInfo.is_searching,
-            brightness: glassesInfo.brightness,
-            auto_brightness: glassesInfo.auto_brightness,
-            headUp_angle: glassesInfo.headUp_angle,
-            dashboard_height: glassesInfo.dashboard_height,
-            dashboard_distance: glassesInfo.dashboard_distance,
-            dashboard_x_offset: glassesInfo.dashboard_x_offset,
           }
           : null,
         glasses_settings: {
-          ...(status.glasses_settings ?? AugmentOSParser.defaultStatus.glasses_settings),
-          brightness: status.glasses_settings?.brightness ?? 50,
-          auto_brightness: status.glasses_settings?.auto_brightness ?? false,
-          dashboard_height: status.glasses_settings?.dashboard_height ?? 4,
-          dashboard_depth: status.glasses_settings?.dashboard_depth ?? 5,
-          head_up_angle: status.glasses_settings?.head_up_angle ?? 30,
+          brightness: status.glasses_settings.brightness ?? '50%',
+          auto_brightness: status.glasses_settings.auto_brightness ?? false,
+          dashboard_height: status.glasses_settings.dashboard_height ?? 4,
+          dashboard_depth: status.glasses_settings.dashboard_depth ?? 5,
+          head_up_angle: status.glasses_settings.head_up_angle ?? 30,
         },
         wifi: status.wifi ?? AugmentOSParser.defaultStatus.wifi,
         gsm: status.gsm ?? AugmentOSParser.defaultStatus.gsm,
@@ -223,7 +203,11 @@ export class AugmentOSParser {
           core_token_status: authInfo.core_token_status,
           last_verification_timestamp: authInfo.last_verification_timestamp,
         },
-        force_update: status.force_update ?? false,
+        force_update: false // status.force_update ?? false
+        // TODO: Hardcoding this false fixes a bug that 
+        // causes us to jump back to the home screen whenever 
+        // a setting is changed. I don't know why this works.
+        // Somebody look at this please.
       };
     }
     return AugmentOSParser.defaultStatus;
