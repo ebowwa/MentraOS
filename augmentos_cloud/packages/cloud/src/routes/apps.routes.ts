@@ -13,6 +13,7 @@ const logger = rootLogger.child({ service: 'apps.routes' });
 // Extended app interface for API responses that include developer profile
 interface AppWithDeveloperProfile extends AppI {
   developerProfile?: DeveloperProfile;
+  orgName?: string; // Organization name
 }
 
 // Enhanced app interface with running state properties
@@ -315,6 +316,8 @@ async function getPublicApps(req: Request, res: Response) {
 async function searchApps(req: Request, res: Response) {
   try {
     const query = req.query.q as string;
+    const organizationId = req.query.organizationId as string;
+
     if (!query) {
       return res.status(400).json({
         success: false,
@@ -323,10 +326,21 @@ async function searchApps(req: Request, res: Response) {
     }
 
     const apps = await appService.getAllApps();
-    const searchResults = apps.filter(app =>
+
+    // First filter by search query
+    let searchResults = apps.filter(app =>
       app.name.toLowerCase().includes(query.toLowerCase()) ||
       (app.description && app.description.toLowerCase().includes(query.toLowerCase()))
     );
+
+    // Then filter by organization if specified
+    if (organizationId) {
+      searchResults = searchResults.filter(app =>
+        app.organizationId && app.organizationId.toString() === organizationId
+      );
+
+      logger.debug(`Filtered search results by organizationId: ${organizationId}, found ${searchResults.length} results`);
+    }
 
     res.json({
       success: true,
@@ -365,25 +379,43 @@ async function getAppByPackage(req: Request, res: Response) {
     // Log permissions for debugging
     logger.debug({ packageName, permissions: plainApp.permissions }, 'App permissions');
 
-    // If the app has a developerId, try to get the developer profile information
-    let developerProfile = null;
-    if (plainApp.developerId) {
-      try {
+    // If the app has an organizationId, get the organization profile information
+    let orgProfile = null;
+
+    try {
+      if (plainApp.organizationId) {
+        // Import Organization model
+        const Organization = require('../models/organization.model').Organization;
+        const org = await Organization.findById(plainApp.organizationId);
+        if (org) {
+          orgProfile = {
+            name: org.name,
+            profile: org.profile || {}
+          };
+        }
+      }
+      // Fallback to developer profile for backward compatibility
+      else if (plainApp.developerId) {
         const developer = await User.findByEmail(plainApp.developerId);
         if (developer && developer.profile) {
-          developerProfile = developer.profile;
+          orgProfile = {
+            name: developer.profile.company || developer.email.split('@')[0],
+            profile: developer.profile
+          };
         }
-      } catch (err) {
-        logger.error({ error: err, developerId: plainApp.developerId }, 'Error fetching developer profile');
-        // Continue without developer profile
       }
+    } catch (err) {
+      logger.error({ error: err, orgId: plainApp.organizationId, developerId: plainApp.developerId },
+        'Error fetching organization/developer profile');
+      // Continue without profile
     }
 
-    // Create response with developer profile if available
+    // Create response with organization profile if available
     // Use the plain app directly instead of spreading its properties
     const appObj = plainApp as AppWithDeveloperProfile;
-    if (developerProfile) {
-      appObj.developerProfile = developerProfile;
+    if (orgProfile) {
+      appObj.developerProfile = orgProfile.profile;
+      appObj.orgName = orgProfile.name;
     }
 
     res.json({
@@ -429,7 +461,7 @@ async function startApp(req: Request, res: Response) {
 }
 
 /**
- * Stop app for session 
+ * Stop app for session
  */
 async function stopApp(req: Request, res: Response) {
   const { packageName } = req.params;
@@ -673,25 +705,42 @@ async function getAppDetails(req: Request, res: Response) {
     // Convert to plain JavaScript object if it's a Mongoose document
     const plainApp = (app as any).toObject ? (app as any).toObject() : app;
 
-    // If the app has a developerId, try to get the developer profile information
-    let developerProfile = null;
-    if (plainApp.developerId) {
-      try {
+    // If the app has an organizationId, get the organization profile information
+    let orgProfile = null;
+
+    try {
+      if (plainApp.organizationId) {
+        // Import Organization model
+        const Organization = require('../models/organization.model').Organization;
+        const org = await Organization.findById(plainApp.organizationId);
+        if (org) {
+          orgProfile = {
+            name: org.name,
+            profile: org.profile || {}
+          };
+        }
+      }
+      // Fallback to developer profile for backward compatibility
+      else if (plainApp.developerId) {
         const developer = await User.findByEmail(plainApp.developerId);
         if (developer && developer.profile) {
-          developerProfile = developer.profile;
+          orgProfile = {
+            name: developer.profile.company || developer.email.split('@')[0],
+            profile: developer.profile
+          };
         }
-      } catch (err) {
-        logger.error('Error fetching developer profile:', err);
-        // Continue without developer profile
       }
+    } catch (err) {
+      logger.error('Error fetching organization/developer profile:', err);
+      // Continue without profile
     }
 
-    // Create response with developer profile if available
+    // Create response with organization/developer profile if available
     // Use the AppWithDeveloperProfile interface for type safety
     const appObj = plainApp as AppWithDeveloperProfile;
-    if (developerProfile) {
-      appObj.developerProfile = developerProfile;
+    if (orgProfile) {
+      appObj.developerProfile = orgProfile.profile;
+      appObj.orgName = orgProfile.name;
     }
 
     // Log the permissions to verify they are properly included
@@ -712,24 +761,44 @@ async function getAppDetails(req: Request, res: Response) {
 
 async function getAvailableApps(req: Request, res: Response) {
   try {
-    const apps = await appService.getAvailableApps();
+    const organizationId = req.query.organizationId as string;
+    let apps = await appService.getAvailableApps();
 
-    // Enhance apps with developer profiles
+    // Filter by organization if specified
+    if (organizationId) {
+      apps = apps.filter(app =>
+        app.organizationId && app.organizationId.toString() === organizationId
+      );
+
+      logger.debug(`Filtered available apps by organizationId: ${organizationId}, found ${apps.length} apps`);
+    }
+
+    // Enhance apps with organization profiles
     const enhancedApps = await Promise.all(apps.map(async (app) => {
       // Convert app to plain object for modification and type as AppWithDeveloperProfile
       const appObj = { ...app } as unknown as AppWithDeveloperProfile;
 
-      // Add developer profile if the app has a developerId
-      if (app.developerId) {
-        try {
+      // Add organization profile if the app has an organizationId
+      try {
+        if (app.organizationId) {
+          const Organization = require('../models/organization.model').Organization;
+          const org = await Organization.findById(app.organizationId);
+          if (org) {
+            appObj.developerProfile = org.profile || {};
+            appObj.orgName = org.name;
+          }
+        }
+        // Fallback to developer profile for backward compatibility
+        else if (app.developerId) {
           const developer = await User.findByEmail(app.developerId);
           if (developer && developer.profile) {
             appObj.developerProfile = developer.profile;
+            appObj.orgName = developer.profile.company || developer.email.split('@')[0];
           }
-        } catch (err) {
-          logger.error(`Error fetching developer profile for app ${app.packageName}:`, err);
-          // Continue without developer profile
         }
+      } catch (err) {
+        logger.error(`Error fetching profile for app ${app.packageName}:`, err);
+        // Continue without profile
       }
 
       return appObj;
