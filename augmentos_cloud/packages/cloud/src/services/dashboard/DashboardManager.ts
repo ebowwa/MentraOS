@@ -1,6 +1,6 @@
 /**
  * Dashboard Manager
- * 
+ *
  * Manages dashboard content and layouts across the system.
  * The dashboard provides contextual information to users through various modes:
  * - Main: Full dashboard experience with comprehensive information
@@ -101,7 +101,7 @@ export class DashboardManager {
     this.queueSize = config.queueSize || 5;
     this.updateIntervalMs = config.updateIntervalMs || 1000 * 45;
     this.alwaysOnEnabled = config.alwaysOnEnabled || false;
-    
+
     // Initialize mode to the provided value or default to MAIN
     this.currentMode = config.initialMode || DashboardMode.MAIN;
 
@@ -109,9 +109,15 @@ export class DashboardManager {
     // this.startUpdateInterval();
 
     // Create a child logger for this manager
-    this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
-    this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
-
+    if (!userSession || !userSession.logger) {
+      // If no logger is available, use a fallback
+      const { logger: rootLogger } = require('../logging/pino-logger');
+      this.logger = rootLogger.child({ service: 'DashboardManager', error: 'Missing userSession.logger' });
+      this.logger.error('userSession or userSession.logger is undefined in DashboardManager constructor');
+    } else {
+      this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
+      this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
+    }
   }
 
   /**
@@ -127,7 +133,7 @@ export class DashboardManager {
   //   this.updateInterval = setInterval(() => {
   //     // Update regular dashboard (main/expanded)
   //     this.updateDashboard();
-      
+
   //     // Always update the always-on dashboard if it's enabled
   //     if (this.alwaysOnEnabled) {
   //       this.updateAlwaysOnDashboard();
@@ -210,7 +216,7 @@ export class DashboardManager {
     if (modes.includes(this.currentMode as DashboardMode)) {
       this.updateDashboard();
     }
-    
+
     // Update always-on dashboard separately if its content was updated and it's enabled
     if (alwaysOnUpdated && this.alwaysOnEnabled) {
       this.updateAlwaysOnDashboard();
@@ -269,7 +275,7 @@ export class DashboardManager {
       expandedContentCount: this.expandedContent.size,
       userDatetime: this.userSession.userDatetime
     }, 'Dashboard update triggered');
-    
+
     // Skip if mode is none
     if (this.currentMode === 'none') {
       this.logger.debug({}, `[${this.userSession.userId}] Dashboard update skipped - mode is none`);
@@ -307,7 +313,7 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      this.logger.error({ 
+      this.logger.error({
         error,
         currentMode: this.currentMode,
         systemContentIsEmpty: Object.values(this.systemContent).every(v => !v),
@@ -318,7 +324,7 @@ export class DashboardManager {
       }, 'Error updating dashboard');
     }
   }
-  
+
   /**
    * Update the always-on dashboard overlay
    * This runs independently of the regular dashboard views
@@ -329,7 +335,7 @@ export class DashboardManager {
       alwaysOnEnabled: this.alwaysOnEnabled,
       alwaysOnContentCount: this.alwaysOnContent.size
     }, 'Always-on dashboard update triggered');
-    
+
     // Skip if always-on is disabled
     if (!this.alwaysOnEnabled) {
       this.logger.info({}, `[${this.userSession.userId}] Always-on dashboard update skipped - disabled`);
@@ -383,7 +389,7 @@ export class DashboardManager {
         layoutType: displayRequest.layout.layoutType,
         view: displayRequest.view
       }, `Sending display request for user: ${this.userSession.userId}, package: ${displayRequest.packageName}, view: ${displayRequest.view}`);
-      
+
       // Log the actual content being sent
       if (displayRequest.layout.layoutType === LayoutType.DOUBLE_TEXT_WALL) {
         const layout = displayRequest.layout as any;
@@ -551,7 +557,7 @@ export class DashboardManager {
       if (this.currentMode === DashboardMode.EXPANDED) {
         return item.content as string;
       }
-      
+
       // For other modes, continue supporting existing format
       if (typeof item.content === 'string') {
         return item.content;
@@ -583,7 +589,7 @@ export class DashboardManager {
         .map(item => item.content as string)
         .join('\n\n');
     }
-    
+
     // For other modes, continue supporting existing format
     return sortedContent
       .map(item => {
@@ -619,7 +625,7 @@ export class DashboardManager {
   public cleanupAppContent(packageName: string): void {
     // Check if this TPA had always-on content
     const hadAlwaysOnContent = this.alwaysOnContent.has(packageName);
-    
+
     // Remove from all content queues
     this.mainContent.delete(packageName);
     this.expandedContent.delete(packageName);
@@ -627,12 +633,12 @@ export class DashboardManager {
 
     // Update the regular dashboard
     this.updateDashboard();
-    
+
     // Update the always-on dashboard separately if needed
     if (hadAlwaysOnContent && this.alwaysOnEnabled) {
       this.updateAlwaysOnDashboard();
     }
-    
+
     this.logger.info({ packageName }, 'Cleaned up dashboard content for TPA');
   }
 
@@ -665,7 +671,7 @@ export class DashboardManager {
   public setAlwaysOnEnabled(enabled: boolean): void {
     // Update state
     this.alwaysOnEnabled = enabled;
-    
+
     this.logger.info({ enabled, sessionId: this.userSession.sessionId }, `Always-on dashboard ${enabled ? 'enabled' : 'disabled'}`);
 
     // Notify TPAs of state change
@@ -680,7 +686,7 @@ export class DashboardManager {
 
     // Update the regular dashboard
     this.updateDashboard();
-    
+
     // If enabled, update the always-on dashboard immediately
     if (enabled) {
       this.updateAlwaysOnDashboard();
@@ -688,7 +694,7 @@ export class DashboardManager {
       // If disabled, send a clear command for the always-on view
       // This ensures the always-on dashboard is removed from display
       this.logger.info({ sessionId: this.userSession.sessionId }, 'Clearing always-on dashboard');
-      
+
       // Send an empty layout to clear the always-on view
       const clearRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
