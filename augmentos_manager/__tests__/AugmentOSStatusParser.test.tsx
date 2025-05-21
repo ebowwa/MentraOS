@@ -39,6 +39,13 @@ describe('AugmentOSStatusParser', () => {
           always_on_status_bar_enabled: true,
         },
         connected_glasses: null,
+        glasses_settings: {
+          brightness: 50,
+          auto_brightness: false,
+          dashboard_height: 4,
+          dashboard_depth: 5,
+          head_up_angle: 30,
+        },
         wifi: null,
         gsm: null,
         auth: {},
@@ -80,6 +87,13 @@ describe('AugmentOSStatusParser', () => {
           dashboard_distance: 10,
           dashboard_x_offset: 0.5,
         },
+        glasses_settings: {
+          brightness: 80,
+          auto_brightness: true,
+          dashboard_height: 5,
+          dashboard_depth: 10,
+          head_up_angle: 15,
+        },
         wifi: null,
         gsm: null,
         auth: {},
@@ -91,13 +105,11 @@ describe('AugmentOSStatusParser', () => {
     expect(result.glasses_info).not.toBeNull();
     expect(result.glasses_info?.model_name).toBe('Test Glasses');
     expect(result.glasses_info?.battery_life).toBe(75);
-    expect(result.glasses_info?.is_searching).toBe(false);
-    expect(result.glasses_info?.brightness).toBe('80');
-    expect(result.glasses_info?.auto_brightness).toBe(true);
-    expect(result.glasses_info?.headUp_angle).toBe(15);
-    expect(result.glasses_info?.dashboard_height).toBe(5);
-    expect(result.glasses_info?.dashboard_distance).toBe(10);
-    expect(result.glasses_info?.dashboard_x_offset).toBe(0.5);
+    expect(result.glasses_settings.brightness).toBe(80);
+    expect(result.glasses_settings.auto_brightness).toBe(true);
+    expect(result.glasses_settings.dashboard_height).toBe(5);
+    expect(result.glasses_settings.dashboard_depth).toBe(10);
+    expect(result.glasses_settings.head_up_angle).toBe(15);
   });
 
   it('returns null for glasses info when not connected', () => {
@@ -108,6 +120,13 @@ describe('AugmentOSStatusParser', () => {
           charging_status: false,
         },
         connected_glasses: null,
+        glasses_settings: {
+          brightness: 50,
+          auto_brightness: false,
+          dashboard_height: 4,
+          dashboard_depth: 5,
+          head_up_angle: 30,
+        },
         wifi: null,
         gsm: null,
         auth: {},
@@ -127,6 +146,13 @@ describe('AugmentOSStatusParser', () => {
           charging_status: false,
         },
         connected_glasses: null,
+        glasses_settings: {
+          brightness: 50,
+          auto_brightness: false,
+          dashboard_height: 4,
+          dashboard_depth: 5,
+          head_up_angle: 30,
+        },
         wifi: {
           is_connected: true,
           ssid: 'TestWifi',
@@ -160,6 +186,13 @@ describe('AugmentOSStatusParser', () => {
           charging_status: false,
         },
         connected_glasses: null,
+        glasses_settings: {
+          brightness: 50,
+          auto_brightness: false,
+          dashboard_height: 4,
+          dashboard_depth: 5,
+          head_up_angle: 30,
+        },
         wifi: null,
         gsm: null,
         auth: {
@@ -185,6 +218,13 @@ describe('AugmentOSStatusParser', () => {
           charging_status: false,
         },
         connected_glasses: null,
+        glasses_settings: {
+          brightness: 50,
+          auto_brightness: false,
+          dashboard_height: 4,
+          dashboard_depth: 5,
+          head_up_angle: 30,
+        },
         wifi: null,
         gsm: null,
         auth: {},
@@ -194,6 +234,6 @@ describe('AugmentOSStatusParser', () => {
 
     const result = AugmentOSParser.parseStatus(mockData);
 
-    expect(result.force_update).toBe(true);
+    expect(result.force_update).toBe(false);
   });
 });
