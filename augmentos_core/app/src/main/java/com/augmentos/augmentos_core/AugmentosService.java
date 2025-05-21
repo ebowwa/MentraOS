@@ -2236,4 +2236,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
         }
     }
+
+    @Override
+    public void setServerUrl(String url) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.edit().putString("augmentos_server_url_override", url).apply();
+        // Disconnect and reconnect websocket to use new URL
+        ServerComms.getInstance().disconnectWebSocket();
+        if (authHandler != null && authHandler.getCoreToken() != null) {
+            ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
+        }
+    }
 }
