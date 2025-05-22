@@ -27,7 +27,7 @@ To include a webview in your TPA, you need to specify a webview URL in your app'
 You can implement webview authentication in two ways:
 
 1. **Using the AugmentOS SDK** (recommended): Automatic handling with minimal configuration
-2. **Manual implementation**: Direct API integration if you're not using the SDK
+2. **Manual implementation**: Direct API integration if you're not using the SDK, or if your webview server is seperate from the server running the SDK
 
 ## Using the AugmentOS SDK
 
@@ -55,7 +55,7 @@ const app = server.getExpressApp();
 
 app.get('/webview', (req: AuthenticatedRequest, res) => {
   const userId = req.authUserId;
-  
+
   if (userId) {
     // User is authenticated, show personalized content
     res.send(`Welcome user ${userId}!`);
@@ -66,163 +66,127 @@ app.get('/webview', (req: AuthenticatedRequest, res) => {
 });
 ```
 
-## Manual Implementation
+## Manual Implementation (Browser-Only React with No Backend)
 
-If you're not using the AugmentOS SDK, you can implement the authentication flow manually.
+If you're building a webview app that runs entirely in the browser (e.g., React, Vue, etc.), you can securely verify the AugmentOS user token without any backend. This approach uses the [`jose`](https://github.com/panva/jose) library to verify the JWT against AugmentOS's public keys, stores the token in `localStorage`, and exposes the user ID to your app.
 
-1. The user interacts with the AugmentOS manager app (taps settings, long-presses app in list, etc.)
-2. The manager app opens a webview with your URL, appending a temporary token as a query parameter
-3. Your web application extracts this token and exchanges it server-side for the user's ID
-4. Your application can now provide a personalized experience based on the user's identity
+### Implementation Example
 
-### 1. Extract the Temporary Token
+- First launch → URL contains `aos_signed_user_token` → verify → store in `localStorage`.
+- Subsequent reloads (when AugmentOS doesn't re-attach the token) → helper falls back to the stored copy.
+- If verification ever fails (`jwtVerify` throws), the stored token is ignored and the app shows an error until a fresh token arrives.
 
-When your page loads, extract the `aos_temp_token` from the URL:
+#### 1. Install the dependency
 
-```javascript
-// Client-side extraction (for illustration only)
-function extractTempToken(url) {
-  try {
-    const parsedUrl = new URL(url);
-    return parsedUrl.searchParams.get('aos_temp_token');
-  } catch (e) {
-    console.error("Error parsing URL for temp token:", e);
-    return null;
-  }
+```bash
+bun add jose      # or: npm i jose
+```
+
+---
+
+#### 2. Token helper – `src/lib/aosAuth.ts`
+
+```ts
+import { jwtVerify, createLocalJWKSet } from 'jose';
+
+const JWKS_URI = 'https://prod.augmentos.cloud/.well-known/jwks.json';
+const jwks = createLocalJWKSet(new URL(JWKS_URI));
+
+const STORAGE_KEY = 'aos_signed_user_token';
+
+/**
+ * Returns a verified AugmentOS JWT (string) and its user-id (sub).
+ * Order of precedence:
+ *   1. token in ?aos_signed_user_token=… query param
+ *   2. token in localStorage
+ * Throws if neither is valid.
+ */
+export async function getVerifiedAosToken(): Promise<{ token: string; userId: string }> {
+  const params = new URLSearchParams(window.location.search);
+  const queryToken = params.get('aos_signed_user_token');
+
+  // Use the URL token if present, else fall back to localStorage
+  const token = queryToken ?? localStorage.getItem(STORAGE_KEY);
+  if (!token) throw new Error('No AugmentOS token found.');
+
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer  : 'https://prod.augmentos.cloud',
+    audience: window.location.origin,
+    clockTolerance: '2 min',
+  });
+
+  // Persist the freshest valid token
+  if (queryToken) localStorage.setItem(STORAGE_KEY, queryToken);
+
+  return { token, userId: payload.sub as string };
 }
 
-// Note: You should extract this token server-side, not client-side
-```
-
-### 2. Exchange the Token (Server-Side)
-
-On your backend, call the `https://prod.augmentos.cloud/api/auth/exchange-user-token` endpoint to exchange the token for a user ID:
-
-Implement the function to exchange the token with the AugmentOS Cloud API:
-
-```javascript
-// Node.js example with axios
-const axios = require('axios');
-
-async function exchangeTokenForUserId(tempToken) {
-  const endpoint = 'https://prod.augmentos.org/api/auth/exchange-user-token';
-  
-  try {
-    const response = await axios.post(
-      endpoint,
-      { 
-        aos_temp_token: tempToken,
-        packageName: 'org.example.myapp' // Your registered package name
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`, // Your API key, ideally loaded from .env.  Don't check it into source control.
-        },
-        timeout: 5000, // 5 second timeout
-      }
-    );
-
-    if (response.status === 200 && response.data.success && response.data.userId) {
-      return response.data.userId;
-    } else {
-      throw new Error(response.data?.error || `Failed with status ${response.status}`);
-    }
-  } catch (error) {
-    console.error("Token exchange failed:", error);
-    throw new Error('Authentication failed');
-  }
-}
-
-// Express route handler example
-app.get('/webview', async (req, res) => {
-  try {
-    // Extract the temporary token from the query parameters
-    const tempToken = req.query.aos_temp_token;
-    
-    if (!tempToken) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Missing authentication token' 
-      });
-    }
-    
-    // Exchange the token for a user ID
-    const userId = await exchangeTokenForUserId(tempToken);
-    
-    if (!userId) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Authentication failed. Please try again.' 
-      });
-    }
-    
-    // Create a session for the authenticated user
-    req.session.userId = userId;
-    req.session.isAuthenticated = true;
-    
-    // Redirect to the main application or render the webview content
-    res.redirect('/app/dashboard');
-  } catch (error) {
-    console.error('Authentication error:', error);
-    res.status(401).json({ 
-      success: false, 
-      error: 'Authentication failed. Please try again.' 
-    });
-  }
-});
-```
-
-# API Reference: Exchange User Token Endpoint
-
-## Endpoint
-
-```
-POST https://prod.augmentos.org/api/auth/exchange-user-token
-```
-
-## Request Headers
-
-| Header          | Value                           | Description                      |
-|-----------------|---------------------------------|----------------------------------|
-| Content-Type    | application/json                | JSON request format              |
-| Authorization   | Bearer YOUR_API_KEY             | Your TPA's secret API key        |
-
-## Request Body
-
-```json
-{
-  "aos_temp_token": "the-temporary-token",
-  "packageName": "org.example.myapp"
+/** One-liner to sign the user out */
+export function clearAosToken() {
+  localStorage.removeItem(STORAGE_KEY);
 }
 ```
 
-## Successful Response (200 OK)
+---
 
-```json
-{
-  "success": true,
-  "userId": "user-id-string"
+#### 3. Use it in your React app (e.g., `src/App.tsx`)
+
+```tsx
+import { useEffect, useState } from 'react';
+import { getVerifiedAosToken, clearAosToken } from './lib/aosAuth';
+
+export default function App() {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [error,  setError]  = useState<string | null>(null);
+
+  useEffect(() => {
+    getVerifiedAosToken()
+      .then(({ userId }) => setUserId(userId))
+      .catch((e) => setError(e.message));
+  }, []);
+
+  if (error) return (
+    <div className="p-4 text-red-600">
+      🔒 {error}
+      <button onClick={clearAosToken} className="ml-2 underline">
+        Reset token
+      </button>
+    </div>
+  );
+
+  if (!userId) return <div className="p-4">No AugmentOS user token found, show the logged-out view or verify the user through other means</div>;
+
+  /* Token is valid */
+  return (
+    <main className="p-4">
+      <h1 className="text-xl font-bold">Welcome, AugmentOS user {userId}!</h1>
+      {/* …your UI… */}
+    </main>
+  );
 }
 ```
 
-## Error Responses
+### JWKS Public Key
 
-| Status Code | Description                                |
-|-------------|--------------------------------------------|
-| 400         | Missing or invalid token parameter         |
-| 401         | Invalid API key or unauthorized            |
-| 404         | Token not found                            |
-| 410         | Token expired or already used              |
-| 500         | Server error during exchange               |
+The public JWKS endpoint for AugmentOS is:
 
-# Security Considerations
+```
+https://prod.augmentos.cloud/.well-known/jwks.json
+```
 
-- The temporary token has a short lifetime (typically 60 seconds)
-- Tokens are single-use and become invalid after exchange
-- Always exchange tokens server-side, never client-side
-- Securely store your API key and never expose it to clients or source control
-- Use HTTPS for all communication with the AugmentOS API
+You do **not** need to fetch or manage keys manually—the `jose` library handles this for you.
+
+However if you wish to include the public key directly, it is:
+
+```
+-----BEGIN PUBLIC KEY-----
+MCowBQYDK2VwAyEA5iUkngqc3LhFDcPi94q1PWcjXY9oj6fzATqiRKDtR8M=
+-----END PUBLIC KEY-----
+```
+
+### Security Considerations
+
+Always validate the token against the public key!  If you don't validate the token, it may be possible for a malicious actor to send a forged token and access another user's account.
 
 # Next Steps
 
