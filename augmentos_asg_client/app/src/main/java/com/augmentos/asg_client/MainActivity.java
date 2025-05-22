@@ -22,12 +22,14 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatDelegate;
 
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -38,6 +40,7 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -82,6 +85,22 @@ public class MainActivity extends AppCompatActivity {
 
     // Set layout for launcher
     setContentView(R.layout.activity_main);
+
+
+
+    TextView versionTextView = findViewById(R.id.tv_version);
+    if(BuildConfig.DEBUG){
+      try {
+        PackageInfo pInfo = getPackageManager().getPackageInfo(getPackageName(), 0);
+        String versionName = pInfo.versionName;
+        long versionCode = pInfo.getLongVersionCode();
+        versionTextView.setText("Version: " + versionName + " (" + versionCode + ")");
+        versionTextView.setVisibility(View.VISIBLE);
+      } catch (PackageManager.NameNotFoundException e) {
+        versionTextView.setText("Version info not available");
+      }
+    }
+
   }
   
 
