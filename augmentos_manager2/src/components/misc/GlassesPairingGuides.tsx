@@ -11,8 +11,9 @@ interface GlassesPairingGuideProps {
 }
 
 // 2) Declare each guide component with the correct prop type
-export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = ({isDarkTheme}) => {
-  const textColor = isDarkTheme ? 'white' : 'black';
+export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+  const { theme } = useAppTheme();
+  const textColor = theme.isDark ? 'white' : 'black';
 
   return (
     <View style={styles.guideContainer}>
@@ -36,8 +37,9 @@ export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = (
   );
 };
 
-export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = ({isDarkTheme}) => {
-  const textColor = isDarkTheme ? 'white' : 'black';
+export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+  const { theme } = useAppTheme();
+  const textColor = theme.isDark ? 'white' : 'black';
 
   return (
     <View style={styles.guideContainer}>
@@ -50,8 +52,9 @@ export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = ({isDar
   );
 };
 
-export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = ({isDarkTheme}) => {
-  const textColor = isDarkTheme ? 'white' : 'black';
+export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+  const { theme } = useAppTheme();
+  const textColor = theme.isDark ? 'white' : 'black';
 
   return (
     <View style={styles.guideContainer}>
@@ -66,8 +69,9 @@ export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = ({isD
   );
 };
 
-export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({isDarkTheme}) => {
-  const textColor = isDarkTheme ? 'white' : 'black';
+export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+  const { theme } = useAppTheme();
+  const textColor = theme.isDark ? 'white' : 'black';
   const primaryColor = '#5E17EB'; // Purple brand color based on website
   const secondaryColor = '#FF4F00'; // Orange accent color
 
@@ -143,8 +147,9 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = ({isDa
   );
 };
 
-export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = ({isDarkTheme}) => {
-  const textColor = isDarkTheme ? 'white' : 'black';
+export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+  const { theme } = useAppTheme();
+  const textColor = theme.isDark ? 'white' : 'black';
 
   return (
     <View style={styles.guideContainer}>

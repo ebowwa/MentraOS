@@ -1000,6 +1000,8 @@ struct ViewState {
   }
   
   private func handleRequestStatus() {
+    
+    print("Constructing status obj")
     // construct the status object:
 
     let isGlassesConnected = self.g1Manager?.g1Ready ?? false

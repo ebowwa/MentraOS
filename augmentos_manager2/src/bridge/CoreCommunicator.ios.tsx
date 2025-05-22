@@ -8,7 +8,7 @@ import {
   startExternalService,
 } from './CoreServiceStarter';
 import {check, PERMISSIONS, RESULTS} from 'react-native-permissions';
-// import BleManager from 'react-native-ble-manager';
+import BleManager from 'react-native-ble-manager';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 
 const {CoreCommsService, AOSModule} = NativeModules;
@@ -17,23 +17,22 @@ const eventEmitter = new NativeEventEmitter(CoreCommsService);
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null;
   private messageEventSubscription: any = null;
-  private validationInProgress: Promise<boolean | void> | null = null;
+  private validationInProgress: Promise<boolean> | null = null;
   private reconnectionTimer: NodeJS.Timeout | null = null;
   private isConnected: boolean = false;
 
   // Utility methods for checking permissions and device capabilities
   async isBluetoothEnabled(): Promise<boolean> {
-    // try {
-    //   console.log('Checking Bluetooth state...');
-    //   await BleManager.start({showAlert: false});
-    //   const state = await BleManager.checkState();
-    //   console.log('Bluetooth state:', state);
-    //   return state === 'on';
-    // } catch (error) {
-    //   console.error('Error checking Bluetooth state:', error);
-    //   return false;
-    // }
-    return true;
+    try {
+      console.log('Checking Bluetooth state...');
+      await BleManager.start({showAlert: false});
+      const state = await BleManager.checkState();
+      console.log('Bluetooth state:', state);
+      return state === 'on';
+    } catch (error) {
+      console.error('Error checking Bluetooth state:', error);
+      return false;
+    }
   }
 
   async isLocationPermissionGranted(): Promise<boolean> {
@@ -158,11 +157,21 @@ export class CoreCommunicator extends EventEmitter {
     //   console.warn('Failed to initialize BleManager:', error);
     // }
 
-    console.log('coreCommunicator.initialize()');
-
+    // AOSModule.sendCommand(JSON.stringify({ "command": "request_status" }));
+    // wait a bit to ensure the core is ready (a bit of a hack but it is reliable)
     setTimeout(() => {
       AOSModule.sendCommand(JSON.stringify({command: 'connect_wearable'}));
     }, 3000);
+
+    // setTimeout(() => {
+    //   AOSModule.sendCommand(JSON.stringify({ "command": "connect_wearable" }));
+    // }, 10000);
+
+    // Start the Core service if it's not already running
+    // TODO: ios (this isn't actually needed I don't think)
+    // if (!(await CoreCommsService.isServiceRunning())) {
+    //   CoreCommsService.startService();
+    // }
 
     // Start the external service
     startExternalService();
@@ -193,10 +202,10 @@ export class CoreCommunicator extends EventEmitter {
     }
 
     // Create a fresh subscription
-    // this.messageEventSubscription = eventEmitter.addListener(
-    //   'CoreMessageEvent',
-    //   this.handleCoreMessage.bind(this),
-    // );
+    this.messageEventSubscription = eventEmitter.addListener(
+      'CoreMessageEvent',
+      this.handleCoreMessage.bind(this),
+    );
 
     console.log('Core message event listener initialized');
   }
@@ -296,7 +305,7 @@ export class CoreCommunicator extends EventEmitter {
    */
   private async validateResponseFromCore(): Promise<boolean> {
     if (this.validationInProgress || (await isAugmentOsCoreInstalled())) {
-      return await this.validationInProgress ?? true;
+      return this.validationInProgress ?? true;
     }
 
     this.validationInProgress = new Promise<boolean>((resolve, reject) => {
@@ -315,7 +324,7 @@ export class CoreCommunicator extends EventEmitter {
       return result;
     });
 
-    return await this.validationInProgress ?? true;
+    return this.validationInProgress;
   }
 
   /**
@@ -333,7 +342,11 @@ export class CoreCommunicator extends EventEmitter {
       // }
 
       // Send the command
-      // AOSModule.sendCommand(JSON.stringify(dataObj));
+      if (Platform.OS === 'android') {
+        CoreCommsService.sendCommandToCore(JSON.stringify(dataObj));
+      } else {
+        AOSModule.sendCommand(JSON.stringify(dataObj));
+      }
     } catch (error) {
       console.error('Failed to send data to Core:', error);
       GlobalEventEmitter.emit('SHOW_BANNER', {

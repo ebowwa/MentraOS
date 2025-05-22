@@ -8,6 +8,7 @@ import {
   VirtualWearablePairingGuide,
   VuzixZ100PairingGuide 
 } from '@/components/misc/GlassesPairingGuides';
+import { useAppTheme } from './useAppTheme';
 
 /**
  * Returns the appropriate pairing guide component based on the glasses model name
@@ -15,20 +16,21 @@ import {
  * @param isDarkTheme Whether the app is in dark theme mode
  * @returns The corresponding pairing guide component
  */
-export const getPairingGuide = (glassesModelName: string, isDarkTheme: boolean) => {
+export const getPairingGuide = (glassesModelName: string) => {
+
   switch (glassesModelName) {
     case 'Even Realities G1':
-      return <EvenRealitiesG1PairingGuide isDarkTheme={isDarkTheme} />;
+      return <EvenRealitiesG1PairingGuide />;
     case 'Vuzix Z100':
-      return <VuzixZ100PairingGuide isDarkTheme={isDarkTheme} />;
+      return <VuzixZ100PairingGuide />;
     case 'Mentra Live':
-      return <MentraLivePairingGuide isDarkTheme={isDarkTheme} />;
+      return <MentraLivePairingGuide />;
     case 'Mentra Mach1':
-      return <MentraMach1PairingGuide isDarkTheme={isDarkTheme} />;
+      return <MentraMach1PairingGuide />;
     case 'Audio Wearable':
-      return <AudioWearablePairingGuide isDarkTheme={isDarkTheme} />;
+      return <AudioWearablePairingGuide />;
     case 'Simulated Glasses':
-      return <VirtualWearablePairingGuide isDarkTheme={isDarkTheme} />;
+      return <VirtualWearablePairingGuide />;
     default:
       return <View />;
   }

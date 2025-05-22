@@ -1,7 +1,7 @@
 import {NativeEventEmitter, NativeModules, Platform} from 'react-native';
 import {EventEmitter} from 'events';
-import GlobalEventEmitter from '../logic/GlobalEventEmitter';
-import {INTENSE_LOGGING} from '../consts';
+import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
+import {INTENSE_LOGGING} from '@/consts';
 import {
   isAugmentOsCoreInstalled,
   isLocationServicesEnabled as checkLocationServices,
@@ -11,13 +11,16 @@ import {check, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import BleManager from 'react-native-ble-manager';
 import BackendServerComms from '../backend_comms/BackendServerComms';
 
-const {CoreCommsService, AOSModule} = NativeModules;
+// For checking if location services are enabled
+const {ServiceStarter} = NativeModules;
+
+const {CoreCommsService} = NativeModules;
 const eventEmitter = new NativeEventEmitter(CoreCommsService);
 
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null;
   private messageEventSubscription: any = null;
-  private validationInProgress: Promise<boolean | void> | null = null;
+  private validationInProgress: Promise<boolean> | null = null;
   private reconnectionTimer: NodeJS.Timeout | null = null;
   private isConnected: boolean = false;
 
@@ -25,7 +28,6 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log('Checking Bluetooth state...');
-      await BleManager.start({showAlert: false});
       const state = await BleManager.checkState();
       console.log('Bluetooth state:', state);
       return state === 'on';
@@ -78,13 +80,7 @@ export class CoreCommunicator extends EventEmitter {
   }> {
     console.log('Checking connectivity requirements');
 
-    // On iOS, we'll assume Bluetooth is available initially to avoid premature permissions
-    // The actual check will happen during the scanning process
-    if (Platform.OS === 'ios') {
-      return {isReady: true};
-    }
-
-    // For Android, still check Bluetooth
+    // Check Bluetooth
     const isBtEnabled = await this.isBluetoothEnabled();
     console.log('Is Bluetooth enabled:', isBtEnabled);
     if (!isBtEnabled) {
@@ -150,28 +146,17 @@ export class CoreCommunicator extends EventEmitter {
    * Initializes the communication channel with Core
    */
   async initialize() {
-    // // Initialize BleManager for permission checks
-    // try {
-    //   await BleManager.start({showAlert: false});
-    // } catch (error) {
-    //   console.warn('Failed to initialize BleManager:', error);
-    // }
-
-    // AOSModule.sendCommand(JSON.stringify({ "command": "request_status" }));
-    // wait a bit to ensure the core is ready (a bit of a hack but it is reliable)
-    setTimeout(() => {
-      AOSModule.sendCommand(JSON.stringify({command: 'connect_wearable'}));
-    }, 3000);
-
-    // setTimeout(() => {
-    //   AOSModule.sendCommand(JSON.stringify({ "command": "connect_wearable" }));
-    // }, 10000);
+    // Initialize BleManager for permission checks
+    try {
+      await BleManager.start({showAlert: false});
+    } catch (error) {
+      console.warn('Failed to initialize BleManager:', error);
+    }
 
     // Start the Core service if it's not already running
-    // TODO: ios (this isn't actually needed I don't think)
-    // if (!(await CoreCommsService.isServiceRunning())) {
-    //   CoreCommsService.startService();
-    // }
+    if (!(await CoreCommsService.isServiceRunning())) {
+      CoreCommsService.startService();
+    }
 
     // Start the external service
     startExternalService();
@@ -182,7 +167,12 @@ export class CoreCommunicator extends EventEmitter {
     // set the backend server url
     const backendServerUrl =
       await BackendServerComms.getInstance().getServerUrl();
-    await this.setServerUrl(backendServerUrl);
+    await this.sendData({
+      command: 'set_server_url',
+      params: {
+        url: backendServerUrl,
+      },
+    });
 
     // Start periodic status checks
     this.startStatusPolling();
@@ -225,7 +215,6 @@ export class CoreCommunicator extends EventEmitter {
       this.parseDataFromCore(data);
     } catch (e) {
       console.error('Failed to parse JSON from core message:', e);
-      console.log(jsonString);
     }
   }
 
@@ -237,6 +226,7 @@ export class CoreCommunicator extends EventEmitter {
 
     try {
       if ('status' in data) {
+        console.log('Received status update from Core:', data);
         this.emit('statusUpdateReceived', data);
       } else if ('glasses_display_event' in data) {
         GlobalEventEmitter.emit(
@@ -266,6 +256,17 @@ export class CoreCommunicator extends EventEmitter {
         GlobalEventEmitter.emit('GLASSES_NEED_WIFI_CREDENTIALS', { 
           deviceModel: data.device_model 
         });
+      } else if ('wifi_scan_results' in data) {
+        console.log('Received WiFi scan results from Core');
+        GlobalEventEmitter.emit('WIFI_SCAN_RESULTS', { 
+          networks: data.wifi_scan_results
+        });
+      } else if (data.type === 'app_started' && data.packageName) {
+        console.log('APP_STARTED_EVENT', data.packageName);
+        GlobalEventEmitter.emit('APP_STARTED_EVENT', data.packageName);
+      } else if (data.type === 'app_stopped' && data.packageName) {
+        console.log('APP_STOPPED_EVENT', data.packageName);
+        GlobalEventEmitter.emit('APP_STOPPED_EVENT', data.packageName);
       }
     } catch (e) {
       console.error('Error parsing data from Core:', e);
@@ -337,9 +338,9 @@ export class CoreCommunicator extends EventEmitter {
       }
 
       // Ensure the service is running
-      // if (!(await CoreCommsService.isServiceRunning())) {
-      //   CoreCommsService.startService();
-      // }
+      if (!(await CoreCommsService.isServiceRunning())) {
+        CoreCommsService.startService();
+      }
 
       // Send the command
       CoreCommsService.sendCommandToCore(JSON.stringify(dataObj));
@@ -496,7 +497,6 @@ export class CoreCommunicator extends EventEmitter {
   }
 
   async sendToggleAlwaysOnStatusBar(enabled: boolean) {
-    console.log('sendToggleAlwaysOnStatusBar');
     return await this.sendData({
       command: 'enable_always_on_status_bar',
       params: {
@@ -521,26 +521,6 @@ export class CoreCommunicator extends EventEmitter {
       params: {
         headUpAngle: headUpAngle,
       },
-    });
-  }
-
-  async setGlassesDashboardHeight(dashboardHeight: number) {
-    return await this.sendData({
-      command: 'update_glasses_dashboard_height',
-      params: {height: dashboardHeight},
-    });
-  }
-
-  async setGlassesDepth(depth: number) {
-    return await this.sendData({
-      command: 'update_glasses_depth',
-      params: {depth: depth},
-    });
-  }
-
-  async showDashboard() {
-    return await this.sendData({
-      command: 'show_dashboard',
     });
   }
 
@@ -633,25 +613,56 @@ export class CoreCommunicator extends EventEmitter {
       command: 'delete_auth_secret_key',
     });
   }
-
-  async setGlassesWifiCredentials(ssid: string, password: string) {
+  
+  async sendWifiCredentials(ssid: string, password: string) {
     return await this.sendData({
-      command: 'set_glasses_wifi_credentials',
+      command: 'send_wifi_credentials',
       params: {
         ssid,
         password
       },
     });
   }
-
-  async startService() {
-    // TODO: ios
-    // CoreCommsService.startService();
+  
+  async requestWifiScan() {
+    return await this.sendData({
+      command: 'request_wifi_scan'
+    });
   }
 
+  
+
   async stopService() {
-    // TODO: ios
-    // CoreCommsService.stopService();
+    // Clean up any active listeners
+    this.cleanup();
+
+    // Stop the service if it's running
+    if (
+      CoreCommsService &&
+      typeof CoreCommsService.stopService === 'function'
+    ) {
+      CoreCommsService.stopService();
+    }
+  }
+
+  async setGlassesDashboardHeight(dashboardHeight: number) {
+    return await this.sendData({
+      command: 'update_glasses_dashboard_height',
+      params: {height: dashboardHeight},
+    });
+  }
+
+  async setGlassesDepth(depth: number) {
+    return await this.sendData({
+      command: 'update_glasses_depth',
+      params: {depth: depth},
+    });
+  }
+
+  async showDashboard() {
+    return await this.sendData({
+      command: 'show_dashboard',
+    });
   }
 
   async sendSetMetricSystemEnabled(metricSystemEnabled: boolean) {

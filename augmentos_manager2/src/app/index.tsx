@@ -35,9 +35,9 @@ export default function IndexPage() {
 
       initializeCoreConnection()
 
-      router.replace("/(tabs)/home")
+      // router.replace("/(tabs)/home")
 
-      // router.replace('/ConnectingToPuck');
+      router.replace('/(auth)/core-token-exchange');
     }
 
     if (!loading) {

@@ -26,6 +26,7 @@ import {FontAwesome} from "@expo/vector-icons"
 import GoogleIcon from "assets/icons/GoogleIcon"
 import AppleIcon from "assets/icons/AppleIcon"
 import { router } from "expo-router"
+import showAlert from "@/utils/AlertUtils"
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -125,7 +126,7 @@ export default function LoginScreen() {
       console.log("Deep link received, hiding auth overlay")
       setIsAuthLoading(false)
       authOverlayOpacity.setValue(0)
-      router.replace("/(tabs)/home")// TODO: this is a hack
+      router.replace("/")// TODO2.0: this is a hack
     }
 
     const linkingSubscription = Linking.addEventListener("url", handleDeepLink)
@@ -291,14 +292,14 @@ export default function LoginScreen() {
       if (error) {
         showAlert(translate("common:error"), error.message)
       } else if (!data.session) {
-        showAlert(translate("loginScreen:success"), translate("loginScreen:checkEmailVerification"))
+        showAlert(translate("login:success"), translate("login:checkEmailVerification"))
       } else {
         console.log("Sign-up successful:", data)
-        navigation.replace("SplashScreen")
+        router.replace("/")
       }
     } catch (err) {
       console.error("Error during sign-up:", err)
-      showAlert(translate("common:error"), translate("loginScreen:genericError"))
+      showAlert(translate("common:error"), err.toString())
     } finally {
       setIsFormLoading(false)
     }
@@ -312,7 +313,7 @@ export default function LoginScreen() {
     })
 
     if (error) {
-      showAlert(translate("common.error"), error.message)
+      showAlert(translate("common:error"), error.message)
       // Handle sign-in error
     } else {
       console.log("Sign-in successful:", data)
@@ -377,21 +378,16 @@ export default function LoginScreen() {
     //   subscription.unsubscribe();
     //   unsubscribe();
     // };
-  }, [navigation, authOverlayOpacity, isAuthLoading])
+  }, [authOverlayOpacity, isAuthLoading])
 
   return (
     <Screen
-      preset="scroll"
+      preset="fixed"
       safeAreaEdges={["top"]}
-      contentContainerStyle={themed($container)}
-      keyboardShouldPersistTaps="handled">
+      contentContainerStyle={themed($container)}>
       <LinearGradient
         colors={theme.isDark ? [theme.colors.background, theme.colors.background] : ["#EFF6FF", "#FFFFFF"]}
         style={themed($gradientContainer)}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={themed($keyboardAvoidingView)}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}>
           <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
             <View style={themed($card)}>
               {/* Auth Loading Overlay */}
@@ -400,20 +396,20 @@ export default function LoginScreen() {
                   <View style={themed($authLoadingContent)}>
                     <View style={themed($authLoadingLogoPlaceholder)} />
                     <ActivityIndicator size="large" color={theme.colors.tint} style={themed($authLoadingIndicator)} />
-                    <Text tx="loginScreen:connectingToAccount" style={themed($authLoadingText)} />
+                    <Text tx="login:connectingToAccount" style={themed($authLoadingText)} />
                   </View>
                 </Animated.View>
               )}
               <Animated.View style={[{opacity, transform: [{translateY}]}]}>
-                <Text preset="heading" tx="loginScreen:title" style={themed($title)} />
-                <Text preset="subheading" tx="loginScreen:subtitle" style={themed($subtitle)} />
+                <Text preset="heading" tx="login:title" style={themed($title)} />
+                <Text preset="subheading" tx="login:subtitle" style={themed($subtitle)} />
               </Animated.View>
 
               <Animated.View style={[themed($content), {opacity, transform: [{translateY}]}]}>
                 {isSigningUp ? (
                   <Animated.View style={[themed($form), {transform: [{scale: formScale}]}]}>
                     <View style={themed($inputGroup)}>
-                      <Text tx="loginScreen:email" style={themed($inputLabel)} />
+                      <Text tx="login:email" style={themed($inputLabel)} />
                       <View style={themed($enhancedInputContainer)}>
                         <FontAwesome
                           name="envelope"
@@ -424,7 +420,7 @@ export default function LoginScreen() {
                         <TextInput
                           hitSlop={{top: 16, bottom: 16}}
                           style={themed($enhancedInput)}
-                          placeholder={translate("loginScreen:emailPlaceholder")}
+                          placeholder={translate("login:emailPlaceholder")}
                           value={email}
                           onChangeText={setEmail}
                           keyboardType="email-address"
@@ -436,7 +432,7 @@ export default function LoginScreen() {
                     </View>
 
                     <View style={themed($inputGroup)}>
-                      <Text tx="loginScreen:password" style={themed($inputLabel)} />
+                      <Text tx="login:password" style={themed($inputLabel)} />
                       <View style={themed($enhancedInputContainer)}>
                         <FontAwesome
                           name="lock"
@@ -447,7 +443,7 @@ export default function LoginScreen() {
                         <TextInput
                           hitSlop={{top: 16, bottom: 16}}
                           style={themed($enhancedInput)}
-                          placeholder={translate("loginScreen:passwordPlaceholder")}
+                          placeholder={translate("login:passwordPlaceholder")}
                           value={password}
                           autoCapitalize="none"
                           onChangeText={setPassword}
@@ -463,7 +459,7 @@ export default function LoginScreen() {
                     </View>
 
                     <Button
-                      tx="loginScreen:login"
+                      tx="login:login"
                       style={themed($primaryButton)}
                       pressedStyle={themed($pressedButton)}
                       textStyle={themed($buttonText)}
@@ -481,7 +477,7 @@ export default function LoginScreen() {
                     />
 
                     <Button
-                      tx="loginScreen:createAccount"
+                      tx="login:createAccount"
                       style={themed($secondaryButton)}
                       pressedStyle={themed($pressedButton)}
                       textStyle={themed($buttonText)}
@@ -513,7 +509,7 @@ export default function LoginScreen() {
                       <View style={themed($socialIconContainer)}>
                         <GoogleIcon />
                       </View>
-                      <Text style={themed($socialButtonText)} tx="loginScreen:continueWithGoogle" />
+                      <Text style={themed($socialButtonText)} tx="login:continueWithGoogle" />
                     </TouchableOpacity>
 
                     {Platform.OS === "ios" && (
@@ -525,7 +521,7 @@ export default function LoginScreen() {
                         </View>
                         <Text
                           style={[themed($socialButtonText), themed($appleButtonText)]}
-                          tx="loginScreen:continueWithApple"
+                          tx="login:continueWithApple"
                         />
                       </TouchableOpacity>
                     )}
@@ -537,7 +533,7 @@ export default function LoginScreen() {
                     </View>
 
                     <Button
-                      tx="loginScreen:continueWithEmail"
+                      tx="login:continueWithEmail"
                       style={themed($primaryButton)}
                       pressedStyle={themed($pressedButton)}
                       textStyle={themed($buttonText)}
@@ -556,11 +552,10 @@ export default function LoginScreen() {
               </Animated.View>
 
               <Animated.View style={[{opacity}, $bottomContainerInsets]}>
-                <Text tx="loginScreen:termsText" size="xs" style={themed($termsText)} />
+                <Text tx="login:termsText" size="xs" style={themed($termsText)} />
               </Animated.View>
             </View>
           </ScrollView>
-        </KeyboardAvoidingView>
       </LinearGradient>
     </Screen>
   )

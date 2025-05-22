@@ -7,6 +7,7 @@ import { StatusProvider } from "@/contexts/AugmentOSStatusProvider"
 import { AppStatusProvider } from "@/contexts/AppStatusProvider"
 import { GestureHandlerRootView } from "react-native-gesture-handler"
 import { AuthProvider } from "@/contexts/AuthContext"
+import { SearchResultsProvider } from "@/contexts/SearchResultsContext"
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -17,6 +18,7 @@ export const AllProviders = withWrappers(
   KeyboardProvider,
   StatusProvider,
   AuthProvider,
+  SearchResultsProvider,
   AppStatusProvider,
   GestureHandlerRootView,
 )

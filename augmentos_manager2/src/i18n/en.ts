@@ -1,6 +1,8 @@
-import demoEn from "./demo-en"
-
 const en = {
+  pairing: {
+    selectModel: "Select Model",
+    pairingGuide: "Pairing Guide",
+  },
   privacySettings: {
     title: "Privacy Settings",
   },
@@ -19,7 +21,7 @@ const en = {
   settings: {
     title: "Settings",
   },
-  loginScreen: {
+  login: {
     title: "AugmentOS",
     subtitle: "The future of smart glasses starts here",
     email: "Email",
@@ -45,6 +47,7 @@ const en = {
     back: "Back",
     or: "OR",
     logOut: "Log Out",
+    error: "Error",
   },
   welcomeScreen: {
     postscript:

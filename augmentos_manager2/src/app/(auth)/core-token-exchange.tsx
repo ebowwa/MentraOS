@@ -18,6 +18,8 @@ import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import Button from '@/components/misc/Button';
 import { loadSetting } from '@/utils/SettingsHelper';
 import { SETTINGS_KEYS } from '@/consts';
+import { router } from 'expo-router';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 
 export default function CoreTokenExchange() {
@@ -28,6 +30,7 @@ export default function CoreTokenExchange() {
   const [errorMessage, setErrorMessage] = useState('Connection to AugmentOS failed. Please check your connection and try again.');
   const hasAttemptedConnection = useRef(false);
   const loadingOverlayOpacity = useRef(new Animated.Value(1)).current;
+  const {theme, themed} = useAppTheme();
 
   const handleTokenExchange = async () => {
     if (isLoading) return;
@@ -61,16 +64,10 @@ export default function CoreTokenExchange() {
       const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
       if (onboardingCompleted) {
         // If onboarding is completed, go directly to Home
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
+        router.replace('/(tabs)/home');
       } else {
         // If onboarding is not completed, go to WelcomePage
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'WelcomePage' }],
-        });
+        router.replace('/onboarding/welcome');
       }
     } catch (err) {
       // Don't log the error to console
@@ -82,12 +79,13 @@ export default function CoreTokenExchange() {
 
   useEffect(() => {
     console.log("STATUS", status);
-
+    
+    console.log("puck_connected", status.core_info.puck_connected);
     // Don't show the error UI for initial load attempts and avoid repeating failed attempts
     if (connectionError || hasAttemptedConnection.current) return;
 
     // We only proceed once the core is connected, the user is loaded, etc.
-    if (status.core_info.puck_connected && !authLoading && user) {
+    if (/*TODO2.0: status.core_info.puck_connected && */!authLoading && user) {
       // Track that we've attempted a connection
       hasAttemptedConnection.current = true;
 
@@ -111,10 +109,7 @@ export default function CoreTokenExchange() {
       } else {
         // If we already have a token, go straight to Home
         BackendServerComms.getInstance().setCoreToken(status.core_info.core_token);
-        navigation.reset({
-          index: 0,
-          routes: [{ name: 'Home' }],
-        });
+        router.replace('/home');
       }
     }
   }, [status.core_info.puck_connected, authLoading, user]);
@@ -125,7 +120,7 @@ export default function CoreTokenExchange() {
       <View
         style={[
           styles.container,
-          isDarkTheme ? styles.darkBackground : styles.lightBackground
+          theme.isDark ? styles.darkBackground : styles.lightBackground
         ]}
       >
         <Animated.View 
@@ -150,7 +145,7 @@ export default function CoreTokenExchange() {
     <View
       style={[
         styles.container,
-        isDarkTheme ? styles.darkBackground : styles.lightBackground,
+        styles.darkBackground,
       ]}
     >
       <View style={styles.mainContainer}>
@@ -159,14 +154,14 @@ export default function CoreTokenExchange() {
             <Icon
               name="wifi-off"
               size={80}
-              color={isDarkTheme ? '#ff6b6b' : '#ff0000'}
+              color={theme.isDark ? '#ff6b6b' : '#ff0000'}
             />
           </View>
 
           <Text
             style={[
               styles.title,
-              isDarkTheme ? styles.lightText : styles.darkText,
+              theme.isDark ? styles.lightText : styles.darkText,
             ]}
           >
             Connection Error
@@ -175,7 +170,7 @@ export default function CoreTokenExchange() {
           <Text
             style={[
               styles.description,
-              isDarkTheme ? styles.lightSubtext : styles.darkSubtext,
+              theme.isDark ? styles.lightSubtext : styles.darkSubtext,
             ]}
           >
             {errorMessage}
@@ -185,7 +180,7 @@ export default function CoreTokenExchange() {
         <View style={styles.setupContainer}>
           <Button
             onPress={handleTokenExchange}
-            isDarkTheme={isDarkTheme}
+            isDarkTheme={theme.isDark}
             disabled={isLoading}
             iconName="reload"
           >
