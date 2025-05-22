@@ -284,7 +284,7 @@ export default function PrivacySettingsScreen() {
   };
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 20}}>
+    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
         <Header titleTx="privacySettings:title" leftIcon="caretLeft" onLeftPress={() => router.back()} />
         {/* ADDITIONAL PERMISSIONS SECTION */}
         <Text style={themed($sectionHeader)}>

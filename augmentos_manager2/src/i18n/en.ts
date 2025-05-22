@@ -1,4 +1,7 @@
 const en = {
+  screenSettings: {
+    title: "Screen Settings",
+  },
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",

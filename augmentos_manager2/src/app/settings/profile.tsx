@@ -107,7 +107,7 @@ export default function ProfileSettingsPage() {
   const {theme, themed} = useAppTheme()
 
   return (
-    <Screen preset="scroll">
+    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
       <Header titleTx="profileSettings:title" leftIcon='caretLeft' onLeftPress={() => router.back()} />
         {loading ? (
           <ActivityIndicator size="large" color={theme.colors.palette.primary500} />

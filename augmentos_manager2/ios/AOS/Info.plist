@@ -47,6 +47,10 @@
     </dict>
     <key>NSBluetoothAlwaysUsageDescription</key>
     <string>This app needs access to your Bluetooth to connect to your glasses.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>This app needs access to your Bluetooth to connect to your glasses.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>This app needs access to your calendar to provide you with calendar based information.</string>
     <key>NSCameraUsageDescription</key>
     <string>This app needs access to your camera to capture images.</string>
     <key>NSLocationWhenInUseUsageDescription</key>

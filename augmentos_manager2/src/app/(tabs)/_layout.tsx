@@ -7,42 +7,15 @@ import {TextStyle, View, ViewStyle} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
-import { LinearGradient } from 'expo-linear-gradient'
+import {LinearGradient} from "expo-linear-gradient"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
 
   const {themeScheme} = useThemeProvider()
-  const {themed} = useAppTheme()
+  const {theme, themed} = useAppTheme()
 
   const showLabel = false
-
-  // v1: {
-  //   home: 'home-variant-outline',
-  //   mirror: 'glasses',
-  //   apps: 'grid',
-  //   settings: 'cog-outline',
-  // },
-  // v2: {
-  //   home: 'home-minus-outline',
-  //   mirror: 'glasses',
-  //   apps: 'apps',
-  //   settings: 'settings-helper',
-  // },
-  // v3: {
-  //   home: 'home-outline',
-  //   mirror: 'glasses',
-  //   apps: 'view-grid-outline',
-  //   settings: 'tune-variant',
-  // },
-  // v4: {
-  //   home: 'home-modern',
-  //   mirror: 'glasses',
-  //   apps: 'grid-large',
-  //   settings: 'dots-horizontal',
-  // },
-
-  const {theme} = useAppTheme()
 
   return (
     <Tabs
@@ -65,16 +38,16 @@ export default function Layout() {
         // tabBarBackground: () => <View />,
         tabBarBackground: () => (
           <LinearGradient
-            colors={theme.isDark ? ['#090A14', '#080D33'] : ['#090A14', '#080D33']}
+            colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
             style={{
-              position: 'absolute',
+              position: "absolute",
               left: 0,
               right: 0,
               top: 0,
               bottom: 0,
             }}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
+            start={{x: 0, y: 0}}
+            end={{x: 0, y: 2}}
           />
         ),
       }}>
@@ -107,9 +80,7 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <MaterialCommunityIcons name={"apps"} size={28} color={color} />
-          ),
+          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name={"apps"} size={28} color={color} />,
         }}
       />
       <Tabs.Screen

@@ -8,7 +8,7 @@ import {loadDateFnsLocale} from "@/utils/formatDate"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {AllProviders} from "@/utils/allProviders"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
-import {View} from "react-native"
+import {View, ViewStyle} from "react-native"
 import {LinearGradient} from "expo-linear-gradient"
 
 SplashScreen.preventAutoHideAsync()

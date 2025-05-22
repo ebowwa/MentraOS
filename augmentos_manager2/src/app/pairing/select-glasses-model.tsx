@@ -95,7 +95,7 @@ export default function SelectGlassesModelScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={{flex: 1, paddingHorizontal: 20}} safeAreaEdges={["top", "bottom"]}>
+    <Screen preset="fixed" style={{flex: 1, paddingHorizontal: 16}} safeAreaEdges={["top", "bottom"]}>
       <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       {isOnboarding && (
         <View style={[styles.onboardingBanner, {backgroundColor: isDarkTheme ? "#1e88e5" : "#bbdefb"}]}>

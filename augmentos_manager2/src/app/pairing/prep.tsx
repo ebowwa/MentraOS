@@ -191,7 +191,7 @@ export default function PairingPrepScreen() {
   }
 
   return (
-    <Screen preset="scroll" safeAreaEdges={["top", "bottom"]}>
+    <Screen preset="scroll" style={{paddingHorizontal: 16}} safeAreaEdges={["top", "bottom"]}>
       <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       <View style={styles.buttonContainer}>
