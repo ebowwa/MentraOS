@@ -5,6 +5,13 @@ import { AuthenticatedRequest } from 'src/types';
 // Note: Your Express app needs to use cookie-parser middleware for this to work
 // Example: app.use(require('cookie-parser')());
 import * as crypto from 'crypto';
+import { jwtVerify, createRemoteJWKSet, importSPKI } from 'jose';
+
+const userTokenPublicKey = process.env.AUGMENTOS_CLOUD_USER_TOKEN_PUBLIC_KEY || "-----BEGIN PUBLIC KEY-----MCowBQYDK2VwAyEA5iUkngqc3LhFDcPi94q1PWcjXY9oj6fzATqiRKDtR8M=-----END PUBLIC KEY-----";
+const JWKS_URI = 'https://prod.augmentos.cloud/.well-known/jwks.json';
+const jwks = createRemoteJWKSet(new URL(JWKS_URI));
+
+
 
 /**
  * Extracts the temporary token from a URL string.
@@ -86,7 +93,7 @@ function signSession(userId: string, secret: string): string {
     .createHmac('sha256', secret)
     .update(data)
     .digest('hex');
-  
+
   return `${data}|${signature}`;
 }
 
@@ -101,33 +108,49 @@ function verifySession(token: string, secret: string, maxAge?: number): string |
   try {
     const parts = token.split('|');
     if (parts.length !== 3) return null;
-    
+
     const [userId, timestampStr, signature] = parts;
     const timestamp = parseInt(timestampStr, 10);
-    
+
     // Check if token has expired
     if (maxAge && Date.now() - timestamp > maxAge) {
       console.log(`Session token expired: ${token}.  Parsed date is ${timestamp}, meaning age is ${Date.now() - timestamp}, but maxAge is ${maxAge}`);
       return null;
     }
-    
+
     // Verify signature
     const data = `${userId}|${timestamp}`;
     const expectedSignature = crypto
       .createHmac('sha256', secret)
       .update(data)
       .digest('hex');
-    
+
     if (signature !== expectedSignature) {
       console.log(`Session token signature mismatch: ${signature} !== ${expectedSignature}`);
       return null;
     }
-    
+
     return userId;
   } catch (error) {
     console.error("Session verification failed:", error);
     return null;
   }
+}
+
+/**
+ * Verifies a signed user token and extracts the user ID from it
+ * @param signedUserToken The JWT token to verify
+ * @returns The user ID (subject) from the token, or null if invalid
+ */
+async function verifySignedUserToken(signedUserToken: string): Promise<string | null> {
+  // Import the PEM-encoded public key
+  const publicKey = await importSPKI(userTokenPublicKey, 'EdDSA');
+
+  const { payload } = await jwtVerify(signedUserToken, publicKey, {
+    issuer: 'https://prod.augmentos.cloud',
+    clockTolerance: '2 min',
+  });
+  return payload.sub || null;
 }
 
 function validateCloudApiUrlChecksum(checksum: string, cloudApiUrl: string, apiKey: string): boolean {
@@ -142,7 +165,7 @@ function validateCloudApiUrlChecksum(checksum: string, cloudApiUrl: string, apiK
  * Express middleware for automatically handling the token exchange.
  * Assumes API key and Cloud URL are available (e.g., via environment variables).
  * Adds `req.authUserId` if successful.
- * 
+ *
  * @param options Configuration options.
  * @param options.cloudApiUrl The base URL of the AugmentOS Cloud API.
  * @param options.apiKey Your TPA's secret API key.
@@ -165,14 +188,14 @@ export function createAuthMiddleware(options: {
     path?: string;
   };
 }) {
-  const { 
-    apiKey, 
+  const {
+    apiKey,
     packageName,
     tokenQueryParam = 'aos_temp_token',
     cookieName = 'aos_session',
     cookieSecret,
-    cookieOptions = { 
-      httpOnly: true, 
+    cookieOptions = {
+      httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days by default
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
@@ -191,7 +214,23 @@ export function createAuthMiddleware(options: {
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First check for temporary token in the query string
     const tempToken = req.query[tokenQueryParam] as string;
+    const signedUserToken = req.query['aos_signed_user_token'] as string;
 
+    // first check for signed user token
+    if (signedUserToken) {
+      const userId = await verifySignedUserToken(signedUserToken);
+      if (userId) {
+        // Set the user ID on the request
+        req.authUserId = userId;
+
+        // Create a signed session token and store it in a cookie
+        const signedSession = signSession(userId, cookieSecret);
+        res.cookie(cookieName, signedSession, cookieOptions);
+
+        console.log('[auth.middleware] User ID verified from signed user token: ', userId);
+        return next();
+      }
+    }
     // If temporary token exists, authenticate with it
     if (tempToken) {
       try {
@@ -209,14 +248,16 @@ export function createAuthMiddleware(options: {
         }
 
         const { userId } = await exchangeToken(cloudApiUrl, tempToken, apiKey, packageName);
-        
+
         // Set the user ID on the request
         req.authUserId = userId;
-        
+
         // Create a signed session token and store it in a cookie
         const signedSession = signSession(userId, cookieSecret);
         res.cookie(cookieName, signedSession, cookieOptions);
-        
+
+        console.log('[auth.middleware] User ID verified from temporary token: ', userId);
+
         return next();
       } catch (error) {
         console.error("Webview token exchange failed:", error);
@@ -227,7 +268,7 @@ export function createAuthMiddleware(options: {
 
     // No valid temporary token, check for existing session cookie
     const sessionCookie = req.cookies?.[cookieName];
-    
+
     if (sessionCookie) {
       try {
         // Verify the signed session cookie and extract the user ID
@@ -237,7 +278,7 @@ export function createAuthMiddleware(options: {
           req.authUserId = userId;
           return next();
         }
-        
+
         // Invalid or expired session, clear the cookie
         res.clearCookie(cookieName, { path: cookieOptions.path });
       } catch (error) {
