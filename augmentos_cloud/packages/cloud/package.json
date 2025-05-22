@@ -14,7 +14,7 @@
     "staging": "NODE_ENV=staging tsx watch src/index.ts",
     "deploy": "bun run build && bun run start",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx",
-    "test": "bun test",
+    "test": "bun run ./src/tests/run-tests.ts",
     "test:visual": "bun run ./src/services/layout/tests/run-visual-tests.ts",
     "test:display": "bun run ./src/services/layout/tests/run-visual-tests.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org pierce-50 --project augmentos-cloud-dev ./dist && sentry-cli sourcemaps upload --org pierce-50 --project augmentos-cloud-dev ./dist",
@@ -24,6 +24,7 @@
   },
   "author": "Isaiah Ballah",
   "devDependencies": {
+    "@types/babel__core": "^7.20.5",
     "@types/bcrypt": "^5.0.0",
     "@types/cookie-parser": "^1.4.2",
     "@types/cors": "^2.8.12",
@@ -70,6 +71,7 @@
     "pino": "^9.6.0",
     "pino-pretty": "^13.0.0",
     "posthog-node": "^4.14.0",
+    "resend": "^4.5.1",
     "uuid": "^11.0.5",
     "ws": "^8.18.1"
   }
