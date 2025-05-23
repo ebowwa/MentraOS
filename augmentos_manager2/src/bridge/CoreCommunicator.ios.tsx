@@ -174,7 +174,11 @@ export class CoreCommunicator extends EventEmitter {
     // }
 
     // Start the external service
-    startExternalService();
+    try {
+      startExternalService();
+    } catch (error) {
+      console.error('Error starting external service:', error);
+    }
 
     // Initialize message event listener
     this.initializeMessageEventListener();
