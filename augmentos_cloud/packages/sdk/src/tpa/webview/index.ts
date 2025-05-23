@@ -153,6 +153,39 @@ async function verifySignedUserToken(signedUserToken: string): Promise<string | 
   return payload.sub || null;
 }
 
+/**
+ * Verifies a frontend token by comparing it to a secure hash of the API key
+ * @param frontendToken The token to verify (should be a hash of the API key)
+ * @param apiKey The API key to hash and compare against
+ * @param userId Optional user ID that may be embedded in the token format
+ * @returns The user ID if the token is valid, or null if invalid
+ */
+function verifyFrontendToken(frontendToken: string, apiKey: string): string | null {
+  try {
+    // Check if the token contains a user ID and hash separated by a colon
+    const tokenParts = frontendToken.split(':');
+
+    if (tokenParts.length === 2) {
+      // Format: userId:hash
+      const [tokenUserId, tokenHash] = tokenParts;
+      const expectedHash = crypto.createHash('sha256')
+        .update(tokenUserId + apiKey)
+        .digest('hex');
+
+      if (tokenHash === expectedHash) {
+        return tokenUserId;
+      }
+    } else {
+      throw new Error("Invalid frontend token format");
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Frontend token verification failed:", error);
+    return null;
+  }
+}
+
 function validateCloudApiUrlChecksum(checksum: string, cloudApiUrl: string, apiKey: string): boolean {
   const hashedApiKey = crypto.createHash('sha256').update(apiKey).digest('hex');
   const expectedChecksum = crypto.createHash('sha256').update(cloudApiUrl)
@@ -177,7 +210,6 @@ function validateCloudApiUrlChecksum(checksum: string, cloudApiUrl: string, apiK
 export function createAuthMiddleware(options: {
   apiKey: string;
   packageName: string;
-  tokenQueryParam?: string;
   cookieName?: string;
   cookieSecret: string;
   cookieOptions?: {
@@ -191,7 +223,6 @@ export function createAuthMiddleware(options: {
   const {
     apiKey,
     packageName,
-    tokenQueryParam = 'aos_temp_token',
     cookieName = 'aos_session',
     cookieSecret,
     cookieOptions = {
@@ -213,7 +244,8 @@ export function createAuthMiddleware(options: {
 
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First check for temporary token in the query string
-    const tempToken = req.query[tokenQueryParam] as string;
+    const tempToken = req.query['aos_temp_token'] as string;
+    const frontendToken = req.headers.authorization?.replace('Bearer ', '') as string;
     const signedUserToken = req.query['aos_signed_user_token'] as string;
 
     // first check for signed user token
@@ -265,6 +297,19 @@ export function createAuthMiddleware(options: {
       }
     }
 
+    if (frontendToken) {
+      // Check for user ID in headers if not embedded in token
+      const userId = verifyFrontendToken(frontendToken, apiKey);
+
+      if (userId) {
+        req.authUserId = userId;
+        // Create a signed session token and store it in a cookie
+        const signedSession = signSession(userId, cookieSecret);
+        res.cookie(cookieName, signedSession, cookieOptions);
+        console.log('[auth.middleware] User ID verified from frontend user token: ', userId);
+        return next();
+      }
+    }
 
     // No valid temporary token, check for existing session cookie
     const sessionCookie = req.cookies?.[cookieName];

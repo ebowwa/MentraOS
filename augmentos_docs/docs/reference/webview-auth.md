@@ -70,7 +70,7 @@ app.get('/webview', (req: AuthenticatedRequest, res) => {
 
 If you're building a webview app that runs entirely in the browser (e.g., React, Vue, etc.), you can securely verify the AugmentOS user token without any backend. This approach uses the [`jose`](https://github.com/panva/jose) library to verify the JWT against AugmentOS's public keys, stores the token in `localStorage`, and exposes the user ID to your app.
 
-### Implementation Example
+### React/Vite Implementation Example
 
 - First launch → URL contains `aos_signed_user_token` → verify → store in `localStorage`.
 - Subsequent reloads (when AugmentOS doesn't re-attach the token) → helper falls back to the stored copy.
@@ -95,13 +95,13 @@ const jwks = createLocalJWKSet(new URL(JWKS_URI));
 const STORAGE_KEY = 'aos_signed_user_token';
 
 /**
- * Returns a verified AugmentOS JWT (string) and its user-id (sub).
+ * Returns a verified AugmentOS JWT (string), its user-id (sub), and frontend token.
  * Order of precedence:
  *   1. token in ?aos_signed_user_token=… query param
  *   2. token in localStorage
  * Throws if neither is valid.
  */
-export async function getVerifiedAosToken(): Promise<{ token: string; userId: string }> {
+export async function getVerifiedAosToken(): Promise<{ token: string; userId: string; frontendToken: string }> {
   const params = new URLSearchParams(window.location.search);
   const queryToken = params.get('aos_signed_user_token');
 
@@ -118,7 +118,11 @@ export async function getVerifiedAosToken(): Promise<{ token: string; userId: st
   // Persist the freshest valid token
   if (queryToken) localStorage.setItem(STORAGE_KEY, queryToken);
 
-  return { token, userId: payload.sub as string };
+  // Extract userId and frontendToken from the payload
+  const userId = payload.sub as string;
+  const frontendToken = payload.frontendToken as string;
+
+  return { token, userId, frontendToken };
 }
 
 /** One-liner to sign the user out */
@@ -137,11 +141,15 @@ import { getVerifiedAosToken, clearAosToken } from './lib/aosAuth';
 
 export default function App() {
   const [userId, setUserId] = useState<string | null>(null);
+  const [frontendToken, setFrontendToken] = useState<string | null>(null);
   const [error,  setError]  = useState<string | null>(null);
 
   useEffect(() => {
     getVerifiedAosToken()
-      .then(({ userId }) => setUserId(userId))
+      .then(({ userId, frontendToken }) => {
+        setUserId(userId);
+        setFrontendToken(frontendToken);
+      })
       .catch((e) => setError(e.message));
   }, []);
 
@@ -160,11 +168,134 @@ export default function App() {
   return (
     <main className="p-4">
       <h1 className="text-xl font-bold">Welcome, AugmentOS user {userId}!</h1>
+      <p className="mt-2 text-sm text-gray-600">Frontend token: {frontendToken}</p>
+      <p className="mt-1 text-xs text-gray-500">
+        This frontend token can be used to verify requests from your frontend to your backend.
+      </p>
       {/* …your UI… */}
     </main>
   );
 }
 ```
+
+#### 4. Calling Your Backend with the Frontend Token
+
+You can send the `frontendToken` to your backend as a standard `Authorization` header (recommended) to authenticate/identify the user. For example, using `fetch`:
+
+```ts
+// Assume you have already called getVerifiedAosToken()
+const { frontendToken } = await getVerifiedAosToken();
+
+const response = await fetch(
+  'https://example-tpa-server.org/some-endpoint',
+  {
+    method: 'GET', // or 'POST', etc.
+    headers: {
+      'Authorization': `Bearer ${frontendToken}`,
+      // Add other headers as needed
+    },
+    // Optionally, include credentials or other fetch options
+  }
+);
+
+const data = await response.json();
+console.log('Backend response:', data);
+```
+
+### Plain Static HTML and Javascript Implementation Example
+
+Here's an example using plain HTML and JavaScript that can be served from any static web server:
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AugmentOS Webview App</title>
+    <script type="module">
+        import * as jose from 'https://cdn.jsdelivr.net/npm/jose@5/+esm';
+
+        const JWKS_URI = 'https://prod.augmentos.cloud/.well-known/jwks.json';
+        const STORAGE_KEY = 'aos_signed_user_token';
+
+        async function verifyAosToken() {
+            const params = new URLSearchParams(window.location.search);
+            const queryToken = params.get('aos_signed_user_token');
+
+            // Use URL token if present, else fall back to localStorage
+            const token = queryToken || localStorage.getItem(STORAGE_KEY);
+            if (!token) throw new Error('No AugmentOS token found');
+
+            // Verify the token
+            const jwks = jose.createLocalJWKSet(new URL(JWKS_URI));
+            const { payload } = await jose.jwtVerify(token, jwks, {
+                issuer: 'https://prod.augmentos.cloud',
+                audience: window.location.origin,
+                clockTolerance: '2 min',
+            });
+
+            // Store valid token
+            if (queryToken) localStorage.setItem(STORAGE_KEY, queryToken);
+
+            return {
+                userId: payload.sub,
+                frontendToken: payload.frontendToken
+            };
+        }
+
+        let currentFrontendToken = null;
+
+        // Call backend with frontend token
+        async function callBackend() {
+            if (!currentFrontendToken) return;
+
+            const response = await fetch('https://example-tpa-server.org/some-endpoint', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${currentFrontendToken}`,
+                }
+            });
+
+            const data = await response.json();
+            document.getElementById('backendResult').textContent = JSON.stringify(data, null, 2);
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', async () => {
+            const messageEl = document.getElementById('message');
+            const userInfoEl = document.getElementById('userInfo');
+
+            try {
+                const { userId, frontendToken } = await verifyAosToken();
+                currentFrontendToken = frontendToken;
+
+                messageEl.textContent = `Welcome, AugmentOS user ${userId}!`;
+                userInfoEl.innerHTML = `
+                    <p>Frontend token: <code>${frontendToken}</code></p>
+                    <button onclick="callBackend()">Call Backend</button>
+                    <pre id="backendResult"></pre>
+                `;
+            } catch (error) {
+                messageEl.textContent = `Error: ${error.message}`;
+                messageEl.style.color = 'red';
+            }
+        });
+    </script>
+</head>
+<body>
+    <h1>AugmentOS Webview App</h1>
+    <div id="message">Loading...</div>
+    <div id="userInfo"></div>
+</body>
+</html>
+```
+
+This example:
+- Loads the jose library from CDN as an ES module
+- Verifies the token from the URL or localStorage
+- Displays the user ID and frontend token
+- Shows an error if verification fails
 
 ### JWKS Public Key
 

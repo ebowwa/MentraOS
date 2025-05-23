@@ -94,8 +94,7 @@ export class TokenService {
    * Issue a signed JWT token for the AugmentOS user to be used in TPA webview.
    *
    * @param aosUserId - The AugmentOS user ID to include in the token
-   * @param tpaOrigin - The TPA origin URL that will be set as audience
-   * @returns A signed JWT token
+   * @returns A signed JWT token containing user ID and frontend token
    */
   async issueUserToken(aosUserId: string): Promise<string> {
     // Algorithm used for signing
@@ -107,8 +106,19 @@ export class TokenService {
         throw new Error('[token.service] TPA_AUTH_JWT_PRIVATE_KEY is not set');
       }
       const privateKey = await importPKCS8(TPA_AUTH_JWT_PRIVATE_KEY, alg);
-      // Create and sign the JWT token
-      const token = await new SignJWT({ sub: aosUserId })
+
+      // Generate a frontend token as a secure hash of the user ID and a secret
+      const frontendTokenSecret = process.env.FRONTEND_TOKEN_SECRET || 'default-frontend-secret';
+      const frontendToken = crypto
+        .createHash('sha256')
+        .update(aosUserId + frontendTokenSecret)
+        .digest('hex');
+
+      // Create and sign the JWT token with both user ID and frontend token
+      const token = await new SignJWT({
+        sub: aosUserId,
+        frontendToken: `${aosUserId}:${frontendToken}`
+      })
         .setProtectedHeader({ alg, kid: 'v1' })
         .setIssuer('https://prod.augmentos.cloud')
         .setIssuedAt()
