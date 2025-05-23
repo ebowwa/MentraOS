@@ -489,7 +489,7 @@ public class SmartGlassesManager extends Service {
     @Subscribe
     public void handleDisconnectedFromCloudEvent(DisconnectedFromCloudEvent event) {
         Log.d(TAG, "Disconnected from cloud event received");
-        sendHomeScreen();
+        sendTextWall("AugmentOS disconnected from Cloud.");
     }
 
     public static void savePreferredWearable(Context context, String wearableName) {
