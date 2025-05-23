@@ -69,7 +69,7 @@ buck-out/
 # Expo
 .expo/*
 bin/Exponent.app
-/android
+# /android
 # /ios
 expo-env.d.ts
 
