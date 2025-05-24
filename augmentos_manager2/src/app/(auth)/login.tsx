@@ -126,7 +126,9 @@ export default function LoginScreen() {
       console.log("Deep link received, hiding auth overlay")
       setIsAuthLoading(false)
       authOverlayOpacity.setValue(0)
-      router.replace("/")// TODO2.0: this is a hack
+      if (event.url.includes("auth/callback")) {
+        router.replace("/")// TODO2.0: this is a hack
+      }
     }
 
     const linkingSubscription = Linking.addEventListener("url", handleDeepLink)

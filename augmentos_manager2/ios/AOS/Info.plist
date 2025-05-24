@@ -52,11 +52,11 @@
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>This app needs access to your calendar to provide you with calendar based information.</string>
     <key>NSCameraUsageDescription</key>
-    <string>This app needs access to your camera to capture images.</string>
+    <string>Allow $(PRODUCT_NAME) to access your camera</string>
     <key>NSLocationWhenInUseUsageDescription</key>
     <string>This app needs access to your location to provide you with locatioin based information.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>This app needs access to your microphone to record audio.</string>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSUserActivityTypes</key>
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>

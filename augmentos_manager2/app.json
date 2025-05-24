@@ -14,9 +14,7 @@
     },
     "newArchEnabled": true,
     "jsEngine": "hermes",
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.augmentos.augmentos",
@@ -59,7 +57,7 @@
         "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
         "android.permission.FOREGROUND_SERVICE_MICROPHONE",
         "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.WRITE_MEDIA_VIDEO",
+        "android.permission.WRITE_MEDIA_VIDEO"
       ]
     },
     "ios": {
@@ -73,9 +71,7 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to provide you with locatioin based information.",
         "NSBluetoothPeripheralUsageDescription": "This app needs access to your Bluetooth to connect to your glasses.",
         "NSCalendarsFullAccessUsageDescription": "This app needs access to your calendar to provide you with calendar based information.",
-        "UIBackgroundModes": [
-          "bluetooth-central"
-        ]
+        "UIBackgroundModes": ["bluetooth-central"]
       }
     },
     "plugins": [
@@ -104,6 +100,14 @@
             "Notifications",
             "PhotoLibrary"
           ]
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera",
+          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone",
+          "recordAudioAndroid": true
         }
       ]
     ],
