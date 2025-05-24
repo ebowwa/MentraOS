@@ -41,12 +41,13 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
     const { user } = useAuth();
 
     useEffect(() => {
-        // Force a complete reset of status during sign-out/sign-in transition
-        if (!user) {
-            console.log('User signed out, resetting status');
-            setStatus(AugmentOSParser.defaultStatus);
-            return;
-        }
+        // // Force a complete reset of status during sign-out/sign-in transition
+        // TODO2.0:
+        // if (!user) {
+        //     console.log('User signed out, resetting status');
+        //     setStatus(AugmentOSParser.defaultStatus);
+        //     return;
+        // }
 
         if (!isInitialized) return;
 
@@ -54,6 +55,8 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         console.log('STATUS PROVIDER: Initializing event listeners for user:', user?.email);
 
         const handleStatusUpdateReceived = (data: any) => {
+
+            console.log('statusUpdateReceived', data);
             if (INTENSE_LOGGING)
                 console.log('Handling received data.. refreshing status..');
             refreshStatus(data);
@@ -93,7 +96,6 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
 
     // Initialize the Core communication
     const initializeCoreConnection = React.useCallback(() => {
-        console.log("initializeCoreConnection()");
         coreCommunicator.initialize();
         setIsInitialized(true);
     }, []);
