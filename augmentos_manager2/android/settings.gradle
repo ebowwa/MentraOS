@@ -23,6 +23,15 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
 
 rootProject.name = 'AugmentOS'
 
+include ':AugmentOSLib'
+project(':AugmentOSLib').projectDir = new File(rootProject.projectDir, '../../augmentos_android_library/AugmentOSLib')
+
+include ':augmentos_core'
+project(':augmentos_core').projectDir = new File(rootProject.projectDir, '../../augmentos_core/app')
+
+include ':SmartGlassesManager'
+project(':SmartGlassesManager').projectDir = new File(rootProject.projectDir, '../../SmartGlassesManager/SGM_android/SmartGlassesManager')
+
 dependencyResolutionManagement {
   versionCatalogs {
     reactAndroidLibs {

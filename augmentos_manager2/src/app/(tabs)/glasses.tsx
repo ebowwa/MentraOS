@@ -97,10 +97,10 @@ export default function Homepage() {
       if (!localVer) {
         console.error("Failed to get local version from env file")
         // Navigate to update screen with connection error
-        navigation.navigate("VersionUpdateScreen", {
-          isDarkTheme,
-          connectionError: true,
-        })
+        // navigation.navigate("VersionUpdateScreen", {
+        //   isDarkTheme,
+        //   connectionError: true,
+        // })
         setIsCheckingVersion(false)
         return
       }

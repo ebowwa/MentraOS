@@ -109,5 +109,10 @@
   },
   "engines": {
     "node": "^18.18.0 || >=20.0.0"
+  },
+  "expo": {
+    "autolinking": {
+      "nativeModulesDir": "../augmod"
+    }
   }
 }
