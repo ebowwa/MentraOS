@@ -55,7 +55,13 @@ export enum ViewType {
 export enum AppSettingType {
     TOGGLE = 'toggle',
     TEXT = 'text',
-    SELECT = 'select'
+    SELECT = 'select',
+    SLIDER = 'slider',
+    GROUP = 'group',
+    TEXT_NO_SAVE_BUTTON = 'text_no_save_button',
+    SELECT_WITH_SEARCH = 'select_with_search',
+    MULTISELECT = 'multiselect',
+    TITLE_VALUE = 'titleValue'
 }
 // | { type: "toggle"; key: string; label: string; defaultValue: boolean }
 // | { type: "text"; key: string; label: string; defaultValue?: string }

@@ -49,7 +49,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
 
   // Copy API key to clipboard
   const handleCopyApiKey = () => {
-    navigator.clipboard.writeText(_apiKey).then(() => {
+    navigator['clipboard'].writeText(_apiKey).then(() => {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     });

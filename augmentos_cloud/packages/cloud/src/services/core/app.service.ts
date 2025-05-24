@@ -7,7 +7,7 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -400,6 +400,109 @@ export class AppService {
   }
 
   /**
+   * Validates setting definitions against the schema requirements
+   * @param settings Array of setting definitions to validate
+   * @returns Validated and sanitized settings array or throws error if invalid
+   */
+  private validateSettingDefinitions(settings: any[]): (AppSetting)[] {
+    logger.debug('Validating setting definitions:', settings);
+    if (!Array.isArray(settings)) {
+      throw new Error('Settings must be an array');
+    }
+
+    return settings.map(setting => {
+      // Validate required type field
+      if (!setting.type || typeof setting.type !== 'string') {
+        throw new Error('Setting type is required and must be a string');
+      }
+
+      // Group settings validation
+      if (setting.type === 'group') {
+        if (!setting.title || typeof setting.title !== 'string') {
+          throw new Error('Group setting requires a title');
+        }
+        return {
+          type: setting.type as 'group',
+          title: setting.title
+        };
+      }
+
+      // Regular settings validation
+      if (!setting.key || typeof setting.key !== 'string') {
+        throw new Error('Setting key is required and must be a string');
+      }
+
+      if (!setting.label || typeof setting.label !== 'string') {
+        throw new Error('Setting label is required and must be a string');
+      }
+
+      // Type-specific validation
+      switch (setting.type) {
+        case 'toggle':
+          if (typeof setting.defaultValue !== 'boolean') {
+            throw new Error('Toggle setting requires a boolean defaultValue');
+          }
+          return {
+            type: setting.type,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          };
+
+        case 'text':
+          return {
+            type: setting.type,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue || '',
+            value: setting.value
+          };
+
+        case 'select':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Select setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Select options must have label and value properties');
+          }
+          return {
+            type: setting.type,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          };
+
+        case 'slider':
+          if (typeof setting.min !== 'number' || typeof setting.max !== 'number') {
+            throw new Error('Slider setting requires numeric min and max values');
+          }
+          if (typeof setting.defaultValue !== 'number') {
+            throw new Error('Slider setting requires a numeric defaultValue');
+          }
+          if (setting.min > setting.max) {
+            throw new Error('Slider min value cannot be greater than max value');
+          }
+          return {
+            type: setting.type,
+            key: setting.key,
+            label: setting.label,
+            min: setting.min,
+            max: setting.max,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          };
+
+        default:
+          throw new Error(`Unsupported setting type: ${setting.type}`);
+      }
+    });
+  }
+
+  /**
    * Create a new app
    */
   async createApp(appData: any, developerId: string): Promise<{ app: AppI, apiKey: string }> {
@@ -413,6 +516,15 @@ export class AppService {
         appData.tools = this.validateToolDefinitions(appData.tools);
       } catch (error: any) {
         throw new Error(`Invalid tool definitions: ${error.message}`);
+      }
+    }
+
+    // Parse and validate settings if present
+    if (appData.settings) {
+      try {
+        appData.settings = this.validateSettingDefinitions(appData.settings);
+      } catch (error: any) {
+        throw new Error(`Invalid setting definitions: ${error.message}`);
       }
     }
 
@@ -462,6 +574,15 @@ export class AppService {
         appData.tools = this.validateToolDefinitions(appData.tools);
       } catch (error: any) {
         throw new Error(`Invalid tool definitions: ${error.message}`);
+      }
+    }
+
+    // Parse and validate settings if present
+    if (appData.settings) {
+      try {
+        appData.settings = this.validateSettingDefinitions(appData.settings);
+      } catch (error: any) {
+        throw new Error(`Invalid setting definitions: ${error.message}`);
       }
     }
 
@@ -833,36 +954,17 @@ export class AppService {
       throw new Error(`App ${packageName} not found`);
     }
 
-    if (!app.publicUrl) {
-      throw new Error(`App ${packageName} does not have a public URL`);
-    }
-
     logger.debug('Getting TPA tools for:', packageName);
 
-    try {
-      // Fetch the tpa_config.json from the app's publicUrl
-      const configUrl = `${app.publicUrl}/tpa_config.json`;
-      const response = await axios.get(configUrl, { timeout: 5000 });
-
-      // Check if the response contains a tools array
-      const config = response.data;
-      if (config && Array.isArray(config.tools)) {
-        // Validate the tools before returning them
-        logger.debug(`Found ${config.tools.length} tools in ${packageName}, validating...`);
-        return this.validateToolDefinitions(config.tools);
-      }
-
-      // If no tools found, return empty array
-      return [];
-    } catch (error) {
-      // Check if error is a 404 (file not found) and silently ignore
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Config file doesn't exist, silently return empty array
-        logger.debug(`No tpa_config.json found for app ${packageName} (404)`);
-        return [];
-      }
-      return [];
+    // Get tools from the database instead of fetching tpa_config.json
+    if (app.tools && Array.isArray(app.tools)) {
+      logger.debug(`Found ${app.tools.length} tools in ${packageName} database`);
+      return app.tools;
     }
+
+    // If no tools found in database, return empty array
+    logger.debug(`No tools found in database for app ${packageName}`);
+    return [];
   }
 
   // Add a method to update app visibility

@@ -1,8 +1,6 @@
 // backend/src/routes/tpa-settings.ts
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
 import axios from 'axios';
 import { systemApps } from '../services/core/system-apps';
 import { User } from '../models/user.model';
@@ -52,47 +50,24 @@ router.get('/:tpaName', async (req, res) => {
       return res.status(400).json({ error: 'User ID missing in token' });
     }
 
-    // Read TPA configuration file.
-    // const configFilePath = path.join(__dirname, '..', '..', '..', 'apps', tpaName, 'tpa_config.json');
-    let tpaConfig;
-    try {
-      // const rawData = fs.readFileSync(configFilePath, 'utf8');
-      // tpaConfig = JSON.parse(rawData);
-      // find the app, then call it with it's port. i.e: http://localhost:8017/tpa_config.json
-      const _tpa = await appService.getApp(tpaName);
-      permissions = _tpa?.permissions || permissions;
-      // const host = Object.values(systemApps).find(app => app.packageName === tpaName)?.host;
-      const publicUrl = _tpa?.publicUrl;
-      
-      if (!_tpa) {
-        throw new Error('TPA not found for app ' + tpaName); // throw an error if the port is not found.
-      }
-      if (!publicUrl) {
-        // get the host from the public url;
-        throw new Error('publicUrl not found for app ' + tpaName); // throw an error if the port is not found.
-      }
-      webviewURL = _tpa.webviewURL;
-      const _tpaConfig = (await axios.get(`${publicUrl}/tpa_config.json`)).data;
-      tpaConfig = _tpaConfig;
-    } catch (err) {
-      const _tpa = await appService.getApp(tpaName);
-      permissions = _tpa?.permissions || permissions;
-      if (_tpa) {
-        tpaConfig = {
-          name: _tpa.name || tpaName,
-          description: _tpa.description || '',
-          version: "1.0.0",
-          settings: []
-        }
-        webviewURL = _tpa.webviewURL;
-      } else {
-        logger.error('Error reading TPA config file:', err);
-        return res.status(500).json({ error: 'Error reading TPA config file' });
-      }
-      // If the config file doesn't exist or is invalid, just return 
-      // console.error('Error reading TPA config file:', err);
-      // return res.status(500).json({ error: 'Error reading TPA config file' });
+    // Get TPA configuration from database instead of tpa_config.json
+    const _tpa = await appService.getApp(tpaName);
+
+    if (!_tpa) {
+      logger.error('TPA not found for app:', tpaName);
+      return res.status(404).json({ error: 'TPA not found' });
     }
+
+    permissions = _tpa.permissions || permissions;
+    webviewURL = _tpa.webviewURL;
+
+    // Build TPA config from database data
+    const tpaConfig = {
+      name: _tpa.name || tpaName,
+      description: _tpa.description || '',
+      version: _tpa.version || "1.0.0",
+      settings: _tpa.settings || []
+    };
 
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
@@ -101,7 +76,7 @@ router.get('/:tpaName', async (req, res) => {
     let storedSettings = user.getAppSettings(tpaName);
     if (!storedSettings) {
       // Build default settings from config (ignoring groups)
-      const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings) 
+      const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
         ? tpaConfig.settings
             .filter((setting: any) => setting.type !== 'group')
             .map((setting: any) => ({
@@ -166,30 +141,21 @@ router.get('/user/:tpaName', async (req, res) => {
     let storedSettings = user.getAppSettings(tpaName);
 
     if (!storedSettings && tpaName !== systemApps.dashboard.packageName) {
-      let tpaConfig;
-      try {
-        const _tpa = await appService.getApp(tpaName);
-        const host = Object.values(systemApps).find(app => app.packageName === tpaName)?.host;
+      // Get TPA configuration from database instead of tpa_config.json
+      const _tpa = await appService.getApp(tpaName);
 
-        if (!host || !_tpa) {
-          throw new Error('Port / TPA not found for app ' + tpaName);
-        }
-        const _tpaConfig = (await axios.get(`http://${host}/tpa_config.json`)).data;
-        tpaConfig = _tpaConfig;
-      } catch (err) {
-        const _tpa = await appService.getApp(tpaName);
-        if (_tpa) {
-          tpaConfig = {
-            name: _tpa.name || tpaName,
-            description: _tpa.description || '',
-            version: "1.0.0",
-            settings: []
-          }
-        } else {
-          logger.error('Error reading TPA config file:', err);
-          return res.status(500).json({ error: 'Error reading TPA config file' });
-        }
+      if (!_tpa) {
+        logger.error('TPA not found for app:', tpaName);
+        return res.status(404).json({ error: 'TPA not found' });
       }
+
+      // Build TPA config from database data
+      const tpaConfig = {
+        name: _tpa.name || tpaName,
+        description: _tpa.description || '',
+        version: _tpa.version || "1.0.0",
+        settings: _tpa.settings || []
+      };
 
       const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
         ? tpaConfig.settings
