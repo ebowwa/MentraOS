@@ -493,7 +493,13 @@ class ServerComms {
   
   private func getServerUrl() -> String {
     if (!self.serverUrl.isEmpty) {
-      return self.serverUrl
+      // parse the url from the string:
+      let url = URL(string: self.serverUrl)!
+      let host = url.host!
+      let port = url.port!
+      let secure = url.scheme == "https"
+      let wsUrl = "\(secure ? "wss" : "ws")://\(host):\(port)/glasses-ws"
+      return wsUrl
     }
     let host = RNCConfig.env(for: "AUGMENTOS_HOST")!;
     let port = RNCConfig.env(for: "AUGMENTOS_PORT")!;

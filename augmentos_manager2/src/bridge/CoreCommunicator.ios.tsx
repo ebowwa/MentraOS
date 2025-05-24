@@ -11,8 +11,8 @@ import {check, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import BleManager from 'react-native-ble-manager';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 
-const {CoreCommsService, AOSModule} = NativeModules;
-const eventEmitter = new NativeEventEmitter(CoreCommsService);
+const {AOSModule} = NativeModules;
+const eventEmitter = new NativeEventEmitter(AOSModule);
 
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null;

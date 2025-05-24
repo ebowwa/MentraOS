@@ -25,7 +25,7 @@ import {showAlert} from "@/utils/AlertUtils"
 import {shareFile} from "@/utils/FileUtils"
 import RNFS from "react-native-fs"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
-// import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
+import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 import {ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -252,10 +252,10 @@ export default function GlassesMirror() {
       ToastAndroid.show("Some cloud items could not be loaded", ToastAndroid.SHORT)
     } else if (shouldShowCloudWarning) {
       // Use a non-blocking approach for iOS instead of an alert
-      // GlobalEventEmitter.emit('SHOW_BANNER', {
-      //   message: 'Some cloud items could not be loaded',
-      //   type: 'warning'
-      // });
+      GlobalEventEmitter.emit('SHOW_BANNER', {
+        message: 'Some cloud items could not be loaded',
+        type: 'warning'
+      });
     }
 
     setIsLoading(false)

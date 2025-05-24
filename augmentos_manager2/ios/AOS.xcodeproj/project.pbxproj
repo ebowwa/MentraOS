@@ -22,9 +22,7 @@
 		C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97952DDD0EA80032FC99 /* MediaManager.swift */; };
 		C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97942DDD0EA80032FC99 /* LocationManager.swift */; };
 		C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97972DDD0EA80032FC99 /* Models.swift */; };
-		C5DE97A72DDD0EA80032FC99 /* CoreCommsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978E2DDD0EA80032FC99 /* CoreCommsService.swift */; };
 		C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978F2DDD0EA80032FC99 /* Enums.swift */; };
-		C5DE97AB2DDD0EA80032FC99 /* CoreCommsService.m in Sources */ = {isa = PBXBuildFile; fileRef = C5DE978D2DDD0EA80032FC99 /* CoreCommsService.m */; };
 		C5DE97AD2DDD0EA80032FC99 /* G1Text.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97932DDD0EA80032FC99 /* G1Text.swift */; };
 		C5DE97AE2DDD0EA80032FC99 /* MicrophoneManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE97962DDD0EA80032FC99 /* MicrophoneManager.swift */; };
 		C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DE979C2DDD0EA80032FC99 /* WebSocketManager.swift */; };
@@ -78,8 +76,6 @@
 		C5DE97892DDD0EA80032FC99 /* AOSModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AOSModule.h; sourceTree = "<group>"; };
 		C5DE978A2DDD0EA80032FC99 /* AOSModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AOSModule.m; sourceTree = "<group>"; };
 		C5DE978C2DDD0EA80032FC99 /* CalendarManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarManager.swift; sourceTree = "<group>"; };
-		C5DE978D2DDD0EA80032FC99 /* CoreCommsService.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CoreCommsService.m; sourceTree = "<group>"; };
-		C5DE978E2DDD0EA80032FC99 /* CoreCommsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreCommsService.swift; sourceTree = "<group>"; };
 		C5DE978F2DDD0EA80032FC99 /* Enums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Enums.swift; sourceTree = "<group>"; };
 		C5DE97902DDD0EA80032FC99 /* ERG1Manager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ERG1Manager.swift; sourceTree = "<group>"; };
 		C5DE97932DDD0EA80032FC99 /* G1Text.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = G1Text.swift; sourceTree = "<group>"; };
@@ -163,8 +159,6 @@
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FAF1A68108700A75B9A /* AppDelegate.h */,
 				13B07FB01A68108700A75B9A /* AppDelegate.mm */,
-				C5DE978D2DDD0EA80032FC99 /* CoreCommsService.m */,
-				C5DE978E2DDD0EA80032FC99 /* CoreCommsService.swift */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
@@ -596,7 +590,6 @@
 				C5DE97A22DDD0EA80032FC99 /* MediaManager.swift in Sources */,
 				C5DE97A42DDD0EA80032FC99 /* LocationManager.swift in Sources */,
 				C5DE97A62DDD0EA80032FC99 /* Models.swift in Sources */,
-				C5DE97A72DDD0EA80032FC99 /* CoreCommsService.swift in Sources */,
 				C5DE97A92DDD0EA80032FC99 /* Enums.swift in Sources */,
 				C5DE98472DDD0F420032FC99 /* SileroVAD.swift in Sources */,
 				C5DE98482DDD0F420032FC99 /* lc3.c in Sources */,
@@ -623,7 +616,6 @@
 				C5DE985D2DDD0F420032FC99 /* bwdet.c in Sources */,
 				C5DE985E2DDD0F420032FC99 /* VADState.swift in Sources */,
 				C5DE985F2DDD0F420032FC99 /* sns.c in Sources */,
-				C5DE97AB2DDD0EA80032FC99 /* CoreCommsService.m in Sources */,
 				C5DE97AD2DDD0EA80032FC99 /* G1Text.swift in Sources */,
 				C5DE97AE2DDD0EA80032FC99 /* MicrophoneManager.swift in Sources */,
 				C5DE97AF2DDD0EA80032FC99 /* WebSocketManager.swift in Sources */,
@@ -664,7 +656,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentos;
-				PRODUCT_NAME = "AugmentOS";
+				PRODUCT_NAME = AugmentOS;
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -696,7 +688,7 @@
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.augmentos.augmentos;
-				PRODUCT_NAME = "AugmentOS";
+				PRODUCT_NAME = AugmentOS;
 				SWIFT_OBJC_BRIDGING_HEADER = "BleManager/AOS-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -760,10 +752,7 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -819,10 +808,7 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

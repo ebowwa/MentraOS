@@ -24,7 +24,7 @@ import VideoItem from '@/components/misc/VideoItem';
 import PhotoItem from '@/components/misc/PhotoItem';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 import { router } from 'expo-router';
-// import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
+import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 
 interface GlassesRecordingsGalleryProps {
   isDarkTheme: boolean;
@@ -270,10 +270,10 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
       ToastAndroid.show('Some cloud items could not be loaded', ToastAndroid.SHORT);
     } else if (shouldShowCloudWarning) {
       // Use a non-blocking approach for iOS instead of an alert
-      // GlobalEventEmitter.emit('SHOW_BANNER', { 
-      //   message: 'Some cloud items could not be loaded', 
-      //   type: 'warning' 
-      // });
+      GlobalEventEmitter.emit('SHOW_BANNER', { 
+        message: 'Some cloud items could not be loaded', 
+        type: 'warning' 
+      });
     }
     
     setIsLoading(false);
@@ -327,10 +327,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
       const fileName = filePath.split('/').pop() || '';
       
       // Navigate to our custom video player screen
-      navigation.navigate('VideoPlayerScreen', {
-        filePath: filePath,
-        fileName: fileName,
-      });
+      router.push({pathname: '/mirror/video-player', params: {filePath: filePath, fileName: fileName}});
     } catch (error) {
       console.error('Error playing video:', error);
       showAlert('Playback Error', 

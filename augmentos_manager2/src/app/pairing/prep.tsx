@@ -1,22 +1,16 @@
 import React from "react"
-import {View, Text, StyleSheet, ScrollView, Platform, Linking} from "react-native"
-import {useNavigation, useRoute} from "@react-navigation/native"
-import Icon from "react-native-vector-icons/FontAwesome"
+import {View, Text, StyleSheet, Platform, Linking} from "react-native"
+import {useRoute} from "@react-navigation/native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
-import {getGlassesImage} from "@/utils/getGlassesImage"
-import PairingDeviceInfo from "@/components/misc/PairingDeviceInfo"
 import {getPairingGuide} from "@/utils/getPairingGuide"
-// import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 import {PermissionsAndroid} from "react-native"
-import {requestFeaturePermissions, PermissionFeatures, handlePreviouslyDeniedPermission} from "@/utils/PermissionsUtils"
+import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import {showAlert} from "@/utils/AlertUtils"
 import {Button, Header} from "@/components/ignite"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
+import coreCommunicator from "@/bridge/CoreCommunicator"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 

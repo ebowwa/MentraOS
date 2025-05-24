@@ -1,23 +1,14 @@
 // src/AppSettings.tsx
-import React, {useEffect, useState, useMemo, useLayoutEffect} from "react"
+import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback} from "react"
 import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
-  ScrollView,
-  Image,
-  ImageBackground,
   TouchableOpacity,
   Alert,
-  Platform,
-  KeyboardAvoidingView,
 } from "react-native"
-import {NativeStackScreenProps} from "@react-navigation/native-stack"
-import {RootStackParamList} from "@/components/misc/types"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
-import TextSetting from "@/components/settings/TextSetting"
 import TextSettingNoSave from "@/components/settings/TextSettingNoSave"
 import SliderSetting from "@/components/settings/SliderSetting"
 import SelectSetting from "@/components/settings/SelectSetting"
@@ -27,13 +18,13 @@ import LoadingOverlay from "@/components/misc/LoadingOverlay"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
-import {getAppImage} from "@/utils/getAppImage"
-// import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
+import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
+import { router, useFocusEffect } from "expo-router"
 
 export default function AppSettings() {
   const {packageName, appName} = route.params
@@ -57,6 +48,12 @@ export default function AppSettings() {
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
 
   console.log("AppInfo", appInfo)
+
+  useFocusEffect(
+    useCallback(() => {
+      console.log("AppSettings focused")
+    }, [])
+  )
 
   // Handle app start/stop actions with debouncing
   const handleStartStopApp = async () => {
@@ -143,21 +140,22 @@ export default function AppSettings() {
             await backendServerComms.uninstallApp(packageName)
 
             // Show success message
-            // GlobalEventEmitter.emit('SHOW_BANNER', {
-            //   message: `${appInfo?.name || appName} has been uninstalled successfully`,
-            //   type: 'success',
-            // });
+            GlobalEventEmitter.emit('SHOW_BANNER', {
+              message: `${appInfo?.name || appName} has been uninstalled successfully`,
+              type: 'success',
+            });
 
             // Navigate back to the previous screen
-            navigation.goBack()
+            // navigation.goBack()
+            router.back()
           } catch (error: any) {
             console.error("Error uninstalling app:", error)
             clearPendingOperation(packageName)
             refreshAppStatus()
-            // GlobalEventEmitter.emit('SHOW_BANNER', {
-            //   message: `Error uninstalling app: ${error.message || 'Unknown error'}`,
-            //   type: 'error',
-            // });
+            GlobalEventEmitter.emit('SHOW_BANNER', {
+              message: `Error uninstalling app: ${error.message || 'Unknown error'}`,
+              type: 'error',
+            });
           } finally {
             setIsUninstalling(false)
           }
@@ -169,29 +167,30 @@ export default function AppSettings() {
   // Add header button when webviewURL exists
   useLayoutEffect(() => {
     if (serverAppInfo?.webviewURL) {
-      navigation.setOptions({
-        headerRight: () => (
-          <View style={{marginRight: 8}}>
-            <FontAwesome.Button
-              name="globe"
-              size={22}
-              color={isDarkTheme ? "#FFFFFF" : "#000000"}
-              backgroundColor="transparent"
-              underlayColor="transparent"
-              onPress={() => {
-                navigation.replace("AppWebView", {
-                  webviewURL: serverAppInfo.webviewURL,
-                  appName: appName,
-                  packageName: packageName,
-                  fromSettings: true,
-                })
-              }}
-              style={{padding: 0, margin: 0}}
-              iconStyle={{marginRight: 0}}
-            />
-          </View>
-        ),
-      })
+      // TODO2.0:
+      // navigation.setOptions({
+      //   headerRight: () => (
+      //     <View style={{marginRight: 8}}>
+      //       <FontAwesome.Button
+      //         name="globe"
+      //         size={22}
+      //         color={isDarkTheme ? "#FFFFFF" : "#000000"}
+      //         backgroundColor="transparent"
+      //         underlayColor="transparent"
+      //         onPress={() => {
+      //           navigation.replace("AppWebView", {
+      //             webviewURL: serverAppInfo.webviewURL,
+      //             appName: appName,
+      //             packageName: packageName,
+      //             fromSettings: true,
+      //           })
+      //         }}
+      //         style={{padding: 0, margin: 0}}
+      //         iconStyle={{marginRight: 0}}
+      //       />
+      //     </View>
+      //   ),
+      // })
     }
   }, [serverAppInfo, navigation, isDarkTheme, packageName, appName])
 
