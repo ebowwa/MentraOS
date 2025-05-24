@@ -43,7 +43,7 @@ RCT_EXPORT_MODULE(AOSModule);
 }
 
 // Method to emit events from other parts of the code
-+ (void)emitEvent:(NSString *)eventName body:(id)body {
++ (void)emitEventWithName:(NSString *)eventName body:(id)body {
     if (sharedEmitter && sharedEmitter.bridge) {
         [sharedEmitter sendEventWithName:eventName body:body];
     }

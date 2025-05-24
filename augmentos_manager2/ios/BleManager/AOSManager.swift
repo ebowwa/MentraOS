@@ -444,7 +444,7 @@ struct ViewState {
       
       let eventStr = currentViewState.eventStr
       if eventStr != "" {
-//        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: eventStr)
       }
       
       if self.defaultWearable.contains("Simulated") || self.defaultWearable.isEmpty {
@@ -1090,7 +1090,7 @@ struct ViewState {
     do {
       let jsonData = try JSONSerialization.data(withJSONObject: wrapperObj, options: [])
       if let jsonString = String(data: jsonData, encoding: .utf8) {
-        AOSModule.emitEvent("CoreMessageEvent", body: jsonString)
+        CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
       }
     } catch {
       print("Error converting to JSON: \(error)")

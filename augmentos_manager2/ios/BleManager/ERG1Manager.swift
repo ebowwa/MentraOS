@@ -1144,7 +1144,7 @@ extension ERG1Manager: CBCentralManagerDelegate, CBPeripheralDelegate {
       do {
         let jsonData = try JSONSerialization.data(withJSONObject: eventBody, options: [])
         if let jsonString = String(data: jsonData, encoding: .utf8) {
-          AOSModule.emitEvent("CoreMessageEvent", body: jsonString)
+          CoreCommsService.emitter.sendEvent(withName: "CoreMessageEvent", body: jsonString)
         }
       } catch {
         print("Error converting to JSON: \(error)")

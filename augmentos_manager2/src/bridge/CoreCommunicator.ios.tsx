@@ -11,8 +11,8 @@ import {check, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import BleManager from 'react-native-ble-manager';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 
-const {AOSModule} = NativeModules;
-const eventEmitter = new NativeEventEmitter(AOSModule);
+const {CoreCommsService, AOSModule} = NativeModules;
+const eventEmitter = new NativeEventEmitter(CoreCommsService);
 
 export class CoreCommunicator extends EventEmitter {
   private static instance: CoreCommunicator | null = null;
@@ -174,11 +174,7 @@ export class CoreCommunicator extends EventEmitter {
     // }
 
     // Start the external service
-    try {
-      startExternalService();
-    } catch (error) {
-      console.error('Error starting external service:', error);
-    }
+    startExternalService();
 
     // Initialize message event listener
     this.initializeMessageEventListener();
