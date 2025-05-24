@@ -25,7 +25,8 @@ import {
   createTranscriptionStream,
   isValidLanguageCode,
   createTranslationStream,
-  CustomMessage
+  CustomMessage,
+  RtmpStreamStatus
 } from '../../types';
 import { DashboardMode } from '../../types/dashboard';
 
@@ -68,6 +69,7 @@ export interface StreamDataTypes {
   [StreamType.NOTIFICATION_DISMISSED]: NotificationDismissed;
   [StreamType.AUDIO_CHUNK]: AudioChunk;
   [StreamType.VIDEO]: ArrayBuffer;
+  [StreamType.RTMP_STREAM_STATUS]: RtmpStreamStatus; // Using any for now, should be StreamStatus
   [StreamType.OPEN_DASHBOARD]: never;
   [StreamType.START_APP]: never;
   [StreamType.STOP_APP]: never;

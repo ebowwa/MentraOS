@@ -656,8 +656,1172 @@ Similar flow to photos but with longer duration:
 - Can start/stop recording based on server response
 - Video files are queued and uploaded similar to photos
 
+## RTMP Streaming System
+
+The AugmentOS platform also provides capabilities for third-party apps (TPAs) to request live video streaming via RTMP (Real-Time Messaging Protocol). This feature allows TPAs to receive live video feeds from the smart glasses for various use cases such as remote assistance, live broadcasting, and real-time analysis.
+
+### RTMP Streaming Options
+
+TPAs have two main options for RTMP streaming:
+
+#### Option 1: Direct RTMP Streaming to TPA-provided URL
+
+1. **TPA Initiates Stream Request**:
+   - TPA sends a WebSocket message to AugmentOS Cloud with:
+     ```typescript
+     {
+       type: "rtmp_stream_request",
+       rtmpUrl: "rtmp://destination-server/stream-key",
+       parameters: {
+         resolution: "720p",  // Optional streaming quality
+         bitrate: 1500000,    // Optional bitrate in bps
+         durationLimit: 300   // Optional duration limit in seconds
+       }
+     }
+     ```
+
+2. **Cloud Server Processing**:
+   - Cloud generates a unique `streamId` for tracking
+   - Cloud validates the request and TPA permissions
+   - Cloud routes request to the connected smart glasses
+
+3. **Smart Glasses Setup Stream**:
+   - Glasses receive command with RTMP destination 
+   - Glasses initialize camera and RTMP encoder
+   - Glasses begin streaming directly to provided RTMP URL
+
+4. **Status Updates**:
+   - Glasses send streaming status updates to the Cloud
+   - Cloud forwards status messages to the requesting TPA
+   - These include stream start, errors, and statistics
+
+5. **Stream Termination**:
+   - TPA can send explicit stop request with the `streamId`
+   - Alternatively, glasses can auto-terminate based on constraints like duration, battery level, or temperature
+
+#### Option 2: Cloud-Mediated RTMP Streaming
+
+1. **TPA Initiates Generic Stream Request**:
+   - TPA sends a WebSocket message without specifying an RTMP URL:
+     ```typescript
+     {
+       type: "rtmp_stream_request",
+       parameters: {
+         resolution: "720p",
+         bitrate: 1500000,
+         durationLimit: 300
+       }
+     }
+     ```
+
+2. **Cloud Server Setup**:
+   - Cloud generates a unique `streamId`
+   - Cloud creates a temporary RTMP ingestion endpoint
+   - Cloud creates viewable stream URLs for the TPA
+
+3. **Cloud Initiates Glasses Stream**:
+   - Cloud sends command to glasses with the cloud's RTMP ingestion URL
+   - Glasses initialize camera and RTMP encoder
+   - Glasses stream to cloud's RTMP ingestion endpoint
+
+4. **Cloud Stream Processing**:
+   - Cloud receives the RTMP stream from glasses
+   - Cloud optionally transcodes to different formats/qualities
+   - Cloud makes stream available to the TPA through:
+     - Direct RTMP URL for re-streaming: `rtmp://stream.augmentos.cloud/live/{streamId}`
+     - HLS URL for web playback: `https://stream.augmentos.cloud/streams/{streamId}/index.m3u8`
+     - WebRTC option for ultra-low-latency playback
+
+5. **TPA Access**:
+   - TPA receives stream access details via WebSocket:
+     ```typescript
+     {
+       type: "rtmp_stream_response",
+       streamId: "stream-uuid-1234",
+       status: "active",
+       accessUrls: {
+         rtmp: "rtmp://stream.augmentos.cloud/live/stream-uuid-1234",
+         hls: "https://stream.augmentos.cloud/streams/stream-uuid-1234/index.m3u8",
+         webrtc: "wss://stream.augmentos.cloud/webrtc/stream-uuid-1234"
+       },
+       accessToken: "jwt-token-for-authenticated-access",
+       expiresAt: "2023-12-31T23:59:59Z"
+     }
+     ```
+
+6. **Stream Termination**:
+   - Similar to Option 1, with added cloud resource cleanup
+
+### Implementation Components
+
+#### Smart Glasses Implementation
+
+The smart glasses client will need the following components:
+
+1. **Enhanced MediaCaptureService**:
+   - Extended to support RTMP streaming
+   - Manages camera preview during streaming
+   - Handles streaming lifecycle (start, monitor, stop)
+
+2. **RTMP Client**:
+   - Utilizes librtmp or similar library
+   - Handles packet encoding and transmission
+   - Provides real-time statistics for monitoring
+
+3. **Streaming Command Handlers**:
+   ```java
+   case "start_rtmp_stream":
+       String streamId = dataToProcess.optString("streamId", "");
+       String rtmpUrl = dataToProcess.optString("rtmpUrl", "");
+       JSONObject parameters = dataToProcess.optJSONObject("parameters");
+       
+       if (streamId.isEmpty() || rtmpUrl.isEmpty()) {
+           Log.e(TAG, "Cannot start RTMP stream - missing required parameters");
+           return;
+       }
+       
+       // Initialize and start streaming
+       mMediaCaptureService.startRtmpStream(streamId, rtmpUrl, parameters);
+       break;
+       
+   case "stop_rtmp_stream":
+       String streamId = dataToProcess.optString("streamId", "");
+       
+       if (streamId.isEmpty()) {
+           Log.e(TAG, "Cannot stop RTMP stream - missing streamId");
+           return;
+       }
+       
+       // Stop the stream
+       mMediaCaptureService.stopRtmpStream(streamId);
+       break;
+   ```
+
+#### Cloud Server Implementation
+
+The cloud server requires:
+
+1. **Streaming Service**:
+   - Similar to the `photoRequestService` but for streaming:
+   ```typescript
+   class StreamingService {
+     private activeStreams = new Map<string, StreamRequest>();
+     
+     // Create a new streaming request
+     createStreamRequest(userId: string, appId: string, options: StreamOptions): string {
+       const streamId = uuidv4();
+       // Create and track the request...
+       return streamId;
+     }
+     
+     // Handle stream status updates
+     updateStreamStatus(streamId: string, status: StreamStatus): boolean {
+       // Update status and notify TPAs...
+     }
+     
+     // For cloud-mediated streams, provision stream endpoint
+     provisionStreamEndpoint(streamId: string): StreamEndpoint {
+       // Create temporary RTMP ingest endpoint...
+     }
+   }
+   ```
+
+2. **RTMP/HLS Infrastructure** (for Option 2):
+   - RTMP ingestion server
+   - Media server for transcoding and HLS packaging
+   - CDN integration for scalable delivery
+
+3. **WebSocket Message Handlers**:
+   - New message types for stream requests and status updates
+   - Routing between TPAs and the smart glasses
+
+#### TPA SDK Integration
+
+The SDK would be enhanced with streaming APIs:
+
+```typescript
+// Example TPA code using AugmentOS SDK
+import { AugmentOSClient } from 'augmentos-sdk';
+
+// Initialize the client
+const client = new AugmentOSClient({
+  appId: 'com.example.myapp',
+  apiKey: 'your-api-key'
+});
+
+// Request an RTMP stream
+async function startLiveStream() {
+  try {
+    // Option 1: Stream to TPA-provided RTMP URL
+    const { streamId } = await client.streaming.requestRtmpStream({
+      rtmpUrl: 'rtmp://my-server.example.com/live/my-stream-key',
+      resolution: '720p',
+      bitrate: 1500000
+    });
+    
+    console.log(`RTMP stream started with ID: ${streamId}`);
+    
+    // Listen for status updates
+    client.streaming.onStreamStatusChange(streamId, (status) => {
+      console.log(`Stream status: ${status.state}, bitrate: ${status.bitrate}`);
+    });
+    
+    // OR
+    
+    // Option 2: Let the cloud handle streaming
+    const { streamId, accessUrls } = await client.streaming.requestStream({
+      resolution: '720p',
+      bitrate: 1500000
+    });
+    
+    console.log(`Stream started: ${streamId}`);
+    console.log(`HLS URL: ${accessUrls.hls}`);
+    
+    // Display the stream in your app
+    displayStream(accessUrls.hls);
+    
+  } catch (error) {
+    console.error('Error starting stream:', error);
+  }
+}
+
+// Stop the stream when done
+async function stopLiveStream(streamId) {
+  try {
+    await client.streaming.stopStream(streamId);
+    console.log(`Stream ${streamId} stopped`);
+  } catch (error) {
+    console.error('Error stopping stream:', error);
+  }
+}
+```
+
+### Technical Considerations
+
+1. **Bandwidth Management**:
+   - Smart glasses must monitor network conditions
+   - Adaptive bitrate adjustment based on available bandwidth
+   - Graceful degradation when connection quality drops
+
+2. **Battery & Thermal Management**:
+   - Video encoding is resource intensive
+   - Implement duration limits to prevent overheating
+   - Monitor battery drain rate and terminate if critical
+
+3. **Privacy & Security**:
+   - Visual indication when streaming (LED or on-screen)
+   - Secure stream access with expiring tokens
+   - Permission system for TPA streaming capabilities
+
+4. **Error Handling & Recovery**:
+   - Network interruptions during streaming
+   - Camera access failures
+   - Auto-reconnection within reasonable timeframe
+
+### Advantages & Disadvantages of Each Option
+
+**Option 1 (Direct RTMP)**:
+- ✅ Lower latency (direct path from glasses to destination)
+- ✅ Less cloud infrastructure and bandwidth costs
+- ✅ Simpler cloud implementation
+- ❌ TPA needs to handle RTMP ingestion
+- ❌ More complex error handling
+- ❌ Higher bandwidth usage on mobile connection
+
+**Option 2 (Cloud-Mediated)**:
+- ✅ Easier for TPAs (just get a viewable URL)
+- ✅ Better monitoring and diagnostics
+- ✅ Adaptive transcoding for different clients
+- ✅ Recording capability in the cloud
+- ❌ Higher latency
+- ❌ Higher cloud infrastructure costs
+- ❌ More complex server implementation
+
 ## Conclusion
 
-The AugmentOS button press system provides a flexible framework for handling physical button presses on smart glasses. The system prioritizes TPA integrations, allowing third-party apps to override default behaviors, but falls back to system-defined actions when no TPA is listening. This architecture supports both online and offline scenarios, ensuring that users can always capture photos and videos regardless of connectivity status.
+The AugmentOS platform provides a comprehensive media system that enables both photo capture and video streaming capabilities. The system prioritizes TPA integrations, allowing third-party apps to override default behaviors, but falls back to system-defined actions when no TPA is listening. 
 
-TPAs can also directly request photos through the AugmentOS SDK, following a different but complementary flow to the physical button press system. This allows applications to capture photos programmatically at the appropriate moments within their user experience.
+For photos, TPAs can request captures through the AugmentOS SDK, following a flow that ensures reliable delivery even in challenging network conditions.
+
+For real-time video, the RTMP streaming system gives TPAs flexibility in how they receive and process live video from smart glasses, either through direct streaming to their own endpoints or by leveraging cloud-mediated streaming that simplifies integration.
+
+This architecture supports both online and offline scenarios, ensuring that users can always capture photos and videos regardless of connectivity status, while providing TPAs with powerful tools to create rich, interactive experiences that leverage the smart glasses' camera capabilities.
+
+# RTMP Streaming Development Plan
+
+## Overview
+
+This plan outlines the implementation of direct RTMP streaming from smart glasses for TPAs. The approach leverages the existing `RtmpStreamingService` in the ASG client and follows the established TPA→Cloud→Phone→Glasses communication flow, similar to the photo taking system. We'll use the existing CAMERA permission for streaming access control.
+
+A key constraint is that the glasses can only support one active RTMP stream at a time, which simplifies our architecture but requires handling "BUSY" states when multiple TPAs request streaming.
+
+## Dual RTMP Streaming Systems
+
+AugmentOS will provide two distinct RTMP streaming options to TPAs:
+
+### 1. Direct RTMP Streaming (TPA-Controlled)
+
+- **Purpose**: Simple, low-latency streaming directly to TPA-provided RTMP endpoints
+- **Control**: Only the requesting TPA can control (start/stop)
+- **Use Cases**: Development, debugging, single-destination streaming
+- **Privacy Model**: Status updates are private to the requesting TPA, except "BUSY" status which is public
+
+#### Message Types (To Be Renamed)
+- Current: `RTMP_STREAM_REQUEST` → New: `START_DIRECT_RTMP_STREAM`
+- Current: `RTMP_STREAM_STOP` → New: `STOP_DIRECT_RTMP_STREAM`
+
+#### Implementation Requirements
+- When a TPA disconnects unexpectedly, the cloud should detect this and automatically send a stop command to glasses
+- This ensures streams don't continue indefinitely if a TPA crashes or loses connection
+
+### 2. Cloud-Mediated RTMP Streaming (Subscription-Based)
+
+- **Purpose**: Allow multiple TPAs to view the same stream, managed by the cloud
+- **Control**: Subscription-based (stream starts when first TPA subscribes, stops when last one unsubscribes)
+- **Use Cases**: Multiple viewers, dashboard integration, recording
+- **Privacy Model**: Fully public - all subscribers get all updates
+
+#### Message Types and Flow
+- **TPA → Cloud**: Subscribe to `StreamType.CLOUD_RTMP`
+- **Cloud → Glasses**: `GET_RTMP_STREAM` (when first subscriber arrives)
+  - The cloud provides the ingest URL: `rtmp://ingest.augmentos.cloud/live/{streamId}`
+- **Cloud → TPA**: `CLOUD_RTMP_STREAM_RESPONSE` with:
+  - `streamId`: Unique identifier for the stream
+  - `status`: Current stream status
+  - `accessUrls`: Object containing URLs for different protocols:
+    ```typescript
+    {
+      hls: "https://stream.augmentos.cloud/live/{streamId}/index.m3u8",
+      rtmp: "rtmp://stream.augmentos.cloud/watch/{streamId}"
+    }
+    ```
+
+#### Implementation Considerations
+- A `StreamSessionManager` will track stream sessions, similar to the photo request system
+- Stream will automatically stop when all subscribers disconnect or unsubscribe
+- New subscribers to an active stream will immediately receive current stream state and access URLs
+- The cloud will need to implement an RTMP ingest server and transmux to HLS for browser viewing
+
+### Edge Cases to Handle
+
+1. **Connection Management**:
+   - Glasses disconnect while streaming → Cloud detects and notifies subscribers
+   - TPA disconnects without unsubscribing → Automatic cleanup on WebSocket close
+   - Network interruptions → Reconnection logic with backoff
+
+2. **State Synchronization**:
+   - New TPA subscribes to ongoing stream → Provide current stream state immediately
+   - Stream fails to start → Notify subscribers with error status
+   - Glasses can't reach RTMP ingest → Detailed error reporting
+
+3. **Resource Control**:
+   - Timeout for inactive streams (e.g., no subscribers for 30 seconds)
+   - Stream duration limits with configurable timeouts
+   - Rate limiting for stream requests
+
+### Status Message Handling
+
+The two streaming systems will use different approaches for status updates:
+
+1. **Direct Streaming Status (RTMP_STATUS)**
+   - Keep `RTMP_STATUS` subscription type for direct streaming only
+   - Implement privacy filtering:
+     ```typescript
+     // Only send to the originating TPA unless it's a "busy" status
+     if (this.subscriptions.has(StreamType.RTMP_STATUS) && 
+         (message.status === "busy" || message.appId === this.config.packageName)) {
+       this.events.emit(StreamType.RTMP_STATUS, message);
+     }
+     ```
+   - Ensures TPAs only see their own stream status (except "busy")
+
+2. **Cloud Stream Status**
+   - Status updates delivered as part of the `GET_RTMP_STREAM` subscription
+   - No separate status subscription needed
+   - All subscribed TPAs receive all status updates
+   - Follows the pattern of other resource subscriptions
+
+This approach keeps the APIs clean and intuitive while properly handling the different privacy requirements of both streaming methods.
+
+### Technical Implementation
+
+The cloud-mediated system will build on subscription patterns already in the codebase:
+
+1. Create a `streamSessionService` to manage stream lifecycle
+2. Use the subscription system to track subscribers
+3. Extend the existing WebSocket message handlers for the new message types
+4. Set up RTMP ingest server with HLS transmuxing
+
+## Implementation Progress
+
+### Current Status: Phase 1 - Protocol & API Design ✅
+
+- [x] Plan finalized with glasses as source of truth architecture
+- [x] Define message schemas for WebSocket communication
+- [x] Create data models for streaming messages
+  - Added RtmpStreamRequest and RtmpStreamStopRequest interfaces
+  - Added RtmpStreamResponse interface for TPA notifications
+  - Added RtmpStreamStatus interface for glasses status updates
+- [x] Implement message handler in websocket.service.ts
+  - Added rtmp_stream_request and rtmp_stream_stop handlers
+  - Added RTMP_STREAM_STATUS message handler for glasses status updates
+  - Implemented status forwarding to TPAs
+
+### Current Status: Phase 2 - Smart Glasses Client Adaptations ✅
+
+- [x] Found existing start_rtmp_stream and stop_rtmp_stream command handling in AsgClientService
+- [x] Identified that status updates should be sent over BLE to the phone
+- [x] Updated streamingStatusCallback to send proper status updates using existing sendRtmpStatusResponse methods
+- [x] Added handling for each streaming state: initializing, streaming, error, reconnecting, stopped
+- [ ] Test RTMP streaming on smart glasses
+
+### Current Status: Phase 3 - Manager App Integration & Phase 4 - Cloud Server ✅
+
+- [x] Core manager app forwarding mechanism is already in place via BLE → Cloud
+- [x] Cloud RTMP status message handler implemented in websocket.service.ts
+
+### Current Status: Phase 5 - SDK Development ✅
+
+- [x] Design clean SDK interface for TPAs
+  - Created StreamingModule class integrated with TpaSession
+  - Implemented event-based stream status updates via onStatusChange handler
+  - Developed requestStream and stopStream methods following established SDK patterns
+  - Added comprehensive error handling and status management
+  - Created example code demonstrating usage of the streaming API
+  
+- [x] Clean up legacy VIDEO_STREAM_REQUEST implementation
+  - Completely removed VIDEO_STREAM_REQUEST from all TypeScript/JavaScript code in cloud/SDK
+  - Removed all interfaces, type guards, and message handlers related to VIDEO_STREAM_REQUEST
+  - Ensured RTMP streaming is the only streaming mechanism in the codebase
+  - Simplified the API surface to prevent confusion between two streaming implementations
+
+## Standardized RTMP Status Stream Implementation Plan
+
+### Overview
+
+We will implement a standardized way for TPAs to receive RTMP streaming status updates through the regular stream subscription mechanism. This will replace the current non-standard event-based approach with a clean, consistent API that follows the same patterns used for other stream types in the AugmentOS platform.
+
+### Implementation Plan
+
+#### 1. Update TpaSession Class to Handle RTMP_STATUS Subscriptions
+
+Modify the TpaSession class to emit RTMP status updates as regular stream events when a TPA is subscribed to the RTMP_STATUS stream type:
+
+```typescript
+// In TpaSession class (index.ts), modify the handleMessage method
+// Around line 930 where it handles isRtmpStreamResponse
+
+else if (isRtmpStreamResponse(message)) {
+  // Emit as a standard stream event if subscribed
+  if (this.subscriptions.has(StreamType.RTMP_STATUS)) {
+    this.events.emit(StreamType.RTMP_STATUS, message);
+  }
+  
+  // Update streaming module's internal state
+  this.streaming.updateStreamState(message);
+}
+```
+
+#### 2. Remove the onStatusChange Method and EventEmitter from StreamingModule
+
+Remove the non-standard event handling completely and replace with a method that just updates internal state:
+
+```typescript
+// In StreamingModule class (streaming.ts)
+
+// Remove these properties:
+// private statusEmitter: EventEmitter;
+// private lastStatus?: StreamStatus;
+
+// Replace with just tracking the state:
+private currentStreamState?: StreamStatus;
+
+constructor(packageName: string, sessionId: string, send: (message: any) => void, session?: any) {
+  this.packageName = packageName;
+  this.sessionId = sessionId;
+  this.send = send;
+  this.session = session; // Store reference to session
+}
+
+// Replace handleStatusUpdate with updateStreamState that only updates internal state
+/**
+ * Update internal stream state based on a status message
+ * For internal use by TpaSession
+ * @param message - The status message from the cloud
+ */
+updateStreamState(message: any): void {
+  // Verify this is a valid stream response
+  if (!isRtmpStreamResponse(message)) {
+    console.warn('Received invalid stream status message', message);
+    return;
+  }
+
+  // Convert to StreamStatus format
+  const status: StreamStatus = {
+    status: message.status,
+    errorDetails: message.errorDetails,
+    appId: message.appId,
+    stats: message.stats,
+    timestamp: message.timestamp || new Date()
+  };
+
+  // Update local state based on status
+  if (status.status === 'stopped' || status.status === 'error') {
+    this.isStreaming = false;
+    this.currentStreamUrl = undefined;
+  }
+
+  // Save the latest status
+  this.currentStreamState = status;
+}
+```
+
+#### 3. Add Convenience Methods to StreamingModule for Standard Stream Subscription
+
+Add helper methods that use the standard subscription system:
+
+```typescript
+/**
+ * Subscribe to RTMP stream status updates
+ * This uses the standard stream subscription mechanism
+ */
+subscribeToStatusUpdates(): void {
+  if (this.session) {
+    this.session.subscribe(StreamType.RTMP_STATUS);
+  } else {
+    console.error('Cannot subscribe to status updates: session reference not available');
+  }
+}
+
+/**
+ * Unsubscribe from RTMP stream status updates
+ */
+unsubscribeFromStatusUpdates(): void {
+  if (this.session) {
+    this.session.unsubscribe(StreamType.RTMP_STATUS);
+  }
+}
+
+/**
+ * Listen for status updates using the standard event system
+ * @param handler - Function to call when stream status changes
+ * @returns Cleanup function to remove the handler
+ */
+onStatus(handler: StreamStatusHandler): () => void {
+  if (!this.session) {
+    console.error('Cannot listen for status updates: session reference not available');
+    return () => {};
+  }
+  
+  this.subscribeToStatusUpdates();
+  return this.session.on(StreamType.RTMP_STATUS, handler);
+}
+
+/**
+ * Get the current stream status
+ * @returns The current stream status, or undefined if not available
+ */
+getStreamStatus(): StreamStatus | undefined {
+  return this.currentStreamState;
+}
+```
+
+#### 4. Modify the StreamingModule Constructor to Accept Session Reference
+
+Update the StreamingModule constructor to accept a reference to the TpaSession:
+
+```typescript
+// In StreamingModule class (streaming.ts)
+
+private session?: any; // Reference to TpaSession
+
+constructor(packageName: string, sessionId: string, send: (message: any) => void, session?: any) {
+  this.packageName = packageName;
+  this.sessionId = sessionId;
+  this.send = send;
+  this.session = session; // Store reference to session
+}
+```
+
+#### 5. Update TpaSession Initialization of StreamingModule
+
+Update the TpaSession constructor to pass itself to the StreamingModule:
+
+```typescript
+// In TpaSession class (index.ts), around line 228
+
+// Initialize streaming module with session reference
+this.streaming = new StreamingModule(
+  this.config.packageName,
+  this.sessionId || 'unknown-session-id',
+  this.send.bind(this),
+  this // Pass session reference
+);
+```
+
+#### 6. Update Documentation in rtmp-stream.ts
+
+Update documentation to explain the standard subscription mechanism:
+
+```typescript
+/**
+ * RTMP status updates are received through the standard stream subscription mechanism:
+ * 
+ * ```typescript
+ * // Subscribe to status updates
+ * session.subscribe(StreamType.RTMP_STATUS);
+ * 
+ * // Listen for updates
+ * session.on(StreamType.RTMP_STATUS, (status) => {
+ *   console.log('RTMP Status:', status);
+ * });
+ * ```
+ * 
+ * Alternatively, use the StreamingModule's convenience methods:
+ * 
+ * ```typescript
+ * // This does both subscription and event listening in one call
+ * const cleanup = session.streaming.onStatus((status) => {
+ *   console.log('RTMP Status:', status);
+ * });
+ * 
+ * // When done:
+ * cleanup();
+ * ```
+ */
+```
+
+#### 7. Update Cloud-Side Code to Support RTMP_STATUS Subscriptions
+
+If needed (depends on server implementation), update the cloud-side code to recognize and handle RTMP_STATUS subscriptions properly.
+
+#### 8. Update Example Documentation and Developer Guide
+
+Update all examples in the developer documentation to use the standard subscription approach:
+
+```typescript
+// Example code for streaming
+const session = new TpaSession({...});
+
+// Subscribe to RTMP status updates
+session.subscribe(StreamType.RTMP_STATUS);
+
+// Listen for status updates
+session.on(StreamType.RTMP_STATUS, (status) => {
+  console.log('RTMP stream status:', status.status);
+  
+  if (status.status === 'active') {
+    console.log('Stream is now active!');
+  } else if (status.status === 'error') {
+    console.error('Stream error:', status.errorDetails);
+  }
+});
+
+// Request a stream
+await session.streaming.requestStream({
+  rtmpUrl: 'rtmp://streaming.example.com/live/stream-key',
+  video: {
+    width: 1280,
+    height: 720,
+    bitrate: 2000000
+  }
+});
+```
+
+#### 9. Create Integration Tests for RTMP_STATUS Subscription
+
+Create tests that verify the standard subscription mechanism works properly:
+
+```typescript
+// Test standard stream subscription mechanism
+test('session.on(StreamType.RTMP_STATUS) should receive status updates', () => {
+  // Implementation...
+});
+
+// Test convenience method
+test('streaming.onStatus should subscribe and receive status updates', () => {
+  // Implementation...
+});
+```
+
+#### 10. Update or Remove Affected Code
+
+Search for and update any code that might be using the old EventEmitter-based approach:
+
+1. Look for calls to `streaming.onStatusChange`
+2. Look for references to `streaming.lastStatus`
+3. Replace with the standard subscription approach
+
+#### 11. Consider Future Enhancements
+
+1. Type safety improvements:
+   - Use proper TypeScript interfaces for all method parameters
+   - Add stronger typing to the session reference in StreamingModule
+
+2. Error handling enhancements:
+   - Add more comprehensive error handling for edge cases
+   - Implement retry logic for failed stream requests
+
+3. Documentation improvements:
+   - Add JSDoc comments for all public methods
+   - Include code examples for common use cases
+
+4. Testing improvements:
+   - Add unit tests for all new methods
+   - Create end-to-end tests for the streaming functionality
+
+### Implementation Order and Dependencies
+
+1. Update the TpaSession class to handle RTMP_STATUS subscriptions
+2. Modify StreamingModule to remove the EventEmitter and add new methods
+3. Update StreamingModule constructor to accept session reference
+4. Update TpaSession initialization of StreamingModule
+5. Update documentation
+6. Update cloud-side code (if needed)
+7. Create tests
+8. Update developer guides and examples
+
+This approach standardizes on a single subscription mechanism, following the established patterns used throughout the AugmentOS SDK. By removing the non-standard event handling approach completely, we create a cleaner, more consistent API surface that will be easier for TPA developers to understand and use.
+
+## RTMP Streaming Keep-Alive System
+
+### Overview
+
+The keep-alive system ensures reliable RTMP streaming by preventing orphaned streams that continue running without cloud visibility. This system works for both direct RTMP streaming (Option 1) and future cloud-mediated streaming (Option 2).
+
+**Core Problem**: Without keep-alives, if the cloud↔glasses connection dies, streams can continue indefinitely with no way to stop them or know their status.
+
+**Solution**: Implement a timeout mechanism on glasses with periodic keep-alive pings from the cloud.
+
+### Architecture
+
+```
+Cloud: Track active streams → Send keep-alive every 30s → Glasses: Reset 60s timeout
+Glasses: Start 60s timeout → Receive keep-alive → Reset timeout → Timeout = Stop stream
+```
+
+### Current Implementation Status
+
+#### ✅ Already Implemented
+- **RTMP streaming handlers**: `start_rtmp_stream` and `stop_rtmp_stream` case handlers exist in AsgClientService.java
+- **Cloud message routing**: `rtmp_stream_request` and `rtmp_stream_stop` handlers exist in websocket.service.ts
+- **Status broadcasting**: `RTMP_STREAM_STATUS` broadcasts using existing `broadcastToTpa()` mechanism
+- **Integration infrastructure**: RtmpStreamingService integration and JSON command processing is in place
+- **Message types**: Core RTMP message types (`RTMP_STREAM_REQUEST`, `RTMP_STREAM_STOP`, `START_RTMP_STREAM`, `STOP_RTMP_STREAM`) exist
+
+#### 🚫 Missing Keep-Alive Components
+- **No timeout mechanism**: No stream timeout or keep-alive handling on glasses
+- **No stream state tracking**: No cloud-side tracking of active streams
+- **No keep-alive messages**: `KEEP_RTMP_STREAM_ALIVE` message type doesn't exist
+- **No streamId handling**: Current implementation doesn't generate or track streamIds
+- **No automatic cleanup**: No cleanup when TPAs disconnect unexpectedly
+
+### Implementation Requirements
+
+#### 1. Smart Glasses Client (AsgClientService.java) - ADD Keep-Alive Support
+
+**New Fields Required:**
+```java
+private Timer rtmpStreamTimeoutTimer;
+private String currentStreamId;
+private boolean isStreamingActive = false;
+private static final int STREAM_TIMEOUT_MS = 60000; // 60 seconds
+```
+
+**New Methods Required:**
+
+```java
+// Start timeout when stream begins
+private void scheduleStreamTimeout(String streamId) {
+    cancelStreamTimeout(); // Cancel any existing timeout
+    currentStreamId = streamId;
+    isStreamingActive = true;
+    
+    rtmpStreamTimeoutTimer = new Timer();
+    rtmpStreamTimeoutTimer.schedule(new TimerTask() {
+        @Override
+        public void run() {
+            Log.w(TAG, "RTMP stream timeout - no keep-alive received");
+            handleStreamTimeout(streamId);
+        }
+    }, STREAM_TIMEOUT_MS);
+}
+
+// Reset timeout when keep-alive received
+private void resetStreamTimeout() {
+    if (rtmpStreamTimeoutTimer != null && isStreamingActive) {
+        rtmpStreamTimeoutTimer.cancel();
+        scheduleStreamTimeout(currentStreamId); // Restart timer
+    }
+}
+
+// Handle timeout expiration
+private void handleStreamTimeout(String streamId) {
+    Log.e(TAG, "Stream timeout for streamId: " + streamId);
+    
+    // Stop the actual RTMP stream
+    if (mRtmpStreamingService != null) {
+        mRtmpStreamingService.stopStream();
+    }
+    
+    // Send status update
+    sendRtmpStatusResponse("timeout", streamId, "Stream timed out - no keep-alive received");
+    
+    // Cleanup
+    cancelStreamTimeout();
+}
+
+// Cancel timeout (when stream stops normally)
+private void cancelStreamTimeout() {
+    if (rtmpStreamTimeoutTimer != null) {
+        rtmpStreamTimeoutTimer.cancel();
+        rtmpStreamTimeoutTimer = null;
+    }
+    isStreamingActive = false;
+    currentStreamId = null;
+}
+```
+
+**Modified Command Handlers:**
+```java
+// MODIFY existing "start_rtmp_stream" case (currently exists but needs streamId support)
+case "start_rtmp_stream":
+    String streamId = dataToProcess.optString("streamId", "");
+    String rtmpUrl = dataToProcess.optString("rtmpUrl", "");
+    
+    // Existing streaming logic (already implemented)
+    com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl);
+    
+    // ADD: Start timeout timer for keep-alive
+    scheduleStreamTimeout(streamId);
+    break;
+
+// ADD: New keep-alive handler (doesn't exist)
+case "keep_rtmp_stream_alive":
+    Log.d(TAG, "Received keep-alive for stream");
+    resetStreamTimeout();
+    break;
+
+// MODIFY existing "stop_rtmp_stream" case (currently exists but needs timeout cleanup)
+case "stop_rtmp_stream":
+    // Existing stop logic (already implemented)
+    com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+    
+    // ADD: Cancel timeout timer
+    cancelStreamTimeout();
+    break;
+```
+
+#### 2. Cloud Server - ADD Stream State Tracking
+
+**New Service: `packages/cloud/src/services/streaming/streamTracker.service.ts`** (completely new file)
+
+```typescript
+interface ActiveStream {
+  streamId: string;
+  deviceId: string;
+  sessionId: string;
+  appId: string;
+  rtmpUrl: string;
+  startedAt: Date;
+  lastKeepAliveSent: Date;
+  status: 'starting' | 'active' | 'timeout' | 'stopped';
+}
+
+export class StreamTrackerService {
+  private static instance: StreamTrackerService;
+  private activeStreams = new Map<string, ActiveStream>();
+  private keepAliveInterval: NodeJS.Timeout;
+
+  constructor() {
+    // Start keep-alive sender
+    this.keepAliveInterval = setInterval(() => {
+      this.sendKeepAlives();
+    }, 30000); // Every 30 seconds
+  }
+
+  // Track new stream
+  startStream(streamId: string, deviceId: string, sessionId: string, appId: string, rtmpUrl: string): void {
+    const stream: ActiveStream = {
+      streamId,
+      deviceId,
+      sessionId,
+      appId,
+      rtmpUrl,
+      startedAt: new Date(),
+      lastKeepAliveSent: new Date(),
+      status: 'starting'
+    };
+    
+    this.activeStreams.set(streamId, stream);
+    logger.info(`Started tracking stream ${streamId} for device ${deviceId}`);
+  }
+
+  // Update stream status
+  updateStreamStatus(streamId: string, status: string): void {
+    const stream = this.activeStreams.get(streamId);
+    if (stream) {
+      stream.status = status as any;
+      if (status === 'stopped' || status === 'timeout' || status === 'error') {
+        this.activeStreams.delete(streamId);
+        logger.info(`Stopped tracking stream ${streamId}`);
+      }
+    }
+  }
+
+  // Send keep-alives to all active streams
+  private sendKeepAlives(): void {
+    for (const [streamId, stream] of this.activeStreams) {
+      if (stream.status === 'active' || stream.status === 'starting') {
+        try {
+          // Send keep-alive to glasses via websocket
+          this.sendKeepAliveToDevice(stream.deviceId, streamId);
+          stream.lastKeepAliveSent = new Date();
+          logger.debug(`Sent keep-alive for stream ${streamId}`);
+        } catch (error) {
+          logger.error(`Failed to send keep-alive for stream ${streamId}:`, error);
+        }
+      }
+    }
+  }
+
+  // Get all active streams for a device
+  getActiveStreamsForDevice(deviceId: string): ActiveStream[] {
+    return Array.from(this.activeStreams.values())
+      .filter(stream => stream.deviceId === deviceId);
+  }
+
+  // Check if device has active streams
+  hasActiveStreams(deviceId: string): boolean {
+    return this.getActiveStreamsForDevice(deviceId).length > 0;
+  }
+
+  private sendKeepAliveToDevice(deviceId: string, streamId: string): void {
+    const keepAliveMessage = {
+      type: 'keep_rtmp_stream_alive',
+      streamId,
+      timestamp: new Date()
+    };
+    
+    // Send via websocket service
+    WebSocketService.getInstance().sendToDevice(deviceId, keepAliveMessage);
+  }
+}
+```
+
+**Modified WebSocket Service:**
+```typescript
+// In websocket.service.ts - MODIFY existing handlers
+
+// MODIFY existing 'rtmp_stream_request' case (currently around line 1928)
+case 'rtmp_stream_request': {
+  // Existing validation logic (already implemented)...
+  if (!userSession) { ws.close(1008, 'No active session'); return; }
+  if (!rtmpUrl) { /* existing error handling */ }
+  
+  // ADD: Generate streamId and start tracking
+  const streamId = generateUniqueId();
+  StreamTrackerService.getInstance().startStream(
+    streamId,
+    userSession.deviceId,
+    userSession.sessionId,
+    packageName,
+    rtmpUrl
+  );
+  
+  // MODIFY: Add streamId to existing glasses message
+  userSession.websocket.send(JSON.stringify({
+    type: CloudToGlassesMessageType.START_RTMP_STREAM,
+    streamId,  // ADD this field
+    rtmpUrl,
+    appId,
+    video,
+    audio,
+    stream,
+    timestamp: new Date()
+  }));
+  
+  // Existing response logic (already implemented)...
+  break;
+}
+
+// MODIFY existing RTMP_STREAM_STATUS case (currently around line 1346)
+case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+  const rtmpStatusMessage = message as RtmpStreamStatus;
+  
+  // ADD: Update stream tracker
+  if (rtmpStatusMessage.streamId) {
+    StreamTrackerService.getInstance().updateStreamStatus(
+      rtmpStatusMessage.streamId,
+      rtmpStatusMessage.status
+    );
+  }
+  
+  // Existing broadcast logic (already implemented)...
+  this.broadcastToTpa(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
+  break;
+}
+
+// MODIFY existing 'rtmp_stream_stop' case (currently around line 1995)
+case 'rtmp_stream_stop': {
+  // Existing validation logic (already implemented)...
+  
+  // ADD: Stop tracking the stream
+  const stopMessage = message as any;
+  if (stopMessage.streamId) {
+    StreamTrackerService.getInstance().updateStreamStatus(stopMessage.streamId, 'stopped');
+  }
+  
+  // Existing stop command logic (already implemented)...
+  userSession.websocket.send(JSON.stringify({
+    type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
+    appId,
+    timestamp: new Date()
+  }));
+  break;
+}
+```
+
+#### 3. ADD New Message Types
+
+**In `packages/sdk/src/types/message-types.ts`:**
+```typescript
+// ADD to CloudToGlassesMessageType enum (currently around line 55)
+export enum CloudToGlassesMessageType {
+  // ... existing types ...
+  START_RTMP_STREAM = 'start_rtmp_stream',  // Already exists
+  STOP_RTMP_STREAM = 'stop_rtmp_stream',   // Already exists
+  KEEP_RTMP_STREAM_ALIVE = 'keep_rtmp_stream_alive',  // ADD this line
+
+  // ... rest of existing types ...
+}
+
+// Note: TpaToCloudMessageType.RTMP_STREAM_STOP already exists (line 93)
+```
+
+**In `packages/sdk/src/types/messages/cloud-to-glasses.ts`:**
+```typescript
+// ADD new interface
+export interface KeepRtmpStreamAlive {
+  type: 'keep_rtmp_stream_alive';
+  streamId: string;
+  timestamp: Date;
+}
+```
+
+### Message Type Naming Convention (Important!)
+
+The RTMP message types follow a directional naming pattern that can be confusing:
+
+**TPA → Cloud Messages**: `RTMP_STREAM_[ACTION]` format
+- `RTMP_STREAM_REQUEST` (`'rtmp_stream_request'`) - TPA requests stream start
+- `RTMP_STREAM_STOP` (`'rtmp_stream_stop'`) - TPA requests stream stop
+
+**Cloud → Glasses Messages**: `[ACTION]_RTMP_STREAM` format  
+- `START_RTMP_STREAM` (`'start_rtmp_stream'`) - Cloud tells glasses to start
+- `STOP_RTMP_STREAM` (`'stop_rtmp_stream'`) - Cloud tells glasses to stop
+
+**Message Flow Example:**
+```
+1. TPA sends: RTMP_STREAM_STOP → Cloud
+2. Cloud forwards: STOP_RTMP_STREAM → Glasses  
+3. Glasses responds: RTMP_STREAM_STATUS → Cloud → TPA
+```
+
+This means:
+- `RTMP_STREAM_STOP` and `STOP_RTMP_STREAM` are **different message types**
+- They represent the same logical action but flow in different directions
+- The cloud websocket service translates between these formats
+
+### Critical Edge Cases
+
+#### Connection Issues
+1. **Glasses disconnect during streaming**
+   - **Detection**: WebSocket close event
+   - **Solution**: Auto-cleanup streams for disconnected devices
+
+2. **Network interruption between keep-alives**
+   - **Detection**: Timeout on glasses side
+   - **Solution**: Graceful stream termination with status update
+
+3. **Cloud restart during active stream**
+   - **Detection**: No stream state on restart
+   - **Solution**: Glasses timeout will eventually stop orphaned streams
+
+#### Timing Issues
+4. **Keep-alive arrives just after timeout**
+   - **Detection**: Glasses receives keep-alive for stopped stream
+   - **Solution**: Ignore keep-alives for inactive streams
+
+5. **Multiple keep-alives in flight**
+   - **Detection**: Rapid succession of keep-alives
+   - **Solution**: Reset timer on each keep-alive (idempotent)
+
+6. **Clock skew between cloud and glasses**
+   - **Detection**: Timestamp mismatches
+   - **Solution**: Use relative timeouts, not absolute timestamps
+
+#### Stream Management
+7. **TPA disconnects without stopping stream**
+   - **Detection**: WebSocket close event
+   - **Solution**: Auto-stop streams for disconnected TPAs
+
+8. **Multiple TPAs try to start streams simultaneously**
+   - **Detection**: Existing active stream for device
+   - **Solution**: Return "BUSY" status to second requester
+
+9. **Stream fails to start but timeout is active**
+   - **Detection**: Error status from glasses
+   - **Solution**: Cancel timeout on any error status
+
+#### Resource Issues
+10. **Memory leak from uncleaned timeouts**
+    - **Detection**: Growing timer count
+    - **Solution**: Always cancel timers in cleanup methods
+
+11. **High CPU from frequent keep-alives**
+    - **Detection**: Performance monitoring
+    - **Solution**: Configurable keep-alive intervals
+
+12. **Glasses battery dies during streaming**
+    - **Detection**: No response to keep-alives
+    - **Solution**: Cloud timeout cleanup after missed keep-alives
+
+#### Protocol Issues
+13. **Message order issues (stop before keep-alive)**
+    - **Detection**: Keep-alive for stopped stream
+    - **Solution**: Check stream state before processing keep-alives
+
+14. **Duplicate stream start requests**
+    - **Detection**: Same streamId used twice
+    - **Solution**: Use unique IDs and check for existing streams
+
+15. **Malformed keep-alive messages**
+    - **Detection**: Invalid JSON or missing fields
+    - **Solution**: Validate messages and log errors
+
+### Benefits
+
+1. **Reliability**: Prevents orphaned streams that run indefinitely
+2. **Observability**: Cloud always knows actual stream state
+3. **Resource Management**: Automatic cleanup of dead streams
+4. **Universal**: Works for both direct and cloud-mediated streaming
+5. **Battery Protection**: Limits maximum stream duration on glasses
+
+### Implementation Summary
+
+**Foundation Exists**: The basic RTMP streaming functionality is already implemented with proper message routing and status broadcasting.
+
+**Missing Component**: The keep-alive reliability layer needs to be added on top of the existing infrastructure.
+
+**Required Work**:
+1. **AsgClientService.java**: Add timeout fields, methods, and keep-alive handler (4 new methods + 1 new case)
+2. **Cloud StreamTrackerService**: Create new service for stream state management (new file)
+3. **WebSocket Service**: Add streamId generation and stream tracking calls to existing handlers (3 modified cases)
+4. **Message Types**: Add KEEP_RTMP_STREAM_ALIVE type and interface (1 enum value + 1 interface)
+
+**Implementation Effort**: Medium - building on solid existing foundation, primarily adding timeout/tracking layer.
+
+### Implementation Priority
+
+This keep-alive system is **critical infrastructure** that should be implemented before any additional streaming features, as it provides the foundation for reliable stream management regardless of network conditions or connection failures. The good news is that 70% of the RTMP streaming system already exists - we're adding the reliability layer on top.

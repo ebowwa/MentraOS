@@ -1127,6 +1127,24 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         String type = json.optString("type", "");
         
         switch (type) {
+            case "rtmp_status":
+                // Process RTMP streaming status update from ASG client
+                Log.d(TAG, "Received RTMP status update from glasses: " + json.toString());
+                
+                try {
+                    // Convert rtmp_status to rtmp_stream_status for cloud compatibility
+                    JSONObject rtmpStatusMsg = new JSONObject(json.toString());
+                    rtmpStatusMsg.put("type", "rtmp_stream_status");
+                    
+                    // Forward to dataObservable for cloud communication
+                    if (dataObservable != null) {
+                        dataObservable.onNext(rtmpStatusMsg);
+                    }
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error processing RTMP status update", e);
+                }
+                break;
+                
             case "battery_status":
                 // Process battery status
                 int level = json.optInt("level", batteryLevel);
@@ -1469,14 +1487,37 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     }
     
     @Override
-    public void requestVideoStream() {
-        Log.d(TAG, "Requesting video stream");
+    public void requestRtmpStreamStart(JSONObject message) {
+    //    try {
+            JSONObject json = new JSONObject();
+            //String rtmpUrl=json.getString("rtmpUrl");
+            //Log.d(TAG, "Requesting RTMP stream to URL: " + rtmpUrl);
+            sendJson(message);
+//            json.put("type", "start_rtmp_stream");
+//            json.put("rtmpUrl", rtmpUrl);
+//
+//            // Add parameters if provided
+//            if (parameters != null) {
+//                // Just pass the parameters object directly
+//                json.put("parameters", parameters);
+//            }
+//
+//            sendJson(json);
+//        } catch (JSONException e) {
+//            Log.e(TAG, "Error creating RTMP stream request JSON", e);
+//        }
+    }
+    
+    @Override
+    public void stopRtmpStream() {
+        Log.d(TAG, "Requesting to stop RTMP stream");
         try {
             JSONObject json = new JSONObject();
-            json.put("type", "start_video_stream");
+            json.put("type", "stop_rtmp_stream");
+            
             sendJson(json);
         } catch (JSONException e) {
-            Log.e(TAG, "Error creating video stream request JSON", e);
+            Log.e(TAG, "Error creating RTMP stream stop JSON", e);
         }
     }
     

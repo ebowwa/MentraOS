@@ -177,7 +177,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         initializeStreamingCallbacks();
 
         // Start RTMP streaming for testing
-        startRtmpStreaming();
+        //startRtmpStreaming();
 
         // Recording test code (kept from original)
         // this.recordFor5Seconds();
@@ -1470,36 +1470,124 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 @Override
                 public void onStreamStarting(String rtmpUrl) {
                     Log.d(TAG, "RTMP Stream starting to: " + rtmpUrl);
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "initializing");
+                        sendRtmpStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP initializing status", e);
+                    }
                 }
 
                 @Override
                 public void onStreamStarted(String rtmpUrl) {
                     Log.d(TAG, "RTMP Stream successfully started to: " + rtmpUrl);
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "streaming");
+                        status.put("rtmpUrl", rtmpUrl);
+                        
+                        // Add some basic stats if available
+                        JSONObject stats = new JSONObject();
+                        stats.put("bitrate", 1500000);  // Default values as placeholders
+                        stats.put("fps", 30);
+                        stats.put("droppedFrames", 0);
+                        stats.put("duration", 0);
+                        status.put("stats", stats);
+                        
+                        sendRtmpStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP streaming status", e);
+                    }
                 }
 
                 @Override
                 public void onStreamStopped() {
                     Log.d(TAG, "RTMP Stream stopped");
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "stopped");
+                        sendRtmpStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP stopped status", e);
+                    }
                 }
 
                 @Override
                 public void onReconnecting(int attempt, int maxAttempts, String reason) {
                     Log.d(TAG, "RTMP Stream reconnecting: attempt " + attempt + " of " + maxAttempts + " (reason: " + reason + ")");
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "reconnecting");
+                        status.put("attempt", attempt);
+                        status.put("maxAttempts", maxAttempts);
+                        status.put("reason", reason);
+                        sendRtmpStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP reconnecting status", e);
+                    }
                 }
 
                 @Override
                 public void onReconnected(String rtmpUrl, int attempt) {
                     Log.d(TAG, "RTMP Stream reconnected to " + rtmpUrl + " after " + attempt + " attempts");
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "streaming");
+                        status.put("rtmpUrl", rtmpUrl);
+                        status.put("reconnected", true);
+                        status.put("attempts", attempt);
+                        sendRtmpStatusResponse(true, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP reconnected status", e);
+                    }
                 }
 
                 @Override
                 public void onReconnectFailed(int maxAttempts) {
                     Log.d(TAG, "RTMP Stream failed to reconnect after " + maxAttempts + " attempts");
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "error");
+                        status.put("errorDetails", "Failed to reconnect after " + maxAttempts + " attempts");
+                        sendRtmpStatusResponse(false, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP reconnect failed status", e);
+                    }
                 }
-
+                
                 @Override
                 public void onStreamError(String error) {
                     Log.e(TAG, "RTMP Stream error: " + error);
+                    
+                    // Send status update via BLE
+                    try {
+                        JSONObject status = new JSONObject();
+                        status.put("type", "rtmp_stream_status");
+                        status.put("status", "error");
+                        status.put("errorDetails", error);
+                        sendRtmpStatusResponse(false, status);
+                    } catch (JSONException e) {
+                        Log.e(TAG, "Error creating RTMP error status", e);
+                    }
                 }
             };
 

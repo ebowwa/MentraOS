@@ -1,10 +1,10 @@
 // src/messages/cloud-to-tpa.ts
 
 import { BaseMessage } from './base';
-import { CloudToTpaMessageType } from '../message-types';
+import { CloudToTpaMessageType, GlassesToCloudMessageType } from '../message-types';
 import { StreamType } from '../streams';
 import { AppSettings, TpaConfig } from '../models';
-import { LocationUpdate, CalendarEvent } from './glasses-to-cloud';
+import { LocationUpdate, CalendarEvent, RtmpStreamStatus, PhotoResponse } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
 import { TpaSession } from 'src/tpa/session';
 
@@ -167,24 +167,6 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
- * Photo response to TPA
- */
-export interface PhotoResponse extends BaseMessage {
-  type: CloudToTpaMessageType.PHOTO_RESPONSE;
-  photoUrl: string;
-  requestId: string;
-}
-
-/**
- * Video stream response to TPA
- */
-export interface VideoStreamResponse extends BaseMessage {
-  type: CloudToTpaMessageType.VIDEO_STREAM_RESPONSE;
-  streamUrl: string;
-  appId: string;
-}
-
-/**
  * Standard connection error (for server compatibility)
  */
 export interface StandardConnectionError extends BaseMessage {
@@ -216,13 +198,13 @@ export type CloudToTpaMessage =
   | LocationUpdate
   | CalendarEvent
   | DataStream
-  | PhotoResponse
-  | VideoStreamResponse
   | DashboardModeChanged
   | DashboardAlwaysOnChanged
   | CustomMessage
   | AugmentosSettingsUpdate
-  | CustomMessage;
+  | CustomMessage
+  | RtmpStreamStatus
+  | PhotoResponse;
 
 //===========================================================
 // Type guards
@@ -252,18 +234,18 @@ export function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk 
   return message.type === StreamType.AUDIO_CHUNK;
 }
 
-export function isPhotoResponse(message: CloudToTpaMessage): message is PhotoResponse {
-  return message.type === CloudToTpaMessageType.PHOTO_RESPONSE;
-}
-
-export function isVideoStreamResponse(message: CloudToTpaMessage): message is VideoStreamResponse {
-  return message.type === CloudToTpaMessageType.VIDEO_STREAM_RESPONSE;
-}
-
 export function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged {
   return message.type === CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
 }
 
 export function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is DashboardAlwaysOnChanged {
   return message.type === CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+}
+
+export function isRtmpStreamStatus(message: CloudToTpaMessage): message is RtmpStreamStatus {
+  return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
+}
+
+export function isPhotoResponse(message: CloudToTpaMessage): message is PhotoResponse {
+  return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
 }

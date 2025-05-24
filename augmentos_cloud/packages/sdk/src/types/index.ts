@@ -23,6 +23,9 @@ export * from './layouts';
 // Dashboard types
 export * from './dashboard';
 
+// RTMP streaming types
+export * from './rtmp-stream';
+
 // Other system enums
 export * from './enums';
 
@@ -59,7 +62,7 @@ export {
   OpenDashboard,
   GlassesToCloudMessage,
   PhotoResponse,
-  VideoStreamResponse,
+  RtmpStreamStatus
 } from './messages/glasses-to-cloud';
 
 // From messages/cloud-to-glasses.ts
@@ -77,6 +80,8 @@ export {
 export {
   TpaConnectionInit,
   TpaSubscriptionUpdate,
+  RtmpStreamRequest,
+  RtmpStreamStopRequest,
   TpaToCloudMessage
 } from './messages/tpa-to-cloud';
 
@@ -115,21 +120,22 @@ export {
   isConnectionAck,
   isDisplayEvent,
   isAppStateChange,
-  isPhotoRequest,
-  isVideoStreamRequest
+  isPhotoRequest
 } from './messages/cloud-to-glasses';
 
 export {
   isTpaConnectionInit,
   isTpaSubscriptionUpdate,
-  isDisplayRequest
+  isDisplayRequest,
+  isRtmpStreamRequest,
+  isRtmpStreamStopRequest
 } from './messages/tpa-to-cloud';
 
 export {
   isTpaConnectionAck,
   isDataStream,
   isAppStopped,
-  isSettingsUpdate
+  isSettingsUpdate,
 } from './messages/cloud-to-tpa';
 
 // Export setting-related types
@@ -142,7 +148,13 @@ export {
   ToolParameterSchema
 } from './models';
 
-
+// Export RTMP streaming types
+export {
+  VideoConfig,
+  AudioConfig,
+  StreamConfig,
+  StreamStatusHandler
+} from './rtmp-stream';
 
 /**
  * WebSocket error information

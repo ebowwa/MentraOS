@@ -77,14 +77,6 @@ export interface PhotoRequestToGlasses extends BaseMessage {
 }
 
 /**
- * Video stream request to glasses
- */
-export interface VideoStreamRequestToGlasses extends BaseMessage {
-  type: CloudToGlassesMessageType.VIDEO_STREAM_REQUEST;
-  userSession: Partial<UserSession>;
-  appId: string;
-}
-/**
  * Settings update to glasses
  */
 export interface SettingsUpdate extends BaseMessage {
@@ -115,7 +107,6 @@ export type CloudToGlassesMessage =
   | AppStateChange
   | MicrophoneStateChange
   | PhotoRequestToGlasses
-  | VideoStreamRequestToGlasses
   | SettingsUpdate;
 
 //===========================================================
@@ -159,6 +150,3 @@ export function isPhotoRequest(message: CloudToGlassesMessage): message is Photo
   return message.type === CloudToGlassesMessageType.PHOTO_REQUEST;
 }
 
-export function isVideoStreamRequest(message: CloudToGlassesMessage): message is VideoStreamRequestToGlasses {
-  return message.type === CloudToGlassesMessageType.VIDEO_STREAM_REQUEST;
-}

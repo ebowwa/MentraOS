@@ -60,8 +60,9 @@ import {
   SettingsUpdate,
   RequestSettings,
   CoreStatusUpdate,
-  VideoStreamRequest,
-  VideoStreamRequestToGlasses
+  RtmpStreamStatus,
+  // VideoStreamRequest,
+  // VideoStreamRequestToGlasses
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -647,7 +648,7 @@ export class WebSocketService {
       } else {
         // For non-system apps, use the public host
         augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
-        userSession.logger.info({augmentOSWebsocketUrl, packageName, name}, `Using public URL for app ${packageName}`);
+        userSession.logger.info({ augmentOSWebsocketUrl, packageName, name }, `Using public URL for app ${packageName}`);
       }
 
       userSession.logger.info(`🔥🔥🔥 [websocket.service]: Server WebSocket URL: ${augmentOSWebsocketUrl}`);
@@ -893,34 +894,9 @@ export class WebSocketService {
   }
 
   /**
-   * Forward a video stream response to the requesting TPA
-   * @param appId The ID of the app requesting the stream
-   * @param streamUrl The URL of the video stream
-   * @param userSession The user session
-   * @returns True if the response was forwarded, false if TPA not found or connection closed
+   * REMOVED: Video streaming functionality has been replaced by RTMP streaming
    */
-  forwardVideoStreamResponse(appId: string, streamUrl: string, userSession: UserSession): boolean {
-    // Find the TPA connection
-    const tpaWebSocket = userSession.appConnections.get(appId);
-
-    if (!tpaWebSocket || tpaWebSocket.readyState !== WebSocket.OPEN) {
-      logger.warn(`[websocket.service]: Cannot forward video stream response, TPA ${appId} not connected`);
-      return false;
-    }
-
-    // Send the video stream response to the TPA
-    const videoStreamResponse = {
-      type: CloudToTpaMessageType.VIDEO_STREAM_RESPONSE,
-      streamUrl,
-      appId,
-      timestamp: new Date()
-    };
-
-    tpaWebSocket.send(JSON.stringify(videoStreamResponse));
-    logger.info(`[websocket.service]: Video stream response sent to TPA ${appId}`);
-
-    return true;
-  }
+  // forwardVideoStreamResponse method has been removed in favor of RTMP streaming
   /**
    * 🥳🤓 Handles new glasses client connections.
    * @param ws - WebSocket connection
@@ -1367,28 +1343,41 @@ export class WebSocketService {
           break;
         }
 
-        // case 'video_stream_response': {
-        case 'video_stream_response': {
-          const videoStreamResponse = message as any;
-          userSession.logger.info(`[websocket.service]: Received video stream response from glasses, appId: ${videoStreamResponse.appId}`);
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+          const rtmpStatusMessage = message as RtmpStreamStatus;
+          userSession.logger.info(`[websocket.service]: Received RTMP stream status update from glasses: ${rtmpStatusMessage.status}`);
 
-          // Get the appId from the response
-          const appId = videoStreamResponse.appId;
-          const streamUrl = videoStreamResponse.streamUrl;
+          // Get the appId from the message
+          const appId = rtmpStatusMessage.appId;
 
-          if (!appId || !streamUrl) {
-            userSession.logger.warn(`[websocket.service]: Invalid video stream response, missing appId or streamUrl`);
-            return;
+          // Create the response to send to TPAs
+          const rtmpStreamStatus = {
+            type: message.type,
+            status: rtmpStatusMessage.status,
+            appId: appId, // Include the app ID in the response
+            sessionId: userSession.sessionId, // Include the session ID
+            timestamp: new Date()
+          };
+
+          // Copy error details if present
+          if (rtmpStatusMessage.errorDetails) {
+            // rtmpResponse['errorDetails'] = rtmpStatusMessage.errorDetails;
           }
 
-          // Forward the video stream response to the requesting TPA
-          const success = this.forwardVideoStreamResponse(appId, streamUrl, userSession);
-
-          if (!success) {
-            userSession.logger.warn(`[websocket.service]: Failed to forward video stream response to TPA ${appId}`);
+          // Copy stats if present
+          if (rtmpStatusMessage.stats) {
+            // rtmpResponse['stats'] = rtmpStatusMessage.stats;
           }
+
+          // Use broadcastToTpa to send the response, ensuring sessionId is included
+          // and all subscribed TPAs receive the update
+          this.broadcastToTpa(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
+          userSession.logger.info(`[websocket.service]: Broadcast RTMP status update to subscribed TPAs: ${rtmpStatusMessage.status}`);
+
           break;
         }
+
+        // video_stream_response case has been removed in favor of rtmp_stream_status
 
         case "settings_update_request": {
           const settingsUpdate = message as AugmentosSettingsUpdateRequest;
@@ -1936,15 +1925,28 @@ export class WebSocketService {
               break;
             }
 
-            case 'video_stream_request': {
+            case 'rtmp_stream_request': {
               if (!userSession) {
                 ws.close(1008, 'No active session');
                 return;
               }
 
-              // Check if app has permission to request video stream
-              const videoStreamRequestMessage = message as VideoStreamRequest;
-              const appId = videoStreamRequestMessage.packageName;
+              // Check if app has permission to request RTMP streaming
+              const rtmpStreamRequestMessage = message as any;
+              const appId = rtmpStreamRequestMessage.packageName;
+              const rtmpUrl = rtmpStreamRequestMessage.rtmpUrl;
+              const video = rtmpStreamRequestMessage.video || {};
+              const audio = rtmpStreamRequestMessage.audio || {};
+              const stream = rtmpStreamRequestMessage.stream || {};
+
+              // Validate required parameters
+              if (!rtmpUrl) {
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'Missing RTMP URL in request'
+                });
+                return;
+              }
 
               // Check if the app is currently running
               if (!userSession.activeAppSessions) {
@@ -1958,7 +1960,7 @@ export class WebSocketService {
               // Check if app is in the active sessions array (it's an array, not an object)
               const isAppActive = userSession.activeAppSessions.includes(appId);
               if (!isAppActive) {
-                userSession.logger.warn(`[websocket.service]: App ${appId} tried to request photo but is not in active sessions: ${JSON.stringify(userSession.activeAppSessions)}`);
+                userSession.logger.warn(`[websocket.service]: App ${appId} tried to request RTMP streaming but is not in active sessions: ${JSON.stringify(userSession.activeAppSessions)}`);
                 this.sendError(ws, {
                   type: CloudToTpaMessageType.CONNECTION_ERROR,
                   message: 'App not currently running'
@@ -1966,20 +1968,66 @@ export class WebSocketService {
                 return;
               }
 
-              // Build request to glasses
-              const videoStreamRequestToGlasses: VideoStreamRequestToGlasses = {
-                type: CloudToGlassesMessageType.VIDEO_STREAM_REQUEST,
-                userSession: {
-                  sessionId: userSession.sessionId,
-                  userId: userSession.userId
-                },
+              // Send request to glasses
+              userSession.websocket.send(JSON.stringify({
+                type: CloudToGlassesMessageType.START_RTMP_STREAM,
+                rtmpUrl,
                 appId,
+                video,
+                audio,
+                stream,
+                timestamp: new Date()
+              }));
+
+              // Send initial status to the TPA
+              const initialResponse = {
+                type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
+                status: "initializing",
                 timestamp: new Date()
               };
+              ws.send(JSON.stringify(initialResponse));
 
-              // Send request to glasses
-              userSession.websocket.send(JSON.stringify(videoStreamRequestToGlasses));
-              userSession.logger.info(`[websocket.service]: Video stream request sent to glasses for app: ${appId}`);
+              userSession.logger.info(`[websocket.service]: RTMP stream request sent to glasses for app ${appId} with URL ${rtmpUrl}`);
+
+              break;
+            }
+
+            case 'rtmp_stream_stop': {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+
+              const rtmpStreamStopMessage = message as any;
+              const appId = rtmpStreamStopMessage.packageName;
+
+              // Check if app is in the active sessions array
+              const isAppActive = userSession.activeAppSessions.includes(appId);
+              if (!isAppActive) {
+                userSession.logger.warn(`[websocket.service]: App ${appId} tried to stop RTMP streaming but is not in active sessions`);
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'App not currently running'
+                });
+                return;
+              }
+
+              // Send stop command to glasses
+              userSession.websocket.send(JSON.stringify({
+                type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
+                appId,
+                timestamp: new Date()
+              }));
+
+              // Send initial status update to TPA
+              const stoppingResponse = {
+                type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
+                status: "stopped",
+                timestamp: new Date()
+              };
+              ws.send(JSON.stringify(stoppingResponse));
+
+              userSession.logger.info(`[websocket.service]: RTMP stream stop request sent to glasses for app ${appId}`);
 
               break;
             }

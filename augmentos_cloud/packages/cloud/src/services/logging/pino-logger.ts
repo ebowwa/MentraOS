@@ -108,10 +108,10 @@ export function trackException(error: Error, context: Record<string, any> = {}) 
 }
 
 // Flush logger on process exit
-process.on('beforeExit', async () => {
-  logger.flush(); // Flush the root logger
-  console.log('Logger flushed before exit');
-});
+// process.on('beforeExit', async () => {
+//   logger.flush(); // Flush the root logger
+//   console.log('Logger flushed before exit');
+// });
 
 // Default export is the logger
 export default logger;

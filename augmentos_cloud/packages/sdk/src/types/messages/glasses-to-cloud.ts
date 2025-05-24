@@ -178,11 +178,20 @@ export interface PhotoResponse extends BaseMessage {
   savedToGallery: boolean;  // Whether the photo was saved to gallery
 }
 
-export interface VideoStreamResponse extends BaseMessage {
-  type: GlassesToCloudMessageType.VIDEO_STREAM_RESPONSE;
-  requestId: string;  // Unique ID for the video stream request
-  videoUrl: string;  // URL of the video stream
-  savedToGallery: boolean;  // Whether the video was saved to gallery
+/**
+ * RTMP stream status update from glasses
+ */
+export interface RtmpStreamStatus extends BaseMessage {
+  type: GlassesToCloudMessageType.RTMP_STREAM_STATUS;
+  status: "initializing" | "connecting" | "streaming" | "error" | "stopped" | "active";
+  errorDetails?: string;
+  appId?: string;  // ID of the app that requested the stream
+  stats?: {
+    bitrate: number;
+    fps: number;
+    droppedFrames: number;
+    duration: number;
+  };
 }
 
 /**
@@ -207,9 +216,8 @@ export type GlassesToCloudMessage =
   | NotificationDismissed
   | AugmentosSettingsUpdateRequest
   | CoreStatusUpdate
-
   | PhotoResponse
-  | VideoStreamResponse
+  | RtmpStreamStatus
 
 //===========================================================
 // Type guards
@@ -279,3 +287,11 @@ export function isPhoneNotification(message: GlassesToCloudMessage): message is 
 export function isNotificationDismissed(message: GlassesToCloudMessage): message is NotificationDismissed {
   return message.type === GlassesToCloudMessageType.NOTIFICATION_DISMISSED;
 }
+
+// export function isRtmpStreamStatus(message: GlassesToCloudMessage): message is RtmpStreamStatus {
+//   return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
+// }
+
+// export function isPhotoResponse(message: GlassesToCloudMessage): message is PhotoResponse {
+//   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+// }

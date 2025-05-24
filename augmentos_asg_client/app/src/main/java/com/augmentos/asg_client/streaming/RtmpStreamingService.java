@@ -23,6 +23,8 @@ import android.view.Surface;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
+import com.augmentos.asg_client.utils.WakeLockManager;
+
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
@@ -144,6 +146,9 @@ public class RtmpStreamingService extends Service {
         // Release the surface
         releaseSurface();
 
+        // Release wake locks
+        releaseWakeLocks();
+
         // Unregister from EventBus
         if (EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().unregister(this);
@@ -237,6 +242,9 @@ public class RtmpStreamingService extends Service {
 
         try {
             Log.d(TAG, "Initializing streamer");
+
+            // Wake up the screen before initializing camera
+            wakeUpScreen();
 
             // Create a surface for the camera
             createSurface();
@@ -356,6 +364,9 @@ public class RtmpStreamingService extends Service {
                 mStreamer.release();
                 mStreamer = null;
                 Log.i(TAG, "Streamer released");
+                
+                // Release wake locks after releasing the streamer
+                releaseWakeLocks();
             } catch (Exception e) {
                 Log.e(TAG, "Error releasing streamer", e);
                 if (sStatusCallback != null) {
@@ -706,6 +717,23 @@ public class RtmpStreamingService extends Service {
      */
     public static int getReconnectAttempt() {
         return sInstance != null ? sInstance.mReconnectAttempts : 0;
+    }
+    
+    /**
+     * Wake up the screen to ensure camera can be accessed
+     */
+    private void wakeUpScreen() {
+        Log.d(TAG, "Waking up screen for camera access");
+        // Use the WakeLockManager to acquire both CPU and screen wake locks
+        // For streaming we use longer timeout for CPU wake lock than for photo capture
+        WakeLockManager.acquireFullWakeLock(this, 180000, 5000); // 3 min CPU, 5 sec screen
+    }
+    
+    /**
+     * Release any held wake locks
+     */
+    private void releaseWakeLocks() {
+        WakeLockManager.releaseAllWakeLocks();
     }
 
     /**

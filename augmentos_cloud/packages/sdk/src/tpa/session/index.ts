@@ -8,6 +8,7 @@ import WebSocket from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
+import { StreamingModule } from './modules/streaming';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -37,6 +38,7 @@ import {
   isPhotoResponse,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
+  isRtmpStreamStatus,
 
   // Other types
   AppSettings,
@@ -46,7 +48,9 @@ import {
   AudioChunk,
   isAudioChunk,
   createTranscriptionStream,
-  createTranslationStream
+  createTranslationStream,
+  GlassesToCloudMessage,
+  PhotoResponse
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
 import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
@@ -140,6 +144,8 @@ export class TpaSession {
   public readonly settings: SettingsManager;
   /** 📊 Dashboard management interface */
   public readonly dashboard: DashboardAPI;
+  /** 📹 RTMP streaming interface */
+  public readonly streaming: StreamingModule;
 
   constructor(private config: TpaSessionConfig) {
     // Set defaults and merge with provided config
@@ -219,6 +225,14 @@ export class TpaSession {
     // Import DashboardManager dynamically to avoid circular dependency
     const { DashboardManager } = require('./dashboard');
     this.dashboard = new DashboardManager(this, this.send.bind(this));
+    
+    // Initialize streaming module with session reference
+    this.streaming = new StreamingModule(
+      this.config.packageName,
+      this.sessionId || 'unknown-session-id',
+      this.send.bind(this),
+      this // Pass session reference
+    );
   }
   
   /**
@@ -355,6 +369,11 @@ export class TpaSession {
       this.config.augmentOSWebsocketUrl || '',
       sessionId
     );
+    
+    // Update the sessionId in the streaming module
+    if (this.streaming) {
+      Object.defineProperty(this.streaming, 'sessionId', { value: sessionId });
+    }
 
     return new Promise((resolve, reject) => {
       try {
@@ -905,11 +924,20 @@ export class TpaSession {
         }
         else if (isPhotoResponse(message)) {
           // Handle photo response by resolving the pending promise
-          if (this.pendingPhotoRequests.has(message.requestId)) {
-            const { resolve } = this.pendingPhotoRequests.get(message.requestId)!;
-            resolve(message.photoUrl);
-            this.pendingPhotoRequests.delete(message.requestId);
+          if (this.pendingPhotoRequests.has((message as PhotoResponse).requestId)) {
+            const { resolve } = this.pendingPhotoRequests.get((message as PhotoResponse).requestId)!;
+            resolve((message as PhotoResponse).photoUrl);
+            this.pendingPhotoRequests.delete((message as PhotoResponse).requestId);
           }
+        }
+        else if (isRtmpStreamStatus(message)) {
+          // Emit as a standard stream event if subscribed
+          if (this.subscriptions.has(StreamType.RTMP_STREAM_STATUS)) {
+            this.events.emit(StreamType.RTMP_STREAM_STATUS, message);
+          }
+          
+          // Update streaming module's internal state
+          this.streaming.updateStreamState(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
