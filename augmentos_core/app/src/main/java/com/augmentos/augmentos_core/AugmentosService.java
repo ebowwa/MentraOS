@@ -1441,6 +1441,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             public void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status) {
                 webSocketStatus = status;
                 sendStatusToAugmentOsManager();
+                if (status == WebSocketManager.IncomingMessageHandler.WebSocketStatus.CONNECTED) {
+                    if (smartGlassesManager != null) {
+                        smartGlassesManager.sendHomeScreen();
+                    }
+                }
             }
 
             @Override

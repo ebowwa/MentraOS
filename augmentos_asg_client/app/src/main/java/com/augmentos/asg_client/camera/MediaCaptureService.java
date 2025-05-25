@@ -114,7 +114,7 @@ public class MediaCaptureService {
         // Prepare REST API call
         try {
             // Get the button press URL from the central config utility
-            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl();
+            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl(mContext);
 
             // Create payload for button press event
             JSONObject buttonPressPayload = new JSONObject();
@@ -223,7 +223,7 @@ public class MediaCaptureService {
         // Prepare REST API call
         try {
             // Get the button press URL from the central config utility
-            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl();
+            String buttonPressUrl = ServerConfigUtil.getButtonPressUrl(mContext);
 
             // Create payload for button press event
             JSONObject buttonPressPayload = new JSONObject();
