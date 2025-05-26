@@ -94,8 +94,12 @@ const autoInstallAppForDeveloper = async (packageName: string, developerEmail: s
   try {
     logger.info(`Auto-installing app ${packageName} for developer ${developerEmail}`);
 
-    // Find or create the user
-    const user = await User.findOrCreateUser(developerEmail);
+    // Find the user (do not create if not found)
+    const user = await User.findOne({ email: developerEmail.toLowerCase() });
+    if (!user) {
+      logger.error(`User not found for auto-install: ${developerEmail}`);
+      return;
+    }
 
     // Check if app is already installed (safety check)
     if (user.isAppInstalled(packageName)) {
