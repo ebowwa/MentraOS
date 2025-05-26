@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { WebView } from 'react-native-webview';
-import Config from 'react-native-config';
+import Constants from 'expo-constants'
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { View } from 'react-native';
 
@@ -30,7 +30,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
   const prefetchWebview = async () => {
     setWebviewLoading(true);
     try {
-      const baseUrl = Config.AUGMENTOS_APPSTORE_URL!;
+      const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL
       const backendComms = BackendServerComms.getInstance();
       const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME);
       const urlWithToken = new URL(baseUrl);
@@ -38,7 +38,7 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
       setAppStoreUrl(urlWithToken.toString());
     } catch (error) {
       // fallback to base URL
-      const baseUrl = Config.AUGMENTOS_APPSTORE_URL!;
+      const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL;
       setAppStoreUrl(baseUrl);
     } finally {
       setWebviewLoading(false);
