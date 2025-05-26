@@ -4,7 +4,7 @@ import { UserDocument } from '../../models/user.model';
 import { Types } from 'mongoose';
 import { Organization } from '../../models/organization.model';
 
-const INVITE_JWT_SECRET = process.env.INVITE_JWT_SECRET;
+const INVITE_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 if (!INVITE_JWT_SECRET) {
   throw new Error('INVITE_JWT_SECRET is not defined in environment variables');
 }
