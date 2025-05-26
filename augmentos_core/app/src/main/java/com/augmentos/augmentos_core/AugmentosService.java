@@ -1441,6 +1441,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             public void onConnectionStatusChange(WebSocketManager.IncomingMessageHandler.WebSocketStatus status) {
                 webSocketStatus = status;
                 sendStatusToAugmentOsManager();
+                if (status == WebSocketManager.IncomingMessageHandler.WebSocketStatus.CONNECTED) {
+                    if (smartGlassesManager != null) {
+                        smartGlassesManager.sendHomeScreen();
+                    }
+                }
             }
 
             @Override
@@ -2250,6 +2255,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             } catch (JSONException e) {
                 // Optionally log or handle error
             }
+        }
+    }
+
+    @Override
+    public void setServerUrl(String url) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        prefs.edit().putString("augmentos_server_url_override", url).apply();
+        // Disconnect and reconnect websocket to use new URL
+        ServerComms.getInstance().disconnectWebSocket();
+        if (authHandler != null && authHandler.getCoreToken() != null) {
+            ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
         }
     }
 }

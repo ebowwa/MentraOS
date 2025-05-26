@@ -6,7 +6,6 @@ import { pinoPostHogTransport } from './transports/PostHogTransport';
 const BETTERSTACK_SOURCE_TOKEN = process.env.BETTERSTACK_SOURCE_TOKEN;
 const BETTERSTACK_ENDPOINT = process.env.BETTERSTACK_ENDPOINT || 'https://s1311181.eu-nbg-2.betterstackdata.com';
 const NODE_ENV = process.env.NODE_ENV || 'development';
-const SERVICE_NAME = process.env.SERVICE_NAME || 'augmentos-cloud';
 const PORTER_APP_NAME = process.env.PORTER_APP_NAME || 'cloud-local';
 
 // Determine log level based on environment
@@ -24,8 +23,8 @@ const prettyTransport = pino.transport({
     colorize: true,
     translateTime: 'SYS:standard',
     // translateTime: 'mm/dd/yyyy, hh:MM:ss TT',
-    ignore: 'pid,hostname,env,service,module',
-    messageFormat: '{module}:\n{msg}',
+    ignore: 'pid,hostname,env,module,server',
+    messageFormat: '{msg}',
     errorProps: '*',
     customPrettifiers: {
       // Add custom prettifiers here if needed
@@ -81,7 +80,7 @@ const baseLoggerOptions: pino.LoggerOptions = {
   level: LOG_LEVEL,
   base: {
     env: NODE_ENV,
-    service: PORTER_APP_NAME,
+    server: PORTER_APP_NAME,
   },
   timestamp: pino.stdTimeFunctions.isoTime,
 };

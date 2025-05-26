@@ -205,6 +205,7 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({isDark
                   placeholderTextColor={isDarkTheme ? '#999999' : '#666666'}
                   value={customUrlInput}
                   onChangeText={setCustomUrlInput}
+                  onBlur={() => setCustomUrlInput(customUrlInput.trim().replace(/\/+$/, ''))}
                   autoCapitalize="none"
                   autoCorrect={false}
                   keyboardType="url"
@@ -235,22 +236,36 @@ const DeveloperSettingsScreen: React.FC<DeveloperSettingsScreenProps> = ({isDark
               </View>
             </View>
 
-            <View style={styles.buttonColumn}>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setCustomUrlInput('https://prod.augmentos.cloud:443')}>
-                <Text style={styles.buttonText}>Production</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setCustomUrlInput('https://debug.augmentos.cloud:443')}>
-                <Text style={styles.buttonText}>Debug</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setCustomUrlInput('https://global.augmentos.cloud:443')}>
-                <Text style={styles.buttonText}>Global</Text>
-              </TouchableOpacity>
+            <View style={{flexDirection: 'column', gap: 12, marginTop: 12, alignItems: 'center'}}>
+              <View style={{flexDirection: 'row', gap: 12, justifyContent: 'center'}}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setCustomUrlInput('https://prod.augmentos.cloud:443')}>
+                  <Text style={styles.buttonText}>Production</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setCustomUrlInput('https://debug.augmentos.cloud:443')}>
+                  <Text style={styles.buttonText}>Debug</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setCustomUrlInput('https://global.augmentos.cloud:443')}>
+                  <Text style={styles.buttonText}>Global</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{flexDirection: 'row', gap: 12, justifyContent: 'center', marginTop: 12}}>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setCustomUrlInput('https://dev.augmentos.org:443')}>
+                  <Text style={styles.buttonText}>Dev</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.button}
+                  onPress={() => setCustomUrlInput('https://dev.augmentos.cloud:443')}>
+                  <Text style={styles.buttonText}>Dev Cloud</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </>
         )}

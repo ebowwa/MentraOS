@@ -161,10 +161,10 @@ public class MediaUploadService extends Service { // Renamed class
         MediaType mediaContentType;
 
         if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO) {
-            uploadUrl = ServerConfigUtil.getPhotoUploadUrl();
+            uploadUrl = ServerConfigUtil.getPhotoUploadUrl(context);
             mediaContentType = MediaType.parse("image/jpeg");
         } else if (mediaType == MediaUploadQueueManager.MEDIA_TYPE_VIDEO) {
-            uploadUrl = ServerConfigUtil.getVideoUploadUrl();
+            uploadUrl = ServerConfigUtil.getVideoUploadUrl(context);
             mediaContentType = MediaType.parse("video/mp4");
         } else {
             callback.onFailure("Invalid media type: " + mediaType);

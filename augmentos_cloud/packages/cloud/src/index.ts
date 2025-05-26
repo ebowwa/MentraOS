@@ -16,7 +16,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 // Import services
-import { healthMonitorService } from './services/core/health-monitor.service';
+// import { healthMonitorService } from './services/core/health-monitor.service'; // TODO(isaiah): Deprecated, replaced by HeartbeatManager. 
 import { photoRequestService } from './services/core/photo-request.service';
 import { DebugService } from './services/debug/debug-service';
 import { SessionService, initializeSessionService } from './services/core/session.service';
@@ -40,6 +40,7 @@ import audioRoutes from './routes/audio.routes';
 import userDataRoutes from './routes/user-data.routes';
 import permissionsRoutes from './routes/permissions.routes';
 import accountRoutes from './routes/account.routes';
+import organizationRoutes from './routes/organization.routes';
 
 import path from 'path';
 
@@ -47,7 +48,7 @@ import path from 'path';
 import * as mongoConnection from "./connections/mongodb.connection";
 // import { logger } from "@augmentos/utils";
 import { logger as rootLogger } from './services/logging/pino-logger';
-const logger = rootLogger.child({ module: 'index' });
+const logger = rootLogger.child({ service: 'index' });
 
 // Initialize MongoDB connection
 mongoConnection.init()
@@ -149,6 +150,7 @@ app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/orgs', organizationRoutes);
 // app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);
