@@ -52,7 +52,7 @@ export class InviteService {
     };
 
     // Generate JWT token
-    const token = jwt.sign(payload, INVITE_JWT_SECRET);
+    const token = jwt.sign(payload, INVITE_JWT_SECRET as string);
 
     // Get organization details for the email
     const organization = await Organization.findById(orgId);
@@ -80,7 +80,7 @@ export class InviteService {
    */
   static verify(token: string): InviteTokenPayload {
     try {
-      const decoded = jwt.verify(token, INVITE_JWT_SECRET) as InviteTokenPayload;
+      const decoded = jwt.verify(token, INVITE_JWT_SECRET as string) as InviteTokenPayload;
       return decoded;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {
