@@ -19,8 +19,10 @@ import helmet from 'helmet';
 // import { healthMonitorService } from './services/core/health-monitor.service'; // TODO(isaiah): Deprecated, replaced by HeartbeatManager. 
 import { photoRequestService } from './services/core/photo-request.service';
 import { DebugService } from './services/debug/debug-service';
-import { SessionService, initializeSessionService } from './services/core/session.service';
-import { webSocketService } from './services/core/websocket.service';
+// import { SessionService, initializeSessionService } from './services/core/session.service';
+// import { webSocketService } from './services/core/websocket.service';
+import { sessionService } from './services/session/session.service';
+import { websocketService } from './services/websocket/websocket.service';
 
 // Import routes
 import appRoutes from './routes/apps.routes';
@@ -31,7 +33,6 @@ import errorReportRoutes from './routes/error-report.routes';
 import devRoutes from './routes/developer.routes';
 import serverRoutes from './routes/server.routes';
 import adminRoutes from './routes/admin.routes';
-import tpaServerRoutes from './routes/tpa-server.routes';
 import photoRoutes from './routes/photos.routes';
 import galleryRoutes from './routes/gallery.routes';
 import toolsRoutes from './routes/tools.routes';
@@ -86,13 +87,13 @@ const server = new Server(app);
 
 // Initialize services in the correct order
 const debugService = new DebugService(server);
-const sessionService = initializeSessionService(debugService);
+// const sessionService = initializeSessionService(debugService);
 
 // Initialize websocket service after session service is ready
-webSocketService.initialize();
+// webSocketService.initialize();
 
 // Export services for use in other modules
-export { sessionService, debugService, webSocketService };
+export { sessionService, debugService, websocketService };
 
 // Middleware setup
 app.use(helmet());
@@ -149,7 +150,6 @@ app.use('/auth', authRoutes);
 app.use('/tpasettings', tpaSettingsRoutes);
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
-// app.use('/api/tpa-server', tpaServerRoutes); // Removed as part of HeartbeatManager implementation
 app.use('/api/server', serverRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/gallery', galleryRoutes);
@@ -177,7 +177,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Initialize WebSocket service
 // Initialize WebSocket servers
-webSocketService.setupWebSocketServers(server);
+websocketService.setupWebSocketServers(server);
 
 // Start the server
 server.listen(PORT, () => {

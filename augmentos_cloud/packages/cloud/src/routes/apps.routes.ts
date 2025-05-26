@@ -1,13 +1,14 @@
 // cloud/src/routes/apps.routes.ts
 import express, { Request, Response, NextFunction } from 'express';
-import webSocketService from '../services/core/websocket.service';
-import sessionService, { ExtendedUserSession } from '../services/core/session.service';
+import webSocketService from '../services/websocket/websocket.service';
+import sessionService from '../services/session/session.service';
 import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { DeveloperProfile } from '@augmentos/sdk';
+import { DeveloperProfile, TpaType } from '@augmentos/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
+import UserSession from 'src/services/session/UserSession';
 const logger = rootLogger.child({ service: 'apps.routes' });
 
 // Extended app interface for API responses that include developer profile
@@ -25,11 +26,6 @@ interface EnhancedAppI extends AppI {
 interface EnhancedAppWithDeveloperProfile extends AppWithDeveloperProfile {
   is_running?: boolean;
   is_foreground?: boolean;
-}
-
-// Interface for Mongoose document with toObject method
-interface MongooseDocument {
-  toObject(): any;
 }
 
 // This is annyoing to change in the env files everywhere for each region so we set it here.
@@ -64,9 +60,9 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
     const isValid = await appService.validateApiKey(packageName, apiKey);
     if (isValid) {
       // Only allow if a full session exists
-      const userSessions = sessionService.getSessionsForUser(userId);
-      if (userSessions && userSessions.length > 0) {
-        (req as any).userSession = userSessions[0];
+      const userSession = UserSession.getById(userId);
+      if (userSession) {
+        (req as any).userSession = userSession;
         return next();
       } else {
         return res.status(401).json({
@@ -119,15 +115,8 @@ async function getSessionFromToken(coreToken: string) {
     }
 
     // Find the active session for this user
-    const userSessions = sessionService.getSessionsForUser(userId);
-
-    // Get the most recent active session for this user
-    // We could add more sophisticated logic here if needed (e.g., device ID matching)
-    if (userSessions && userSessions.length > 0) {
-      return userSessions[0]; // Return the first active session
-    }
-
-    return null;
+    const userSession = UserSession.getById(userId) || null;;
+    return userSession;
   } catch (error) {
     logger.error('Error verifying token or finding session:', error);
     return null;
@@ -191,43 +180,6 @@ async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFun
   });
 }
 
-/**
- * Middleware to allow authentication via either core token/session or apiKey+packageName+userId
- */
-async function apiKeyOrSessionAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Accept apiKey/packageName/userId from query, body, or headers
-  const apiKey = req.query.apiKey as string || req.body.apiKey || req.headers['x-api-key'] as string;
-  const packageName = req.query.packageName as string || req.body.packageName || req.headers['x-package-name'] as string;
-  const userId = req.query.userId as string || req.body.userId || req.headers['x-user-id'] as string;
-  const allowedPackages = ['test.augmentos.mira', 'com.augmentos.mira'];
-
-  if (apiKey && packageName && userId && allowedPackages.includes(packageName)) {
-    // Validate API key
-    const valid = await appService.validateApiKey(packageName, apiKey, req.ip);
-    if (valid) {
-      const userSessions = sessionService.getSessionsForUser(userId);
-      if (userSessions && userSessions.length > 0) {
-        (req as any).userSession = userSessions[0];
-        (req as any).authMode = 'apiKey';
-        return next();
-      } else {
-        // Optionally: fallback to a minimal session, or return an error
-        return res.status(401).json({
-          success: false,
-          message: 'No active session found for user.'
-        });
-      }
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid API key or package name.'
-      });
-    }
-  }
-
-  // Fallback to existing dualModeAuthMiddleware
-  return dualModeAuthMiddleware(req, res, next);
-}
 
 const router = express.Router();
 
@@ -245,8 +197,15 @@ async function getAllApps(req: Request, res: Response) {
     if (apiKey && packageName && userId) {
       // Already authenticated via middleware
       const apps = await appService.getAllApps(userId);
-      const userSessions = sessionService.getSessionsForUser(userId);
-      const enhancedApps = enhanceAppsWithSessionState(apps, userSessions);
+      const userSession = UserSession.getById(userId);
+      if (!userSession) {
+        return res.status(401).json({
+          success: false,
+          message: 'No active session found for user.'
+        });
+      }
+
+      const enhancedApps = enhanceAppsWithSessionState(apps, userSession);
       return res.json({
         success: true,
         data: enhancedApps
@@ -275,8 +234,9 @@ async function getAllApps(req: Request, res: Response) {
     }
 
     const apps = await appService.getAllApps(tokenUserId);
-    const userSessions = sessionService.getSessionsForUser(tokenUserId);
-    const enhancedApps = enhanceAppsWithSessionState(apps, userSessions);
+    // const userSessions = sessionService.getSessionsForUser(tokenUserId);
+    const userSession: UserSession = (req as any).userSession;
+    const enhancedApps = enhanceAppsWithSessionState(apps, userSession);
     res.json({
       success: true,
       data: enhancedApps
@@ -404,10 +364,19 @@ async function getAppByPackage(req: Request, res: Response) {
  */
 async function startApp(req: Request, res: Response) {
   const { packageName } = req.params;
-  const session = (req as any).userSession;
+  const userSession: UserSession = (req as any).userSession;
   try {
-    await webSocketService.startAppSession(session, packageName);
-    const appStateChange = await webSocketService.generateAppStateStatus(session);
+    // await webSocketService.startAppSession(session, packageName);
+    // const appStateChange = await webSocketService.generateAppStateStatus(session);
+    userSession.appManager.startApp(packageName);
+    const appStateChange = userSession.appManager.broadcastAppState();
+    if (!appStateChange) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error generating app state change'
+      });
+    }
+
     res.json({
       success: true,
       data: {
@@ -416,9 +385,6 @@ async function startApp(req: Request, res: Response) {
         appState: appStateChange
       }
     });
-    if (session.websocket && session.websocket.readyState === 1) {
-      session.websocket.send(JSON.stringify(appStateChange));
-    }
   } catch (error) {
     logger.error(`Error starting app ${packageName}:`, error);
     res.status(500).json({
@@ -433,7 +399,15 @@ async function startApp(req: Request, res: Response) {
  */
 async function stopApp(req: Request, res: Response) {
   const { packageName } = req.params;
-  const session = (req as any).userSession;
+  const userSession: UserSession = (req as any).userSession;
+
+  if (!userSession || !userSession.userId) {
+    return res.status(401).json({
+      success: false,
+      message: 'User session is required'
+    });
+  }
+
   try {
     const app = await appService.getApp(packageName);
     if (!app) {
@@ -442,8 +416,17 @@ async function stopApp(req: Request, res: Response) {
         message: 'App not found'
       });
     }
-    await webSocketService.stopAppSession(session, packageName);
-    const appStateChange = await webSocketService.generateAppStateStatus(session);
+    // await webSocketService.stopAppSession(userSession, packageName);
+    // const appStateChange = await webSocketService.generateAppStateStatus(userSession);
+    userSession.appManager.stopApp(packageName);
+    const appStateChange = userSession.appManager.broadcastAppState();
+    if (!appStateChange) {
+      return res.status(500).json({
+        success: false,
+        message: 'Error generating app state change'
+      });
+    }
+
     res.json({
       success: true,
       data: {
@@ -452,9 +435,7 @@ async function stopApp(req: Request, res: Response) {
         appState: appStateChange
       }
     });
-    if (session.websocket && session.websocket.readyState === 1) {
-      session.websocket.send(JSON.stringify(appStateChange));
-    }
+
   } catch (error) {
     logger.error(`Error stopping app ${packageName}:`, error);
     res.status(500).json({
@@ -469,8 +450,8 @@ async function stopApp(req: Request, res: Response) {
  */
 async function installApp(req: Request, res: Response) {
   const { packageName } = req.params;
-  const session = (req as any).userSession; // Get session from middleware
-  const email = session.userId;
+  const userSession: UserSession = (req as any).userSession; // Get session from middleware
+  const email = userSession.userId;
 
   if (!email || !packageName) {
     return res.status(400).json({
@@ -519,7 +500,8 @@ async function installApp(req: Request, res: Response) {
 
     // Always attempt WebSocket notifications for full session
     try {
-      sessionService.triggerAppStateChange(email);
+      // sessionService.triggerAppStateChange(email);
+      userSession.appManager.broadcastAppState();
     } catch (error) {
       logger.warn({ error, email, packageName }, 'Error sending app state notification');
       // Non-critical error, installation succeeded
@@ -581,24 +563,16 @@ async function uninstallApp(req: Request, res: Response) {
     try {
       const userSession = sessionService.getSession(email);
       if (userSession) {
-        await webSocketService.stopAppSession(userSession, packageName);
+        // TODO(isaiah): Ensure this automatically triggers appstate change sent to client.
+        await userSession.appManager.stopApp(packageName);
+        await userSession.appManager.broadcastAppState();
       }
       else {
         logger.warn({ email, packageName }, 'Unable to ensure app is stopped before uninstalling, no active session');
       }
-      await webSocketService.stopAppSession(session, packageName);
     } catch (error) {
       logger.warn('Error stopping app during uninstall:', error);
     }
-
-    // Send app state change notification.
-    try {
-      sessionService.triggerAppStateChange(email);
-    } catch (error) {
-      logger.warn({ error, email }, 'Error updating client AppStateChange after uninstall');
-      // Non-critical error, uninstallation succeeded, but updating client state failed.
-    }
-
   } catch (error) {
     logger.error({ error, email, packageName }, 'Error uninstalling app');
     res.status(500).json({
@@ -759,12 +733,6 @@ router.get('/installed', dualModeAuthMiddleware, getInstalledApps);
 router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
 router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
 
-// Keep backward compatibility for now (can be removed later)
-// router.post('/install/:packageName/:email', installApp);
-// router.post('/uninstall/:packageName/:email', uninstallApp);
-// router.get('/install/:packageName/:email', installApp);
-// router.get('/uninstall/:packageName/:email', uninstallApp);
-
 router.get('/version', async (req, res) => {
   res.json({ version: CLOUD_VERSION });
 });
@@ -781,28 +749,21 @@ router.post('/:packageName/stop', unifiedAuthMiddleware, stopApp);
  * Enhances a list of apps (SDK AppI or local AppI) with running/foreground state.
  * Accepts AppI[] from either @augmentos/sdk or local model.
  */
-function enhanceAppsWithSessionState(apps: any[], userSessions: any[]): EnhancedAppI[] {
+function enhanceAppsWithSessionState(apps: AppI[], userSession: UserSession): EnhancedAppI[] {
   const plainApps = apps.map(app => {
     return (app as any).toObject?.() || app;
   });
+
   return plainApps.map(app => {
     const enhancedApp: EnhancedAppI = {
       ...app,
       is_running: false,
       is_foreground: false
     };
-    if (userSessions && userSessions.length > 0) {
-      const isRunning = userSessions.some(session =>
-        session.activeAppSessions && session.activeAppSessions.includes(app.packageName)
-      );
-      enhancedApp.is_running = isRunning;
-      if (isRunning) {
-        const isForeground = userSessions.some(session =>
-          (session as any).foregroundAppPackageName === app.packageName ||
-          (session as any).foregroundApp === app.packageName
-        );
-        enhancedApp.is_foreground = isForeground;
-      }
+
+    enhancedApp.is_running = userSession.runningApps.has(app.packageName);
+    if (enhancedApp.is_running) {
+      enhancedApp.is_foreground = app.tpaType === TpaType.STANDARD;;
     }
     return enhancedApp;
   });

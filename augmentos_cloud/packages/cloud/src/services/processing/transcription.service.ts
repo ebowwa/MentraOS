@@ -13,14 +13,19 @@ import {
   StreamType,
   TranscriptionData,
   TranslationData,
-  UserSession,
+  // UserSession,
   ExtendedStreamType,
   getLanguageInfo,
-  TranscriptSegment
+  TranscriptSegment,
+  CloudToTpaMessage,
+  DataStream,
+  CloudToTpaMessageType
 } from '@augmentos/sdk';
-import webSocketService from '../core/websocket.service';
-import subscriptionService from '../core/subscription.service';
+// import webSocketService from '../websocket/websocket.service';
+import subscriptionService from '../session/subscription.service';
 import { logger as rootLogger } from '../logging/pino-logger';
+import UserSession from '../session/UserSession';
+import { sessionService } from '../session/session.service';
 
 // Define module name constant for consistent logging
 const SERVICE_NAME = 'transcription.service';
@@ -33,9 +38,9 @@ export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
 /**
  * Extend the UserSession type with our new property.
  */
-export type ExtendedUserSession = UserSession & {
-  transcriptionStreams?: Map<string, ASRStreamInstance>;
-};
+// export type ExtendedUserSession = UserSession & {
+//   transcriptionStreams?: Map<string, ASRStreamInstance>;
+// };
 
 /**
  * Interface for an individual ASR stream instance.
@@ -77,12 +82,8 @@ export class TranscriptionService {
     }, 'TranscriptionService initialized');
   }
 
-  updateTranscriptionStreams(userSession: ExtendedUserSession, desiredSubscriptions: ExtendedStreamType[]): void {
+  updateTranscriptionStreams(userSession: UserSession, desiredSubscriptions: ExtendedStreamType[]): void {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-    
-    if (!userSession.transcriptionStreams) {
-      userSession.transcriptionStreams = new Map<string, ASRStreamInstance>();
-    }
     const desiredSet = new Set(desiredSubscriptions);
 
     // Create new streams if needed
@@ -104,9 +105,9 @@ export class TranscriptionService {
     });
   }
 
-  private createASRStreamForSubscription(subscription: ExtendedStreamType, userSession: ExtendedUserSession): ASRStreamInstance {
+  private createASRStreamForSubscription(subscription: ExtendedStreamType, userSession: UserSession): ASRStreamInstance {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-    
+
     // Use the updated parse logic – which returns transcribeLanguage and translateLanguage.
     const languageInfo = getLanguageInfo(subscription);
     if (!languageInfo) {
@@ -126,26 +127,26 @@ export class TranscriptionService {
       // Remove profanity filtering for translation by setting to Raw
       translationConfig.setProfanity(ProfanityOption.Raw);
       recognizer = new azureSpeechSDK.TranslationRecognizer(translationConfig, audioConfig);
-      
-      sessionLogger.debug({ 
-        subscription, 
+
+      sessionLogger.debug({
+        subscription,
         from: languageInfo.transcribeLanguage,
         to: languageInfo.translateLanguage,
         operation: 'startTranslation'
       }, 'Starting translation stream');
-      
+
       recognizer.startContinuousRecognitionAsync(
-        () => { 
+        () => {
           sessionLogger.info({ subscription }, 'Translation stream started');
         },
         (error) => {
-          sessionLogger.error({ 
-            error, 
+          sessionLogger.error({
+            error,
             subscription,
             from: languageInfo.transcribeLanguage,
             to: languageInfo.translateLanguage
           }, 'Failed to start translation stream');
-          
+
           this.stopIndividualTranscriptionStream({ recognizer, pushStream }, subscription, userSession);
         }
       );
@@ -155,24 +156,24 @@ export class TranscriptionService {
       // Remove profanity filtering for transcription by setting to Raw
       speechConfig.setProfanity(ProfanityOption.Raw);
       recognizer = new ConversationTranscriber(speechConfig, audioConfig);
-      
-      sessionLogger.debug({ 
-        subscription, 
+
+      sessionLogger.debug({
+        subscription,
         language: languageInfo.transcribeLanguage,
         operation: 'startTranscription'
       }, 'Starting transcription stream');
-      
+
       recognizer.startTranscribingAsync(
-        () => { 
+        () => {
           sessionLogger.info({ subscription }, 'Transcription stream started');
         },
         (error: any) => {
-          sessionLogger.error({ 
-            error, 
+          sessionLogger.error({
+            error,
             subscription,
             language: languageInfo.transcribeLanguage
           }, 'Failed to start transcription stream');
-          
+
           this.stopIndividualTranscriptionStream({ recognizer, pushStream }, subscription, userSession);
         }
       );
@@ -184,32 +185,32 @@ export class TranscriptionService {
   }
 
   private stopIndividualTranscriptionStream(
-    streamInstance: ASRStreamInstance, 
-    subscription: string, 
-    userSession?: ExtendedUserSession
+    streamInstance: ASRStreamInstance,
+    subscription: string,
+    userSession?: UserSession
   ): void {
     // Use session logger if available, otherwise fall back to module logger
-    const loggerToUse = userSession 
-      ? userSession.logger.child({ service: SERVICE_NAME }) 
+    const loggerToUse = userSession
+      ? userSession.logger.child({ service: SERVICE_NAME })
       : logger;
-    
+
     if (streamInstance.recognizer) {
       try {
         if (subscription.includes(StreamType.TRANSLATION)) {
           (streamInstance.recognizer as azureSpeechSDK.TranslationRecognizer).stopContinuousRecognitionAsync(
-            () => { 
+            () => {
               loggerToUse.info({ subscription }, 'Stopped translation stream');
             },
-            (error: any) => { 
+            (error: any) => {
               loggerToUse.error({ error, subscription }, 'Error stopping translation stream');
             }
           );
         } else {
           (streamInstance.recognizer as ConversationTranscriber).stopTranscribingAsync(
-            () => { 
+            () => {
               loggerToUse.info({ subscription }, 'Stopped transcription stream');
             },
-            (error: any) => { 
+            (error: any) => {
               loggerToUse.error({ error, subscription }, 'Error stopping transcription stream');
             }
           );
@@ -236,12 +237,12 @@ export class TranscriptionService {
 
   private setupRecognitionHandlersForInstance(
     instance: ASRStreamInstance,
-    userSession: ExtendedUserSession,
+    userSession: UserSession,
     subscription: ExtendedStreamType,
     languageInfo: { type: StreamType; transcribeLanguage: string; translateLanguage?: string }
   ): void {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-    
+
     if (languageInfo.type === StreamType.TRANSLATION) {
       // Translation branch: use recognizing and recognized.
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognizing = (_sender: any, event: any) => {
@@ -253,7 +254,7 @@ export class TranscriptionService {
         const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
-        sessionLogger.debug({ 
+        sessionLogger.debug({
           subscription,
           from: detectedSourceLang,
           to: languageInfo.translateLanguage,
@@ -261,7 +262,7 @@ export class TranscriptionService {
           isFinal: false,
           speakerId: event.result.speakerId
         }, 'Translation interim result');
-        
+
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           text: translatedText,
@@ -275,21 +276,21 @@ export class TranscriptionService {
           didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
-        
+
         // Save transcript in the appropriate language
         this.updateTranscriptHistory(userSession, event, false, languageInfo.translateLanguage);
       };
 
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognized = (_sender: any, event: any) => {
         if (!event.result.translations) return;
-        
+
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
         // Compare normalized text to determine if translation occurred
         const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
-        sessionLogger.debug({ 
+        sessionLogger.debug({
           subscription,
           from: detectedSourceLang,
           to: languageInfo.translateLanguage,
@@ -298,7 +299,7 @@ export class TranscriptionService {
           speakerId: event.result.speakerId,
           duration: event.result.duration
         }, 'Translation final result');
-        
+
         const translationData: TranslationData = {
           type: StreamType.TRANSLATION,
           isFinal: true,
@@ -313,7 +314,7 @@ export class TranscriptionService {
           didTranslate: didTranslate
         };
         this.broadcastTranscriptionResult(userSession, translationData);
-        
+
         // Save transcript in the appropriate language
         this.updateTranscriptHistory(userSession, event, true, languageInfo.translateLanguage);
       };
@@ -321,15 +322,15 @@ export class TranscriptionService {
       // Transcription branch.
       (instance.recognizer as ConversationTranscriber).transcribing = (_sender: any, event: ConversationTranscriptionEventArgs) => {
         if (!event.result.text) return;
-        
-        sessionLogger.debug({ 
+
+        sessionLogger.debug({
           subscription,
           language: languageInfo.transcribeLanguage,
           text: event.result.text,
           isFinal: false,
           speakerId: event.result.speakerId
         }, 'Transcription interim result');
-        
+
         const transcriptionData: TranscriptionData = {
           type: StreamType.TRANSCRIPTION,
           text: event.result.text,
@@ -347,8 +348,8 @@ export class TranscriptionService {
 
       (instance.recognizer as ConversationTranscriber).transcribed = (_sender: any, event: ConversationTranscriptionEventArgs) => {
         if (!event.result.text) return;
-        
-        sessionLogger.debug({ 
+
+        sessionLogger.debug({
           subscription,
           language: languageInfo.transcribeLanguage,
           text: event.result.text,
@@ -356,7 +357,7 @@ export class TranscriptionService {
           speakerId: event.result.speakerId,
           duration: event.result.duration
         }, 'Transcription final result');
-        
+
         const transcriptionData: TranscriptionData = {
           type: StreamType.TRANSCRIPTION,
           isFinal: true,
@@ -376,13 +377,13 @@ export class TranscriptionService {
 
     // Common event handlers.
     instance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEventArgs) => {
-      sessionLogger.error({ 
+      sessionLogger.error({
         subscription,
         reason: event.reason,
         errorCode: event.errorCode,
         errorDetails: event.errorDetails
       }, 'Recognition canceled');
-      
+
       this.stopIndividualTranscriptionStream(instance, subscription, userSession);
     };
 
@@ -399,50 +400,96 @@ export class TranscriptionService {
     return absoluteTime - this.sessionStartTime;
   }
 
-  private broadcastTranscriptionResult(userSession: ExtendedUserSession, data: TranscriptionData | TranslationData): void {
+  // TODO(isaiah): copied from the old websocket service, Need to rethink how to cleanly implement this.
+  //   /**
+  //    * 🗣️📣 Broadcasts data to all TPAs subscribed to a specific stream type.
+  //    * @param userSessionId - ID of the user's glasses session
+  //    * @param streamType - Type of data stream
+  //    * @param data - Data to broadcast
+  //    */
+  private broadcastToTpa(userSessionId: string, streamType: StreamType, data: CloudToTpaMessage): void {
+    const userSession = sessionService.getSession(userSessionId);
+    if (!userSession) {
+      logger.error(`[transcription.service]: User session not found for ${userSessionId}`);
+      return;
+    }
+
+    // If the stream is transcription or translation and data has language info,
+    // construct an effective subscription string.
+    let effectiveSubscription: ExtendedStreamType = streamType;
+    // For translation, you might also include target language if available.
+    if (streamType === StreamType.TRANSLATION) {
+      effectiveSubscription = `${streamType}:${(data as any).transcribeLanguage}-to-${(data as any).translateLanguage}`;
+    } else if (streamType === StreamType.TRANSCRIPTION && !(data as any).transcribeLanguage) {
+      effectiveSubscription = `${streamType}:en-US`;
+    } else if (streamType === StreamType.TRANSCRIPTION) {
+      effectiveSubscription = `${streamType}:${(data as any).transcribeLanguage}`;
+    }
+
+    const subscribedApps = subscriptionService.getSubscribedApps(userSession, effectiveSubscription);
+
+    subscribedApps.forEach(packageName => {
+      const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+      const websocket = userSession.appWebsockets.get(packageName);
+      if (websocket && websocket.readyState === 1) {
+        // CloudDataStreamMessage
+        const dataStream: DataStream = {
+          type: CloudToTpaMessageType.DATA_STREAM,
+          sessionId: tpaSessionId,
+          streamType, // Base type remains the same in the message.
+          data,      // The data now may contain language info.
+          timestamp: new Date()
+        };
+
+        websocket.send(JSON.stringify(dataStream));
+      } else {
+        userSession.logger.error({ service: SERVICE_NAME, packageName }, `[transcription.service]: TPA ${packageName} not connected`);
+      }
+    });
+  }
+
+  private broadcastTranscriptionResult(userSession: UserSession, data: TranscriptionData | TranslationData): void {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-    
-    sessionLogger.debug({ 
-      streamType: data.type,
-      isFinal: data.isFinal,
+
+    sessionLogger.debug({
+      data,
       operation: 'broadcast'
     }, 'Broadcasting transcription/translation result');
-    
+
     try {
       const streamType = data.type === StreamType.TRANSLATION ? StreamType.TRANSLATION : StreamType.TRANSCRIPTION;
-      webSocketService.broadcastToTpa(userSession.sessionId, streamType, data);
+      this.broadcastToTpa(userSession.sessionId, streamType, data);
     } catch (error) {
-      sessionLogger.error({ 
-        error, 
-        streamType: data.type,
+      sessionLogger.error({
+        error,
+        data,
         operation: 'broadcast'
       }, 'Error broadcasting result');
     }
   }
 
-  feedAudioToTranscriptionStreams(userSession: ExtendedUserSession, audioData: Uint8Array) {
+  feedAudioToTranscriptionStreams(userSession: UserSession, audioData: Uint8Array) {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-    
+
     if (!userSession.transcriptionStreams) {
-      sessionLogger.error({ 
-        sessionId: userSession.sessionId,
+      sessionLogger.error({
         operation: 'feedAudio'
       }, 'No transcription streams found for session');
       return;
     }
-    
+
     // Too verbose to log every audio feed, so we can comment this out.
     // sessionLogger.debug({ 
     //   numStreams: userSession.transcriptionStreams.size,
     //   dataSize: audioData.length,
     //   operation: 'feedAudio'
     // }, 'Feeding audio data to transcription streams');
-    
+
     userSession.transcriptionStreams.forEach((instance, key) => {
       try {
         (instance.pushStream as any).write(audioData);
       } catch (error) {
-        sessionLogger.error({ 
+        sessionLogger.error({
           error,
           streamKey: key,
           operation: 'feedAudio'
@@ -455,77 +502,77 @@ export class TranscriptionService {
    * Legacy Methods
    ***********************/
   startTranscription(userSession: UserSession): void {
-    const extSession = userSession as ExtendedUserSession;
+    const extSession = userSession as UserSession;
     const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
-    
-    sessionLogger.info({ 
+
+    sessionLogger.info({
       sessionId: extSession.sessionId,
       operation: 'startTranscription'
     }, 'Starting transcription (legacy method)');
-    
+
     const minimalSubs = subscriptionService.getMinimalLanguageSubscriptions(extSession.sessionId);
-    
-    sessionLogger.debug({ 
+
+    sessionLogger.debug({
       subscriptions: minimalSubs,
       operation: 'startTranscription'
     }, 'Retrieved minimal language subscriptions');
-    
+
     this.updateTranscriptionStreams(extSession, minimalSubs);
   }
 
   stopTranscription(userSession: UserSession): void {
-    const extSession = userSession as ExtendedUserSession;
+    const extSession = userSession as UserSession;
     const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
-    
-    sessionLogger.info({ 
+
+    sessionLogger.info({
       sessionId: extSession.sessionId,
       operation: 'stopTranscription'
     }, 'Stopping all transcription streams (legacy method)');
-    
+
     this.updateTranscriptionStreams(extSession, []);
   }
 
   handlePushStreamError(userSession: UserSession, error: any): void {
-    const extSession = userSession as ExtendedUserSession;
+    const extSession = userSession as UserSession;
     const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
-    
-    sessionLogger.error({ 
-      error, 
+
+    sessionLogger.error({
+      error,
       sessionId: extSession.sessionId,
       operation: 'handlePushStreamError'
     }, 'Handling push stream error, stopping transcription');
-    
+
     this.stopTranscription(userSession);
   }
 
   private updateTranscriptHistory(
-    userSession: ExtendedUserSession, 
-    event: ConversationTranscriptionEventArgs, 
+    userSession: UserSession,
+    event: ConversationTranscriptionEventArgs,
     isFinal: boolean,
     language: string = 'en-US'
   ): void {
     const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-    
+
     // Initialize languageSegments if it doesn't exist
     if (!userSession.transcript.languageSegments) {
       sessionLogger.debug({ language }, 'Initializing language segments map');
       userSession.transcript.languageSegments = new Map<string, TranscriptSegment[]>();
     }
-    
+
     // Ensure the language entry exists in the map
     if (!userSession.transcript.languageSegments.has(language)) {
       sessionLogger.debug({ language }, 'Creating new language segment array');
       userSession.transcript.languageSegments.set(language, []);
     }
-    
+
     // Handle both the language-specific segments and (for backward compatibility) the legacy segments
     const segments = language === 'en-US' ? userSession.transcript.segments : [];
     const languageSegments = userSession.transcript.languageSegments.get(language)!;
-    
+
     // Check if we need to update an interim segment
     const hasInterimLastLegacy = segments.length > 0 && !segments[segments.length - 1].isFinal;
     const hasInterimLastLanguage = languageSegments.length > 0 && !languageSegments[languageSegments.length - 1].isFinal;
-    
+
     const currentTime = new Date();
     const newSegment = {
       resultId: event.result.resultId,
@@ -541,44 +588,44 @@ export class TranscriptionService {
       if (hasInterimLastLanguage) {
         languageSegments.pop(); // Remove the interim segment
       }
-      languageSegments.push({...newSegment});
-      
+      languageSegments.push({ ...newSegment });
+
       // For backward compatibility with legacy segments (English only)
       if (language === 'en-US') {
         if (hasInterimLastLegacy) {
           segments.pop(); // Remove the interim segment
         }
-        segments.push({...newSegment});
+        segments.push({ ...newSegment });
       }
-    } 
+    }
     // Handle interim segment
     else {
       // For language-specific segments
       if (hasInterimLastLanguage) {
-        languageSegments[languageSegments.length - 1] = {...newSegment};
+        languageSegments[languageSegments.length - 1] = { ...newSegment };
       } else {
-        languageSegments.push({...newSegment});
+        languageSegments.push({ ...newSegment });
       }
-      
+
       // For backward compatibility with legacy segments (English only)
       if (language === 'en-US') {
         if (hasInterimLastLegacy) {
-          segments[segments.length - 1] = {...newSegment};
+          segments[segments.length - 1] = { ...newSegment };
         } else {
-          segments.push({...newSegment});
+          segments.push({ ...newSegment });
         }
       }
     }
-    
+
     // Prune old segments (older than 30 minutes)
     const thirtyMinutesAgo = new Date(currentTime.getTime() - 30 * 60 * 1000);
-    
+
     // Update language-specific segments
     const filteredLanguageSegments = languageSegments.filter(
       seg => seg.timestamp && new Date(seg.timestamp) >= thirtyMinutesAgo
     );
     userSession.transcript.languageSegments.set(language, filteredLanguageSegments);
-    
+
     // Update legacy segments (English only) for backward compatibility
     if (language === 'en-US') {
       const filteredSegments = segments.filter(
@@ -586,9 +633,9 @@ export class TranscriptionService {
       );
       userSession.transcript.segments = filteredSegments;
     }
-    
-    sessionLogger.debug({ 
-      language, 
+
+    sessionLogger.debug({
+      language,
       segmentCount: languageSegments.length,
       isFinal: isFinal,
       operation: 'updateTranscript',

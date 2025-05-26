@@ -7,10 +7,10 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
+import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
-import App from '../../models/app.model';
+import App, { AppI } from '../../models/app.model';
 import { ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
@@ -62,7 +62,7 @@ export const SYSTEM_APPS: AppI[] = [
         description: "The dashboard app needs access to everything to provide a seamless experience."
       }
     ],
-  },
+  } as AppI,
 ];
 
 export function isUninstallable(packageName: string) {
@@ -158,46 +158,6 @@ export class AppService {
       packageName: packageName
     }).lean() as AppI;
     return app;
-  }
-
-  /**
-   * Triggers a webhook for a TPA.
-   * @param url - Webhook URL
-   * @param payload - Data to send
-   * @throws If webhook fails after retries
-   */
-  async triggerWebhook(url: string, payload: SessionWebhookRequest): Promise<void> {
-    const maxRetries = 2;
-    const baseDelay = 1000; // 1 second
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        await axios.post(url, payload, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000 // Increase timeout to 10 seconds
-        });
-        return;
-      } catch (error: unknown) {
-        if (attempt === maxRetries - 1) {
-          if (axios.isAxiosError(error)) {
-            logger.error(`triggerWebhook failed`, {
-              url,
-              attempt,
-              status: error.response?.status,
-              data: error.response?.data,
-              message: error.message
-            });
-          }
-          throw new Error(`Webhook failed after ${maxRetries} attempts: ${(error as AxiosError).message || 'Unknown error'}`);
-        }
-        // Exponential backoff
-        await new Promise(resolve =>
-          setTimeout(resolve, baseDelay * Math.pow(2, attempt))
-        );
-      }
-    }
   }
 
   /**

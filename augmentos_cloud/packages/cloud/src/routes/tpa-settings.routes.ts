@@ -11,7 +11,7 @@ export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET |
 import appService, { isUninstallable } from '../services/core/app.service';
 import { logger } from '@augmentos/utils';
 import { CloudToTpaMessageType, UserSession } from '@augmentos/sdk';
-import { sessionService } from '../services/core/session.service';
+import { sessionService } from '../services/session/session.service';
 import { Permission } from '../models/app.model';
 
 const router = express.Router();
@@ -289,8 +289,12 @@ router.post('/:tpaName', async (req, res) => {
 
       try {
         // When the user is not runnning the app, the appConnection is undefined, so we wrap it in a try/catch.
-        const tpaConnection = userSession.appConnections.get(tpaName);
-        tpaConnection.send(JSON.stringify(settingsUpdate));
+        const tpaWebsocket = userSession.appWebsockets.get(tpaName);
+        if (!tpaWebsocket) {
+          userSession.logger.warn({packageName: tpaName, }, `No WebSocket connection found for TPA ${tpaName} for user ${userId}`);
+          return res.status(404).json({ error: `No WebSocket connection found for TPA ${tpaName}` });
+        }
+        tpaWebsocket.send(JSON.stringify(settingsUpdate));
         logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
       }
       catch (error) {

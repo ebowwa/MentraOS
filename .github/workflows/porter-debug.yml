@@ -1,7 +1,7 @@
 "on":
     push:
         branches:
-            - isaiah/logging
+            - isaiah/websocket-service-refactor
 name: 🚀 [debug] Porter.run Deploy
 jobs:
     porter-deploy:

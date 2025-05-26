@@ -10,11 +10,12 @@
  * - Enforcing permission checks on subscriptions
  */
 
-import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@augmentos/sdk';
+import { StreamType, ExtendedStreamType, isLanguageStream, parseLanguageStream, createTranscriptionStream, CalendarEvent } from '@augmentos/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
-import { sessionService } from '../session/session.service';
+import { sessionService } from './session.service';
+import UserSession from './UserSession';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
 
@@ -154,12 +155,11 @@ export class SubscriptionService {
    * @throws If invalid subscription types are requested or permissions are missing
    */
   async updateSubscriptions(
-    sessionId: string,
+    userSession: UserSession,
     packageName: string,
-    userId: string,
     subscriptions: ExtendedStreamType[]
   ): Promise<void> {
-    const key = this.getKey(sessionId, packageName);
+    const key = this.getKey(userSession.userId, packageName);
 
     // Increment version for this key
     const currentVersion = (this.subscriptionUpdateVersion.get(key) || 0) + 1;
@@ -168,11 +168,11 @@ export class SubscriptionService {
     // Capture the version for this call
     const thisCallVersion = currentVersion;
 
-    logger.info({ key, subscriptions, userId: sessionId, sessionId }, 'Update subscriptions request received');
+    logger.info({ key, subscriptions, userId: userSession.userId }, 'Update subscriptions request received');
     const currentSubs = this.subscriptions.get(key) || new Set();
     const action: SubscriptionHistory['action'] = currentSubs.size === 0 ? 'add' : 'update';
 
-    logger.info({ key, subscriptions, userId: sessionId, sessionId }, 'Processing subscription update');
+    logger.info({ key, subscriptions, userId: userSession.userId }, 'Processing subscription update');
 
     // Validate subscriptions format
     const processedSubscriptions = subscriptions.map(sub =>
@@ -187,29 +187,29 @@ export class SubscriptionService {
       }
     }
 
-    logger.info({ processedSubscriptions, userId: sessionId, sessionId }, 'Processed and validated subscriptions');
+    logger.info({ processedSubscriptions, userId: userSession.userId }, 'Processed and validated subscriptions');
 
     try {
       // Get app details
       const app = await App.findOne({ packageName });
 
       if (!app) {
-        logger.warn({ packageName, userId: sessionId, sessionId }, 'App not found when checking permissions');
+        logger.warn({ packageName, userId: userSession.userId }, 'App not found when checking permissions');
         throw new Error(`App ${packageName} not found`);
       }
 
       // Filter subscriptions based on permissions
       const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, processedSubscriptions);
 
-      logger.debug({ userId: sessionId, sessionId, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Current subscription map after update');
+      logger.debug({ userId: userSession.userId, subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]) }, 'Current subscription map after update');
 
-      logger.info({ packageName, sessionId, processedSubscriptions, userId: sessionId }, 'Subscriptions updated after permission check');
+      logger.info({ packageName, processedSubscriptions, userId: userSession.userId }, 'Subscriptions updated after permission check');
 
       // If some subscriptions were rejected, send an error message to the client
       if (rejected.length > 0) {
         logger.warn({
           packageName,
-          userId: sessionId, sessionId,
+          userId: userSession.userId,
           rejectedCount: rejected.length,
           rejectedStreams: rejected.map(r => ({
             stream: r.stream,
@@ -217,29 +217,24 @@ export class SubscriptionService {
           }))
         }, 'Rejected subscriptions due to missing permissions');
 
-        // Find the user session to get the app connection
-        const userSession = sessionService.getSession(sessionId);
+        const appWebsocket = userSession.appWebsockets.get(packageName);
 
-        // if (userSession && userSession.appConnections) {
-        if (userSession && userSession.runningApps.has(packageName)) {
-          const connection = userSession.appWebsockets.get(packageName);
+        if (appWebsocket && appWebsocket.readyState === 1) {
+          // Send a detailed error message to the TPA about the rejected subscriptions
+          const errorMessage = {
+            type: 'permission_error',
+            message: 'Some subscriptions were rejected due to missing permissions',
+            details: rejected.map(r => ({
+              stream: r.stream,
+              requiredPermission: r.requiredPermission,
+              message: `To subscribe to ${r.stream}, add the ${r.requiredPermission} permission in the developer console`
+            })),
+            timestamp: new Date()
+          };
 
-          if (connection && connection.readyState === 1) {
-            // Send a detailed error message to the TPA about the rejected subscriptions
-            const errorMessage = {
-              type: 'permission_error',
-              message: 'Some subscriptions were rejected due to missing permissions',
-              details: rejected.map(r => ({
-                stream: r.stream,
-                requiredPermission: r.requiredPermission,
-                message: `To subscribe to ${r.stream}, add the ${r.requiredPermission} permission in the developer console`
-              })),
-              timestamp: new Date()
-            };
-
-            connection.send(JSON.stringify(errorMessage));
-          }
+          appWebsocket.send(JSON.stringify(errorMessage));
         }
+
 
         // Continue with only the allowed subscriptions
         processedSubscriptions.length = 0;
@@ -250,7 +245,10 @@ export class SubscriptionService {
       // At the end, before setting:
       if (this.subscriptionUpdateVersion.get(key) !== thisCallVersion) {
         // A newer call has started, so abort this update
-        logger.info({ userId: sessionId, sessionId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) }, 'Skipping update as newer call has started');
+        logger.info(
+          { userId: userSession.userId, key, thisCallVersion, currentVersion: this.subscriptionUpdateVersion.get(key) },
+          'Skipping update as newer call has started'
+        );
         return;
       }
 
@@ -264,11 +262,17 @@ export class SubscriptionService {
         action
       });
 
-      logger.info({ packageName, userId: sessionId, sessionId, processedSubscriptions }, 'Updated subscriptions successfully');
+      logger.info({ 
+        packageName,
+        userId: userSession.userId,
+        processedSubscriptions, 
+        newSubs: Array.from(newSubs),
+        serviceSubscriptions: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)])
+      }, 'Updated subscriptions successfully');
     } catch (error) {
       // If there's an error getting the app or checking permissions, log it but don't block
       // This ensures backward compatibility with existing code
-      logger.error({ error, packageName, userId: sessionId, sessionId }, 'Error checking permissions');
+      logger.error({ error, packageName, userId: userSession.userId }, 'Error checking permissions');
 
       // Continue with the subscription update
       this.subscriptions.set(key, new Set(processedSubscriptions));
@@ -318,7 +322,8 @@ export class SubscriptionService {
       sessionId,
       userId: sessionId,
       hasMediaSubscriptions: hasMedia,
-      mediaSubscriptions
+      subscriptionMap: Array.from(this.subscriptions.entries()).map(([k, v]) => [k, Array.from(v)]),
+      mediaSubscriptions,
     }, 'Checked session for media subscriptions');
 
     return hasMedia;
@@ -361,7 +366,7 @@ export class SubscriptionService {
     // this is a huge issue and points out a big inefficency in the way we're storing subscriptions and calculating what is subscribed to what.
     // 1. we should refactor this to be a subscription manager attached to a user's session instead of a global service.
     // 2. we should be caching what streams are subscribed to what apps, so we can quickly look up the apps for a stream without iterating over all subscriptions.
-    
+
     // logger.debug({
     //   sessionId,
     //   userId: sessionId,
