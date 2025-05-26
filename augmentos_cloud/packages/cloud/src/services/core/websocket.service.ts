@@ -17,10 +17,12 @@
 // import { WebSocketServer, WebSocket } from 'ws';
 import WebSocket from 'ws';
 import { IncomingMessage, Server } from 'http';
+import crypto from 'crypto';
 import { ExtendedUserSession, IS_LC3, SequencedAudioChunk } from './session.service';
 import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
 import appService from './app.service';
+import streamTrackerService from './stream-tracker.service';
 import {
   AppStateChange,
   AuthError,
@@ -157,6 +159,12 @@ export class WebSocketService {
   public initialize() {
     try {
       this.sessionService = getSessionService();
+      
+      // Set up stream tracker callback for sending keep-alive messages
+      streamTrackerService.onKeepAliveSent = (streamId: string, ackId: string) => {
+        this.sendKeepAliveToGlasses(streamId, ackId);
+      };
+      
       logger.info('✅ WebSocket Service initialized');
     } catch (error) {
       logger.error('Failed to initialize WebSocket Service:', error);
@@ -1021,6 +1029,9 @@ export class WebSocketService {
 
       userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}, reason: ${disconnectInfo?.reason || 'unknown'}`);
 
+      // Clean up any active streams for this session
+      streamTrackerService.cleanupSession(userSession.sessionId);
+
       // Mark the session as disconnected but do not remove it immediately
       this.getSessionService().markSessionDisconnected(userSession);
 
@@ -1347,14 +1358,46 @@ export class WebSocketService {
           const rtmpStatusMessage = message as RtmpStreamStatus;
           userSession.logger.info(`[websocket.service]: Received RTMP stream status update from glasses: ${rtmpStatusMessage.status}`);
 
-          // Get the appId from the message
+          // Get the appId and streamId from the message
           const appId = rtmpStatusMessage.appId;
+          const streamId = rtmpStatusMessage.streamId;
+
+          // Update stream tracker with new status
+          if (streamId) {
+            // Map status strings to our internal status types
+            let trackerStatus: 'initializing' | 'active' | 'stopping' | 'stopped' | 'timeout';
+            switch (rtmpStatusMessage.status) {
+              case 'connecting':
+              case 'initializing':
+                trackerStatus = 'initializing';
+                break;
+              case 'active':
+              case 'streaming':
+                trackerStatus = 'active';
+                break;
+              case 'stopping':
+                trackerStatus = 'stopping';
+                break;
+              case 'stopped':
+              case 'disconnected':
+                trackerStatus = 'stopped';
+                break;
+              case 'timeout':
+              case 'error':
+                trackerStatus = 'timeout';
+                break;
+              default:
+                trackerStatus = 'active'; // Default to active for unknown statuses
+            }
+            streamTrackerService.updateStatus(streamId, trackerStatus);
+          }
 
           // Create the response to send to TPAs
           const rtmpStreamStatus = {
             type: message.type,
             status: rtmpStatusMessage.status,
             appId: appId, // Include the app ID in the response
+            streamId: streamId, // Include the stream ID for tracking
             sessionId: userSession.sessionId, // Include the session ID
             timestamp: new Date()
           };
@@ -1374,6 +1417,19 @@ export class WebSocketService {
           this.broadcastToTpa(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
           userSession.logger.info(`[websocket.service]: Broadcast RTMP status update to subscribed TPAs: ${rtmpStatusMessage.status}`);
 
+          break;
+        }
+
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK: {
+          const ackMessage = message as any;
+          const streamId = ackMessage.streamId;
+          const ackId = ackMessage.ackId;
+          
+          userSession.logger.debug(`[websocket.service]: Received keep-alive ACK for stream ${streamId}, ackId: ${ackId}`);
+          
+          // Process the ACK in stream tracker
+          streamTrackerService.processKeepAliveAck(streamId, ackId);
+          
           break;
         }
 
@@ -1968,6 +2024,12 @@ export class WebSocketService {
                 return;
               }
 
+              // Generate unique stream ID for tracking
+              const streamId = crypto.randomUUID();
+
+              // Start tracking the stream
+              streamTrackerService.startTracking(streamId, userSession.sessionId, appId, rtmpUrl);
+
               // Send request to glasses
               userSession.websocket.send(JSON.stringify({
                 type: CloudToGlassesMessageType.START_RTMP_STREAM,
@@ -1976,6 +2038,7 @@ export class WebSocketService {
                 video,
                 audio,
                 stream,
+                streamId,
                 timestamp: new Date()
               }));
 
@@ -1983,6 +2046,7 @@ export class WebSocketService {
               const initialResponse = {
                 type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
                 status: "initializing",
+                streamId,
                 timestamp: new Date()
               };
               ws.send(JSON.stringify(initialResponse));
@@ -2000,6 +2064,7 @@ export class WebSocketService {
 
               const rtmpStreamStopMessage = message as any;
               const appId = rtmpStreamStopMessage.packageName;
+              const streamId = rtmpStreamStopMessage.streamId;
 
               // Check if app is in the active sessions array
               const isAppActive = userSession.activeAppSessions.includes(appId);
@@ -2012,10 +2077,16 @@ export class WebSocketService {
                 return;
               }
 
+              // Update stream status to stopping
+              if (streamId) {
+                streamTrackerService.updateStatus(streamId, 'stopping');
+              }
+
               // Send stop command to glasses
               userSession.websocket.send(JSON.stringify({
                 type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
                 appId,
+                streamId,
                 timestamp: new Date()
               }));
 
@@ -2023,6 +2094,7 @@ export class WebSocketService {
               const stoppingResponse = {
                 type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
                 status: "stopped",
+                streamId,
                 timestamp: new Date()
               };
               ws.send(JSON.stringify(stoppingResponse));
@@ -2526,6 +2598,42 @@ export class WebSocketService {
       }
     } catch (error) {
       userSession.logger.error(`[websocket.service] Error sending location to dashboard:`, error);
+    }
+  }
+
+  /**
+   * Send keep-alive message to glasses for a specific stream
+   * @param streamId - The stream ID to send keep-alive for
+   * @param ackId - The ACK ID to track
+   * @private
+   */
+  private sendKeepAliveToGlasses(streamId: string, ackId: string): void {
+    const stream = streamTrackerService.getStream(streamId);
+    if (!stream) {
+      logger.warn(`[websocket.service]: Cannot send keep-alive for unknown stream: ${streamId}`);
+      return;
+    }
+
+    const userSession = this.getSessionService().getUserSessionBySessionId(stream.sessionId);
+    if (!userSession || !userSession.websocket || userSession.websocket.readyState !== WebSocket.OPEN) {
+      logger.warn(`[websocket.service]: Cannot send keep-alive for stream ${streamId} - no active session`);
+      streamTrackerService.stopTracking(streamId);
+      return;
+    }
+
+    try {
+      const keepAliveMessage = {
+        type: CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
+        streamId,
+        ackId,
+        timestamp: new Date()
+      };
+
+      userSession.websocket.send(JSON.stringify(keepAliveMessage));
+      logger.debug(`[websocket.service]: Sent keep-alive for stream ${streamId}`);
+    } catch (error) {
+      logger.error(`[websocket.service]: Failed to send keep-alive for stream ${streamId}:`, error);
+      streamTrackerService.stopTracking(streamId);
     }
   }
 

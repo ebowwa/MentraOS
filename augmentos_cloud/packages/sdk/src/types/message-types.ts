@@ -23,6 +23,7 @@ export enum GlassesToCloudMessageType {
   
   // RTMP streaming
   RTMP_STREAM_STATUS = StreamType.RTMP_STREAM_STATUS,
+  KEEP_ALIVE_ACK = 'keep_alive_ack',
   
   // OPEN_DASHBOARD = 'open_dashboard',
   // Events and data
@@ -68,6 +69,7 @@ export enum CloudToGlassesMessageType {
   // RTMP streaming
   START_RTMP_STREAM = 'start_rtmp_stream',
   STOP_RTMP_STREAM = 'stop_rtmp_stream',
+  KEEP_RTMP_STREAM_ALIVE = 'keep_rtmp_stream_alive',
   
   // Dashboard updates
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
@@ -177,7 +179,8 @@ export const UpdateTypes = [
   CloudToGlassesMessageType.DASHBOARD_MODE_CHANGE,
   CloudToGlassesMessageType.DASHBOARD_ALWAYS_ON_CHANGE,
   CloudToGlassesMessageType.START_RTMP_STREAM,
-  CloudToGlassesMessageType.STOP_RTMP_STREAM
+  CloudToGlassesMessageType.STOP_RTMP_STREAM,
+  CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE
 ] as const;
 
 /**

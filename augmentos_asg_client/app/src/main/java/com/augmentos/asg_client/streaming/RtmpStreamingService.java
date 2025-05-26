@@ -20,6 +20,9 @@ import android.os.Looper;
 import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
+
+import java.util.Timer;
+import java.util.TimerTask;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
@@ -68,6 +71,13 @@ public class RtmpStreamingService extends Service {
     private Handler mReconnectHandler;
     private boolean mReconnecting = false;
 
+    // Keep-alive timeout parameters
+    private Timer mRtmpStreamTimeoutTimer;
+    private String mCurrentStreamId;
+    private boolean mIsStreamingActive = false;
+    private static final long STREAM_TIMEOUT_MS = 60000; // 60 seconds timeout
+    private Handler mTimeoutHandler;
+
     public class LocalBinder extends Binder {
         public RtmpStreamingService getService() {
             return RtmpStreamingService.this;
@@ -91,6 +101,9 @@ public class RtmpStreamingService extends Service {
 
         // Initialize handler for reconnection logic
         mReconnectHandler = new Handler(Looper.getMainLooper());
+
+        // Initialize handler for timeout logic
+        mTimeoutHandler = new Handler(Looper.getMainLooper());
 
         // Initialize the streamer
         initStreamer();
@@ -138,6 +151,12 @@ public class RtmpStreamingService extends Service {
         // Cancel any pending reconnections
         if (mReconnectHandler != null) {
             mReconnectHandler.removeCallbacksAndMessages(null);
+        }
+
+        // Cancel timeout timer and handler
+        cancelStreamTimeout();
+        if (mTimeoutHandler != null) {
+            mTimeoutHandler.removeCallbacksAndMessages(null);
         }
 
         stopStreaming();
@@ -657,6 +676,88 @@ public class RtmpStreamingService extends Service {
     }
 
     /**
+     * Schedule a timeout for the current stream
+     * @param streamId The stream ID to track
+     */
+    private void scheduleStreamTimeout(String streamId) {
+        cancelStreamTimeout(); // Cancel any existing timeout
+        
+        mCurrentStreamId = streamId;
+        mIsStreamingActive = true;
+        
+        Log.d(TAG, "Scheduling stream timeout for streamId: " + streamId + " (" + STREAM_TIMEOUT_MS + "ms)");
+        
+        mRtmpStreamTimeoutTimer = new Timer("RtmpStreamTimeout-" + streamId);
+        mRtmpStreamTimeoutTimer.schedule(new TimerTask() {
+            @Override
+            public void run() {
+                Log.w(TAG, "Stream timeout triggered for streamId: " + streamId);
+                mTimeoutHandler.post(() -> handleStreamTimeout(streamId));
+            }
+        }, STREAM_TIMEOUT_MS);
+    }
+    
+    /**
+     * Reset the timeout timer (called when receiving keep-alive)
+     * @param streamId The stream ID that sent the keep-alive
+     */
+    public void resetStreamTimeout(String streamId) {
+        if (mCurrentStreamId != null && mCurrentStreamId.equals(streamId) && mIsStreamingActive) {
+            Log.d(TAG, "Resetting stream timeout for streamId: " + streamId);
+            scheduleStreamTimeout(streamId); // Reschedule with fresh timeout
+        } else {
+            Log.w(TAG, "Received keep-alive for unknown or inactive stream: " + streamId + 
+                  " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + ")");
+        }
+    }
+    
+    /**
+     * Handle stream timeout - stop streaming due to no keep-alive
+     * @param streamId The stream ID that timed out
+     */
+    private void handleStreamTimeout(String streamId) {
+        if (mCurrentStreamId != null && mCurrentStreamId.equals(streamId) && mIsStreamingActive) {
+            Log.w(TAG, "Stream timed out due to missing keep-alive messages: " + streamId);
+            
+            // Notify about timeout
+            EventBus.getDefault().post(new StreamingEvent.Error("Stream timed out - no keep-alive from cloud"));
+            if (sStatusCallback != null) {
+                sStatusCallback.onStreamError("Stream timed out - no keep-alive from cloud");
+            }
+            
+            // Stop the stream
+            stopStreaming();
+            mIsStreamingActive = false;
+            mCurrentStreamId = null;
+        } else {
+            Log.d(TAG, "Ignoring timeout for old stream: " + streamId + 
+                  " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + ")");
+        }
+    }
+    
+    /**
+     * Cancel the current stream timeout
+     */
+    private void cancelStreamTimeout() {
+        if (mRtmpStreamTimeoutTimer != null) {
+            Log.d(TAG, "Cancelling stream timeout timer");
+            mRtmpStreamTimeoutTimer.cancel();
+            mRtmpStreamTimeoutTimer = null;
+        }
+        mIsStreamingActive = false;
+        mCurrentStreamId = null;
+    }
+    
+    /**
+     * Start timeout tracking for a new stream (called when stream starts)
+     * @param streamId The stream ID to track
+     */
+    public void startStreamTimeout(String streamId) {
+        Log.i(TAG, "Starting timeout tracking for streamId: " + streamId);
+        scheduleStreamTimeout(streamId);
+    }
+
+    /**
      * Static convenience methods for controlling streaming from anywhere in the app
      */
 
@@ -717,6 +818,26 @@ public class RtmpStreamingService extends Service {
      */
     public static int getReconnectAttempt() {
         return sInstance != null ? sInstance.mReconnectAttempts : 0;
+    }
+    
+    /**
+     * Start timeout tracking for a stream (static convenience method)
+     * @param streamId The stream ID to track
+     */
+    public static void startStreamTimeout(String streamId) {
+        if (sInstance != null) {
+            sInstance.startStreamTimeout(streamId);
+        }
+    }
+    
+    /**
+     * Reset timeout for a stream (static convenience method)
+     * @param streamId The stream ID that sent keep-alive
+     */
+    public static void resetStreamTimeout(String streamId) {
+        if (sInstance != null) {
+            sInstance.resetStreamTimeout(streamId);
+        }
     }
     
     /**

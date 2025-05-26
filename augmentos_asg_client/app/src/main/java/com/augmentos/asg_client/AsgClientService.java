@@ -1192,7 +1192,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                     // Start streaming with the specified URL (callback already registered)
                     try {
+                        // Extract streamId if provided
+                        String streamId = dataToProcess.optString("streamId", "");
+                        
                         com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl);
+                        
+                        // Start timeout tracking if streamId is provided
+                        if (!streamId.isEmpty()) {
+                            com.augmentos.asg_client.streaming.RtmpStreamingService.startStreamTimeout(streamId);
+                            Log.d(TAG, "Started timeout tracking for stream: " + streamId);
+                        }
+                        
                         Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl);
                     } catch (Exception e) {
                         Log.e(TAG, "Error starting RTMP streaming", e);
@@ -1231,6 +1241,25 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     } catch (JSONException e) {
                         Log.e(TAG, "Error creating RTMP status response", e);
                         sendRtmpStatusResponse(false, "json_error", e.getMessage());
+                    }
+                    break;
+
+                case "keep_rtmp_stream_alive":
+                    Log.d(TAG, "Received RTMP keep-alive message");
+                    
+                    String streamId = dataToProcess.optString("streamId", "");
+                    String ackId = dataToProcess.optString("ackId", "");
+                    
+                    if (!streamId.isEmpty() && !ackId.isEmpty()) {
+                        // Reset the timeout for this stream
+                        com.augmentos.asg_client.streaming.RtmpStreamingService.resetStreamTimeout(streamId);
+                        
+                        // Send ACK response back to cloud
+                        sendKeepAliveAck(streamId, ackId);
+                        
+                        Log.d(TAG, "Processed keep-alive for stream: " + streamId + ", ackId: " + ackId);
+                    } else {
+                        Log.w(TAG, "Keep-alive message missing streamId or ackId");
                     }
                     break;
                     
@@ -1762,6 +1791,34 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating RTMP status response", e);
             }
+        }
+    }
+
+    /**
+     * Send a keep-alive ACK response back to the cloud
+     * @param streamId The stream ID
+     * @param ackId The ACK ID to respond with
+     */
+    private void sendKeepAliveAck(String streamId, String ackId) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject response = new JSONObject();
+                response.put("type", "keep_alive_ack");
+                response.put("streamId", streamId);
+                response.put("ackId", ackId);
+                response.put("timestamp", System.currentTimeMillis());
+
+                // Convert to string
+                String jsonString = response.toString();
+                Log.d(TAG, "Sending keep-alive ACK: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating keep-alive ACK response", e);
+            }
+        } else {
+            Log.w(TAG, "Cannot send keep-alive ACK - no bluetooth connection");
         }
     }
 
