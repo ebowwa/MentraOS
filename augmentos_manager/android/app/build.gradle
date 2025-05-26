@@ -155,7 +155,12 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // AugmentOSLib project dependency
+    implementation project(path: ':AugmentOSLib')
     implementation project(path: ":augmentos_core")
+    implementation project(path: ":SmartGlassesManager")
+    implementation "androidx.lifecycle:lifecycle-service:2.6.1"
+    implementation("org.greenrobot:eventbus:3.3.1")
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
