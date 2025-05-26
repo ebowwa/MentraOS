@@ -95,7 +95,7 @@ export default function Homepage() {
         console.error("Failed to get local version from env file")
         // Navigate to update screen with connection error
         navigation.navigate("VersionUpdateScreen", {
-          isDarkTheme,
+          isDarkTheme: theme.isDark,
           connectionError: true,
         })
         setIsCheckingVersion(false)
