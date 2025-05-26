@@ -12,6 +12,8 @@ import { TpaSession } from '../tpa/session';
 const session = new TpaSession({
   packageName: 'com.example.streaming-demo',
   apiKey: 'your-api-key',
+  userId: 'example-user@example.com',
+  tpaServer: {} as any, // In a real app, this would be a TpaServer instance
   // In a real app, this would be the production server URL
   augmentOSWebsocketUrl: 'ws://localhost:8002/tpa-ws'
 });
@@ -57,11 +59,11 @@ function setupStreamStatusHandler() {
       case 'initializing':
         console.log('Stream is initializing...');
         break;
+      case 'streaming':
+        console.log('Stream is actively streaming!');
+        break;
       case 'active':
         console.log('Stream is active and running!');
-        break;
-      // case 'busy':
-      //   console.log(`Another app (${status.appId}) is currently streaming`);
         break;
       case 'error':
         console.error(`Stream error: ${status.errorDetails}`);
