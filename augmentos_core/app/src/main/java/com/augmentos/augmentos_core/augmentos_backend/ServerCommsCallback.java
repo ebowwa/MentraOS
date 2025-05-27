@@ -35,6 +35,13 @@ public interface ServerCommsCallback {
      * 
      */
     void onRtmpStreamStop();
+    
+    /**
+     * Called when the server sends a keep alive message for an RTMP stream
+     * 
+     * @param message The keep alive message with streamId, ackId, and timestamp
+     */
+    void onRtmpStreamKeepAlive(JSONObject message);
 
     // New methods for explicit app started/stopped events
     void onAppStarted(String packageName);

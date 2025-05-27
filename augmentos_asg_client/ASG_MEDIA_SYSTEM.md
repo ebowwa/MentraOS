@@ -1748,7 +1748,7 @@ private sendKeepAliveToGlasses(streamId: string, ackId: string): void {
   const stream = streamTrackerService.getStream(streamId);
   if (!stream) return;
 
-  const userSession = this.getSessionService().getUserSessionBySessionId(stream.sessionId);
+  const userSession = this.getSessionService().getSession(stream.sessionId);
   if (!userSession?.websocket || userSession.websocket.readyState !== WebSocket.OPEN) {
     streamTrackerService.stopTracking(streamId);
     return;
@@ -2006,3 +2006,46 @@ This means:
 **Implementation Effort Completed**: Full implementation across TypeScript cloud services and Java Android client with zero syntax errors and complete feature parity with design specifications.
 
 **Next Steps**: System is ready for integration testing and production deployment. The enhanced keep-alive system provides the robust foundation needed for reliable streaming regardless of network conditions or connection failures.
+
+## RTMP Keep-Alive Stop Logic
+
+### Issue: Keep-Alive ACK Warnings After Stream Stop
+
+When a TPA sends `rtmp_stream_stop`, the cloud immediately stops sending keep-alives for that stream to prevent confusing "missed ACK" warnings that make it appear the system is broken when it's actually working correctly.
+
+### Implementation Logic
+
+1. **TPA sends stop request**: When a TPA sends `rtmp_stream_stop`, this signals the intent to stop the stream
+2. **Cloud immediately stops keep-alives**: Upon receiving the stop request, the cloud immediately ceases all keep-alive tracking for that stream
+3. **Cloud forwards stop command**: The cloud also sends the explicit stop command to glasses for fastest possible stop
+4. **Best of both worlds**:
+   - **Immediate stop** via explicit command (if connection is good)
+   - **Guaranteed eventual stop** via missing keep-alives (if stop command is lost)
+   - **Clean logs** - no more "missed ACK" warnings after legitimate stop
+
+### Why This Approach is Optimal
+
+- **Intent is clear**: If the TPA wants to stop, we should respect that immediately
+- **Guaranteed stop**: Glasses will auto-stop within ~15 seconds when they don't get keep-alives
+
+## Camera Preview Management
+
+### Issue: Camera Continues Running After RTMP Stop
+
+The camera preview was continuing to run after RTMP streaming stopped, causing unnecessary battery drain and device heat even when streaming appeared to have stopped.
+
+### Implementation
+
+Camera preview is now stopped whenever RTMP streaming stops for any reason:
+
+1. **Explicit stop commands**: When `stopStreaming()` is called, camera preview is stopped along with the RTMP stream
+2. **Stream timeouts**: When keep-alive timeout triggers, camera preview is stopped before calling `stopStreaming()`
+3. **Max reconnection attempts**: When all reconnection attempts fail, `stopStreaming()` is called which stops both stream and camera preview
+
+### Result
+
+- No more continuous "Camera capture framerate: 15 fps" logs after streaming stops
+- Proper hardware cleanup prevents battery drain and heat issues
+- Camera preview only runs during active streaming or brief reconnection attempts (~2 minutes max)
+
+The keep-alive timeout mechanism is designed exactly for this - to be a fail-safe that stops streams when something goes wrong. Using it intentionally when we want to stop is elegant and reliable.

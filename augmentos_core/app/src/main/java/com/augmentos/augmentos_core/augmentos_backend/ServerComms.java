@@ -685,6 +685,14 @@ public class ServerComms {
                     serverCommsCallback.onRtmpStreamStop();
                 }
                 break;
+                
+            case "keep_rtmp_stream_alive":
+                Log.d(TAG, "Received KEEP_RTMP_STREAM_ALIVE: " + msg.toString());
+                
+                if (serverCommsCallback != null) {
+                    serverCommsCallback.onRtmpStreamKeepAlive(msg);
+                }
+                break;
 
             case "display_event":
                 //Log.d(TAG, "Received display_event: " + msg.toString());

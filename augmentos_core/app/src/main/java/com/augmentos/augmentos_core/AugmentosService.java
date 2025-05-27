@@ -1508,6 +1508,21 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e(TAG, "Cannot process RTMP stream stop request: smartGlassesManager is null");
                 }
             }
+            
+            @Override
+            public void onRtmpStreamKeepAlive(JSONObject message) {
+                Log.d(TAG, "RTMP stream keep alive received");
+                
+                // Forward the keep alive to the smart glasses manager
+                if (smartGlassesManager != null) {
+                    boolean messageSent = smartGlassesManager.sendRtmpStreamKeepAlive(message);
+                    if (!messageSent) {
+                        Log.e(TAG, "Failed to send RTMP keep alive to glasses");
+                    }
+                } else {
+                    Log.e(TAG, "Cannot process RTMP keep alive: smartGlassesManager is null");
+                }
+            }
 
             @Override
             public void onAppStarted(String packageName) {

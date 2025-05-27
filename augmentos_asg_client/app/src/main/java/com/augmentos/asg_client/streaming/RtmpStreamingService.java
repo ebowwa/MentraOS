@@ -525,6 +525,17 @@ public class RtmpStreamingService extends Service {
                         } else {
                             mIsStreaming = false;
                             mReconnecting = false;
+                            
+                            // Stop camera preview when streaming stops
+                            try {
+                                if (mStreamer != null) {
+                                    mStreamer.stopPreview();
+                                    Log.d(TAG, "Camera preview stopped");
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "Error stopping camera preview", e);
+                            }
+                            
                             updateNotification();
                             Log.i(TAG, "Streaming stopped");
                             if (sStatusCallback != null) {
@@ -563,9 +574,9 @@ public class RtmpStreamingService extends Service {
             if (sStatusCallback != null) {
                 sStatusCallback.onReconnectFailed(MAX_RECONNECT_ATTEMPTS);
             }
-            mIsStreaming = false;
-            mReconnecting = false;
-            updateNotification();
+            
+            // Stop streaming completely when max attempts reached
+            stopStreaming();
             return;
         }
 
@@ -697,19 +708,6 @@ public class RtmpStreamingService extends Service {
         }, STREAM_TIMEOUT_MS);
     }
     
-    /**
-     * Reset the timeout timer (called when receiving keep-alive)
-     * @param streamId The stream ID that sent the keep-alive
-     */
-    public void resetStreamTimeout(String streamId) {
-        if (mCurrentStreamId != null && mCurrentStreamId.equals(streamId) && mIsStreamingActive) {
-            Log.d(TAG, "Resetting stream timeout for streamId: " + streamId);
-            scheduleStreamTimeout(streamId); // Reschedule with fresh timeout
-        } else {
-            Log.w(TAG, "Received keep-alive for unknown or inactive stream: " + streamId + 
-                  " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + ")");
-        }
-    }
     
     /**
      * Handle stream timeout - stop streaming due to no keep-alive
@@ -723,6 +721,16 @@ public class RtmpStreamingService extends Service {
             EventBus.getDefault().post(new StreamingEvent.Error("Stream timed out - no keep-alive from cloud"));
             if (sStatusCallback != null) {
                 sStatusCallback.onStreamError("Stream timed out - no keep-alive from cloud");
+            }
+            
+            // Stop camera preview immediately on timeout
+            try {
+                if (mStreamer != null) {
+                    mStreamer.stopPreview();
+                    Log.d(TAG, "Camera preview stopped due to timeout");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error stopping camera preview on timeout", e);
             }
             
             // Stop the stream
@@ -748,14 +756,6 @@ public class RtmpStreamingService extends Service {
         mCurrentStreamId = null;
     }
     
-    /**
-     * Start timeout tracking for a new stream (called when stream starts)
-     * @param streamId The stream ID to track
-     */
-    public void startStreamTimeout(String streamId) {
-        Log.i(TAG, "Starting timeout tracking for streamId: " + streamId);
-        scheduleStreamTimeout(streamId);
-    }
 
     /**
      * Static convenience methods for controlling streaming from anywhere in the app
@@ -826,7 +826,7 @@ public class RtmpStreamingService extends Service {
      */
     public static void startStreamTimeout(String streamId) {
         if (sInstance != null) {
-            sInstance.startStreamTimeout(streamId);
+            sInstance.scheduleStreamTimeout(streamId);
         }
     }
     
@@ -836,7 +836,13 @@ public class RtmpStreamingService extends Service {
      */
     public static void resetStreamTimeout(String streamId) {
         if (sInstance != null) {
-            sInstance.resetStreamTimeout(streamId);
+            if (sInstance.mCurrentStreamId != null && sInstance.mCurrentStreamId.equals(streamId) && sInstance.mIsStreamingActive) {
+                Log.d(TAG, "Resetting stream timeout for streamId: " + streamId);
+                sInstance.scheduleStreamTimeout(streamId); // Reschedule with fresh timeout
+            } else {
+                Log.w(TAG, "Received keep-alive for unknown or inactive stream: " + streamId + 
+                      " (current: " + sInstance.mCurrentStreamId + ", active: " + sInstance.mIsStreamingActive + ")");
+            }
         }
     }
     

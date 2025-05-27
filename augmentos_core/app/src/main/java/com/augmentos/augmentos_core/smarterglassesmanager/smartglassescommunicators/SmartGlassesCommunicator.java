@@ -191,6 +191,17 @@ public abstract class SmartGlassesCommunicator {
     }
     
     /**
+     * Sends a keep alive message for the current RTMP stream
+     * Default implementation does nothing - specific communicators should override
+     * 
+     * @param message The keep alive message with streamId, ackId, and timestamp
+     */
+    public void sendRtmpStreamKeepAlive(JSONObject message) {
+        // Default implementation does nothing
+        Log.d("SmartGlassesCommunicator", "RTMP stream keep alive not implemented for this device");
+    }
+    
+    /**
      * Requests the smart glasses to scan for available WiFi networks
      * Default implementation does nothing - specific communicators should override
      */

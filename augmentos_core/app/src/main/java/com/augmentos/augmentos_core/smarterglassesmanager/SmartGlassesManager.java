@@ -896,6 +896,28 @@ public class SmartGlassesManager extends Service {
         }
     }
     
+    /**
+     * Send a keep alive message for RTMP streaming
+     * @param message The keep alive message to send
+     * @return true if message was sent, false otherwise
+     */
+    public boolean sendRtmpStreamKeepAlive(JSONObject message) {
+        // Check if smart glasses are connected
+        if (smartGlassesRepresentative != null && 
+            smartGlassesRepresentative.smartGlassesCommunicator != null && 
+            smartGlassesRepresentative.getConnectionState() == SmartGlassesConnectionState.CONNECTED) {
+            
+            Log.d(TAG, "Sending RTMP stream keep alive to glasses");
+            
+            // Pass the keep alive to the smart glasses communicator
+            smartGlassesRepresentative.smartGlassesCommunicator.sendRtmpStreamKeepAlive(message);
+            return true;
+        } else {
+            Log.e(TAG, "Cannot send RTMP keep alive - glasses not connected");
+            return false;
+        }
+    }
+    
     @Subscribe
     public void handleNewAsrLanguagesEvent(NewAsrLanguagesEvent event) {
         Log.d(TAG, "NewAsrLanguages: " + event.languages.toString());

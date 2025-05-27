@@ -2061,9 +2061,9 @@ export class WebSocketService {
                 return;
               }
 
-              // Update stream status to stopping
+              // Immediately stop keep-alive tracking to prevent missed ACK warnings
               if (streamId) {
-                streamTrackerService.updateStatus(streamId, 'stopping');
+                streamTrackerService.stopTracking(streamId);
               }
 
               // Send stop command to glasses
@@ -2598,7 +2598,7 @@ export class WebSocketService {
       return;
     }
 
-    const userSession = this.getSessionService().getUserSessionBySessionId(stream.sessionId);
+    const userSession = this.getSessionService().getSession(stream.sessionId);
     if (!userSession || !userSession.websocket || userSession.websocket.readyState !== WebSocket.OPEN) {
       logger.warn(`[websocket.service]: Cannot send keep-alive for stream ${streamId} - no active session`);
       streamTrackerService.stopTracking(streamId);
