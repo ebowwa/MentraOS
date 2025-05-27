@@ -14,7 +14,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
 import TpaSuccessDialog from "../components/dialogs/TpaSuccessDialog";
 import api, { AppResponse } from '@/services/api.service';
-import { AppI, TpaType } from '@augmentos/sdk';
+import { AppI } from '@augmentos/sdk';
 import { normalizeUrl } from '@/libs/utils';
 import { toast } from 'sonner';
 import PermissionsForm from '../components/forms/PermissionsForm';
@@ -236,7 +236,7 @@ const CreateTPA: React.FC = () => {
         publicUrl: formData.publicUrl,
         logoURL: formData.logoURL,
         webviewURL: formData.webviewURL,
-        tpaType: TpaType.STANDARD, // Using the default type
+        // tpaType: TpaType.STANDARD, // Using the default type
         permissions: formData.permissions
       };
 
