@@ -246,7 +246,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
         showAlert(
           translate("home:completeOnboardingTitle"),
           translate("home:completeOnboardingMessage"),
-          [{text: translate("home:ok")}],
+          [{text: translate("common:ok")}],
           {
             isDarkTheme,
             iconName: 'information-outline',
@@ -276,14 +276,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
         // neededPermissions.map(permission => ({text: permission})),
         [
           {
-            text: translate("home:ok"),
+            text: translate("common:ok"),
             onPress: async () => {
               await requestPermissions(neededPermissions);
               startApp(packageName);
             },
           },
           {
-            text: translate("home:cancel"),
+            text: translate("common:cancel"),
             style: 'cancel',
           },
         ],

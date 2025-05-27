@@ -4,10 +4,11 @@ import Svg, { Path } from 'react-native-svg';
 
 interface SolarLineIconsSet4Props {
   color?: string;
+  size?: number;
 }
 
-const SolarLineIconsSet4 = ({ color = '#F9F8FE' }: SolarLineIconsSet4Props) => (
-  <Svg width={24} height={25} viewBox="0 0 24 25" fill="none">
+const SolarLineIconsSet4 = ({ color = '#F9F8FE', size = 24 }: SolarLineIconsSet4Props) => (
+  <Svg width={size} height={size} viewBox="0 0 24 25" fill="none">
     <Path
       d="M14.1626 17.0329L13.4533 16.7798C12.5134 16.4445 11.4864 16.4445 10.5464 16.7798L9.83716 17.0329"
       stroke={color}

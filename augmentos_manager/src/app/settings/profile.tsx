@@ -19,6 +19,7 @@ import { Header, Screen } from '@/components/ignite';
 import { useAppTheme } from '@/utils/useAppTheme';
 import { ThemedStyle } from '@/theme';
 import { router } from 'expo-router';
+import { translate } from "@/i18n";
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -80,35 +81,41 @@ export default function ProfileSettingsPage() {
     console.log('Requesting data export');
     // BackendServerComms.getInstance().requestDataExport();
     // show an alert saying the user will receive an email with a link to download the data
-    Alert.alert('Data export requested', 'You will receive an email with a link to download the data.', [
-      {text: 'OK', style: 'default'},
-    ]);
+    Alert.alert(
+      translate("profileSettings:dataExportTitle"),
+      translate("profileSettings:dataExportMessage"),
+      [{ text: translate("common:ok"), style: "default" }]
+    );
   };
 
   const handleDeleteAccount = () => {
     console.log('Deleting account');
-    Alert.alert('Are you sure you want to delete your account?', 'This action cannot be undone.', [
-      {text: 'Cancel', style: 'cancel'},
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await BackendServerComms.getInstance().requestAccountDeletion();
-          } catch (error) {
-            console.error(error);
-          }
-          await logout();
+    Alert.alert(
+      translate("profileSettings:deleteAccountTitle"),
+      translate("profileSettings:deleteAccountMessage"),
+      [
+        { text: translate("common:cancel"), style: "cancel" },
+        {
+          text: translate("common:delete"),
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await BackendServerComms.getInstance().requestAccountDeletion();
+            } catch (error) {
+              console.error(error);
+            }
+            await logout();
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const {theme, themed} = useAppTheme()
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 16}}>
-      <Header titleTx="profileSettings:title" leftIcon='caretLeft' onLeftPress={() => router.back()} />
+      <Header title={translate("profileSettings:title")} leftIcon='caretLeft' onLeftPress={() => router.back()} />
         {loading ? (
           <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
         ) : userData ? (
@@ -117,29 +124,29 @@ export default function ProfileSettingsPage() {
               <Image source={{uri: userData.avatarUrl}} style={themed($profileImage)} />
             ) : (
               <View style={themed($profilePlaceholder)}>
-                <Text style={themed($profilePlaceholderText)}>No Profile Picture</Text>
+                <Text style={themed($profilePlaceholderText)}>{translate("profileSettings:noProfilePicture")}</Text>
               </View>
             )}
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>Name:</Text>
+              <Text style={themed($label)}>{translate("profileSettings:name")}</Text>
               <Text style={themed($infoText)}>{userData.fullName || 'N/A'}</Text>
             </View>
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>Email:</Text>
+              <Text style={themed($label)}>{translate("profileSettings:email")}</Text>
               <Text style={themed($infoText)}>{userData.email || 'N/A'}</Text>
             </View>
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>Created at:</Text>
+              <Text style={themed($label)}>{translate("profileSettings:createdAt")}</Text>
               <Text style={themed($infoText)}>
                 {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : 'N/A'}
               </Text>
             </View>
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>Provider:</Text>
+              <Text style={themed($label)}>{translate("profileSettings:provider")}</Text>
               <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
                 {userData.provider === 'google' && (
                   <>
@@ -172,20 +179,20 @@ export default function ProfileSettingsPage() {
               <TouchableOpacity
                 onPress={() => setShowChangePassword(!showChangePassword)}
                 style={themed($changePasswordButton)}>
-                <Text style={themed($changePasswordButtonText)}>Change Password</Text>
+                <Text style={themed($changePasswordButtonText)}>{translate("profileSettings:changePassword")}</Text>
               </TouchableOpacity>
             )}
 
             {showChangePassword && (
               <View style={themed($passwordChangeContainer)}>
                 <View style={themed($inputGroup)}>
-                  <Text style={themed($inputLabel)}>New Password</Text>
+                  <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
                   <View style={themed($enhancedInputContainer)}>
                     <Icon name="lock" size={16} color="#6B7280" />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
-                      placeholder="Enter new password"
+                      placeholder={translate("profileSettings:enterNewPassword")}
                       value={newPassword}
                       autoCapitalize="none"
                       onChangeText={(text: any) => {
@@ -204,13 +211,13 @@ export default function ProfileSettingsPage() {
                 </View>
 
                 <View style={themed($inputGroup)}>
-                  <Text style={themed($inputLabel)}>Confirm Password</Text>
+                  <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
                   <View style={themed($enhancedInputContainer)}>
                     <Icon name="lock" size={16} color="#6B7280" />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
-                      placeholder="Confirm new password"
+                      placeholder={translate("profileSettings:confirmNewPassword")}
                       value={confirmPassword}
                       autoCapitalize="none"
                       onChangeText={(text: any) => {
@@ -240,21 +247,21 @@ export default function ProfileSettingsPage() {
                     setNewPassword('');
                     setConfirmPassword('');
                   }}>
-                  <Text style={themed($updatePasswordButtonText)}>Update Password</Text>
+                  <Text style={themed($updatePasswordButtonText)}>{translate("profileSettings:updatePassword")}</Text>
                 </TouchableOpacity>
               </View>
             )}
 
             <TouchableOpacity style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
-              <Text style={themed($requestDataExportButtonText)}>Request Data Export</Text>
+              <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
-              <Text style={themed($deleteAccountButtonText)}>Delete Account</Text>
+              <Text style={themed($deleteAccountButtonText)}>{translate("profileSettings:deleteAccount")}</Text>
             </TouchableOpacity>
           </>
         ) : (
-          <Text>Error, while getting User info</Text>
+          <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
         )}
 
     </Screen>

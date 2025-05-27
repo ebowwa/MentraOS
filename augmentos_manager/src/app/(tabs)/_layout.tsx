@@ -1,13 +1,16 @@
 import React from "react"
 import {Tabs} from "expo-router/tabs"
-import {Icon} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {colors, spacing, ThemedStyle, typography} from "@/theme"
 import {TextStyle, View, ViewStyle} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
-import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
+import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
+import HomeIcon from "assets/icons/navbar/HomeIcon"
+import MirrorIcon from "assets/icons/navbar/MirrorIcon"
+import StoreIcon from "assets/icons/navbar/StoreIcon"
+import UserIcon from "assets/icons/navbar/UserIcon"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
@@ -22,6 +25,7 @@ export default function Layout() {
       screenOptions={{
         headerShown: false,
         tabBarHideOnKeyboard: true,
+        tabBarShowLabel: true,
         tabBarStyle: [
           themed($tabBar),
           {
@@ -56,7 +60,8 @@ export default function Layout() {
         options={{
           href: "/home",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <FontAwesome name="home" size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={color} />,
+          tabBarLabel: translate("navigation:home"),
         }}
       />
       <Tabs.Screen
@@ -64,7 +69,8 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name="glasses" size={28} color={color} />,
+          tabBarIcon: ({ focused, color }) => <SolarLineIconsSet4 size={28} color = {color}/>,
+          tabBarLabel: translate("navigation:glasses"),
         }}
       />
       <Tabs.Screen
@@ -72,7 +78,8 @@ export default function Layout() {
         options={{
           href: "/mirror",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name="mirror" size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={color} />,
+          tabBarLabel: translate("navigation:mirror"),
         }}
       />
       <Tabs.Screen
@@ -80,7 +87,8 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MaterialCommunityIcons name={"apps"} size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={color} />,
+          tabBarLabel: translate("navigation:store"),
         }}
       />
       <Tabs.Screen
@@ -88,7 +96,8 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <FontAwesome name="cog" size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={color} />,
+          tabBarLabel: translate("navigation:account")
         }}
       />
     </Tabs>
