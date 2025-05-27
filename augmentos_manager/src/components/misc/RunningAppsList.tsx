@@ -8,6 +8,9 @@ import AppIcon from './AppIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
+import ChevronRight from 'assets/icons/ChevronRight';
+import EmptyApps from '../home/EmptyApps';
+import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
 
 interface RunningAppsListProps {
   isDarkTheme: boolean;
@@ -57,68 +60,69 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
-  return (
-    <View style={styles.appsContainer}>
-      <Text style={[styles.sectionTitle, {color: textColor}]}>
-        Active Apps
-      </Text>
-      <View style={styles.listContainer}>
-        {runningApps.length > 0 ? (
-          runningApps.map((app, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => stopApp(app.packageName)}
-              onLongPress={() => openAppSettings(app)}
-              delayLongPress={500}
-              style={styles.appItemWrapper}>
-              <LinearGradient
-                colors={['#56CCFE', '#FF8DF6', '#FFD04E']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 0}}
-                style={styles.appItem}>
-                <View style={styles.appContent}>
-                  <AppIcon
-                    app={app}
-                    isDarkTheme={isDarkTheme}
-                    isForegroundApp={app.is_foreground}
-                    style={styles.appIcon}
-                  />
-                  <Text style={styles.appName}>{app.name || 'Convoscope'}</Text>
-                  <TouchableOpacity 
-                    onPress={() => openAppSettings(app)}
-                    style={styles.settingsButton}>
-                    <Icon name="cog-outline" size={24} color="#000000" />
-                  </TouchableOpacity>
+  function getNewRow() {
+    return (
+      <View style={styles.appsContainer}>
+        <View style={styles.listContainer}>
+
+          {runningApps.length > 0 ? (
+            <>
+              <ListHeaderActiveApps />
+              {runningApps.map((app, index) => (
+                <View style={[styles.everything, styles.everythingFlexBox]}>
+                  <View style={[styles.appDescription, styles.everythingFlexBox]}>
+                    <AppIcon
+                      app={app}
+                      isDarkTheme={isDarkTheme}
+                      isForegroundApp={app.is_foreground}
+                      style={styles.appIcon}
+                    />
+                    <View style={styles.appNameWrapper}>
+                      <Text style={styles.appName} numberOfLines={1}>{app.name}</Text>
+                    </View>
+                  </View>
+                  <View style={[styles.toggleParent, styles.everythingFlexBox]}>
+                    <TouchableOpacity
+                      key={index}
+                      onPress={() => stopApp(app.packageName)}
+                      onLongPress={() => openAppSettings(app)}
+                      delayLongPress={500}
+                      style={{ padding: 10, borderRadius: 20 }}
+                    >
+                      <View style={styles.toggle}>
+                        <View style={[styles.toggleBarIcon, styles.toggleIconLayout, { backgroundColor: "#565E8C" }]} />
+                        <View
+                          style={[
+                            styles.toggleCircleIcon,
+                            styles.toggleIconLayout,
+                            { left: "44.44%" }
+                          ]}
+                        >
+                          <View style={{ flex: 1, borderRadius: 12, backgroundColor: "#CED2ED" }} />
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                    <ChevronRight />
+                  </View>
                 </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))
-        ) : (
-          <View style={styles.noAppsContainer}>
-            <LinearGradient
-              colors={['#56CCFE', '#FF8DF6', '#FFD04E']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.noAppsGradient}
-            >
-              <View style={styles.noAppsContent}>
-                <Text style={[styles.noAppsText, {color: '#000000'}]}>
-                  Tap on an app below to start it.
-                </Text>
-              </View>
-            </LinearGradient>
-          </View>
-        )}
+              ))}
+            </>
+          ) : (
+            <EmptyApps />
+
+          )}
+        </View>
       </View>
-    </View>
-  );
+    );
+  }
+
+  return getNewRow();
 };
 
 const styles = StyleSheet.create({
   appsContainer: {
     justifyContent: 'flex-start',
-    marginTop: 14,
-    marginBottom: 14,
+    marginTop: 8,
   },
   sectionTitle: {
     fontSize: 20,
@@ -126,7 +130,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     lineHeight: 22,
     letterSpacing: 0.38,
-    marginBottom: 10,
   },
   listContainer: {
     gap: 10,
@@ -144,13 +147,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     minHeight: 40,
-  },
-  appName: {
-    flex: 1,
-    fontSize: 17,
-    fontWeight: '500',
-    color: '#000000',
-    marginLeft: 8,
   },
   settingsButton: {
     padding: 50,
@@ -180,8 +176,63 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   appIcon: {
-    width: 50,
-    height: 50,
+    width: 32,
+    height: 32,
+  },
+  toggle: {
+    width: 36,
+    height: 20
+  },
+  toggleBarIcon: {
+    height: "80%",
+    width: "94.44%",
+    top: "15%",
+    right: "5.56%",
+    bottom: "15%",
+    left: "0%",
+    borderRadius: 8,
+    maxHeight: "100%"
+  },
+  toggleCircleIcon: {
+    width: "55.56%",
+    top: 0,
+    right: "47.22%",
+    left: "-2.78%",
+    borderRadius: 12,
+    height: 20
+  },
+  toggleIconLayout: {
+    maxWidth: "100%",
+    position: "absolute",
+    overflow: "hidden"
+  },
+  everythingFlexBox: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  everything: {
+    justifyContent: "space-between",
+    gap: 0,
+    alignSelf: "stretch"
+  },
+  toggleParent: {
+    gap: 12
+  },
+  appDescription: {
+    gap: 17,
+    justifyContent: "center"
+  },
+  appNameWrapper: {
+    justifyContent: "center"
+  },
+  appName: {
+    fontSize: 15,
+    letterSpacing: 0.6,
+    lineHeight: 20,
+    fontFamily: "SF Pro Rounded",
+    color: "#ced2ed",
+    textAlign: "left",
+    overflow: "hidden"
   },
 });
 

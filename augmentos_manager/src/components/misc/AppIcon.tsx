@@ -92,15 +92,15 @@ const styles = StyleSheet.create({
         marginTop: 5,
         fontSize: 11,
         fontWeight: '600',
-        fontFamily: 'Montserrat-Bold',
+    	fontFamily: "SF Pro Rounded",
         lineHeight: 12,
-        textAlign: 'center',
+    		textAlign: "left",
     },
     appNameLight: {
         color: '#000000',
     },
     appNameDark: {
-        color: '#FFFFFF',
+    		color: "#ced2ed",
     },
     squareBadge: {
         position: 'absolute',
@@ -109,7 +109,6 @@ const styles = StyleSheet.create({
         width: 20,
         height: 20,
         borderRadius: 6,
-        backgroundColor: '#FF438B',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 3,

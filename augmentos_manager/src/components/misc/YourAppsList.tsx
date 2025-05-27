@@ -15,6 +15,8 @@ import {requestFeaturePermissions} from '@/utils/PermissionsUtils';
 import {checkFeaturePermissions} from '@/utils/PermissionsUtils';
 import {PermissionFeatures} from '@/utils/PermissionsUtils';
 import showAlert from '@/utils/AlertUtils';
+import ChevronRight from 'assets/icons/ChevronRight';
+import ListHeaderInactiveApps from '../home/ListHeaderInactiveApps';
 
 interface YourAppsListProps {
   isDarkTheme: boolean;
@@ -477,16 +479,14 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
 
   return (
     <View style={styles.appsContainer}>
-      <View style={styles.titleContainer}>
-        <Text style={[styles.sectionTitle, {color: textColor}]}>Inactive Apps</Text>
-      </View>
-
       {renderOnboardingArrow()}
 
       <ScrollView
         style={styles.listContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollViewContent}>
+        <ListHeaderInactiveApps />
+
         {availableApps.map((app, index) => {
           // Check if this is the LiveCaptions app
           const isLiveCaptions = app.packageName === 'com.augmentos.livecaptions' || 
@@ -503,29 +503,55 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
               setLiveCaptionsPosition(prev => ({ ...prev, index }));
             }, 0);
           }
-          
-          return (
-            <TouchableOpacity
-              key={app.packageName}
-              onPress={() => startApp(app.packageName)}
+          function getNewRow() {
+            return (
+              <TouchableOpacity
               onLongPress={() => openAppSettings(app)}
-              delayLongPress={500}
-              style={styles.appItem}
-              ref={ref}>
-              <View style={styles.appContent}>
-                <AppIcon
-                  app={app}
-                  isDarkTheme={isDarkTheme}
-                  onClick={() => startApp(app.packageName)}
-                  style={styles.appIconStyle}
-                />
-                <Text style={[styles.appName, {color: textColor}]}>{app.name || 'Convoscope'}</Text>
-                <TouchableOpacity onPress={() => openAppSettings(app)} style={styles.settingsButton}>
-                  <Icon name="cog-outline" size={24} color={textColor} />
-                </TouchableOpacity>
+              >
+<View style={[styles.everything, styles.everythingFlexBox]}>
+                <View style={[styles.appDescription, styles.everythingFlexBox]}>
+                  <AppIcon
+                    app={app}
+                    isDarkTheme={isDarkTheme}
+                    isForegroundApp={app.is_foreground}
+                    style={styles.appIcon}
+                  />
+                  <View style={styles.appNameWrapper}>
+                  <Text style={styles.appName} numberOfLines={1}>{app.name}</Text>
+                </View>
+                </View>
+                
+                <View style={[styles.toggleParent, styles.everythingFlexBox]}>
+                  <TouchableOpacity
+                    key={app.packageName}
+                    onPress={() => startApp(app.packageName)}
+                    delayLongPress={500}
+                      style={{ padding: 10, borderRadius: 20 }}
+                    ref={ref}>
+                    <View style={styles.toggle}>
+                      <View style={[styles.toggleBarIcon, styles.toggleIconLayout, { backgroundColor: "#565E8C" }]} />
+                      <View
+                        style={[
+                          styles.toggleCircleIcon,
+                          styles.toggleIconLayout,
+                          { left: "-2.78%" }
+                        ]}
+                      >
+                        <View style={{ flex: 1, borderRadius: 12, backgroundColor: "#CED2ED" }} />
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+
+                  <ChevronRight />
+                </View>
               </View>
-            </TouchableOpacity>
-          );
+              </TouchableOpacity>
+              
+
+            );
+          }
+
+          return getNewRow();
         })}
       </ScrollView>
     </View>
@@ -567,12 +593,6 @@ const styles = StyleSheet.create({
   listContainer: {
     gap: 4,
   },
-  appItem: {
-    backgroundColor: '#E8E8E8',
-    borderRadius: 12,
-    padding: 11, // Match RunningAppsList padding
-    marginBottom: 9,
-  },
   appContent: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -602,12 +622,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     justifyContent: 'center',
   },
-  appName: {
-    flex: 1,
-    fontSize: 17, // Match RunningAppsList fontSize
-    fontWeight: '500',
-    marginLeft: 8,
-  },
   settingsButton: {
     padding: 50,
     margin: -46,
@@ -636,7 +650,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#0288D1',
-    shadowOffset: {width: 0, height: 3},
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 10,
@@ -649,7 +663,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginRight: 6,
     textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: {width: 0, height: 1},
+    textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2,
   },
   bubbleIcon: {
@@ -662,7 +676,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#0288D1',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.6,
     shadowRadius: 8,
     elevation: 12,
@@ -739,6 +753,65 @@ const styles = StyleSheet.create({
   },
   scrollViewContent: {
     paddingBottom: Platform.OS === 'ios' ? 24 : 38, // Account for nav bar height + iOS home indicator
+  },
+  appIcon: {
+    width: 32,
+    height: 32,
+  },
+  toggle: {
+    width: 36,
+    height: 20
+  },
+  toggleBarIcon: {
+    height: "80%",
+    width: "94.44%",
+    top: "15%",
+    right: "5.56%",
+    bottom: "15%",
+    left: "0%",
+    borderRadius: 8,
+    maxHeight: "100%"
+  },
+  toggleCircleIcon: {
+    width: "55.56%",
+    top: 0,
+    right: "47.22%",
+    left: "-2.78%",
+    borderRadius: 12,
+    height: 20
+  },
+  toggleIconLayout: {
+    maxWidth: "100%",
+    position: "absolute",
+    overflow: "hidden"
+  },
+  everythingFlexBox: {
+    flexDirection: "row",
+    alignItems: "center"
+  },
+  everything: {
+    justifyContent: "space-between",
+    gap: 0,
+    alignSelf: "stretch"
+  },
+  toggleParent: {
+    gap: 12
+  },
+  appDescription: {
+    gap: 17,
+    justifyContent: "center"
+  },
+  appNameWrapper: {
+    justifyContent: "center"
+  },
+  appName: {
+    fontSize: 15,
+    letterSpacing: 0.6,
+    lineHeight: 20,
+    fontFamily: "SF Pro Rounded",
+    color: "#ced2ed",
+    textAlign: "left",
+    overflow: "hidden"
   },
 });
 
