@@ -31,7 +31,7 @@ You'll need [compatible smart glasses](https://augmentos.org/glasses/) to build 
 
 ## Deployment
 
-Developers can deploy finished apps to the [AugmentOS Store](https://appstore.augmentos.org) for users to discover and install.
+Developers can deploy finished apps to the [AugmentOS Store](https://store.augmentos.org) for users to discover and install.
 
 ## Resources
 

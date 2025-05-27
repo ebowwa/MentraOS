@@ -337,7 +337,7 @@ const getShareableLink = async (req: Request, res: Response) => {
     }
 
     // Generate a shareable URL directly to the app's page on the app store
-    const installUrl = `${process.env.APP_STORE_URL || 'https://appstore.augmentos.org'}/package/${packageName}`;
+    const installUrl = `${process.env.APP_STORE_URL || 'https://store.augmentos.org'}/package/${packageName}`;
 
     res.json({ installUrl });
   } catch (error) {

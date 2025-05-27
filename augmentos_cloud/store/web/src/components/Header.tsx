@@ -25,7 +25,7 @@ const Header: React.FC = () => {
               <h1 className="font-light text-xl pb-0.5 pl-1">ugment</h1>
               <h1 className="font-bold text-xl pb-0.5">OS</h1>
             </Link>
-            <span className="font-light text-sm text-gray-800">App Store</span>
+            <span className="font-light text-sm text-gray-800">AugmentOS Store</span>
           </div>
 
           {/* Authentication */}
