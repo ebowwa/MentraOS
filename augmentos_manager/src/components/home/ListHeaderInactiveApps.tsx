@@ -1,47 +1,48 @@
+import { translate } from "@/i18n";
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/SearchIcon";
 import * as React from "react";
-import {Text, StyleSheet, View, Pressable} from "react-native";
+import {Text, View, TextStyle, ViewStyle} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 
 const ListHeaderInactiveApps = () => {
-  	
-  	return (
-    		<SafeAreaView  style={styles.listHeaderIcon} >
-      			<View style={styles.tableHeader}>
-        				<Text style={styles.inactiveApps}>Inactive Apps</Text>
-      			</View>
-    		</SafeAreaView>);
+  const { themed } = useAppTheme();
+
+  return (
+    <SafeAreaView style={themed($listHeaderIcon)} >
+      <View style={themed($tableHeader)}>
+        <Text style={themed($inactiveApps)}>
+          {translate("home:inactiveApps")}
+        </Text>
+      </View>
+    </SafeAreaView>
+  );
 };
 
-const styles = StyleSheet.create({
-  	inactiveApps: {
-    		fontSize: 15,
-    		letterSpacing: 0.6,
-    		lineHeight: 20,
-    		fontWeight: "500",
-    		fontFamily: "SF Pro Rounded",
-    		color: "#fff",
-    		textAlign: "left"
-  	},
-  	tableHeader: {
-    		flexDirection: "row"
-  	},
-  
-  	wrapper: {
-    		width: 24,
-    		height: 20
-  	},
-	listHeaderIcon: {
-			marginBottom:12,
-    		flex: 1,
-    		alignItems: "center",
-    		justifyContent: "space-between",
-    		paddingVertical: 0,
-    		gap: 0,
-    		flexDirection: "row",
-    		width: "100%"
-  	}
+export default ListHeaderInactiveApps;
 
+const $inactiveApps: ThemedStyle<TextStyle> = () => ({
+  fontSize: 15,
+  letterSpacing: 0.6,
+  lineHeight: 20,
+  fontWeight: "500",
+  fontFamily: "SF Pro Rounded",
+  color: "#fff",
+  textAlign: "left",
 });
 
-export default ListHeaderInactiveApps;
+const $tableHeader: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+});
+
+const $listHeaderIcon: ThemedStyle<ViewStyle> = () => ({
+  marginBottom: 12,
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "space-between",
+  paddingVertical: 0,
+  gap: 0,
+  flexDirection: "row",
+  width: "100%",
+});

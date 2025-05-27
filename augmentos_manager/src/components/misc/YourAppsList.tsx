@@ -17,6 +17,7 @@ import {PermissionFeatures} from '@/utils/PermissionsUtils';
 import showAlert from '@/utils/AlertUtils';
 import ChevronRight from 'assets/icons/ChevronRight';
 import ListHeaderInactiveApps from '../home/ListHeaderInactiveApps';
+import { translate } from "@/i18n";
 
 interface YourAppsListProps {
   isDarkTheme: boolean;
@@ -243,9 +244,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
     if (!onboardingCompleted) {
       if (packageName !== 'com.augmentos.livecaptions' && packageName !== 'cloud.augmentos.live-captions') {
         showAlert(
-          'Complete Onboarding',
-          'Please tap the Live Captions app to complete the onboarding process.',
-          [{text: 'OK'}],
+          translate("home:completeOnboardingTitle"),
+          translate("home:completeOnboardingMessage"),
+          [{text: translate("home:ok")}],
           {
             isDarkTheme,
             iconName: 'information-outline',
@@ -268,19 +269,21 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
     const neededPermissions = await checkPermissions(appToStart);
     if (neededPermissions.length > 0) {
       await showAlert(
-        neededPermissions.length > 1 ? 'Permissions Required' : 'Permission Required',
-        'Please grant the following permissions to continue: ' + neededPermissions.join(', '),
+        neededPermissions.length > 1 ? translate("home:permissionsRequiredTitle") : translate("home:permissionRequiredTitle"),
+        translate("home:permissionMessage", {
+        permissions: neededPermissions.join(', ')
+      }),
         // neededPermissions.map(permission => ({text: permission})),
         [
           {
-            text: 'OK',
+            text: translate("home:ok"),
             onPress: async () => {
               await requestPermissions(neededPermissions);
               startApp(packageName);
             },
           },
           {
-            text: 'Cancel',
+            text: translate("home:cancel"),
             style: 'cancel',
           },
         ],
@@ -335,9 +338,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
 
         setTimeout(() => {
           showAlert(
-            'Try Live Captions!',
-            'Start talking now to see your speech transcribed on your glasses in real-time!',
-            [{text: 'OK'}],
+              translate("home:tryLiveCaptionsTitle"),
+              translate("home:tryLiveCaptionsMessage"),
+            [{text: translate("home:ok")}],
             {
               isDarkTheme,
               iconName: 'microphone',
@@ -407,7 +410,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
                   textShadowRadius: 2,
                 },
               ]}>
-              TAP TO START
+              {translate("home:tapToStart")}
             </Text>
             <Icon
               name="gesture-tap"

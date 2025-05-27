@@ -1,5 +1,5 @@
 import React, {useMemo, useState, useRef} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView} from 'react-native';
+import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { useAppStatus } from '@/contexts/AppStatusProvider';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -11,6 +11,9 @@ import BackendServerComms from '@/backend_comms/BackendServerComms';
 import ChevronRight from 'assets/icons/ChevronRight';
 import EmptyApps from '../home/EmptyApps';
 import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
+import { translate } from "@/i18n";
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 interface RunningAppsListProps {
   isDarkTheme: boolean;
@@ -60,41 +63,42 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
     scrollViewRef.current?.scrollToEnd({ animated: true });
   };
 
+  const { themed, theme } = useAppTheme();
+
   function getNewRow() {
     return (
-      <View style={styles.appsContainer}>
-        <View style={styles.listContainer}>
+      <View style={themed($appsContainer)}>
+        <View style={themed($listContainer)}>
 
           {runningApps.length > 0 ? (
             <>
               <ListHeaderActiveApps />
               {runningApps.map((app, index) => (
-                <View style={[styles.everything, styles.everythingFlexBox]}>
-                  <View style={[styles.appDescription, styles.everythingFlexBox]}>
+                <View style={[themed($everything), themed($everythingFlexBox)]} key={index}>
+                  <View style={[themed($appDescription), themed($everythingFlexBox)]}>
                     <AppIcon
                       app={app}
                       isDarkTheme={isDarkTheme}
                       isForegroundApp={app.is_foreground}
-                      style={styles.appIcon}
+                      style={themed($appIcon)}
                     />
-                    <View style={styles.appNameWrapper}>
-                      <Text style={styles.appName} numberOfLines={1}>{app.name}</Text>
+                    <View style={themed($appNameWrapper)}>
+                      <Text style={themed($appName)} numberOfLines={1}>{app.name}</Text>
                     </View>
                   </View>
-                  <View style={[styles.toggleParent, styles.everythingFlexBox]}>
+                  <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
                     <TouchableOpacity
-                      key={index}
                       onPress={() => stopApp(app.packageName)}
                       onLongPress={() => openAppSettings(app)}
                       delayLongPress={500}
                       style={{ padding: 10, borderRadius: 20 }}
                     >
-                      <View style={styles.toggle}>
-                        <View style={[styles.toggleBarIcon, styles.toggleIconLayout, { backgroundColor: "#565E8C" }]} />
+                      <View style={themed($toggle)}>
+                        <View style={[themed($toggleBarIcon), themed($toggleIconLayout), { backgroundColor: "#565E8C" }]} />
                         <View
                           style={[
-                            styles.toggleCircleIcon,
-                            styles.toggleIconLayout,
+                            themed($toggleCircleIcon),
+                            themed($toggleIconLayout),
                             { left: "44.44%" }
                           ]}
                         >
@@ -119,121 +123,83 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   return getNewRow();
 };
 
-const styles = StyleSheet.create({
-  appsContainer: {
-    justifyContent: 'flex-start',
-    marginTop: 8,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-Bold',
-    lineHeight: 22,
-    letterSpacing: 0.38,
-  },
-  listContainer: {
-    gap: 10,
-  },
-  appItemWrapper: {
-    marginBottom: 0.5,
-    borderRadius: 12,
-  },
-  appItem: {
-    borderRadius: 12,
-    padding: 11,
-    overflow: 'hidden',
-  },
-  appContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 40,
-  },
-  settingsButton: {
-    padding: 50,
-    margin: -46,
-  },
-  noAppsContainer: {
-    // marginBottom: 8, // Removing this to maintain consistent spacing
-  },
-  noAppsGradient: {
-    borderRadius: 12,
-    padding: 11, // Match padding with regular app items
-    minHeight: 40,
-  },
-  noAppsContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 50, // Added 2 more pixels for perfect height match
-  },
-  noAppsTitle: {
-    fontSize: 18,
-    fontWeight: '500',
-    marginBottom: 8,
-  },
-  noAppsText: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  appIcon: {
-    width: 32,
-    height: 32,
-  },
-  toggle: {
-    width: 36,
-    height: 20
-  },
-  toggleBarIcon: {
-    height: "80%",
-    width: "94.44%",
-    top: "15%",
-    right: "5.56%",
-    bottom: "15%",
-    left: "0%",
-    borderRadius: 8,
-    maxHeight: "100%"
-  },
-  toggleCircleIcon: {
-    width: "55.56%",
-    top: 0,
-    right: "47.22%",
-    left: "-2.78%",
-    borderRadius: 12,
-    height: 20
-  },
-  toggleIconLayout: {
-    maxWidth: "100%",
-    position: "absolute",
-    overflow: "hidden"
-  },
-  everythingFlexBox: {
-    flexDirection: "row",
-    alignItems: "center"
-  },
-  everything: {
-    justifyContent: "space-between",
-    gap: 0,
-    alignSelf: "stretch"
-  },
-  toggleParent: {
-    gap: 12
-  },
-  appDescription: {
-    gap: 17,
-    justifyContent: "center"
-  },
-  appNameWrapper: {
-    justifyContent: "center"
-  },
-  appName: {
-    fontSize: 15,
-    letterSpacing: 0.6,
-    lineHeight: 20,
-    fontFamily: "SF Pro Rounded",
-    color: "#ced2ed",
-    textAlign: "left",
-    overflow: "hidden"
-  },
+const $appsContainer: ThemedStyle<ViewStyle> = () => ({
+  justifyContent: 'flex-start',
+  marginTop: 8,
+});
+
+const $listContainer: ThemedStyle<ViewStyle> = () => ({
+  gap: 10,
+});
+
+const $everything: ThemedStyle<ViewStyle> = () => ({
+  justifyContent: "space-between",
+  gap: 0,
+  alignSelf: "stretch"
+});
+
+const $everythingFlexBox: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  alignItems: "center"
+});
+
+const $appDescription: ThemedStyle<ViewStyle> = () => ({
+  gap: 17,
+  justifyContent: "center"
+});
+
+const $appIcon: ThemedStyle<ViewStyle> = () => ({
+  width: 32,
+  height: 32,
+});
+
+const $appNameWrapper: ThemedStyle<ViewStyle> = () => ({
+  justifyContent: "center"
+});
+
+const $appName: ThemedStyle<TextStyle> = () => ({
+  fontSize: 15,
+  letterSpacing: 0.6,
+  lineHeight: 20,
+  fontFamily: "SF Pro Rounded",
+  color: "#ced2ed",
+  textAlign: "left",
+  overflow: "hidden"
+});
+
+const $toggleParent: ThemedStyle<ViewStyle> = () => ({
+  gap: 12
+});
+
+const $toggle: ThemedStyle<ViewStyle> = () => ({
+  width: 36,
+  height: 20
+});
+
+const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
+  height: "80%",
+  width: "94.44%",
+  top: "15%",
+  right: "5.56%",
+  bottom: "15%",
+  left: "0%",
+  borderRadius: 8,
+  maxHeight: "100%"
+});
+
+const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
+  width: "55.56%",
+  top: 0,
+  right: "47.22%",
+  left: "-2.78%",
+  borderRadius: 12,
+  height: 20
+});
+
+const $toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
+  maxWidth: "100%",
+  position: "absolute",
+  overflow: "hidden"
 });
 
 export default RunningAppsList;

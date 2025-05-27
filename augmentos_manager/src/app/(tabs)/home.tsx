@@ -25,6 +25,7 @@ import NotificationOff from "assets/icons/NotificationOff"
 import NotificationOn from "assets/icons/NotificationOn"
 import { router } from "expo-router"
 import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
+import {translate} from "@/i18n"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -204,11 +205,11 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: 20}}>
-      <AnimatedSection>
+    <Screen preset="auto" style={themed($screen)}>      
+    <AnimatedSection>
         <Header leftTx="home:title" 
         RightActionComponent={
-    <View style={{ flexDirection: "row" }}>
+    <View style={themed($headerRight)}>
       <NotificationOff/>
       <MicIcon withBackground/>
     </View>
@@ -237,10 +238,10 @@ export default function Homepage() {
 
         <DefaultButton icon={<SolarLineIconsSet4 />} onPress={() => {
             router.push("/pairing/select-glasses-model");
-          }} title="Pair Glasses" /> 
+          }} title={translate("home:pairGlasses")} /> 
           <DefaultButton icon={<SolarLineIconsSet4 />} onPress={() => {
             router.push("/pairing/select-glasses-model");
-          }} title="Connect Glasses" /> 
+          }} title={translate("home:connectGlasses")}/> 
 
         //status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")
         <>
@@ -286,3 +287,12 @@ const $loadingText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   textAlign: "center",
 })
+
+const $screen: ThemedStyle<ViewStyle> = () => ({
+  paddingHorizontal: 20,
+})
+
+const $headerRight: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+})
+

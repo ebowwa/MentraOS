@@ -14,6 +14,22 @@ const en = {
   },
   home: {
     title: "Home",
+    pairGlasses: "Pair Glasses",
+    connectGlasses: "Connect Glasses",
+    emptyActiveAppListInfo: "Your active apps will appear here.",
+    noActiveApps: "No Active Apps",
+    activeApps: "Active Apps",
+    inactiveApps: "Inactive Apps",
+    tapToStart: "TAP TO START",
+    completeOnboardingTitle: "Complete Onboarding",
+    completeOnboardingMessage: "Please tap the Live Captions app to complete the onboarding process.",
+    tryLiveCaptionsTitle: "Try Live Captions!",
+    tryLiveCaptionsMessage: "Start talking now to see your speech transcribed on your glasses in real-time!",
+    permissionRequiredTitle: "Permission Required",
+    permissionsRequiredTitle: "Permissions Required",
+    permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
+    ok: "OK",
+    cancel: "Cancel"
   },
   glasses: {
     title: "Glasses",
