@@ -4,7 +4,7 @@ import { UserDocument } from '../../models/user.model';
 import { Types } from 'mongoose';
 import { Organization } from '../../models/organization.model';
 
-const INVITE_JWT_SECRET = process.env.INVITE_JWT_SECRET;
+const INVITE_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 if (!INVITE_JWT_SECRET) {
   throw new Error('INVITE_JWT_SECRET is not defined in environment variables');
 }
@@ -52,7 +52,7 @@ export class InviteService {
     };
 
     // Generate JWT token
-    const token = jwt.sign(payload, INVITE_JWT_SECRET);
+    const token = jwt.sign(payload, INVITE_JWT_SECRET as string);
 
     // Get organization details for the email
     const organization = await Organization.findById(orgId);
@@ -80,7 +80,7 @@ export class InviteService {
    */
   static verify(token: string): InviteTokenPayload {
     try {
-      const decoded = jwt.verify(token, INVITE_JWT_SECRET) as InviteTokenPayload;
+      const decoded = jwt.verify(token, INVITE_JWT_SECRET as string) as InviteTokenPayload;
       return decoded;
     } catch (error) {
       if (error instanceof jwt.TokenExpiredError) {

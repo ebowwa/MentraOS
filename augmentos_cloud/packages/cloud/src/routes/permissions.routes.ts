@@ -12,6 +12,8 @@ interface OrgUserRequest extends UserRequest {
   currentOrgId?: Types.ObjectId;
 }
 
+// TODO(isaiah): Instead of trusting the org ID from the header, 
+// we should make an orgMiddleware that populates the orgs the authenticated user is a member of.
 /**
  * Get permissions for an app
  * GET /api/permissions/:packageName
@@ -40,7 +42,7 @@ router.get('/:packageName', validateCoreToken, async (req: Request, res) => {
     if (app.appStoreStatus === 'PUBLISHED') {
       hasPermission = true;
     } else if ((req as OrgUserRequest).currentOrgId && app.organizationId) {
-      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId.toString();
+      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId?.toString();
     } else if (app.developerId === userEmail) {
       // For backward compatibility
       hasPermission = true;
@@ -94,7 +96,7 @@ router.patch('/:packageName', validateCoreToken, async (req: Request, res) => {
     let hasPermission = false;
 
     if ((req as OrgUserRequest).currentOrgId && app.organizationId) {
-      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId.toString();
+      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId?.toString();
     } else if (app.developerId === userEmail) {
       // For backward compatibility
       hasPermission = true;

@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
             <h1 className="font-light text-2xl pb-0.5 pl-1 text-gray-800">ugment</h1>
             <h1 className="font-bold text-2xl pb-0.5">OS</h1>
           </div>
-          <span className="ml-2 font-medium text-lg text-gray-800 mb-6">App Store</span>
+          <span className="ml-2 font-medium text-lg text-gray-800 mb-6">Store</span>
 
           <div className="w-full space-y-4">
             <div className="text-center mb-2">

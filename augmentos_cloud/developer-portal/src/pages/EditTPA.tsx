@@ -23,7 +23,7 @@ import SettingsEditor from '../components/forms/SettingsEditor';
 import ToolsEditor from '../components/forms/ToolsEditor';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
-import publicEmailDomains from 'email-providers/all.json';
+// import publicEmailDomains from 'email-providers/all.json';
 import MoveOrgDialog from '../components/dialogs/MoveOrgDialog';
 
 // Extend TPA type locally to include sharedWithOrganization
@@ -92,7 +92,7 @@ const EditTPA: React.FC = () => {
   // Helper to get org domain from user email
   const orgDomain = user?.email?.split('@')[1] || '';
   // Check if orgDomain is a public email provider
-  const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
+  // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
   // Fetch TPA data and permissions from API + check for eligible orgs for transfer
   useEffect(() => {
@@ -172,12 +172,12 @@ const EditTPA: React.FC = () => {
 
                 // Case 1: Direct string comparison with user ID
                 if (userId && typeof member.user === 'string' && member.user === userId) {
-                  return role === 'admin' || role === 'owner';
+                  return role === 'admin' || role === 'member';
                 }
 
                 // Case 2: Compare with user object with email
                 if (typeof member.user === 'object' && member.user && member.user.email === user?.email) {
-                  return role === 'admin' || role === 'owner';
+                  return role === 'admin' || role === 'member';
                 }
               }
             }

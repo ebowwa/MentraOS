@@ -16,7 +16,9 @@
     "deploy:ios": "cd ios && fastlane beta",
     "android:install": "adb install -r ./android/app/build/outputs/apk/release/app-release.apk",
     "android:install:release": "adb install -r ./android/app/build/outputs/apk/release/app-release.apk",
-    "android:install:debug": "adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk"
+    "android:install:debug": "adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk",
+    "postinstall": "./fix-react-native-symlinks.sh",
+    "fix-symlinks": "./fix-react-native-symlinks.sh"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",
