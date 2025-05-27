@@ -107,7 +107,7 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
     if (isGroup) {
       return setting.title || 'Untitled Group';
     }
-    return setting.key || 'untitled_setting';
+    return setting.key || setting.label || setting.title || 'untitled_setting';
   };
 
   // Helper function to get display label
@@ -267,19 +267,21 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
             ) : (
               /* Regular setting fields */
               <>
-                {/* Setting Key */}
-                <div>
-                  <Label className="text-sm font-medium">Setting Key</Label>
-                  <Input
-                    value={setting.key || ''}
-                    onChange={(e) => updateSetting(index, { key: e.target.value })}
-                    placeholder="e.g., theme_color"
-                    className="mt-1 font-mono"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Unique identifier (alphanumeric, no spaces)
-                  </p>
-                </div>
+                {/* Setting Key - Hide for TITLE_VALUE type since they don't need keys */}
+                {setting.type !== AppSettingType.TITLE_VALUE && (
+                  <div>
+                    <Label className="text-sm font-medium">Setting Key</Label>
+                    <Input
+                      value={setting.key || ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateSetting(index, { key: e.target.value })}
+                      placeholder="e.g., theme_color"
+                      className="mt-1 font-mono"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Unique identifier (alphanumeric, no spaces)
+                    </p>
+                  </div>
+                )}
 
                 {/* Display Label */}
                 <div>
@@ -290,6 +292,9 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                     placeholder="e.g., Theme Color"
                     className="mt-1"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    This is the label for the setting that will be displayed to the user
+                  </p>
                 </div>
 
                 {/* Default Value - Type Specific */}
@@ -315,6 +320,9 @@ const SortableSettingItem: React.FC<SortableSettingItemProps> = ({
                       placeholder="Default text value"
                       className="mt-1"
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This is the default value for the setting if the user does not provide a value
+                    </p>
                     {setting.type === AppSettingType.TEXT_NO_SAVE_BUTTON && (
                       <div className="mt-2">
                         <Label className="text-sm font-medium">Max Lines (optional)</Label>
@@ -563,35 +571,103 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
   // Handle setting type change
   const handleTypeChange = (index: number, newType: string) => {
+    const currentSetting = settings[index];
     let updates: any = { type: newType };
 
+    // Preserve common fields that exist across most setting types
+    const commonFields = ['key', 'label'];
+    commonFields.forEach(field => {
+      if (currentSetting[field] !== undefined) {
+        updates[field] = currentSetting[field];
+      }
+    });
+
+    // Handle type-specific fields and preserve what makes sense
     switch (newType) {
       case AppSettingType.TOGGLE:
-        updates.defaultValue = false;
+        // Preserve defaultValue if it's boolean, otherwise set to false
+        updates.defaultValue = typeof currentSetting.defaultValue === 'boolean'
+          ? currentSetting.defaultValue
+          : false;
         break;
+
       case AppSettingType.TEXT:
       case AppSettingType.TEXT_NO_SAVE_BUTTON:
-        updates.defaultValue = '';
+        // Preserve defaultValue if it's a string, otherwise set to empty
+        updates.defaultValue = typeof currentSetting.defaultValue === 'string'
+          ? currentSetting.defaultValue
+          : '';
+        // Preserve maxLines for TEXT_NO_SAVE_BUTTON if it exists
+        if (newType === AppSettingType.TEXT_NO_SAVE_BUTTON && currentSetting.maxLines !== undefined) {
+          updates.maxLines = currentSetting.maxLines;
+        }
         break;
+
       case AppSettingType.SELECT:
       case AppSettingType.SELECT_WITH_SEARCH:
-        updates.defaultValue = '';
-        updates.options = [{ label: 'Option 1', value: 'option1' }];
+        // Always preserve existing options if they exist
+        if (currentSetting.options && Array.isArray(currentSetting.options)) {
+          updates.options = currentSetting.options;
+          // Preserve defaultValue if it's a valid option value
+          const validValues = currentSetting.options.map((opt: any) => opt.value);
+          if (validValues.includes(currentSetting.defaultValue)) {
+            updates.defaultValue = currentSetting.defaultValue;
+          } else {
+            updates.defaultValue = '';
+          }
+        } else {
+          updates.options = [{ label: 'Option Label 1', value: 'option_value_1' }];
+          updates.defaultValue = '';
+        }
         break;
+
       case AppSettingType.MULTISELECT:
-        updates.defaultValue = [];
-        updates.options = [{ label: 'Option 1', value: 'option1' }];
+        // Always preserve existing options if they exist
+        if (currentSetting.options && Array.isArray(currentSetting.options)) {
+          updates.options = currentSetting.options;
+          // Convert single defaultValue to array, or preserve if already array
+          if (Array.isArray(currentSetting.defaultValue)) {
+            // Filter to only include valid option values
+            const validValues = currentSetting.options.map((opt: any) => opt.value);
+            updates.defaultValue = currentSetting.defaultValue.filter((val: any) => validValues.includes(val));
+          } else if (currentSetting.defaultValue &&
+                     currentSetting.options.some((opt: any) => opt.value === currentSetting.defaultValue)) {
+            // Convert single value to array if it's a valid option
+            updates.defaultValue = [currentSetting.defaultValue];
+          } else {
+            updates.defaultValue = [];
+          }
+        } else {
+          updates.options = [{ label: 'Option Label 1', value: 'option_value_1' }];
+          updates.defaultValue = [];
+        }
         break;
+
       case AppSettingType.SLIDER:
-        updates.defaultValue = 0;
-        updates.min = 0;
-        updates.max = 100;
+        // Preserve min, max if they exist and are numbers
+        updates.min = typeof currentSetting.min === 'number' ? currentSetting.min : 0;
+        updates.max = typeof currentSetting.max === 'number' ? currentSetting.max : 100;
+        // Preserve defaultValue if it's a number within range
+        if (typeof currentSetting.defaultValue === 'number' &&
+            currentSetting.defaultValue >= updates.min &&
+            currentSetting.defaultValue <= updates.max) {
+          updates.defaultValue = currentSetting.defaultValue;
+        } else {
+          updates.defaultValue = updates.min;
+        }
         break;
+
       case AppSettingType.GROUP:
-        updates = { type: newType, title: '' };
+        // For groups, preserve title if it exists, otherwise use label as title
+        updates.title = currentSetting.title || currentSetting.label || '';
+        // Remove fields that don't apply to groups
+        delete updates.key;
+        delete updates.label;
         break;
+
       case AppSettingType.TITLE_VALUE:
-        updates = { type: newType, label: '', value: '' };
+        // Preserve value if it exists, otherwise use defaultValue
+        updates.value = currentSetting.value || currentSetting.defaultValue || '';
         break;
     }
 
@@ -601,7 +677,7 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   // Handle options change for select settings
   const updateSelectOptions = (settingIndex: number, optionIndex: number, field: 'label' | 'value', value: string) => {
     const setting: any = settings[settingIndex];
-    if (setting.type === AppSettingType.SELECT && setting.options) {
+    if ((setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) && setting.options) {
       const newOptions = [...setting.options];
       newOptions[optionIndex] = { ...newOptions[optionIndex], [field]: value };
       updateSetting(settingIndex, { options: newOptions });
@@ -611,11 +687,11 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   // Add option for select settings
   const addSelectOption = (settingIndex: number) => {
     const setting: any = settings[settingIndex];
-    if (setting.type === AppSettingType.SELECT) {
+    if (setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) {
       const optionCount = (setting.options || []).length + 1;
       const newOptions = [...(setting.options || []), {
-        label: `Option ${optionCount}`,
-        value: `option${optionCount}`
+        label: `Option Label ${optionCount}`,
+        value: `option_value_${optionCount}`
       }];
       updateSetting(settingIndex, { options: newOptions });
     }
@@ -624,7 +700,7 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
   // Remove option for select settings
   const removeSelectOption = (settingIndex: number, optionIndex: number) => {
     const setting: any = settings[settingIndex];
-    if (setting.type === AppSettingType.SELECT && setting.options) {
+    if ((setting.type === AppSettingType.SELECT || setting.type === AppSettingType.SELECT_WITH_SEARCH || setting.type === AppSettingType.MULTISELECT) && setting.options) {
       const newOptions = setting.options.filter((_: any, i: number) => i !== optionIndex);
       updateSetting(settingIndex, { options: newOptions });
     }

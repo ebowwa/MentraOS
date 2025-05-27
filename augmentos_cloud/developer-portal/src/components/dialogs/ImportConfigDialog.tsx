@@ -124,8 +124,8 @@ const ImportConfigDialog: React.FC<ImportConfigDialogProps> = ({
               <div className="border rounded-lg p-4 bg-gray-50">
                 <h4 className="font-medium mb-2">Configuration Summary</h4>
                 <div className="space-y-1 text-sm text-gray-600">
-                  <div><strong>Name:</strong> {configData.name || 'Unknown'}</div>
-                  <div><strong>Description:</strong> {configData.description || 'No description'}</div>
+                  <div><strong>Name:</strong> {configData.name ? configData.name : 'Not provided (will keep current)'}</div>
+                  <div><strong>Description:</strong> {configData.description ? configData.description : 'Not provided (will keep current)'}</div>
                 </div>
               </div>
 
@@ -133,7 +133,16 @@ const ImportConfigDialog: React.FC<ImportConfigDialogProps> = ({
               <div className="space-y-2">
                 <h4 className="font-medium text-sm">What will be imported:</h4>
                 <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-                  <li>App name and description will be updated</li>
+                  {(configData.name || configData.description) && (
+                    <li>
+                      {configData.name && configData.description
+                        ? 'App name and description will be updated'
+                        : configData.name
+                        ? 'App name will be updated'
+                        : 'App description will be updated'
+                      }
+                    </li>
+                  )}
                   <li>All current settings will be replaced with {countSettings(configData.settings)} settings</li>
                   <li>All current tools will be replaced with {countTools(configData.tools)} tools</li>
                   <li>All current permissions will be replaced with {countPermissions(configData.permissions)} permissions</li>

@@ -256,22 +256,33 @@ const EditTPA: React.FC = () => {
 
   /**
    * Recursively removes _id fields and empty options/enum arrays from objects and arrays
+   * Also removes id fields from settings (but not from tools where id is the tool identifier)
    * @param obj - The object or array to clean
-   * @returns The cleaned object without _id fields and empty options/enum arrays
+   * @param isSettingsArray - Whether we're currently processing the settings array
+   * @returns The cleaned object without unwanted fields and empty options/enum arrays
    */
-  const removeIdFields = (obj: any): any => {
+  const removeIdFields = (obj: any, isSettingsArray: boolean = false): any => {
     if (Array.isArray(obj)) {
-      return obj.map(removeIdFields);
+      return obj.map(item => removeIdFields(item, isSettingsArray));
     } else if (obj !== null && typeof obj === 'object') {
       const cleaned: any = {};
       for (const [key, value] of Object.entries(obj)) {
-        // Skip any field that is exactly "_id"
-        if (key !== '_id') {
-          // Skip empty options or enum arrays
-          if ((key === 'options' || key === 'enum') && Array.isArray(value) && value.length === 0) {
-            continue;
-          }
-          cleaned[key] = removeIdFields(value);
+        // Always skip _id fields
+        // Skip id fields only if we're in a settings array
+        if (key === '_id' || (key === 'id' && isSettingsArray)) {
+          continue;
+        }
+
+        // Skip empty options or enum arrays
+        if ((key === 'options' || key === 'enum') && Array.isArray(value) && value.length === 0) {
+          continue;
+        }
+
+        // When we encounter the settings key, mark that we're processing settings
+        if (key === 'settings' && Array.isArray(value)) {
+          cleaned[key] = removeIdFields(value, true);
+        } else {
+          cleaned[key] = removeIdFields(value, isSettingsArray);
         }
       }
       return cleaned;
@@ -279,7 +290,7 @@ const EditTPA: React.FC = () => {
     return obj;
   };
 
-  // Export to tpa_config.json
+  // Export to app_config.json
   const handleExportConfig = () => {
     const config: any = {
       name: formData.name,
@@ -287,7 +298,7 @@ const EditTPA: React.FC = () => {
       publicUrl: formData.publicUrl || '',
       logoURL: formData.logoURL || '',
       permissions: removeIdFields(formData.permissions || []),
-      settings: removeIdFields(formData.settings || []),
+      settings: removeIdFields(formData.settings || [], true),
       tools: removeIdFields(formData.tools || [])
     };
 
@@ -346,10 +357,22 @@ const EditTPA: React.FC = () => {
       setTimeout(() => {
         setIsSaved(false);
       }, 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating TPA:', err);
-      setError('Failed to update app. Please try again.');
-      toast.error('Failed to update app');
+
+      // Extract the specific error message from the API response
+      let errorMessage = 'Failed to update app. Please try again.';
+
+      if (err?.response?.data?.error) {
+        // API returned a specific error message
+        errorMessage = err.response.data.error;
+      } else if (err?.message) {
+        // Use the error message if available
+        errorMessage = err.message;
+      }
+
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSaving(false);
     }
@@ -563,15 +586,18 @@ const EditTPA: React.FC = () => {
       return { isValid: false, error: 'Configuration file must contain a valid JSON object.' };
     }
 
-    // Check required string properties - name and description are required
-    if (typeof config.name !== 'string' || config.name.trim() === '') {
-      console.log('Validation failed: name is missing or invalid');
-      return { isValid: false, error: 'Missing required field: "name" must be a non-empty string.' };
+    // All fields are now optional - validate types only if they are provided
+
+    // Name is optional but if present, must be a non-empty string
+    if (config.name !== undefined && (typeof config.name !== 'string' || config.name.trim() === '')) {
+      console.log('Validation failed: name is present but invalid');
+      return { isValid: false, error: 'Optional field "name" must be a non-empty string if provided.' };
     }
 
-    if (typeof config.description !== 'string' || config.description.trim() === '') {
-      console.log('Validation failed: description is missing or invalid');
-      return { isValid: false, error: 'Missing required field: "description" must be a non-empty string.' };
+    // Description is optional but if present, must be a non-empty string
+    if (config.description !== undefined && (typeof config.description !== 'string' || config.description.trim() === '')) {
+      console.log('Validation failed: description is present but invalid');
+      return { isValid: false, error: 'Optional field "description" must be a non-empty string if provided.' };
     }
 
     // Version is optional but if present, must be a string
@@ -580,10 +606,10 @@ const EditTPA: React.FC = () => {
       return { isValid: false, error: 'Optional field "version" must be a string if provided.' };
     }
 
-    // Settings array is required
-    if (!Array.isArray(config.settings)) {
-      console.log('Validation failed: settings is not an array');
-      return { isValid: false, error: 'Missing required field: "settings" must be an array.' };
+    // Settings array is optional but if present, must be an array
+    if (config.settings !== undefined && !Array.isArray(config.settings)) {
+      console.log('Validation failed: settings is present but not an array');
+      return { isValid: false, error: 'Optional field "settings" must be an array if provided.' };
     }
 
     // Optional fields validation - if present, must be correct type
@@ -613,101 +639,103 @@ const EditTPA: React.FC = () => {
       return { isValid: false, error: 'Optional field "webviewURL" must be a string if provided.' };
     }
 
-    // Validate each setting (but allow empty settings array)
-    for (let index = 0; index < config.settings.length; index++) {
-      const setting = config.settings[index];
+    // Validate each setting (but allow empty or missing settings array)
+    if (config.settings && Array.isArray(config.settings)) {
+      for (let index = 0; index < config.settings.length; index++) {
+        const setting = config.settings[index];
 
-          // Group settings just need a title
-    if (setting.type === 'group') {
-      if (typeof setting.title !== 'string') {
-        console.log(`Validation failed: setting ${index} is a group but has invalid title`);
-        return { isValid: false, error: `Setting ${index + 1}: Group type requires a "title" field with a string value.` };
-      }
-      continue;
-    }
-
-    // TITLE_VALUE settings just need label and value
-    if (setting.type === 'titleValue') {
-      if (typeof setting.label !== 'string') {
-        console.log(`Validation failed: setting ${index} is titleValue but has invalid label`);
-        return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "label" field with a string value.` };
-      }
-      if (!('value' in setting)) {
-        console.log(`Validation failed: setting ${index} is titleValue but has no value`);
-        return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "value" field.` };
-      }
-      continue;
-    }
-
-    // Regular settings need key and label and type
-    if (typeof setting.key !== 'string' || typeof setting.label !== 'string' || typeof setting.type !== 'string') {
-      console.log(`Validation failed: setting ${index} is missing key, label, or type`);
-      return { isValid: false, error: `Setting ${index + 1}: Missing required fields "key", "label", or "type" (all must be strings).` };
-    }
-
-      // Type-specific validation
-      switch (setting.type) {
-        case 'toggle':
-          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
-            console.log(`Validation failed: setting ${index} is toggle but defaultValue is not boolean`);
-            return { isValid: false, error: `Setting ${index + 1}: Toggle type requires "defaultValue" to be a boolean if provided.` };
+        // Group settings just need a title
+        if (setting.type === 'group') {
+          if (typeof setting.title !== 'string') {
+            console.log(`Validation failed: setting ${index} is a group but has invalid title`);
+            return { isValid: false, error: `Setting ${index + 1}: Group type requires a "title" field with a string value.` };
           }
-          break;
-
-              case 'text':
-      case 'text_no_save_button':
-        if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'string') {
-          console.log(`Validation failed: setting ${index} is text but defaultValue is not string`);
-          return { isValid: false, error: `Setting ${index + 1}: Text type requires "defaultValue" to be a string if provided.` };
+          continue;
         }
-        break;
 
-      case 'select':
-      case 'select_with_search':
-        if (!Array.isArray(setting.options)) {
-          console.log(`Validation failed: setting ${index} is select but options is not an array`);
-          return { isValid: false, error: `Setting ${index + 1}: Select type requires an "options" array.` };
-        }
-        for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
-          const opt = setting.options[optIndex];
-          if (typeof opt.label !== 'string' || !('value' in opt)) {
-            console.log(`Validation failed: setting ${index} option ${optIndex} is invalid`);
-            return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+        // TITLE_VALUE settings just need label and value
+        if (setting.type === 'titleValue') {
+          if (typeof setting.label !== 'string') {
+            console.log(`Validation failed: setting ${index} is titleValue but has invalid label`);
+            return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "label" field with a string value.` };
           }
-        }
-        break;
-
-      case 'multiselect':
-        if (!Array.isArray(setting.options)) {
-          console.log(`Validation failed: setting ${index} is multiselect but options is not an array`);
-          return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires an "options" array.` };
-        }
-        for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
-          const opt = setting.options[optIndex];
-          if (typeof opt.label !== 'string' || !('value' in opt)) {
-            console.log(`Validation failed: setting ${index} option ${optIndex} is invalid`);
-            return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+          if (!('value' in setting)) {
+            console.log(`Validation failed: setting ${index} is titleValue but has no value`);
+            return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "value" field.` };
           }
+          continue;
         }
-        if (setting.defaultValue !== undefined && !Array.isArray(setting.defaultValue)) {
-          console.log(`Validation failed: setting ${index} is multiselect but defaultValue is not array`);
-          return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires "defaultValue" to be an array if provided.` };
+
+        // Regular settings need key and label and type
+        if (typeof setting.key !== 'string' || typeof setting.label !== 'string' || typeof setting.type !== 'string') {
+          console.log(`Validation failed: setting ${index} is missing key, label, or type`);
+          return { isValid: false, error: `Setting ${index + 1}: Missing required fields "key", "label", or "type" (all must be strings).` };
         }
-        break;
 
-        case 'slider':
-          if (typeof setting.defaultValue !== 'number' ||
-              typeof setting.min !== 'number' ||
-              typeof setting.max !== 'number' ||
-              setting.min > setting.max) {
-            console.log(`Validation failed: setting ${index} is slider but has invalid numeric properties`);
-            return { isValid: false, error: `Setting ${index + 1}: Slider type requires "defaultValue", "min", and "max" to be numbers, with min ≤ max.` };
-          }
-          break;
+        // Type-specific validation
+        switch (setting.type) {
+          case 'toggle':
+            if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
+              console.log(`Validation failed: setting ${index} is toggle but defaultValue is not boolean`);
+              return { isValid: false, error: `Setting ${index + 1}: Toggle type requires "defaultValue" to be a boolean if provided.` };
+            }
+            break;
 
-              default:
-        console.log(`Validation failed: setting ${index} has unknown type: ${setting.type}`);
-        return { isValid: false, error: `Setting ${index + 1}: Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.` };
+          case 'text':
+          case 'text_no_save_button':
+            if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'string') {
+              console.log(`Validation failed: setting ${index} is text but defaultValue is not string`);
+              return { isValid: false, error: `Setting ${index + 1}: Text type requires "defaultValue" to be a string if provided.` };
+            }
+            break;
+
+          case 'select':
+          case 'select_with_search':
+            if (!Array.isArray(setting.options)) {
+              console.log(`Validation failed: setting ${index} is select but options is not an array`);
+              return { isValid: false, error: `Setting ${index + 1}: Select type requires an "options" array.` };
+            }
+            for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
+              const opt = setting.options[optIndex];
+              if (typeof opt.label !== 'string' || !('value' in opt)) {
+                console.log(`Validation failed: setting ${index} option ${optIndex} is invalid`);
+                return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+              }
+            }
+            break;
+
+          case 'multiselect':
+            if (!Array.isArray(setting.options)) {
+              console.log(`Validation failed: setting ${index} is multiselect but options is not an array`);
+              return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires an "options" array.` };
+            }
+            for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
+              const opt = setting.options[optIndex];
+              if (typeof opt.label !== 'string' || !('value' in opt)) {
+                console.log(`Validation failed: setting ${index} option ${optIndex} is invalid`);
+                return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+              }
+            }
+            if (setting.defaultValue !== undefined && !Array.isArray(setting.defaultValue)) {
+              console.log(`Validation failed: setting ${index} is multiselect but defaultValue is not array`);
+              return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires "defaultValue" to be an array if provided.` };
+            }
+            break;
+
+          case 'slider':
+            if (typeof setting.defaultValue !== 'number' ||
+                typeof setting.min !== 'number' ||
+                typeof setting.max !== 'number' ||
+                setting.min > setting.max) {
+              console.log(`Validation failed: setting ${index} is slider but has invalid numeric properties`);
+              return { isValid: false, error: `Setting ${index + 1}: Slider type requires "defaultValue", "min", and "max" to be numbers, with min ≤ max.` };
+            }
+            break;
+
+          default:
+            console.log(`Validation failed: setting ${index} has unknown type: ${setting.type}`);
+            return { isValid: false, error: `Setting ${index + 1}: Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.` };
+        }
       }
     }
 
@@ -776,7 +804,7 @@ const EditTPA: React.FC = () => {
         const validation = validateTpaConfig(config);
         if (!validation.isValid) {
           console.error('Validation failed for config:', config);
-          setImportError(validation.error || 'Invalid tpa_config.json format.');
+          setImportError(validation.error || 'Invalid app_config.json format.');
           return;
         }
 
@@ -1175,7 +1203,7 @@ const EditTPA: React.FC = () => {
                     Configuration Management
                   </h3>
                   <p className="text-sm text-gray-600 mb-4">
-                    Import or export your app configuration (name, description, URLs, permissions, settings, and tools) as a tpa_config.json file
+                    Import or export your app configuration (name, description, URLs, permissions, settings, and tools) as a app_config.json file
                   </p>
 
                   {/* Show import error if there is one and no dialog is open */}
@@ -1194,7 +1222,7 @@ const EditTPA: React.FC = () => {
                       className="mr-2"
                     >
                       <Download className="h-4 w-4 mr-2" />
-                      Import tpa_config.json
+                      Import app_config.json
                     </Button>
                     <Button
                       onClick={handleExportConfig}
@@ -1202,7 +1230,7 @@ const EditTPA: React.FC = () => {
                       type="button"
                     >
                       <Upload className="h-4 w-4 mr-2" />
-                      Export tpa_config.json
+                      Export app_config.json
                     </Button>
                   </div>
 

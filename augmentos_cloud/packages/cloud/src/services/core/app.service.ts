@@ -7,7 +7,7 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -398,7 +398,7 @@ export class AppService {
    * @param settings Array of setting definitions to validate
    * @returns Validated and sanitized settings array or throws error if invalid
    */
-  private validateSettingDefinitions(settings: any[]): (AppSetting)[] {
+  private validateSettingDefinitions(settings: any[]): AppSetting[] {
     logger.debug('Validating setting definitions:', settings);
     if (!Array.isArray(settings)) {
       throw new Error('Settings must be an array');
@@ -416,12 +416,26 @@ export class AppService {
           throw new Error('Group setting requires a title');
         }
         return {
-          type: setting.type as 'group',
-          title: setting.title
-        };
+          type: AppSettingType.GROUP,
+          title: setting.title,
+          key: '', // Groups don't need keys but BaseAppSetting requires it
+          label: '' // Groups don't need labels but BaseAppSetting requires it
+        } as AppSetting;
       }
 
-      // Regular settings validation
+      // Title/Value settings validation (display-only, no key required)
+      if (setting.type === 'titleValue') {
+        if (!setting.label || typeof setting.label !== 'string') {
+          throw new Error('Title/Value setting requires a label');
+        }
+        return {
+          type: 'titleValue' as any,
+          label: setting.label,
+          value: setting.value || ''
+        } as AppSetting;
+      }
+
+      // Regular settings validation (require key and label)
       if (!setting.key || typeof setting.key !== 'string') {
         throw new Error('Setting key is required and must be a string');
       }
@@ -433,25 +447,35 @@ export class AppService {
       // Type-specific validation
       switch (setting.type) {
         case 'toggle':
-          if (typeof setting.defaultValue !== 'boolean') {
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
             throw new Error('Toggle setting requires a boolean defaultValue');
           }
           return {
-            type: setting.type,
+            type: AppSettingType.TOGGLE,
             key: setting.key,
             label: setting.label,
-            defaultValue: setting.defaultValue,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : false,
             value: setting.value
-          };
+          } as AppSetting;
 
         case 'text':
           return {
-            type: setting.type,
+            type: AppSettingType.TEXT,
             key: setting.key,
             label: setting.label,
             defaultValue: setting.defaultValue || '',
             value: setting.value
-          };
+          } as AppSetting;
+
+        case 'text_no_save_button':
+          return {
+            type: 'text_no_save_button' as any,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue || '',
+            value: setting.value,
+            maxLines: setting.maxLines
+          } as AppSetting;
 
         case 'select':
           if (!Array.isArray(setting.options)) {
@@ -462,33 +486,70 @@ export class AppService {
             throw new Error('Select options must have label and value properties');
           }
           return {
-            type: setting.type,
+            type: AppSettingType.SELECT,
             key: setting.key,
             label: setting.label,
             options: setting.options,
             defaultValue: setting.defaultValue,
             value: setting.value
-          };
+          } as AppSetting;
+
+        case 'select_with_search':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Select with search setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Select with search options must have label and value properties');
+          }
+          return {
+            type: 'select_with_search' as any,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          } as AppSetting;
+
+        case 'multiselect':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Multiselect setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Multiselect options must have label and value properties');
+          }
+          // Ensure defaultValue is an array for multiselect
+          const defaultValue = Array.isArray(setting.defaultValue) ? setting.defaultValue : [];
+          const value = Array.isArray(setting.value) ? setting.value : undefined;
+          return {
+            type: 'multiselect' as any,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: defaultValue,
+            value: value
+          } as AppSetting;
 
         case 'slider':
           if (typeof setting.min !== 'number' || typeof setting.max !== 'number') {
             throw new Error('Slider setting requires numeric min and max values');
           }
-          if (typeof setting.defaultValue !== 'number') {
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
             throw new Error('Slider setting requires a numeric defaultValue');
           }
           if (setting.min > setting.max) {
             throw new Error('Slider min value cannot be greater than max value');
           }
           return {
-            type: setting.type,
+            type: AppSettingType.SLIDER,
             key: setting.key,
             label: setting.label,
             min: setting.min,
             max: setting.max,
-            defaultValue: setting.defaultValue,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : setting.min,
             value: setting.value
-          };
+          } as AppSetting;
 
         default:
           throw new Error(`Unsupported setting type: ${setting.type}`);

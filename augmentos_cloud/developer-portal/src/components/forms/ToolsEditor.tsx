@@ -24,7 +24,8 @@ interface ToolItemProps {
   onEditToggle: (index: number | null) => void;
   removeTool: (index: number) => void;
   updateTool: (index: number, updates: any) => void;
-  updateActivationPhrases: (index: number, value: string) => void;
+  updateActivationPhrasesRaw: (index: number, value: string) => void;
+  parseActivationPhrases: (index: number, value: string) => void;
   addParameter: (toolIndex: number) => void;
   removeParameter: (toolIndex: number, paramKey: string) => void;
   updateParameter: (toolIndex: number, paramKey: string, updates: any) => void;
@@ -38,7 +39,8 @@ const ToolItem: React.FC<ToolItemProps> = ({
   onEditToggle,
   removeTool,
   updateTool,
-  updateActivationPhrases,
+  updateActivationPhrasesRaw,
+  parseActivationPhrases,
   addParameter,
   removeParameter,
   updateParameter,
@@ -60,6 +62,16 @@ const ToolItem: React.FC<ToolItemProps> = ({
     if (phrases.length === 0) return 'No phrases';
     if (phrases.length <= 2) return phrases.join(', ');
     return `${phrases.slice(0, 2).join(', ')}, +${phrases.length - 2} more`;
+  };
+
+  // Helper function to get the raw activation phrases string for editing
+  const getActivationPhrasesString = () => {
+    // If we have a raw string stored, use that for editing
+    if (tool.activationPhrasesRaw !== undefined) {
+      return tool.activationPhrasesRaw;
+    }
+    // Otherwise, convert the array back to a string
+    return (tool.activationPhrases || []).join(', ');
   };
 
   return (
@@ -173,8 +185,9 @@ const ToolItem: React.FC<ToolItemProps> = ({
             <div>
               <Label className="text-sm font-medium">Activation Phrases</Label>
               <Input
-                value={(tool.activationPhrases || []).join(', ')}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateActivationPhrases(index, e.target.value)}
+                value={getActivationPhrasesString()}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateActivationPhrasesRaw(index, e.target.value)}
+                onBlur={(e: React.FocusEvent<HTMLInputElement>) => parseActivationPhrases(index, e.target.value)}
                 placeholder="search my notes, find information, look up"
                 className="mt-1"
               />
@@ -272,10 +285,16 @@ const ToolItem: React.FC<ToolItemProps> = ({
                             <div className="flex-1">
                               <Label className="text-xs">Enum Values (optional)</Label>
                               <Input
-                                value={(param.enum || []).join(', ')}
+                                value={param.enumRaw !== undefined ? param.enumRaw : (param.enum || []).join(', ')}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  const enumValues = e.target.value.split(',').map(v => v.trim()).filter(v => v.length > 0);
-                                  updateParameter(index, paramKey, { enum: enumValues.length > 0 ? enumValues : undefined });
+                                  updateParameter(index, paramKey, { enumRaw: e.target.value });
+                                }}
+                                onBlur={(e: React.FocusEvent<HTMLInputElement>) => {
+                                  const enumValues = e.target.value.split(',').map((v: string) => v.trim()).filter((v: string) => v.length > 0);
+                                  updateParameter(index, paramKey, {
+                                    enum: enumValues.length > 0 ? enumValues : undefined,
+                                    enumRaw: undefined
+                                  });
                                 }}
                                 placeholder="option1, option2, option3"
                                 className="mt-1"
@@ -340,9 +359,15 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
   };
 
   // Handle activation phrases (comma-separated string to array)
-  const updateActivationPhrases = (index: number, value: string) => {
+  const updateActivationPhrasesRaw = (index: number, value: string) => {
+    // Store the raw string value for editing
+    updateTool(index, { activationPhrasesRaw: value });
+  };
+
+  // Parse activation phrases (string to array)
+  const parseActivationPhrases = (index: number, value: string) => {
     const phrases = value.split(',').map(phrase => phrase.trim()).filter(phrase => phrase.length > 0);
-    updateTool(index, { activationPhrases: phrases });
+    updateTool(index, { activationPhrases: phrases, activationPhrasesRaw: undefined });
   };
 
   // Add parameter to a tool
@@ -428,7 +453,8 @@ const ToolsEditor: React.FC<ToolsEditorProps> = ({ tools, onChange, className })
               onEditToggle={setEditingIndex}
               removeTool={removeTool}
               updateTool={updateTool}
-              updateActivationPhrases={updateActivationPhrases}
+              updateActivationPhrasesRaw={updateActivationPhrasesRaw}
+              parseActivationPhrases={parseActivationPhrases}
               addParameter={addParameter}
               removeParameter={removeParameter}
               updateParameter={updateParameter}
