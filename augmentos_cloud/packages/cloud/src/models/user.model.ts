@@ -603,4 +603,4 @@ interface UserModel extends Model<UserI> {
   ensurePersonalOrg(user: UserI): Promise<Types.ObjectId>;
 }
 
-export const User = mongoose.model<UserI, UserModel>('User', UserSchema);
+export const User = mongoose.models.User || mongoose.model<UserI, UserModel>('User', UserSchema);
