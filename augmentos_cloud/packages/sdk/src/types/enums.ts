@@ -9,6 +9,7 @@ export enum TpaType {
     STANDARD = 'standard'                   // Regular TPA (default) only one standard app can run at a time. starting a standard TPA will close any other standard TPA that is running.
 }
 
+// TODO(isaiah): doesn't seem like this is actually used anywhere, remove?
 /**
  * Application states in the system
  */
