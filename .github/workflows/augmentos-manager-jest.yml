@@ -24,7 +24,11 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./augmentos_manager
-        run: npm ci
+        run: pnpm install
+
+      - name: Expo prebuild
+        working-directory: ./augmentos_manager
+        run: pnpm expo prebuild
 
       - name: Run Jest tests
         working-directory: ./augmentos_manager
