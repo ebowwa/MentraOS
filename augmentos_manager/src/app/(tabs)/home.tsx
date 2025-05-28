@@ -1,19 +1,17 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, StyleSheet, Animated, Platform, ActivityIndicator, ViewStyle, TextStyle} from "react-native"
+import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
-import {Header, Text, Screen} from "@/components/ignite"
-import ConnectedDeviceInfo from "@/components/misc/ConnectedDeviceInfo"
-import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
+import {Header, Screen} from "@/components/ignite"
 import RunningAppsList from "@/components/misc/RunningAppsList"
 import YourAppsList from "@/components/misc/YourAppsList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
-import Constants from 'expo-constants'
+import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {loadSetting} from "@/utils/SettingsHelper"
 import DefaultButton from "@/components/ui/Button"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import {SETTINGS_KEYS} from "@/consts"
@@ -22,8 +20,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/MicIcon"
 import NotificationOff from "assets/icons/NotificationOff"
-import NotificationOn from "assets/icons/NotificationOn"
-import { router } from "expo-router"
+import {router} from "expo-router"
 import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import {translate} from "@/i18n"
 
@@ -205,55 +202,65 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto" style={themed($screen)}>      
-    <AnimatedSection>
-        <Header leftTx="home:title" 
-        RightActionComponent={
-    <View style={themed($headerRight)}>
-      <NotificationOff/>
-      <MicIcon withBackground/>
-    </View>
-  }/>
+    <Screen preset="auto" style={themed($screen)}>
+      <AnimatedSection>
+        <Header
+          leftTx="home:title"
+          RightActionComponent={
+            <View style={themed($headerRight)}>
+              <NotificationOff />
+              <MicIcon withBackground />
+            </View>
+          }
+        />
       </AnimatedSection>
       {/* <ScrollView
         style={{flex: 1, paddingHorizontal: 16}}
         contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
       > */}
-        {status.core_info.cloud_connection_status !== "CONNECTED" && (
-          <AnimatedSection>
-            <CloudConnection />
-          </AnimatedSection>
-        )}
-
-        {/* Sensing Disabled Warning */}
+      {status.core_info.cloud_connection_status !== "CONNECTED" && (
         <AnimatedSection>
-          <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
+          <CloudConnection />
+        </AnimatedSection>
+      )}
+
+      {/* Sensing Disabled Warning */}
+      <AnimatedSection>
+        <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
+      </AnimatedSection>
+
+      {nonProdBackend && (
+        <AnimatedSection>
+          <NonProdWarning />
+        </AnimatedSection>
+      )}
+
+      <DefaultButton
+        icon={<SolarLineIconsSet4 />}
+        onPress={() => {
+          router.push("/pairing/select-glasses-model")
+        }}
+        title={translate("home:pairGlasses")}
+      />
+      <DefaultButton
+        icon={<SolarLineIconsSet4 />}
+        onPress={() => {
+          router.push("/pairing/select-glasses-model")
+        }}
+        title={translate("home:connectGlasses")}
+      />
+
+      {/* //status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") */}
+      <>
+        <AnimatedSection>
+          <RunningAppsList isDarkTheme={theme.isDark} />
         </AnimatedSection>
 
-        {nonProdBackend && (
-          <AnimatedSection>
-            <NonProdWarning />
-          </AnimatedSection>
-        )}
-
-        <DefaultButton icon={<SolarLineIconsSet4 />} onPress={() => {
-            router.push("/pairing/select-glasses-model");
-          }} title={translate("home:pairGlasses")} /> 
-          <DefaultButton icon={<SolarLineIconsSet4 />} onPress={() => {
-            router.push("/pairing/select-glasses-model");
-          }} title={translate("home:connectGlasses")}/> 
-
-        //status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")
-        <>
-                <AnimatedSection>
-                  <RunningAppsList isDarkTheme={theme.isDark} />
-                </AnimatedSection>
-
-                <AnimatedSection>
-                  <YourAppsList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
-                </AnimatedSection>
-              </>
-        {/* <View style={{height: 1000}} /> */}
+        <AnimatedSection>
+          <YourAppsList key={`apps-list-${appStatus.length}`} />
+        </AnimatedSection>
+      </>
+      {/* <View style={{height: 1000}} /> */}
       {/* </ScrollView> */}
     </Screen>
   )
@@ -295,4 +302,3 @@ const $screen: ThemedStyle<ViewStyle> = () => ({
 const $headerRight: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "row",
 })
-
