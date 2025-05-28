@@ -18,7 +18,8 @@ import showAlert from "@/utils/AlertUtils"
 import ChevronRight from "assets/icons/ChevronRight"
 import ListHeaderInactiveApps from "../home/ListHeaderInactiveApps"
 import {translate} from "@/i18n"
-import { useAppTheme } from "@/utils/useAppTheme"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {router} from "expo-router"
 
 export default function YourAppsList() {
   const {
@@ -359,9 +360,13 @@ export default function YourAppsList() {
   }
 
   const openAppSettings = (app: any) => {
-    navigation.navigate("AppSettings", {
-      packageName: app.packageName,
-      appName: app.name,
+    console.log("%%% opening app settings", app)
+    router.push({
+      pathname: "/tpa/settings",
+      params: {
+        packageName: app.packageName,
+        appName: app.name,
+      },
     })
   }
 
@@ -504,42 +509,38 @@ export default function YourAppsList() {
               setLiveCaptionsPosition(prev => ({...prev, index}))
             }, 0)
           }
-            return (
-              <TouchableOpacity onLongPress={() => openAppSettings(app)} key={app.packageName}>
-                <View style={[styles.everything, styles.everythingFlexBox]}>
-                  <View style={[styles.appDescription, styles.everythingFlexBox]}>
-                    <AppIcon
-                      app={app}
-                      isForegroundApp={app.is_foreground}
-                      style={styles.appIcon}
-                    />
-                    <View style={styles.appNameWrapper}>
-                      <Text style={styles.appName} numberOfLines={1}>
-                        {app.name}
-                      </Text>
+          return (
+            <View key={app.packageName} style={[styles.everything, styles.everythingFlexBox]}>
+              <View style={[styles.appDescription, styles.everythingFlexBox]}>
+                <AppIcon app={app} isForegroundApp={app.is_foreground} style={styles.appIcon} />
+                <View style={styles.appNameWrapper}>
+                  <Text style={styles.appName} numberOfLines={1}>
+                    {app.name}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.toggleParent, styles.everythingFlexBox]}>
+                <TouchableOpacity
+                  key={app.packageName}
+                  onPress={() => startApp(app.packageName)}
+                  delayLongPress={500}
+                  style={{padding: 10, borderRadius: 20}}
+                  ref={ref}>
+                  <View style={styles.toggle}>
+                    <View style={[styles.toggleBarIcon, styles.toggleIconLayout, {backgroundColor: "#565E8C"}]} />
+                    <View style={[styles.toggleCircleIcon, styles.toggleIconLayout, {left: "-2.78%"}]}>
+                      <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
                     </View>
                   </View>
+                </TouchableOpacity>
 
-                  <View style={[styles.toggleParent, styles.everythingFlexBox]}>
-                    <TouchableOpacity
-                      key={app.packageName}
-                      onPress={() => startApp(app.packageName)}
-                      delayLongPress={500}
-                      style={{padding: 10, borderRadius: 20}}
-                      ref={ref}>
-                      <View style={styles.toggle}>
-                        <View style={[styles.toggleBarIcon, styles.toggleIconLayout, {backgroundColor: "#565E8C"}]} />
-                        <View style={[styles.toggleCircleIcon, styles.toggleIconLayout, {left: "-2.78%"}]}>
-                          <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-
-                    <ChevronRight />
-                  </View>
-                </View>
-              </TouchableOpacity>
-            )
+                <TouchableOpacity onPress={() => openAppSettings(app)}>
+                  <ChevronRight />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
         })}
       </ScrollView>
     </View>

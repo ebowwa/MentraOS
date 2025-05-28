@@ -24,12 +24,19 @@ import AppIcon from "@/components/misc/AppIcon"
 import SelectWithSearchSetting from "@/components/settings/SelectWithSearchSetting"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
-import { router, useFocusEffect } from "expo-router"
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router"
+import { useAppTheme } from "@/utils/useAppTheme"
+import { Screen } from "@/components/ignite"
 
 export default function AppSettings() {
-  const {packageName, appName} = route.params
+  const {packageName, appName, fromWebView} = useLocalSearchParams()
   const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
+
+  if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
+    console.error("No packageName or appName found in params")
+    return null
+  }
 
   // State to hold the complete configuration from the server.
   const [serverAppInfo, setServerAppInfo] = useState<any>(null)
@@ -42,6 +49,7 @@ export default function AppSettings() {
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
+  const {theme} = useAppTheme()
 
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
@@ -49,10 +57,13 @@ export default function AppSettings() {
 
   console.log("AppInfo", appInfo)
 
+  // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
-      console.log("AppSettings focused")
-    }, [])
+      return async () => {
+        await refreshAppStatus()
+      }
+    }, []),
   )
 
   // Handle app start/stop actions with debouncing
@@ -192,7 +203,7 @@ export default function AppSettings() {
       //   ),
       // })
     }
-  }, [serverAppInfo, navigation, isDarkTheme, packageName, appName])
+  }, [serverAppInfo, packageName, appName])
 
   // Fetch TPA settings on mount or when packageName/status change.
   useEffect(() => {
@@ -269,13 +280,14 @@ export default function AppSettings() {
       }
       setSettingsLoading(false)
       // Auto-redirect to webview if needed
-      const fromWebView = route.params.fromWebView === true
-      if (data.webviewURL && !fromWebView) {
-        navigation.replace("AppWebView", {
-          webviewURL: data.webviewURL,
-          appName: appName,
-          packageName: packageName,
-          fromSettings: true,
+      if (data.webviewURL && fromWebView !== "true") {
+        router.replace({
+          pathname: "/tpa/webview",
+          params: {
+            webviewURL: data.webviewURL,
+            appName: appName,
+            packageName: packageName,
+          },
         })
       }
     } catch (err) {
@@ -316,8 +328,10 @@ export default function AppSettings() {
       })
   }
 
+  const isDarkTheme = theme.isDark
+
   // Theme colors.
-  const theme = {
+  const theme2 = {
     backgroundColor: isDarkTheme ? "#1c1c1c" : "#f9f9f9",
     textColor: isDarkTheme ? "#FFFFFF" : "#333333",
     cardBackground: isDarkTheme ? "#2c2c2c" : "#ffffff",
@@ -338,7 +352,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onValueChange={val => handleSettingChange(setting.key, val)}
-            theme={theme}
+            theme={theme2}
           />
         )
       case "text":
@@ -348,7 +362,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
-            theme={theme}
+            theme={theme2}
           />
         )
       case "text_no_save_button":
@@ -358,7 +372,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
-            theme={theme}
+            theme={theme2}
           />
         )
       case "slider":
