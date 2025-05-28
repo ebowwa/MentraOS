@@ -183,7 +183,8 @@ export interface PhotoResponse extends BaseMessage {
  */
 export interface RtmpStreamStatus extends BaseMessage {
   type: GlassesToCloudMessageType.RTMP_STREAM_STATUS;
-  status: "initializing" | "connecting" | "streaming" | "error" | "stopped" | "active";
+  streamId?: string;  // Unique identifier for the stream
+  status: "initializing" | "connecting" | "streaming" | "error" | "stopped" | "active" | "stopping" | "disconnected" | "timeout";
   errorDetails?: string;
   appId?: string;  // ID of the app that requested the stream
   stats?: {
@@ -195,9 +196,18 @@ export interface RtmpStreamStatus extends BaseMessage {
 }
 
 /**
+ * Keep-alive acknowledgment from glasses
+ */
+export interface KeepAliveAck extends BaseMessage {
+  type: GlassesToCloudMessageType.KEEP_ALIVE_ACK;
+  streamId: string;  // ID of the stream being kept alive
+  ackId: string;     // Acknowledgment ID that was sent by cloud
+}
+
+/**
  * Union type for all messages from glasses to cloud
  */
-export type GlassesToCloudMessage = 
+export type GlassesToCloudMessage =
   | ConnectionInit
   | RequestSettings
   | StartApp
@@ -218,6 +228,7 @@ export type GlassesToCloudMessage =
   | CoreStatusUpdate
   | PhotoResponse
   | RtmpStreamStatus
+  | KeepAliveAck
 
 //===========================================================
 // Type guards
@@ -288,10 +299,14 @@ export function isNotificationDismissed(message: GlassesToCloudMessage): message
   return message.type === GlassesToCloudMessageType.NOTIFICATION_DISMISSED;
 }
 
-// export function isRtmpStreamStatus(message: GlassesToCloudMessage): message is RtmpStreamStatus {
-//   return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
-// }
+export function isRtmpStreamStatus(message: GlassesToCloudMessage): message is RtmpStreamStatus {
+  return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
+}
 
-// export function isPhotoResponse(message: GlassesToCloudMessage): message is PhotoResponse {
-//   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
-// }
+export function isPhotoResponse(message: GlassesToCloudMessage): message is PhotoResponse {
+  return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
+}
+
+export function isKeepAliveAck(message: GlassesToCloudMessage): message is KeepAliveAck {
+  return message.type === GlassesToCloudMessageType.KEEP_ALIVE_ACK;
+}

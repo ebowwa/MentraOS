@@ -3,7 +3,7 @@
 import { BaseMessage } from './base';
 import { CloudToTpaMessageType, GlassesToCloudMessageType } from '../message-types';
 import { StreamType } from '../streams';
-import { AppSettings, TpaConfig } from '../models';
+import { AppSettings, TpaConfig, PermissionType } from '../models';
 import { LocationUpdate, CalendarEvent, RtmpStreamStatus, PhotoResponse } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
 import { TpaSession } from 'src/tpa/session';
@@ -28,6 +28,34 @@ export interface TpaConnectionError extends BaseMessage {
   type: CloudToTpaMessageType.CONNECTION_ERROR;
   message: string;
   code?: string;
+}
+
+//===========================================================
+// Permission messages
+//===========================================================
+
+/**
+ * Permission error detail for a specific stream
+ */
+export interface PermissionErrorDetail {
+  /** The stream type that was rejected */
+  stream: string;
+  /** The permission required for this stream */
+  requiredPermission: string;
+  /** Detailed message explaining the rejection */
+  message: string;
+}
+
+/**
+ * Permission error notification to TPA
+ * Sent when subscriptions are rejected due to missing permissions
+ */
+export interface PermissionError extends BaseMessage {
+  type: CloudToTpaMessageType.PERMISSION_ERROR;
+  /** General error message */
+  message: string;
+  /** Array of details for each rejected stream */
+  details: PermissionErrorDetail[];
 }
 
 //===========================================================
@@ -167,23 +195,6 @@ export interface CustomMessage extends BaseMessage {
 }
 
 /**
- * Standard connection error (for server compatibility)
- */
-export interface StandardConnectionError extends BaseMessage {
-  type: 'connection_error';
-  message: string;
-}
-
-/**
- * Custom message for general-purpose communication (cloud to TPA)
- */
-export interface CustomMessage extends BaseMessage {
-  type: CloudToTpaMessageType.CUSTOM_MESSAGE;
-  action: string;  // Identifies the specific action/message type
-  payload: any;    // Custom data payload
-}
-
-/**
  * Union type for all messages from cloud to TPAs
  */
 export type CloudToTpaMessage =
@@ -204,7 +215,8 @@ export type CloudToTpaMessage =
   | AugmentosSettingsUpdate
   | CustomMessage
   | RtmpStreamStatus
-  | PhotoResponse;
+  | PhotoResponse
+  | PermissionError;
 
 //===========================================================
 // Type guards

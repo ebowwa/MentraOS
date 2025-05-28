@@ -8,11 +8,43 @@ export * from './message-types';
 // Base message type
 export * from './messages/base';
 
-// Messages by direction
+// Messages by direction - export everything except the conflicting type guards
 export * from './messages/glasses-to-cloud';
 export * from './messages/cloud-to-glasses';
 export * from './messages/tpa-to-cloud';
-export * from './messages/cloud-to-tpa';
+
+// Export cloud-to-tpa but exclude the conflicting type guards
+export {
+  // Types
+  TpaConnectionAck,
+  TpaConnectionError,
+  AppStopped,
+  SettingsUpdate as TpaSettingsUpdate,  // Alias to avoid conflict with cloud-to-glasses SettingsUpdate
+  DataStream,
+  CloudToTpaMessage,
+  TranslationData,
+  ToolCall,
+  StandardConnectionError,
+  CustomMessage,
+  AugmentosSettingsUpdate,
+  TranscriptionData,
+  AudioChunk,
+  PermissionError,
+  PermissionErrorDetail,
+  // Type guards (excluding isPhotoResponse and isRtmpStreamStatus which conflict)
+  isTpaConnectionAck,
+  isTpaConnectionError,
+  isAppStopped,
+  isSettingsUpdate,
+  isDataStream,
+  isAudioChunk,
+  isDashboardModeChanged,
+  isDashboardAlwaysOnChanged,
+  // Re-export the cloud-to-tpa versions of these type guards since they're the ones
+  // that should be used when dealing with CloudToTpaMessage types
+  isPhotoResponse as isPhotoResponseFromCloud,
+  isRtmpStreamStatus as isRtmpStreamStatusFromCloud
+} from './messages/cloud-to-tpa';
 
 // Stream types
 export * from './streams';
@@ -62,7 +94,8 @@ export {
   OpenDashboard,
   GlassesToCloudMessage,
   PhotoResponse,
-  RtmpStreamStatus
+  RtmpStreamStatus,
+  KeepAliveAck
 } from './messages/glasses-to-cloud';
 
 // From messages/cloud-to-glasses.ts
@@ -73,7 +106,12 @@ export {
   DisplayEvent,
   AppStateChange,
   MicrophoneStateChange,
-  CloudToGlassesMessage
+  CloudToGlassesMessage,
+  PhotoRequestToGlasses,
+  SettingsUpdate,
+  StartRtmpStream,
+  StopRtmpStream,
+  KeepRtmpStreamAlive
 } from './messages/cloud-to-glasses';
 
 // From messages/tpa-to-cloud.ts
@@ -82,20 +120,9 @@ export {
   TpaSubscriptionUpdate,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
-  TpaToCloudMessage
+  TpaToCloudMessage,
+  PhotoRequest
 } from './messages/tpa-to-cloud';
-
-// From messages/cloud-to-tpa.ts
-export {
-  TpaConnectionAck,
-  TpaConnectionError,
-  AppStopped,
-  SettingsUpdate,
-  DataStream,
-  CloudToTpaMessage,
-  TranslationData,
-  ToolCall
-} from './messages/cloud-to-tpa';
 
 // From layout.ts
 export {
@@ -113,14 +140,21 @@ export {
   isHeadPosition,
   isConnectionInit,
   isStartApp,
-  isStopApp
+  isStopApp,
+  isPhotoResponse as isPhotoResponseFromGlasses,
+  isRtmpStreamStatus as isRtmpStreamStatusFromGlasses,
+  isKeepAliveAck
 } from './messages/glasses-to-cloud';
 
 export {
   isConnectionAck,
   isDisplayEvent,
   isAppStateChange,
-  isPhotoRequest
+  isPhotoRequest,
+  isSettingsUpdate as isSettingsUpdateToGlasses,
+  isStartRtmpStream,
+  isStopRtmpStream,
+  isKeepRtmpStreamAlive
 } from './messages/cloud-to-glasses';
 
 export {
@@ -128,15 +162,9 @@ export {
   isTpaSubscriptionUpdate,
   isDisplayRequest,
   isRtmpStreamRequest,
-  isRtmpStreamStopRequest
+  isRtmpStreamStopRequest,
+  isPhotoRequest as isPhotoRequestFromTpa
 } from './messages/tpa-to-cloud';
-
-export {
-  isTpaConnectionAck,
-  isDataStream,
-  isAppStopped,
-  isSettingsUpdate,
-} from './messages/cloud-to-tpa';
 
 // Export setting-related types
 export {

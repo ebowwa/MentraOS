@@ -7,9 +7,9 @@
  * - Handling real-time message routing
  * - Managing TPA session states
  * - Coordinating audio streaming and transcription
- * 
+ *
  * Typical usage:
- * const wsService = createWebSocketService(sessionService, subscriptionService, 
+ * const wsService = createWebSocketService(sessionService, subscriptionService,
  *                                        transcriptionService, appService);
  * wsService.setupWebSocketServers(httpServer);
  */
@@ -160,12 +160,12 @@ export class WebSocketService {
   public initialize() {
     try {
       this.sessionService = getSessionService();
-      
+
       // Set up stream tracker callback for sending keep-alive messages
       streamTrackerService.onKeepAliveSent = (streamId: string, ackId: string) => {
         this.sendKeepAliveToGlasses(streamId, ackId);
       };
-      
+
       logger.info('✅ WebSocket Service initialized');
     } catch (error) {
       logger.error('Failed to initialize WebSocket Service:', error);
@@ -619,7 +619,7 @@ export class WebSocketService {
     userSession.logger.debug({ loadingApps: userSession.loadingApps }, '[websocket.service]: Current Loading Apps');
 
     try {
-      // Trigger TPA webhook 
+      // Trigger TPA webhook
       const { packageName, name, publicUrl } = app;
       userSession.logger.debug({ packageName, name, publicUrl }, "[websocket.service]: ⚡️Triggering webhook for app⚡️");
 
@@ -1414,12 +1414,12 @@ export class WebSocketService {
           const ackMessage = message as any;
           const streamId = ackMessage.streamId;
           const ackId = ackMessage.ackId;
-          
+
           userSession.logger.debug(`[websocket.service]: Received keep-alive ACK for stream ${streamId}, ackId: ${ackId}`);
-          
+
           // Process the ACK in stream tracker
           streamTrackerService.processKeepAliveAck(streamId, ackId);
-          
+
           break;
         }
 
@@ -2156,7 +2156,7 @@ export class WebSocketService {
         // Capture detailed disconnect information
         const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
 
-        // Clean up the connection 
+        // Clean up the connection
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);

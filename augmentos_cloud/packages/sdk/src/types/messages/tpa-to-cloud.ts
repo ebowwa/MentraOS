@@ -55,12 +55,13 @@ export interface RtmpStreamRequest extends BaseMessage {
 export interface RtmpStreamStopRequest extends BaseMessage {
   type: TpaToCloudMessageType.RTMP_STREAM_STOP;
   packageName: string;
+  streamId?: string;  // Optional stream ID to specify which stream to stop
 }
 
 /**
  * Union type for all messages from TPAs to cloud
  */
-export type TpaToCloudMessage = 
+export type TpaToCloudMessage =
   | TpaConnectionInit
   | TpaSubscriptionUpdate
   | DisplayRequest

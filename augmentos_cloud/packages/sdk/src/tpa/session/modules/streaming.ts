@@ -1,11 +1,11 @@
 /**
  * 📹 RTMP Streaming Module
- * 
+ *
  * Provides functionality for TPAs to request and manage RTMP streams from smart glasses.
  * Handles stream lifecycle, status monitoring, and cleanup.
  */
-import { 
-  TpaToCloudMessageType, 
+import {
+  TpaToCloudMessageType,
   CloudToTpaMessageType,
   RtmpStreamRequest,
   RtmpStreamStopRequest,
@@ -50,7 +50,7 @@ export interface RtmpStreamOptions {
 
 /**
  * StreamingModule provides functionality for TPAs to request and manage RTMP streams.
- * 
+ *
  * Streams can be requested with configurable parameters for video quality,
  * audio settings, and stream constraints. Status updates are received through
  * the standard subscription mechanism.
@@ -66,7 +66,7 @@ export class StreamingModule {
 
   /**
    * Create a new StreamingModule
-   * 
+   *
    * @param packageName - The TPA package name
    * @param sessionId - The current session ID
    * @param send - Function to send messages to the cloud
@@ -81,7 +81,7 @@ export class StreamingModule {
 
   /**
    * Begin an RTMP stream to the specified URL
-   * 
+   *
    * @param options - Configuration options for the stream
    * @returns Promise that resolves when the stream request is sent (not when streaming begins)
    */
@@ -108,7 +108,7 @@ export class StreamingModule {
 
     // Save stream URL for reference
     this.currentStreamUrl = options.rtmpUrl;
-    
+
     // Send the request
     try {
       this.send(message);
@@ -122,7 +122,7 @@ export class StreamingModule {
 
   /**
    * Stop the current RTMP stream
-   * 
+   *
    * @returns Promise that resolves when the stop request is sent
    */
   async stopStream(): Promise<void> {
@@ -136,6 +136,7 @@ export class StreamingModule {
       type: TpaToCloudMessageType.RTMP_STREAM_STOP,
       packageName: this.packageName,
       sessionId: this.sessionId,
+      streamId: this.currentStreamState?.streamId,  // Include streamId if available
       timestamp: new Date()
     };
 
@@ -151,7 +152,7 @@ export class StreamingModule {
 
   /**
    * Check if currently streaming
-   * 
+   *
    * @returns True if a stream is active or initializing
    */
   isCurrentlyStreaming(): boolean {
@@ -160,7 +161,7 @@ export class StreamingModule {
 
   /**
    * Get the URL of the current stream (if any)
-   * 
+   *
    * @returns The RTMP URL of the current stream, or undefined if not streaming
    */
   getCurrentStreamUrl(): string | undefined {
@@ -169,7 +170,7 @@ export class StreamingModule {
 
   /**
    * Get the current stream status
-   * 
+   *
    * @returns The current stream status, or undefined if not available
    */
   getStreamStatus(): RtmpStreamStatus | undefined {
@@ -207,7 +208,7 @@ export class StreamingModule {
       console.error('Cannot listen for status updates: session reference not available');
       return () => {};
     }
-    
+
     this.subscribeToStatusUpdates();
     return this.session.on(StreamType.RTMP_STREAM_STATUS, handler);
   }
@@ -227,6 +228,7 @@ export class StreamingModule {
     // Convert to StreamStatus format
     const status: RtmpStreamStatus = {
       type: message.type,
+      streamId: message.streamId,
       status: message.status,
       errorDetails: message.errorDetails,
       appId: message.appId,

@@ -20,11 +20,11 @@ export enum GlassesToCloudMessageType {
 
   // Mentra Live
   PHOTO_RESPONSE = StreamType.PHOTO_RESPONSE,
-  
+
   // RTMP streaming
   RTMP_STREAM_STATUS = StreamType.RTMP_STREAM_STATUS,
   KEEP_ALIVE_ACK = 'keep_alive_ack',
-  
+
   // OPEN_DASHBOARD = 'open_dashboard',
   // Events and data
   // BUTTON_PRESS = 'button_press',
@@ -58,19 +58,19 @@ export enum CloudToGlassesMessageType {
   CONNECTION_ACK = 'connection_ack',
   CONNECTION_ERROR = 'connection_error',
   AUTH_ERROR = 'auth_error',
-  
+
   // Updates
   DISPLAY_EVENT = 'display_event',
   APP_STATE_CHANGE = 'app_state_change',
   MICROPHONE_STATE_CHANGE = 'microphone_state_change',
   PHOTO_REQUEST = 'photo_request',
   SETTINGS_UPDATE = 'settings_update',
-  
+
   // RTMP streaming
   START_RTMP_STREAM = 'start_rtmp_stream',
   STOP_RTMP_STREAM = 'stop_rtmp_stream',
   KEEP_RTMP_STREAM_ALIVE = 'keep_rtmp_stream_alive',
-  
+
   // Dashboard updates
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
   DASHBOARD_ALWAYS_ON_CHANGE = 'dashboard_always_on_change',
@@ -85,15 +85,15 @@ export enum TpaToCloudMessageType {
   // Commands
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
-  
+
   // Requests
   DISPLAY_REQUEST = 'display_event',
   PHOTO_REQUEST = 'photo_request',
-  
+
   // RTMP streaming
   RTMP_STREAM_REQUEST = 'rtmp_stream_request',
   RTMP_STREAM_STOP = 'rtmp_stream_stop',
-  
+
   // Dashboard requests
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
@@ -107,24 +107,27 @@ export enum CloudToTpaMessageType {
   // Responses
   CONNECTION_ACK = 'tpa_connection_ack',
   CONNECTION_ERROR = 'tpa_connection_error',
-  
+
   // Updates
   APP_STOPPED = 'app_stopped',
   SETTINGS_UPDATE = 'settings_update',
-  
+
   // Dashboard updates
   DASHBOARD_MODE_CHANGED = 'dashboard_mode_changed',
   DASHBOARD_ALWAYS_ON_CHANGED = 'dashboard_always_on_changed',
-  
+
   // Stream data
   DATA_STREAM = 'data_stream',
-  
+
   // Media responses
   PHOTO_RESPONSE = 'photo_response',
   RTMP_STREAM_STATUS = 'rtmp_stream_status',
 
   WEBSOCKET_ERROR = 'websocket_error',
-  
+
+  // Permissions
+  PERMISSION_ERROR = 'permission_error',
+
   // General purpose messaging
   CUSTOM_MESSAGE = 'custom_message'
 }

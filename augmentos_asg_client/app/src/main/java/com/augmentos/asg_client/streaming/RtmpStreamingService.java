@@ -383,7 +383,7 @@ public class RtmpStreamingService extends Service {
                 mStreamer.release();
                 mStreamer = null;
                 Log.i(TAG, "Streamer released");
-                
+
                 // Release wake locks after releasing the streamer
                 releaseWakeLocks();
             } catch (Exception e) {
@@ -525,7 +525,7 @@ public class RtmpStreamingService extends Service {
                         } else {
                             mIsStreaming = false;
                             mReconnecting = false;
-                            
+
                             // Stop camera preview when streaming stops
                             try {
                                 if (mStreamer != null) {
@@ -535,7 +535,7 @@ public class RtmpStreamingService extends Service {
                             } catch (Exception e) {
                                 Log.e(TAG, "Error stopping camera preview", e);
                             }
-                            
+
                             updateNotification();
                             Log.i(TAG, "Streaming stopped");
                             if (sStatusCallback != null) {
@@ -574,7 +574,7 @@ public class RtmpStreamingService extends Service {
             if (sStatusCallback != null) {
                 sStatusCallback.onReconnectFailed(MAX_RECONNECT_ATTEMPTS);
             }
-            
+
             // Stop streaming completely when max attempts reached
             stopStreaming();
             return;
@@ -692,12 +692,12 @@ public class RtmpStreamingService extends Service {
      */
     private void scheduleStreamTimeout(String streamId) {
         cancelStreamTimeout(); // Cancel any existing timeout
-        
+
         mCurrentStreamId = streamId;
         mIsStreamingActive = true;
-        
+
         Log.d(TAG, "Scheduling stream timeout for streamId: " + streamId + " (" + STREAM_TIMEOUT_MS + "ms)");
-        
+
         mRtmpStreamTimeoutTimer = new Timer("RtmpStreamTimeout-" + streamId);
         mRtmpStreamTimeoutTimer.schedule(new TimerTask() {
             @Override
@@ -707,8 +707,8 @@ public class RtmpStreamingService extends Service {
             }
         }, STREAM_TIMEOUT_MS);
     }
-    
-    
+
+
     /**
      * Handle stream timeout - stop streaming due to no keep-alive
      * @param streamId The stream ID that timed out
@@ -716,13 +716,13 @@ public class RtmpStreamingService extends Service {
     private void handleStreamTimeout(String streamId) {
         if (mCurrentStreamId != null && mCurrentStreamId.equals(streamId) && mIsStreamingActive) {
             Log.w(TAG, "Stream timed out due to missing keep-alive messages: " + streamId);
-            
+
             // Notify about timeout
             EventBus.getDefault().post(new StreamingEvent.Error("Stream timed out - no keep-alive from cloud"));
             if (sStatusCallback != null) {
                 sStatusCallback.onStreamError("Stream timed out - no keep-alive from cloud");
             }
-            
+
             // Stop camera preview immediately on timeout
             try {
                 if (mStreamer != null) {
@@ -732,17 +732,17 @@ public class RtmpStreamingService extends Service {
             } catch (Exception e) {
                 Log.e(TAG, "Error stopping camera preview on timeout", e);
             }
-            
+
             // Stop the stream
             stopStreaming();
             mIsStreamingActive = false;
             mCurrentStreamId = null;
         } else {
-            Log.d(TAG, "Ignoring timeout for old stream: " + streamId + 
+            Log.d(TAG, "Ignoring timeout for old stream: " + streamId +
                   " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + ")");
         }
     }
-    
+
     /**
      * Cancel the current stream timeout
      */
@@ -755,7 +755,7 @@ public class RtmpStreamingService extends Service {
         mIsStreamingActive = false;
         mCurrentStreamId = null;
     }
-    
+
 
     /**
      * Static convenience methods for controlling streaming from anywhere in the app
@@ -819,7 +819,7 @@ public class RtmpStreamingService extends Service {
     public static int getReconnectAttempt() {
         return sInstance != null ? sInstance.mReconnectAttempts : 0;
     }
-    
+
     /**
      * Start timeout tracking for a stream (static convenience method)
      * @param streamId The stream ID to track
@@ -829,7 +829,7 @@ public class RtmpStreamingService extends Service {
             sInstance.scheduleStreamTimeout(streamId);
         }
     }
-    
+
     /**
      * Reset timeout for a stream (static convenience method)
      * @param streamId The stream ID that sent keep-alive
@@ -840,12 +840,12 @@ public class RtmpStreamingService extends Service {
                 Log.d(TAG, "Resetting stream timeout for streamId: " + streamId);
                 sInstance.scheduleStreamTimeout(streamId); // Reschedule with fresh timeout
             } else {
-                Log.w(TAG, "Received keep-alive for unknown or inactive stream: " + streamId + 
+                Log.w(TAG, "Received keep-alive for unknown or inactive stream: " + streamId +
                       " (current: " + sInstance.mCurrentStreamId + ", active: " + sInstance.mIsStreamingActive + ")");
             }
         }
     }
-    
+
     /**
      * Wake up the screen to ensure camera can be accessed
      */
@@ -855,7 +855,7 @@ public class RtmpStreamingService extends Service {
         // For streaming we use longer timeout for CPU wake lock than for photo capture
         WakeLockManager.acquireFullWakeLock(this, 180000, 5000); // 3 min CPU, 5 sec screen
     }
-    
+
     /**
      * Release any held wake locks
      */
@@ -898,5 +898,13 @@ public class RtmpStreamingService extends Service {
         } else if (command instanceof StreamingCommand.SetRtmpUrl) {
             setRtmpUrl(((StreamingCommand.SetRtmpUrl) command).getRtmpUrl());
         }
+    }
+
+    /**
+     * Get the current stream ID
+     * @return The current stream ID, or null if no stream is active
+     */
+    public static String getCurrentStreamId() {
+        return sInstance != null ? sInstance.mCurrentStreamId : null;
     }
 }
