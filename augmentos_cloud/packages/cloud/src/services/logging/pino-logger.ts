@@ -107,10 +107,38 @@ export function trackException(error: Error, context: Record<string, any> = {}) 
 }
 
 // Flush logger on process exit
-process.on('beforeExit', async () => {
-  logger.flush(); // Flush the root logger
-  console.log('Logger flushed before exit');
+// process.on('beforeExit', async () => {
+//   logger.flush(); // Flush the root logger
+//   console.log('Logger flushed before exit');
+// });
+
+// Or just remove the signal handlers entirely in development
+let isExiting = false;
+
+const gracefulShutdown = async (signal: string) => {
+  if (isExiting) return;
+  isExiting = true;
+
+  logger.warn(`Received ${signal}, shutting down gracefully...`);
+  
+  // Quick flush and exit
+  try {
+    logger.flush();
+  } catch (error) {
+    // Ignore flush errors
+  }
+  
+  process.exit(0);
+};
+
+// Only handle beforeExit (for crashes) and uncaught exceptions
+process.on('beforeExit', () => gracefulShutdown('beforeExit'));
+process.on('uncaughtException', (error) => {
+  logger.error(error, 'Uncaught Exception');
+  process.exit(1);
 });
+
+// Let Bun handle SIGTERM/SIGINT for file watching
 
 // Default export is the logger
 export default logger;

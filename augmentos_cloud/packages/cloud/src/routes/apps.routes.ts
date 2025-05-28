@@ -8,6 +8,7 @@ import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { DeveloperProfile } from '@augmentos/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
+import { authWithOptionalSession, OptionalUserSessionRequest } from 'src/middleware/client/client-auth-middleware';
 const logger = rootLogger.child({ service: 'apps.routes' });
 
 // Extended app interface for API responses that include developer profile
@@ -44,6 +45,11 @@ const ALLOWED_API_KEY_PACKAGES = ['test.augmentos.mira', 'cloud.augmentos.mira',
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
+/** 
+ * TODO(isaiah): Instead of having a unifiedAuthMiddleware, I would prefer to cleanly separate routes that are called 
+ * by either the client (mobile app, web app, etc.), system apps, or the TPA's (third-party applications), having a more clear separation of concerns.
+ * This way we would be able to log, track, and debug defined actions more clearly.
+ */
 /**
  * Unified authentication middleware: allows either
  * (1) apiKey + packageName + userId (for allowed TPAs), or
@@ -160,75 +166,75 @@ async function getUserIdFromToken(token: string): Promise<string | null> {
  * Dual mode auth middleware - works with or without active sessions
  * If a valid token is present but no active session, creates a minimal user context
  */
-async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Check for Authorization header
-  const authHeader = req.headers.authorization;
+// async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+//   // Check for Authorization header
+//   const authHeader = req.headers.authorization;
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    // Try to get full session
-    const session = await getSessionFromToken(token);
-    if (session) {
-      (req as any).userSession = session;
-      next();
-      return;
-    }
-  }
+//   if (authHeader && authHeader.startsWith('Bearer ')) {
+//     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+//     // Try to get full session
+//     const session = await getSessionFromToken(token);
+//     if (session) {
+//       (req as any).userSession = session;
+//       next();
+//       return;
+//     }
+//   }
 
-  // Fall back to sessionId in body (for full session only)
-  if (req.body && req.body.sessionId) {
-    const session = sessionService.getSession(req.body.sessionId);
-    if (session) {
-      (req as any).userSession = session;
-      next();
-      return;
-    }
-  }
+//   // Fall back to sessionId in body (for full session only)
+//   if (req.body && req.body.sessionId) {
+//     const session = sessionService.getSession(req.body.sessionId);
+//     if (session) {
+//       (req as any).userSession = session;
+//       next();
+//       return;
+//     }
+//   }
 
-  // No valid authentication found
-  res.status(401).json({
-    success: false,
-    message: 'Authentication required. Please provide valid token or session ID with an active session.'
-  });
-}
+//   // No valid authentication found
+//   res.status(401).json({
+//     success: false,
+//     message: 'Authentication required. Please provide valid token or session ID with an active session.'
+//   });
+// }
 
 /**
  * Middleware to allow authentication via either core token/session or apiKey+packageName+userId
  */
-async function apiKeyOrSessionAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Accept apiKey/packageName/userId from query, body, or headers
-  const apiKey = req.query.apiKey as string || req.body.apiKey || req.headers['x-api-key'] as string;
-  const packageName = req.query.packageName as string || req.body.packageName || req.headers['x-package-name'] as string;
-  const userId = req.query.userId as string || req.body.userId || req.headers['x-user-id'] as string;
-  const allowedPackages = ['test.augmentos.mira', 'com.augmentos.mira'];
+// async function apiKeyOrSessionAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+//   // Accept apiKey/packageName/userId from query, body, or headers
+//   const apiKey = req.query.apiKey as string || req.body.apiKey || req.headers['x-api-key'] as string;
+//   const packageName = req.query.packageName as string || req.body.packageName || req.headers['x-package-name'] as string;
+//   const userId = req.query.userId as string || req.body.userId || req.headers['x-user-id'] as string;
+//   const allowedPackages = ['test.augmentos.mira', 'com.augmentos.mira'];
 
-  if (apiKey && packageName && userId && allowedPackages.includes(packageName)) {
-    // Validate API key
-    const valid = await appService.validateApiKey(packageName, apiKey, req.ip);
-    if (valid) {
-      const userSessions = sessionService.getSessionsForUser(userId);
-      if (userSessions && userSessions.length > 0) {
-        (req as any).userSession = userSessions[0];
-        (req as any).authMode = 'apiKey';
-        return next();
-      } else {
-        // Optionally: fallback to a minimal session, or return an error
-        return res.status(401).json({
-          success: false,
-          message: 'No active session found for user.'
-        });
-      }
-    } else {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid API key or package name.'
-      });
-    }
-  }
+//   if (apiKey && packageName && userId && allowedPackages.includes(packageName)) {
+//     // Validate API key
+//     const valid = await appService.validateApiKey(packageName, apiKey, req.ip);
+//     if (valid) {
+//       const userSessions = sessionService.getSessionsForUser(userId);
+//       if (userSessions && userSessions.length > 0) {
+//         (req as any).userSession = userSessions[0];
+//         (req as any).authMode = 'apiKey';
+//         return next();
+//       } else {
+//         // Optionally: fallback to a minimal session, or return an error
+//         return res.status(401).json({
+//           success: false,
+//           message: 'No active session found for user.'
+//         });
+//       }
+//     } else {
+//       return res.status(401).json({
+//         success: false,
+//         message: 'Invalid API key or package name.'
+//       });
+//     }
+//   }
 
-  // Fallback to existing dualModeAuthMiddleware
-  return dualModeAuthMiddleware(req, res, next);
-}
+//   // Fallback to existing dualModeAuthMiddleware
+//   return dualModeAuthMiddleware(req, res, next);
+// }
 
 const router = express.Router();
 
@@ -500,20 +506,27 @@ async function stopApp(req: Request, res: Response) {
  * Install app for user
  */
 async function installApp(req: Request, res: Response) {
-  const { packageName } = req.params;
-  const session = (req as any).userSession; // Get session from middleware
-  const email = session.userId;
+  const request = req as OptionalUserSessionRequest;
 
-  if (!email || !packageName) {
-    return res.status(400).json({
-      success: false,
-      message: 'User session and package name are required'
-    });
-  }
+  const { packageName } = req.params;
+  const userSession = request.userSession; // Get optional userSession from middleware
+  const email = request.email; // Get email from request
+  const user = request.user; // Get user from middleware
 
   try {
-    // Find or create user
-    const user = await User.findOrCreateUser(email);
+    if (!email || !packageName) {
+      return res.status(400).json({
+        success: false,
+        message: 'User session and package name are required'
+      });
+    }
+
+   if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     // Get app details
     const app = await appService.findFromAppStore(packageName);
@@ -533,25 +546,18 @@ async function installApp(req: Request, res: Response) {
     }
 
     // Add to installed apps
-    if (!user.installedApps) {
-      user.installedApps = [];
-    }
-
-    user.installedApps.push({
-      packageName,
-      installedDate: new Date()
-    });
-
-    await user.save();
+    await user.installApp(packageName);
 
     res.json({
       success: true,
       message: `App ${packageName} installed successfully`
     });
 
-    // Always attempt WebSocket notifications for full session
+    // If there's an active userSession, update the session with the new app.
     try {
-      sessionService.triggerAppStateChange(email);
+      if (userSession) {
+        sessionService.triggerAppStateChange(email);
+      }
     } catch (error) {
       logger.warn({ error, email, packageName }, 'Error sending app state notification');
       // Non-critical error, installation succeeded
@@ -569,20 +575,22 @@ async function installApp(req: Request, res: Response) {
  * Uninstall app for user
  */
 async function uninstallApp(req: Request, res: Response) {
+  const request = req as OptionalUserSessionRequest;
   const { packageName } = req.params;
-  const session = (req as any).userSession; // Get session from middleware
-  const email = session.userId;
-
-  if (!email || !packageName) {
-    return res.status(400).json({
-      success: false,
-      message: 'User session and package name are required'
-    });
-  }
 
   try {
     // Find user
-    const user = await User.findByEmail(email);
+    const userSession = request.userSession; // Get userSession from middleware
+    const user = request.user; // Get user from middleware
+    const email = request.email; // Get email from request
+
+    if (!email || !packageName) {
+      return res.status(400).json({
+        success: false,
+        message: 'User session and package name are required'
+      });
+    }
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -611,28 +619,28 @@ async function uninstallApp(req: Request, res: Response) {
 
     // Attempt to stop the app session before uninstalling.
     try {
-      const userSession = sessionService.getSession(email);
       if (userSession) {
         await webSocketService.stopAppSession(userSession, packageName);
       }
       else {
         logger.warn({ email, packageName }, 'Unable to ensure app is stopped before uninstalling, no active session');
       }
-      await webSocketService.stopAppSession(session, packageName);
     } catch (error) {
       logger.warn('Error stopping app during uninstall:', error);
     }
 
-    // Send app state change notification.
+    // Send app state change notification if there's an active session.
     try {
-      sessionService.triggerAppStateChange(email);
+      if (userSession) {
+        sessionService.triggerAppStateChange(email);
+      }
     } catch (error) {
       logger.warn({ error, email }, 'Error updating client AppStateChange after uninstall');
       // Non-critical error, uninstallation succeeded, but updating client state failed.
     }
 
   } catch (error) {
-    logger.error({ error, email, packageName }, 'Error uninstalling app');
+    logger.error({ error, userId: request.email, packageName }, 'Error uninstalling app');
     res.status(500).json({
       success: false,
       message: 'Error uninstalling app'
@@ -644,11 +652,10 @@ async function uninstallApp(req: Request, res: Response) {
  * Get installed apps for user
  */
 async function getInstalledApps(req: Request, res: Response) {
-  const session = (req as any).userSession; // Get session from middleware
-  const email = session.userId;
+  const request = req as OptionalUserSessionRequest;
 
   try {
-    const user = await User.findByEmail(email);
+    const user = request.user;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -656,6 +663,7 @@ async function getInstalledApps(req: Request, res: Response) {
       });
     }
 
+    // TODO(isaiah): There's a better way to get list of all apps from MongoDB that doesn't spam DB with fetching one at a time.
     // Get details for all installed apps
     const installedApps = await Promise.all(
       (user.installedApps || []).map(async (installedApp) => {
@@ -823,10 +831,19 @@ router.get('/', unifiedAuthMiddleware, getAllApps);
 router.get('/public', getPublicApps);
 router.get('/search', searchApps);
 
+// [DEPRECATED] dualModeAuthMiddleware no longer exists.
+//  Use authWithEmail, authWithUser, authWithSession or authWithOptionalSession instead. from middleware/client/client-auth-middleware.ts
+
 // App store operations - use dual-mode auth (work with or without active sessions)
-router.get('/installed', dualModeAuthMiddleware, getInstalledApps);
-router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
-router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
+// router.get('/installed', dualModeAuthMiddleware, getInstalledApps);
+// router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
+// router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
+
+// TODO(isaiah): move appstore only 
+// App store operations - use client-auth-middleware.ts
+router.get('/installed', authWithOptionalSession, getInstalledApps);
+router.post('/install/:packageName', authWithOptionalSession, installApp);
+router.post('/uninstall/:packageName', authWithOptionalSession, uninstallApp);
 
 // Keep backward compatibility for now (can be removed later)
 // router.post('/install/:packageName/:email', installApp);

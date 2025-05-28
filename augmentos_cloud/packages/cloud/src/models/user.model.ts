@@ -15,7 +15,7 @@ interface InstalledApp {
 }
 
 // Extend Document for TypeScript support
-export interface UserDocument extends Document {
+export interface UserI extends Document {
   email: string;
   runningApps: string[];
   appSettings: Map<string, AppSetting[]>;
@@ -74,8 +74,8 @@ export interface UserDocument extends Document {
   uninstallApp(packageName: string): Promise<void>;
   isAppInstalled(packageName: string): boolean;
 
-  updateAugmentosSettings(settings: Partial<UserDocument['augmentosSettings']>): Promise<void>;
-  getAugmentosSettings(): UserDocument['augmentosSettings'];
+  updateAugmentosSettings(settings: Partial<UserI['augmentosSettings']>): Promise<void>;
+  getAugmentosSettings(): UserI['augmentosSettings'];
 }
 
 const InstalledAppSchema = new Schema({
@@ -116,7 +116,7 @@ const AppSettingUpdateSchema = new Schema({
 // });
 
 // --- User Schema ---
-const UserSchema = new Schema<UserDocument>({
+const UserSchema = new Schema<UserI>({
   email: {
     type: String,
     required: true,
@@ -255,7 +255,7 @@ UserSchema.index({ email: 1, 'runningApps': 1 }, { unique: true });
 
 // Install / uninstall.
 // Add methods for managing installed apps
-UserSchema.methods.installApp = async function (this: UserDocument, packageName: string): Promise<void> {
+UserSchema.methods.installApp = async function (this: UserI, packageName: string): Promise<void> {
   if (!this.isAppInstalled(packageName)) {
     if (!this.installedApps) {
       this.installedApps = [];
@@ -268,7 +268,7 @@ UserSchema.methods.installApp = async function (this: UserDocument, packageName:
   }
 };
 
-UserSchema.methods.uninstallApp = async function (this: UserDocument, packageName: string): Promise<void> {
+UserSchema.methods.uninstallApp = async function (this: UserI, packageName: string): Promise<void> {
   if (this.isAppInstalled(packageName)) {
     if (!this.installedApps) {
       this.installedApps = [];
@@ -278,24 +278,24 @@ UserSchema.methods.uninstallApp = async function (this: UserDocument, packageNam
   }
 };
 
-UserSchema.methods.isAppInstalled = function(this: UserDocument, packageName: string): boolean {
+UserSchema.methods.isAppInstalled = function(this: UserI, packageName: string): boolean {
   return this.installedApps?.some(app => app.packageName === packageName) ?? false;
 }
 
 // Update location.
-UserSchema.methods.setLocation = async function (this: UserDocument, location: Location): Promise<void> {
+UserSchema.methods.setLocation = async function (this: UserI, location: Location): Promise<void> {
   this.location = location;
   await this.save();
 }
 
-UserSchema.methods.addRunningApp = async function (this: UserDocument, appName: string): Promise<void> {
+UserSchema.methods.addRunningApp = async function (this: UserI, appName: string): Promise<void> {
   if (!this.runningApps.includes(appName)) {
     this.runningApps.push(appName);
     await this.save();
   }
 };
 
-UserSchema.methods.removeRunningApp = async function (this: UserDocument, appName: string): Promise<void> {
+UserSchema.methods.removeRunningApp = async function (this: UserI, appName: string): Promise<void> {
   if (this.runningApps.includes(appName)) {
     this.runningApps = this.runningApps.filter(app => app !== appName);
     await this.save();
@@ -368,19 +368,19 @@ UserSchema.methods.updateAppSettings = async function(
   return afterUpdate;
 };
 
-UserSchema.methods.getAppSettings = function (this: UserDocument, appName: string): AppSetting[] | undefined {
+UserSchema.methods.getAppSettings = function (this: UserI, appName: string): AppSetting[] | undefined {
   const sanitizedAppName = MongoSanitizer.sanitizeKey(appName);
   const settings = this.appSettings.get(sanitizedAppName);
   return settings;
 };
 
-UserSchema.methods.isAppRunning = function (this: UserDocument, appName: string): boolean {
+UserSchema.methods.isAppRunning = function (this: UserI, appName: string): boolean {
   return this.runningApps.includes(appName);
 };
 
 UserSchema.methods.updateAugmentosSettings = async function(
-  this: UserDocument,
-  settings: Partial<UserDocument['augmentosSettings']>
+  this: UserI,
+  settings: Partial<UserI['augmentosSettings']>
 ): Promise<void> {
   // Convert to plain objects for clean logging
   const currentSettingsClean = JSON.parse(JSON.stringify(this.augmentosSettings));
@@ -409,8 +409,8 @@ UserSchema.methods.updateAugmentosSettings = async function(
 };
 
 UserSchema.methods.getAugmentosSettings = function(
-  this: UserDocument
-): UserDocument['augmentosSettings'] {
+  this: UserI
+): UserI['augmentosSettings'] {
   return this.augmentosSettings;
 };
 
@@ -426,11 +426,11 @@ UserSchema.pre('save', function(next) {
 });
 
 // --- Static Methods ---
-UserSchema.statics.findByEmail = async function(email: string): Promise<UserDocument | null> {
+UserSchema.statics.findByEmail = async function(email: string): Promise<UserI | null> {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-UserSchema.statics.findOrCreateUser = async function (email: string): Promise<UserDocument> {
+UserSchema.statics.findOrCreateUser = async function (email: string): Promise<UserI> {
   email = email.toLowerCase();
   let user = await this.findOne({ email });
   if (!user) {
@@ -556,7 +556,7 @@ function generateSlug(name: string): string {
  * @param user The user document
  * @returns The ObjectId of the personal organization
  */
-UserSchema.statics.ensurePersonalOrg = async function(user: UserDocument): Promise<Types.ObjectId> {
+UserSchema.statics.ensurePersonalOrg = async function(user: UserI): Promise<Types.ObjectId> {
   // Import Organization service to avoid circular dependency
   const { OrganizationService } = require('../services/core/organization.service');
 
@@ -596,11 +596,11 @@ UserSchema.statics.ensurePersonalOrg = async function(user: UserDocument): Promi
 };
 
 // --- Interface for Static Methods ---
-interface UserModel extends Model<UserDocument> {
-  findByEmail(email: string): Promise<UserDocument | null>;
-  findOrCreateUser(email: string): Promise<UserDocument>;
+interface UserModel extends Model<UserI> {
+  findByEmail(email: string): Promise<UserI | null>;
+  findOrCreateUser(email: string): Promise<UserI>;
   findUserInstalledApps(email: string): Promise<any[]>;
-  ensurePersonalOrg(user: UserDocument): Promise<Types.ObjectId>;
+  ensurePersonalOrg(user: UserI): Promise<Types.ObjectId>;
 }
 
-export const User = mongoose.model<UserDocument, UserModel>('User', UserSchema);
+export const User = mongoose.model<UserI, UserModel>('User', UserSchema);
