@@ -1,10 +1,10 @@
 /**
  * 🎯 TPA Session Module
- * 
+ *
  * Manages an active Third Party App session with AugmentOS Cloud.
  * Handles real-time communication, event subscriptions, and display management.
  */
-import WebSocket from 'ws';
+import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
@@ -55,14 +55,14 @@ import { TpaServer } from '../server';
 
 /**
  * ⚙️ Configuration options for TPA Session
- * 
+ *
  * @example
  * ```typescript
  * const config: TpaSessionConfig = {
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key',
  *   // Auto-reconnection is enabled by default
- *   // autoReconnect: true 
+ *   // autoReconnect: true
  * };
  * ```
  */
@@ -86,26 +86,26 @@ export interface TpaSessionConfig {
 
 /**
  * 🚀 TPA Session Implementation
- * 
+ *
  * Manages a live connection between your TPA and AugmentOS Cloud.
  * Provides interfaces for:
  * - 🎮 Event handling (transcription, head position, etc.)
  * - 📱 Display management in AR view
  * - 🔌 Connection lifecycle
  * - 🔄 Automatic reconnection
- * 
+ *
  * @example
  * ```typescript
  * const session = new TpaSession({
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key'
  * });
- * 
+ *
  * // Handle events
  * session.onTranscription((data) => {
  *   session.layouts.showTextWall(data.text);
  * });
- * 
+ *
  * // Connect to cloud
  * await session.connect('session_123');
  * ```
