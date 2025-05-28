@@ -8,6 +8,7 @@
  */
 
 import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
+// TODO(isaiah): Consider splitting this into multiple services (appstore.service, developer.service, tools.service)
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -195,6 +196,7 @@ export class AppService {
     }
   }
 
+  // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   /**
  * Triggers the stop webhook for a TPA app session.
  * @param url - Stop Webhook URL
@@ -214,6 +216,7 @@ export class AppService {
     };
   }
 
+  // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   async triggerStopByPackageName(packageName: string, userId: string): Promise<void> {
     // Look up the TPA by packageName
     const app = await this.getApp(packageName);
@@ -318,18 +321,6 @@ export class AppService {
     return hashedKey === appDoc.hashedApiKey;
   }
 
-  /**
-   * Gets the current state of a TPA for a user.
-   * @param packageName - TPA identifier
-   * @param userId - User identifier
-   * @returns Promise resolving to app state
-   */
-  async getAppState(packageName: string, userId: string): Promise<AppState> {
-    const userStates = this.appStates.get(userId) || new Map<string, AppState>();
-
-    // Return existing state or default to not_installed
-    return userStates.get(packageName) || AppState.NOT_INSTALLED;
-  }
 
   /**
    * Validates tool definitions against the schema requirements
@@ -594,6 +585,7 @@ export class AppService {
   }
 
 
+  // TODO(isaiah): Move this to the new developer service to declutter the app service.
   /**
    * Update an app
    */
@@ -667,6 +659,7 @@ export class AppService {
     return updatedApp!;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Publish an app to the app store
    */
@@ -734,6 +727,7 @@ export class AppService {
     return updatedApp!;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Delete an app
    */
@@ -765,6 +759,7 @@ export class AppService {
     await App.findOneAndDelete({ packageName });
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Regenerate API key for an app
    */
@@ -807,6 +802,7 @@ export class AppService {
     return apiKey;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Hash API key
    */
@@ -851,28 +847,6 @@ export class AppService {
 
     // Use lean() to get a plain JavaScript object instead of a Mongoose document
     return App.findOne(query).lean();
-  }
-
-  /**
-   * Get public apps
-   * TODO: DELETE THIS?
-   */
-  // export async function getPublicApps(developerEmail?: string): Promise<AppI[]> {
-  async getPublicApps(): Promise<AppI[]> {
-    // logger.debug('Getting public apps - developerEmail', developerEmail);
-    // if (developerEmail) {
-    //   const developer
-    //     = await User.findOne({ email: developerEmail }).lean();
-    //   if (!developer) {
-    //     return App.find({ isPublic: true }).lean();
-    //   }
-    //   else {
-    //     // Find all public apps, or apps by the developer.
-    //     return App.find({ $or: [{ isPublic: true }, { developerId: developer.email}] }).lean();
-    //   }
-    // }
-    return App.find({ isPublic: true }).lean();
-    // return App.find();
   }
 
   /**
@@ -1048,6 +1022,7 @@ export class AppService {
     return app;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   async updateSharedWithEmails(packageName: string, emails: string[], developerId: string): Promise<AppI> {
     // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
@@ -1073,6 +1048,7 @@ export class AppService {
     return app.toObject();
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Get apps by organization ID
    */
@@ -1080,16 +1056,19 @@ export class AppService {
     return App.find({ organizationId: orgId }).lean();
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   // Replace getAppsByDeveloperId with getAppsByOrgId, but keep for backward compatibility
   async getAppsByDeveloperId(developerId: string): Promise<AppI[]> {
     return App.find({ developerId }).lean();
   }
 
+  // TODO(isaiah): delete this or Move this logic to a new developer service to declutter the app service.
   // These are no longer needed with the organization model, but keep for backward compatibility
   async getAppsSharedWithEmail(email: string): Promise<AppI[]> {
     return [];
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Get apps created by or shared with a user (deduplicated)
    */
@@ -1098,6 +1077,7 @@ export class AppService {
     return this.getAppsByDeveloperId(email);
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Move an app from one organization to another
    * @param packageName - The package name of the app to move

@@ -1,6 +1,6 @@
 import { Types } from 'mongoose';
 import { Organization, OrganizationDocument, OrgMember } from '../../models/organization.model';
-import { User, UserDocument } from '../../models/user.model';
+import { User, UserI } from '../../models/user.model';
 import { InviteService } from './invite.service';
 
 
@@ -49,7 +49,7 @@ export class OrganizationService {
    * @param user - The user document
    * @returns The ID of the created organization
    */
-  public static async createPersonalOrg(user: UserDocument): Promise<Types.ObjectId> {
+  public static async createPersonalOrg(user: UserI): Promise<Types.ObjectId> {
     const personalOrgName = `${user.profile?.company || user.email.split('@')[0]}'s Org`;
     const slug = await generateSlug(personalOrgName);
 
@@ -83,7 +83,7 @@ export class OrganizationService {
    * @param creatorUser - The user creating the organization
    * @returns The created organization document
    */
-  public static async createOrg(name: string, creatorUser: UserDocument): Promise<OrganizationDocument> {
+  public static async createOrg(name: string, creatorUser: UserI): Promise<OrganizationDocument> {
     const slug = await generateSlug(name);
 
     const org = new Organization({
@@ -143,7 +143,7 @@ export class OrganizationService {
   public static async updateOrg(
     id: string | Types.ObjectId,
     patch: Partial<Pick<OrganizationDocument, 'name' | 'profile'>>,
-    actorUser: UserDocument
+    actorUser: UserI
   ): Promise<OrganizationDocument> {
     // Verify user has admin rights
     const hasPermission = await this.isOrgAdmin(actorUser, id);
@@ -188,7 +188,7 @@ export class OrganizationService {
     orgId: string | Types.ObjectId,
     email: string,
     role: OrgMember['role'] = 'member',
-    inviterUser: UserDocument
+    inviterUser: UserI
   ): Promise<string> {
     // Check if inviter has admin rights
     const hasPermission = await this.isOrgAdmin(inviterUser, orgId);
@@ -227,7 +227,7 @@ export class OrganizationService {
    * @param user - User accepting the invite
    * @returns The updated organization
    */
-  public static async acceptInvite(token: string, user: UserDocument): Promise<OrganizationDocument> {
+  public static async acceptInvite(token: string, user: UserI): Promise<OrganizationDocument> {
     console.log('[organization.service] Starting acceptInvite process', { userEmail: user.email });
 
     try {
@@ -342,7 +342,7 @@ export class OrganizationService {
   public static async removeMember(
     orgId: string | Types.ObjectId,
     memberId: string | Types.ObjectId,
-    actorUser: UserDocument
+    actorUser: UserI
   ): Promise<OrganizationDocument> {
     // Verify user has admin rights
     const hasPermission = await this.isOrgAdmin(actorUser, orgId);
@@ -409,7 +409,7 @@ export class OrganizationService {
     orgId: string | Types.ObjectId,
     memberId: string | Types.ObjectId,
     newRole: OrgMember['role'],
-    actorUser: UserDocument
+    actorUser: UserI
   ): Promise<OrganizationDocument> {
     // Verify user has admin rights
     const hasPermission = await this.isOrgAdmin(actorUser, orgId);
@@ -455,7 +455,7 @@ export class OrganizationService {
    * @returns Whether the user is a member
    */
   public static async isOrgMember(
-    user: UserDocument,
+    user: UserI,
     orgId: string | Types.ObjectId
   ): Promise<boolean> {
     const org = await Organization.findOne({
@@ -473,7 +473,7 @@ export class OrganizationService {
    * @returns Whether the user is an admin
    */
   public static async isOrgAdmin(
-    user: UserDocument,
+    user: UserI,
     orgId: string | Types.ObjectId
   ): Promise<boolean> {
     const org = await Organization.findOne({
@@ -492,7 +492,7 @@ export class OrganizationService {
 
   public static async deleteOrg(
     orgId: string | Types.ObjectId,
-    actorUser: UserDocument
+    actorUser: UserI
   ): Promise<void> {
     // Verify the actor is an admin of the organization
     const isAdmin = await this.isOrgAdmin(actorUser, orgId);

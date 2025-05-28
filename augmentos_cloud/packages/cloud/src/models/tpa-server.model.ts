@@ -4,7 +4,7 @@
  * This model tracks registered TPA servers and their connection details.
  * It allows for TPAs to automatically recover sessions when they restart.
  */
-
+// TODO(isaiah): Pretty sure this entire file is not used anywhere, remove?
 import { v4 as uuidv4 } from 'uuid';
 import { logger } from '@augmentos/utils';
 import { WebSocket } from 'ws';

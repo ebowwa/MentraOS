@@ -10,6 +10,7 @@ import sessionService from '../services/core/session.service';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 
 const logger = rootLogger.child({ service: 'developer.routes' });
+// TODO(isaiah): refactor this code to use this logger instead of console.log, console.error, etc.
 
 // Define request with user and organization info
 interface DevPortalRequest extends Request {
@@ -27,6 +28,9 @@ const router = Router();
 import jwt from 'jsonwebtoken';
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
+// TODO(isaiah): This is called validateSupabaseToken, but i'm pretty sure this is using an AugmentOS JWT(coreToken), not a Supabase token.
+// TODO(isaiah): Investigate how currentOrgId is used, the DevPortalRequest claims it's optional yet this middleware fails if it's not provided.
+// Also the middleware doesn't validate the currentOrgId, only injects it into the request object, maybe it should just be a query param instead of a header?  
 const validateSupabaseToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // Extract token from Authorization header
   const authHeader = req.headers.authorization;

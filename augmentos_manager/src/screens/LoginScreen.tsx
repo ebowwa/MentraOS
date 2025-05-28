@@ -23,6 +23,7 @@ import GoogleIcon from '../icons/GoogleIcon';
 import AppleIcon from '../icons/AppleIcon';
 import { supabase } from '../supabaseClient';
 import { Linking } from 'react-native';
+import InAppBrowser from 'react-native-inappbrowser-reborn';
 import showAlert from '../utils/AlertUtils';
 
 interface LoginScreenProps {
@@ -161,8 +162,12 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
   };
 
   const handleGoogleSignIn = async () => {
+    if (isAuthLoading) {
+      console.log('Auth already in progress, ignoring tap');
+      return;
+    }
+
     try {
-      // Start auth flow
       setIsAuthLoading(true);
 
       // Show the auth loading overlay
@@ -172,40 +177,51 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         useNativeDriver: true,
       }).start();
 
-      // Automatically hide the overlay after 5 seconds regardless of what happens
-      // This is a failsafe in case the auth flow is interrupted
-      setTimeout(() => {
-        console.log('Auth flow failsafe timeout - hiding loading overlay');
-        setIsAuthLoading(false);
-        authOverlayOpacity.setValue(0);
-      }, 5000);
-
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // Must match the deep link scheme/host/path in your AndroidManifest.xml
           redirectTo: 'com.augmentos://auth/callback',
         },
       });
 
-      // 2) If there's an error, handle it
       if (error) {
         console.error('Supabase Google sign-in error:', error);
         showAlert('Authentication Error', error.message);
-        setIsAuthLoading(false);
-        authOverlayOpacity.setValue(0);
         return;
       }
 
-      // 3) If we get a `url` back, we must open it ourselves in RN
       if (data?.url) {
-        console.log('Opening browser with:', data.url);
-        await Linking.openURL(data.url);
-
-        // Directly hide the loading overlay when we leave the app
-        // This ensures it won't be shown when user returns without completing auth
-        setIsAuthLoading(false);
-        authOverlayOpacity.setValue(0);
+        console.log('Opening InAppBrowser with:', data.url);
+        
+        try {
+          // Simplified approach - just try to open with InAppBrowser directly
+          const result = await InAppBrowser.openAuth(data.url, 'com.augmentos://auth/callback', {
+            ephemeralWebSession: false,
+            showTitle: false,
+            enableUrlBarHiding: true,
+            enableDefaultShare: false,
+          });
+          
+          console.log('InAppBrowser auth result:', result);
+          
+          if (result.type === 'success' && result.url) {
+            const authParams = parseAuthParams(result.url);
+            if (authParams && authParams.access_token && authParams.refresh_token) {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: authParams.access_token,
+                refresh_token: authParams.refresh_token,
+              });
+              if (sessionError) {
+                console.error('Error setting session:', sessionError);
+                showAlert('Authentication Error', 'Failed to complete sign in.');
+              }
+            }
+          }
+        } catch (inAppBrowserError) {
+          console.error('InAppBrowser error:', inAppBrowserError);
+          console.log('InAppBrowser failed, falling back to external browser');
+          await Linking.openURL(data.url);
+        }
       }
     } catch (err) {
       console.error('Google sign in failed:', err);
@@ -213,51 +229,84 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         'Authentication Error',
         'Google sign in failed. Please try again.',
       );
+    } finally {
       setIsAuthLoading(false);
       authOverlayOpacity.setValue(0);
     }
-
-    console.log('signInWithOAuth call finished');
   };
 
   const handleAppleSignIn = async () => {
+    if (isAuthLoading) {
+      console.log('Auth already in progress, ignoring tap');
+      return;
+    }
+
     try {
+      setIsAuthLoading(true);
+
+      // Show the auth loading overlay
+      Animated.timing(authOverlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
-          // Match the deep link scheme/host/path in your AndroidManifest.xml
           redirectTo: 'com.augmentos://auth/callback',
         },
       });
 
-      // If there's an error, handle it
       if (error) {
         console.error('Supabase Apple sign-in error:', error);
         showAlert('Authentication Error', error.message);
         return;
       }
 
-      // If we get a `url` back, we must open it ourselves in React Native
       if (data?.url) {
-        console.log('Opening browser with:', data.url);
-        await Linking.openURL(data.url);
+        console.log('Opening InAppBrowser with:', data.url);
+        
+        try {
+          // Simplified approach - just try to open with InAppBrowser directly
+          const result = await InAppBrowser.openAuth(data.url, 'com.augmentos://auth/callback', {
+            ephemeralWebSession: false,
+            showTitle: false,
+            enableUrlBarHiding: true,
+            enableDefaultShare: false,
+          });
+          
+          console.log('InAppBrowser auth result:', result);
+          
+          if (result.type === 'success' && result.url) {
+            const authParams = parseAuthParams(result.url);
+            if (authParams && authParams.access_token && authParams.refresh_token) {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: authParams.access_token,
+                refresh_token: authParams.refresh_token,
+              });
+              if (sessionError) {
+                console.error('Error setting session:', sessionError);
+                showAlert('Authentication Error', 'Failed to complete sign in.');
+              }
+            }
+          }
+        } catch (inAppBrowserError) {
+          console.error('InAppBrowser error:', inAppBrowserError);
+          console.log('InAppBrowser failed, falling back to external browser');
+          await Linking.openURL(data.url);
+        }
       }
-
-      // After returning from the browser, check the session
-      const { data: sessionData } = await supabase.auth.getSession();
-      console.log('Current session after Apple sign-in:', sessionData.session);
-
-      // Note: The actual navigation to SplashScreen will be handled by
-      // the onAuthStateChange listener you already have in place
     } catch (err) {
       console.error('Apple sign in failed:', err);
       showAlert(
         'Authentication Error',
         'Apple sign in failed. Please try again.',
       );
+    } finally {
+      setIsAuthLoading(false);
+      authOverlayOpacity.setValue(0);
     }
-
-    console.log('signInWithOAuth for Apple finished');
   };
 
   const handleEmailSignUp = async (email: string, password: string) => {
