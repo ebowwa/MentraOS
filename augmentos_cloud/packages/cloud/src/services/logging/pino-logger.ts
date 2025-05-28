@@ -132,7 +132,7 @@ const gracefulShutdown = async (signal: string) => {
 };
 
 // Only handle beforeExit (for crashes) and uncaught exceptions
-process.on('beforeExit', () => gracefulShutdown('beforeExit'));
+// process.on('beforeExit', () => gracefulShutdown('beforeExit'));
 process.on('uncaughtException', (error) => {
   logger.error(error, 'Uncaught Exception');
   process.exit(1);
