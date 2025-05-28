@@ -243,8 +243,7 @@ export default function Homepage() {
             router.push("/pairing/select-glasses-model");
           }} title={translate("home:connectGlasses")}/> 
 
-        //status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")
-        <>
+{/* status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") */}        
                 <AnimatedSection>
                   <RunningAppsList isDarkTheme={theme.isDark} />
                 </AnimatedSection>
@@ -252,7 +251,7 @@ export default function Homepage() {
                 <AnimatedSection>
                   <YourAppsList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
                 </AnimatedSection>
-              </>
+              
         {/* <View style={{height: 1000}} /> */}
       {/* </ScrollView> */}
     </Screen>
