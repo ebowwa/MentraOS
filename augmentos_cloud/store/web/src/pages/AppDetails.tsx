@@ -168,7 +168,7 @@ const AppDetails: React.FC = () => {
           className="flex items-center text-blue-600 hover:text-blue-800 mb-6"
         >
           <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to App Store
+          Back to AugmentOS Store
         </button>
 
         {/* Loading state */}
