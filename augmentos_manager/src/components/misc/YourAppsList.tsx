@@ -1,29 +1,27 @@
 // YourAppsList.tsx
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Platform} from 'react-native';
-import MessageModal from './MessageModal';
-import {useStatus} from '@/contexts/AugmentOSStatusProvider';
-import BackendServerComms from '@/backend_comms/BackendServerComms';
-import {loadSetting, saveSetting} from '@/utils/SettingsHelper';
-import {SETTINGS_KEYS} from '@/consts';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {useFocusEffect, useNavigation} from '@react-navigation/native';
-import AppIcon from './AppIcon';
-import {NavigationProps} from './types';
-import {AppInterface, TPAPermission, useAppStatus} from '@/contexts/AppStatusProvider';
-import {requestFeaturePermissions} from '@/utils/PermissionsUtils';
-import {checkFeaturePermissions} from '@/utils/PermissionsUtils';
-import {PermissionFeatures} from '@/utils/PermissionsUtils';
-import showAlert from '@/utils/AlertUtils';
-import ChevronRight from 'assets/icons/ChevronRight';
-import ListHeaderInactiveApps from '../home/ListHeaderInactiveApps';
-import { translate } from "@/i18n";
+import React, {useCallback, useEffect, useRef, useState} from "react"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Platform} from "react-native"
+import MessageModal from "./MessageModal"
+import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import BackendServerComms from "@/backend_comms/BackendServerComms"
+import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import {useFocusEffect, useNavigation} from "@react-navigation/native"
+import AppIcon from "./AppIcon"
+import {NavigationProps} from "./types"
+import {AppInterface, TPAPermission, useAppStatus} from "@/contexts/AppStatusProvider"
+import {requestFeaturePermissions} from "@/utils/PermissionsUtils"
+import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
+import {PermissionFeatures} from "@/utils/PermissionsUtils"
+import showAlert from "@/utils/AlertUtils"
+import ChevronRight from "assets/icons/ChevronRight"
+import ListHeaderInactiveApps from "../home/ListHeaderInactiveApps"
+import {translate} from "@/i18n"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {router} from "expo-router"
 
-interface YourAppsListProps {
-  isDarkTheme: boolean;
-}
-
-const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
+export default function YourAppsList() {
   const {
     appStatus,
     refreshAppStatus,
@@ -31,23 +29,24 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
     optimisticallyStopApp,
     clearPendingOperation,
     isSensingEnabled,
-  } = useAppStatus();
-  const navigation = useNavigation<NavigationProps>();
-  const [_isLoading, setIsLoading] = React.useState(false);
-  const [onboardingModalVisible, setOnboardingModalVisible] = useState(false);
-  const [onboardingCompleted, setOnboardingCompleted] = useState(true);
-  const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false);
-  const [showSettingsHint, setShowSettingsHint] = useState(false);
-  const [showOnboardingTip, setShowOnboardingTip] = useState(false);
+  } = useAppStatus()
+  const navigation = useNavigation<NavigationProps>()
+  const [_isLoading, setIsLoading] = React.useState(false)
+  const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
+  const [onboardingCompleted, setOnboardingCompleted] = useState(true)
+  const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
+  const [showSettingsHint, setShowSettingsHint] = useState(false)
+  const [showOnboardingTip, setShowOnboardingTip] = useState(false)
+  const {theme} = useAppTheme()
   // Static values instead of animations
-  const bounceAnim = React.useRef(new Animated.Value(0)).current;
-  const pulseAnim = React.useRef(new Animated.Value(0)).current;
+  const bounceAnim = React.useRef(new Animated.Value(0)).current
+  const pulseAnim = React.useRef(new Animated.Value(0)).current
 
-  const [containerWidth, setContainerWidth] = React.useState(0);
-  const arrowAnimation = React.useRef(new Animated.Value(0)).current;
+  const [containerWidth, setContainerWidth] = React.useState(0)
+  const arrowAnimation = React.useRef(new Animated.Value(0)).current
 
   // Reference for the Live Captions list item
-  const liveCaptionsRef = useRef<any>(null);
+  const liveCaptionsRef = useRef<any>(null)
   // State to store Live Captions item position
   const [liveCaptionsPosition, setLiveCaptionsPosition] = useState({
     x: 0,
@@ -55,18 +54,18 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
     width: 0,
     height: 0,
     index: 0,
-  });
+  })
 
   // Constants for grid item sizing
-  const GRID_MARGIN = 6; // Total horizontal margin per item (left + right)
-  const numColumns = 4; // Desired number of columns
+  const GRID_MARGIN = 6 // Total horizontal margin per item (left + right)
+  const numColumns = 4 // Desired number of columns
 
   // Calculate the item width based on container width and margins
-  const itemWidth = containerWidth > 0 ? (containerWidth - GRID_MARGIN * numColumns) / numColumns : 0;
+  const itemWidth = containerWidth > 0 ? (containerWidth - GRID_MARGIN * numColumns) / numColumns : 0
 
-  const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
+  const textColor = theme.isDark ? "#FFFFFF" : "#000000"
 
-  const backendComms = BackendServerComms.getInstance();
+  const backendComms = BackendServerComms.getInstance()
 
   // console.log('%%% appStatus', appStatus);
 
@@ -74,64 +73,64 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
   useFocusEffect(
     React.useCallback(() => {
       const checkOnboardingStatus = async () => {
-        const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
-        setOnboardingCompleted(completed);
+        const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+        setOnboardingCompleted(completed)
 
         if (!completed) {
-          setOnboardingModalVisible(true);
-          setShowSettingsHint(false); // Hide settings hint during onboarding
-          setShowOnboardingTip(true);
+          setOnboardingModalVisible(true)
+          setShowSettingsHint(false) // Hide settings hint during onboarding
+          setShowOnboardingTip(true)
         } else {
-          setShowOnboardingTip(false);
+          setShowOnboardingTip(false)
 
           // If onboarding is completed, check how many times settings have been accessed
-          const settingsAccessCount = await loadSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0);
+          const settingsAccessCount = await loadSetting(SETTINGS_KEYS.SETTINGS_ACCESS_COUNT, 0)
           // Only show hint if they've accessed settings less than 1 times
-          setShowSettingsHint(settingsAccessCount < 1);
+          setShowSettingsHint(settingsAccessCount < 1)
         }
-      };
+      }
 
-      checkOnboardingStatus();
+      checkOnboardingStatus()
     }, []),
-  );
+  )
 
   // Just set arrow to static position
   useEffect(() => {
     // Set static value
-    arrowAnimation.setValue(0);
-  }, [showOnboardingTip]);
+    arrowAnimation.setValue(0)
+  }, [showOnboardingTip])
 
   // Check if onboarding is completed on initial load
   useEffect(() => {
     const checkOnboardingStatus = async () => {
-      const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
-      setOnboardingCompleted(completed);
-      setShowOnboardingTip(!completed);
-    };
+      const completed = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+      setOnboardingCompleted(completed)
+      setShowOnboardingTip(!completed)
+    }
 
-    checkOnboardingStatus();
-  }, []);
+    checkOnboardingStatus()
+  }, [])
 
   // Set static values instead of animations
   useEffect(() => {
     if (showOnboardingTip) {
       // Set static values instead of animating
-      bounceAnim.setValue(0);
-      pulseAnim.setValue(0.5);
+      bounceAnim.setValue(0)
+      pulseAnim.setValue(0.5)
     } else {
-      bounceAnim.setValue(0);
-      pulseAnim.setValue(0);
+      bounceAnim.setValue(0)
+      pulseAnim.setValue(0)
     }
-  }, [showOnboardingTip]);
+  }, [showOnboardingTip])
 
   // Safely measure Live Captions position when onboarding tip should be shown
   useEffect(() => {
     // Only try to measure if the tip should be shown
-    if (!showOnboardingTip) return;
+    if (!showOnboardingTip) return
 
     // Track if component is mounted for safety
-    let isMounted = true;
-    
+    let isMounted = true
+
     // Use timeout to ensure we measure after layout
     const timeoutId = setTimeout(() => {
       // Safety check that the component is still mounted and ref is valid
@@ -145,246 +144,250 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
                   ...prev, // Keep existing index if we have it
                   x: pageX,
                   y: pageY,
-                  width: width || prev.width,  // Keep previous values if new ones are invalid
+                  width: width || prev.width, // Keep previous values if new ones are invalid
                   height: height || prev.height,
-                }));
+                }))
               }
             },
-          );
+          )
         } catch (e) {
           // Silently handle measurement errors
-          console.log('Could not measure Live Captions position');
+          console.log("Could not measure Live Captions position")
         }
       }
-    }, 500); // Give more time for layout to settle
-    
+    }, 500) // Give more time for layout to settle
+
     // Cleanup timeout on unmount and mark as unmounted
     return () => {
-      clearTimeout(timeoutId);
-      isMounted = false;
-    };
-  }, [showOnboardingTip]);
+      clearTimeout(timeoutId)
+      isMounted = false
+    }
+  }, [showOnboardingTip])
 
   const completeOnboarding = () => {
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
-    setOnboardingCompleted(true);
-    setShowOnboardingTip(false);
-    setInLiveCaptionsPhase(false); // Reset any live captions phase state
+    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    setOnboardingCompleted(true)
+    setShowOnboardingTip(false)
+    setInLiveCaptionsPhase(false) // Reset any live captions phase state
 
     // Make sure to post an update to ensure all components re-render
     // This is important to immediately hide any UI elements that depend on these states
     setTimeout(() => {
       // Force a re-render by setting state again
-      setShowOnboardingTip(false);
-      setShowSettingsHint(true);
-    }, 100);
-  };
+      setShowOnboardingTip(false)
+      setShowSettingsHint(true)
+    }, 100)
+  }
 
   const checkPermissions = async (app: AppInterface) => {
-    let permissions = app.permissions || [];
-    let neededPermissions: string[] = [];
+    let permissions = app.permissions || []
+    let neededPermissions: string[] = []
 
-    if (permissions.length == 1 && permissions[0].type == 'ALL') {
+    if (permissions.length == 1 && permissions[0].type == "ALL") {
       permissions = [
-        {type: 'MICROPHONE', required: true},
-        {type: 'CALENDAR', required: true},
-        {type: 'NOTIFICATIONS', required: true},
-        {type: 'LOCATION', required: true},
-      ] as TPAPermission[];
+        {type: "MICROPHONE", required: true},
+        {type: "CALENDAR", required: true},
+        {type: "NOTIFICATIONS", required: true},
+        {type: "LOCATION", required: true},
+      ] as TPAPermission[]
     }
 
     for (const permission of permissions) {
-      if (!(permission['required'] ?? true)) {
-        continue;
+      if (!(permission["required"] ?? true)) {
+        continue
       }
       switch (permission.type) {
-        case 'MICROPHONE':
-          const hasMicrophone = await checkFeaturePermissions(PermissionFeatures.MICROPHONE);
+        case "MICROPHONE":
+          const hasMicrophone = await checkFeaturePermissions(PermissionFeatures.MICROPHONE)
           if (!hasMicrophone) {
-            neededPermissions.push(PermissionFeatures.MICROPHONE);
+            neededPermissions.push(PermissionFeatures.MICROPHONE)
           }
-          break;
-        case 'CAMERA':
-          const hasCamera = await checkFeaturePermissions(PermissionFeatures.CAMERA);
+          break
+        case "CAMERA":
+          const hasCamera = await checkFeaturePermissions(PermissionFeatures.CAMERA)
           if (!hasCamera) {
-            neededPermissions.push(PermissionFeatures.CAMERA);
+            neededPermissions.push(PermissionFeatures.CAMERA)
           }
-          break;
-        case 'CALENDAR':
-          const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR);
+          break
+        case "CALENDAR":
+          const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
           if (!hasCalendar) {
-            neededPermissions.push(PermissionFeatures.CALENDAR);
+            neededPermissions.push(PermissionFeatures.CALENDAR)
           }
-          break;
-        case 'NOTIFICATIONS':
-          const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
-          if (!hasNotifications && Platform.OS !== 'ios') {
-            neededPermissions.push(PermissionFeatures.NOTIFICATIONS);
+          break
+        case "NOTIFICATIONS":
+          const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
+          if (!hasNotifications && Platform.OS !== "ios") {
+            neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
           }
-          break;
-        case 'LOCATION':
-          const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION);
+          break
+        case "LOCATION":
+          const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
           if (!hasLocation) {
-            neededPermissions.push(PermissionFeatures.LOCATION);
+            neededPermissions.push(PermissionFeatures.LOCATION)
           }
-          break;
+          break
       }
     }
 
-    return neededPermissions;
-  };
+    return neededPermissions
+  }
 
   const requestPermissions = async (permissions: string[]) => {
     for (const permission of permissions) {
-      await requestFeaturePermissions(permission);
+      await requestFeaturePermissions(permission)
     }
-  };
+  }
 
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
-      if (packageName !== 'com.augmentos.livecaptions' && packageName !== 'cloud.augmentos.live-captions') {
+      if (packageName !== "com.augmentos.livecaptions" && packageName !== "cloud.augmentos.live-captions") {
         showAlert(
           translate("home:completeOnboardingTitle"),
           translate("home:completeOnboardingMessage"),
           [{text: translate("common:ok")}],
           {
-            isDarkTheme,
-            iconName: 'information-outline',
+            iconName: "information-outline",
           },
-        );
-        return;
+        )
+        return
       } else {
-        completeOnboarding();
+        completeOnboarding()
       }
     }
 
     // Find the app we're trying to start
-    const appToStart = appStatus.find(app => app.packageName === packageName);
+    const appToStart = appStatus.find(app => app.packageName === packageName)
     if (!appToStart) {
-      console.error('App not found:', packageName);
-      return;
+      console.error("App not found:", packageName)
+      return
     }
 
     // check perms:
-    const neededPermissions = await checkPermissions(appToStart);
+    const neededPermissions = await checkPermissions(appToStart)
     if (neededPermissions.length > 0) {
       await showAlert(
-        neededPermissions.length > 1 ? translate("home:permissionsRequiredTitle") : translate("home:permissionRequiredTitle"),
+        neededPermissions.length > 1
+          ? translate("home:permissionsRequiredTitle")
+          : translate("home:permissionRequiredTitle"),
         translate("home:permissionMessage", {
-        permissions: neededPermissions.join(', ')
-      }),
+          permissions: neededPermissions.join(", "),
+        }),
         // neededPermissions.map(permission => ({text: permission})),
         [
           {
             text: translate("common:ok"),
             onPress: async () => {
-              await requestPermissions(neededPermissions);
-              startApp(packageName);
+              await requestPermissions(neededPermissions)
+              startApp(packageName)
             },
           },
           {
             text: translate("common:cancel"),
-            style: 'cancel',
+            style: "cancel",
           },
         ],
         {
-          isDarkTheme,
-          iconName: 'information-outline',
+          iconName: "information-outline",
         },
-      );
-      return;
+      )
+      return
     }
 
     // Optimistically update UI
-    optimisticallyStartApp(packageName);
+    optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
-    if (appToStart?.tpaType === 'standard') {
-      console.log('% appToStart', appToStart);
+    if (appToStart?.tpaType === "standard") {
+      console.log("% appToStart", appToStart)
       // Find any running standard apps
       const runningStandardApps = appStatus.filter(
-        app => app.is_running && app.tpaType === 'standard' && app.packageName !== packageName,
-      );
+        app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName,
+      )
 
-      console.log('%%% runningStandardApps', runningStandardApps);
+      console.log("%%% runningStandardApps", runningStandardApps)
 
       // If there's any running standard app, stop it first
       for (const runningApp of runningStandardApps) {
         // Optimistically update UI
-        optimisticallyStopApp(runningApp.packageName);
+        optimisticallyStopApp(runningApp.packageName)
 
         try {
-          console.log('%%% stopping app', runningApp.packageName);
-          await backendComms.stopApp(runningApp.packageName);
-          clearPendingOperation(runningApp.packageName);
+          console.log("%%% stopping app", runningApp.packageName)
+          await backendComms.stopApp(runningApp.packageName)
+          clearPendingOperation(runningApp.packageName)
         } catch (error) {
-          console.error('stop app error:', error);
-          refreshAppStatus();
+          console.error("stop app error:", error)
+          refreshAppStatus()
         }
       }
     }
 
     // Start the operation in the background
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      console.log('%%% starting app', packageName);
-      await backendComms.startApp(packageName);
+      console.log("%%% starting app", packageName)
+      await backendComms.startApp(packageName)
       // Clear the pending operation since it completed successfully
-      clearPendingOperation(packageName);
+      clearPendingOperation(packageName)
 
-      if (!onboardingCompleted && packageName === 'com.augmentos.livecaptions') {
+      if (!onboardingCompleted && packageName === "com.augmentos.livecaptions") {
         // If this is the Live Captions app, make sure we've hidden the tip
-        setShowOnboardingTip(false);
+        setShowOnboardingTip(false)
 
         setTimeout(() => {
           showAlert(
-              translate("home:tryLiveCaptionsTitle"),
-              translate("home:tryLiveCaptionsMessage"),
+            translate("home:tryLiveCaptionsTitle"),
+            translate("home:tryLiveCaptionsMessage"),
             [{text: translate("home:ok")}],
             {
-              isDarkTheme,
-              iconName: 'microphone',
+              iconName: "microphone",
             },
-          );
-        }, 500);
+          )
+        }, 500)
       }
     } catch (error) {
       // Revert the app state when there's an error starting the app
-      console.error('start app error:', error);
+      console.error("start app error:", error)
 
       // Clear the pending operation for this app
-      clearPendingOperation(packageName);
+      clearPendingOperation(packageName)
       // Refresh the app status to move the app back to inactive
-      refreshAppStatus();
+      refreshAppStatus()
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const openAppSettings = (app: any) => {
-    navigation.navigate('AppSettings', {
-      packageName: app.packageName,
-      appName: app.name,
-    });
-  };
+    console.log("%%% opening app settings", app)
+    router.push({
+      pathname: "/tpa/settings",
+      params: {
+        packageName: app.packageName,
+        appName: app.name,
+      },
+    })
+  }
 
   const renderOnboardingArrow = () => {
     if (!showOnboardingTip) {
-      return null;
+      return null
     }
-    
+
     // Default to a reasonable position if we don't have valid measurements yet
-    const defaultPosition = 90; // Default Y position from top if we can't calculate
-    const calculatedPosition = liveCaptionsPosition.height > 0 && liveCaptionsPosition.index >= 0 
-      ? (liveCaptionsPosition.index * (liveCaptionsPosition.height + 10) - 40)
-      : defaultPosition;
-    
+    const defaultPosition = 90 // Default Y position from top if we can't calculate
+    const calculatedPosition =
+      liveCaptionsPosition.height > 0 && liveCaptionsPosition.index >= 0
+        ? liveCaptionsPosition.index * (liveCaptionsPosition.height + 10) - 40
+        : defaultPosition
+
     return (
       <View
         style={[
           styles.arrowContainer,
           {
-            position: 'absolute',
+            position: "absolute",
             top: calculatedPosition,
             // Make sure it's visible in the viewport
             opacity: liveCaptionsPosition.height > 0 ? 1 : 0.9,
@@ -395,9 +398,9 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
             style={[
               styles.arrowBubble,
               {
-                backgroundColor: '#00B0FF',
-                borderColor: '#0288D1',
-                shadowColor: '#0288D1',
+                backgroundColor: "#00B0FF",
+                borderColor: "#0288D1",
+                shadowColor: "#0288D1",
                 shadowOpacity: 0.4,
               },
             ]}>
@@ -405,7 +408,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
               style={[
                 styles.arrowBubbleText,
                 {
-                  textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                  textShadowColor: "rgba(0, 0, 0, 0.2)",
                   textShadowOffset: {width: 0, height: 1},
                   textShadowRadius: 2,
                 },
@@ -419,7 +422,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
               style={[
                 styles.bubbleIcon,
                 {
-                  textShadowColor: 'rgba(0, 0, 0, 0.2)',
+                  textShadowColor: "rgba(0, 0, 0, 0.2)",
                   textShadowOffset: {width: 0, height: 1},
                   textShadowRadius: 2,
                 },
@@ -429,12 +432,12 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
           <View
             style={[
               styles.arrowIconContainer,
-              isDarkTheme ? styles.arrowIconContainerDark : styles.arrowIconContainerLight,
+              theme.isDark ? styles.arrowIconContainerDark : styles.arrowIconContainerLight,
               {
-                backgroundColor: '#00B0FF',
-                borderColor: '#0288D1',
+                backgroundColor: "#00B0FF",
+                borderColor: "#0288D1",
                 marginTop: 5,
-                shadowColor: '#0288D1',
+                shadowColor: "#0288D1",
                 shadowOpacity: 0.4,
               },
             ]}>
@@ -443,7 +446,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
                 styles.glowEffect,
                 {
                   opacity: 0.4,
-                  backgroundColor: 'rgba(0, 176, 255, 0.3)',
+                  backgroundColor: "rgba(0, 176, 255, 0.3)",
                 },
               ]}
             />
@@ -452,7 +455,7 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
               size={30}
               color="#FFFFFF"
               style={{
-                textShadowColor: 'rgba(0, 0, 0, 0.3)',
+                textShadowColor: "rgba(0, 0, 0, 0.3)",
                 textShadowOffset: {width: 0, height: 1},
                 textShadowRadius: 3,
               }}
@@ -460,25 +463,25 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
           </View>
         </View>
       </View>
-    );
-  };
+    )
+  }
 
   // Filter out duplicate apps and running apps
   let availableApps = appStatus.filter(app => {
     if (app.is_running) {
-      return false;
+      return false
     }
     // Check if this is the first occurrence of this package name
-    const firstIndex = appStatus.findIndex(a => a.packageName === app.packageName);
-    return firstIndex === appStatus.indexOf(app);
-  });
+    const firstIndex = appStatus.findIndex(a => a.packageName === app.packageName)
+    return firstIndex === appStatus.indexOf(app)
+  })
 
   // remove the notify app on iOS
-  if (Platform.OS === 'ios') {
-    availableApps = availableApps.filter(app => app.packageName !== 'cloud.augmentos.notify' && app.name !== 'Notify');
+  if (Platform.OS === "ios") {
+    availableApps = availableApps.filter(app => app.packageName !== "cloud.augmentos.notify" && app.name !== "Notify")
   }
   // alphabetically sort the available apps
-  availableApps.sort((a, b) => a.name.localeCompare(b.name));
+  availableApps.sort((a, b) => a.name.localeCompare(b.name))
 
   return (
     <View style={styles.appsContainer}>
@@ -492,95 +495,78 @@ const YourAppsList: React.FC<YourAppsListProps> = ({isDarkTheme}) => {
 
         {availableApps.map((app, index) => {
           // Check if this is the LiveCaptions app
-          const isLiveCaptions = app.packageName === 'com.augmentos.livecaptions' || 
-                               app.packageName === 'cloud.augmentos.live-captions';
-          
+          const isLiveCaptions =
+            app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
+
           // Only set ref for LiveCaptions app
-          const ref = isLiveCaptions ? liveCaptionsRef : null;
-          
+          const ref = isLiveCaptions ? liveCaptionsRef : null
+
           // Update LiveCaptions index without causing rerender loops
           // This is safer than updating state during render
           if (isLiveCaptions && liveCaptionsPosition.index !== index) {
             // Use setTimeout to defer the state update until after render
             setTimeout(() => {
-              setLiveCaptionsPosition(prev => ({ ...prev, index }));
-            }, 0);
+              setLiveCaptionsPosition(prev => ({...prev, index}))
+            }, 0)
           }
-          function getNewRow() {
-            return (
-              <TouchableOpacity
-              onLongPress={() => openAppSettings(app)}
-              >
-<View style={[styles.everything, styles.everythingFlexBox]}>
-                <View style={[styles.appDescription, styles.everythingFlexBox]}>
-                  <AppIcon
-                    app={app}
-                    isDarkTheme={isDarkTheme}
-                    isForegroundApp={app.is_foreground}
-                    style={styles.appIcon}
-                  />
-                  <View style={styles.appNameWrapper}>
-                  <Text style={styles.appName} numberOfLines={1}>{app.name}</Text>
-                </View>
-                </View>
-                
-                <View style={[styles.toggleParent, styles.everythingFlexBox]}>
-                  <TouchableOpacity
-                    key={app.packageName}
-                    onPress={() => startApp(app.packageName)}
-                    delayLongPress={500}
-                      style={{ padding: 10, borderRadius: 20 }}
-                    ref={ref}>
-                    <View style={styles.toggle}>
-                      <View style={[styles.toggleBarIcon, styles.toggleIconLayout, { backgroundColor: "#565E8C" }]} />
-                      <View
-                        style={[
-                          styles.toggleCircleIcon,
-                          styles.toggleIconLayout,
-                          { left: "-2.78%" }
-                        ]}
-                      >
-                        <View style={{ flex: 1, borderRadius: 12, backgroundColor: "#CED2ED" }} />
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-
-                  <ChevronRight />
+          return (
+            <View key={app.packageName} style={[styles.everything, styles.everythingFlexBox]}>
+              <View style={[styles.appDescription, styles.everythingFlexBox]}>
+                <AppIcon app={app} isForegroundApp={app.is_foreground} style={styles.appIcon} />
+                <View style={styles.appNameWrapper}>
+                  <Text style={styles.appName} numberOfLines={1}>
+                    {app.name}
+                  </Text>
                 </View>
               </View>
-              </TouchableOpacity>
-              
 
-            );
-          }
+              <View style={[styles.toggleParent, styles.everythingFlexBox]}>
+                <TouchableOpacity
+                  key={app.packageName}
+                  onPress={() => startApp(app.packageName)}
+                  delayLongPress={500}
+                  style={{padding: 10, borderRadius: 20}}
+                  ref={ref}>
+                  <View style={styles.toggle}>
+                    <View style={[styles.toggleBarIcon, styles.toggleIconLayout, {backgroundColor: "#565E8C"}]} />
+                    <View style={[styles.toggleCircleIcon, styles.toggleIconLayout, {left: "-2.78%"}]}>
+                      <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
+                    </View>
+                  </View>
+                </TouchableOpacity>
 
-          return getNewRow();
+                <TouchableOpacity onPress={() => openAppSettings(app)}>
+                  <ChevronRight />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
         })}
       </ScrollView>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   appsContainer: {
     marginTop: -8,
     marginBottom: 0,
-    width: '100%',
+    width: "100%",
     paddingHorizontal: 0,
     paddingVertical: 10,
   },
   titleContainer: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginLeft: 0,
     paddingLeft: 0,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: "600",
+    fontFamily: "Montserrat-Bold",
     lineHeight: 22,
     letterSpacing: 0.38,
     marginBottom: 10,
@@ -589,29 +575,29 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
   },
   listContainer: {
     gap: 4,
   },
   appContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     minHeight: 40, // Match RunningAppsList minHeight
   },
   itemContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   tipButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 15,
@@ -623,7 +609,7 @@ const styles = StyleSheet.create({
   appTextContainer: {
     flex: 1,
     marginLeft: 8,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   settingsButton: {
     padding: 50,
@@ -634,39 +620,39 @@ const styles = StyleSheet.create({
     height: 50, // Match RunningAppsList icon size
   },
   arrowContainer: {
-    position: 'absolute',
+    position: "absolute",
     top: -90,
     zIndex: 10,
-    alignItems: 'center',
+    alignItems: "center",
     marginLeft: 20,
   },
   arrowWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   arrowBubble: {
-    backgroundColor: '#00B0FF',
+    backgroundColor: "#00B0FF",
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    shadowColor: '#0288D1',
-    shadowOffset: { width: 0, height: 3 },
+    flexDirection: "row",
+    alignItems: "center",
+    shadowColor: "#0288D1",
+    shadowOffset: {width: 0, height: 3},
     shadowOpacity: 0.5,
     shadowRadius: 8,
     elevation: 10,
     borderWidth: 1,
-    borderColor: '#0288D1',
+    borderColor: "#0288D1",
   },
   arrowBubbleText: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: "#FFFFFF",
+    fontWeight: "bold",
     fontSize: 15,
     marginRight: 6,
-    textShadowColor: 'rgba(0, 0, 0, 0.2)',
-    textShadowOffset: { width: 0, height: 1 },
+    textShadowColor: "rgba(0, 0, 0, 0.2)",
+    textShadowOffset: {width: 0, height: 1},
     textShadowRadius: 2,
   },
   bubbleIcon: {
@@ -676,30 +662,30 @@ const styles = StyleSheet.create({
     width: 45,
     height: 45,
     borderRadius: 23,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#0288D1',
-    shadowOffset: { width: 0, height: 4 },
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0288D1",
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.6,
     shadowRadius: 8,
     elevation: 12,
-    overflow: 'hidden',
-    position: 'relative',
+    overflow: "hidden",
+    position: "relative",
     borderWidth: 2,
-    borderColor: '#0288D1',
+    borderColor: "#0288D1",
   },
   arrowIconContainerLight: {
-    backgroundColor: '#00B0FF',
+    backgroundColor: "#00B0FF",
   },
   arrowIconContainerDark: {
-    backgroundColor: '#00B0FF',
+    backgroundColor: "#00B0FF",
   },
   glowEffect: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
+    position: "absolute",
+    width: "100%",
+    height: "100%",
     borderRadius: 23,
-    backgroundColor: 'rgba(0, 176, 255, 0.3)',
+    backgroundColor: "rgba(0, 176, 255, 0.3)",
   },
   settingsHintContainer: {
     padding: 12,
@@ -708,54 +694,54 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   hintContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   hintText: {
     marginLeft: 10,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   sensingWarningContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
     marginBottom: 12,
   },
   warningContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   warningText: {
     marginLeft: 10,
     fontSize: 14,
-    fontWeight: '500',
-    color: '#E65100',
+    fontWeight: "500",
+    color: "#E65100",
     flex: 1,
   },
   settingsButtonText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   settingsButtonBlue: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     borderRadius: 5,
     paddingVertical: 5,
     paddingHorizontal: 10,
     margin: 0,
   },
   settingsButtonTextBlue: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   scrollViewContent: {
-    paddingBottom: Platform.OS === 'ios' ? 24 : 38, // Account for nav bar height + iOS home indicator
+    paddingBottom: Platform.OS === "ios" ? 24 : 38, // Account for nav bar height + iOS home indicator
   },
   appIcon: {
     width: 32,
@@ -763,7 +749,7 @@ const styles = StyleSheet.create({
   },
   toggle: {
     width: 36,
-    height: 20
+    height: 20,
   },
   toggleBarIcon: {
     height: "80%",
@@ -773,7 +759,7 @@ const styles = StyleSheet.create({
     bottom: "15%",
     left: "0%",
     borderRadius: 8,
-    maxHeight: "100%"
+    maxHeight: "100%",
   },
   toggleCircleIcon: {
     width: "55.56%",
@@ -781,31 +767,31 @@ const styles = StyleSheet.create({
     right: "47.22%",
     left: "-2.78%",
     borderRadius: 12,
-    height: 20
+    height: 20,
   },
   toggleIconLayout: {
     maxWidth: "100%",
     position: "absolute",
-    overflow: "hidden"
+    overflow: "hidden",
   },
   everythingFlexBox: {
     flexDirection: "row",
-    alignItems: "center"
+    alignItems: "center",
   },
   everything: {
     justifyContent: "space-between",
     gap: 0,
-    alignSelf: "stretch"
+    alignSelf: "stretch",
   },
   toggleParent: {
-    gap: 12
+    gap: 12,
   },
   appDescription: {
     gap: 17,
-    justifyContent: "center"
+    justifyContent: "center",
   },
   appNameWrapper: {
-    justifyContent: "center"
+    justifyContent: "center",
   },
   appName: {
     fontSize: 15,
@@ -814,8 +800,6 @@ const styles = StyleSheet.create({
     fontFamily: "SF Pro Rounded",
     color: "#ced2ed",
     textAlign: "left",
-    overflow: "hidden"
+    overflow: "hidden",
   },
-});
-
-export default YourAppsList;
+})
