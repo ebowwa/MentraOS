@@ -1313,7 +1313,7 @@ const EditTPA: React.FC = () => {
         configData={importConfigData}
         onConfirm={handleImportConfirm}
         isImporting={isImporting}
-        error={importError}
+        error={importError || undefined}
       />
     </DashboardLayout>
   );

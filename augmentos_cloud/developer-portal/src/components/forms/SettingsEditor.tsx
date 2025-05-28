@@ -574,13 +574,16 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
     const currentSetting = settings[index];
     let updates: any = { type: newType };
 
+    // Type guard to check if setting has key and label properties
+    const hasKeyAndLabel = (s: any): s is { key: string; label: string } => {
+      return 'key' in s && 'label' in s;
+    };
+
     // Preserve common fields that exist across most setting types
-    const commonFields = ['key', 'label'];
-    commonFields.forEach(field => {
-      if (currentSetting[field] !== undefined) {
-        updates[field] = currentSetting[field];
-      }
-    });
+    if (hasKeyAndLabel(currentSetting)) {
+      updates.key = currentSetting.key;
+      updates.label = currentSetting.label;
+    }
 
     // Handle type-specific fields and preserve what makes sense
     switch (newType) {
@@ -598,18 +601,18 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
           ? currentSetting.defaultValue
           : '';
         // Preserve maxLines for TEXT_NO_SAVE_BUTTON if it exists
-        if (newType === AppSettingType.TEXT_NO_SAVE_BUTTON && currentSetting.maxLines !== undefined) {
-          updates.maxLines = currentSetting.maxLines;
+        if (newType === AppSettingType.TEXT_NO_SAVE_BUTTON && 'maxLines' in currentSetting && typeof (currentSetting as any).maxLines === 'number') {
+          updates.maxLines = (currentSetting as any).maxLines;
         }
         break;
 
       case AppSettingType.SELECT:
       case AppSettingType.SELECT_WITH_SEARCH:
         // Always preserve existing options if they exist
-        if (currentSetting.options && Array.isArray(currentSetting.options)) {
-          updates.options = currentSetting.options;
+        if ('options' in currentSetting && Array.isArray((currentSetting as any).options)) {
+          updates.options = (currentSetting as any).options;
           // Preserve defaultValue if it's a valid option value
-          const validValues = currentSetting.options.map((opt: any) => opt.value);
+          const validValues = (currentSetting as any).options.map((opt: any) => opt.value);
           if (validValues.includes(currentSetting.defaultValue)) {
             updates.defaultValue = currentSetting.defaultValue;
           } else {
@@ -623,15 +626,15 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
       case AppSettingType.MULTISELECT:
         // Always preserve existing options if they exist
-        if (currentSetting.options && Array.isArray(currentSetting.options)) {
-          updates.options = currentSetting.options;
+        if ('options' in currentSetting && Array.isArray((currentSetting as any).options)) {
+          updates.options = (currentSetting as any).options;
           // Convert single defaultValue to array, or preserve if already array
           if (Array.isArray(currentSetting.defaultValue)) {
             // Filter to only include valid option values
-            const validValues = currentSetting.options.map((opt: any) => opt.value);
+            const validValues = (currentSetting as any).options.map((opt: any) => opt.value);
             updates.defaultValue = currentSetting.defaultValue.filter((val: any) => validValues.includes(val));
           } else if (currentSetting.defaultValue &&
-                     currentSetting.options.some((opt: any) => opt.value === currentSetting.defaultValue)) {
+                     (currentSetting as any).options.some((opt: any) => opt.value === currentSetting.defaultValue)) {
             // Convert single value to array if it's a valid option
             updates.defaultValue = [currentSetting.defaultValue];
           } else {
@@ -645,8 +648,8 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
       case AppSettingType.SLIDER:
         // Preserve min, max if they exist and are numbers
-        updates.min = typeof currentSetting.min === 'number' ? currentSetting.min : 0;
-        updates.max = typeof currentSetting.max === 'number' ? currentSetting.max : 100;
+        updates.min = 'min' in currentSetting && typeof (currentSetting as any).min === 'number' ? (currentSetting as any).min : 0;
+        updates.max = 'max' in currentSetting && typeof (currentSetting as any).max === 'number' ? (currentSetting as any).max : 100;
         // Preserve defaultValue if it's a number within range
         if (typeof currentSetting.defaultValue === 'number' &&
             currentSetting.defaultValue >= updates.min &&
@@ -659,7 +662,9 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
       case AppSettingType.GROUP:
         // For groups, preserve title if it exists, otherwise use label as title
-        updates.title = currentSetting.title || currentSetting.label || '';
+        updates.title = ('title' in currentSetting && (currentSetting as any).title) ||
+                       ('label' in currentSetting && currentSetting.label) ||
+                       '';
         // Remove fields that don't apply to groups
         delete updates.key;
         delete updates.label;
@@ -667,7 +672,9 @@ const SettingsEditor: React.FC<SettingsEditorProps> = ({ settings, onChange, cla
 
       case AppSettingType.TITLE_VALUE:
         // Preserve value if it exists, otherwise use defaultValue
-        updates.value = currentSetting.value || currentSetting.defaultValue || '';
+        updates.value = ('value' in currentSetting && (currentSetting as any).value) ||
+                       currentSetting.defaultValue ||
+                       '';
         break;
     }
 
