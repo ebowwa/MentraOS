@@ -17,8 +17,10 @@
     "android:install": "adb install -r ./android/app/build/outputs/apk/release/app-release.apk",
     "android:install:release": "adb install -r ./android/app/build/outputs/apk/release/app-release.apk",
     "android:install:debug": "adb install -r ./android/app/build/outputs/apk/debug/app-debug.apk",
-    "postinstall": "./fix-react-native-symlinks.sh",
-    "fix-symlinks": "./fix-react-native-symlinks.sh"
+    "postinstall": "node -e \"process.platform === 'win32' ? require('child_process').exec('fix-react-native-symlinks.bat') : require('child_process').exec('./fix-react-native-symlinks.sh')\"",
+    "fix-symlinks": "node -e \"process.platform === 'win32' ? require('child_process').exec('fix-react-native-symlinks.bat') : require('child_process').exec('./fix-react-native-symlinks.sh')\"",
+    "fix-symlinks:unix": "./fix-react-native-symlinks.sh",
+    "fix-symlinks:windows": "fix-react-native-symlinks.bat"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.1.0",
