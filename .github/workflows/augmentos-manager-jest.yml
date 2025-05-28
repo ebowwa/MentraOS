@@ -15,26 +15,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'pnpm'
-          cache-dependency-path: augmentos_manager/pnpm-lock.yaml
+          cache: 'npm'
+          cache-dependency-path: augmentos_manager/package-lock.json
 
       - name: Install dependencies
         working-directory: ./augmentos_manager
-        run: pnpm install
-
-      - name: Expo prebuild
-        working-directory: ./augmentos_manager
-        run: pnpm expo prebuild
+        run: npm ci
 
       - name: Run Jest tests
         working-directory: ./augmentos_manager
-        run: pnpm test
+        run: npm run test
         env:
           CI: true
