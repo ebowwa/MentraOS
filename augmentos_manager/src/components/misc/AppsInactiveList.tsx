@@ -20,8 +20,9 @@ import ListHeaderInactiveApps from "../home/ListHeaderInactiveApps"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
+import EmptyAppsView from "../home/EmptyAppsView"
 
-export default function YourAppsList() {
+export default function AppsInactiveList() {
   const {
     appStatus,
     refreshAppStatus,
@@ -339,7 +340,7 @@ export default function YourAppsList() {
           showAlert(
             translate("home:tryLiveCaptionsTitle"),
             translate("home:tryLiveCaptionsMessage"),
-            [{text: translate("home:ok")}],
+            [{text: translate("common:ok")}],
             {
               iconName: "microphone",
             },
@@ -493,7 +494,13 @@ export default function YourAppsList() {
         contentContainerStyle={styles.scrollViewContent}>
         <ListHeaderInactiveApps />
 
-        {availableApps.map((app, index) => {
+       {availableApps.length < 1 ? (
+          <EmptyAppsView
+            statusMessageKey="home:noInactiveApps"
+            activeAppsMessageKey="home:emptyInactiveAppListInfo"
+          />
+        ) : (
+          availableApps.map((app, index) => {
           // Check if this is the LiveCaptions app
           const isLiveCaptions =
             app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
@@ -541,7 +548,9 @@ export default function YourAppsList() {
               </View>
             </View>
           )
-        })}
+        }))}
+
+        
       </ScrollView>
     </View>
   )

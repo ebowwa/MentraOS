@@ -3,8 +3,8 @@ import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
-import RunningAppsList from "@/components/misc/RunningAppsList"
-import YourAppsList from "@/components/misc/YourAppsList"
+import AppsActiveList from "@/components/misc/AppsActiveList"
+import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -235,28 +235,30 @@ export default function Homepage() {
         </AnimatedSection>
       )}
 
-      <DefaultButton
-        icon={<SolarLineIconsSet4 />}
-        onPress={() => {
-          router.push("/pairing/select-glasses-model")
-        }}
-        title={translate("home:pairGlasses")}
-      />
-      <DefaultButton
-        icon={<SolarLineIconsSet4 />}
-        onPress={() => {
-          router.push("/pairing/select-glasses-model")
-        }}
-        title={translate("home:connectGlasses")}
-      />
-
-{/* status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") */}        
-                <AnimatedSection>
-                  <RunningAppsList isDarkTheme={theme.isDark} />
+      {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
+              <DefaultButton
+                icon={<SolarLineIconsSet4 />}
+                onPress={() => {
+                  router.push("/pairing/select-glasses-model");
+                }}
+                title={translate("home:pairGlasses")}
+              />
+            ) : (
+              <DefaultButton
+                icon={<SolarLineIconsSet4 />}
+                onPress={() => {
+                  router.push("/pairing/select-glasses-model");
+                }}
+                title={translate("home:connectGlasses")}
+              />
+            )}
+      
+         <AnimatedSection>
+                  <AppsActiveList isDarkTheme={theme.isDark} />
                 </AnimatedSection>
 
-                <AnimatedSection>
-                  <YourAppsList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
+          <AnimatedSection>
+                  <AppsInactiveList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
                 </AnimatedSection>
               
         {/* <View style={{height: 1000}} /> */}

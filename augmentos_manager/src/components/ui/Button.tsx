@@ -3,6 +3,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import * as React from "react";
 import {Text, View, Image, TouchableOpacity, ViewStyle, TextStyle} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import {SafeAreaView} from "react-native-safe-area-context";
 import ChevronRight from "assets/icons/ChevronRight"
 
@@ -16,15 +17,17 @@ const Button = ({ title, onPress, icon }: ButtonProps) => {
   const { themed } = useAppTheme();
   return (
     <TouchableOpacity onPress={onPress} style={themed($padding)}>
-      <View style={[themed($insideSpacing), themed($insideFlexBox)]}>
-        <View style={[themed($inside), themed($insideFlexBox)]}>
-          {icon}
-          <View style={[themed($miraWrapper), themed($insideFlexBox)]}>
-            <Text style={themed($mira)} numberOfLines={1}>{title}</Text>
+      <LinearGradient {...linearGradientProps}>
+        <View style={[themed($insideSpacing), themed($insideFlexBox)]}>
+          <View style={[themed($inside), themed($insideFlexBox)]}>
+            {icon}
+            <View style={[themed($miraWrapper), themed($insideFlexBox)]}>
+              <Text style={themed($mira)} numberOfLines={1}>{title}</Text>
+            </View>
           </View>
+          <ChevronRight/>
         </View>
-        <ChevronRight/>
-      </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 };
@@ -55,13 +58,10 @@ const $inside: ThemedStyle<ViewStyle> = () => ({
 });
 
 const $insideSpacing: ThemedStyle<ViewStyle> = () => ({
-  borderRadius: 30,
+  borderRadius: 28,
   backgroundColor: "#0f1861",
-  borderStyle: "solid",
-  borderColor: "#06114d",
-  borderWidth: 2,
   width: "100%",
-  height: 44,
+  minHeight: 44,
   justifyContent: "space-between",
   paddingHorizontal: 16,
   paddingVertical: 8,
@@ -81,5 +81,16 @@ const $quickConnect: ThemedStyle<ViewStyle> = () => ({
   alignItems: "center",
   overflow: "hidden"
 });
+
+const linearGradientProps = {
+  colors: ["#06114D", "#4340D3"],
+  start: { x: 0, y: 0 },
+  end: { x: 1, y: 0 },
+  style: {
+    padding: 2,
+    borderRadius: 30,
+    overflow: "hidden"
+  } as ViewStyle
+};
 
 export default Button;

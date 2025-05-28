@@ -3,18 +3,23 @@ import { Text, ViewStyle, TextStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedStyle } from "@/theme"
 import { useAppTheme } from "@/utils/useAppTheme"
-import {translate} from "@/i18n"
+import {translate, TxKeyPath} from "@/i18n"
 
-const EmptyApps = () => {
+interface EmptyAppsViewProps {
+  statusMessageKey: TxKeyPath;
+  activeAppsMessageKey: TxKeyPath;
+}
+
+const EmptyAppsView = ({ statusMessageKey, activeAppsMessageKey }: EmptyAppsViewProps) => {
 	const { themed } = useAppTheme();
 
 	return (
 		<SafeAreaView style={themed($emptyApps)}>
 			<Text style={themed($statusMessage)} numberOfLines={1}>
-				{translate("home:noActiveApps")}
+				{translate(statusMessageKey)}
 			</Text>
 			<Text style={themed($activeAppsMessage)} numberOfLines={1}>
-				{translate("home:emptyActiveAppListInfo")}
+				{translate(activeAppsMessageKey)}
 			</Text>
 		</SafeAreaView>
 	);
@@ -52,4 +57,4 @@ const $activeAppsMessage: ThemedStyle<TextStyle> = ({ colors }) => ({
 	textAlign: "left",
 });
 
-export default EmptyApps;
+export default EmptyAppsView;

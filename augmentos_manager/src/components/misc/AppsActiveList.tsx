@@ -1,17 +1,14 @@
 import React, {useMemo, useState, useRef} from 'react';
 import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle} from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { useAppStatus } from '@/contexts/AppStatusProvider';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import coreCommunicator from '@/bridge/CoreCommunicator';
 import AppIcon from './AppIcon';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 import ChevronRight from 'assets/icons/ChevronRight';
-import EmptyApps from '../home/EmptyApps';
+import EmptyAppsView from '../home/EmptyAppsView';
 import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
-import { translate } from "@/i18n";
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 
@@ -19,11 +16,10 @@ interface RunningAppsListProps {
   isDarkTheme: boolean;
 }
 
-const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
+const AppsActiveList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   const { appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation } = useAppStatus();
   const backendComms = BackendServerComms.getInstance();
   const [_isLoading, setIsLoading] = useState(false);
-  const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
   const navigation = useNavigation<NavigationProps>();
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -112,7 +108,7 @@ const RunningAppsList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
               ))}
             </>
           ) : (
-            <EmptyApps />
+            <EmptyAppsView statusMessageKey={'home:noActiveApps'} activeAppsMessageKey={'home:emptyActiveAppListInfo'} />
 
           )}
         </View>
@@ -202,4 +198,4 @@ const $toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
   overflow: "hidden"
 });
 
-export default RunningAppsList;
+export default AppsActiveList;
