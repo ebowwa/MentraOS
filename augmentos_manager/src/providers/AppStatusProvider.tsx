@@ -150,7 +150,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         setAppStatus(updatedAppsData);
       }
     } catch (err) {
-      console.error('Error fetching apps:', err);
+      console.error('Error fetching apps 2:', err);
       setError('Error fetching apps');
     } finally {
       setIsLoading(false);
@@ -209,10 +209,10 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     delete pendingOperations.current[packageName];
   }, []);
 
-  // Initial fetch and refresh on user change or status change
+  // Initial fetch and refresh on user change or core token change
   useEffect(() => {
     refreshAppStatus();
-  }, [user, status]);
+  }, [user, status.core_info.core_token, refreshAppStatus]);
 
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {
