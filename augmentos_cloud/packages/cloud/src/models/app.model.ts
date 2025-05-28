@@ -193,4 +193,4 @@ const AppSchema = new Schema({
 // Add index for organizationId
 AppSchema.index({ organizationId: 1 });
 
-export default mongoose.model<AppI>('App', AppSchema, 'apps');
+export default mongoose.models.App || mongoose.model<AppI>('App', AppSchema, 'apps');
