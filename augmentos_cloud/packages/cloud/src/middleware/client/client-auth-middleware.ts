@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 import { logger as rootLogger } from '../../services/logging';
 import { ExtendedUserSession } from "../../services/processing/transcription.service";
 import { User, UserI } from "../../models/user.model";
-import { sessionService } from "src";
+import { sessionService } from "../../services/core/session.service";
 // Import your user service/model functions
 // import { getUserByEmail } from '../../services/user.service';
 // import { getUserSession, getOptionalUserSession } from '../../services/session.service';

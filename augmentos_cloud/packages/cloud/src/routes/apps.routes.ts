@@ -8,7 +8,7 @@ import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { DeveloperProfile } from '@augmentos/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
-import { authWithOptionalSession, OptionalUserSessionRequest } from 'src/middleware/client/client-auth-middleware';
+import { authWithOptionalSession, OptionalUserSessionRequest } from '../middleware/client/client-auth-middleware';
 const logger = rootLogger.child({ service: 'apps.routes' });
 
 // Extended app interface for API responses that include developer profile
