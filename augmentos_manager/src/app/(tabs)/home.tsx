@@ -259,9 +259,6 @@ export default function Homepage() {
         />
       )}
 
-      <AnimatedSection>
-        <AppsActiveList />
-      </AnimatedSection>
 
       <AnimatedSection>
         <AppsActiveList />
