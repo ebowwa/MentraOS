@@ -1,12 +1,10 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, StyleSheet, Animated, Platform, ActivityIndicator, ViewStyle, TextStyle} from "react-native"
+import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
-import {Header, Text, Screen} from "@/components/ignite"
+import {Header, Screen} from "@/components/ignite"
 import ConnectedDeviceInfo from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
-import AppsActiveList from "@/components/misc/AppsActiveList"
-import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
@@ -14,16 +12,12 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
 import Constants from 'expo-constants'
 import CloudConnection from "@/components/misc/CloudConnection"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {loadSetting} from "@/utils/SettingsHelper"
 
-import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import {SETTINGS_KEYS} from "@/consts"
-import NonProdWarning from "@/components/misc/NonProdWarning"
-import {ScrollView} from "react-native-gesture-handler"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
-import { router } from "expo-router"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number

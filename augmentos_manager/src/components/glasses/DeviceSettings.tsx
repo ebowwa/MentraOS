@@ -1,5 +1,15 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch, ViewStyle} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Switch,
+  ViewStyle,
+  TextStyle,
+} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -14,6 +24,7 @@ import {ThemedStyle} from "@/theme"
 import ToggleSetting from "../settings/ToggleSetting"
 import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
+import {translate} from "@/i18n/translate"
 
 export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -21,7 +32,12 @@ export default function ConnectedDeviceInfo() {
   const slideAnim = useRef(new Animated.Value(-50)).current
   const [connectedGlasses, setConnectedGlasses] = useState("")
   const {status, refreshStatus} = useStatus()
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
+  const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
+
+  const preferredMicOptions = [
+    {label: translate("settings:phoneHeadset"), value: "phone"},
+    {label: translate("settings:glasses"), value: "glasses"},
+  ]
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
@@ -71,57 +87,6 @@ export default function ConnectedDeviceInfo() {
     }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim]),
   )
 
-  useEffect(() => {
-    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
-  }, [status.core_info.is_mic_enabled_for_frontend])
-
-  const handleConnectToCore = async () => {
-    try {
-      // Request status to check connection instead of scanning
-      await coreCommunicator.sendRequestStatus()
-    } catch (error) {
-      GlobalEventEmitter.emit("SHOW_BANNER", {message: "Failed to connect to AugmentOS Core", type: "error"})
-    }
-  }
-
-  const connectGlasses = async () => {
-    if (!status.core_info.default_wearable) {
-      router.push("/pairing/select-glasses-model")
-      return
-    }
-
-    // Check that Bluetooth and Location are enabled/granted
-    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
-    if (!requirementsCheck.isReady) {
-      // Show alert about missing requirements
-      console.log("Requirements not met, showing banner with message:", requirementsCheck.message)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-        type: "error",
-      })
-
-      return
-    }
-
-    setConnectButtonDisabled(true)
-    setDisconnectButtonDisabled(false)
-
-    try {
-      console.log("Connecting to glasses:", status.core_info.default_wearable)
-      if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
-        console.log("Connecting to glasses:", status.core_info.default_wearable)
-        await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
-      }
-    } catch (error) {
-      console.error("connect to glasses error:", error)
-      setConnectButtonDisabled(false)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: "Failed to connect to glasses",
-        type: "error",
-      })
-    }
-  }
-
   const sendDisconnectWearable = async () => {
     setDisconnectButtonDisabled(true)
     setConnectButtonDisabled(false)
@@ -131,15 +96,6 @@ export default function ConnectedDeviceInfo() {
     try {
       await coreCommunicator.sendDisconnectWearable()
     } catch (error) {}
-  }
-
-  // New handler: if already connecting, pressing the button calls disconnect.
-  const handleConnectOrDisconnect = async () => {
-    if (isConnectButtonDisabled || status.core_info.is_searching) {
-      await sendDisconnectWearable()
-    } else {
-      await connectGlasses()
-    }
   }
 
   const {theme, themed} = useAppTheme()
@@ -220,163 +176,101 @@ export default function ConnectedDeviceInfo() {
             <Text style={styles.disconnectText}>Disconnect</Text>
           </TouchableOpacity>
         </Animated.View>
-        <View
-          style={[
-            styles.statusBar,
-            {
-              flexDirection: "row",
-              justifyContent: "space-between",
-              width: "100%",
-              gap: 12,
-              paddingVertical: 12,
-              marginBottom: 8,
-              marginTop: 8,
-            },
-          ]}>
-          <View style={[{flex: 8, flexShrink: 1}]}>
-            <View style={{flexDirection: "row", justifyContent: "space-between", width: "100%"}}>
-              <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor}]}>Brightness</Text>
-              {!autoBrightness ? (
-                <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}>{brightness}%</Text>
-              ) : (
-                <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}></Text>
-              )}
-            </View>
-            {/* this is so dumb but it doesn't want to work any other way */}
-            {autoBrightness && (
-              <Slider
-                disabled={true}
-                style={{width: "100%"}}
-                value={100}
-                minimumValue={0}
-                maximumValue={100}
-                step={1}
-                thumbStyle={{height: 20, width: 20, backgroundColor: "transparent"}}
-                thumbTouchSize={{width: 40, height: 40}}
-                thumbTintColor="transparent"
-                trackStyle={{height: 5}}
-                minimumTrackTintColor="transparent"
-              />
-            )}
-            {!autoBrightness && (
-              <Slider
-                disabled={false}
-                allowTouchTrack={false}
-                style={{width: "100%"}}
-                value={brightness}
-                minimumValue={0}
-                maximumValue={100}
-                step={1}
-                thumbStyle={{height: 20, width: 20}}
-                thumbTouchSize={{width: 40, height: 40}}
-                thumbTintColor="#FFFFFF"
-                trackStyle={{height: 5}}
-                onSlidingComplete={value => {
-                  coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
-                }}
-              />
-            )}
-          </View>
-
-          <View style={[{flex: 2, alignItems: "center", gap: 4, flexDirection: "column", paddingTop: 0}]}>
-            <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor, marginTop: -10}]}>Auto</Text>
-            <Switch
-              hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
-              value={status.glasses_settings.auto_brightness}
-              onValueChange={value => {
-                coreCommunicator.setGlassesBrightnessMode(brightness, value)
-              }}
-            />
-          </View>
-        </View>
       </>
     )
   }
 
-  const renderStatusBars = () => {
-    // if (!status.core_info.puck_connected) {
-    //   return (
-    //     <View style={styles.disconnectedContent}>
-    //       <Text style={[styles.connectText, {color: themeStyles.textColor}]}>{'Core service not connected'}</Text>
-    //       <TouchableOpacity style={styles.connectButton} onPress={handleConnectToCore}>
-    //         <Icon name="wifi" size={16} color="white" style={styles.icon} />
-    //         <Text style={styles.buttonText}>Connect to Core</Text>
-    //       </TouchableOpacity>
-    //     </View>
-    //   );
-    // }
-
-    if (!status.core_info.default_wearable) {
-      if (status.core_info.is_searching) {
-        return (
-          <View style={styles.disconnectedContent}>
-            <Text style={[styles.connectText, {color: themeStyles.textColor}]}>Searching for glasses</Text>
-            <ActivityIndicator size="small" color="#2196F3" />
-          </View>
-        )
-      }
-
-      return (
-        <View style={styles.noGlassesContent}>
-          <Text style={styles.noGlassesText}>{"No Glasses Paired"}</Text>
-          <TouchableOpacity style={styles.connectButton} onPress={connectGlasses}>
-            <Text style={styles.buttonText}>{"Connect Glasses"}</Text>
-          </TouchableOpacity>
-        </View>
-      )
-    }
-
-    return (
-      <View style={styles.connectedContent}>
-        <Animated.Image
-          source={getGlassesImage(status.core_info.default_wearable)}
-          style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
-        />
-        <Animated.View style={[styles.connectedStatus, {transform: [{translateX: slideAnim}]}]}>
-          <Text style={[styles.connectedTextTitle, {color: themeStyles.textColor}]}>
-            {formatGlassesTitle(connectedGlasses)}
-          </Text>
-        </Animated.View>
-        {renderInterface()}
-      </View>
-    )
-  }
+  const glassesConnected = (status.glasses_info?.model_name ?? "") !== ""
 
   return (
     <View style={themed($container)}>
       <View style={themed($settingsGroup)}>
         <ToggleSetting label="Auto Brightness" value={autoBrightness} onValueChange={setAutoBrightness} />
-        <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginTop: 12, marginBottom: 4}} />
-        <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
-          <View style={{flex: 8}}>
-            <SliderSetting
-              label="Brightness"
-              value={brightness}
-              onValueChange={setBrightness}
-              min={0}
-              max={100}
-              onValueSet={value => {
-                coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
-              }}
+
+        {!autoBrightness && (
+          <>
+            <View
+              style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginTop: 12, marginBottom: 4}}
             />
-          </View>
-          <View style={{flex: 3, alignItems: "center", alignSelf: "flex-end", marginBottom: -4, paddingBottom: 12, flexDirection: "row", alignContent: "center", marginLeft: 12}}>
-            <MaterialCommunityIcons name="brightness-7" size={24} color={theme.colors.text} />
-            <Text style={{color: theme.colors.text, fontSize: 16, fontWeight: "bold", marginLeft: 4}}>
-              {brightness}%
-            </Text>
-          </View>
-        </View>
+            <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
+              <View style={{flex: 8}}>
+                <SliderSetting
+                  label="Brightness"
+                  value={brightness}
+                  onValueChange={setBrightness}
+                  min={0}
+                  max={100}
+                  onValueSet={value => {
+                    coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
+                  }}
+                />
+              </View>
+              <View
+                style={{
+                  flex: 3,
+                  alignItems: "center",
+                  alignSelf: "flex-end",
+                  marginBottom: -4,
+                  paddingBottom: 12,
+                  flexDirection: "row",
+                  alignContent: "center",
+                  marginLeft: 12,
+                }}>
+                <MaterialCommunityIcons name="brightness-7" size={24} color={theme.colors.text} />
+                <Text style={{color: theme.colors.text, fontSize: 16, fontWeight: "bold", marginLeft: 4}}>
+                  {brightness}%
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </View>
       {/* divider */}
 
-      <View></View>
+      <View style={themed($settingsGroup)}>
+        <TouchableOpacity
+          style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+          onPress={() => setPreferredMic("phone")}>
+          <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
+          <MaterialCommunityIcons
+            name="check"
+            size={24}
+            color={preferredMic === "phone" ? theme.colors.palette.primary300 : "transparent"}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+          onPress={() => setPreferredMic("glasses")}>
+          <View style={{flexDirection: "column", gap: 4}}>
+            <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
+            {!glassesConnected && (
+              <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
+            )}
+          </View>
+          <MaterialCommunityIcons
+            name="check"
+            size={24}
+            color={preferredMic === "glasses" ? theme.colors.palette.primary300 : "transparent"}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <View style={[themed($settingsGroup), {paddingVertical: 0}]}>
+        <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, alignItems: "center"}}>
+          <View style={{flexDirection: "column", justifyContent: "space-between", paddingVertical: 8}}>
+            <Text style={{color: theme.colors.text}}>Dashboard Settings</Text>
+            <Text style={themed($subtitle)}>Contextual Dashboard and Head Up Settings</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.text} />
+        </View>
+      </View>
+
+      <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>
     </View>
   )
 }
 
 const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
-  padding: 16,
   borderRadius: 12,
   width: "100%",
   minHeight: 240,
@@ -384,12 +278,19 @@ const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
   marginTop: 16, // Increased space above component
   // backgroundColor: colors.palette.neutral200,
   backgroundColor: "transparent",
+  gap: 16,
 })
 
 const $settingsGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.palette.neutral200,
-  padding: 16,
+  paddingVertical: 12,
+  paddingHorizontal: 16,
   borderRadius: 12,
+})
+
+const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  color: colors.textDim,
+  fontSize: spacing.sm,
 })
 
 const styles = StyleSheet.create({
