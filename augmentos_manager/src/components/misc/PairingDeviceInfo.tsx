@@ -1,14 +1,5 @@
 import React, {useRef, useState} from "react"
-import {
-  View,
-  Text,
-  ActivityIndicator,
-  Animated,
-  Image,
-  ViewStyle,
-  TextStyle,
-  ImageStyle,
-} from "react-native"
+import {View, Text, ActivityIndicator, Animated, Image, ViewStyle, TextStyle, ImageStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
@@ -74,13 +65,13 @@ const PairingDeviceInfo: React.FC<PairingDeviceInfoProps> = ({glassesModelName})
 
 // Define themed styles using ThemedStyle type
 const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  padding: 10,
+  paddingVertical: 4,
   borderRadius: 16,
   width: "100%",
-  minHeight: 250,
+  minHeight: 160,
   justifyContent: "center",
-  marginTop: 15,
-  backgroundColor: colors.palette.primary100 + '14',
+  marginTop: 16,
+  backgroundColor: colors.palette.neutral200,
 })
 
 const $disconnectedContent: ThemedStyle<ViewStyle> = () => ({
@@ -91,7 +82,7 @@ const $disconnectedContent: ThemedStyle<ViewStyle> = () => ({
 
 const $glassesImage: ThemedStyle<ImageStyle> = () => ({
   width: "80%",
-  height: "50%",
+  height: "40%",
   resizeMode: "contain",
 })
 
@@ -99,6 +90,7 @@ const $connectText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 14,
   fontWeight: "bold",
   marginBottom: 10,
+  marginTop: 36,
   fontFamily: "Montserrat-Bold",
   color: colors.text,
 })
@@ -117,7 +109,7 @@ const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   borderRadius: 12,
   padding: 10,
   width: "100%",
-  backgroundColor: colors.palette.primary100 + '14',
+  backgroundColor: colors.palette.primary100 + "14",
   flexWrap: "wrap",
 })
 

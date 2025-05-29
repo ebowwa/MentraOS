@@ -10,6 +10,7 @@ import {AllProviders} from "@/utils/allProviders"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
 import {AppState, View, ViewStyle} from "react-native"
 import {LinearGradient} from "expo-linear-gradient"
+import BackgroundGradient from "@/components/misc/BackgroundGradient"
 
 SplashScreen.preventAutoHideAsync()
 
@@ -26,7 +27,6 @@ export default function Root() {
   const [fontsLoaded, fontError] = useFonts(customFontsToLoad)
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
-  const {themed, theme} = useAppTheme()
 
   useEffect(() => {
     initI18n()
@@ -54,19 +54,9 @@ export default function Root() {
     <ThemeProvider value={{themeScheme, setThemeContextOverride}}>
       <AllProviders>
         <View style={{flex: 1}}>
-          <LinearGradient
-            colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-            }}
-            start={{x: 0, y: 1}}
-            end={{x: 0, y: 0}}>
+          <BackgroundGradient>
             <Slot />
-          </LinearGradient>
+          </BackgroundGradient>
         </View>
       </AllProviders>
     </ThemeProvider>

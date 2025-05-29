@@ -1,9 +1,0 @@
-{
-  "platforms": ["apple", "android", "web"],
-  "apple": {
-    "modules": ["AugmodModule"]
-  },
-  "android": {
-    "modules": ["expo.modules.augmod.AugmodModule"]
-  }
-}

@@ -5,13 +5,9 @@ import React from 'react';
 import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
-// 1) Create an interface for the props
-interface GlassesPairingGuideProps {
-  isDarkTheme: boolean;
-}
 
 // 2) Declare each guide component with the correct prop type
-export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function EvenRealitiesG1PairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -30,14 +26,14 @@ export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = (
         style={{...styles.guideImage, width: '60%', alignSelf: 'center'}}
       />
 
-      <FontAwesome name="arrow-down" size={48} color={textColor} style={{alignSelf: 'center', marginTop: -48}} />
+      <FontAwesome name="arrow-down" size={36} color={textColor} style={{alignSelf: 'center', marginTop: -36}} />
 
       <Image source={require('../../../assets/guide/image_g1_pair.png')} style={styles.guideImage} />
     </View>
   );
 };
 
-export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function VuzixZ100PairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -52,7 +48,7 @@ export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
   );
 };
 
-export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function MentraMach1PairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -69,7 +65,7 @@ export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = () =>
   );
 };
 
-export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function MentraLivePairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
   const primaryColor = '#5E17EB'; // Purple brand color based on website
@@ -147,7 +143,7 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = () => 
   );
 };
 
-export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function AudioWearablePairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -172,7 +168,7 @@ export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () 
   );
 };
 
-export const VirtualWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function VirtualWearablePairingGuide() {
 
   const {theme} = useAppTheme();
   return (

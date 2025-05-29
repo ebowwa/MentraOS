@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Image} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Image, ViewStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -11,6 +11,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import {Screen} from "@/components/ignite/Screen"
 import {Header} from "@/components/ignite"
+import {ThemedStyle} from "@/theme"
 
 export default function SelectGlassesModelScreen() {
   const {status} = useStatus()
@@ -120,12 +121,7 @@ export default function SelectGlassesModelScreen() {
         <TouchableOpacity
           key={glasses.key}
           style={[
-            styles.settingItem,
-            {
-              backgroundColor: theme2.cardBg,
-              borderColor: theme2.borderColor,
-              borderWidth: 1,
-            },
+            themed($settingItem),
           ]}
           onPress={() => {
             triggerGlassesPairingGuide(glasses.modelName)
@@ -156,6 +152,32 @@ export default function SelectGlassesModelScreen() {
     </Screen>
   )
 }
+
+const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  // Increased padding to give it a "bigger" look
+  paddingVertical: 25,
+  paddingHorizontal: 15,
+
+  // Larger margin to separate each card
+  marginVertical: 8,
+
+  // Rounded corners
+  borderRadius: 10,
+
+  // More subtle shadow for iOS
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 3,
+  shadowOffset: {width: 0, height: 1},
+
+  // More subtle elevation for Android
+  elevation: 2,
+
+  backgroundColor: colors.palette.neutral200,
+})
 
 const styles = StyleSheet.create({
   container: {
@@ -233,32 +255,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 18,
     fontWeight: "bold",
-  },
-  /**
-   * BIG AND SEXY CARD
-   */
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    // Increased padding to give it a "bigger" look
-    paddingVertical: 25,
-    paddingHorizontal: 15,
-
-    // Larger margin to separate each card
-    marginVertical: 8,
-
-    // Rounded corners
-    borderRadius: 10,
-
-    // More subtle shadow for iOS
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    shadowOffset: {width: 0, height: 1},
-
-    // More subtle elevation for Android
-    elevation: 2,
   },
   settingTextContainer: {
     flex: 1,
