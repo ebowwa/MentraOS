@@ -708,7 +708,7 @@ export class WebSocketService {
 
       return userSession.sessionId + '-' + packageName;
     } catch (error) {
-      userSession.logger.error({ error }, `[websocket.service]: Error starting app ${packageName}:`);
+      userSession.logger.error(error , `[websocket.service]: Error starting app ${packageName}:`);
       userSession.loadingApps.delete(packageName);
       throw error;
     }
@@ -2179,7 +2179,8 @@ export class WebSocketService {
             clearTimeout(userSession._reconnectionTimers.get(packageName));
           }
 
-          userSession.logger.info(
+          userSession.logger.warn(
+            error,
             `[websocket.service]: Starting 5-second reconnection grace period for ${packageName} after error. ` +
             `Error: ${error.message || 'unknown error'}`
           );
