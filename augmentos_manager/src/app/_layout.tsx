@@ -8,7 +8,7 @@ import {loadDateFnsLocale} from "@/utils/formatDate"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {AllProviders} from "@/utils/allProviders"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
-import {View, ViewStyle} from "react-native"
+import {AppState, View, ViewStyle} from "react-native"
 import {LinearGradient} from "expo-linear-gradient"
 
 SplashScreen.preventAutoHideAsync()
@@ -27,7 +27,7 @@ export default function Root() {
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
   const {themed, theme} = useAppTheme()
-  
+
   useEffect(() => {
     initI18n()
       .then(() => setIsI18nInitialized(true))
@@ -46,11 +46,9 @@ export default function Root() {
     }
   }, [loaded])
 
-
   if (!loaded) {
     return null
   }
-
 
   return (
     <ThemeProvider value={{themeScheme, setThemeContextOverride}}>
@@ -66,8 +64,7 @@ export default function Root() {
               bottom: 0,
             }}
             start={{x: 0, y: 1}}
-            end={{x: 0, y: 0}}
-          >
+            end={{x: 0, y: 0}}>
             <Slot />
           </LinearGradient>
         </View>

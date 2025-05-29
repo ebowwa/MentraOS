@@ -1,4 +1,9 @@
 const en = {
+  deviceSettings: {
+    glassesNeededForGlassesMic: "Connect glasses to enable",
+    phoneMic: "Phone Microphone",
+    glassesMic: "Glasses Microphone",
+  },
   screenSettings: {
     title: "Screen Settings",
   },

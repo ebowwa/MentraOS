@@ -11,6 +11,7 @@ import EmptyAppsView from '../home/EmptyAppsView';
 import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import { router } from 'expo-router';
 
 interface RunningAppsListProps {
   isDarkTheme: boolean;
@@ -44,10 +45,10 @@ const AppsActiveList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
   };
 
   const openAppSettings = (app: any) => {
-    navigation.navigate('AppSettings', {
+    router.push({pathname: "/tpa/settings", params: {
       packageName: app.packageName,
       appName: app.name
-    });
+    }})
   };
 
   const runningApps = useMemo(

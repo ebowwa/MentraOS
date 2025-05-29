@@ -139,7 +139,11 @@ export default function ScreenSettingsScreen() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 16}}>
-      <Header titleTx="screenSettings:title" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header
+        titleTx="screenSettings:title"
+        leftIcon="caretLeft"
+        onLeftPress={() => router.replace("/(tabs)/settings")}
+      />
       {/* Auto Brightness */}
       <View style={styles.settingItem}>
         <View style={styles.settingTextContainer}>

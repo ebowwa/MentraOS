@@ -1,12 +1,10 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, StyleSheet, Animated, Platform, ActivityIndicator, ViewStyle, TextStyle} from "react-native"
+import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
-import {Header, Text, Screen} from "@/components/ignite"
+import {Header, Screen} from "@/components/ignite"
 import ConnectedDeviceInfo from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
-import AppsActiveList from "@/components/misc/AppsActiveList"
-import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
@@ -14,12 +12,9 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
 import Constants from 'expo-constants'
 import CloudConnection from "@/components/misc/CloudConnection"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
+import {loadSetting} from "@/utils/SettingsHelper"
 
-import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import {SETTINGS_KEYS} from "@/consts"
-import NonProdWarning from "@/components/misc/NonProdWarning"
-import {ScrollView} from "react-native-gesture-handler"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
@@ -94,16 +89,15 @@ export default function Homepage() {
       const backendComms = BackendServerComms.getInstance()
       const localVer = getLocalVersion()
 
-      if (!localVer) {
-        console.error("Failed to get local version from env file")
-        // Navigate to update screen with connection error
-        // navigation.navigate("VersionUpdateScreen", {
-        //   isDarkTheme,
-        //   connectionError: true,
-        // })
-        setIsCheckingVersion(false)
-        return
-      }
+      // if (!localVer) {
+      //   console.error("Failed to get local version from env file")
+      //   // Navigate to update screen with connection error
+      //   router.push({pathname: "/version-update", params: {
+      //     connectionError: "true",
+      //   }})
+      //   setIsCheckingVersion(false)
+      //   return
+      // }
 
       // Call the endpoint to get cloud version
       await backendComms.restRequest("/apps/version", null, {
@@ -115,11 +109,10 @@ export default function Homepage() {
           if (semver.lt(localVer, cloudVer)) {
             console.log("A new version is available. Navigate to update screen.")
             // Navigate to update screen with version mismatch
-            // navigation.navigate("VersionUpdateScreen", {
-            //   isDarkTheme,
+            // router.push({pathname: "/version-update", params: {
             //   localVersion: localVer,
             //   cloudVersion: cloudVer,
-            // })
+            // }})
           } else {
             console.log("Local version is up-to-date.")
             // Stay on homepage, no navigation needed
@@ -129,10 +122,9 @@ export default function Homepage() {
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
           // Navigate to update screen with connection error
-          // navigation.navigate("VersionUpdateScreen", {
-          //   isDarkTheme,
-          //   connectionError: true,
-          // })
+          // router.push({pathname: "/version-update", params: {
+          //   connectionError: "true",
+          // }})
           setIsCheckingVersion(false)
         },
       })
@@ -140,10 +132,9 @@ export default function Homepage() {
     } catch (error) {
       console.error("Error checking cloud version:", error)
       // Navigate to update screen with connection error
-      // navigation.navigate("VersionUpdateScreen", {
-      //   isDarkTheme,
-      //   connectionError: true,
-      // })
+      // router.push({pathname: "/version-update", params: {
+      //   connectionError: "true",
+      // }})
       setIsCheckingVersion(false)
     }
   }

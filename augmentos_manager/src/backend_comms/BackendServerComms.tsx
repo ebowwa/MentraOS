@@ -426,7 +426,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.coreToken}`,
+        'Authorization': `Bearer ${this.coreToken}`,
       },
     };
 

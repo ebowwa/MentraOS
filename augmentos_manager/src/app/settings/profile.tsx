@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect} from "react"
 import {
   View,
   Text,
@@ -23,40 +23,40 @@ import { translate } from "@/i18n";
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
-    fullName: string | null;
-    avatarUrl: string | null;
-    email: string | null;
-    createdAt: string | null;
-    provider: string | null;
-  } | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+    fullName: string | null
+    avatarUrl: string | null
+    email: string | null
+    createdAt: string | null
+    provider: string | null
+  } | null>(null)
+  const [loading, setLoading] = useState<boolean>(true)
 
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordMatched, setPasswordMatched] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false)
+  const [newPassword, setNewPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [passwordMatched, setPasswordMatched] = useState(false)
+  const [showNewPassword, setShowNewPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  const {logout} = useAuth();
+  const {logout} = useAuth()
 
   useEffect(() => {
     const fetchUserData = async () => {
-      setLoading(true);
+      setLoading(true)
       try {
         const {
           data: {user},
           error,
-        } = await supabase.auth.getUser();
+        } = await supabase.auth.getUser()
         if (error) {
-          console.error(error);
-          setUserData(null);
+          console.error(error)
+          setUserData(null)
         } else if (user) {
-          const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null;
-          const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
-          const email = user.email || null;
-          const createdAt = user.created_at || null;
-          const provider = user.app_metadata?.provider || null;
+          const fullName = user.user_metadata?.full_name || user.user_metadata?.name || null
+          const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || null
+          const email = user.email || null
+          const createdAt = user.created_at || null
+          const provider = user.app_metadata?.provider || null
 
           setUserData({
             fullName,
@@ -64,193 +64,191 @@ export default function ProfileSettingsPage() {
             email,
             createdAt,
             provider,
-          });
+          })
         }
       } catch (error) {
-        console.error(error);
-        setUserData(null);
+        console.error(error)
+        setUserData(null)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    fetchUserData();
-  }, []);
+    fetchUserData()
+  }, [])
 
   const handleRequestDataExport = () => {
-    console.log('Requesting data export');
+    console.log("Requesting data export")
     // BackendServerComms.getInstance().requestDataExport();
     // show an alert saying the user will receive an email with a link to download the data
-    Alert.alert(
-      translate("profileSettings:dataExportTitle"),
-      translate("profileSettings:dataExportMessage"),
-      [{ text: translate("common:ok"), style: "default" }]
-    );
-  };
+    Alert.alert(translate("profileSettings:dataExportTitle"), translate("profileSettings:dataExportMessage"), [
+      {text: translate("common:ok"), style: "default"},
+    ])
+  }
 
   const handleDeleteAccount = () => {
-    console.log('Deleting account');
-    Alert.alert(
-      translate("profileSettings:deleteAccountTitle"),
-      translate("profileSettings:deleteAccountMessage"),
-      [
-        { text: translate("common:cancel"), style: "cancel" },
-        {
-          text: translate("common:delete"),
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await BackendServerComms.getInstance().requestAccountDeletion();
-            } catch (error) {
-              console.error(error);
-            }
-            await logout();
-          },
+    console.log("Deleting account")
+    Alert.alert(translate("profileSettings:deleteAccountTitle"), translate("profileSettings:deleteAccountMessage"), [
+      {text: translate("common:cancel"), style: "cancel"},
+      {
+        text: translate("common:delete"),
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await BackendServerComms.getInstance().requestAccountDeletion()
+          } catch (error) {
+            console.error(error)
+          }
+          await logout()
         },
-      ]
-    );
-  };
+      },
+    ])
+  }
 
   const {theme, themed} = useAppTheme()
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 16}}>
-      <Header title={translate("profileSettings:title")} leftIcon='caretLeft' onLeftPress={() => router.back()} />
-        {loading ? (
-          <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
-        ) : userData ? (
-          <>
-            {userData.avatarUrl ? (
-              <Image source={{uri: userData.avatarUrl}} style={themed($profileImage)} />
-            ) : (
-              <View style={themed($profilePlaceholder)}>
-                <Text style={themed($profilePlaceholderText)}>{translate("profileSettings:noProfilePicture")}</Text>
+      <Header
+        title={translate("profileSettings:title")}
+        leftIcon="caretLeft"
+        onLeftPress={() => router.replace("/(tabs)/settings")}
+      />
+      {loading ? (
+        <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
+      ) : userData ? (
+        <>
+          {userData.avatarUrl ? (
+            <Image source={{uri: userData.avatarUrl}} style={themed($profileImage)} />
+          ) : (
+            <View style={themed($profilePlaceholder)}>
+              <Text style={themed($profilePlaceholderText)}>{translate("profileSettings:noProfilePicture")}</Text>
+            </View>
+          )}
+
+          <View style={themed($infoContainer)}>
+            <Text style={themed($label)}>{translate("profileSettings:name")}</Text>
+            <Text style={themed($infoText)}>{userData.fullName || "N/A"}</Text>
+          </View>
+
+          <View style={themed($infoContainer)}>
+            <Text style={themed($label)}>{translate("profileSettings:email")}</Text>
+            <Text style={themed($infoText)}>{userData.email || "N/A"}</Text>
+          </View>
+
+          <View style={themed($infoContainer)}>
+            <Text style={themed($label)}>{translate("profileSettings:createdAt")}</Text>
+            <Text style={themed($infoText)}>
+              {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : "N/A"}
+            </Text>
+          </View>
+
+          <View style={themed($infoContainer)}>
+            <Text style={themed($label)}>{translate("profileSettings:provider")}</Text>
+            <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
+              {userData.provider === "google" && (
+                <>
+                  <Icon name="google" size={18} />
+                  <View style={{width: 6}} />
+                </>
+              )}
+              {userData.provider === "apple" && (
+                <>
+                  <Icon name="apple" size={18} />
+                  <View style={{width: 6}} />
+                </>
+              )}
+              {userData.provider === "facebook" && (
+                <>
+                  <Icon name="facebook" size={18} color="#4267B2" />
+                  <View style={{width: 6}} />
+                </>
+              )}
+              {userData.provider === "email" && (
+                <>
+                  <Icon name="envelope" size={18} />
+                  <View style={{width: 6}} />
+                </>
+              )}
+            </View>
+          </View>
+
+          {userData.provider == "email" && (
+            <TouchableOpacity
+              onPress={() => setShowChangePassword(!showChangePassword)}
+              style={themed($changePasswordButton)}>
+              <Text style={themed($changePasswordButtonText)}>{translate("profileSettings:changePassword")}</Text>
+            </TouchableOpacity>
+          )}
+
+          {showChangePassword && (
+            <View style={themed($passwordChangeContainer)}>
+              <View style={themed($inputGroup)}>
+                <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
+                <View style={themed($enhancedInputContainer)}>
+                  <Icon name="lock" size={16} color="#6B7280" />
+                  <TextInput
+                    hitSlop={{top: 16, bottom: 16}}
+                    style={themed($enhancedInput)}
+                    placeholder={translate("profileSettings:enterNewPassword")}
+                    value={newPassword}
+                    autoCapitalize="none"
+                    onChangeText={(text: any) => {
+                      setNewPassword(text)
+                      setPasswordMatched(text === confirmPassword)
+                    }}
+                    secureTextEntry={!showNewPassword}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TouchableOpacity
+                    hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
+                    onPress={() => setShowNewPassword(!showNewPassword)}>
+                    <Icon name={showNewPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            )}
 
-            <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:name")}</Text>
-              <Text style={themed($infoText)}>{userData.fullName || 'N/A'}</Text>
-            </View>
-
-            <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:email")}</Text>
-              <Text style={themed($infoText)}>{userData.email || 'N/A'}</Text>
-            </View>
-
-            <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:createdAt")}</Text>
-              <Text style={themed($infoText)}>
-                {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : 'N/A'}
-              </Text>
-            </View>
-
-            <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:provider")}</Text>
-              <View style={{flexDirection: 'row', alignItems: 'center', marginTop: 4}}>
-                {userData.provider === 'google' && (
-                  <>
-                    <Icon name="google" size={18} />
-                    <View style={{width: 6}} />
-                  </>
-                )}
-                {userData.provider === 'apple' && (
-                  <>
-                    <Icon name="apple" size={18} />
-                    <View style={{width: 6}} />
-                  </>
-                )}
-                {userData.provider === 'facebook' && (
-                  <>
-                    <Icon name="facebook" size={18} color="#4267B2" />
-                    <View style={{width: 6}} />
-                  </>
-                )}
-                {userData.provider === 'email' && (
-                  <>
-                    <Icon name="envelope" size={18} />
-                    <View style={{width: 6}} />
-                  </>
-                )}
+              <View style={themed($inputGroup)}>
+                <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
+                <View style={themed($enhancedInputContainer)}>
+                  <Icon name="lock" size={16} color="#6B7280" />
+                  <TextInput
+                    hitSlop={{top: 16, bottom: 16}}
+                    style={themed($enhancedInput)}
+                    placeholder={translate("profileSettings:confirmNewPassword")}
+                    value={confirmPassword}
+                    autoCapitalize="none"
+                    onChangeText={(text: any) => {
+                      setConfirmPassword(text)
+                      setPasswordMatched(text === newPassword)
+                    }}
+                    secureTextEntry={!showConfirmPassword}
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <TouchableOpacity
+                    hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                    <Icon name={showConfirmPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
 
-            {userData.provider == 'email' && (
               <TouchableOpacity
-                onPress={() => setShowChangePassword(!showChangePassword)}
-                style={themed($changePasswordButton)}>
-                <Text style={themed($changePasswordButtonText)}>{translate("profileSettings:changePassword")}</Text>
+                style={[
+                  themed($updatePasswordButton),
+                  passwordMatched ? themed($activeUpdatePasswordButton) : themed($disabledUpdatePasswordButton),
+                ]}
+                disabled={!passwordMatched}
+                onPress={() => {
+                  console.log("Password updated:", newPassword)
+                  setShowChangePassword(false)
+                  setNewPassword("")
+                  setConfirmPassword("")
+                }}>
+                <Text style={themed($updatePasswordButtonText)}>{translate("profileSettings:updatePassword")}</Text>
               </TouchableOpacity>
-            )}
-
-            {showChangePassword && (
-              <View style={themed($passwordChangeContainer)}>
-                <View style={themed($inputGroup)}>
-                  <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
-                  <View style={themed($enhancedInputContainer)}>
-                    <Icon name="lock" size={16} color="#6B7280" />
-                    <TextInput
-                      hitSlop={{top: 16, bottom: 16}}
-                      style={themed($enhancedInput)}
-                      placeholder={translate("profileSettings:enterNewPassword")}
-                      value={newPassword}
-                      autoCapitalize="none"
-                      onChangeText={(text: any) => {
-                        setNewPassword(text);
-                        setPasswordMatched(text === confirmPassword);
-                      }}
-                      secureTextEntry={!showNewPassword}
-                      placeholderTextColor="#9CA3AF"
-                    />
-                    <TouchableOpacity
-                      hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
-                      onPress={() => setShowNewPassword(!showNewPassword)}>
-                      <Icon name={showNewPassword ? 'eye' : 'eye-slash'} size={18} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={themed($inputGroup)}>
-                  <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
-                  <View style={themed($enhancedInputContainer)}>
-                    <Icon name="lock" size={16} color="#6B7280" />
-                    <TextInput
-                      hitSlop={{top: 16, bottom: 16}}
-                      style={themed($enhancedInput)}
-                      placeholder={translate("profileSettings:confirmNewPassword")}
-                      value={confirmPassword}
-                      autoCapitalize="none"
-                      onChangeText={(text: any) => {
-                        setConfirmPassword(text);
-                        setPasswordMatched(text === newPassword);
-                      }}
-                      secureTextEntry={!showConfirmPassword}
-                      placeholderTextColor="#9CA3AF"
-                    />
-                    <TouchableOpacity
-                      hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                      <Icon name={showConfirmPassword ? 'eye' : 'eye-slash'} size={18} color="#6B7280" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={[
-                    themed($updatePasswordButton),
-                    passwordMatched ? themed($activeUpdatePasswordButton) : themed($disabledUpdatePasswordButton),
-                  ]}
-                  disabled={!passwordMatched}
-                  onPress={() => {
-                    console.log('Password updated:', newPassword);
-                    setShowChangePassword(false);
-                    setNewPassword('');
-                    setConfirmPassword('');
-                  }}>
-                  <Text style={themed($updatePasswordButtonText)}>{translate("profileSettings:updatePassword")}</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            </View>
+          )}
 
             <Button style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
               <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
@@ -265,11 +263,11 @@ export default function ProfileSettingsPage() {
         )}
 
     </Screen>
-  );
+  )
 }
 
 const $label: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontWeight: 'bold',
+  fontWeight: "bold",
   fontSize: 16,
   color: colors.text,
 })
@@ -284,7 +282,6 @@ const $contentContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   flex: 1,
 })
 
-
 const $header: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
   flex: 1,
@@ -294,7 +291,6 @@ const darkHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
   flex: 1,
 })
-
 
 const $deleteAccountButton: ThemedStyle<ViewStyle> = ({colors}) => ({
    backgroundColor: colors.palette.angry500,
@@ -322,7 +318,7 @@ const $profileImage: ThemedStyle<ImageStyle> = ({colors}) => ({
   width: 100,
   height: 100,
   borderRadius: 50,
-  alignSelf: 'center',
+  alignSelf: "center",
   marginBottom: 20,
 })
 
@@ -330,14 +326,14 @@ const $profilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: 100,
   height: 100,
   borderRadius: 50,
-  justifyContent: 'center',
-  alignItems: 'center',
-  alignSelf: 'center',
+  justifyContent: "center",
+  alignItems: "center",
+  alignSelf: "center",
   marginBottom: 20,
 })
 
 const $profilePlaceholderText: ThemedStyle<TextStyle> = ({colors}) => ({
-  textAlign: 'center',
+  textAlign: "center",
 })
 
 const $infoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -350,14 +346,14 @@ const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $changePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  alignSelf: 'auto',
+  alignSelf: "auto",
   marginVertical: 10,
 })
 
 const $changePasswordButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   color: colors.palette.primary500,
-  textDecorationLine: 'underline',
+  textDecorationLine: "underline",
 })
 
 const $passwordChangeContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -370,15 +366,15 @@ const $inputGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
 
 const $inputLabel: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 14,
-  fontWeight: '500',
+  fontWeight: "500",
   color: colors.palette.primary500,
   marginBottom: 8,
-  fontFamily: 'Montserrat-Medium',
+  fontFamily: "Montserrat-Medium",
 })
 
 const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: 'row',
-  alignItems: 'center',
+  flexDirection: "row",
+  alignItems: "center",
   height: 48,
   borderWidth: 1,
   borderColor: colors.palette.primary500,
@@ -388,22 +384,20 @@ const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
 const $enhancedInput: ThemedStyle<TextStyle> = ({colors}) => ({
   flex: 1,
   fontSize: 16,
-  fontFamily: 'Montserrat-Regular',
+  fontFamily: "Montserrat-Regular",
   color: colors.palette.primary500,
 })
 
 const $headerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
   marginBottom: 20,
 })
 
-
-
 const $backButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: 'row',
-  alignItems: 'center', 
+  flexDirection: "row",
+  alignItems: "center",
   width: 60,
 })
 
@@ -414,20 +408,20 @@ const $backButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const $title: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 24,
-  fontWeight: 'bold',
-  textAlign: 'center',
+  fontWeight: "bold",
+  textAlign: "center",
 })
 
 const $lightProfilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: '#cccccc',
+  backgroundColor: "#cccccc",
 })
 
 const $darkProfilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: '#444444',
+  backgroundColor: "#444444",
 })
 
 const $navigationBarContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  position: 'absolute',
+  position: "absolute",
   bottom: 0,
   left: 0,
   right: 0,
@@ -438,13 +432,13 @@ const $activeUpdatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $disabledUpdatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: '#cccccc',
+  backgroundColor: "#cccccc",
 })
 
 const $updatePasswordButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.palette.neutral100,
   fontSize: 16,
-  fontWeight: 'bold',
+  fontWeight: "bold",
 })
 
 const $inputIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
