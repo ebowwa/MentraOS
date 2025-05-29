@@ -1,5 +1,5 @@
 import React, {useState, useEffect, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ViewStyle} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -9,17 +9,15 @@ import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootin
 import GlassesPairingLoader from "@/components/misc/GlassesPairingLoader"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {router} from "expo-router"
+import { useAppTheme } from "@/utils/useAppTheme"
+import { Screen } from "@/components/ignite/Screen"
+import { ThemedStyle } from "@/theme"
+import { Header } from "@/components/ignite/Header"
 
-interface GlassesPairingGuideScreenProps {
-  isDarkTheme: boolean
-  toggleTheme: () => void
-}
-
-const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({isDarkTheme, toggleTheme}) => {
+export default function GlassesPairingGuideScreen () {
   const {status} = useStatus()
   const route = useRoute()
   const {glassesModelName} = route.params as {glassesModelName: string}
-  const navigation = useNavigation<NavigationProps>()
   const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   const [showHelpAlert, setShowHelpAlert] = useState(false)
   const [pairingInProgress, setPairingInProgress] = useState(true)
@@ -70,21 +68,21 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({is
     }
   }, [showHelpAlert, glassesModelName])
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", e => {
-      const actionType = e.data?.action?.type
-      if (actionType === "GO_BACK" || actionType === "POP") {
-        coreCommunicator.sendForgetSmartGlasses()
-        coreCommunicator.sendDisconnectWearable()
-        e.preventDefault()
-        router.push({pathname: "/pairing/select-glasses-model"})
-      } else {
-        console.log("Navigation triggered by", actionType, "so skipping disconnect logic.")
-      }
-    })
+  // useEffect(() => {
+  //   const unsubscribe = navigation.addListener("beforeRemove", e => {
+  //     const actionType = e.data?.action?.type
+  //     if (actionType === "GO_BACK" || actionType === "POP") {
+  //       coreCommunicator.sendForgetSmartGlasses()
+  //       coreCommunicator.sendDisconnectWearable()
+  //       e.preventDefault()
+  //       router.push({pathname: "/pairing/select-glasses-model"})
+  //     } else {
+  //       console.log("Navigation triggered by", actionType, "so skipping disconnect logic.")
+  //     }
+  //   })
 
-    return unsubscribe
-  }, [navigation])
+  //   return unsubscribe
+  // }, [navigation])
 
   useEffect(() => {
     // If pairing successful, return to home
@@ -98,8 +96,12 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({is
     }
   }, [status])
 
+  const {themed, theme} = useAppTheme()
+  const isDarkTheme = theme.isDark
+
   return (
-    <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
+    <Screen preset="auto" style={{paddingHorizontal: 16}}>
+      <Header leftIcon="caretLeft" onLeftPress={() => router.back()} />
       {pairingInProgress ? (
         // Show the beautiful animated loader while pairing is in progress
         <GlassesPairingLoader glassesModelName={glassesModelName} />
@@ -147,19 +149,12 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({is
         isVisible={showTroubleshootingModal}
         onClose={() => setShowTroubleshootingModal(false)}
         glassesModelName={glassesModelName}
-        isDarkTheme={isDarkTheme}
       />
-    </View>
+    </Screen>
   )
 }
 
-export default GlassesPairingGuideScreen
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
   scrollViewContainer: {
     flex: 1,
   },

@@ -203,7 +203,7 @@ export default function SelectGlassesBluetoothScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: 16}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>

@@ -10,7 +10,7 @@ import {useAppStatus} from "@/contexts/AppStatusProvider"
 // import {ScrollView} from 'react-native-gesture-handler';
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
-import Constants from 'expo-constants'
+import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"
 import {loadSetting} from "@/utils/SettingsHelper"
 
@@ -24,14 +24,12 @@ interface AnimatedSectionProps extends PropsWithChildren {
 }
 
 export default function Homepage() {
-  const navigation = useNavigation<NavigationProp<any>>()
-  const {appStatus, refreshAppStatus} = useAppStatus()
+  const {appStatus} = useAppStatus()
   const {status} = useStatus()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [nonProdBackend, setNonProdBackend] = useState(false)
-  const route = useRoute()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
@@ -193,15 +191,9 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: 20}} safeAreaEdges={["top"]}>
-      {/* <AnimatedSection>
-        <Header leftTx="glasses:title" />
-      </AnimatedSection> */}
-      {status.core_info.cloud_connection_status !== "CONNECTED" && (
-        <AnimatedSection>
-          <CloudConnection />
-        </AnimatedSection>
-      )}
+    <Screen preset="auto" style={{paddingHorizontal: 20}}>
+      <Header leftTx="glasses:title" />
+      {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
       <View style={{flex: 1}}>
         <AnimatedSection>
@@ -214,32 +206,3 @@ export default function Homepage() {
     </Screen>
   )
 }
-
-const $contentContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  paddingBottom: 0,
-  flexGrow: 1,
-})
-
-const $noAppsContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $noAppsText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.text,
-  textAlign: "center",
-})
-
-const $loadingContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $loadingText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.text,
-  textAlign: "center",
-})

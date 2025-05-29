@@ -5,6 +5,8 @@ import {getModelSpecificTips} from "./GlassesTroubleshootingModal"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
+import {Header} from "../ignite/Header"
+import {router} from "expo-router"
 
 interface GlassesPairingLoaderProps {
   glassesModelName: string
@@ -233,44 +235,51 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
   })
 
   return (
-    <View style={[themed($container)]}>
-      <View style={themed($animationContainer)}>
-        <View style={themed($signalContainer)}>
-          <View>
-            <Icon name="mobile-phone" size={48} color={theme.isDark ? "#c7d2fe" : "#4338ca"} style={styles.phoneIcon} />
-          </View>
+    <View style={{flex: 1, height: 500}}>
+      <View style={themed($container)}>
+        <View style={themed($animationContainer)}>
+          <View style={themed($signalContainer)}>
+            <View>
+              <Icon
+                name="mobile-phone"
+                size={48}
+                color={theme.isDark ? "#c7d2fe" : "#4338ca"}
+                style={styles.phoneIcon}
+              />
+            </View>
 
-          {/* Ping-pong bouncing dots between phone and glasses */}
-          <View>
-            <Animated.View style={[themed($bouncingDot), dot1Transform]} />
-            <Animated.View style={[themed($bouncingDot), dot2Transform]} />
-            <Animated.View style={[themed($bouncingDot), dot3Transform]} />
-          </View>
+            {/* Ping-pong bouncing dots between phone and glasses */}
+            <View>
+              <Animated.View style={[themed($bouncingDot), dot1Transform]} />
+              <Animated.View style={[themed($bouncingDot), dot2Transform]} />
+              <Animated.View style={[themed($bouncingDot), dot3Transform]} />
+            </View>
 
-          <Animated.View>
-            <MaterialCommunityIcons
-              name="glasses"
-              size={48}
-              color={theme.isDark ? "#c7d2fe" : "#4338ca"}
-              style={styles.glassesIcon}
-            />
-          </Animated.View>
+            <Animated.View>
+              <MaterialCommunityIcons
+                name="glasses"
+                size={48}
+                color={theme.isDark ? "#c7d2fe" : "#4338ca"}
+                style={styles.glassesIcon}
+              />
+            </Animated.View>
+          </View>
         </View>
-      </View>
 
-      {/* Status text */}
-      <View style={themed($statusContainer)}>
-        <Text style={themed($statusText)}>Pairing {glassesModelName}</Text>
-      </View>
+        {/* Status text */}
+        <View style={themed($statusContainer)}>
+          <Text style={themed($statusText)}>Pairing {glassesModelName}</Text>
+        </View>
 
-      {/* Progress bar */}
-      <View style={themed($progressBarContainer)}>
-        <Animated.View style={[themed($progressBar), {width: progressWidth}]} />
-      </View>
+        {/* Progress bar */}
+        <View style={themed($progressBarContainer)}>
+          <Animated.View style={[themed($progressBar), {width: progressWidth}]} />
+        </View>
 
-      {/* Tips carousel */}
-      <View style={styles.tipsContainer}>
-        <Text style={themed($tipText)}>{tips[currentTipIndex]}</Text>
+        {/* Tips carousel */}
+        <View style={styles.tipsContainer}>
+          <Text style={themed($tipText)}>{tips[currentTipIndex]}</Text>
+        </View>
       </View>
     </View>
   )
@@ -280,7 +289,7 @@ const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
   flex: 1,
   justifyContent: "center",
   alignItems: "center",
-  backgroundColor: colors.palette.neutral200,
+  height: 500,
 })
 
 const $animationContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -337,6 +346,7 @@ const $statusContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
 const $progressBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   height: "100%",
   borderRadius: 3,
+  backgroundColor: colors.palette.primary300,
 })
 
 const $tipText: ThemedStyle<TextStyle> = ({colors}) => ({
@@ -352,12 +362,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-  },
-  darkContainer: {
-    backgroundColor: "#111827",
-  },
-  lightContainer: {
-    backgroundColor: "#f3f4f6",
   },
   animationContainer: {
     height: 200,
@@ -401,12 +405,6 @@ const styles = StyleSheet.create({
     borderRadius: 3,
     marginBottom: 40,
     overflow: "hidden",
-  },
-  darkProgressContainer: {
-    backgroundColor: "#374151",
-  },
-  lightProgressContainer: {
-    backgroundColor: "#d1d5db",
   },
   tipsContainer: {
     alignItems: "center",

@@ -1,3 +1,4 @@
+import { useAppTheme } from '@/utils/useAppTheme';
 import React from 'react';
 import {
   View,
@@ -13,7 +14,6 @@ interface TroubleshootingModalProps {
   isVisible: boolean;
   onClose: () => void;
   glassesModelName: string;
-  isDarkTheme: boolean;
 }
 
 export const getModelSpecificTips = (model: string) => {
@@ -56,9 +56,11 @@ export const getModelSpecificTips = (model: string) => {
 const GlassesTroubleshootingModal: React.FC<TroubleshootingModalProps> = ({ 
   isVisible, 
   onClose, 
-  glassesModelName, 
-  isDarkTheme 
+  glassesModelName,
 }) => {
+
+  const {themed, theme} = useAppTheme()
+  const isDarkTheme = theme.isDark
 
   const themeColors = {
     background: isDarkTheme ? '#2d2d2d' : '#ffffff',
