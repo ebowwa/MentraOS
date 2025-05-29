@@ -5,10 +5,23 @@ The `SettingsManager` class provides a type-safe interface for accessing and mon
 ## Import
 
 ```typescript
-import { TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@augmentos/sdk';
 
-// Access via session
-session.settings.get('my_setting');
+export class MyTpaServer extends TpaServer {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+    // get the settings manager object
+    const settingsManager = session.settings;
+
+    // Get a specific setting value
+    const language = settingsManager.get<string>('transcribe_language', 'English');
+
+    // Listen for setting changes
+    settingsManager.onValueChange('line_width', (newValue, oldValue) => {
+      console.log(`Line width changed from ${oldValue} to ${newValue}`);
+      this.updateDisplay(newValue);
+    });
+  }
+}
 ```
 
 ## Class: SettingsManager
@@ -293,19 +306,21 @@ const value = session.settings.get('some_setting');
 ### 3. Clean Up Listeners
 
 ```typescript
-export class MyTpa extends TpaSession {
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class MyTpaServer extends TpaServer {
   private cleanupFunctions: Array<() => void> = [];
 
-  protected async onStart(): Promise<void> {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     // Store cleanup functions
     this.cleanupFunctions.push(
-      this.session.settings.onValueChange('setting1', this.handler1),
-      this.session.settings.onValueChange('setting2', this.handler2),
-      this.session.settings.onChange(this.handleAnyChange)
+      session.settings.onValueChange('setting1', this.handler1),
+      session.settings.onValueChange('setting2', this.handler2),
+      session.settings.onChange(this.handleAnyChange)
     );
   }
 
-  protected async onStop(): Promise<void> {
+  protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
     // Clean up all listeners
     this.cleanupFunctions.forEach(cleanup => cleanup());
     this.cleanupFunctions = [];
