@@ -188,12 +188,17 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 webSocketService.setupWebSocketServers(server);
 
 // Start the server
-server.listen(PORT, () => {
-  logger.info(`\n
-              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
-              😎 AugmentOS Cloud Server🚀
-              🌐 Listening on port ${PORT}             🌐
-              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
-});
+try {
+  server.listen(PORT, () => {
+    logger.info(`\n
+                ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+                😎 AugmentOS Cloud Server🚀
+                🌐 Listening on port ${PORT}             🌐
+                ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
+  });
+}
+catch (error) {
+  logger.error(error, 'Failed to start server:');
+}
 
 export default server;

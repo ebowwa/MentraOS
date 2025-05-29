@@ -3,7 +3,7 @@
  * and own applications (TPAs). Users can be members of multiple organizations.
  */
 
-import { Schema, model, Document, Types, Model } from 'mongoose';
+import mongoose, { Schema, model, Document, Types, Model } from 'mongoose';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 
 const logger = rootLogger.child({ module: 'organization.model' });
@@ -194,9 +194,9 @@ interface OrganizationModel extends Model<OrganizationDocument> {
 }
 
 // Create and export the model
-export const Organization = model<OrganizationDocument, OrganizationModel>(
+export const Organization = (mongoose.models.Organization || model<OrganizationDocument, OrganizationModel>(
   'Organization',
   OrganizationSchema
-);
+)) as OrganizationModel;
 
 export default Organization;

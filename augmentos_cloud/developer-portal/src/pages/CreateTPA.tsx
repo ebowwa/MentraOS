@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeftIcon, AlertCircle, CheckCircle, Upload } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
@@ -65,7 +65,7 @@ const CreateTPA: React.FC = () => {
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target as any;
     setFormData((prev: Partial<AppI>) => ({
       ...prev,
       [name]: value
@@ -83,7 +83,7 @@ const CreateTPA: React.FC = () => {
 
   // Handle URL field blur event to normalize URLs
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target as any;
 
     // Only normalize URL fields
     if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
@@ -118,6 +118,8 @@ const CreateTPA: React.FC = () => {
       permissions
     }));
   };
+
+
 
   // Validate form
   const validateForm = (): boolean => {
@@ -468,9 +470,12 @@ const CreateTPA: React.FC = () => {
                 </p>
               </div>
 
+
+
+
+
               {/* Permissions Section */}
               <div className="mt-6">
-                <h3 className="text-lg font-medium mb-4">Required Permissions</h3>
                 <PermissionsForm
                   permissions={formData.permissions || []}
                   onChange={handlePermissionsChange}

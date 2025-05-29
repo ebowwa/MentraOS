@@ -84,7 +84,7 @@ GalleryPhotoSchema.statics.findAndDeleteById = async function(photoId: string, u
 };
 
 // Export the model
-export const GalleryPhoto = mongoose.model<GalleryPhotoDocument, GalleryPhotoModel>(
+export const GalleryPhoto = (mongoose.models.GalleryPhoto || mongoose.model<GalleryPhotoDocument, GalleryPhotoModel>(
   'GalleryPhoto', 
   GalleryPhotoSchema
-);
+)) as GalleryPhotoModel;
