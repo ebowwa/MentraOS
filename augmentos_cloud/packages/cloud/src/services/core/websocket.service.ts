@@ -708,7 +708,7 @@ export class WebSocketService {
 
       return userSession.sessionId + '-' + packageName;
     } catch (error) {
-      userSession.logger.error(`[websocket.service]: Error starting app ${packageName}:`, error);
+      userSession.logger.error(error , `[websocket.service]: Error starting app ${packageName}:`);
       userSession.loadingApps.delete(packageName);
       throw error;
     }
@@ -755,7 +755,7 @@ export class WebSocketService {
           }
         );
       } catch (error) {
-        userSession.logger.error(`Error calling stop webhook for ${packageName}:`, error);
+        userSession.logger.error(error, `Error calling stop webhook for ${packageName}:`);
         // Continue with cleanup even if webhook fails
       }
 
@@ -767,7 +767,7 @@ export class WebSocketService {
           userSession.appConnections.delete(packageName);
         }
       } catch (error) {
-        userSession.logger.error(`Error ending websocket for TPA ${packageName}:`, error);
+        userSession.logger.error(error, `Error ending websocket for TPA ${packageName}`);
         // Continue with cleanup even if webhook fails
       }
 
@@ -778,7 +778,7 @@ export class WebSocketService {
           await user.removeRunningApp(packageName);
         }
       } catch (error) {
-        userSession.logger.error(`Error updating user's running apps:`, error);
+        userSession.logger.error(error, `Error updating user's running apps`);
       }
 
       // Update the display
@@ -804,7 +804,7 @@ export class WebSocketService {
       userSession.logger.info(`Successfully stopped app ${packageName}`);
       return true;
     } catch (error) {
-      userSession.logger.error(`Error stopping app ${packageName}:`, error);
+      userSession.logger.error(error, `Error stopping app ${packageName}`);
       // Ensure app is removed from active sessions even if an error occurs
       userSession.activeAppSessions = userSession.activeAppSessions.filter(
         (appName) => appName !== packageName
@@ -946,7 +946,7 @@ export class WebSocketService {
         throw new Error('User ID is required');
       }
     } catch (error) {
-      logger.error('[websocket.service]: Error verifying core token:', error);
+      logger.error(error, '[websocket.service]: Error verifying core token');
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
         message: 'Invalid core token',
@@ -1012,7 +1012,7 @@ export class WebSocketService {
         const parsedMessage = JSON.parse(message.toString()) as GlassesToCloudMessage;
         await this.handleGlassesMessage(userSession, ws, parsedMessage);
       } catch (error) {
-        userSession.logger.error(`[websocket.service]: Error handling glasses message:`, error);
+        userSession.logger.error(error, `[websocket.service]: Error handling glasses message`);
         this.sendError(ws, {
           type: CloudToGlassesMessageType.CONNECTION_ERROR,
           message: 'Error processing message'
@@ -1028,7 +1028,7 @@ export class WebSocketService {
       try {
         ws.pong();
       } catch (error) {
-        userSession.logger.error('[websocket.service]: Error sending pong:', error);
+        userSession.logger.error(error, '[websocket.service]: Error sending pong');
       }
     });
 
@@ -1068,7 +1068,7 @@ export class WebSocketService {
 
     // TODO(isaiahb): Investigate if we really need to destroy the session on an error.
     ws.on('error', (error) => {
-      userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
+      userSession.logger.error(error, `[websocket.service]: Glasses WebSocket error`);
 
       // Unregister from heartbeat manager
       userSession.heartbeatManager.unregisterConnection(ws);
@@ -1104,7 +1104,7 @@ export class WebSocketService {
             await this.startAppSession(userSession, systemApps.dashboard.packageName);
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service]: Error starting dashboard app:`, error);
+            userSession.logger.error(error, `[websocket.service]: Error starting dashboard app`);
           }
 
           // Start all the apps that the user has running.
@@ -1118,21 +1118,21 @@ export class WebSocketService {
                 userSession.logger.info(`[websocket.service]: ✅ Starting app ${packageName}`);
               }
               catch (error) {
-                userSession.logger.error(`[websocket.service]: Error starting user apps:`, error);
+                userSession.logger.error(error, `[websocket.service]: Error starting user apps`);
                 // Remove the app from the user's running apps if it fails to start. and save the user.
                 try {
                   await user.removeRunningApp(packageName);
                   userSession.logger.info(`[websocket.service]: Removed app ${packageName} from user running apps because it failed to start`);
                 }
                 catch (error) {
-                  userSession.logger.error(`[websocket.service]: Error Removing app ${packageName} from user running apps:`, error);
+                  userSession.logger.error(error, `[websocket.service]: Error Removing app ${packageName} from user running apps`);
                 }
               }
             }
             userSession.logger.info(`[websocket.service]: 🗿🗿✅🗿🗿 Starting app ${systemApps.dashboard.packageName}`);
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service] Error starting user apps:`, error);
+            userSession.logger.error(error, `[websocket.service] Error starting user apps`);
           }
 
           // Start transcription
@@ -1176,7 +1176,7 @@ export class WebSocketService {
             ws.send(JSON.stringify(settingsMessage));
             userSession.logger.info('Sent settings update');
           } catch (error) {
-            userSession.logger.error('Error sending settings:', error);
+            userSession.logger.error(error, 'Error sending settings');
             const errorMessage: ConnectionError = {
               type: CloudToGlassesMessageType.CONNECTION_ERROR,
               message: 'Error retrieving settings',
@@ -1208,7 +1208,7 @@ export class WebSocketService {
               timestamp: new Date().toISOString()
             });
           } catch (error) {
-            userSession.logger.error(`Error starting app ${startMessage.packageName}:`, error);
+            userSession.logger.error(error, `Error starting app ${startMessage.packageName}`);
           }
           break;
         }
@@ -1240,7 +1240,7 @@ export class WebSocketService {
             const appStateChange = await this.generateAppStateStatus(userSession);
             ws.send(JSON.stringify(appStateChange));
           } catch (error) {
-            userSession.logger.error(`Error stopping app ${stopMessage.packageName}:`, error);
+            userSession.logger.error(error, `Error stopping app ${stopMessage.packageName}`);
             // Ensure app is removed from active sessions even if an error occurs
             userSession.activeAppSessions = userSession.activeAppSessions.filter(
               (packageName) => packageName !== stopMessage.packageName
@@ -1295,7 +1295,7 @@ export class WebSocketService {
               transcriptionService.stopTranscription(userSession);
             }
           } catch (error) {
-            userSession.logger.error('❌ Error handling VAD state change:', error);
+            userSession.logger.error(error, '❌ Error handling VAD state change:');
             userSession.isTranscribing = false;
             transcriptionService.stopTranscription(userSession);
           }
@@ -1321,7 +1321,7 @@ export class WebSocketService {
             }
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service]: Error updating user location:`, error);
+            userSession.logger.error(error, `[websocket.service]: Error updating user location`);
           }
           this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
           console.warn(`[Session ${userSession.sessionId}] Catching and Sending message type:`, message.type);
@@ -1403,7 +1403,7 @@ export class WebSocketService {
 
             ws.send(JSON.stringify(responseMessage));
           } catch (error) {
-            userSession.logger.error('Error retrieving AugmentOS settings:', error);
+            userSession.logger.error(error, 'Error retrieving AugmentOS settings');
 
             // Send error back to client
             const errorMessage = {
@@ -1476,7 +1476,7 @@ export class WebSocketService {
                 await user.updateAugmentosSettings(newSettings);
                 userSession.logger.info('Updated AugmentOS settings in the database.');
               } catch (dbError) {
-                userSession.logger.error('Failed to update AugmentOS settings in the database:', dbError);
+                userSession.logger.error(dbError, 'Failed to update AugmentOS settings in the database:');
                 return; // Do not broadcast if DB update fails
               }
               // Only notify for changed keys
@@ -1506,7 +1506,7 @@ export class WebSocketService {
               }
             }
           } catch (error) {
-            userSession.logger.error('Error updating settings from core status:', error);
+            userSession.logger.error(error, 'Error updating settings from core status:');
           }
           break;
         }
@@ -1518,7 +1518,7 @@ export class WebSocketService {
         }
       }
     } catch (error) {
-      userSession.logger.error(`[Session ${userSession.sessionId}] Error handling message:`, error);
+      userSession.logger.error(error, `[Session ${userSession.sessionId}] Error handling message`);
       // Optionally send error to client
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
@@ -1563,16 +1563,7 @@ export class WebSocketService {
 
     // Add error handler to catch WebSocket errors
     ws.on('error', (wsError) => {
-      logger.error({
-        msg: 'WebSocket error in TPA connection',
-        error: {
-          name: wsError.name,
-          message: wsError.message,
-          stack: wsError.stack
-        },
-        sessionId: currentAppSession,
-        userSessionId
-      });
+      logger.error(wsError, `[websocket.service]: TPA WebSocket error`);
     });
 
     // Add close handler to track connection closures
@@ -1659,12 +1650,7 @@ export class WebSocketService {
                   sessionId: initMessage.sessionId
                 });
               } catch (initError) {
-                logger.error({
-                  msg: 'Failed to initialize TPA connection',
-                  error: initError,
-                  packageName: initMessage.packageName,
-                  sessionId: initMessage.sessionId
-                });
+                logger.error(initError, `[websocket.service]: Error initializing TPA connection for ${initMessage.packageName}`);
                 throw initError; // Re-throw to propagate to client
               }
               break;
@@ -1723,7 +1709,7 @@ export class WebSocketService {
 
                 // Check if we need to update microphone state based on media subscriptions
                 const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSessionId);
-                userSession.logger.info({mediaSubscriptions}, 'Media subscriptions after update for user session: ' + userSessionId);
+                userSession.logger.info({ mediaSubscriptions }, 'Media subscriptions after update for user session: ' + userSessionId);
 
                 if (mediaSubscriptions) {
                   userSession.logger.info('Media subscriptions exist, ensuring microphone is enabled');
@@ -1854,7 +1840,7 @@ export class WebSocketService {
                   userSession.logger.warn(`Dashboard message ${message.type} not handled`, message);
                 }
               } catch (error) {
-                userSession.logger.error(`Error handling dashboard message ${message.type}:`, error);
+                userSession.logger.error(error, `Error handling dashboard message ${message.type}`);
               }
               break;
             }
@@ -2018,7 +2004,7 @@ export class WebSocketService {
       try {
         ws.pong();
       } catch (error) {
-        logger.error('[websocket.service]: Error sending pong to TPA:', error);
+        logger.error(error, '[websocket.service]: Error sending pong to TPA');
       }
     });
 
@@ -2092,7 +2078,7 @@ export class WebSocketService {
                     await user.removeRunningApp(packageName);
                   }
                 } catch (dbError) {
-                  userSession.logger.error(`Error updating user's running apps:`, dbError);
+                  userSession.logger.error(dbError, `Error updating user's running apps`);
                 }
 
                 // Update the glasses client with new app state to ensure UI correctness
@@ -2103,14 +2089,14 @@ export class WebSocketService {
                     userSession.logger.info(`Sent updated app state to glasses after grace period for ${packageName}`);
                   }
                 } catch (updateError) {
-                  userSession.logger.error(`Error updating glasses client app state:`, updateError);
+                  userSession.logger.error(updateError, `Error updating glasses client app state`);
                 }
 
                 // Update the display to reflect the app's removal
                 try {
                   userSession.displayManager.handleAppStop(packageName, userSession);
                 } catch (displayError) {
-                  userSession.logger.error(`Error updating display after grace period:`, displayError);
+                  userSession.logger.error(displayError, `Error updating display after grace period`);
                 }
 
                 // Clean up the timer reference
@@ -2130,6 +2116,7 @@ export class WebSocketService {
                       userSession.logger.info(`[websocket.service]: Successfully auto-restarted ${packageName}`);
                     } catch (restartError) {
                       userSession.logger.error(
+                        restartError,
                         `[websocket.service]: Failed to auto-restart ${packageName}: ${restartError instanceof Error ? restartError.message : String(restartError)}`
                       );
                     }
@@ -2155,13 +2142,13 @@ export class WebSocketService {
           // Pass both the packageName and the userSession
           dashboardService.handleTpaDisconnected(packageName, userSession);
         } catch (error) {
-          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+          userSession.logger.error(error, `Error cleaning up dashboard content for TPA ${packageName}`);
         }
       }
     });
 
     ws.on('error', async (error) => {
-      logger.error('[websocket.service]: TPA WebSocket error:', error);
+      logger.error(error, '[websocket.service]: TPA WebSocket error');
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
@@ -2192,7 +2179,8 @@ export class WebSocketService {
             clearTimeout(userSession._reconnectionTimers.get(packageName));
           }
 
-          userSession.logger.info(
+          userSession.logger.warn(
+            error,
             `[websocket.service]: Starting 5-second reconnection grace period for ${packageName} after error. ` +
             `Error: ${error.message || 'unknown error'}`
           );
@@ -2220,7 +2208,7 @@ export class WebSocketService {
                   await user.removeRunningApp(packageName);
                 }
               } catch (dbError) {
-                userSession.logger.error(`Error updating user's running apps:`, dbError);
+                userSession.logger.error(dbError, `Error updating user's running apps`);
               }
 
               // Update glasses client with new app state
@@ -2231,14 +2219,14 @@ export class WebSocketService {
                   userSession.logger.info(`Sent updated app state to glasses after grace period for ${packageName}`);
                 }
               } catch (updateError) {
-                userSession.logger.error(`Error updating glasses client app state:`, updateError);
+                userSession.logger.error(updateError, `Error updating glasses client app state`);
               }
 
               // Update display
               try {
                 userSession.displayManager.handleAppStop(packageName, userSession);
               } catch (displayError) {
-                userSession.logger.error(`Error updating display after grace period:`, displayError);
+                userSession.logger.error(displayError, `Error updating display after grace period`);
               }
 
               // Clean up the timer reference
@@ -2258,6 +2246,7 @@ export class WebSocketService {
                     userSession.logger.info(`[websocket.service]: Successfully auto-restarted ${packageName}`);
                   } catch (restartError) {
                     userSession.logger.error(
+                      restartError,
                       `[websocket.service]: Failed to auto-restart ${packageName}: ${restartError instanceof Error ? restartError.message : String(restartError)}`
                     );
                   }
@@ -2282,7 +2271,7 @@ export class WebSocketService {
           // Pass both the packageName and the userSession
           dashboardService.handleTpaDisconnected(packageName, userSession);
         } catch (dashboardError) {
-          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, dashboardError);
+          userSession.logger.error(dashboardError, `Error cleaning up dashboard content for TPA ${packageName}`);
         }
 
         userSession.logger.error(`[websocket.service]: TPA session ${currentAppSession} disconnected due to error: ${error.message || 'unknown error'}`);
@@ -2403,11 +2392,11 @@ export class WebSocketService {
             }
           }
         } catch (error) {
-          userSession.logger.error(`Error fetching TPA config for default settings: ${error}`);
+          userSession.logger.error(error, `Error fetching TPA config for default settings: ${error}`);
         }
       }
     } catch (error) {
-      userSession.logger.error(`Error retrieving settings for ${initMessage.packageName}: ${error}`);
+      userSession.logger.error(error, `Error retrieving settings for ${initMessage.packageName}: ${error}`);
     }
 
     // Send acknowledgment with settings
@@ -2461,7 +2450,7 @@ export class WebSocketService {
         }
       }
     } catch (error) {
-      userSession.logger.error(`[websocket.service] Error sending location to dashboard:`, error);
+      userSession.logger.error(error, `[websocket.service] Error sending location to dashboard`);
     }
   }
 
