@@ -3,7 +3,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/SearchIcon";
 import * as React from "react";
-import {Text, View, TextStyle, ViewStyle} from "react-native";
+import {Text, View, TextStyle, ViewStyle, Pressable} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 
 const ListHeaderInactiveApps = () => {
@@ -16,6 +16,12 @@ const ListHeaderInactiveApps = () => {
           {translate("home:inactiveApps")}
         </Text>
       </View>
+      <Pressable style={themed($wrapper)} onPress={()=>{
+                    //TODO implement search
+                    console.log("SearchButton: Not implemented yet");
+                  }}>
+                      <SearchIcon/>
+                  </Pressable>
     </SafeAreaView>
   );
 };
@@ -45,4 +51,8 @@ const $listHeaderIcon: ThemedStyle<ViewStyle> = () => ({
   gap: 0,
   flexDirection: "row",
   width: "100%",
+});
+const $wrapper: ThemedStyle<ViewStyle> = () => ({
+  width: 24,
+  height: 20,
 });

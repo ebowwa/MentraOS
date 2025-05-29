@@ -4,10 +4,11 @@ import Svg, { G, Path, Defs, ClipPath, Rect } from 'react-native-svg';
 
 interface NotificationOffProps {
   color?: string;
+  size?: number;
 }
 
-const NotificationOff = ({ color = '#565E8C' }: NotificationOffProps) => (
-  <Svg width={25} height={25} viewBox="0 0 25 25" fill="none">
+const NotificationOff = ({ color = '#565E8C', size = 24 }: NotificationOffProps) => (
+  <Svg width={size} height={size} viewBox="0 0 25 25" fill="none">
     <G clipPath="url(#clip0_218_3968)">
       <Path
         d="M21.5125 18.7235H2.63867C2.63867 18.7235 5.78431 16.4866 5.78431 8.65741C5.78431 6.87769 6.44718 5.1708 7.62699 3.91232C8.80689 2.65374 10.407 1.94678 12.0756 1.94678"

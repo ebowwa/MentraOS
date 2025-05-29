@@ -19,7 +19,7 @@ import {supabase} from "@/supabase/supabaseClient"
 import {Linking} from "react-native"
 import {Screen, Text, Button, Icon} from "@/components/ignite"
 import {translate} from "@/i18n"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {FontAwesome} from "@expo/vector-icons"
@@ -28,6 +28,7 @@ import AppleIcon from "assets/icons/AppleIcon"
 import { router } from "expo-router"
 import showAlert from "@/utils/AlertUtils"
 import { Pressable } from "react-native-gesture-handler"
+import { Spacer } from "@/components/misc/Spacer"
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -420,6 +421,7 @@ export default function LoginScreen() {
                           color={theme.colors.text}
                           // style={themed($inputIcon)}
                         />
+                        <Spacer width={spacing.xxs}/>
                         <TextInput
                           hitSlop={{top: 16, bottom: 16}}
                           style={themed($enhancedInput)}
@@ -443,6 +445,7 @@ export default function LoginScreen() {
                           color={theme.colors.text}
                           // style={themed($inputIcon)}
                         />
+                        <Spacer width={spacing.xxs}/>
                         <TextInput
                           hitSlop={{top: 16, bottom: 16}}
                           style={themed($enhancedInput)}
@@ -461,7 +464,7 @@ export default function LoginScreen() {
                       </View>
                     </View>
 
-                    <View style={{ height: 12 }} /> 
+                    <Spacer height={spacing.sm}/>
 
                     <Button
                       tx="login:login"
@@ -480,7 +483,7 @@ export default function LoginScreen() {
                         )
                       }
                     />
-                    <View style={{ height: 12 }} /> 
+                    <Spacer height={spacing.sm}/>
                     <Button
                       tx="login:createAccount"
                       style={themed($secondaryButton)}
@@ -490,7 +493,7 @@ export default function LoginScreen() {
                       disabled={isFormLoading}
                     />
 
-                    <View style={{ height: 12 }} /> 
+                    <Spacer height={spacing.sm}/>
 
                       
                     <Pressable onPress={() => setIsSigningUp(false)}>
@@ -628,6 +631,8 @@ const $title: ThemedStyle<TextStyle> = ({spacing, colors}) => ({
   color: colors.text,
   textAlign: "center",
   marginBottom: spacing.xs,
+  paddingTop: spacing.xl,
+  paddingBottom: spacing.md,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({spacing, colors}) => ({
