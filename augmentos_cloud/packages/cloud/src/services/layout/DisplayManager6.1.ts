@@ -3,6 +3,7 @@ import { ActiveDisplay, Layout, DisplayRequest, DisplayManagerI, UserSession, Tp
 import { logger as rootLogger } from '../logging/pino-logger';
 import { Logger } from 'pino';
 import { WebSocket } from 'ws';
+import axios from 'axios';
 
 // Extend DisplayRequest to include optional priority flag
 interface DisplayRequestWithPriority extends DisplayRequest {
@@ -79,7 +80,10 @@ class DisplayManager implements DisplayManagerI {
     this.logger.info({}, `[${userId}] DisplayManager initialized`);
   }
 
-  public handleAppStart(packageName: string, userSession: UserSession): void {
+  /**
+   * Check onboarding status and show onboarding instructions if needed before normal boot
+   */
+  public async handleAppStart(packageName: string, userSession: UserSession): Promise<void> {
     this.userSession = userSession;
 
     const app = this.userSession.installedApps.find(app => app.packageName === packageName);
@@ -88,25 +92,49 @@ class DisplayManager implements DisplayManagerI {
       this.logger.info({ mainApp: this.mainApp }, `[${this.getUserId()}] Setting main app to ${this.mainApp}`);
     }
 
-    // Don't show boot screen for dashboard
+    // Don't show onboarding or boot screen for dashboard
     if (packageName === systemApps.dashboard.packageName) {
       this.logger.info({}, `[${this.getUserId()}] Dashboard starting`);
       return;
     }
 
+    // Onboarding logic: only for non-system apps
+    const userEmail = this.userSession.userId; // Assuming userId is email
+    if (userEmail && packageName) {
+      try {
+        const onboardingStatus = await this.getOnboardingStatus(userEmail, packageName);
+        if (!onboardingStatus) {
+          const instructions = await this.getOnboardingInstructions(packageName);
+          if (instructions) {
+            // Show onboarding instructions as a display
+            const onboardingDisplay: DisplayRequest = {
+              type: TpaToCloudMessageType.DISPLAY_REQUEST,
+              view: ViewType.MAIN,
+              packageName,
+              layout: {
+                layoutType: LayoutType.REFERENCE_CARD,
+                title: 'Welcome',
+                text: instructions
+              },
+              timestamp: new Date(),
+              durationMs: 10000 // Show for 10 seconds or until user action
+            };
+            this.sendDisplay(onboardingDisplay);
+            this.logger.info({ packageName }, `[${this.getUserId()}] Showing onboarding instructions for ${packageName}`);
+            // Mark onboarding as complete after showing (or after user action in a real system)
+            await this.completeOnboarding(userEmail, packageName);
+          }
+        }
+      } catch (err) {
+        this.logger.error({ err }, `[${this.getUserId()}] Error handling onboarding for ${packageName}`);
+      }
+    }
+
     // Save current display before showing boot screen (if not dashboard)
     if (this.displayState.currentDisplay &&
         this.displayState.currentDisplay.displayRequest.packageName !== systemApps.dashboard.packageName) {
-
-      // Get the package name of the currently displayed content
       const currentDisplayPackage = this.displayState.currentDisplay.displayRequest.packageName;
-
-      // Check if the display is still valid/active using our enhanced check
       const displayIsValid = this.hasRemainingDuration(this.displayState.currentDisplay);
-
-      // Only save the display if:
-      // 1. The app that owns it is still running AND
-      // 2. The display is still valid/active
       if (userSession.activeAppSessions.includes(currentDisplayPackage) && displayIsValid) {
         this.logger.info({ currentDisplayPackage }, `[${this.getUserId()}] Saving display from ${currentDisplayPackage} for restoration after boot`);
         this.displayState.savedDisplayBeforeBoot = this.displayState.currentDisplay;
@@ -131,6 +159,48 @@ class DisplayManager implements DisplayManagerI {
         this.processBootQueue();
       }
     }, this.BOOT_DURATION);
+  }
+
+  /**
+   * Helper: Get onboarding status for user and app
+   */
+  private async getOnboardingStatus(email: string, packageName: string): Promise<boolean> {
+    try {
+      const baseUrl = process.env.AUGMENTOS_CLOUD_API_URL || 'http://localhost:8002/api';
+      const response = await axios.get(`${baseUrl}/onboarding/status`, { params: { email, packageName } });
+      return !!response.data.hasCompletedOnboarding;
+    } catch (err) {
+      this.logger.error({ err }, `[${this.getUserId()}] Error fetching onboarding status`);
+      return false;
+    }
+  }
+
+  /**
+   * Helper: Get onboarding instructions for app
+   */
+  private async getOnboardingInstructions(packageName: string): Promise<string | null> {
+    try {
+      const baseUrl = process.env.AUGMENTOS_CLOUD_API_URL || 'http://localhost:8002/api';
+      const response = await axios.get(`${baseUrl}/onboarding/instructions`, { params: { packageName } });
+      return response.data.instructions || null;
+    } catch (err) {
+      this.logger.error({ err }, `[${this.getUserId()}] Error fetching onboarding instructions`);
+      return null;
+    }
+  }
+
+  /**
+   * Helper: Mark onboarding as complete for user and app
+   */
+  private async completeOnboarding(email: string, packageName: string): Promise<boolean> {
+    try {
+      const baseUrl = process.env.AUGMENTOS_CLOUD_API_URL || 'http://localhost:8002/api';
+      const response = await axios.post(`${baseUrl}/onboarding/complete`, { email, packageName });
+      return !!response.data.success;
+    } catch (err) {
+      this.logger.error({ err }, `[${this.getUserId()}] Error completing onboarding`);
+      return false;
+    }
   }
 
   /**
