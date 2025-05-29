@@ -25,25 +25,27 @@ import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import {translate} from "@/i18n"
 import {FontAwesome} from "@expo/vector-icons"
 import ChevronRight from "assets/icons/ChevronRight"
-import ConnectedDeviceInfo, { ConnectDeviceButton, ConnectedDeviceInfoHome, ConnectedGlasses, DeviceHome } from "@/components/misc/ConnectedDeviceInfo"
+import ConnectedDeviceInfo, {
+  ConnectDeviceButton,
+  ConnectedDeviceInfoHome,
+  ConnectedGlasses,
+  DeviceHome,
+} from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
 }
 
 export default function Homepage() {
-  const navigation = useNavigation<NavigationProp<any>>()
-  const {appStatus, refreshAppStatus} = useAppStatus()
+  const {appStatus} = useAppStatus()
   const {status} = useStatus()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
-  const [nonProdBackend, setNonProdBackend] = useState(false)
-  const route = useRoute()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
-  const {themed, theme} = useAppTheme()
+  const {themed} = useAppTheme()
 
   // Reset loading state when connection status changes
   useEffect(() => {
@@ -56,11 +58,6 @@ export default function Homepage() {
     }
     return () => {}
   }, [status.core_info.cloud_connection_status])
-
-  const checkNonProdBackend = async () => {
-    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    setNonProdBackend(url && !url.includes("prod.augmentos.cloud") && !url.includes("global.augmentos.cloud"))
-  }
 
   // Clear loading state if apps are loaded
   useEffect(() => {
@@ -171,8 +168,6 @@ export default function Homepage() {
 
   useFocusEffect(
     useCallback(() => {
-      checkNonProdBackend()
-
       // Reset animations when screen is about to focus
       fadeAnim.setValue(0)
       slideAnim.setValue(-50)
@@ -214,97 +209,21 @@ export default function Homepage() {
           }
         />
       </AnimatedSection>
-      
-      {status.core_info.cloud_connection_status !== "CONNECTED" && (
-        <AnimatedSection>
-          <CloudConnection />
-        </AnimatedSection>
-      )}
 
-      {/* Sensing Disabled Warning */}
-      <AnimatedSection>
-        <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
-      </AnimatedSection>
+      {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
-      {nonProdBackend && (
-        <AnimatedSection>
-          <NonProdWarning />
-        </AnimatedSection>
-      )}
+      <SensingDisabledWarning />
+      <NonProdWarning />
 
-      {/* <ConnectedDeviceInfo /> */}
-      <ConnectedGlasses />
+      <ConnectedGlasses showTitle={false} />
       <ConnectDeviceButton />
 
-      {/* {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
-        <Button
-          tx="home:pairGlasses"
-          pressedStyle={themed($pressedButton)}
-          textStyle={[{marginLeft: spacing.xxl}]}
-          onPress={() => {
-            router.push("/pairing/select-glasses-model")
-          }}
-          textAlignment="left"
-          LeftAccessory={() => <SolarLineIconsSet4 />}
-          RightAccessory={() => <ChevronRight />}
-        />
-      ) : (
-        <Button
-          tx="home:connectGlasses"
-          pressedStyle={themed($pressedButton)}
-          textStyle={[{marginLeft: spacing.xxl}]}
-          onPress={() => {
-            router.push("/pairing/select-glasses-model")
-          }}
-          textAlignment="left"
-          LeftAccessory={() => <SolarLineIconsSet4 />}
-          RightAccessory={() => <ChevronRight />}
-        />
-      )} */}
+      <AppsActiveList />
 
-
-      <AnimatedSection>
-        <AppsActiveList />
-      </AnimatedSection>
-
-      <AnimatedSection>
-        <AppsInactiveList key={`apps-list-${appStatus.length}`} />
-      </AnimatedSection>
-
-      {/* <View style={{height: 1000}} /> */}
-      {/* </ScrollView> */}
+      <AppsInactiveList key={`apps-list-${appStatus.length}`} />
     </Screen>
   )
 }
-
-const $contentContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  paddingBottom: 0,
-  flexGrow: 1,
-})
-
-const $noAppsContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $noAppsText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.text,
-  textAlign: "center",
-})
-
-const $loadingContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $loadingText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.text,
-  textAlign: "center",
-})
 
 const $screen: ThemedStyle<ViewStyle> = () => ({
   paddingHorizontal: 20,
@@ -312,8 +231,4 @@ const $screen: ThemedStyle<ViewStyle> = () => ({
 
 const $headerRight: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "row",
-})
-const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.neutral700,
-  opacity: 0.9,
 })

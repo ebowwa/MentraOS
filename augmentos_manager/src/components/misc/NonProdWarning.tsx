@@ -1,16 +1,35 @@
 // SensingDisabledWarning.tsx
-import React from "react"
+import React, {useCallback, useState} from "react"
 import {View, StyleSheet, TouchableOpacity, TextStyle} from "react-native"
 import {Text} from "@/components/ignite"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useNavigation} from "@react-navigation/native"
 import {NavigationProps} from "./types"
-import {router} from "expo-router"
+import {router, useFocusEffect} from "expo-router"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import {SETTINGS_KEYS} from "@/consts"
+import {loadSetting} from "@/utils/SettingsHelper"
 
 export default function NonProdWarning() {
   const {themed} = useAppTheme()
+  const [nonProdBackend, setNonProdBackend] = useState(false)
+
+  const checkNonProdBackend = async () => {
+    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    setNonProdBackend(url && !url.includes("prod.augmentos.cloud") && !url.includes("global.augmentos.cloud"))
+  }
+
+  useFocusEffect(
+    useCallback(() => {
+      checkNonProdBackend()
+      return () => {}
+    }, []),
+  )
+
+  if (!nonProdBackend) {
+    return null
+  }
 
   return (
     <View style={[styles.sensingWarningContainer, {backgroundColor: "#FFF3E0", borderColor: "#FFB74D"}]}>

@@ -71,6 +71,7 @@ const en = {
     wifiUnavailable: "WiFi configuration is only available for glasses that support WiFi connectivity.",
     developerSettings: "Developer Settings",
     forgetGlasses: "Forget Glasses",
+    disconnectGlasses: "Disconnect Glasses",
     forgetGlassesConfirm: "Are you sure you want to forget your glasses?",
     signOut: "Sign Out",
     signOutConfirm: "Are you sure you want to sign out?",
@@ -117,6 +118,7 @@ const en = {
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
+    sensingDisabled: "Sensing is disabled. Microphone and sensors won't work in apps.",
   },
   common: {
     ok: "OK!",

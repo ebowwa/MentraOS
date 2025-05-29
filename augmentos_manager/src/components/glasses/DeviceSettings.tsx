@@ -258,14 +258,16 @@ export default function ConnectedDeviceInfo() {
             color={preferredMic === "phone" ? theme.colors.palette.primary300 : "transparent"}
           />
         </TouchableOpacity>
+        {/* divider */}
+        <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />
         <TouchableOpacity
           style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
           onPress={() => setPreferredMic("glasses")}>
           <View style={{flexDirection: "column", gap: 4}}>
             <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-            {!status.glasses_info?.model_name && (
+            {/* {!status.glasses_info?.model_name && (
               <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
-            )}
+            )} */}
           </View>
           <MaterialCommunityIcons
             name="check"
@@ -291,10 +293,20 @@ export default function ConnectedDeviceInfo() {
         </TouchableOpacity>
       </View>
 
+      {status.glasses_info?.model_name && (
+        <View style={themed($settingsGroup)}>
+          <TouchableOpacity style={{backgroundColor: "transparent", paddingVertical: 8}} onPress={() => {
+            coreCommunicator.sendDisconnectWearable()
+          }}>
+            <Text style={{color: theme.colors.palette.accent100}}>{translate("settings:disconnectGlasses")}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {status.core_info.default_wearable && (
         <View style={themed($settingsGroup)}>
           <TouchableOpacity style={{backgroundColor: "transparent", paddingVertical: 8}} onPress={confirmForgetGlasses}>
-            <Text style={themed($dangerLabel)}>{translate("settings:forgetGlasses")}</Text>
+            <Text style={{color: theme.colors.palette.angry500}}>{translate("settings:forgetGlasses")}</Text>
           </TouchableOpacity>
         </View>
       )}

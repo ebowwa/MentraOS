@@ -5,125 +5,17 @@ import {Screen, Header, Icon} from "@/components/ignite"
 import {router} from "expo-router"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import { translate } from "@/i18n"
+import {translate} from "@/i18n"
 
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
-import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
-
-const parseBrightness = (brightnessStr: string | null | undefined): number => {
-  if (typeof brightnessStr === "number") {
-    return brightnessStr
-  }
-  if (!brightnessStr || brightnessStr.includes("-")) {
-    return 50
-  }
-  const parsed = parseInt(brightnessStr.replace("%", ""), 10)
-  return isNaN(parsed) ? 50 : parsed
-}
 
 export default function SettingsPage() {
   const {status} = useStatus()
   const {logout} = useAuth()
   const {themed, theme} = useAppTheme()
-
-  // -- Basic states from your original code --
-  const [isDoNotDisturbEnabled, setDoNotDisturbEnabled] = useState(false)
-  const [isSensingEnabled, setIsSensingEnabled] = useState(status.core_info.sensing_enabled)
-  const [forceCoreOnboardMic, setForceCoreOnboardMic] = useState(status.core_info.force_core_onboard_mic)
-  const [isAlwaysOnStatusBarEnabled, setIsAlwaysOnStatusBarEnabled] = useState(
-    status.core_info.always_on_status_bar_enabled,
-  )
-  const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
-
-  const preferredMicOptions = [
-    {label: translate("settings:phoneHeadset"), value: "phone"},
-    {label: translate("settings:glasses"), value: "glasses"},
-  ]
-
-  // -- Handlers for toggles, etc. --
-  const toggleSensing = async () => {
-    const newSensing = !isSensingEnabled
-    await coreCommunicator.sendToggleSensing(newSensing)
-    setIsSensingEnabled(newSensing)
-  }
-
-  const toggleForceCoreOnboardMic = async () => {
-    // First request microphone permission if we're enabling the mic
-    if (!forceCoreOnboardMic) {
-      // We're about to enable the mic, so request permission
-      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE)
-      if (!hasMicPermission) {
-        // Permission denied, don't toggle the setting
-        console.log("Microphone permission denied, cannot enable phone microphone")
-        showAlert(
-          translate("settings:micPermissionTitle"),
-          translate("settings:micPermissionMessage"),
-          [{text: translate("common:ok")}],
-          {
-            isDarkTheme: theme.isDark,
-            iconName: "microphone",
-            iconColor: theme.colors.palette.primary100,
-          },
-        )
-        return
-      }
-    }
-    // Continue with toggling the setting if permission granted or turning off
-    const newVal = !forceCoreOnboardMic
-    await coreCommunicator.sendToggleForceCoreOnboardMic(newVal)
-    setForceCoreOnboardMic(newVal)
-  }
-
-  const setMic = async (val: string) => {
-    if (val === "phone") {
-      // We're potentially about to enable the mic, so request permission
-      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE)
-      if (!hasMicPermission) {
-        // Permission denied, don't toggle the setting
-        console.log("Microphone permission denied, cannot enable phone microphone")
-        showAlert(
-          translate("settings:micPermissionTitle"),
-          translate("settings:micPermissionMessage"),
-          [{text: translate("common:ok")}],
-          {
-            iconName: "microphone",
-            iconColor: theme.colors.palette.primary100,
-          },
-        )
-        return
-      }
-    }
-
-    setPreferredMic(val)
-    await coreCommunicator.sendSetPreferredMic(val)
-  }
-
-  const toggleAlwaysOnStatusBar = async () => {
-    const newVal = !isAlwaysOnStatusBarEnabled
-    await coreCommunicator.sendToggleAlwaysOnStatusBar(newVal)
-    setIsAlwaysOnStatusBarEnabled(newVal)
-  }
-
-  const forgetGlasses = async () => {
-    await coreCommunicator.sendForgetSmartGlasses()
-  }
-
-  const confirmForgetGlasses = () => {
-    showAlert(
-      translate("settings:forgetGlasses"),
-      translate("settings:forgetGlassesConfirm"),
-      [
-        {text: translate("common:cancel"), style: "cancel"},
-        {text: translate("common:yes"), onPress: forgetGlasses},
-      ],
-      {
-        cancelable: false,
-      },
-    )
-  }
 
   const handleSignOut = async () => {
     try {
@@ -152,14 +44,6 @@ export default function SettingsPage() {
   }
 
   // Switch track colors
-  const switchColors = {
-    // trackColor: {
-    //   false: themed($switchTrackInactive),
-    //   true: colors.primary,
-    // },
-    // thumbColor: Platform.OS === "ios" ? undefined : colors.background,
-    // ios_backgroundColor: themed($switchTrackInactive),
-  }
 
   const navigateTo = (screen: string, params = {}) => {
     router.push(`/${screen.toLowerCase()}` as any, params)
@@ -168,8 +52,8 @@ export default function SettingsPage() {
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
       <Header titleTx="settings:title" />
-        <View style={themed($settingItem2)}>
-          {/* <SelectSetting
+      <View style={themed($settingItem2)}>
+        {/* <SelectSetting
             theme={'dark' as any}
             label={translate("settings:preferredMic")}
             value={preferredMic}
@@ -177,135 +61,101 @@ export default function SettingsPage() {
             options={preferredMicOptions}
             onValueChange={val => setMic(val)}
           /> */}
-          {status.glasses_info?.model_name === "Simulated Glasses" && (
-            <View style={themed($flagContainer)}>
-              <Text style={themed($flagText)}>{translate("settings:simulatedGlassesNote")}</Text>
-            </View>
-          )}
+        {status.glasses_info?.model_name === "Simulated Glasses" && (
+          <View style={themed($flagContainer)}>
+            <Text style={themed($flagText)}>{translate("settings:simulatedGlassesNote")}</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Proofile Settings */}
+      <TouchableOpacity
+        style={themed($settingItem)}
+        onPress={() => {
+          router.push("/settings/profile")
+        }}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={[themed($label)]}>{translate("settings:profileSettings")}</Text>
         </View>
+        <Icon name="angle-right" size={20} color={themed($iconColor)} />
+      </TouchableOpacity>
 
-        {/* Proofile Settings */}
-        <TouchableOpacity
-          style={themed($settingItem)}
-          onPress={() => {
-            router.push("/settings/profile")
-          }}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={[themed($label)]}>{translate("settings:profileSettings")}</Text>
-          </View>
-          <Icon name="angle-right" size={20} color={themed($iconColor)} />
-        </TouchableOpacity>
+      {/* Privacy Settings */}
+      <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/privacy")}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($label)}>{translate("settings:privacySettings")}</Text>
+        </View>
+        <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
+      </TouchableOpacity>
 
-        {/* Privacy Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/privacy")}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>{translate("settings:privacySettings")}</Text>
-          </View>
-          <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-        </TouchableOpacity>
+      {/* Screen Settings */}
+      <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/screen")}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($label)}>{translate("settings:screenSettings")}</Text>
+          <Text style={themed($value)}>{translate("settings:screenDescription")}</Text>
+        </View>
+        <Icon name="angle-right" size={20} color={themed($iconColor)} />
+      </TouchableOpacity>
 
-        {/* Dashboard Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/dashboard")}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>{translate("settings:dashboardSettings")}</Text>
-            <Text style={themed($value)}>{translate("settings:dashboardDescription")}</Text>
-          </View>
-          <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-        </TouchableOpacity>
+      {/* Glasses Wifi Settings */}
+      <TouchableOpacity
+        style={themed($settingItem)}
+        onPress={() => {
+          // Check if connected glasses support WiFi
+          const supportsWifi = status.glasses_info && status.glasses_info.glasses_use_wifi === true
 
-        {/* Screen Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/screen")}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>{translate("settings:screenSettings")}</Text>
-            <Text style={themed($value)}>{translate("settings:screenDescription")}</Text>
-          </View>
-          <Icon name="angle-right" size={20} color={themed($iconColor)} />
-        </TouchableOpacity>
+          if (supportsWifi) {
+            navigateTo("glasseswifisetup", {
+              deviceModel: status.glasses_info?.model_name || "Glasses",
+            })
+          } else {
+            showAlert(
+              translate("common:notAvailable"),
+              translate("settings:wifiUnavailable"),
+              [{text: translate("common:ok")}],
+              {
+                iconName: "wifi",
+                iconColor: theme.colors.palette.primary100,
+              },
+            )
+          }
+        }}>
+        <View style={themed($settingTextContainer)}>
+          <Text
+            style={[
+              themed($label),
+              (!status.glasses_info || status.glasses_info.glasses_use_wifi !== true) && themed($disabledItem),
+            ]}>
+            {translate("settings:glassesWifiSettings")}
+          </Text>
+          <Text
+            style={[
+              themed($value),
+              (!status.glasses_info || status.glasses_info.glasses_use_wifi !== true) && themed($disabledItem),
+            ]}>
+            {translate("settings:glassesWifiDescription")}
+          </Text>
+        </View>
+        <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
+      </TouchableOpacity>
 
-        {/* Glasses Wifi Settings */}
-        <TouchableOpacity
-          style={themed($settingItem)}
-          onPress={() => {
-            // Check if connected glasses support WiFi
-            const supportsWifi = status.glasses_info && status.glasses_info.glasses_use_wifi === true
+      {/* Developer Settings */}
+      <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/developer")}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($label)}>{translate("settings:developerSettings")}</Text>
+        </View>
+        <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
+      </TouchableOpacity>
 
-            if (supportsWifi) {
-              navigateTo("glasseswifisetup", {
-                deviceModel: status.glasses_info?.model_name || "Glasses",
-              })
-            } else {
-              showAlert(
-                translate("common:notAvailable"),
-                translate("settings:wifiUnavailable"),
-                [{text: translate("common:ok")}],
-                {
-                  iconName: "wifi",
-                  iconColor: theme.colors.palette.primary100,
-                },
-              )
-            }
-          }}>
-          <View style={themed($settingTextContainer)}>
-            <Text
-              style={[
-                themed($label),
-                (!status.glasses_info || status.glasses_info.glasses_use_wifi !== true) && themed($disabledItem),
-              ]}>
-              {translate("settings:glassesWifiSettings")}
-            </Text>
-            <Text
-              style={[
-                themed($value),
-                (!status.glasses_info || status.glasses_info.glasses_use_wifi !== true) && themed($disabledItem),
-              ]}>
-              {translate("settings:glassesWifiDescription")}
-            </Text>
-          </View>
-          <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-        </TouchableOpacity>
-
-        {/* Developer Settings */}
-        <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/developer")}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>{translate("settings:developerSettings")}</Text>
-          </View>
-          <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-        </TouchableOpacity>
-
-        {/* Forget Glasses */}
-        <TouchableOpacity
-          style={themed($settingItem)}
-          disabled={!status.core_info.puck_connected || status.core_info.default_wearable === ""}
-          onPress={confirmForgetGlasses}>
-          <View style={themed($settingTextContainer)}>
-            <Text
-              style={[
-                themed($dangerLabel),
-                (!status.core_info.puck_connected || status.core_info.default_wearable === "") && themed($disabledItem),
-              ]}>
-              {translate("settings:forgetGlasses")}
-            </Text>
-          </View>
-        </TouchableOpacity>
-
-        {/* Sign Out */}
-        <TouchableOpacity style={themed($settingItem)} onPress={confirmSignOut}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($dangerLabel)}>{translate("settings:signOut")}</Text>
-          </View>
-        </TouchableOpacity>
+      {/* Sign Out */}
+      <TouchableOpacity style={themed($settingItem)} onPress={confirmSignOut}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($dangerLabel)}>{translate("settings:signOut")}</Text>
+        </View>
+      </TouchableOpacity>
     </Screen>
   )
 }
-
-const $screenContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  backgroundColor: colors.background,
-})
-
-const $scrollContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.md,
-})
 
 const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "row",
@@ -331,7 +181,7 @@ const $label: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   flexWrap: "wrap",
   color: colors.text,
-  fontFamily:"SF Pro Rounded"
+  fontFamily: "SF Pro Rounded",
 })
 
 const $dangerLabel: ThemedStyle<TextStyle> = () => ({

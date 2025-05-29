@@ -1,9 +1,9 @@
+import { useAppTheme } from '@/utils/useAppTheme';
 import React from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 
 interface LoadingOverlayProps {
   message?: string;
-  isDarkTheme: boolean;
 }
 
 /**
@@ -12,24 +12,25 @@ interface LoadingOverlayProps {
  */
 const LoadingOverlay: React.FC<LoadingOverlayProps> = ({ 
   message = 'Loading...', 
-  isDarkTheme 
 }) => {
+  const {themed, theme} = useAppTheme()
+  const isDarkTheme = theme.isDark
   // Theme-based colors
-  const theme = {
+  const theme2 = {
     backgroundColor: isDarkTheme ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.85)',
     textColor: isDarkTheme ? '#FFFFFF' : '#333333',
     primaryColor: '#0088FF'
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.backgroundColor }]}>
+    <View style={[styles.container, { backgroundColor: theme2.backgroundColor }]}>
       <View style={styles.contentContainer}>
         <ActivityIndicator 
           size="large" 
-          color={theme.primaryColor} 
+          color={theme2.primaryColor} 
           style={styles.spinner}
         />
-        <Text style={[styles.message, { color: theme.textColor }]}>
+        <Text style={[styles.message, { color: theme2.textColor }]}>
           {message}
         </Text>
       </View>
