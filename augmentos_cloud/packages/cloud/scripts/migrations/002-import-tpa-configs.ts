@@ -5,8 +5,8 @@
  * 1. Fetches all apps from the database
  * 2. For each app that has a publicUrl, attempts to fetch tpa_config.json from {publicUrl}/tpa_config.json
  * 3. Validates the configuration using the same logic as the frontend
- * 4. Updates the database with the imported configuration (name, description, settings, tools, permissions)
- * 5. Preserves existing database data for fields not present in tpa_config.json
+ * 4. Updates the database with the imported configuration (settings, tools) only for fields that are currently empty/null/undefined
+ * 5. Preserves existing database data - never overwrites non-empty settings or tools arrays
  *
  * Usage:
  * ts-node -r tsconfig-paths/register scripts/migrations/002-import-tpa-configs.ts
@@ -14,7 +14,6 @@
  * Options:
  * --dry-run         Check what would happen without making changes
  * --package-filter  Only process apps with package name matching pattern (supports regex)
- * --force           Import configs even if app already has settings/tools in database
  * --timeout         HTTP timeout in seconds (default: 10)
  * --skip-ssl        Skip SSL certificate verification (use with caution)
  */
@@ -33,7 +32,6 @@ dotenv.config();
 
 const logger = rootLogger.child({ migration: '002-import-tpa-configs' });
 const DRY_RUN = process.argv.includes('--dry-run');
-const FORCE_MODE = process.argv.includes('--force');
 const SKIP_SSL = process.argv.includes('--skip-ssl');
 
 // Parse command line arguments
@@ -51,10 +49,6 @@ if (PACKAGE_FILTER) {
   logger.info(`Package filter mode: Only processing apps with package name matching: ${PACKAGE_FILTER}`);
 }
 
-if (FORCE_MODE) {
-  logger.info('Force mode: Will import configs even for apps that already have settings/tools in database');
-}
-
 if (SKIP_SSL) {
   logger.warn('SSL verification disabled - use with caution');
 }
@@ -63,143 +57,152 @@ logger.info(`HTTP timeout set to ${TIMEOUT_SECONDS} seconds`);
 
 /**
  * Interface for TPA configuration as expected from tpa_config.json
+ * Only includes the fields we care about: settings and tools
  */
 interface TpaConfigFile {
-  name: string;
-  description: string;
-  version?: string;
-  publicUrl?: string;
-  logoURL?: string;
-  webviewURL?: string;
-  settings: AppSetting[];
+  settings?: AppSetting[];
   tools?: ToolSchema[];
-  permissions?: Permission[];
 }
 
 /**
  * Validates a TPA configuration object structure and returns detailed error information
- * Based on the validation logic from EditTPA.tsx
+ * Only validates settings and tools fields. Unknown setting types are filtered out rather than causing failure.
  * @param config - Object to validate
- * @returns Object with validation result and specific error message
+ * @returns Object with validation result, cleaned config, and specific error message
  */
-function validateTpaConfig(config: any): { isValid: boolean; error?: string } {
+function validateTpaConfig(config: any): { 
+  isValid: boolean; 
+  error?: string; 
+  cleanedConfig?: TpaConfigFile;
+  skippedSettings?: Array<{ index: number; type: string; reason: string }>;
+} {
   if (!config || typeof config !== 'object') {
     return { isValid: false, error: 'Configuration file must contain a valid JSON object.' };
   }
 
-  // Check required string properties - name and description are required
-  if (typeof config.name !== 'string' || config.name.trim() === '') {
-    return { isValid: false, error: 'Missing required field: "name" must be a non-empty string.' };
-  }
-
-  if (typeof config.description !== 'string' || config.description.trim() === '') {
-    return { isValid: false, error: 'Missing required field: "description" must be a non-empty string.' };
-  }
-
-  // Version is optional but if present, must be a string
-  if (config.version !== undefined && typeof config.version !== 'string') {
-    return { isValid: false, error: 'Optional field "version" must be a string if provided.' };
-  }
+  const skippedSettings: Array<{ index: number; type: string; reason: string }> = [];
+  const cleanedConfig: TpaConfigFile = {};
 
   // Settings array is optional but must be an array if provided
   if (config.settings !== undefined && !Array.isArray(config.settings)) {
     return { isValid: false, error: 'Optional field "settings" must be an array if provided.' };
-    }
+  }
 
   if (config.settings === undefined) {
     config.settings = [];
   }
 
-  // Optional fields validation - if present, must be correct type
+  // Tools array is optional but must be an array if provided
   if (config.tools !== undefined && !Array.isArray(config.tools)) {
     return { isValid: false, error: 'Optional field "tools" must be an array if provided.' };
   }
 
-  if (config.permissions !== undefined && !Array.isArray(config.permissions)) {
-    return { isValid: false, error: 'Optional field "permissions" must be an array if provided.' };
-  }
-
-  if (config.publicUrl !== undefined && (typeof config.publicUrl !== 'string' || config.publicUrl.trim() === '')) {
-    return { isValid: false, error: 'Optional field "publicUrl" must be a non-empty string if provided.' };
-  }
-
-  if (config.logoURL !== undefined && (typeof config.logoURL !== 'string' || config.logoURL.trim() === '')) {
-    return { isValid: false, error: 'Optional field "logoURL" must be a non-empty string if provided.' };
-  }
-
-  // webviewURL can be empty string (treated as "not there"), but if present must be a string
-  if (config.webviewURL !== undefined && typeof config.webviewURL !== 'string') {
-    return { isValid: false, error: 'Optional field "webviewURL" must be a string if provided.' };
-    }
-
-  // Validate each setting (but allow empty settings array)
+  // Filter and validate settings
+  const validSettings: AppSetting[] = [];
+  
   for (let index = 0; index < config.settings.length; index++) {
     const setting = config.settings[index];
 
     // Group settings just need a title
     if (setting.type === 'group') {
       if (typeof setting.title !== 'string') {
-        return { isValid: false, error: `Setting ${index + 1}: Group type requires a "title" field with a string value.` };
+        skippedSettings.push({ 
+          index: index + 1, 
+          type: setting.type, 
+          reason: 'Group type requires a "title" field with a string value.' 
+        });
+        continue;
       }
+      validSettings.push(setting);
       continue;
     }
 
     // TITLE_VALUE settings just need label and value
     if (setting.type === 'titleValue') {
       if (typeof setting.label !== 'string') {
-        return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "label" field with a string value.` };
+        skippedSettings.push({ 
+          index: index + 1, 
+          type: setting.type, 
+          reason: 'TitleValue type requires a "label" field with a string value.' 
+        });
+        continue;
       }
       if (!('value' in setting)) {
-        return { isValid: false, error: `Setting ${index + 1}: TitleValue type requires a "value" field.` };
+        skippedSettings.push({ 
+          index: index + 1, 
+          type: setting.type, 
+          reason: 'TitleValue type requires a "value" field.' 
+        });
+        continue;
       }
+      validSettings.push(setting);
       continue;
     }
 
     // Regular settings need key and label and type
     if (typeof setting.key !== 'string' || typeof setting.label !== 'string' || typeof setting.type !== 'string') {
-      return { isValid: false, error: `Setting ${index + 1}: Missing required fields "key", "label", or "type" (all must be strings).` };
+      skippedSettings.push({ 
+        index: index + 1, 
+        type: setting.type || 'unknown', 
+        reason: 'Missing required fields "key", "label", or "type" (all must be strings).' 
+      });
+      continue;
     }
 
     // Type-specific validation
+    let isValidSetting = true;
+    let skipReason = '';
+
     switch (setting.type) {
       case 'toggle':
         if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
-          return { isValid: false, error: `Setting ${index + 1}: Toggle type requires "defaultValue" to be a boolean if provided.` };
+          isValidSetting = false;
+          skipReason = 'Toggle type requires "defaultValue" to be a boolean if provided.';
         }
         break;
 
       case 'text':
       case 'text_no_save_button':
         if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'string') {
-          return { isValid: false, error: `Setting ${index + 1}: Text type requires "defaultValue" to be a string if provided.` };
+          isValidSetting = false;
+          skipReason = 'Text type requires "defaultValue" to be a string if provided.';
         }
         break;
 
       case 'select':
       case 'select_with_search':
         if (!Array.isArray(setting.options)) {
-          return { isValid: false, error: `Setting ${index + 1}: Select type requires an "options" array.` };
-        }
-        for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
-          const opt = setting.options[optIndex];
-          if (typeof opt.label !== 'string' || !('value' in opt)) {
-            return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+          isValidSetting = false;
+          skipReason = 'Select type requires an "options" array.';
+        } else {
+          for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
+            const opt = setting.options[optIndex];
+            if (typeof opt.label !== 'string' || !('value' in opt)) {
+              isValidSetting = false;
+              skipReason = `Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.`;
+              break;
+            }
           }
         }
         break;
 
       case 'multiselect':
         if (!Array.isArray(setting.options)) {
-          return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires an "options" array.` };
-        }
-        for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
-          const opt = setting.options[optIndex];
-          if (typeof opt.label !== 'string' || !('value' in opt)) {
-            return { isValid: false, error: `Setting ${index + 1}, Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.` };
+          isValidSetting = false;
+          skipReason = 'Multiselect type requires an "options" array.';
+        } else {
+          for (let optIndex = 0; optIndex < setting.options.length; optIndex++) {
+            const opt = setting.options[optIndex];
+            if (typeof opt.label !== 'string' || !('value' in opt)) {
+              isValidSetting = false;
+              skipReason = `Option ${optIndex + 1}: Each option must have "label" (string) and "value" fields.`;
+              break;
+            }
           }
-        }
-        if (setting.defaultValue !== undefined && !Array.isArray(setting.defaultValue)) {
-          return { isValid: false, error: `Setting ${index + 1}: Multiselect type requires "defaultValue" to be an array if provided.` };
+          if (isValidSetting && setting.defaultValue !== undefined && !Array.isArray(setting.defaultValue)) {
+            isValidSetting = false;
+            skipReason = 'Multiselect type requires "defaultValue" to be an array if provided.';
+          }
         }
         break;
 
@@ -208,16 +211,42 @@ function validateTpaConfig(config: any): { isValid: boolean; error?: string } {
             typeof setting.min !== 'number' ||
             typeof setting.max !== 'number' ||
             setting.min > setting.max) {
-          return { isValid: false, error: `Setting ${index + 1}: Slider type requires "defaultValue", "min", and "max" to be numbers, with min ≤ max.` };
+          isValidSetting = false;
+          skipReason = 'Slider type requires "defaultValue", "min", and "max" to be numbers, with min ≤ max.';
         }
         break;
 
       default:
-        return { isValid: false, error: `Setting ${index + 1}: Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.` };
+        // Unknown setting type - skip it but don't fail the entire config
+        isValidSetting = false;
+        skipReason = `Unknown setting type "${setting.type}". Supported types: toggle, text, text_no_save_button, select, select_with_search, multiselect, slider, group, titleValue.`;
+        break;
+    }
+
+    if (isValidSetting) {
+      validSettings.push(setting);
+    } else {
+      skippedSettings.push({ 
+        index: index + 1, 
+        type: setting.type, 
+        reason: skipReason 
+      });
     }
   }
 
-  return { isValid: true };
+  // Include valid settings in cleaned config
+  cleanedConfig.settings = validSettings;
+  
+  // Include tools as-is (no validation needed for tools currently)
+  if (config.tools) {
+    cleanedConfig.tools = config.tools;
+  }
+
+  return { 
+    isValid: true, 
+    cleanedConfig,
+    skippedSettings: skippedSettings.length > 0 ? skippedSettings : undefined
+  };
 }
 
 /**
@@ -302,9 +331,12 @@ function fetchUrl(url: string, timeoutMs: number): Promise<string> {
 /**
  * Attempts to fetch and parse tpa_config.json from an app's server
  * @param app - App document from database
- * @returns Promise resolving to parsed config or null if not found/invalid
+ * @returns Promise resolving to parsed config and skipped settings info, or null if not found/invalid
  */
-async function fetchTpaConfig(app: AppI): Promise<TpaConfigFile | null> {
+async function fetchTpaConfig(app: AppI): Promise<{
+  config: TpaConfigFile;
+  skippedSettingsCount: number;
+} | null> {
   if (!app.publicUrl || app.publicUrl.trim() === '') {
     logger.debug(`App ${app.packageName} has no publicUrl, skipping`);
     return null;
@@ -338,8 +370,20 @@ async function fetchTpaConfig(app: AppI): Promise<TpaConfigFile | null> {
       return null;
     }
 
+    // Log information about skipped settings if any
+    const skippedCount = validation.skippedSettings?.length || 0;
+    if (validation.skippedSettings && validation.skippedSettings.length > 0) {
+      logger.warn(`Config for ${app.packageName} has ${validation.skippedSettings.length} invalid/unsupported settings that will be skipped:`);
+      validation.skippedSettings.forEach(skipped => {
+        logger.warn(`  - Setting ${skipped.index} (type: ${skipped.type}): ${skipped.reason}`);
+      });
+    }
+
     logger.info(`Successfully fetched and validated config for ${app.packageName}`);
-    return config as TpaConfigFile;
+    return {
+      config: validation.cleanedConfig as TpaConfigFile,
+      skippedSettingsCount: skippedCount
+    };
 
   } catch (error) {
     if (error instanceof Error) {
@@ -393,31 +437,42 @@ function removeIdFields(obj: any): any {
  */
 async function updateAppWithConfig(app: AppI, config: TpaConfigFile): Promise<{
   fieldsUpdated: string[];
+  fieldsSkipped: string[];
   settingsCount: number;
   toolsCount: number;
-  permissionsCount: number;
 }> {
   const fieldsUpdated: string[] = [];
+  const fieldsSkipped: string[] = [];
   const updateData: any = {};
 
-  // Always replace settings with imported data (can be empty arrays)
-  updateData.settings = removeIdFields(config.settings || []);
-  fieldsUpdated.push('settings');
+  // Check if settings should be updated (only if empty/null/undefined)
+  const hasExistingSettings = app.settings && Array.isArray(app.settings) && app.settings.length > 0;
+  if (!hasExistingSettings && config.settings) {
+    updateData.settings = removeIdFields(config.settings);
+    fieldsUpdated.push('settings');
+  } else if (hasExistingSettings) {
+    fieldsSkipped.push('settings (already has data)');
+  }
 
-  // Always replace tools with imported data (can be empty arrays)
-  updateData.tools = removeIdFields(config.tools || []);
-  fieldsUpdated.push('tools');
+  // Check if tools should be updated (only if empty/null/undefined)
+  const hasExistingTools = app.tools && Array.isArray(app.tools) && app.tools.length > 0;
+  if (!hasExistingTools && config.tools) {
+    updateData.tools = removeIdFields(config.tools);
+    fieldsUpdated.push('tools');
+  } else if (hasExistingTools) {
+    fieldsSkipped.push('tools (already has data)');
+  }
 
-  // Perform the update
-  if (!DRY_RUN) {
+  // Only perform update if there's something to update
+  if (Object.keys(updateData).length > 0 && !DRY_RUN) {
     await App.findByIdAndUpdate(app._id, { $set: updateData });
   }
 
   return {
     fieldsUpdated,
+    fieldsSkipped,
     settingsCount: (config.settings || []).length,
     toolsCount: (config.tools || []).length,
-    permissionsCount: (config.permissions || []).length
   };
 }
 
@@ -438,8 +493,12 @@ async function migrate() {
     let appsProcessed = 0;
     let configsFound = 0;
     let configsImported = 0;
-    let appsSkipped = 0;
     let errorCount = 0;
+    let settingsUpdated = 0;
+    let settingsSkipped = 0;
+    let toolsUpdated = 0;
+    let toolsSkipped = 0;
+    let totalSkippedSettings = 0;
     const errors: any[] = [];
 
     // Construct query filter based on package name pattern if provided
@@ -466,37 +525,50 @@ async function migrate() {
       logger.info(`Processing app ${appsProcessed}/${totalApps}: ${app.packageName}`);
 
       try {
-        // Skip apps that already have settings/tools unless in force mode
-        if (!FORCE_MODE) {
-          const hasExistingData = (app.settings && app.settings.length > 0) ||
-                                  (app.tools && app.tools.length > 0);
-
-          if (hasExistingData) {
-            logger.debug(`App ${app.packageName} already has settings/tools, skipping (use --force to override)`);
-            appsSkipped++;
-            continue;
-          }
-        }
-
         // Attempt to fetch tpa_config.json
-        const config = await fetchTpaConfig(app);
+        const configResult = await fetchTpaConfig(app);
 
-        if (!config) {
+        if (!configResult) {
           logger.debug(`No valid config found for ${app.packageName}`);
           continue;
         }
 
         configsFound++;
 
-        // Update app with imported configuration
-        const updateResult = await updateAppWithConfig(app, config);
-        configsImported++;
+        // Track skipped settings
+        totalSkippedSettings += configResult.skippedSettingsCount;
 
-        logger.info(`Successfully imported config for ${app.packageName}:`);
-        logger.info(`  - Fields updated: ${updateResult.fieldsUpdated.join(', ')}`);
+        // Update app with imported configuration
+        const updateResult = await updateAppWithConfig(app, configResult.config);
+        
+        // Track what was actually updated
+        if (updateResult.fieldsUpdated.length > 0) {
+          configsImported++;
+          if (updateResult.fieldsUpdated.includes('settings')) {
+            settingsUpdated++;
+          }
+          if (updateResult.fieldsUpdated.includes('tools')) {
+            toolsUpdated++;
+          }
+        }
+        
+        // Track what was skipped
+        if (updateResult.fieldsSkipped.some(field => field.includes('settings'))) {
+          settingsSkipped++;
+        }
+        if (updateResult.fieldsSkipped.some(field => field.includes('tools'))) {
+          toolsSkipped++;
+        }
+
+        logger.info(`Successfully processed config for ${app.packageName}:`);
+        if (updateResult.fieldsUpdated.length > 0) {
+          logger.info(`  - Fields updated: ${updateResult.fieldsUpdated.join(', ')}`);
+        }
+        if (updateResult.fieldsSkipped.length > 0) {
+          logger.info(`  - Fields skipped: ${updateResult.fieldsSkipped.join(', ')}`);
+        }
         logger.info(`  - Settings: ${updateResult.settingsCount}`);
         logger.info(`  - Tools: ${updateResult.toolsCount}`);
-        logger.info(`  - Permissions: ${updateResult.permissionsCount}`);
 
       } catch (error: any) {
         errorCount++;
@@ -512,9 +584,15 @@ async function migrate() {
     logger.info('=== Migration Summary ===');
     logger.info(`Total apps: ${totalApps}`);
     logger.info(`Apps processed: ${appsProcessed}`);
-    logger.info(`Apps skipped (already had data): ${appsSkipped}`);
     logger.info(`Configs found: ${configsFound}`);
     logger.info(`Configs imported: ${configsImported}`);
+    logger.info(`Settings updated: ${settingsUpdated}`);
+    logger.info(`Settings skipped (already had data): ${settingsSkipped}`);
+    logger.info(`Tools updated: ${toolsUpdated}`);
+    logger.info(`Tools skipped (already had data): ${toolsSkipped}`);
+    if (totalSkippedSettings > 0) {
+      logger.info(`Invalid/unsupported settings skipped during import: ${totalSkippedSettings}`);
+    }
     logger.info(`Errors: ${errorCount}`);
 
     if (DRY_RUN) {
