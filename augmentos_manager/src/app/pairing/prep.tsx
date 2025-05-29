@@ -1,5 +1,5 @@
 import React from "react"
-import {View, Text, StyleSheet, Platform, Linking} from "react-native"
+import {View, Text, StyleSheet, Platform, Linking, ViewStyle} from "react-native"
 import {useRoute} from "@react-navigation/native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
@@ -11,6 +11,7 @@ import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
 import coreCommunicator from "@/bridge/CoreCommunicator"
+import {translate} from "@/i18n"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -20,7 +21,6 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 export default function PairingPrepScreen() {
   const {status} = useStatus()
   const route = useRoute()
-  const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
 
   // React.useEffect(() => {
@@ -93,24 +93,28 @@ export default function PairingPrepScreen() {
               if (anyNeverAskAgain) {
                 // Show "previously denied" dialog for Bluetooth
                 showAlert(
-                  "Permission Required",
-                  "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
+                  translate("pairing:permissionRequired"),
+                  translate("pairing:bluetoothPermissionPreviouslyDenied"),
                   [
                     {
-                      text: "Open Settings",
+                      text: translate("pairing:openSettings"),
                       onPress: () => Linking.openSettings(),
                     },
                     {
-                      text: "Cancel",
+                      text: translate("common:cancel"),
                       style: "cancel",
                     },
                   ],
                 )
               } else {
                 // Show standard permission required dialog
-                showAlert("Permission Required", "Bluetooth permissions are required to connect to glasses", [
-                  {text: "OK"},
-                ])
+                showAlert(
+                  translate("pairing:bluetoothPermissionRequiredTitle"),
+                  translate("pairing:bluetoothPermissionRequiredMessage"),
+                  [
+                    {text:translate("common:ok")},
+                  ]
+                )
               }
               return
             }
@@ -124,9 +128,13 @@ export default function PairingPrepScreen() {
 
       const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH)
       if (!hasBluetoothPermission) {
-        showAlert("Bluetooth Permission Required", "Bluetooth permission is required to connect to smart glasses.", [
-          {text: "OK"},
-        ])
+        showAlert(
+          translate("pairing:bluetoothPermissionRequiredTitle"),
+          translate("pairing:bluetoothPermissionRequiredMessageAlt"),
+          [
+            {text: translate("common:ok")},
+          ]
+        )
         return // Stop the connection process
       }
 
@@ -159,7 +167,11 @@ export default function PairingPrepScreen() {
       }
     } catch (error) {
       console.error("Error requesting permissions:", error)
-      showAlert("Error", "Failed to request necessary permissions", [{text: "OK"}])
+      showAlert(
+        translate("pairing:errorTitle"),
+        translate("pairing:permissionsError"),
+        [{text: translate("common:ok")}]
+      )
       return
     }
 
@@ -169,11 +181,10 @@ export default function PairingPrepScreen() {
       if (!requirementsCheck.isReady) {
         // Show alert about missing requirements
         showAlert(
-          "Connection Issue",
-          requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-          [{text: "OK"}],
+          translate("pairing:connectionIssueTitle"),
+          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+          [{text: translate("common:ok")}],
         )
-
         return
       }
     }
@@ -188,11 +199,10 @@ export default function PairingPrepScreen() {
     <Screen preset="scroll" style={{paddingHorizontal: 16}} safeAreaEdges={["top", "bottom"]}>
       <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
-      <View style={styles.buttonContainer}>
-        <Button onPress={advanceToPairing} disabled={false}>
-          <Text>Continue</Text>
-        </Button>
-      </View>
+      <Button onPress={advanceToPairing} disabled={false}>
+        <Text>{translate("common:continue")}</Text>
+      </Button>
+      
     </Screen>
   )
 }
@@ -208,11 +218,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-  },
-  buttonContainer: {
-    alignItems: "center",
-    marginBottom: 64,
-    marginTop: 16,
   },
   text: {
     fontSize: 16,

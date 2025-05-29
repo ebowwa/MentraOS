@@ -1,4 +1,11 @@
 import { ComponentType } from "react"
+import { LinearGradient } from "expo-linear-gradient"
+const gradientColors = ["#4340D3", "#06114D"]
+
+const gradientBorderStyle: ViewStyle = {
+  borderRadius: 30,
+  padding: 2,
+}
 import {
   Pressable,
   PressableProps,
@@ -6,9 +13,10 @@ import {
   StyleProp,
   TextStyle,
   ViewStyle,
+  View,
 } from "react-native"
 import type { ThemedStyle, ThemedStyleArray } from "@/theme"
-import { $styles } from "@/theme"
+import { $styles, spacing } from "@/theme"
 import { Text, TextProps } from "./Text"
 import { useAppTheme } from "@/utils/useAppTheme"
 
@@ -81,6 +89,14 @@ export interface ButtonProps extends PressableProps {
    * An optional style override for the disabled state
    */
   disabledStyle?: StyleProp<ViewStyle>
+  /**
+   * Alignment for accessories, either "start" or "center"
+   */
+  accessoryAlignment?: "start" | "center"
+  /**
+   * Alignment for button text, either "left" or "center"
+   */
+  textAlignment?: "left" | "center"
 }
 
 /**
@@ -112,6 +128,7 @@ export function Button(props: ButtonProps) {
     LeftAccessory,
     disabled,
     disabledStyle: $disabledViewStyleOverride,
+    accessoryAlignment = "start",
     ...rest
   } = props
 
@@ -146,50 +163,66 @@ export function Button(props: ButtonProps) {
   }
 
   return (
-    <Pressable
-      style={$viewStyle}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
-      {...rest}
-      disabled={disabled}
+    <LinearGradient
+      colors={gradientColors}
+      start={{ x: 1, y: 0 }}
+      end={{ x: 0, y: 0 }}
+      style={gradientBorderStyle}
     >
-      {(state) => (
-        <>
-          {!!LeftAccessory && (
-            <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
-          )}
+      <Pressable
+        style={$viewStyle}
+        accessibilityRole="button"
+        accessibilityState={{ disabled: !!disabled }}
+        {...rest}
+        disabled={disabled}
+      >
+        {(state) => (
+          <View style={{ flex: 1, position: "relative", justifyContent: "center" }}>
+            {!!LeftAccessory && (
+              <View style={{ marginLeft:spacing.xxs, position: "absolute", left: 0 }}>
+                <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
+              </View>
+            )}
 
-          <Text tx={tx} text={text} txOptions={txOptions} style={$textStyle(state)}>
-            {children}
-          </Text>
+            <Text
+              tx={tx}
+              text={text}
+              txOptions={txOptions}
+              style={[
+                $textStyle(state),
+                { textAlign: props.textAlignment === "left" ? "left" : "center" },
+              ]}
+            >
+              {children}
+            </Text>
 
-          {!!RightAccessory && (
-            <RightAccessory
-              style={$rightAccessoryStyle}
-              pressableState={state}
-              disabled={disabled}
-            />
-          )}
-        </>
-      )}
-    </Pressable>
+            {!!RightAccessory && (
+              <View style={{ position: "absolute", right: 0 }}>
+                <RightAccessory style={$rightAccessoryStyle} pressableState={state} disabled={disabled} />
+              </View>
+            )}
+          </View>
+        )}
+      </Pressable>
+    </LinearGradient>
   )
 }
 
 const $baseViewStyle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
-  minHeight: 56,
-  borderRadius: 24,
+  minHeight: 44,
+  borderRadius: 30,
   justifyContent: "center",
   alignItems: "center",
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.sm,
   overflow: "hidden",
+  
 })
 
 const $baseTextStyle: ThemedStyle<TextStyle> = ({ typography }) => ({
   fontSize: 16,
   lineHeight: 20,
-  fontFamily: typography.primary.medium,
+  fontFamily: "SF Pro Rounded",
   textAlign: "center",
   flexShrink: 1,
   flexGrow: 0,
@@ -210,21 +243,18 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
     $styles.row,
     $baseViewStyle,
     ({ colors }) => ({
-      borderWidth: 1,
-      borderColor: colors.palette.neutral400,
-      backgroundColor: colors.palette.neutral100,
+      backgroundColor: "navy",
     }),
   ],
   filled: [
     $styles.row,
     $baseViewStyle,
-    ({ colors }) => ({ backgroundColor: colors.palette.neutral300 }),
   ],
   reversed: [
     $styles.row,
     $baseViewStyle,
-    ({ colors }) => ({ backgroundColor: colors.palette.neutral800 }),
-  ],
+    ({ colors }) => ({ backgroundColor: colors.palette.neutral800, borderColor:"black" }),
+    ],
 }
 
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {

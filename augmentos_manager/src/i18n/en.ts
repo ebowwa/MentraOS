@@ -10,6 +10,16 @@ const en = {
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
+    permissionRequired: "Permission Required",
+    bluetoothPermissionRequiredTitle: "Permission Required",
+    bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",
+    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.",
+    errorTitle: "Error",
+    permissionsError: "Failed to request necessary permissions",
+    connectionIssueTitle: "Connection Issue",
+    connectionIssueMessage: "Cannot connect to glasses - check Bluetooth and Location settings",
+    bluetoothPermissionPreviouslyDenied: "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
+    openSettings: "Open Settings",
   },
   privacySettings: {
     title: "Privacy Settings",
@@ -97,10 +107,10 @@ const en = {
     forgotPassword: "Forgot Password?",
     continueWithGoogle: "Continue with Google",
     continueWithApple: "Continue with Apple",
-    continueWithEmail: "Continue with Email",
+    continueWithEmail: " Continue with Email",
     termsText: "By signing in, you agree to our terms of service and privacy policy.",
-    emailPlaceholder: "you@example.com",
-    passwordPlaceholder: "********",
+    emailPlaceholder: " you@example.com",
+    passwordPlaceholder: " ********",
     createAccount: "Create Account",
     login: "Login",
   },
@@ -117,6 +127,7 @@ const en = {
     notAvailable: "Not Available",
     yes: "Yes",
     delete: "Delete",
+    continue:"Continue"
   },
   welcomeScreen: {
     postscript:

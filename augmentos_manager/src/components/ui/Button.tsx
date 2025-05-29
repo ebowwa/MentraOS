@@ -58,7 +58,7 @@ const $inside: ThemedStyle<ViewStyle> = () => ({
 });
 
 const $insideSpacing: ThemedStyle<ViewStyle> = () => ({
-  borderRadius: 28,
+  borderRadius: 30,
   backgroundColor: "#0f1861",
   width: "100%",
   minHeight: 44,

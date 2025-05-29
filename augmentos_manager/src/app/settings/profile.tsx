@@ -9,19 +9,17 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-  ImageStyle,
-  TextStyle,
-  ViewStyle,
-} from "react-native"
-import {supabase} from "@/supabase/supabaseClient"
-import Icon from "react-native-vector-icons/FontAwesome"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
-import {useAuth} from "@/contexts/AuthContext"
-import {Header, Screen} from "@/components/ignite"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
-import {router} from "expo-router"
-import {translate} from "@/i18n"
+  ImageStyle, TextStyle, ViewStyle
+} from 'react-native';
+import {supabase} from '@/supabase/supabaseClient';
+import Icon from 'react-native-vector-icons/FontAwesome';
+import BackendServerComms from '@/backend_comms/BackendServerComms';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button, Header, Screen } from '@/components/ignite';
+import { useAppTheme } from '@/utils/useAppTheme';
+import { ThemedStyle } from '@/theme';
+import { router } from 'expo-router';
+import { translate } from "@/i18n";
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -252,17 +250,18 @@ export default function ProfileSettingsPage() {
             </View>
           )}
 
-          <TouchableOpacity style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
-            <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
-          </TouchableOpacity>
+            <Button style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
+              <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
+            </Button>
+            <View style={{ height: 10 }} />
+            <Button style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
+              <Text style={themed($deleteAccountButtonText)}>{translate("profileSettings:deleteAccount")}</Text>
+            </Button>
+          </>
+        ) : (
+          <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
+        )}
 
-          <TouchableOpacity style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
-            <Text style={themed($deleteAccountButtonText)}>{translate("profileSettings:deleteAccount")}</Text>
-          </TouchableOpacity>
-        </>
-      ) : (
-        <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
-      )}
     </Screen>
   )
 }
@@ -294,17 +293,11 @@ const darkHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $deleteAccountButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.angry500,
-  padding: 10,
-  borderRadius: 5,
-  marginTop: 20,
+   backgroundColor: colors.palette.angry500,
 })
 
 const $requestDataExportButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.primary500,
-  padding: 10,
-  borderRadius: 5,
-  color: colors.text,
+
 })
 
 const $updatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
