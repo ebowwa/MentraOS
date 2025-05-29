@@ -2,6 +2,8 @@ import AppleIcon from "assets/icons/AppleIcon";
 import * as React from "react";
 import {StyleSheet, Text, View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
+import { Spacer } from "../misc/Spacer";
+import { spacing } from "@/theme";
 interface BasicDialogProps {
   title: string;
   description?: string | React.ReactNode;
@@ -32,6 +34,7 @@ const BasicDialog = ({
           </Text>
         )}
       </View>
+	  <Spacer  height={spacing.xxl}/>
       <View style={styles.actions}>
         <View style={[styles.actions1, styles.actions1FlexBox]}>
           {leftButtonText && (
@@ -162,9 +165,9 @@ const styles = StyleSheet.create({
     		shadowOpacity: 1,
     		borderRadius: 28,
     		backgroundColor: "#141834",
-    		width: "90%",
+    		width: "100%",
     		minWidth: "50%",
-    		maxWidth: "90%",
+    		maxWidth: "100%",
     		justifyContent: "center"
   	}
 });
