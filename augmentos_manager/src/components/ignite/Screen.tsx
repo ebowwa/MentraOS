@@ -249,7 +249,7 @@ export function Screen(props: ScreenProps) {
   const {theme} = useAppTheme()
 
   return (
-    <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background}, $containerInsets]}>
+    <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background}/*, $containerInsets*/]}>
       <LinearGradient
         colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
         style={{
@@ -260,17 +260,17 @@ export function Screen(props: ScreenProps) {
           bottom: 0,
         }}
         start={{x: 0, y: 1}}
-        end={{x: 0, y: 0}}
-      >
-      <StatusBar style={statusBarStyle || (themeContext === "dark" ? "light" : "dark")} {...StatusBarProps} />
-
-      <KeyboardAvoidingView
-        behavior={isIos ? "padding" : "height"}
-        keyboardVerticalOffset={keyboardOffset}
-        {...KeyboardAvoidingViewProps}
-        style={[$styles.flex1, KeyboardAvoidingViewProps?.style]}>
-        {isNonScrolling(props.preset) ? <ScreenWithoutScrolling {...props} /> : <ScreenWithScrolling {...props} />}
-      </KeyboardAvoidingView>
+        end={{x: 0, y: 0}}>
+        <View style={[$containerInsets, {flex: 1}]}>
+          <StatusBar style={statusBarStyle || (themeContext === "dark" ? "light" : "dark")} {...StatusBarProps} />
+          <KeyboardAvoidingView
+            behavior={isIos ? "padding" : "height"}
+            keyboardVerticalOffset={keyboardOffset}
+            {...KeyboardAvoidingViewProps}
+            style={[$styles.flex1, KeyboardAvoidingViewProps?.style]}>
+            {isNonScrolling(props.preset) ? <ScreenWithoutScrolling {...props} /> : <ScreenWithScrolling {...props} />}
+          </KeyboardAvoidingView>
+        </View>
       </LinearGradient>
     </View>
   )

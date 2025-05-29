@@ -1,7 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch, ViewStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
-import {Icon} from "@/components/ignite"
+import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
@@ -10,11 +10,12 @@ import {getBatteryColor, getBatteryIcon} from "@/utils/getBatteryIcon"
 import {Slider} from "react-native-elements"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
 import {translate} from "@/i18n/translate"
 import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import DefaultButton from "@/components/ui/Button"
+import ChevronRight from "assets/icons/ChevronRight"
 
 export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -159,15 +160,6 @@ export default function ConnectedDeviceInfo() {
   const batteryIcon = getBatteryIcon(status.glasses_info?.battery_life ?? 0)
   const batteryColor = getBatteryColor(status.glasses_info?.battery_life ?? 0)
 
-  // Determine the button style for connecting glasses
-  const getConnectButtonStyle = () => {
-    return status.core_info.is_searching
-      ? styles.connectingButton
-      : isConnectButtonDisabled
-        ? styles.disabledButton
-        : styles.connectButton
-  }
-
   let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
   let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
 
@@ -177,72 +169,49 @@ export default function ConnectedDeviceInfo() {
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
   }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness])
 
-  const renderInterface = () => {
-
-    const getButton = () => {
-
-      if (!status.core_info.default_wearable) {
-        return (
-          <DefaultButton
-            icon={<SolarLineIconsSet4 />}
-            onPress={() => {
-              router.push("/pairing/select-glasses-model")
-            }}
-            title={translate("home:pairGlasses")}
-          />
-        )
-      }
-
-      if (status.core_info.is_searching) {
-        return (
-          <DefaultButton
-            icon={<ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
-            onPress={() => {
-            }}
-            title={translate("home:connectingGlasses")}
-          />
-        )
-      }
-
-      if (!status.glasses_info?.model_name) {
-        return (
-          <DefaultButton
-            icon={<SolarLineIconsSet4 />}
-            onPress={handleConnectOrDisconnect}
-            title={translate("home:connectGlasses")}
-          />
-        )
-      }
-    }
-
-
-
-    
-    if (!status.glasses_info?.model_name) {
+  const getButton = () => {
+    if (!status.core_info.default_wearable) {
       return (
-        // Connect button rendering with spinner on right
-        <View style={styles.noGlassesContent}>
-          {/* <TouchableOpacity
-            style={getConnectButtonStyle()}
-            onPress={handleConnectOrDisconnect}
-            disabled={isConnectButtonDisabled && !status.core_info.is_searching}>
-            <Text style={styles.buttonText}>
-              {isConnectButtonDisabled || status.core_info.is_searching ? "Connecting Glasses..." : "Connect Glasses"}
-            </Text>
-            {status.core_info.is_searching && <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
-          </TouchableOpacity> */}
-          {/* <DefaultButton
-            icon={<SolarLineIconsSet4 />}
-            onPress={() => {
-              router.push("/pairing/select-glasses-model")
-            }}
-            title={translate("home:pairGlasses")}
-          /> */}
-          {getButton()}
-        </View>
+        <Button
+          textStyle={[{marginLeft: spacing.xxl}]}
+          textAlignment="left"
+          LeftAccessory={() => <SolarLineIconsSet4 />}
+          RightAccessory={() => <ChevronRight />}
+          onPress={() => {
+            router.push("/pairing/select-glasses-model")
+          }}
+          tx="home:pairGlasses"
+        />
       )
     }
 
+    if (status.core_info.is_searching) {
+      return (
+        <Button
+          textStyle={[{marginLeft: spacing.xxl}]}
+          textAlignment="left"
+          LeftAccessory={() => <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
+          onPress={() => {}}
+          tx="home:connectingGlasses"
+        />
+      )
+    }
+
+    if (!status.glasses_info?.model_name) {
+      return (
+        <Button
+          textStyle={[{marginLeft: spacing.xxl}]}
+          textAlignment="left"
+          LeftAccessory={() => <SolarLineIconsSet4 />}
+          RightAccessory={() => <ChevronRight />}
+          onPress={handleConnectOrDisconnect}
+          tx="home:connectGlasses"
+        />
+      )
+    }
+  }
+
+  const renderConnectedInterface = () => {
     return (
       <>
         <Animated.View style={[styles.statusBar, {opacity: fadeAnim}]}>
@@ -273,27 +242,18 @@ export default function ConnectedDeviceInfo() {
     )
   }
 
-  const renderStatusBars = () => {
+  const renderButtonsAndInfo = () => {
+    // no glasses paired
     if (!status.core_info.default_wearable) {
-      if (status.core_info.is_searching) {
-        return (
-          <View style={styles.disconnectedContent}>
-            <Text style={[styles.connectText, {color: themeStyles.textColor}]}>Searching for glasses</Text>
-            <ActivityIndicator size="small" color="#2196F3" />
-          </View>
-        )
-      }
-
-      return (
-        <View style={styles.noGlassesContent}>
-          <Text style={styles.noGlassesText}>{"No Glasses Paired"}</Text>
-          <TouchableOpacity style={styles.connectButton} onPress={connectGlasses}>
-            <Text style={styles.buttonText}>{"Connect Glasses"}</Text>
-          </TouchableOpacity>
-        </View>
-      )
+      return getButton()
     }
 
+    // glasses paired but not connected
+    if (!status.glasses_info?.model_name) {
+      return getButton()
+    }
+
+    // glasses paired and connected:
     return (
       <View style={styles.connectedContent}>
         <Animated.Image
@@ -305,7 +265,7 @@ export default function ConnectedDeviceInfo() {
             {formatGlassesTitle(connectedGlasses)}
           </Text>
         </Animated.View>
-        {renderInterface()}
+        {renderConnectedInterface()}
       </View>
     )
   }
@@ -314,13 +274,15 @@ export default function ConnectedDeviceInfo() {
     /* Use the simulated version if we're connected to simulated glasses */
   }
   if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
-    return <ConnectedSimulatedGlassesInfo isDarkTheme={theme.isDark} />
+    return <ConnectedSimulatedGlassesInfo />
   }
 
-  return (
-    <View style={themed($deviceInfoContainer)}>
-      {/* Status Indicators Row - Only render if indicators present */}
-      {(microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) && (
+  const renderStatusIndicators = () => {
+    {
+      /* Status Indicators Row - Only render if indicators present */
+    }
+    if (microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) {
+      return (
         <View style={styles.statusIndicatorsRow}>
           {microphoneActive && <Icon name="microphone" size={20} color="#4CAF50" />}
 
@@ -354,20 +316,27 @@ export default function ConnectedDeviceInfo() {
             </TouchableOpacity>
           )}
         </View>
-      )}
+      )
+    }
+    return null
+  }
 
-      {renderStatusBars()}
+  return (
+    <View style={themed($deviceInfoContainer)}>
+      {renderStatusIndicators()}
+      {renderButtonsAndInfo()}
     </View>
   )
 }
 
-const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  padding: 16,
-  borderRadius: 12,
-  width: "100%",
-  minHeight: 240,
-  justifyContent: "center",
-  marginTop: 16, // Increased space above component
+const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  // padding: 16,
+  // borderRadius: 12,
+  // width: "100%",
+  // minHeight: 240,
+  // justifyContent: "center",
+  marginTop: 16,
+  // paddingHorizontal: 24,
   // backgroundColor: colors.palette.neutral200,
 })
 
@@ -386,12 +355,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     justifyContent: "space-between",
     alignItems: "center",
-  },
-  noGlassesContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
   },
   disconnectedContent: {
     flex: 1,

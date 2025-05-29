@@ -69,7 +69,7 @@ export default function SelectGlassesModelScreen() {
     }, []),
   )
 
-  React.useEffect(() => {}, [status])
+  useEffect(() => {}, [status])
 
   const triggerGlassesPairingGuide = async (glassesModelName: string) => {
     // No need for Bluetooth permissions anymore as we're using direct communication
@@ -95,7 +95,7 @@ export default function SelectGlassesModelScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={{flex: 1, paddingHorizontal: 16}} safeAreaEdges={["top", "bottom"]}>
+    <Screen preset="fixed" style={{flex: 1, paddingHorizontal: 16}} safeAreaEdges={["bottom"]}>
       <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       {isOnboarding && (
         <View style={[styles.onboardingBanner, {backgroundColor: isDarkTheme ? "#1e88e5" : "#bbdefb"}]}>
