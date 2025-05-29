@@ -20,6 +20,7 @@ import {
 } from '../../types';
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../../logging/logger';
+import axios from 'axios';
 
 /**
  * 🔧 Configuration options for TPA Server
@@ -59,6 +60,8 @@ export interface TpaServerConfig {
    * This must be a strong, unique secret
    */
   cookieSecret?: string;
+  /** TPA instructions string shown to the user */
+  tpaInstructions?: string;
 }
 
 /**
@@ -98,6 +101,8 @@ export class TpaServer {
   private activeSessions = new Map<string, TpaSession>();
   /** Array of cleanup handlers to run on shutdown */
   private cleanupHandlers: Array<() => void> = [];
+  /** TPA instructions string shown to the user */
+  private tpaInstructions: string | null = null;
 
   public readonly logger: Logger;
 
@@ -128,6 +133,7 @@ export class TpaServer {
       cookieSecret: this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`
     }));
 
+    this.tpaInstructions = (config as any).tpaInstructions || null;
 
     // Setup server features
     this.setupWebhook();
@@ -155,6 +161,18 @@ export class TpaServer {
    */
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     this.logger.debug(`New session: ${sessionId} for user ${userId}`);
+    // Onboarding logic: show instructions if onboarding not complete
+    try {
+      const [hasCompleted, instructions] = await Promise.all([
+        session.getOnboardingStatus(userId),
+        session.getInstructions()
+      ]);
+      if (!hasCompleted && instructions) {
+        session.layouts.showTextWall(instructions, { priority: true });
+      }
+    } catch (err) {
+      this.logger.error('Error during onboarding check/show:', err);
+    }
   }
 
   /**

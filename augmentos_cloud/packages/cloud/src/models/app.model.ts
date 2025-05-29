@@ -69,6 +69,8 @@ export interface AppI extends _AppI, Document {
    * @deprecated Use organizationId with member management instead. Will be removed after migration.
    */
   sharedWithEmails?: string[];
+
+  onboardingInstructions?: string;
 }
 
 
@@ -230,6 +232,10 @@ const AppSchema = new Schema({
     type: [String],
     required: false,
     default: []
+  },
+  onboardingInstructions: {
+    type: String,
+    default: ''
   }
 }, {
   strict: false,

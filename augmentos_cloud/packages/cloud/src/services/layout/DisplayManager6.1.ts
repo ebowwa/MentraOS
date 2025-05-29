@@ -4,6 +4,11 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import { Logger } from 'pino';
 import { WebSocket } from 'ws';
 
+// Extend DisplayRequest to include optional priority flag
+interface DisplayRequestWithPriority extends DisplayRequest {
+  priority?: boolean;
+}
+
 interface DisplayState {
   currentDisplay: ActiveDisplay | null;
   coreAppDisplay: ActiveDisplay | null;
@@ -43,6 +48,7 @@ class DisplayManager implements DisplayManagerI {
   private userSession: UserSession;
   private mainApp: string = ""; // systemApps.captions.packageName; // Hardcode captions as core app
   private logger: Logger; // child logger for this service & user session.
+  private priorityDisplayActive: boolean = false;
 
   /**
    * Returns the user ID safely, providing a fallback value if it's undefined
@@ -341,34 +347,43 @@ class DisplayManager implements DisplayManagerI {
   }
 
   private showDisplay(activeDisplay: ActiveDisplay): boolean {
+    const displayRequest = activeDisplay.displayRequest as DisplayRequestWithPriority;
+    // If a priority display is active, only allow another priority display to replace it
+    if (this.priorityDisplayActive && !displayRequest.priority) {
+      this.logger.info({ packageName: displayRequest.packageName }, `[${this.getUserId()}] 🚫 Priority display active, ignoring non-priority display request`);
+      return false;
+    }
+    if (displayRequest.priority) {
+      this.priorityDisplayActive = true;
+    }
     // Check throttle
-    if (Date.now() - this.lastDisplayTime < this.THROTTLE_DELAY && !activeDisplay.displayRequest.forceDisplay) {
-      this.logger.info({ packageName: activeDisplay.displayRequest.packageName }, `[${this.getUserId()}] ⏳ Throttled display request, queuing`);
+    if (Date.now() - this.lastDisplayTime < this.THROTTLE_DELAY && !displayRequest.forceDisplay) {
+      this.logger.info({ packageName: displayRequest.packageName }, `[${this.getUserId()}] ⏳ Throttled display request, queuing`);
       // Add to throttle queue, indexed by package name
       this.enqueueThrottledDisplay(activeDisplay);
       return true; // Return true to indicate request was accepted
     }
 
-    const success = this.sendToWebSocket(activeDisplay.displayRequest, this.userSession?.websocket);
+    const success = this.sendToWebSocket(displayRequest, this.userSession?.websocket);
     if (success) {
       this.displayState.currentDisplay = activeDisplay;
       this.lastDisplayTime = Date.now();
 
       // If core app successfully displays while background app has lock but isn't showing anything,
       // release the background app's lock
-      if (activeDisplay.displayRequest.packageName === this.mainApp &&
+      if (displayRequest.packageName === this.mainApp &&
         this.displayState.backgroundLock &&
         this.displayState.currentDisplay?.displayRequest.packageName !== this.displayState.backgroundLock.packageName) {
-        this.logger.info({ packageName: activeDisplay.displayRequest.packageName, lockHolder: this.displayState.backgroundLock.packageName }, `[${this.getUserId()}] 🔓 Releasing background lock as core app took display: ${this.displayState.backgroundLock.packageName}`);
+        this.logger.info({ packageName: displayRequest.packageName, lockHolder: this.displayState.backgroundLock.packageName }, `[${this.getUserId()}] 🔓 Releasing background lock as core app took display: ${this.displayState.backgroundLock.packageName}`);
         this.displayState.backgroundLock = null;
       }
 
       // Update lastActiveTime if this is the lock holder
-      if (this.displayState.backgroundLock?.packageName === activeDisplay.displayRequest.packageName) {
+      if (this.displayState.backgroundLock?.packageName === displayRequest.packageName) {
         this.displayState.backgroundLock.lastActiveTime = Date.now();
       }
 
-      this.logger.info({ packageName: activeDisplay.displayRequest.packageName }, `[${this.getUserId()}] ✅ Display sent successfully: ${activeDisplay.displayRequest.packageName}`);
+      this.logger.info({ packageName: displayRequest.packageName }, `[${this.getUserId()}] ✅ Display sent successfully: ${displayRequest.packageName}`);
 
       // Set expiry timeout if duration specified
       if (activeDisplay.expiresAt) {
@@ -668,6 +683,7 @@ class DisplayManager implements DisplayManagerI {
     };
     this.logger.info({ viewName }, `[${this.getUserId()}] 🧹 Clearing display for view: ${viewName}`);
     this.sendDisplay(clearRequest);
+    this.priorityDisplayActive = false; // Clear priority flag when display is cleared
   }
 
   /**

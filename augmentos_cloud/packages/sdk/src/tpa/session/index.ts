@@ -52,6 +52,7 @@ import { DashboardAPI } from '../../types/dashboard';
 import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
 import { Logger } from 'pino';
 import { TpaServer } from '../server';
+import axios from 'axios';
 
 /**
  * ⚙️ Configuration options for TPA Session
@@ -1300,6 +1301,55 @@ export class TpaSession {
 
       // Re-throw to maintain the original function behavior
       throw error;
+    }
+  }
+
+  /**
+   * Fetch the onboarding instructions for this session from the backend.
+   * @returns Promise resolving to the instructions string or null
+   */
+  public async getInstructions(): Promise<string | null> {
+    try {
+      const baseUrl = this.getServerUrl();
+      const response = await axios.get(`${baseUrl}/api/instructions`, { params: { userId: this.userId } });
+      return response.data.instructions || null;
+    } catch (err) {
+      this.logger.error('Error fetching instructions from backend:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch the onboarding status for the given email and packageName from the backend.
+   * @param email The user's email
+   * @returns Promise resolving to true if onboarding is complete, false otherwise
+   */
+  public async getOnboardingStatus(email: string): Promise<boolean> {
+    try {
+      const baseUrl = this.getServerUrl();
+      const packageName = this.getPackageName();
+      const response = await axios.get(`${baseUrl}/api/onboarding/status`, { params: { email, packageName } });
+      return !!response.data.hasCompletedOnboarding;
+    } catch (err) {
+      this.logger.error('Error fetching onboarding status from backend:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Mark onboarding as complete for the given email and packageName in the backend.
+   * @param email The user's email
+   * @returns Promise resolving to true if successful, false otherwise
+   */
+  public async completeOnboarding(email: string): Promise<boolean> {
+    try {
+      const baseUrl = this.getServerUrl();
+      const packageName = this.getPackageName();
+      const response = await axios.post(`${baseUrl}/api/onboarding/complete`, { email, packageName });
+      return !!response.data.success;
+    } catch (err) {
+      this.logger.error('Error completing onboarding in backend:', err);
+      return false;
     }
   }
 }
