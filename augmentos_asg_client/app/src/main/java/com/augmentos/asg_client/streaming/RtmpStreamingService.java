@@ -408,6 +408,17 @@ public class RtmpStreamingService extends Service {
      * Start streaming to the configured RTMP URL
      */
     public void startStreaming() {
+        // Check if camera is busy with photo/video capture BEFORE attempting to stream
+        if (com.augmentos.asg_client.camera.CameraNeo.isCameraInUse()) {
+            String error = "camera_busy";
+            Log.e(TAG, "Cannot start RTMP stream - camera is busy with photo/video capture");
+            EventBus.getDefault().post(new StreamingEvent.Error(error));
+            if (sStatusCallback != null) {
+                sStatusCallback.onStreamError(error);
+            }
+            return;
+        }
+
         if (mStreamer == null) {
             String error = "Streamer not initialized";
             EventBus.getDefault().post(new StreamingEvent.Error(error));
@@ -441,6 +452,24 @@ public class RtmpStreamingService extends Service {
                 Log.i(TAG, "Starting streaming to " + mRtmpUrl);
                 if (sStatusCallback != null) {
                     sStatusCallback.onStreamStarting(mRtmpUrl);
+                }
+            }
+
+            // Ensure camera preview is running before starting stream
+            if (mSurface != null && mSurface.isValid()) {
+                try {
+                    mStreamer.startPreview(mSurface, "0");
+                    Log.d(TAG, "Restarted camera preview for streaming");
+                } catch (Exception e) {
+                    Log.w(TAG, "Preview already running or failed to restart: " + e.getMessage());
+                    // Continue anyway - preview might already be active
+                }
+            } else {
+                Log.w(TAG, "Surface invalid, recreating before starting stream");
+                createSurface();
+                if (mSurface != null && mSurface.isValid()) {
+                    mStreamer.startPreview(mSurface, "0");
+                    Log.d(TAG, "Created new surface and started preview");
                 }
             }
 
