@@ -1,10 +1,4 @@
-# 🚧 Core Concepts
-
-*Last updated: March 31, 2025*
-
-## 🚧 WIP 🚧
-These Docs are still under construction 👷🚧, and the code is evolving fast. 
-If you have any issues or get stuck, feel free to reach out at team@mentra.glass.
+# Core Concepts
 
 This section explains the fundamental concepts you need to understand to build AugmentOS apps for smart glasses.
 
@@ -88,7 +82,7 @@ See the [Webview Authentication](/webview-auth-overview) section for more detail
 
 ## 8.  AI Tools
 
-You app can provide tools to the Mira AI assistant:
+Your app can provide tools to the Mira AI assistant:
 
 1. Your app registers tools that the AI assistant can use in its `tpa_config.json` file.
 2. When a user asks the AI to perform a task related to your app, the AI calls your tools via the `onToolCall` event.
@@ -98,8 +92,15 @@ This allows users to interact with your app through natural language via the AI 
 
 See the [Tools](/tools) section for more details.
 
+## 9. Settings
 
-## 9. The AugmentOS Cloud
+AugmentOS provides a comprehensive settings system that allows users to customize how your app behaves.
+
+Settings support various types including toggles, text inputs, dropdowns, sliders, and more. This allows you to offer rich customization options without building your own settings UI.
+
+See the [Settings](/settings) section for more details.
+
+## 10. The AugmentOS Cloud
 
 The AugmentOS Cloud acts as a central hub, managing:
 
