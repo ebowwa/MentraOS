@@ -7,18 +7,42 @@ import { User } from '../models/user.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 import appService, { isUninstallable } from '../services/core/app.service';
-import { logger } from '@augmentos/utils';
-import { CloudToTpaMessageType, UserSession } from '@augmentos/sdk';
+import { logger as rootLogger } from '../services/logging/pino-logger';
+import { CloudToTpaMessageType, UserSession, AppSetting } from '@augmentos/sdk';
 import { sessionService } from '../services/core/session.service';
 import { Permission } from '../models/app.model';
 
 const router = express.Router();
 
+// TODO(isaiah) define and use appropriate middleware.
+
+// Clean function to remove Mongoose metadata and ensure proper typing
+function cleanAppSettings(settings: any[]): AppSetting[] {
+  return settings.map(setting => {
+    const { __parentArray, __index, $__parent, $__, _doc, $isNew, ...cleanSetting } = setting;
+
+    // Handle GROUP type specially since it has different required fields
+    if (setting.type === 'group') {
+      return {
+        type: setting.type,
+        key: setting.key || '',
+        label: setting.label || '',
+        title: setting.title || '',
+        ...(setting._id && { _id: setting._id }),
+        ...(setting.options && { options: setting.options })
+      } as AppSetting;
+    }
+
+    // For all other setting types, preserve the clean properties
+    return cleanSetting as AppSetting;
+  });
+}
+
 // GET /tpasettings/:tpaName
 // Returns the TPA config with each non-group setting having a "selected" property
 // that comes from the user's stored settings (or defaultValue if not present).
 router.get('/:tpaName', async (req, res) => {
-  logger.info('Received request for TPA settings');
+  rootLogger.info('Received request for TPA settings');
 
   // Extract TPA name from URL (use third segment if dot-separated).
   // const parts = req.params.tpaName.split('.');
@@ -49,6 +73,7 @@ router.get('/:tpaName', async (req, res) => {
     if (!userId) {
       return res.status(400).json({ error: 'User ID missing in token' });
     }
+    const logger = rootLogger.child({ service: 'tpa-settings', userId });
 
     // Get TPA configuration from database instead of tpa_config.json
     const _tpa = await appService.getApp(tpaName);
@@ -69,6 +94,8 @@ router.get('/:tpaName', async (req, res) => {
       settings: _tpa.settings || []
     };
 
+    logger.debug({ tpaConfig }, `TPA configuration for user: ${userId} from TPA ${tpaName}`);
+
     // Find or create the user.
     const user = await User.findOrCreateUser(userId);
 
@@ -78,33 +105,41 @@ router.get('/:tpaName', async (req, res) => {
       // Build default settings from config (ignoring groups)
       const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
         ? tpaConfig.settings
-            .filter((setting: any) => setting.type !== 'group')
-            .map((setting: any) => ({
-              key: setting.key,
-              value: setting.defaultValue,       // initially, use defaultValue
-              defaultValue: setting.defaultValue,
-              type: setting.type,
-              label: setting.label,
-              options: setting.options || []
-            }))
+          .filter((setting: any) => setting.type !== 'group')
+          .map((setting: any) => ({
+            key: setting.key,
+            value: setting.defaultValue,       // initially, use defaultValue
+            defaultValue: setting.defaultValue,
+            type: setting.type,
+            label: setting.label,
+            options: setting.options || []
+          }))
         : [];
       await user.updateAppSettings(tpaName, defaultSettings);
       storedSettings = defaultSettings;
     }
 
-    // Merge config settings with stored values.
-    const mergedSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
-      ? tpaConfig.settings.map((setting: any) => {
-          if (setting.type === 'group') return setting;
-          const stored = storedSettings?.find((s: any) => s.key === setting.key);
-          return {
-            ...setting,
-            selected: stored && stored.value !== undefined ? stored.value : setting.defaultValue
-          };
-        })
-      : [];
+    // Clean the tpaConfig.settings first to remove Mongoose metadata
+    const cleanTpaSettings = tpaConfig.settings.map(setting =>
+      JSON.parse(JSON.stringify(setting))
+    );
 
-    // console.log('Merged settings:', mergedSettings);
+    // Then merge with stored settings
+    const mergedSettings = cleanTpaSettings.map((setting: any) => {
+      if (setting.type === 'group') return setting;
+
+      const stored = storedSettings?.find((s: any) => s.key === setting.key);
+      return {
+        ...setting,
+        selected: stored && stored.value !== undefined ? stored.value : setting.defaultValue
+      };
+    });
+
+    // Clean the merged settings to remove Mongoose metadata
+    const cleanSettings = cleanAppSettings(mergedSettings);
+
+    logger.debug({ cleanSettings }, `Merged and cleaned settings for user: ${userId} from TPA ${tpaName}`);
+
     const uninstallable = isUninstallable(tpaName);
     return res.json({
       success: true,
@@ -114,21 +149,21 @@ router.get('/:tpaName', async (req, res) => {
       uninstallable,
       webviewURL,
       version: tpaConfig.version,
-      settings: mergedSettings,
+      settings: cleanSettings,
       permissions,
     });
   } catch (error) {
-    logger.error('Error processing TPA settings request:', error);
+    rootLogger.error('Error processing TPA settings request:', error);
     return res.status(401).json({ error: 'Invalid core token or error processing request' });
   }
 });
 
 // GET /tpasettings/user/:tpaName
 router.get('/user/:tpaName', async (req, res) => {
-  logger.info('Received request for user-specific TPA settings with params: ' + JSON.stringify(req.params));
+  rootLogger.info('Received request for user-specific TPA settings with params: ' + JSON.stringify(req.params));
 
   const authHeader = req.headers.authorization;
-  logger.info('Received request for user-specific TPA settings with auth header: ' + JSON.stringify(authHeader));
+  rootLogger.info('Received request for user-specific TPA settings with auth header: ' + JSON.stringify(authHeader));
 
   if (!authHeader) {
     return res.status(400).json({ error: 'User ID missing in Authorization header' });
@@ -145,7 +180,7 @@ router.get('/user/:tpaName', async (req, res) => {
       const _tpa = await appService.getApp(tpaName);
 
       if (!_tpa) {
-        logger.error('TPA not found for app:', tpaName);
+        rootLogger.error('TPA not found for app:', tpaName);
         return res.status(404).json({ error: 'TPA not found' });
       }
 
@@ -159,15 +194,15 @@ router.get('/user/:tpaName', async (req, res) => {
 
       const defaultSettings = tpaConfig && tpaConfig.settings && Array.isArray(tpaConfig.settings)
         ? tpaConfig.settings
-            .filter((setting: any) => setting.type !== 'group')
-            .map((setting: any) => ({
-              key: setting.key,
-              value: setting.defaultValue,
-              defaultValue: setting.defaultValue,
-              type: setting.type,
-              label: setting.label,
-              options: setting.options || []
-            }))
+          .filter((setting: any) => setting.type !== 'group')
+          .map((setting: any) => ({
+            key: setting.key,
+            value: setting.defaultValue,
+            defaultValue: setting.defaultValue,
+            type: setting.type,
+            label: setting.label,
+            options: setting.options || []
+          }))
         : [];
       await user.updateAppSettings(tpaName, defaultSettings);
       storedSettings = defaultSettings;
@@ -175,7 +210,7 @@ router.get('/user/:tpaName', async (req, res) => {
 
     return res.json({ success: true, settings: storedSettings });
   } catch (error) {
-    logger.error('Error processing user-specific TPA settings request:', error);
+    rootLogger.error('Error processing user-specific TPA settings request:', error);
     return res.status(401).json({ error: 'Error processing request' });
   }
 });
@@ -223,7 +258,7 @@ router.post('/:tpaName', async (req, res) => {
     } else if (updatedPayload && typeof updatedPayload === 'object' && 'key' in updatedPayload && 'value' in updatedPayload) {
       // If it's a single setting object, wrap it in an array
       settingsArray = [updatedPayload];
-      logger.info(`Converted single setting object to array for key: ${updatedPayload.key}`);
+      rootLogger.info(`Converted single setting object to array for key: ${updatedPayload.key}`);
     } else {
       // console.log('@@@@@ updatedPayload', updatedPayload);
       return res.status(400).json({ error: 'Invalid update payload format. Expected an array of settings or a single setting object.' });
@@ -237,7 +272,7 @@ router.post('/:tpaName', async (req, res) => {
     // We assume that the payload contains the complete set of settings (each with key and value).
     const updatedSettings = await user.updateAppSettings(tpaName, settingsArray);
 
-    logger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
+    rootLogger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
 
     // Get user session to send WebSocket update
     // const sessionService = require('../services/core/session.service');
@@ -257,10 +292,10 @@ router.post('/:tpaName', async (req, res) => {
         // When the user is not runnning the app, the appConnection is undefined, so we wrap it in a try/catch.
         const tpaConnection = userSession.appConnections.get(tpaName);
         tpaConnection.send(JSON.stringify(settingsUpdate));
-        logger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
+        rootLogger.info(`Sent settings update via WebSocket to ${tpaName} for user ${userId}`);
       }
       catch (error) {
-        logger.error('Error sending settings update via WebSocket:', error);
+        rootLogger.error('Error sending settings update via WebSocket:', error);
       }
     }
     // Get the app to access its properties
@@ -295,16 +330,16 @@ router.post('/:tpaName', async (req, res) => {
             userIdForSettings: userId,
             settings: updatedSettings
           });
-          logger.info(`Called app endpoint at ${appEndpoint} with response:`, response.data);
+          rootLogger.info(`Called app endpoint at ${appEndpoint} with response:`, response.data);
         } catch (err) {
-          logger.error(`Error calling app endpoint at ${appEndpoint}:`, err);
+          rootLogger.error(`Error calling app endpoint at ${appEndpoint}:`, err);
         }
       }
     }
 
     return res.json({ success: true, message: 'Settings updated successfully' });
   } catch (error) {
-    logger.error('Error processing update for TPA settings:', error);
+    rootLogger.error('Error processing update for TPA settings:', error);
     return res.status(401).json({ error: 'Invalid core token or error processing update' });
   }
 });
