@@ -2,39 +2,58 @@ import AppleIcon from "assets/icons/AppleIcon";
 import * as React from "react";
 import {StyleSheet, Text, View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
+interface BasicDialogProps {
+  title: string;
+  description?: string | React.ReactNode;
+  icon?: React.ReactNode;
+  leftButtonText?: string;
+  rightButtonText: string;
+  onLeftPress?: () => void;
+  onRightPress: () => void;
+}
 
-const BasicDialog = () => {
-  	
-  	return (
-    		<SafeAreaView style={[styles.basicDialog, styles.basicDialogFlexBox]}>
-      			<View style={[styles.titleDescription, styles.basicDialogFlexBox]}>
-        				<AppleIcon/>
-        				<Text style={[styles.headline, styles.labelTypo1]}>There Can Only Be One</Text>
-        				<Text style={[styles.supportingText, styles.labelTypo]}>
-          					<Text style={styles.youCanOnly}>{`You can only run `}</Text>
-          					<Text style={styles.oneForeground}>one foreground</Text>
-          					<Text style={styles.youCanOnly}> app at a time.</Text>
-        				</Text>
-      			</View>
-      			<View style={styles.actions}>
-        				<View style={[styles.actions1, styles.actions1FlexBox]}>
-          					<View style={[styles.secondaryButton, styles.actions1FlexBox]}>
-            						<View style={[styles.content, styles.contentFlexBox]}>
-              							<View style={[styles.stateLayer, styles.actions1FlexBox]}>
-                								<Text style={[styles.label, styles.labelTypo]}>Cancel</Text>
-              							</View>
-            						</View>
-          					</View>
-          					<View style={[styles.secondaryButton, styles.actions1FlexBox]}>
-            						<View style={[styles.content1, styles.contentFlexBox]}>
-              							<View style={[styles.stateLayer, styles.actions1FlexBox]}>
-                								<Text style={[styles.label1, styles.labelTypo]}>Continue</Text>
-              							</View>
-            						</View>
-          					</View>
-        				</View>
-      			</View>
-    		</SafeAreaView>);
+const BasicDialog = ({
+  title,
+  description,
+  icon,
+  leftButtonText,
+  rightButtonText,
+  onLeftPress,
+  onRightPress
+}: BasicDialogProps) => {
+  return (
+    <View style={[styles.basicDialog, styles.basicDialogFlexBox]}>
+      <View style={[styles.titleDescription, styles.basicDialogFlexBox]}>
+        {icon}
+        {title && <Text style={[styles.headline, styles.labelTypo1]}>{title}</Text>}
+        {description && (
+          <Text style={[styles.defaulttext, styles.labelTypo]}>
+            {description}
+          </Text>
+        )}
+      </View>
+      <View style={styles.actions}>
+        <View style={[styles.actions1, styles.actions1FlexBox]}>
+          {leftButtonText && (
+            <View style={[styles.secondaryButton, styles.actions1FlexBox]}>
+              <View style={[styles.content, styles.contentFlexBox]}>
+                <View style={[styles.stateLayer, styles.actions1FlexBox]}>
+                  <Text style={[styles.label, styles.labelTypo]} onPress={onLeftPress}>{leftButtonText}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+          <View style={[styles.secondaryButton, styles.actions1FlexBox]}>
+            <View style={[styles.content1, styles.contentFlexBox]}>
+              <View style={[styles.stateLayer, styles.actions1FlexBox]}>
+                <Text style={[styles.label1, styles.labelTypo]} onPress={onRightPress}>{rightButtonText}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -70,7 +89,7 @@ const styles = StyleSheet.create({
     		color: "#f9f8fe",
     		alignSelf: "stretch"
   	},
-  	youCanOnly: {
+  	defaulttext: {
     		color: "#d5d8f5"
   	},
   	oneForeground: {
@@ -144,9 +163,9 @@ const styles = StyleSheet.create({
     		borderRadius: 28,
     		backgroundColor: "#141834",
     		flex: 1,
-    		width: "100%",
-    		minWidth: 280,
-    		maxWidth: 560,
+    		width: "90%",
+    		minWidth: "50%",
+    		maxWidth: "90%",
     		justifyContent: "center"
   	}
 });
