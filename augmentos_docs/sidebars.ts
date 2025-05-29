@@ -20,11 +20,11 @@ const sidebars: SidebarsConfig = {
     {
       type: 'doc',
       id: 'getting-started',
-      label: '🚧 Build From Scratch',
+      label: 'Build From Scratch',
     },
     {
       type: 'category',
-      label: '🚧 Core Concepts',
+      label: 'Core Concepts',
       link: {
         type: 'doc',
         id: 'core-concepts',
@@ -32,6 +32,7 @@ const sidebars: SidebarsConfig = {
       items: [
         'events',
         'layouts',
+        'settings',
         'tools',
         'webview-auth-overview',
         {
@@ -57,6 +58,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'reference/managers/event-manager',
             'reference/managers/layout-manager',
+            'reference/managers/settings-manager',
           ],
         },
         'reference/enums',
@@ -70,6 +72,7 @@ const sidebars: SidebarsConfig = {
             'reference/interfaces/webhook-types',
             'reference/interfaces/message-types',
             'reference/interfaces/tool-types',
+            'reference/interfaces/setting-types',
           ],
         },
         'reference/utilities',

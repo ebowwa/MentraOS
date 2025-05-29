@@ -1,7 +1,5 @@
 # AugmentOS Cloud Events
 
-*Last updated: March 31, 2025*
-
 AugmentOS Cloud uses an event-driven architecture to communicate real-time data from the smartglasses to your AugmentOS app. Your app can *subscribe* to specific events and receive data as it becomes available. This document describes how to subscribe to events, the available event types, and the data structure for each event.
 
 ## Subscribing to Events

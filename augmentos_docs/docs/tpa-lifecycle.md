@@ -1,6 +1,5 @@
 # App Lifecycle
 
-*Last updated: March 31, 2025*
 
 This document describes the lifecycle of an AugmentOS app within the AugmentOS ecosystem. Understanding this lifecycle is crucial for building robust and responsive apps.
 
@@ -72,7 +71,7 @@ This restart is necessary because the AugmentOS phone app maintains a connection
 
 ## Example Lifecycle Flow
 
-![App Lifecycle Flow Diagram](./assets/app-lifecycle-flow.png)
+![App Lifecycle Flow Diagram](/img/app-lifecycle-flow.png)
 
 ```mermaid
 sequenceDiagram
@@ -101,3 +100,4 @@ sequenceDiagram
     App->>Cloud: Close WebSocket connection
     deactivate App
     Cloud->>Glasses: Clear display
+```
