@@ -232,32 +232,32 @@ export default function Homepage() {
       )}
 
       {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
-              <DefaultButton
-                icon={<SolarLineIconsSet4 />}
-                onPress={() => {
-                  router.push("/pairing/select-glasses-model");
-                }}
-                title={translate("home:pairGlasses")}
-              />
-            ) : (
-              <DefaultButton
-                icon={<SolarLineIconsSet4 />}
-                onPress={() => {
-                  router.push("/pairing/select-glasses-model");
-                }}
-                title={translate("home:connectGlasses")}
-              />
-            )}
-      
-         <AnimatedSection>
-                  <AppsActiveList isDarkTheme={theme.isDark} />
-                </AnimatedSection>
+        <DefaultButton
+          icon={<SolarLineIconsSet4 />}
+          onPress={() => {
+            router.push("/pairing/select-glasses-model")
+          }}
+          title={translate("home:pairGlasses")}
+        />
+      ) : (
+        <DefaultButton
+          icon={<SolarLineIconsSet4 />}
+          onPress={() => {
+            router.push("/pairing/select-glasses-model")
+          }}
+          title={translate("home:connectGlasses")}
+        />
+      )}
 
-          <AnimatedSection>
-                  <AppsInactiveList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
-                </AnimatedSection>
-              
-        {/* <View style={{height: 1000}} /> */}
+      <AnimatedSection>
+        <AppsActiveList />
+      </AnimatedSection>
+
+      <AnimatedSection>
+        <AppsInactiveList key={`apps-list-${appStatus.length}`} />
+      </AnimatedSection>
+
+      {/* <View style={{height: 1000}} /> */}
       {/* </ScrollView> */}
     </Screen>
   )

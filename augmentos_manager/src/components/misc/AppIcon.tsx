@@ -7,13 +7,13 @@ import { saveSetting, loadSetting } from '../logic/SettingsHelper';
 import { SETTINGS_KEYS } from '../consts';
 import { AppInterface } from '../providers/AppStatusProvider';
 import { router } from 'expo-router';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 interface AppIconProps {
     app: AppInterface;
     isForegroundApp?: boolean;
     onClick?: () => void;
     style?: ViewStyle;
-    isDarkTheme?: boolean;
     showLabel?: boolean;
 }
 
@@ -22,10 +22,10 @@ const AppIcon: React.FC<AppIconProps> = ({
     isForegroundApp = false,
     onClick,
     style,
-    isDarkTheme = false,
     showLabel = false,
 }) => {
     const navigation = useNavigation<NavigationProps>();
+    const { theme } = useAppTheme();
 
     const openAppSettings = async () => {
         // Mark onboarding as completed when user long-presses an app icon
@@ -66,7 +66,7 @@ const AppIcon: React.FC<AppIconProps> = ({
                 <Text
                     style={[
                         styles.appName,
-                        isDarkTheme ? styles.appNameDark : styles.appNameLight,
+                        theme.isDark ? styles.appNameDark : styles.appNameLight,
                     ]}
                     numberOfLines={2}
                 >

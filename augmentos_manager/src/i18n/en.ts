@@ -21,6 +21,7 @@ const en = {
     title: "Home",
     pairGlasses: "Pair Glasses",
     connectGlasses: "Connect Glasses",
+    connectingGlasses: "Connecting Glasses...",
     emptyActiveAppListInfo: "Your active apps will appear here.",
     emptyInactiveAppListInfo: "Your inactive apps will appear here.",
     noActiveApps: "No Active Apps",

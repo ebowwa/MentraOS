@@ -1,86 +1,78 @@
-import React, {useMemo, useState, useRef} from 'react';
-import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle} from 'react-native';
-import { useAppStatus } from '@/contexts/AppStatusProvider';
-import coreCommunicator from '@/bridge/CoreCommunicator';
-import AppIcon from './AppIcon';
-import { useNavigation } from '@react-navigation/native';
-import { NavigationProps } from './types';
-import BackendServerComms from '@/backend_comms/BackendServerComms';
-import ChevronRight from 'assets/icons/ChevronRight';
-import EmptyAppsView from '../home/EmptyAppsView';
+import React, {useMemo, useState, useRef} from "react"
+import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle} from "react-native"
+import {useAppStatus} from "@/contexts/AppStatusProvider"
+import coreCommunicator from "@/bridge/CoreCommunicator"
+import AppIcon from "./AppIcon"
+import {useNavigation} from "@react-navigation/native"
+import {NavigationProps} from "./types"
+import BackendServerComms from "@/backend_comms/BackendServerComms"
+import ChevronRight from "assets/icons/ChevronRight"
+import EmptyAppsView from "../home/EmptyAppsView"
 import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import { router } from 'expo-router';
+import {router} from "expo-router"
 
-interface RunningAppsListProps {
-  isDarkTheme: boolean;
-}
-
-const AppsActiveList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
-  const { appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation } = useAppStatus();
-  const backendComms = BackendServerComms.getInstance();
-  const [_isLoading, setIsLoading] = useState(false);
-  const navigation = useNavigation<NavigationProps>();
-  const scrollViewRef = useRef<ScrollView>(null);
+export default function AppsActiveList() {
+  const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
+  const backendComms = BackendServerComms.getInstance()
+  const [_isLoading, setIsLoading] = useState(false)
+  const navigation = useNavigation<NavigationProps>()
+  const scrollViewRef = useRef<ScrollView>(null)
 
   const stopApp = async (packageName: string) => {
-    console.log('STOP APP');
+    console.log("STOP APP")
 
     // Optimistically update UI first
-    optimisticallyStopApp(packageName);
+    optimisticallyStopApp(packageName)
 
-    setIsLoading(true);
+    setIsLoading(true)
     try {
-      await backendComms.stopApp(packageName);
+      await backendComms.stopApp(packageName)
       // Clear the pending operation since it completed successfully
-      clearPendingOperation(packageName);
+      clearPendingOperation(packageName)
     } catch (error) {
       // On error, refresh from the server to get the accurate state
-      refreshAppStatus();
-      console.error('Stop app error:', error);
+      refreshAppStatus()
+      console.error("Stop app error:", error)
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   const openAppSettings = (app: any) => {
-    router.push({pathname: "/tpa/settings", params: {
-      packageName: app.packageName,
-      appName: app.name
-    }})
-  };
+    router.push({
+      pathname: "/tpa/settings",
+      params: {
+        packageName: app.packageName,
+        appName: app.name,
+      },
+    })
+  }
 
-  const runningApps = useMemo(
-    () => appStatus.filter(app => app.is_running),
-    [appStatus],
-  );
+  const runningApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
 
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({ animated: true });
-  };
+    scrollViewRef.current?.scrollToEnd({animated: true})
+  }
 
-  const { themed, theme } = useAppTheme();
+  const {themed, theme} = useAppTheme()
 
   function getNewRow() {
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($listContainer)}>
-
           {runningApps.length > 0 ? (
             <>
               <ListHeaderActiveApps />
               {runningApps.map((app, index) => (
                 <View style={[themed($everything), themed($everythingFlexBox)]} key={index}>
                   <View style={[themed($appDescription), themed($everythingFlexBox)]}>
-                    <AppIcon
-                      app={app}
-                      isDarkTheme={isDarkTheme}
-                      isForegroundApp={app.is_foreground}
-                      style={themed($appIcon)}
-                    />
+                    <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
                     <View style={themed($appNameWrapper)}>
-                      <Text style={themed($appName)} numberOfLines={1}>{app.name}</Text>
+                      <Text style={themed($appName)} numberOfLines={1}>
+                        {app.name}
+                      </Text>
                     </View>
                   </View>
                   <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
@@ -88,18 +80,13 @@ const AppsActiveList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
                       onPress={() => stopApp(app.packageName)}
                       onLongPress={() => openAppSettings(app)}
                       delayLongPress={500}
-                      style={{ padding: 10, borderRadius: 20 }}
-                    >
+                      style={{padding: 10, borderRadius: 20}}>
                       <View style={themed($toggle)}>
-                        <View style={[themed($toggleBarIcon), themed($toggleIconLayout), { backgroundColor: "#565E8C" }]} />
                         <View
-                          style={[
-                            themed($toggleCircleIcon),
-                            themed($toggleIconLayout),
-                            { left: "44.44%" }
-                          ]}
-                        >
-                          <View style={{ flex: 1, borderRadius: 12, backgroundColor: "#CED2ED" }} />
+                          style={[themed($toggleBarIcon), themed($toggleIconLayout), {backgroundColor: "#565E8C"}]}
+                        />
+                        <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), {left: "44.44%"}]}>
+                          <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -109,50 +96,52 @@ const AppsActiveList: React.FC<RunningAppsListProps> = ({isDarkTheme}) => {
               ))}
             </>
           ) : (
-            <EmptyAppsView statusMessageKey={'home:noActiveApps'} activeAppsMessageKey={'home:emptyActiveAppListInfo'} />
-
+            <EmptyAppsView
+              statusMessageKey={"home:noActiveApps"}
+              activeAppsMessageKey={"home:emptyActiveAppListInfo"}
+            />
           )}
         </View>
       </View>
-    );
+    )
   }
 
-  return getNewRow();
-};
+  return getNewRow()
+}
 
 const $appsContainer: ThemedStyle<ViewStyle> = () => ({
-  justifyContent: 'flex-start',
+  justifyContent: "flex-start",
   marginTop: 8,
-});
+})
 
 const $listContainer: ThemedStyle<ViewStyle> = () => ({
   gap: 10,
-});
+})
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",
   gap: 0,
-  alignSelf: "stretch"
-});
+  alignSelf: "stretch",
+})
 
 const $everythingFlexBox: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "row",
-  alignItems: "center"
-});
+  alignItems: "center",
+})
 
 const $appDescription: ThemedStyle<ViewStyle> = () => ({
   gap: 17,
-  justifyContent: "center"
-});
+  justifyContent: "center",
+})
 
 const $appIcon: ThemedStyle<ViewStyle> = () => ({
   width: 32,
   height: 32,
-});
+})
 
 const $appNameWrapper: ThemedStyle<ViewStyle> = () => ({
-  justifyContent: "center"
-});
+  justifyContent: "center",
+})
 
 const $appName: ThemedStyle<TextStyle> = () => ({
   fontSize: 15,
@@ -161,17 +150,17 @@ const $appName: ThemedStyle<TextStyle> = () => ({
   fontFamily: "SF Pro Rounded",
   color: "#ced2ed",
   textAlign: "left",
-  overflow: "hidden"
-});
+  overflow: "hidden",
+})
 
 const $toggleParent: ThemedStyle<ViewStyle> = () => ({
-  gap: 12
-});
+  gap: 12,
+})
 
 const $toggle: ThemedStyle<ViewStyle> = () => ({
   width: 36,
-  height: 20
-});
+  height: 20,
+})
 
 const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
   height: "80%",
@@ -181,8 +170,8 @@ const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
   bottom: "15%",
   left: "0%",
   borderRadius: 8,
-  maxHeight: "100%"
-});
+  maxHeight: "100%",
+})
 
 const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
   width: "55.56%",
@@ -190,13 +179,11 @@ const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
   right: "47.22%",
   left: "-2.78%",
   borderRadius: 12,
-  height: 20
-});
+  height: 20,
+})
 
 const $toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
   maxWidth: "100%",
   position: "absolute",
-  overflow: "hidden"
-});
-
-export default AppsActiveList;
+  overflow: "hidden",
+})

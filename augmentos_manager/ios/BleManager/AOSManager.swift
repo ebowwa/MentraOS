@@ -1171,8 +1171,8 @@ struct ViewState {
       try? await Task.sleep(nanoseconds: 400_000_000)
       self.g1Manager?.RN_setBrightness(brightness, autoMode: autoBrightness)
       try? await Task.sleep(nanoseconds: 400_000_000)
-      self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
-     try? await Task.sleep(nanoseconds: 400_000_000)
+      // self.g1Manager?.RN_setDashboardPosition(self.dashboardHeight, self.dashboardDepth)
+      // try? await Task.sleep(nanoseconds: 400_000_000)
 //      playStartupSequence()
       sendText("// AUGMENTOS CONNECTED")
       try? await Task.sleep(nanoseconds: 1_000_000_000) // 1 second

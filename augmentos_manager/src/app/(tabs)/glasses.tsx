@@ -197,10 +197,6 @@ export default function Homepage() {
       <AnimatedSection>
         <Header leftTx="glasses:title" />
       </AnimatedSection>
-      {/* <ScrollView
-        style={{flex: 1, paddingHorizontal: 16}}
-        contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
-      > */}
       {status.core_info.cloud_connection_status !== "CONNECTED" && (
         <AnimatedSection>
           <CloudConnection />
@@ -209,12 +205,7 @@ export default function Homepage() {
 
       <View style={{flex: 1}}>
         <AnimatedSection>
-          {/* Use the simulated version if we're connected to simulated glasses */}
-          {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
-            <ConnectedSimulatedGlassesInfo isDarkTheme={theme.isDark} />
-          ) : (
-            <ConnectedDeviceInfo />
-          )}
+          <ConnectedDeviceInfo />
         </AnimatedSection>
       </View>
 
