@@ -43,8 +43,8 @@ const AuthPage: React.FC = () => {
 
       // Force a page reload to ensure all context data is refreshed
       setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 1500);
+        window.location.href = `/org-settings?welcome=true&orgName=${encodeURIComponent(orgResponse.name)}&orgId=${orgResponse.id}`;
+      }, 500);
     } catch (error: any) {
       console.error('Error accepting invite:', error);
 
@@ -53,12 +53,30 @@ const AuthPage: React.FC = () => {
           error.response?.data?.message?.includes('already a member')) {
         // If user is already a member, show a friendly message instead of an error
         toast.info('You are already a member of this organization');
+        const orgId = error.response?.data?.message?.split(':')[1]?.trim();
         setInviteHandled(true);
-
-        // Still reload to take them to dashboard
+        // Still reload to take them to organization settings
         setTimeout(() => {
-          window.location.href = '/dashboard';
-        }, 1500);
+          window.location.href = `/org-settings?existing=true&orgId=${orgId}`;
+        }, 500);
+        return;
+      }
+
+      if (error.response?.status === 400 &&
+          error.response?.data?.message?.includes('already been accepted')) {
+        // If invite has already been accepted, show a friendly message
+        toast.info('This invitation has already been used');
+        setInviteHandled(true);
+        navigate('/dashboard');
+        return;
+      }
+
+      if (error.response?.status === 400 &&
+          error.response?.data?.message?.includes('expired')) {
+        // If invite has expired, show appropriate message
+        toast.error('This invitation has expired. Please request a new invitation.');
+        setInviteHandled(true);
+        navigate('/dashboard');
         return;
       }
 
