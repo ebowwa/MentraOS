@@ -4,12 +4,9 @@ import coreCommunicator from '@/bridge/CoreCommunicator';
 import { useStatus } from '@/contexts/AugmentOSStatusProvider';
 import { useGlassesMirror } from '@/contexts/GlassesMirrorContext';
 import GlassesDisplayMirror from './GlassesDisplayMirror';
+import { useAppTheme } from '@/utils/useAppTheme';
 
-interface ConnectedSimulatedGlassesInfoProps {
-  isDarkTheme: boolean;
-}
-
-const ConnectedSimulatedGlassesInfo: React.FC<ConnectedSimulatedGlassesInfoProps> = ({ isDarkTheme }) => {
+export default function ConnectedSimulatedGlassesInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
   const { status } = useStatus();
@@ -51,9 +48,11 @@ const ConnectedSimulatedGlassesInfo: React.FC<ConnectedSimulatedGlassesInfoProps
     }
   };
 
+  const { theme } = useAppTheme();
+
   const themeStyles = {
-    backgroundColor: isDarkTheme ? '#333333' : '#F2F2F7',
-    textColor: isDarkTheme ? '#FFFFFF' : '#333333',
+    backgroundColor: theme.isDark ? '#333333' : '#F2F2F7',
+    textColor: theme.isDark ? '#FFFFFF' : '#333333',
   };
 
   return (
@@ -158,5 +157,3 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Regular',
   },
 });
-
-export default ConnectedSimulatedGlassesInfo;

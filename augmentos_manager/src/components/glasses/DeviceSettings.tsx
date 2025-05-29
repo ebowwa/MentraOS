@@ -289,15 +289,13 @@ export default function ConnectedDeviceInfo() {
         </TouchableOpacity>
       </View>
 
-      <View style={themed($settingsGroup)}>
-        {status.core_info.default_wearable && (
-          <TouchableOpacity
-            style={{backgroundColor: "transparent", paddingVertical: 8, }}
-            onPress={confirmForgetGlasses}>
+      {status.core_info.default_wearable && (
+        <View style={themed($settingsGroup)}>
+          <TouchableOpacity style={{backgroundColor: "transparent", paddingVertical: 8}} onPress={confirmForgetGlasses}>
             <Text style={themed($dangerLabel)}>{translate("settings:forgetGlasses")}</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
+      )}
 
       <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>
     </View>
