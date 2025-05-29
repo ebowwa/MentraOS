@@ -175,8 +175,11 @@ export default function SelectGlassesBluetoothScreen() {
       // give some time to show the loader (otherwise it's a bit jarring)
       coreCommunicator.sendConnectWearable(glassesModelName, deviceName)
     }, 2000)
-    navigation.navigate("GlassesPairingGuideScreen", {
-      glassesModelName: glassesModelName,
+    router.push({
+      pathname: "/pairing/guide",
+      params: {
+        glassesModelName: glassesModelName,
+      },
     })
   }
 

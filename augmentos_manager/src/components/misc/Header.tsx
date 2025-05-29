@@ -5,6 +5,7 @@ import { checkNotificationAccessSpecialPermission } from '../utils/NotificationS
 import { checkFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
 import { showAlert } from '../utils/AlertUtils';
 import { useRoute } from '@react-navigation/native';
+import { router } from 'expo-router';
 
 interface HeaderProps {
   isDarkTheme: boolean;
@@ -58,23 +59,6 @@ const Header: React.FC<HeaderProps> = ({ isDarkTheme, navigation }) => {
     };
   }, [appState, route.name]);
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setDropdownVisible(false);
-    if (navigation) {
-      navigation.navigate('Intro');
-    } else {
-      console.error('Navigation prop is undefined');
-    }
-  };
-
-  const handleProfileSettings = () => {
-    if (navigation) {
-      navigation.navigate('ProfileSettings');
-    } else {
-      console.error('Navigation prop is undefined');
-    }
-  };
 
   const handleNotificationAlert = () => {
     // Show explanation alert before navigating to privacy settings
@@ -86,11 +70,7 @@ const Header: React.FC<HeaderProps> = ({ isDarkTheme, navigation }) => {
           text: 'Go to Settings',
           onPress: () => {
             // Navigate to PrivacySettingsScreen after explaining
-            if (navigation) {
-              navigation.navigate('PrivacySettingsScreen');
-            } else {
-              console.error('Navigation prop is undefined');
-            }
+            router.push({pathname: "/settings/privacy"});
           }
         }
       ],
@@ -102,8 +82,6 @@ const Header: React.FC<HeaderProps> = ({ isDarkTheme, navigation }) => {
   };
 
   const textColor = isDarkTheme ? '#FFFFFF' : '#000000';
-  const dropdownBackgroundColor = isDarkTheme ? '#333333' : '#FFFFFF';
-  const shadowColor = isDarkTheme ? '#FFFFFF' : '#000000';
 
   return (
     <View style={styles.headerContainer}>

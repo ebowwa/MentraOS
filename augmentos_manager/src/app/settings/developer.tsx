@@ -161,7 +161,7 @@ export default function DeveloperSettingsScreen() {
 
   return (
     <Screen preset="auto" style={styles.container}>
-      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.replace('/(tabs)/settings')} />
       <ScrollView style={styles.scrollView}>
         {/* Bypass VAD for Debugging Toggle */}
         <View style={styles.settingItem}>

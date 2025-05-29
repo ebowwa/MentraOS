@@ -212,7 +212,7 @@ export default function DashboardSettingsScreen() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 16}}>
-      <Header titleTx="dashboardSettings:title" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header titleTx="dashboardSettings:title" leftIcon="caretLeft" onLeftPress={() => router.replace('/(tabs)/settings')} />
       {/* Contextual Dashboard */}
       <View style={themed($section)}>
         <Text style={themed($sectionTitle)}>General Settings</Text>

@@ -15,6 +15,7 @@ import PairingDeviceInfo from '@/components/misc/PairingDeviceInfo';
 import GlassesTroubleshootingModal from '@/components/misc/GlassesTroubleshootingModal';
 import GlassesPairingLoader from '@/components/misc/GlassesPairingLoader';
 import { getPairingGuide } from '@/utils/getPairingGuide';
+import { router } from 'expo-router';
 
 interface GlassesPairingGuideScreenProps {
   isDarkTheme: boolean;
@@ -90,7 +91,7 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
           coreCommunicator.sendForgetSmartGlasses();
           coreCommunicator.sendDisconnectWearable();
           e.preventDefault();
-          navigation.navigate('SelectGlassesModelScreen');
+          router.push({pathname: "/pairing/select-glasses-model"});
         } else {
           console.log('Navigation triggered by', actionType, 'so skipping disconnect logic.');
         }
@@ -107,7 +108,7 @@ const GlassesPairingGuideScreen: React.FC<GlassesPairingGuideScreenProps> = ({
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
-        navigation.navigate('Home');
+        router.push({pathname: "/home"});
       }
     }, [status]);
 

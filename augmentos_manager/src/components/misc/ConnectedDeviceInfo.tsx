@@ -356,9 +356,9 @@ export default function ConnectedDeviceInfo() {
               style={styles.wifiContainer}
               onPress={() => {
                 if (status.glasses_info) {
-                  navigation.navigate('GlassesWifiSetupScreen', {
+                  router.push({pathname: "/pairing/glasses-wifi-setup", params: {
                     deviceModel: status.glasses_info.model_name || 'Glasses',
-                  });
+                  }})
                 }
               }}>
               {status.glasses_info.glasses_wifi_connected ? (
