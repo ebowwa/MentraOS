@@ -2,7 +2,7 @@ import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from
 import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
-import {Header, Screen} from "@/components/ignite"
+import {Header, Screen, Button} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -16,13 +16,15 @@ import DefaultButton from "@/components/ui/Button"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import {SETTINGS_KEYS} from "@/consts"
 import NonProdWarning from "@/components/misc/NonProdWarning"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/MicIcon"
 import NotificationOff from "assets/icons/NotificationOff"
 import {router} from "expo-router"
 import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import {translate} from "@/i18n"
+import {FontAwesome} from "@expo/vector-icons"
+import ChevronRight from "assets/icons/ChevronRight"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -236,21 +238,44 @@ export default function Homepage() {
       )}
 
       {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
-              <DefaultButton
-                icon={<SolarLineIconsSet4 />}
-                onPress={() => {
-                  router.push("/pairing/select-glasses-model");
-                }}
-                title={translate("home:pairGlasses")}
-              />
+              <Button
+                      tx="home:pairGlasses"
+                      pressedStyle={themed($pressedButton)}
+                      textStyle={[
+                         { marginLeft: spacing.xxl } 
+                      ]}
+                      onPress={() => {
+                        router.push("/pairing/select-glasses-model");
+                      }}
+                      textAlignment="left"
+                      LeftAccessory={
+                        () => (
+                        <SolarLineIconsSet4/>
+                      )}
+                      RightAccessory={() => (
+                        <ChevronRight/>
+                      )}
+                    />
             ) : (
-              <DefaultButton
-                icon={<SolarLineIconsSet4 />}
-                onPress={() => {
-                  router.push("/pairing/select-glasses-model");
-                }}
-                title={translate("home:connectGlasses")}
-              />
+              <Button
+                      tx="home:connectGlasses"
+                      pressedStyle={themed($pressedButton)}
+                      textStyle={[
+                         { marginLeft: spacing.xxl } 
+                      ]}
+                      onPress={() => {
+                        router.push("/pairing/select-glasses-model");
+                      }}
+                      textAlignment="left"
+                      LeftAccessory={
+                        () => (
+                        <SolarLineIconsSet4/>
+                      )}
+                      RightAccessory={() => (
+                        <ChevronRight/>
+                      )}
+                    />
+              
             )}
       
          <AnimatedSection>
@@ -302,4 +327,8 @@ const $screen: ThemedStyle<ViewStyle> = () => ({
 
 const $headerRight: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "row",
+})
+const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.palette.neutral700,
+  opacity: 0.9,
 })

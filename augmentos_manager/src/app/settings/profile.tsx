@@ -15,7 +15,7 @@ import {supabase} from '@/supabase/supabaseClient';
 import Icon from 'react-native-vector-icons/FontAwesome';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 import { useAuth } from '@/contexts/AuthContext';
-import { Header, Screen } from '@/components/ignite';
+import { Button, Header, Screen } from '@/components/ignite';
 import { useAppTheme } from '@/utils/useAppTheme';
 import { ThemedStyle } from '@/theme';
 import { router } from 'expo-router';
@@ -252,13 +252,13 @@ export default function ProfileSettingsPage() {
               </View>
             )}
 
-            <TouchableOpacity style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
+            <Button style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
               <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
+            </Button>
+            <View style={{ height: 10 }} />
+            <Button style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
               <Text style={themed($deleteAccountButtonText)}>{translate("profileSettings:deleteAccount")}</Text>
-            </TouchableOpacity>
+            </Button>
           </>
         ) : (
           <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
@@ -297,17 +297,11 @@ const darkHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
 
 
 const $deleteAccountButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.angry500,
-  padding: 10,
-  borderRadius: 5,
-  marginTop: 20,
+   backgroundColor: colors.palette.angry500,
 })
 
 const $requestDataExportButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.primary500,
-  padding: 10,
-  borderRadius: 5,
-  color: colors.text,
+
 })
 
 const $updatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
