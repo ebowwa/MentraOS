@@ -8,8 +8,6 @@ import AugmentOSArchImage from '@site/src/components/ThemedImage';
 
 # Intro to the AugmentOS SDK Beta
 
-*Last updated: March 31, 2025*
-
 ## What is AugmentOS?
 
 AugmentOS is a cloud operating system for smart glasses that handles the hard parts: connections, Bluetooth, streaming, and more. This lets you focus on creating great smart glasses apps.
