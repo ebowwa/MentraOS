@@ -2,15 +2,12 @@ import {useEffect, useState} from "react"
 import {Slot, SplashScreen} from "expo-router"
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
-import {customFontsToLoad, ThemedStyle} from "@/theme"
+import {customFontsToLoad} from "@/theme"
 import {initI18n} from "@/i18n"
 import {loadDateFnsLocale} from "@/utils/formatDate"
-import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
+import {useThemeProvider} from "@/utils/useAppTheme"
 import {AllProviders} from "@/utils/allProviders"
-import { ModalProvider } from "@/utils/AlertUtils"
-import CoreCommunicator from "@/bridge/CoreCommunicator"
-import {AppState, View, ViewStyle} from "react-native"
-import {LinearGradient} from "expo-linear-gradient"
+import {View} from "react-native"
 import BackgroundGradient from "@/components/misc/BackgroundGradient"
 
 SplashScreen.preventAutoHideAsync()
@@ -63,8 +60,3 @@ export default function Root() {
     </ThemeProvider>
   )
 }
-
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  backgroundColor: colors.background,
-})
