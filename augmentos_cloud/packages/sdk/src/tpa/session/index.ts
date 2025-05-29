@@ -1318,38 +1318,4 @@ export class TpaSession {
       return null;
     }
   }
-
-  /**
-   * Fetch the onboarding status for the given email and packageName from the backend.
-   * @param email The user's email
-   * @returns Promise resolving to true if onboarding is complete, false otherwise
-   */
-  public async getOnboardingStatus(email: string): Promise<boolean> {
-    try {
-      const baseUrl = this.getServerUrl();
-      const packageName = this.getPackageName();
-      const response = await axios.get(`${baseUrl}/api/onboarding/status`, { params: { email, packageName } });
-      return !!response.data.hasCompletedOnboarding;
-    } catch (err) {
-      this.logger.error('Error fetching onboarding status from backend:', err);
-      return false;
-    }
-  }
-
-  /**
-   * Mark onboarding as complete for the given email and packageName in the backend.
-   * @param email The user's email
-   * @returns Promise resolving to true if successful, false otherwise
-   */
-  public async completeOnboarding(email: string): Promise<boolean> {
-    try {
-      const baseUrl = this.getServerUrl();
-      const packageName = this.getPackageName();
-      const response = await axios.post(`${baseUrl}/api/onboarding/complete`, { email, packageName });
-      return !!response.data.success;
-    } catch (err) {
-      this.logger.error('Error completing onboarding in backend:', err);
-      return false;
-    }
-  }
 }
