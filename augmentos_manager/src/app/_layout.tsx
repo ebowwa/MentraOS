@@ -7,6 +7,7 @@ import {initI18n} from "@/i18n"
 import {loadDateFnsLocale} from "@/utils/formatDate"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {AllProviders} from "@/utils/allProviders"
+import { ModalProvider } from "@/utils/AlertUtils"
 import CoreCommunicator from "@/bridge/CoreCommunicator"
 import {AppState, View, ViewStyle} from "react-native"
 import {LinearGradient} from "expo-linear-gradient"
@@ -53,21 +54,23 @@ export default function Root() {
   return (
     <ThemeProvider value={{themeScheme, setThemeContextOverride}}>
       <AllProviders>
-        <View style={{flex: 1}}>
-          <LinearGradient
-            colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-            }}
-            start={{x: 0, y: 1}}
-            end={{x: 0, y: 0}}>
-            <Slot />
-          </LinearGradient>
-        </View>
+        <ModalProvider>
+          <View style={{flex: 1}}>
+            <LinearGradient
+              colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+              }}
+              start={{x: 0, y: 1}}
+              end={{x: 0, y: 0}}>
+              <Slot />
+            </LinearGradient>
+          </View>
+        </ModalProvider>
       </AllProviders>
     </ThemeProvider>
   )

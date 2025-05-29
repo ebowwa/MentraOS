@@ -1,6 +1,8 @@
 import React from 'react';
 import { Alert, AlertButton } from 'react-native';
-import MessageModal from '@/components/misc/MessageModal';
+import BasicDialog from "@/components/ignite/BasicDialog"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
+import { StyleSheet, View } from "react-native"
 import { useAppTheme } from './useAppTheme';
 
 // Type for button style options
@@ -24,6 +26,7 @@ let modalRef: {
       iconName?: string;
       iconSize?: number;
       iconColor?: string;
+      icon?: React.ReactNode;
     }
   ) => void;
 } | null = null;
@@ -58,7 +61,7 @@ const convertToModalButton = (button: AlertButton, index: number, totalButtons: 
 };
 
 // Global component that will be rendered once at the app root
-export function ModalProvider() {
+export function ModalProvider({ children }: { children: React.ReactNode }) {
   const {theme} = useAppTheme()
   const [visible, setVisible] = React.useState(false);
   const [title, setTitle] = React.useState('');
@@ -68,6 +71,7 @@ export function ModalProvider() {
     iconName?: string;
     iconSize?: number;
     iconColor?: string;
+    icon?: React.ReactNode;
   }>({});
 
   React.useEffect(() => {
@@ -89,6 +93,7 @@ export function ModalProvider() {
           iconName: opts.iconName,
           iconSize: opts.iconSize,
           iconColor: opts.iconColor,
+          icon: opts.icon,
         });
 
         setVisible(true);
@@ -105,16 +110,63 @@ export function ModalProvider() {
   };
 
   return (
-    <MessageModal
-      visible={visible}
-      title={title}
-      message={message}
-      buttons={buttons}
-      onDismiss={handleDismiss}
-      iconName={options.iconName}
-      iconSize={options.iconSize}
-      iconColor={options.iconColor}
-    />
+    <>
+      {children}
+      {visible && (
+        <View
+          style={{
+            ...StyleSheet.absoluteFillObject,
+            zIndex: 10,
+            justifyContent: "center",
+            alignItems: "center",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            paddingHorizontal: 24,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 400,
+              borderRadius: 16,
+              overflow: "hidden",
+            }}
+          >
+            <BasicDialog
+              title={title}
+              description={message}
+              icon={
+                options.icon ??
+                  (options.iconName ? (
+                    <Icon
+                      name={options.iconName}
+                      size={options.iconSize ?? 24}
+                      color={options.iconColor}
+                    />
+                  ) : undefined)
+              }
+              leftButtonText={buttons.length > 1 ? buttons[0].text : undefined}
+              onLeftPress={
+                buttons.length > 1
+                  ? () => {
+                      buttons[0].onPress?.()
+                      setVisible(false)
+                    }
+                  : undefined
+              }
+              rightButtonText={buttons.length > 1 ? buttons[1].text : buttons[0].text}
+              onRightPress={() => {
+                if (buttons.length > 1) {
+                  buttons[1].onPress?.()
+                } else {
+                  buttons[0].onPress?.()
+                }
+                setVisible(false)
+              }}
+            />
+          </View>
+        </View>
+      )}
+    </>
   );
 };
 
@@ -130,12 +182,13 @@ export const showAlert = (
     iconName?: string;
     iconSize?: number;
     iconColor?: string;
+    icon?: React.ReactNode;
   }
 ) => {
   // Fall back to native Alert if modalRef is not set or if explicitly requested
   if (!modalRef || options?.useNativeAlert) {
     return Alert.alert(title, message, buttons, {
-      cancelable: options?.cancelable,
+      cancelable: options?.cancelable ?? true,
       onDismiss: options?.onDismiss,
     });
   }
@@ -145,6 +198,7 @@ export const showAlert = (
     iconName: options?.iconName,
     iconSize: options?.iconSize,
     iconColor: options?.iconColor,
+    icon: options?.icon,
   });
 };
 

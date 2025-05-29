@@ -162,7 +162,6 @@ const styles = StyleSheet.create({
     		shadowOpacity: 1,
     		borderRadius: 28,
     		backgroundColor: "#141834",
-    		flex: 1,
     		width: "90%",
     		minWidth: "50%",
     		maxWidth: "90%",
