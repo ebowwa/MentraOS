@@ -20,6 +20,7 @@ const en = {
     connectionIssueMessage: "Cannot connect to glasses - check Bluetooth and Location settings",
     bluetoothPermissionPreviouslyDenied: "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
     openSettings: "Open Settings",
+    scanningForGlasses: "Scanning",
     preorderNow: "PREORDER NOW",
     preorderNowShipMessage: "Ships September 2025"
   },

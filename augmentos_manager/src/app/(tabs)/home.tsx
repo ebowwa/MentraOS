@@ -25,6 +25,7 @@ import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import {translate} from "@/i18n"
 import {FontAwesome} from "@expo/vector-icons"
 import ChevronRight from "assets/icons/ChevronRight"
+import ConnectedDeviceInfo, { ConnectDeviceButton, ConnectedDeviceInfoHome, ConnectedGlasses, DeviceHome } from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -53,6 +54,7 @@ export default function Homepage() {
       }, 10000)
       return () => clearTimeout(timer)
     }
+    return () => {}
   }, [status.core_info.cloud_connection_status])
 
   const checkNonProdBackend = async () => {
@@ -212,10 +214,7 @@ export default function Homepage() {
           }
         />
       </AnimatedSection>
-      {/* <ScrollView
-        style={{flex: 1, paddingHorizontal: 16}}
-        contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
-      > */}
+      
       {status.core_info.cloud_connection_status !== "CONNECTED" && (
         <AnimatedSection>
           <CloudConnection />
@@ -233,7 +232,11 @@ export default function Homepage() {
         </AnimatedSection>
       )}
 
-      {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
+      {/* <ConnectedDeviceInfo /> */}
+      <ConnectedGlasses />
+      <ConnectDeviceButton />
+
+      {/* {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
         <Button
           tx="home:pairGlasses"
           pressedStyle={themed($pressedButton)}
@@ -257,7 +260,7 @@ export default function Homepage() {
           LeftAccessory={() => <SolarLineIconsSet4 />}
           RightAccessory={() => <ChevronRight />}
         />
-      )}
+      )} */}
 
 
       <AnimatedSection>

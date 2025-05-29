@@ -1,5 +1,15 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch, ViewStyle} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Animated,
+  Switch,
+  ViewStyle,
+  TextStyle,
+} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -17,16 +27,131 @@ import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import DefaultButton from "@/components/ui/Button"
 import ChevronRight from "assets/icons/ChevronRight"
 
-export default function ConnectedDeviceInfo() {
+export const ConnectDeviceButton = () => {
+  const {status} = useStatus()
+
+  const connectGlasses = async () => {
+    if (!status.core_info.default_wearable) {
+      router.push("/pairing/select-glasses-model")
+      return
+    }
+
+    // Check that Bluetooth and Location are enabled/granted
+    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+    if (!requirementsCheck.isReady) {
+      // Show alert about missing requirements
+      console.log("Requirements not met, showing banner with message:", requirementsCheck.message)
+      GlobalEventEmitter.emit("SHOW_BANNER", {
+        message: requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
+        type: "error",
+      })
+
+      return
+    }
+
+    try {
+      console.log("Connecting to glasses:", status.core_info.default_wearable)
+      if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
+        console.log("Connecting to glasses:", status.core_info.default_wearable)
+        await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
+      }
+    } catch (error) {
+      console.error("connect to glasses error:", error)
+      GlobalEventEmitter.emit("SHOW_BANNER", {
+        message: "Failed to connect to glasses",
+        type: "error",
+      })
+    }
+  }
+
+  const sendDisconnectWearable = async () => {
+    console.log("Disconnecting wearable")
+
+    try {
+      await coreCommunicator.sendDisconnectWearable()
+    } catch (error) {}
+  }
+
+  // New handler: if already connecting, pressing the button calls disconnect.
+  const handleConnectOrDisconnect = async () => {
+    if (status.core_info.is_searching) {
+      await sendDisconnectWearable()
+    } else {
+      await connectGlasses()
+    }
+  }
+  if (!status.core_info.default_wearable) {
+    return (
+      <Button
+        textStyle={[{marginLeft: spacing.xxl}]}
+        textAlignment="left"
+        LeftAccessory={() => <SolarLineIconsSet4 />}
+        RightAccessory={() => <ChevronRight />}
+        onPress={() => {
+          router.push("/pairing/select-glasses-model")
+        }}
+        tx="home:pairGlasses"
+      />
+    )
+  }
+
+  if (status.core_info.is_searching) {
+    return (
+      <Button
+        textStyle={[{marginLeft: spacing.xxl}]}
+        textAlignment="left"
+        LeftAccessory={() => <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
+        onPress={() => {}}
+        tx="home:connectingGlasses"
+      />
+    )
+  }
+
+  if (!status.glasses_info?.model_name) {
+    return (
+      <Button
+        textStyle={[{marginLeft: spacing.xxl}]}
+        textAlignment="left"
+        LeftAccessory={() => <SolarLineIconsSet4 />}
+        RightAccessory={() => <ChevronRight />}
+        onPress={handleConnectOrDisconnect}
+        tx="home:connectGlasses"
+      />
+    )
+  }
+}
+
+export const DeviceHome = () => {
+  const {status} = useStatus()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
-  const [connectedGlasses, setConnectedGlasses] = useState("")
-  const {status, refreshStatus} = useStatus()
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
 
-  const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
-  const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
+  const {themed, theme} = useAppTheme()
+
+  return (
+    <View style={themed($deviceInfoContainer)}>
+      <View style={styles.connectedContent}>
+        <Animated.Image
+          source={getGlassesImage(status.core_info.default_wearable)}
+          style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
+        />
+      </View>
+    </View>
+  )
+}
+
+interface ConnectedGlassesProps {
+  showTitle: boolean
+}
+
+export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) => {
+  const {status} = useStatus()
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.8)).current
+  const slideAnim = useRef(new Animated.Value(-50)).current
+  const {themed, theme} = useAppTheme()
+  const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
 
   useFocusEffect(
     useCallback(() => {
@@ -34,11 +159,6 @@ export default function ConnectedDeviceInfo() {
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
       slideAnim.setValue(-50)
-
-      // Update connectedGlasses state when default_wearable changes
-      if (status.core_info.default_wearable) {
-        setConnectedGlasses(status.core_info.default_wearable)
-      }
 
       // Start animations if device is connected
       if (status.core_info.puck_connected) {
@@ -61,9 +181,6 @@ export default function ConnectedDeviceInfo() {
           }),
         ]).start()
       }
-      if (status.core_info.default_wearable !== "") {
-        setDisconnectButtonDisabled(false)
-      }
       // Cleanup function
       return () => {
         fadeAnim.stopAnimation()
@@ -73,199 +190,88 @@ export default function ConnectedDeviceInfo() {
     }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim]),
   )
 
+  // no glasses paired
+  if (!status.core_info.default_wearable) {
+    return null
+  }
+
+  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+    return <ConnectedSimulatedGlassesInfo />
+  }
+
+  // glasses paired and connected:
+  return (
+    <View style={styles.connectedContent}>
+      <Animated.Image
+        source={getGlassesImage(status.core_info.default_wearable)}
+        style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
+      />
+      {showTitle && (
+        <Animated.View style={[styles.connectedStatus, {transform: [{translateX: slideAnim}]}]}>
+          <Text style={[styles.connectedTextTitle, {color: theme.colors.text}]}>
+            {formatGlassesTitle(status.core_info.default_wearable)}
+          </Text>
+        </Animated.View>
+      )}
+    </View>
+  )
+}
+
+export default function ConnectedDeviceInfo() {
+  const {status, refreshStatus} = useStatus()
+  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
+
   useEffect(() => {
     setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
   }, [status.core_info.is_mic_enabled_for_frontend])
 
-  const handleConnectToCore = async () => {
-    try {
-      // Request status to check connection instead of scanning
-      await coreCommunicator.sendRequestStatus()
-    } catch (error) {
-      GlobalEventEmitter.emit("SHOW_BANNER", {message: "Failed to connect to AugmentOS Core", type: "error"})
-    }
-  }
-
-  const connectGlasses = async () => {
-    if (!status.core_info.default_wearable) {
-      router.push("/pairing/select-glasses-model")
-      return
-    }
-
-    // Check that Bluetooth and Location are enabled/granted
-    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
-    if (!requirementsCheck.isReady) {
-      // Show alert about missing requirements
-      console.log("Requirements not met, showing banner with message:", requirementsCheck.message)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-        type: "error",
-      })
-
-      return
-    }
-
-    setConnectButtonDisabled(true)
-    setDisconnectButtonDisabled(false)
-
-    try {
-      console.log("Connecting to glasses:", status.core_info.default_wearable)
-      if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
-        console.log("Connecting to glasses:", status.core_info.default_wearable)
-        await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
-      }
-    } catch (error) {
-      console.error("connect to glasses error:", error)
-      setConnectButtonDisabled(false)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: "Failed to connect to glasses",
-        type: "error",
-      })
-    }
-  }
-
-  const sendDisconnectWearable = async () => {
-    setDisconnectButtonDisabled(true)
-    setConnectButtonDisabled(false)
-
-    console.log("Disconnecting wearable")
-
-    try {
-      await coreCommunicator.sendDisconnectWearable()
-    } catch (error) {}
-  }
-
-  // New handler: if already connecting, pressing the button calls disconnect.
-  const handleConnectOrDisconnect = async () => {
-    if (isConnectButtonDisabled || status.core_info.is_searching) {
-      await sendDisconnectWearable()
-    } else {
-      await connectGlasses()
-    }
-  }
-
   const {theme, themed} = useAppTheme()
 
-  const themeStyles = {
-    backgroundColor: theme.colors.palette.neutral200,
-    textColor: theme.colors.text,
-    statusLabelColor: theme.isDark ? "#CCCCCC" : "#666666",
-    statusValueColor: theme.isDark ? "#FFFFFF" : "#333333",
-    connectedDotColor: "#28a745",
-    separatorColor: theme.isDark ? "#666666" : "#999999",
-  }
-
-  const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
-
-  const batteryIcon = getBatteryIcon(status.glasses_info?.battery_life ?? 0)
-  const batteryColor = getBatteryColor(status.glasses_info?.battery_life ?? 0)
-
-  let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
-  let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
-
-  useEffect(() => {
-    console.log("status?.glasses_settings?.brightness", status?.glasses_settings?.brightness)
-    setBrightness(status?.glasses_settings?.brightness ?? 50)
-    setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
-  }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness])
-
-  const getButton = () => {
-    if (!status.core_info.default_wearable) {
-      return (
-        <Button
-          textStyle={[{marginLeft: spacing.xxl}]}
-          textAlignment="left"
-          LeftAccessory={() => <SolarLineIconsSet4 />}
-          RightAccessory={() => <ChevronRight />}
-          onPress={() => {
-            router.push("/pairing/select-glasses-model")
-          }}
-          tx="home:pairGlasses"
-        />
-      )
-    }
-
-    if (status.core_info.is_searching) {
-      return (
-        <Button
-          textStyle={[{marginLeft: spacing.xxl}]}
-          textAlignment="left"
-          LeftAccessory={() => <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
-          onPress={() => {}}
-          tx="home:connectingGlasses"
-        />
-      )
-    }
+  const renderConnectedInterface = () => {
 
     if (!status.glasses_info?.model_name) {
-      return (
-        <Button
-          textStyle={[{marginLeft: spacing.xxl}]}
-          textAlignment="left"
-          LeftAccessory={() => <SolarLineIconsSet4 />}
-          RightAccessory={() => <ChevronRight />}
-          onPress={handleConnectOrDisconnect}
-          tx="home:connectGlasses"
-        />
-      )
+      return null
     }
-  }
 
-  const renderConnectedInterface = () => {
     return (
-      <>
-        <Animated.View style={[styles.statusBar, {opacity: fadeAnim}]}>
-          <View style={styles.statusInfo}>
+      <View style={themed($statusBar)}>
+        {/* <View style={styles.statusInfo}>
             {status.glasses_info?.battery_life != null && typeof status.glasses_info?.battery_life === "number" && (
               <>
-                <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor}]}>Battery</Text>
+                <Text style={themed($statusLabel)}>Battery</Text>
                 <View style={styles.batteryContainer}>
                   {status.glasses_info?.battery_life >= 0 && (
-                    <Icon name={batteryIcon} size={16} color={batteryColor} style={styles.batteryIcon} />
+                    <Icon
+                      name={getBatteryIcon(status.glasses_info?.battery_life ?? 0)}
+                      size={16}
+                      color={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+                    />
                   )}
-                  <Text style={[styles.batteryValue, {color: batteryColor}]}>
+                  <Text style={themed($batteryValue)}>
                     {status.glasses_info.battery_life == -1 ? "-" : `${status.glasses_info.battery_life}%`}
                   </Text>
                 </View>
               </>
             )}
-          </View>
-          <TouchableOpacity
-            style={[styles.disconnectButton, isDisconnectButtonDisabled && styles.disabledDisconnectButton]}
-            onPress={sendDisconnectWearable}
-            disabled={isDisconnectButtonDisabled}>
-            <Icon name="power-off" size={18} color="white" style={styles.icon} />
-            <Text style={styles.disconnectText}>Disconnect</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </>
-    )
-  }
+          </View> */}
 
-  const renderButtonsAndInfo = () => {
-    // no glasses paired
-    if (!status.core_info.default_wearable) {
-      return getButton()
-    }
-
-    // glasses paired but not connected
-    if (!status.glasses_info?.model_name) {
-      return getButton()
-    }
-
-    // glasses paired and connected:
-    return (
-      <View style={styles.connectedContent}>
-        <Animated.Image
-          source={getGlassesImage(status.core_info.default_wearable)}
-          style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
-        />
-        <Animated.View style={[styles.connectedStatus, {transform: [{translateX: slideAnim}]}]}>
-          <Text style={[styles.connectedTextTitle, {color: themeStyles.textColor}]}>
-            {formatGlassesTitle(connectedGlasses)}
+        {/* battery circular progress bar */}
+        <View>
+          <Text style={themed($batteryValue)}>
+            {status.glasses_info?.battery_life == -1 ? "-" : `${status.glasses_info?.battery_life}%`}
           </Text>
-        </Animated.View>
-        {renderConnectedInterface()}
+        </View>
+
+        {/* disconnect button */}
+        <TouchableOpacity
+          style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
+          onPress={() => {
+            coreCommunicator.sendDisconnectWearable()
+          }}
+          disabled={status.core_info.is_searching}>
+          <Icon name="power-off" size={18} color="white" style={styles.icon} />
+          <Text style={styles.disconnectText}>Disconnect</Text>
+        </TouchableOpacity>
       </View>
     )
   }
@@ -324,7 +330,9 @@ export default function ConnectedDeviceInfo() {
   return (
     <View style={themed($deviceInfoContainer)}>
       {renderStatusIndicators()}
-      {renderButtonsAndInfo()}
+      <ConnectedGlasses showTitle={true} />
+      {renderConnectedInterface()}
+      <ConnectDeviceButton />
     </View>
   )
 }
@@ -338,6 +346,29 @@ const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginTop: 16,
   // paddingHorizontal: 24,
   // backgroundColor: colors.palette.neutral200,
+})
+
+const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  lineHeight: 16,
+  fontWeight: "500",
+  letterSpacing: -0.08,
+  fontFamily: "SF Pro",
+})
+
+const $batteryValue: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "bold",
+  fontFamily: "Montserrat-Bold",
+  color: colors.text,
+})
+
+const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  borderRadius: 12,
+  padding: 10,
 })
 
 const styles = StyleSheet.create({
@@ -366,16 +397,6 @@ const styles = StyleSheet.create({
     height: 120,
     resizeMode: "contain",
   },
-  statusBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderRadius: 12,
-    padding: 10,
-    width: "100%",
-    backgroundColor: "#6750A414",
-    flexWrap: "wrap",
-  },
   statusInfoNotConnected: {
     alignItems: "center",
     flex: 1,
@@ -393,11 +414,6 @@ const styles = StyleSheet.create({
   batteryIcon: {
     marginRight: 4,
     alignSelf: "center",
-  },
-  batteryValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
   },
   statusValue: {
     fontSize: 14,
