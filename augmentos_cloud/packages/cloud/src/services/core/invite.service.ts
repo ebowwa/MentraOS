@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { emailService } from '../email/resend.service';
-import { UserDocument } from '../../models/user.model';
+import { UserI } from '../../models/user.model';
 import { Types } from 'mongoose';
 import { Organization } from '../../models/organization.model';
 
@@ -35,7 +35,7 @@ export class InviteService {
     orgId: string | Types.ObjectId,
     email: string,
     role: string,
-    inviter: UserDocument
+    inviter: UserI
   ): Promise<{ token: string; emailResult: { id?: string; error?: any } }> {
     // Convert orgId to string if it's an ObjectId
     const orgIdStr = orgId.toString();

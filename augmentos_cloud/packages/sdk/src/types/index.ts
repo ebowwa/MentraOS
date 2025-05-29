@@ -169,13 +169,13 @@ export {
 // Export setting-related types
 export {
   BaseAppSetting,
-  GroupSetting,
+  AppSetting,
+  AppSettings,
   TpaConfig,
   validateTpaConfig,
   ToolSchema,
   ToolParameterSchema
 } from './models';
-
 // Export RTMP streaming types
 export {
   VideoConfig,

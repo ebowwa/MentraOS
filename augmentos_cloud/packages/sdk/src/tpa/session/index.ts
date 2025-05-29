@@ -4,7 +4,7 @@
  * Manages an active Third Party App session with AugmentOS Cloud.
  * Handles real-time communication, event subscriptions, and display management.
  */
-import WebSocket from 'ws';
+import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
