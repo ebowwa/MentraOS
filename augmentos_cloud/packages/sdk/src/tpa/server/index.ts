@@ -160,19 +160,9 @@ export class TpaServer {
    * @param userId - User's identifier
    */
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
-    this.logger.debug(`New session: ${sessionId} for user ${userId}`);
-    // Onboarding logic: show instructions if onboarding not complete
-    try {
-      const [hasCompleted, instructions] = await Promise.all([
-        session.getOnboardingStatus(userId),
-        session.getInstructions()
-      ]);
-      if (!hasCompleted && instructions) {
-        session.layouts.showTextWall(instructions, { priority: true });
-      }
-    } catch (err) {
-      this.logger.error('Error during onboarding check/show:', err);
-    }
+    this.logger.info(`🚀 Starting new session handling for session ${sessionId} and user ${userId}`);
+    // Core session handling logic (onboarding removed)
+    this.logger.info(`✅ Session handling completed for session ${sessionId} and user ${userId}`);
   }
 
   /**
