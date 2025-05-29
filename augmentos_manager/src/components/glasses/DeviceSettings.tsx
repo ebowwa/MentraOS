@@ -26,6 +26,8 @@ import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert from "@/utils/AlertUtils"
+import SunIcon from "assets/icons/SunIcon"
+import ChevronRight from "assets/icons/ChevronRight"
 
 export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -234,8 +236,8 @@ export default function ConnectedDeviceInfo() {
                   alignContent: "center",
                   marginLeft: 12,
                 }}>
-                <MaterialCommunityIcons name="brightness-7" size={24} color={theme.colors.text} />
-                <Text style={{color: theme.colors.text, fontSize: 16, fontWeight: "bold", marginLeft: 4}}>
+                <SunIcon size={24} color={theme.colors.text}/>
+                <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily:"Inter-Regular"}}>
                   {brightness}%
                 </Text>
               </View>
@@ -284,7 +286,7 @@ export default function ConnectedDeviceInfo() {
               <Text style={{color: theme.colors.text}}>Dashboard Settings</Text>
               <Text style={themed($subtitle)}>Contextual Dashboard and Head Up Settings</Text>
             </View>
-            <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.text} />
+            <ChevronRight size={24} color={theme.colors.text} />
           </View>
         </TouchableOpacity>
       </View>

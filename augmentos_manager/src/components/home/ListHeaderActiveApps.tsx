@@ -14,12 +14,6 @@ const ListHeaderIcon = () => {
       			<View style={themed($tableHeader)}>
         				<Text style={themed($activeApps)}>{translate("home:activeApps")}</Text>
       			</View>
-      			<Pressable style={themed($wrapper)} onPress={()=>{
-              //TODO implement search
-              console.log("SearchButton: Not implemented yet");
-            }}>
-        				<SearchIcon/>
-      			</Pressable>
     		</SafeAreaView>);
 };
 
@@ -37,10 +31,6 @@ const $tableHeader: ThemedStyle<ViewStyle> = () => ({
   flexDirection: "row",
 });
 
-const $wrapper: ThemedStyle<ViewStyle> = () => ({
-  width: 24,
-  height: 20,
-});
 
 const $listHeaderIcon: ThemedStyle<ViewStyle> = () => ({
   marginBottom: 12,
