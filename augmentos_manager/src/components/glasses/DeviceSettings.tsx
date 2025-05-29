@@ -11,7 +11,7 @@ import {
   TextStyle,
 } from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
-import {Icon} from "@/components/ignite"
+import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
@@ -25,6 +25,7 @@ import ToggleSetting from "../settings/ToggleSetting"
 import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
+import showAlert from "@/utils/AlertUtils"
 
 export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -180,7 +181,24 @@ export default function ConnectedDeviceInfo() {
     )
   }
 
-  const glassesConnected = (status.glasses_info?.model_name ?? "") !== ""
+  const confirmForgetGlasses = () => {
+    showAlert(
+      translate("settings:forgetGlasses"),
+      translate("settings:forgetGlassesConfirm"),
+      [
+        {text: translate("common:cancel"), style: "cancel"},
+        {
+          text: translate("common:yes"),
+          onPress: () => {
+            coreCommunicator.sendForgetSmartGlasses()
+          },
+        },
+      ],
+      {
+        cancelable: false,
+      },
+    )
+  }
 
   return (
     <View style={themed($container)}>
@@ -243,7 +261,7 @@ export default function ConnectedDeviceInfo() {
           onPress={() => setPreferredMic("glasses")}>
           <View style={{flexDirection: "column", gap: 4}}>
             <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
-            {!glassesConnected && (
+            {!status.glasses_info?.model_name && (
               <Text style={themed($subtitle)}>{translate("deviceSettings:glassesNeededForGlassesMic")}</Text>
             )}
           </View>
@@ -256,13 +274,29 @@ export default function ConnectedDeviceInfo() {
       </View>
 
       <View style={[themed($settingsGroup), {paddingVertical: 0}]}>
-        <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, alignItems: "center"}}>
-          <View style={{flexDirection: "column", justifyContent: "space-between", paddingVertical: 8}}>
-            <Text style={{color: theme.colors.text}}>Dashboard Settings</Text>
-            <Text style={themed($subtitle)}>Contextual Dashboard and Head Up Settings</Text>
+        <TouchableOpacity
+          onPress={() => {
+            router.push("/settings/dashboard")
+          }}>
+          <View
+            style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, alignItems: "center"}}>
+            <View style={{flexDirection: "column", justifyContent: "space-between", paddingVertical: 8}}>
+              <Text style={{color: theme.colors.text}}>Dashboard Settings</Text>
+              <Text style={themed($subtitle)}>Contextual Dashboard and Head Up Settings</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.text} />
           </View>
-          <MaterialCommunityIcons name="chevron-right" size={24} color={theme.colors.text} />
-        </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={themed($settingsGroup)}>
+        {status.core_info.default_wearable && (
+          <TouchableOpacity
+            style={{backgroundColor: "transparent", paddingVertical: 8, }}
+            onPress={confirmForgetGlasses}>
+            <Text style={themed($dangerLabel)}>{translate("settings:forgetGlasses")}</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>
@@ -291,6 +325,20 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   color: colors.textDim,
   fontSize: spacing.sm,
+})
+
+const $settingTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
+const $dangerLabel: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.palette.angry500,
+})
+
+const $disabledItem: ThemedStyle<ViewStyle> = () => ({
+  opacity: 0.5,
 })
 
 const styles = StyleSheet.create({

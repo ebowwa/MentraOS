@@ -193,10 +193,10 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: 20}}>
-      <AnimatedSection>
+    <Screen preset="auto" style={{paddingHorizontal: 20}} safeAreaEdges={["top"]}>
+      {/* <AnimatedSection>
         <Header leftTx="glasses:title" />
-      </AnimatedSection>
+      </AnimatedSection> */}
       {status.core_info.cloud_connection_status !== "CONNECTED" && (
         <AnimatedSection>
           <CloudConnection />

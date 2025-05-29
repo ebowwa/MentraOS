@@ -227,7 +227,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       if (nextAppState === "active") {
         if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
           console.log("Attempt reconnect to glasses")
-          await coreCommunicator.sendConnectWearable("")// does nothing if not already connected to glasses, at least on ios
+          if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
+            await coreCommunicator.sendConnectWearable("")// does nothing if not already connected to glasses, at least on ios
+          }
         }
       }
     }
