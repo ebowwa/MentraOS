@@ -23,6 +23,11 @@ const sidebars: SidebarsConfig = {
       label: 'Build From Scratch',
     },
     {
+      type: 'doc',
+      id: 'railway-deployment',
+      label: 'Deploy to Railway',
+    },
+    {
       type: 'category',
       label: 'Core Concepts',
       link: {
