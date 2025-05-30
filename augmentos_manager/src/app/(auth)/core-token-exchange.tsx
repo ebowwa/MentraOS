@@ -72,9 +72,6 @@ export default function CoreTokenExchange() {
   }
 
   useEffect(() => {
-    console.log("STATUS", status)
-
-    console.log("puck_connected", status.core_info.puck_connected)
     // Don't show the error UI for initial load attempts and avoid repeating failed attempts
     if (connectionError || hasAttemptedConnection.current) return
 
