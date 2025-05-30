@@ -15,11 +15,12 @@ interface AppsListProps {
 }
 
 export default function AppsList({apps, stopApp, startApp, openAppSettings}: AppsListProps) {
+  const {themed} = useAppTheme()
+  
   if (apps.length == 0) {
     return null
   }
 
-  const {themed} = useAppTheme()
 
   if (stopApp) {
     return (

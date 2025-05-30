@@ -96,7 +96,7 @@ export default function Homepage() {
       const localVer = getLocalVersion()
 
       if (!localVer) {
-        console.error("Failed to get local version from env file")
+        // console.error("Failed to get local version from env file")
         // Navigate to update screen with connection error
         // router.push({pathname: "/version-update", params: {
         //   connectionError: "true",

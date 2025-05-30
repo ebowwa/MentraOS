@@ -1,24 +1,23 @@
-import * as React from "react";
-import {Text, View, ViewStyle, TextStyle, TouchableOpacity} from "react-native";
-import {SafeAreaView} from "react-native-safe-area-context";
+import * as React from "react"
+import {Text, View, ViewStyle, TextStyle, TouchableOpacity} from "react-native"
+import {SafeAreaView} from "react-native-safe-area-context"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import { Icon } from "../ignite";
+import {Icon} from "../ignite"
 import {translate} from "@/i18n"
 
 const TempActivateAppWindow = () => {
-	
-  const { themed } = useAppTheme()
+  const {themed} = useAppTheme()
   const [visible, setVisible] = React.useState(true)
 
   if (!visible) return null
 
   return (
-    <View style={{  }}>
+    <View style={{marginTop: 16}}>
       <View style={themed($tempWindow)}>
         <View style={themed($appNameParent)}>
           <Text style={[themed($appName), themed($appFlexBox)]} numberOfLines={1}>
-			{translate("home:activateAnApp")}
+            {translate("home:activateAnApp")}
           </Text>
           <Text style={[themed($appName1), themed($appFlexBox)]} numberOfLines={2}>
             {translate("home:activateAnAppMessage")}
@@ -26,18 +25,17 @@ const TempActivateAppWindow = () => {
         </View>
         <View style={themed($animatedToggle)}>
           <View style={[themed($toggleBarIcon), themed($toggleIconLayout)]} />
-          <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), { left: "44.44%" }]}>
-            <View style={{ flex: 1, borderRadius: 12, backgroundColor: "#CED2ED" }} />
+          <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), {left: "44.44%"}]}>
+            <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
           </View>
         </View>
       </View>
-      <TouchableOpacity  onPress={() => setVisible(false)} style={[themed($xIcon), { display: "none" }] }>
+      <TouchableOpacity onPress={() => setVisible(false)} style={[themed($xIcon), {display: "none"}]}>
         <Icon icon={"x"} size={spacing.md} />
       </TouchableOpacity>
     </View>
-  );
-};
-
+  )
+}
 
 const $appFlexBox: ThemedStyle<TextStyle> = () => ({
   overflow: "hidden",
@@ -82,7 +80,7 @@ const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
   left: "0%",
   borderRadius: 8,
   maxHeight: "100%",
-  backgroundColor: "blue"
+  backgroundColor: "blue",
 })
 
 const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
@@ -119,4 +117,4 @@ const $tempWindow: ThemedStyle<ViewStyle> = () => ({
   gap: 41,
 })
 
-export default TempActivateAppWindow;
+export default TempActivateAppWindow
