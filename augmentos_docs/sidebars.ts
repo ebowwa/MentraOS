@@ -31,6 +31,7 @@ const sidebars: SidebarsConfig = {
       },
       items: [
         'events',
+        'permissions',
         'layouts',
         'settings',
         'tools',
