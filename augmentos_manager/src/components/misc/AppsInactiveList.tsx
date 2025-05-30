@@ -1,6 +1,6 @@
 // YourAppsList.tsx
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Platform} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Platform, ViewStyle} from "react-native"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -21,6 +21,8 @@ import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import EmptyAppsView from "../home/EmptyAppsView"
+import AppsList from "@/components/misc/AppsList"
+import {ThemedStyle} from "@/theme"
 
 export default function AppsInactiveList() {
   const {
@@ -38,7 +40,7 @@ export default function AppsInactiveList() {
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
   const [showSettingsHint, setShowSettingsHint] = useState(false)
   const [showOnboardingTip, setShowOnboardingTip] = useState(false)
-  const {theme} = useAppTheme()
+  const {theme, themed} = useAppTheme()
   // Static values instead of animations
   const bounceAnim = React.useRef(new Animated.Value(0)).current
   const pulseAnim = React.useRef(new Animated.Value(0)).current
@@ -485,22 +487,15 @@ export default function AppsInactiveList() {
   availableApps.sort((a, b) => a.name.localeCompare(b.name))
 
   return (
-    <View style={styles.appsContainer}>
+    <View>
       {renderOnboardingArrow()}
+      <ListHeaderInactiveApps />
+      {availableApps.length < 1 && (
+        <EmptyAppsView statusMessageKey="home:noInactiveApps" activeAppsMessageKey="home:emptyInactiveAppListInfo" />
+      )}
+      <AppsList apps={availableApps} startApp={startApp} openAppSettings={openAppSettings} />
 
-      <ScrollView
-        style={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollViewContent}>
-        <ListHeaderInactiveApps />
-
-       {availableApps.length < 1 ? (
-          <EmptyAppsView
-            statusMessageKey="home:noInactiveApps"
-            activeAppsMessageKey="home:emptyInactiveAppListInfo"
-          />
-        ) : (
-          availableApps.map((app, index) => {
+      {/* {availableApps.map((app, index) => {
           // Check if this is the LiveCaptions app
           const isLiveCaptions =
             app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
@@ -516,6 +511,7 @@ export default function AppsInactiveList() {
               setLiveCaptionsPosition(prev => ({...prev, index}))
             }, 0)
           }
+
           return (
             <View key={app.packageName} style={[styles.everything, styles.everythingFlexBox]}>
               <View style={[styles.appDescription, styles.everythingFlexBox]}>
@@ -542,16 +538,13 @@ export default function AppsInactiveList() {
                   </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity onPress={() => openAppSettings(app)}>
+                <TouchableOpacity hitSlop={10} onPress={() => openAppSettings(app)}>
                   <ChevronRight />
                 </TouchableOpacity>
               </View>
             </View>
           )
-        }))}
-
-        
-      </ScrollView>
+        })} */}
     </View>
   )
 }
@@ -589,7 +582,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-start",
   },
   listContainer: {
-    gap: 4,
+    gap: 16,
   },
   appContent: {
     flexDirection: "row",

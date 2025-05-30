@@ -219,7 +219,6 @@ export default function Homepage() {
       <ConnectDeviceButton />
 
       <AppsActiveList />
-
       <AppsInactiveList key={`apps-list-${appStatus.length}`} />
     </Screen>
   )
