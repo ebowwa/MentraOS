@@ -1,48 +1,41 @@
-import React from "react";
-import { View, Text, TouchableOpacity, ViewStyle, TextStyle } from "react-native";
-import { useAppTheme } from "@/utils/useAppTheme";
+import React from "react"
+import {View, Text, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
-import AppIcon from "./AppIcon";
-import ChevronRight from "assets/icons/ChevronRight";
-import SunIcon from "assets/icons/SunIcon";
-import { TreeIcon } from "assets/icons/TreeIcon";
+import AppIcon from "./AppIcon"
+import ChevronRight from "assets/icons/ChevronRight"
+import SunIcon from "assets/icons/SunIcon"
+import {TreeIcon} from "assets/icons/TreeIcon"
 import {translate} from "@/i18n"
 
 interface AppModel {
-  name: string;
-  packageName: string;
-  is_foreground?: boolean;
+  name: string
+  packageName: string
+  is_foreground?: boolean
 }
 
 interface AppListItemProps {
-    app: AppModel;
-    isActive: boolean;
-    onTogglePress: () => void;
-    onSettingsPress: () => void;
-    refProp?: React.Ref<any>;
-    is_foreground?: boolean;
-
+  app: AppModel
+  isActive: boolean
+  onTogglePress: () => void
+  onSettingsPress: () => void
+  refProp?: React.Ref<any>
+  is_foreground?: boolean
 }
 
-export const AppListItem = ({
-  app,
-  isActive,
-  onTogglePress,
-  onSettingsPress,
-  refProp,
-}: AppListItemProps) => {
-  const { themed } = useAppTheme();
-  console.log("zxc: ",app);
+export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, refProp}: AppListItemProps) => {
+  const {themed} = useAppTheme()
+  console.log("zxc: ", app)
 
-  const toggleLeft = isActive ? "44.44%" : "-2.78%";
-  const toggleBarStyle = isActive ? {} : { backgroundColor: "#565E8C" };
+  const toggleLeft = isActive ? "44.44%" : "-2.78%"
+  const toggleBarStyle = isActive ? {} : {backgroundColor: "#565E8C"}
 
   return (
     <View style={[themed($everything), themed($everythingFlexBox)]}>
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
-          <Text style={[themed($appName), { color: isActive?"#F7F7F7":"#CED2ED"}]} numberOfLines={1}>
+          <Text style={[themed($appName), {color: isActive ? "#F7F7F7" : "#CED2ED"}]} numberOfLines={1}>
             {app.name}
           </Text>
           {app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />}
@@ -53,21 +46,22 @@ export const AppListItem = ({
         <TouchableOpacity
           onPress={onTogglePress}
           delayLongPress={500}
-          style={{ padding: 10, borderRadius: 20 }}
-          {...(refProp ? { ref: refProp } : {})}
-        >
+          style={{padding: 10, borderRadius: 20}}
+          {...(refProp ? {ref: refProp} : {})}>
           <View style={themed($toggle)}>
             <View style={[themed($toggleBarIcon), themed($toggleIconLayout), toggleBarStyle]} />
-            <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), { left: toggleLeft }]}>
-              <View style={{ flex: 1, borderRadius: 12, backgroundColor: "#CED2ED" }} />
+            <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), {left: toggleLeft}]}>
+              <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
             </View>
           </View>
         </TouchableOpacity>
-        <ChevronRight />
+        <TouchableOpacity onPress={onSettingsPress} hitSlop={10}>
+          <ChevronRight />
+        </TouchableOpacity>
       </View>
     </View>
-  );
-};
+  )
+}
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",
@@ -121,7 +115,7 @@ const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
   left: "0%",
   borderRadius: 8,
   maxHeight: "100%",
-  backgroundColor: "blue"
+  backgroundColor: "blue",
 })
 
 const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
@@ -139,21 +133,19 @@ const $toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
   overflow: "hidden",
 })
 
-
-
-const Tag = ({ isActive, isForeground = false }: { isActive: boolean, isForeground?: boolean }) => {
-  const { themed } = useAppTheme();
-  const mColor = isActive ? "#7674FB" : "#CECED0";
+const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
+  const {themed} = useAppTheme()
+  const mColor = isActive ? "#7674FB" : "#CECED0"
 
   return (
     <View style={themed($tag)}>
-        {isForeground ?? (<TreeIcon size={16} color={mColor}/> )  }
-    <Text style={[themed($disconnect), { color: mColor }]} numberOfLines={1}>
+      {isForeground ?? <TreeIcon size={16} color={mColor} />}
+      <Text style={[themed($disconnect), {color: mColor}]} numberOfLines={1}>
         {isForeground ? translate("home:foreground") : ""}
       </Text>
     </View>
-  );
-};
+  )
+}
 
 const $tag: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 15,
@@ -164,7 +156,7 @@ const $tag: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
   gap: 4,
   height: 16,
-});
+})
 
 const $disconnect: ThemedStyle<TextStyle> = () => ({
   fontSize: 13,
@@ -175,6 +167,6 @@ const $disconnect: ThemedStyle<TextStyle> = () => ({
   color: "#ceced0",
   textAlign: "left",
   overflow: "hidden",
-});
+})
 
-export default Tag;
+export default Tag
