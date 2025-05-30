@@ -48,17 +48,7 @@ See the [Events](./events) section for a complete list of available events.
 
 AugmentOS uses a permissions system to control which device data and system resources your app can access. This system ensures user privacy and transparency while allowing you to build powerful applications with access to the data streams you need.
 
-### How Permissions Work
-
-The permissions system operates at two levels:
-
-1. **Declaration Level**: You declare which permissions your app needs in the [AugmentOS Developer Console](https://console.augmentos.org/)
-2. **Runtime Level**: The system automatically enforces these permissions when your app tries to access protected data streams
-
-When a user starts your app:
-- The system checks if your app has declared the necessary permissions for the data streams it's trying to access
-- If device-level permissions (like microphone access) are disabled, your app receives error messages
-- Users see exactly what data your app can access based on your permission declarations
+Your app must declare which permissions it needs to access device capabilities.
 
 See the [Permissions](./permissions) section for detailed information about declaring and using permissions.
 
