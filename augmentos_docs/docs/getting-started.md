@@ -201,58 +201,8 @@ To make your locally running app accessible from the internet:
 4. Set a unique package name (e.g., `com.yourname.myfirstapp`)
 5. For "Public URL", enter your ngrok static URL
 6. After the app is created, you will be given an API key. Copy this key.
-7. In the edit app screen, add the microphone permission
 
-> **Note**: If your app needs access to device data like microphone, location, or notifications, you can configure permissions in the developer console. See the [Permissions](permissions) guide for details.
-
-### 12. Update Your Environment Configuration
-
-Edit your `.env` file with the values from your registered app:
-
-```env
-PORT=3000
-PACKAGE_NAME=com.yourname.myfirstapp
-AUGMENTOS_API_KEY=your_actual_api_key_from_console
-```
-
-Make sure the `PACKAGE_NAME` matches what you registered in the AugmentOS Console.
-
-## Part 3: Run Your App
-
-### 13. Install Dependencies and Run
-
-Install all dependencies:
-
-```bash
-bun install
-```
-
-For development with automatic reloading:
-
-```bash
-bun run dev
-```
-
-Or build and run in production mode:
-
-```bash
-bun run build
-bun run start
-```
-
-### 14. Make Your App Accessible
-
-Expose your app to the internet with ngrok:
-
-```bash
-ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
-```
-
-> Note: The port number (3000) must match the PORT in your `.env` file.
-
-> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
-
-### 15. Set up App Permissions
+### 12. Set up App Permissions
 
 Your app must declare which permissions it needs to access device capabilities like:
 
@@ -275,15 +225,92 @@ For example, if your app will use voice commands, add:
 - **Permission Type**: MICROPHONE
 - **Description**: "Used for voice commands and speech recognition"
 
-## Part 4: Setting Up App AI Tools for Mira
+### 13. Update Your Environment Configuration
 
-Mira, the AugmentOS AI assistant, can call functions in your app. This allows your application to extend Mira's capabilities with custom tools.
+Edit your `.env` file with the values from your registered app:
 
-For a comprehensive guide on app AI tools, see [AI Tools](/tools).
+```env
+PORT=3000
+PACKAGE_NAME=com.yourname.myfirstapp
+AUGMENTOS_API_KEY=your_actual_api_key_from_console
+```
+
+Make sure the `PACKAGE_NAME` matches what you registered in the AugmentOS Console.
+
+## Part 3: Run Your App
+
+### 14. Install Dependencies and Run
+
+Install all dependencies:
+
+```bash
+bun install
+```
+
+For development with automatic reloading:
+
+```bash
+bun run dev
+```
+
+Or build and run in production mode:
+
+```bash
+bun run build
+bun run start
+```
+
+### 15. Make Your App Accessible
+
+Expose your app to the internet with ngrok:
+
+```bash
+ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
+```
+
+> Note: The port number (3000) must match the PORT in your `.env` file.
+
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
 
 ## What's Next?
 
 Congratulations! You've built your first AugmentOS app. To continue your journey:
+
+### Subscribe to Events
+
+You can listen for [transcriptions, translations, settings updates, and other events](events) within the onSession function.
+
+- Subscribe to real-time data streams like speech transcription, location updates, and button presses
+- Use convenient methods like `session.events.onTranscription()` and `session.events.onButtonPress()`
+- Handle system events such as connection status and settings changes
+- Always unsubscribe from events when no longer needed to prevent resource leaks
+
+### Configure Settings
+
+Configure [Settings](settings) to let users customize your app's behavior through persistent, synchronized preferences.
+
+- Define settings in the developer console (toggles, text inputs, dropdowns, sliders)
+- Access setting values in your app with `session.settings.get()`
+- Listen for real-time setting changes with `session.settings.onValueChange()`
+- Settings persist across app restarts and devices
+
+### Implement AI Tools
+
+Implement [AI Tools](tools) to extend Mira AI's capabilities with custom functions that users can invoke through natural language.
+
+- Your app can respond to tool calls from Mira AI via `onToolCall` in your code
+- Define custom tools that can be called by AugmentOS through natural language
+- Each tool takes specific parameters and returns a result
+- Tools can perform operations on your application's data
+- Properly handle authentication and validation in your tool implementations
+
+### Build a Webview
+
+Build [Authenticated Webviews](webview-auth-overview) to provide web interfaces with automatic AugmentOS user authentication.
+
+- Access the webview at `/webview`
+- The current AugmentOS user is available at `request.authUserId`
+- Create a web interface that allows users to interact with your app's functionality
 
 ### Learn More
 - Explore [Core Concepts](core-concepts) to understand sessions, events, and the app lifecycle
