@@ -162,8 +162,6 @@ export class AugmentOSParser {
       let coreInfo = status.core_info ?? {};
       let glassesInfo = status.connected_glasses ?? {};
       let authInfo = status.auth ?? {};
-
-      console.log("glassesInfo", glassesInfo)
       
       // First determine if we have connected glasses in the status
       const hasConnectedGlasses = status.connected_glasses && status.connected_glasses.model_name;
