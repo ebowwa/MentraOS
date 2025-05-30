@@ -135,10 +135,10 @@ class DisplayManager implements DisplayManagerI {
         if (userEmail && packageName !== systemApps.dashboard.packageName) {
           try {
             const onboardingStatus = await this.getOnboardingStatus(userEmail, packageName);
-            console.log('4343 onboardingStatus', onboardingStatus);
-            if (true) {
+            // console.log('4343 onboardingStatus', onboardingStatus);
+            if (!onboardingStatus) {
               const instructions = await this.getOnboardingInstructions(packageName);
-              console.log('4343 instructions', instructions);
+              // console.log('4343 instructions', instructions);
               if (instructions) {
                 // Show onboarding instructions as a display
                 const onboardingDisplay: DisplayRequest = {
@@ -159,8 +159,8 @@ class DisplayManager implements DisplayManagerI {
                 setTimeout(() => {
                   this.onboardingActive = false;
                 }, 5000);
-                console.log('4343 userEmail', userEmail);
-                console.log('4343 packageName', packageName);
+                // console.log('4343 userEmail', userEmail);
+                // console.log('4343 packageName', packageName);
                 await this.completeOnboarding(userEmail, packageName);
               }
             }
@@ -178,7 +178,7 @@ class DisplayManager implements DisplayManagerI {
   private async getOnboardingStatus(email: string, packageName: string): Promise<boolean> {
     try {
       const response = await axios.get(`${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/status`, { params: { email, packageName } });
-      console.log('4343 response', response);
+      // console.log('4343 response', response);
       return !!response.data.hasCompletedOnboarding;
     } catch (err) {
       this.logger.error({ err }, `[${this.getUserId()}] Error fetching onboarding status`);
@@ -205,7 +205,7 @@ class DisplayManager implements DisplayManagerI {
   private async completeOnboarding(email: string, packageName: string): Promise<boolean> {
     try {
       const response = await axios.post(`${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/complete`, { email, packageName });
-      console.log('#$%^4343 response', response);
+      // console.log('#$%^4343 response', response);
       return !!response.data.success;
     } catch (err) {
       this.logger.error({ err }, `[${this.getUserId()}] Error completing onboarding`);
