@@ -16,6 +16,7 @@ import {Circle} from "react-native-svg"
 import {AnimatedCircularProgress} from "react-native-circular-progress"
 import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/SunIcon"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
@@ -214,7 +215,7 @@ export function DeviceToolbar() {
   //   return null
   // }
 
-  let autoBrightness = status.glasses_settings.auto_brightness;
+  let autoBrightness = status.glasses_settings.auto_brightness
 
   return (
     <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10}}>
@@ -246,9 +247,14 @@ export function DeviceToolbar() {
       </View>
 
       {/* mira button */}
-      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
-        <Button text="Mira" onPress={() => {}} />
-      </View>
+      {/* <View style={{flexDirection: "row", alignItems: "center", gap: 4}}> */}
+      <Button
+        text="Mira"
+        style={{minWidth: 110, }}
+        LeftAccessory={() => <Text style={{fontSize: 16}}>✨</Text>}
+        onPress={() => {}}
+      />
+      {/* </View> */}
 
       {/* volume */}
       <View style={{}}></View>

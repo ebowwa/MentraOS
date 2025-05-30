@@ -25,7 +25,6 @@ interface AppListItemProps {
 
 export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, refProp}: AppListItemProps) => {
   const {themed} = useAppTheme()
-  console.log("zxc: ", app)
 
   const toggleLeft = isActive ? "44.44%" : "-2.78%"
   const toggleBarStyle = isActive ? {} : {backgroundColor: "#565E8C"}

@@ -17,7 +17,6 @@ export default function IndexPage() {
 
   useEffect(() => {
     const initializeApp = async () => {
-
       /*
       The purpose of SplashScreen is to route the user wherever the user needs to be
       If they're not logged in => login screen
@@ -25,7 +24,7 @@ export default function IndexPage() {
       If they're logged in + perms => SimulatedPucK setup
       */
       if (!user) {
-        router.replace("/(auth)/login")
+        router.replace("/auth/login")
         return
       }
 
@@ -37,7 +36,7 @@ export default function IndexPage() {
 
       // router.replace("/(tabs)/home")
 
-      router.replace('/(auth)/core-token-exchange');
+      router.replace("/auth/core-token-exchange")
     }
 
     if (!loading) {

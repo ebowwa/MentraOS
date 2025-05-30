@@ -132,11 +132,11 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         setAppStatus(updatedAppsData)
       }
     } catch (err) {
-      console.error("Error fetching apps:", err)
+      // console.error("Error fetching apps:", err)
       // if (("" + err).includes("401")) {
       //   // log out the user
       //   await logout()
-      //   router.replace("/(auth)/login")
+      //   router.replace("/auth/login")
       // }
       setError("Error fetching apps")
     } finally {

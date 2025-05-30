@@ -289,7 +289,7 @@ export default function LoginScreen() {
         email,
         password,
         options: {
-          emailRedirectTo: "com.augmentos://auth/callback",
+          emailRedirectTo: "com.augmentos://",
         },
       })
 
