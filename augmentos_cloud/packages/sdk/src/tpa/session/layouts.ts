@@ -168,7 +168,7 @@ export class LayoutManager {
    */
   showTextWall(
     text: string, 
-    options?: { view?: ViewType; durationMs?: number; priority?: boolean }
+    options?: { view?: ViewType; durationMs?: number}
   ) {
     try {
       // Validate input before processing
@@ -196,12 +196,6 @@ export class LayoutManager {
           options?.view, 
           options?.durationMs
         );
-        // Add priority property if provided
-        if (options?.priority !== undefined) {
-          (displayEvent as any).priority = options.priority;
-        } else {
-          (displayEvent as any).priority = false;
-        }
         this.sendMessage(displayEvent);
       } catch (error) {
         console.error("Failed to display text wall:", error);
