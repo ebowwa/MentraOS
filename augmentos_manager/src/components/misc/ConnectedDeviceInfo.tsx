@@ -1,14 +1,5 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  Animated,
-  ViewStyle,
-  TextStyle,
-} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle, TextStyle} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -21,6 +12,10 @@ import {spacing, ThemedStyle} from "@/theme"
 import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
 import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/ChevronRight"
+import {Circle} from "react-native-svg"
+import {AnimatedCircularProgress} from "react-native-circular-progress"
+import { getBatteryColor } from "@/utils/getBatteryIcon"
+
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
@@ -148,6 +143,17 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   const {themed, theme} = useAppTheme()
   const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
 
+  // green to red color gradient based on battery life:
+const getBatteryColor = (batteryLife: number) => {
+  if (batteryLife >= 80) {
+    return "#00ac1a"
+  } else if (batteryLife >= 50) {
+    return "#FFC107"
+  } else {
+    return "#E24A24"
+  }
+}
+
   useFocusEffect(
     useCallback(() => {
       // Reset animations to initial values
@@ -214,16 +220,15 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 
 export default function ConnectedDeviceInfo() {
   const {status, refreshStatus} = useStatus()
+  const {theme, themed} = useAppTheme()
   const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
 
   useEffect(() => {
     setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
   }, [status.core_info.is_mic_enabled_for_frontend])
 
-  const {theme, themed} = useAppTheme()
 
   const renderConnectedInterface = () => {
-
     if (!status.glasses_info?.model_name) {
       return null
     }
@@ -252,9 +257,21 @@ export default function ConnectedDeviceInfo() {
 
         {/* battery circular progress bar */}
         <View>
-          <Text style={themed($batteryValue)}>
+          {/* <Text style={themed($batteryValue)}>
             {status.glasses_info?.battery_life == -1 ? "-" : `${status.glasses_info?.battery_life}%`}
-          </Text>
+          </Text> */}
+
+          <AnimatedCircularProgress
+            size={36}
+            width={3}
+            lineCap="round"
+            fillLineCap="round"
+            fill={status.glasses_info?.battery_life}
+            tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+            backgroundColor={theme.colors.palette.neutral300}
+            children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
+            rotation={0}
+          />
         </View>
 
         {/* disconnect button */}
@@ -352,7 +369,7 @@ const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $batteryValue: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 14,
+  fontSize: 12,
   fontWeight: "bold",
   fontFamily: "Montserrat-Bold",
   color: colors.text,
