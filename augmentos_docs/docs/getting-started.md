@@ -55,11 +55,10 @@ Add the following code to `index.ts`:
 ```typescript
 import { TpaServer, TpaSession } from '@augmentos/sdk';
 
-// Replace with your app's details.  These should match what's
-// registered in the (future) AugmentOS app store.
-const PACKAGE_NAME = "com.example.myfirstaugmentosapp"; // CHANGE THIS!
+// Replace with your app's details:
+const PACKAGE_NAME = "com.example.myfirstaugmentosapp"; // Change this to match your package name in the developer console.
 const PORT = 3000;  // Choose a port for your app's server.
-const API_KEY = 'your_api_key'; // Replace with your API key.
+const API_KEY = 'your_api_key'; // Replace with your API key.  Ideally load this from a .env file using process.env.AUGMENTOS_API_KEY
 
 class MyAugmentOSApp extends TpaServer {
     protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {

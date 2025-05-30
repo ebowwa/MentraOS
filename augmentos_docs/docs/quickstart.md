@@ -81,6 +81,6 @@ For more information, visit the [AugmentOS-Cloud-Example-App repository](https:/
 
 ## Next Steps
 
-- Explore the [🚧 Build From Scratch](getting-started) guide for a more detailed walkthrough
-- Learn about [🚧 Core Concepts](core-concepts) to understand how AugmentOS apps work
+- Explore the [Build From Scratch](getting-started) guide for a more detailed walkthrough
+- Learn about [Core Concepts](core-concepts) to understand how AugmentOS apps work
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for help and support
