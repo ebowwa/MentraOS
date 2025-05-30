@@ -1,6 +1,4 @@
 PODS:
-  - Augmod (0.1.0):
-    - ExpoModulesCore
   - boost (1.84.0)
   - BVLinearGradient (2.8.3):
     - React-Core
@@ -2156,7 +2154,6 @@ PODS:
     - ZXingObjC/Core
 
 DEPENDENCIES:
-  - Augmod (from `../../augmod/ios`)
   - boost (from `../node_modules/react-native/third-party-podspecs/boost.podspec`)
   - BVLinearGradient (from `../node_modules/react-native-linear-gradient`)
   - DoubleConversion (from `../node_modules/react-native/third-party-podspecs/DoubleConversion.podspec`)
@@ -2267,8 +2264,6 @@ SPEC REPOS:
     - ZXingObjC
 
 EXTERNAL SOURCES:
-  Augmod:
-    :path: "../../augmod/ios"
   boost:
     :podspec: "../node_modules/react-native/third-party-podspecs/boost.podspec"
   BVLinearGradient:
@@ -2468,7 +2463,6 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native/ReactCommon/yoga"
 
 SPEC CHECKSUMS:
-  Augmod: 262082fc782816e83e26cdc22df4d811c0106c6c
   boost: 1dca942403ed9342f98334bf4c3621f011aa7946
   BVLinearGradient: cb006ba232a1f3e4f341bb62c42d1098c284da70
   DoubleConversion: f16ae600a246532c4020132d54af21d0ddb2a385

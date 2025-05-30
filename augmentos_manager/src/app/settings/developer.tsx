@@ -9,14 +9,14 @@ import showAlert from "@/utils/AlertUtils"
 import TestFlightDetector from "@/bridge/TestFlightDetector"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
-import { router } from "expo-router"
+import {router} from "expo-router"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useStatus()
-  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = React.useState(
+  const [isBypassVADForDebuggingEnabled, setIsBypassVADForDebuggingEnabled] = useState(
     status.core_info.bypass_vad_for_debugging,
   )
-  const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = React.useState(
+  const [isBypassAudioEncodingForDebuggingEnabled, setIsBypassAudioEncodingForDebuggingEnabled] = useState(
     status.core_info.bypass_audio_encoding_for_debugging,
   )
   const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(false)
@@ -27,15 +27,19 @@ export default function DeveloperSettingsScreen() {
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
+  const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
 
   // Load saved URL on mount
   useEffect(() => {
-    const loadUrl = async () => {
+    const loadSettings = async () => {
       const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
       setSavedCustomUrl(url)
       setCustomUrlInput(url || "")
+
+      const reconnectOnAppForeground = await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)
+      setReconnectOnAppForeground(reconnectOnAppForeground)
     }
-    loadUrl()
+    loadSettings()
   }, [])
 
   useEffect(() => {
@@ -54,6 +58,12 @@ export default function DeveloperSettingsScreen() {
     let newSetting = !isBypassVADForDebuggingEnabled
     await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
+  }
+
+  const toggleReconnectOnAppForeground = async () => {
+    let newSetting = !reconnectOnAppForeground
+    await saveSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
+    setReconnectOnAppForeground(newSetting)
   }
 
   const toggleBypassAudioEncodingForDebugging = async () => {
@@ -151,7 +161,7 @@ export default function DeveloperSettingsScreen() {
 
   return (
     <Screen preset="auto" style={styles.container}>
-      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.replace('/(tabs)/settings')} />
       <ScrollView style={styles.scrollView}>
         {/* Bypass VAD for Debugging Toggle */}
         <View style={styles.settingItem}>
@@ -166,6 +176,24 @@ export default function DeveloperSettingsScreen() {
           <Switch
             value={isBypassVADForDebuggingEnabled}
             onValueChange={toggleBypassVadForDebugging}
+            trackColor={switchColors.trackColor}
+            thumbColor={switchColors.thumbColor}
+            ios_backgroundColor={switchColors.ios_backgroundColor}
+          />
+        </View>
+
+        <View style={styles.settingItem}>
+          <View style={styles.settingTextContainer}>
+            <Text style={[styles.label, theme.isDark ? styles.lightText : styles.darkText]}>
+              Reconnect on App Foreground
+            </Text>
+            <Text style={[styles.value, theme.isDark ? styles.lightSubtext : styles.darkSubtext]}>
+              Automatically attempt to reconnect to glasses when the app comes back to the foreground.
+            </Text>
+          </View>
+          <Switch
+            value={reconnectOnAppForeground}
+            onValueChange={toggleReconnectOnAppForeground}
             trackColor={switchColors.trackColor}
             thumbColor={switchColors.thumbColor}
             ios_backgroundColor={switchColors.ios_backgroundColor}

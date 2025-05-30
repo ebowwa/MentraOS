@@ -13,7 +13,6 @@ import { useAppTheme } from './useAppTheme';
 /**
  * Returns the appropriate pairing guide component based on the glasses model name
  * @param glassesModelName The name of the glasses model
- * @param isDarkTheme Whether the app is in dark theme mode
  * @returns The corresponding pairing guide component
  */
 export const getPairingGuide = (glassesModelName: string) => {

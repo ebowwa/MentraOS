@@ -6,56 +6,33 @@ import {
   Switch,
   TouchableOpacity,
   Platform,
-  ScrollView,
   Alert,
   Modal,
-  SafeAreaView,
-  ActivityIndicator,
   ViewStyle,
   TextStyle,
 } from "react-native"
-import AsyncStorage from "@react-native-async-storage/async-storage"
-import {useNavigation} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
-import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {Header} from "@/components/ignite"
 import {router} from "expo-router"
 import {Screen} from "@/components/ignite"
-import { ThemedStyle } from "@/theme"
-import { useAppTheme } from "@/utils/useAppTheme"
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 export default function DashboardSettingsScreen() {
   const {status} = useStatus()
-  const backendServerComms = BackendServerComms.getInstance()
-
-  // -- States --
+  const {themed, theme} = useAppTheme()
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled,
   )
   const [headUpAngleComponentVisible, setHeadUpAngleComponentVisible] = useState(false)
   const [headUpAngle, setHeadUpAngle] = useState<number | null>(null)
-  const [dashboardContent, setDashboardContent] = useState("")
   const [showContentPicker, setShowContentPicker] = useState(false)
-  const [serverSettings, setServerSettings] = useState<any>(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [dashboardHeight, setDashboardHeight] = useState<number | null>(null)
   const [isMetricSystemEnabled, setIsMetricSystemEnabled] = useState(status.core_info.metric_system_enabled)
-  const [depth, setDepth] = useState<number | null>(null)
-  const {themed} = useAppTheme()
-
-  const dashboardContentOptions = [
-    {label: "None", value: "none"},
-    {label: "Fun Facts", value: "fun_facts"},
-    {label: "Famous Quotes", value: "famous_quotes"},
-    // { label: "Trash Talk", value: "trash_talk" },
-    {label: "Chinese Words", value: "chinese_words"},
-    {label: "Gratitude Ping", value: "gratitude_ping"},
-  ]
 
   // -- Handlers --
   const toggleContextualDashboard = async () => {
@@ -212,43 +189,44 @@ export default function DashboardSettingsScreen() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 16}}>
-      <Header titleTx="dashboardSettings:title" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-      {/* Contextual Dashboard */}
-      <View style={themed($section)}>
-        <Text style={themed($sectionTitle)}>General Settings</Text>
-        <View style={themed($settingItem)}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>Contextual Dashboard</Text>
-            {status.glasses_info?.model_name && (
-              <Text style={styles.value}>
-                {`Show a summary of your phone notifications when you ${
-                  status.glasses_info?.model_name.toLowerCase().includes("even") ? "look up" : "tap your smart glasses"
-                }.`}
-              </Text>
-            )}
-          </View>
-          <Switch
-            value={isContextualDashboardEnabled}
-            onValueChange={toggleContextualDashboard}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
+      <Header
+        titleTx="settings:dashboardSettings"
+        leftIcon="caretLeft"
+        onLeftPress={() => router.replace("/(tabs)/settings")}
+      />
+      <Text style={themed($sectionTitle)}>General Settings</Text>
+      <View style={themed($settingItem)}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($label)}>Contextual Dashboard</Text>
+          {status.glasses_info?.model_name && (
+            <Text style={themed($value)}>
+              {`Show a summary of your phone notifications when you ${
+                status.glasses_info?.model_name.toLowerCase().includes("even") ? "look up" : "tap your smart glasses"
+              }.`}
+            </Text>
+          )}
         </View>
+        <Switch
+          value={isContextualDashboardEnabled}
+          onValueChange={toggleContextualDashboard}
+          trackColor={switchColors.trackColor}
+          thumbColor={switchColors.thumbColor}
+          ios_backgroundColor={switchColors.ios_backgroundColor}
+        />
+      </View>
 
-        <View style={themed($settingItem)}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>Use Metric System</Text>
-            <Text style={themed($value)}>Metric System (°C) or Imperial System (°F).</Text>
-          </View>
-          <Switch
-            value={isMetricSystemEnabled}
-            onValueChange={toggleMetricSystem}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
+      <View style={themed($settingItem)}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($label)}>Use Metric System</Text>
+          <Text style={themed($value)}>Metric System (°C) or Imperial System (°F).</Text>
         </View>
+        <Switch
+          value={isMetricSystemEnabled}
+          onValueChange={toggleMetricSystem}
+          trackColor={switchColors.trackColor}
+          thumbColor={switchColors.thumbColor}
+          ios_backgroundColor={switchColors.ios_backgroundColor}
+        />
       </View>
 
       {/* Dashboard Content Selection */}
@@ -290,22 +268,18 @@ export default function DashboardSettingsScreen() {
         </View> */}
 
       {/* Display Settings Section */}
-      <View style={themed($section)}>
-        <Text style={themed($sectionTitle)}>Display Settings</Text>
+      <Text style={themed($sectionTitle)}>Display Settings</Text>
 
-        {/* Head-Up Angle Setting */}
-        <TouchableOpacity
-          style={themed($settingItem)}
-          onPress={() => setHeadUpAngleComponentVisible(true)}>
-          <View style={themed($settingTextContainer)}>
-            <Text style={themed($label)}>Adjust Head-Up Angle</Text>
-            <Text style={[themed($value)]}>
-              Adjust the angle at which the contextual dashboard appears when you look up.
-            </Text>
-          </View>
-          <Icon name="chevron-right" size={16} color="#000000" />
-        </TouchableOpacity>
-      </View>
+      {/* Head-Up Angle Setting */}
+      <TouchableOpacity style={themed($settingItem)} onPress={() => setHeadUpAngleComponentVisible(true)}>
+        <View style={themed($settingTextContainer)}>
+          <Text style={themed($label)}>Adjust Head-Up Angle</Text>
+          <Text style={[themed($value)]}>
+            Adjust the angle at which the contextual dashboard appears when you look up.
+          </Text>
+        </View>
+        <Icon name="chevron-right" size={16} color={theme.colors.text} />
+      </TouchableOpacity>
       {renderContentPicker()}
       {headUpAngle !== null && (
         <HeadUpAngleComponent
@@ -319,13 +293,6 @@ export default function DashboardSettingsScreen() {
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
-
-const $section: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
 
 const $sectionTitle: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
@@ -334,7 +301,7 @@ const $sectionTitle: ThemedStyle<TextStyle> = ({colors}) => ({
   marginTop: 20,
 })
 
-const $modalOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({  
+const $modalOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.background,
 })
 
@@ -350,40 +317,12 @@ const $pickerTitle: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
 })
 
-const $pickerOptionsContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
-
-const $pickerOption: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
-
-const $optionContent: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
-
-const $optionContentText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-})
-
-const $selectedValueContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
-
-const $selectedValue: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-})
-
-const $borderColor: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-})
-
 const $label: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
 })
 
 const $value: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
+  color: colors.textDim,
 })
 
 // settingItem: {
@@ -407,7 +346,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.palette.neutral200,
 })
 
-const $settingTextContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $settingTextContainer: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
   paddingRight: 12,
 })

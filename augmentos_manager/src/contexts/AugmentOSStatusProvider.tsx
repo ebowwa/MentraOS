@@ -55,8 +55,6 @@ export const StatusProvider = ({ children }: { children: ReactNode }) => {
         console.log('STATUS PROVIDER: Initializing event listeners for user:', user?.email);
 
         const handleStatusUpdateReceived = (data: any) => {
-
-            console.log('statusUpdateReceived', data);
             if (INTENSE_LOGGING)
                 console.log('Handling received data.. refreshing status..');
             refreshStatus(data);

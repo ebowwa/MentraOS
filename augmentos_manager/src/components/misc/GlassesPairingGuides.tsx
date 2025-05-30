@@ -4,14 +4,14 @@ import { useAppTheme } from '@/utils/useAppTheme';
 import React from 'react';
 import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { Button } from '../ignite';
+import { Spacer } from './Spacer';
+import { spacing } from '@/theme';
+import {translate} from "@/i18n"
 
-// 1) Create an interface for the props
-interface GlassesPairingGuideProps {
-  isDarkTheme: boolean;
-}
 
 // 2) Declare each guide component with the correct prop type
-export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function EvenRealitiesG1PairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -30,14 +30,14 @@ export const EvenRealitiesG1PairingGuide: React.FC<GlassesPairingGuideProps> = (
         style={{...styles.guideImage, width: '60%', alignSelf: 'center'}}
       />
 
-      <FontAwesome name="arrow-down" size={48} color={textColor} style={{alignSelf: 'center', marginTop: -48}} />
+      <FontAwesome name="arrow-down" size={36} color={textColor} style={{alignSelf: 'center', marginTop: -36}} />
 
       <Image source={require('../../../assets/guide/image_g1_pair.png')} style={styles.guideImage} />
     </View>
   );
 };
 
-export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function VuzixZ100PairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -52,7 +52,7 @@ export const VuzixZ100PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
   );
 };
 
-export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function MentraMach1PairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -69,7 +69,7 @@ export const MentraMach1PairingGuide: React.FC<GlassesPairingGuideProps> = () =>
   );
 };
 
-export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function MentraLivePairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
   const primaryColor = '#5E17EB'; // Purple brand color based on website
@@ -133,21 +133,26 @@ export const MentraLivePairingGuide: React.FC<GlassesPairingGuideProps> = () => 
             <Text style={styles.currentPrice}>$219</Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.buyButton, {backgroundColor: primaryColor}]}
-            onPress={() => {
+           <Button 
+           onPress={() => {
               Linking.openURL('https://mentra.glass/live');
-            }}>
-            <Text style={styles.buyButtonText}>PREORDER NOW</Text>
-            <Text style={styles.shippingText}>Ships September 2025</Text>
-          </TouchableOpacity>
+            }}
+            children={
+              <View>
+                <Text style={styles.buyButtonText}>{translate("pairing:preorderNow")}</Text>
+                <Text style={styles.shippingText}>{translate("pairing:preorderNowShipMessage")}</Text>
+              </View>
+            }
+          />
+          <Spacer height={spacing.md}/>
+
         </View>
       </View>
     </View>
   );
 };
 
-export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function AudioWearablePairingGuide() {
   const { theme } = useAppTheme();
   const textColor = theme.isDark ? 'white' : 'black';
 
@@ -172,7 +177,7 @@ export const AudioWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () 
   );
 };
 
-export const VirtualWearablePairingGuide: React.FC<GlassesPairingGuideProps> = () => {
+export function VirtualWearablePairingGuide() {
 
   const {theme} = useAppTheme();
   return (
@@ -252,7 +257,7 @@ const styles = StyleSheet.create({
     marginVertical: 15,
   },
   featuresContainer: {
-    backgroundColor: '#ccc',
+    backgroundColor: 'rgba(204, 204, 204, 0.25)', // equals to '#ccc'  with opacity
     flexDirection: 'column',
     alignItems: 'center',
     borderRadius: 16,

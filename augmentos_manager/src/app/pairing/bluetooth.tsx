@@ -1,7 +1,7 @@
 // SelectGlassesBluetoothScreen.tsx
 
 import React, {useEffect, useMemo, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -17,6 +17,7 @@ import showAlert from "@/utils/AlertUtils"
 import {router, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
+import { ThemedStyle } from "@/theme"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useStatus()
@@ -175,8 +176,11 @@ export default function SelectGlassesBluetoothScreen() {
       // give some time to show the loader (otherwise it's a bit jarring)
       coreCommunicator.sendConnectWearable(glassesModelName, deviceName)
     }, 2000)
-    navigation.navigate("GlassesPairingGuideScreen", {
-      glassesModelName: glassesModelName,
+    router.push({
+      pathname: "/pairing/guide",
+      params: {
+        glassesModelName: glassesModelName,
+      },
     })
   }
 
@@ -198,25 +202,19 @@ export default function SelectGlassesBluetoothScreen() {
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 16}} safeAreaEdges={["top", "bottom"]}>
-      <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+    <Screen preset="fixed" style={{paddingHorizontal: 16}} safeAreaEdges={["bottom"]}>
+      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>
-      <View style={{flex: 1, marginBottom: 20, marginTop: 10}}>
+      <ScrollView style={{marginBottom: 20, marginTop: 10}}>
         {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
         {searchResults && searchResults.length > 0 && (
           <>
             {searchResults.map((deviceName, index) => (
               <TouchableOpacity
                 key={index}
-                style={[
-                  styles.settingItem,
-                  // {
-                  //   backgroundColor: theme.cardBg,
-                  //   borderColor: theme.borderColor,
-                  // },
-                ]}
+                style={themed($settingItem)}
                 onPress={() => {
                   triggerGlassesPairingGuide(glassesModelName, deviceName)
                 }}>
@@ -237,21 +235,41 @@ export default function SelectGlassesBluetoothScreen() {
             ))}
           </>
         )}
-      </View>
+      </ScrollView>
     </Screen>
   )
 }
+
+const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  // Increased padding to give it a "bigger" look
+  paddingVertical: 25,
+  paddingHorizontal: 15,
+
+  // Larger margin to separate each card
+  marginVertical: 8,
+
+  // Rounded corners
+  borderRadius: 10,
+  borderWidth: 1,
+
+  // More subtle shadow for iOS
+  shadowColor: "#000",
+  shadowOpacity: 0.08,
+  shadowRadius: 3,
+  shadowOffset: {width: 0, height: 1},
+
+  // More subtle elevation for Android
+  elevation: 2,
+  backgroundColor: colors.palette.neutral200,
+})
 
 const styles = StyleSheet.create({
   contentContainer: {
     alignItems: "center",
     justifyContent: "center",
-  },
-  scrollViewContainer: {
-    flex: 1,
-    paddingBottom: 0,
-    marginHorizontal: -20, // Remove the horizontal margin to eliminate "line" effect
-    paddingHorizontal: 20, // Add padding inside to maintain visual spacing
   },
   container: {
     flex: 1,
@@ -313,33 +331,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 18,
     fontWeight: "bold",
-  },
-  /**
-   * BIG AND SEXY CARD
-   */
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    // Increased padding to give it a "bigger" look
-    paddingVertical: 25,
-    paddingHorizontal: 15,
-
-    // Larger margin to separate each card
-    marginVertical: 8,
-
-    // Rounded corners
-    borderRadius: 10,
-    borderWidth: 1,
-
-    // More subtle shadow for iOS
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 3,
-    shadowOffset: {width: 0, height: 1},
-
-    // More subtle elevation for Android
-    elevation: 2,
   },
   settingTextContainer: {
     flex: 1,

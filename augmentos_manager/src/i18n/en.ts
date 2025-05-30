@@ -1,10 +1,28 @@
 const en = {
+  deviceSettings: {
+    glassesNeededForGlassesMic: "Connect glasses to enable",
+    phoneMic: "Phone Microphone",
+    glassesMic: "Glasses Microphone",
+  },
   screenSettings: {
     title: "Screen Settings",
   },
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",
+    permissionRequired: "Permission Required",
+    bluetoothPermissionRequiredTitle: "Permission Required",
+    bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",
+    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.",
+    errorTitle: "Error",
+    permissionsError: "Failed to request necessary permissions",
+    connectionIssueTitle: "Connection Issue",
+    connectionIssueMessage: "Cannot connect to glasses - check Bluetooth and Location settings",
+    bluetoothPermissionPreviouslyDenied: "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
+    openSettings: "Open Settings",
+    scanningForGlasses: "Scanning",
+    preorderNow: "PREORDER NOW",
+    preorderNowShipMessage: "Ships September 2025"
   },
   privacySettings: {
     title: "Privacy Settings",
@@ -14,6 +32,27 @@ const en = {
   },
   home: {
     title: "Home",
+    pairGlasses: "Pair Glasses",
+    connectGlasses: "Connect Glasses",
+    connectingGlasses: "Connecting Glasses...",
+    emptyActiveAppListInfo: "Your active apps will appear here.",
+    emptyInactiveAppListInfo: "Your inactive apps will appear here.",
+    noActiveApps: "No Active Apps",
+    noInactiveApps: "No Inactive Apps",
+    activeApps: "Active Apps",
+    inactiveApps: "Inactive Apps",
+    tapToStart: "TAP TO START",
+    completeOnboardingTitle: "Complete Onboarding",
+    completeOnboardingMessage: "Please tap the Live Captions app to complete the onboarding process.",
+    tryLiveCaptionsTitle: "Try Live Captions!",
+    tryLiveCaptionsMessage: "Start talking now to see your speech transcribed on your glasses in real-time!",
+    permissionRequiredTitle: "Permission Required",
+    permissionsRequiredTitle: "Permissions Required",
+    permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
+    activateAnApp: "Activate an app",
+    activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
+    foreground: "Foreground"
+
   },
   glasses: {
     title: "Glasses",
@@ -23,7 +62,49 @@ const en = {
   },
   settings: {
     title: "Settings",
+    phoneHeadset: "Phone / Headset",
+    glasses: "Glasses",
+    selectMic: "Select which microphone to use",
+    simulatedGlassesNote: "This setting has no effect when using Simulated Glasses",
+    profileSettings: "Profile Settings",
+    privacySettings: "Privacy Settings",
+    dashboardSettings: "Dashboard Settings",
+    dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
+    screenSettings: "Screen Settings",
+    screenDescription: "Adjust brightness, auto-brightness, and other display settings.",
+    glassesWifiSettings: "Glasses WiFi Settings",
+    glassesWifiDescription: "Configure WiFi settings for your smart glasses.",
+    wifiUnavailable: "WiFi configuration is only available for glasses that support WiFi connectivity.",
+    developerSettings: "Developer Settings",
+    forgetGlasses: "Forget Glasses",
+    disconnectGlasses: "Disconnect Glasses",
+    forgetGlassesConfirm: "Are you sure you want to forget your glasses?",
+    signOut: "Sign Out",
+    signOutConfirm: "Are you sure you want to sign out?",
+    micPermissionTitle: "Microphone Permission Required",
+    micPermissionMessage: "Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.",
   },
+  profileSettings: {
+      title: "Profile Settings",
+      noProfilePicture: "No profile picture available.",
+      name: "Name",
+      email: "Email",
+      createdAt: "Created At",
+      provider: "Provider",
+      changePassword: "Change Password",
+      newPassword: "New Password",
+      enterNewPassword: "Enter your new password",
+      confirmPassword: "Confirm Password",
+      confirmNewPassword: "Confirm your new password",
+      updatePassword: "Update Password",
+      requestDataExport: "Request Data Export",
+      deleteAccount: "Delete Account",
+      errorGettingUserInfo: "Error getting user info.",
+      dataExportTitle: "Data Export Requested",
+      dataExportMessage: "You will receive an email with your data export shortly.",
+      deleteAccountTitle: "Delete Account",
+      deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
+    },
   login: {
     title: "AugmentOS",
     subtitle: "The future of smart glasses starts here",
@@ -43,6 +124,7 @@ const en = {
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
+    sensingDisabled: "Sensing is disabled. Microphone and sensors won't work in apps.",
   },
   common: {
     ok: "OK!",
@@ -51,6 +133,10 @@ const en = {
     or: "OR",
     logOut: "Log Out",
     error: "Error",
+    notAvailable: "Not Available",
+    yes: "Yes",
+    delete: "Delete",
+    continue:"Continue"
   },
   welcomeScreen: {
     postscript:
@@ -77,6 +163,13 @@ const en = {
   errors: {
     invalidEmail: "Invalid email address.",
   },
+  navigation:{
+    home: "Home",
+    glasses: "Glasses",
+    mirror: "Mirror",
+    store: "Store",
+    account: "Account",
+  }
 }
 
 export default en

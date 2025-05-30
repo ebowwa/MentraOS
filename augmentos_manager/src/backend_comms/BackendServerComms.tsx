@@ -45,7 +45,7 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/api/gallery`;
+    const url = `${await this.getServerUrl()}/api/gallery`;
     console.log('Fetching gallery photos from:', url);
 
     const config: AxiosRequestConfig = {
@@ -212,11 +212,6 @@ export default class BackendServerComms {
     try {
       const response = await axios(config);
       if (response.status === 200 && response.data) {
-        console.log('GOT A RESPONSE!!!');
-        console.log('\n\n');
-        console.log(JSON.stringify(response.data));
-        console.log('\n\n\n\n');
-        // Store the token internally
         this.setCoreToken(response.data.coreToken);
         return response.data.coreToken;
       } else {
@@ -426,7 +421,7 @@ export default class BackendServerComms {
       url,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${this.coreToken}`,
+        'Authorization': `Bearer ${this.coreToken}`,
       },
     };
 

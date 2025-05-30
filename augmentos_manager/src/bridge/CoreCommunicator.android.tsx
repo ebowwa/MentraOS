@@ -226,7 +226,6 @@ export class CoreCommunicator extends EventEmitter {
 
     try {
       if ('status' in data) {
-        console.log('Received status update from Core:', data);
         this.emit('statusUpdateReceived', data);
       } else if ('glasses_display_event' in data) {
         GlobalEventEmitter.emit(

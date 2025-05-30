@@ -1,43 +1,41 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, StyleSheet, Animated, Platform, ActivityIndicator, ViewStyle, TextStyle} from "react-native"
-import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
-import type {NavigationProp} from "@react-navigation/native"
-import {Header, Text, Screen} from "@/components/ignite"
-import ConnectedDeviceInfo from "@/components/misc/ConnectedDeviceInfo"
-import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
-import RunningAppsList from "@/components/misc/RunningAppsList"
-import YourAppsList from "@/components/misc/YourAppsList"
+import {View, Animated, Platform, ViewStyle} from "react-native"
+import {useFocusEffect} from "@react-navigation/native"
+import {Header, Screen} from "@/components/ignite"
+import AppsActiveList from "@/components/misc/AppsActiveList"
+import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import semver from "semver"
-import Constants from 'expo-constants'
+import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"
-import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
-
+import {loadSetting} from "@/utils/SettingsHelper"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
-import {SETTINGS_KEYS} from "@/consts"
 import NonProdWarning from "@/components/misc/NonProdWarning"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import MicIcon from "assets/icons/MicIcon"
+import NotificationOff from "assets/icons/NotificationOff"
+import {
+  ConnectDeviceButton,
+  ConnectedGlasses,
+} from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
 }
 
 export default function Homepage() {
-  const navigation = useNavigation<NavigationProp<any>>()
-  const {appStatus, refreshAppStatus} = useAppStatus()
+  const {appStatus} = useAppStatus()
   const {status} = useStatus()
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
-  const [nonProdBackend, setNonProdBackend] = useState(false)
-  const route = useRoute()
 
   const fadeAnim = useRef(new Animated.Value(0)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
-  const {themed, theme} = useAppTheme()
+  const {themed} = useAppTheme()
 
   // Reset loading state when connection status changes
   useEffect(() => {
@@ -48,12 +46,8 @@ export default function Homepage() {
       }, 10000)
       return () => clearTimeout(timer)
     }
+    return () => {}
   }, [status.core_info.cloud_connection_status])
-
-  const checkNonProdBackend = async () => {
-    const url = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
-    setNonProdBackend(url && !url.includes("prod.augmentos.cloud") && !url.includes("global.augmentos.cloud"))
-  }
 
   // Clear loading state if apps are loaded
   useEffect(() => {
@@ -65,7 +59,7 @@ export default function Homepage() {
   // Get local version from env file
   const getLocalVersion = () => {
     try {
-      const version = Constants.expoConfig?.extra?.AUGMENTOS_VERSION
+      const version = Constants.expoConfig?.extra?.EXPO_PUBLIC_AUGMENTOS_VERSION
       console.log("Local version from env:", version)
       return version || null
     } catch (error) {
@@ -92,12 +86,11 @@ export default function Homepage() {
       const localVer = getLocalVersion()
 
       if (!localVer) {
-        console.error("Failed to get local version from env file")
+        // console.error("Failed to get local version from env file")
         // Navigate to update screen with connection error
-        navigation.navigate("VersionUpdateScreen", {
-          isDarkTheme: theme.isDark,
-          connectionError: true,
-        })
+        // router.push({pathname: "/version-update", params: {
+        //   connectionError: "true",
+        // }})
         setIsCheckingVersion(false)
         return
       }
@@ -112,11 +105,10 @@ export default function Homepage() {
           if (semver.lt(localVer, cloudVer)) {
             console.log("A new version is available. Navigate to update screen.")
             // Navigate to update screen with version mismatch
-            // navigation.navigate("VersionUpdateScreen", {
-            //   isDarkTheme,
+            // router.push({pathname: "/version-update", params: {
             //   localVersion: localVer,
             //   cloudVersion: cloudVer,
-            // })
+            // }})
           } else {
             console.log("Local version is up-to-date.")
             // Stay on homepage, no navigation needed
@@ -126,10 +118,9 @@ export default function Homepage() {
         onFailure: errorCode => {
           console.error("Failed to fetch cloud version:", errorCode)
           // Navigate to update screen with connection error
-          // navigation.navigate("VersionUpdateScreen", {
-          //   isDarkTheme,
-          //   connectionError: true,
-          // })
+          // router.push({pathname: "/version-update", params: {
+          //   connectionError: "true",
+          // }})
           setIsCheckingVersion(false)
         },
       })
@@ -137,10 +128,9 @@ export default function Homepage() {
     } catch (error) {
       console.error("Error checking cloud version:", error)
       // Navigate to update screen with connection error
-      // navigation.navigate("VersionUpdateScreen", {
-      //   isDarkTheme,
-      //   connectionError: true,
-      // })
+      // router.push({pathname: "/version-update", params: {
+      //   connectionError: "true",
+      // }})
       setIsCheckingVersion(false)
     }
   }
@@ -168,8 +158,6 @@ export default function Homepage() {
 
   useFocusEffect(
     useCallback(() => {
-      checkNonProdBackend()
-
       // Reset animations when screen is about to focus
       fadeAnim.setValue(0)
       slideAnim.setValue(-50)
@@ -199,109 +187,37 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: 20}}>
+    <Screen preset="auto" style={themed($screen)}>
       <AnimatedSection>
-        <Header leftTx="home:title" />
+        <Header
+          leftTx="home:title"
+          RightActionComponent={
+            <View style={themed($headerRight)}>
+              <NotificationOff />
+              <MicIcon withBackground />
+            </View>
+          }
+        />
       </AnimatedSection>
-      {/* <ScrollView
-        style={{flex: 1, paddingHorizontal: 16}}
-        contentContainerStyle={{paddingBottom: 0, flexGrow: 1}} // Force content to fill available space
-      > */}
-        {status.core_info.cloud_connection_status !== "CONNECTED" && (
-          <AnimatedSection>
-            <CloudConnection />
-          </AnimatedSection>
-        )}
 
-        {/* Sensing Disabled Warning */}
-        <AnimatedSection>
-          <SensingDisabledWarning isSensingEnabled={status.core_info.sensing_enabled} />
-        </AnimatedSection>
+      {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
-        {nonProdBackend && (
-          <AnimatedSection>
-            <NonProdWarning />
-          </AnimatedSection>
-        )}
+      <SensingDisabledWarning />
+      <NonProdWarning />
 
-        <View style={{flex: 1}}>
-          <AnimatedSection>
-            {/* Use the simulated version if we're connected to simulated glasses */}
-            {status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated") ? (
-              <ConnectedSimulatedGlassesInfo isDarkTheme={theme.isDark} />
-            ) : (
-              <ConnectedDeviceInfo />
-            )}
-          </AnimatedSection>
-        </View>
-        {status.core_info.puck_connected && (
-          <>
-            {appStatus.length > 0 ? (
-              <>
-                <AnimatedSection>
-                  <RunningAppsList isDarkTheme={theme.isDark} />
-                </AnimatedSection>
+      <ConnectedGlasses showTitle={false} />
+      <ConnectDeviceButton />
 
-                <AnimatedSection>
-                  <YourAppsList isDarkTheme={theme.isDark} key={`apps-list-${appStatus.length}`} />
-                </AnimatedSection>
-              </>
-            ) : status.core_info.cloud_connection_status === "CONNECTED" ? (
-              isInitialLoading ? (
-                <AnimatedSection>
-                  <View style={themed($loadingContainer)}>
-                    <Text style={themed($loadingText)}>Loading your apps...</Text>
-                  </View>
-                </AnimatedSection>
-              ) : (
-                <AnimatedSection>
-                  <View style={themed($noAppsContainer)}>
-                    <Text style={themed($noAppsText)}>
-                      Unable to load your apps.{"\n"}Please check your internet connection and try again.
-                    </Text>
-                  </View>
-                </AnimatedSection>
-              )
-            ) : (
-              <AnimatedSection>
-                <Text style={themed($noAppsText)}>
-                  Unable to load apps. Please check your cloud connection to view and manage your apps.
-                </Text>
-              </AnimatedSection>
-            )}
-          </>
-        )}
-        {/* <View style={{height: 1000}} /> */}
-      {/* </ScrollView> */}
+      <AppsActiveList />
+      <AppsInactiveList key={`apps-list-${appStatus.length}`} />
     </Screen>
   )
 }
 
-const $contentContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  paddingBottom: 0,
-  flexGrow: 1,
+const $screen: ThemedStyle<ViewStyle> = () => ({
+  paddingHorizontal: 20,
 })
 
-const $noAppsContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $noAppsText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.text,
-  textAlign: "center",
-})
-
-const $loadingContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $loadingText: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  color: colors.text,
-  textAlign: "center",
+const $headerRight: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
 })

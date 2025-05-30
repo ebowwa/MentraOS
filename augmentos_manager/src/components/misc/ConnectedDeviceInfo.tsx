@@ -1,40 +1,165 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, Switch, ViewStyle} from 'react-native';
-import {useFocusEffect} from '@react-navigation/native';
-import {Icon} from '@/components/ignite';
-import coreCommunicator from '@/bridge/CoreCommunicator';
-import {useStatus} from '@/contexts/AugmentOSStatusProvider';
-import {getGlassesImage} from '@/utils/getGlassesImage';
-import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
-import {getBatteryColor, getBatteryIcon} from '@/utils/getBatteryIcon';
-import {Slider} from 'react-native-elements';
-import { router } from "expo-router";
-import { useAppTheme } from '@/utils/useAppTheme';
-import { ThemedStyle } from '@/theme';
+import React, {useCallback, useEffect, useRef, useState} from "react"
+import {View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Animated, ViewStyle, TextStyle} from "react-native"
+import {useFocusEffect} from "@react-navigation/native"
+import {Button, Icon} from "@/components/ignite"
+import coreCommunicator from "@/bridge/CoreCommunicator"
+import {useStatus} from "@/contexts/AugmentOSStatusProvider"
+import {getGlassesImage} from "@/utils/getGlassesImage"
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
+import {router} from "expo-router"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {spacing, ThemedStyle} from "@/theme"
+import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
+import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
+import ChevronRight from "assets/icons/ChevronRight"
+import {Circle} from "react-native-svg"
+import {AnimatedCircularProgress} from "react-native-circular-progress"
+import { getBatteryColor } from "@/utils/getBatteryIcon"
 
 
-export default function ConnectedDeviceInfo() {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const slideAnim = useRef(new Animated.Value(-50)).current;
-  const [connectedGlasses, setConnectedGlasses] = useState('');
-  const {status, refreshStatus} = useStatus();
-  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend);
+export const ConnectDeviceButton = () => {
+  const {status} = useStatus()
 
-  const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false);
-  const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false);
+  const connectGlasses = async () => {
+    if (!status.core_info.default_wearable) {
+      router.push("/pairing/select-glasses-model")
+      return
+    }
+
+    // Check that Bluetooth and Location are enabled/granted
+    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+    if (!requirementsCheck.isReady) {
+      // Show alert about missing requirements
+      console.log("Requirements not met, showing banner with message:", requirementsCheck.message)
+      GlobalEventEmitter.emit("SHOW_BANNER", {
+        message: requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
+        type: "error",
+      })
+
+      return
+    }
+
+    try {
+      console.log("Connecting to glasses:", status.core_info.default_wearable)
+      if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
+        console.log("Connecting to glasses:", status.core_info.default_wearable)
+        await coreCommunicator.sendConnectWearable(status.core_info.default_wearable)
+      }
+    } catch (error) {
+      console.error("connect to glasses error:", error)
+      GlobalEventEmitter.emit("SHOW_BANNER", {
+        message: "Failed to connect to glasses",
+        type: "error",
+      })
+    }
+  }
+
+  const sendDisconnectWearable = async () => {
+    console.log("Disconnecting wearable")
+
+    try {
+      await coreCommunicator.sendDisconnectWearable()
+    } catch (error) {}
+  }
+
+  // New handler: if already connecting, pressing the button calls disconnect.
+  const handleConnectOrDisconnect = async () => {
+    if (status.core_info.is_searching) {
+      await sendDisconnectWearable()
+    } else {
+      await connectGlasses()
+    }
+  }
+  if (!status.core_info.default_wearable) {
+    return (
+      <Button
+        textStyle={[{marginLeft: spacing.xxl}]}
+        textAlignment="left"
+        LeftAccessory={() => <SolarLineIconsSet4 />}
+        RightAccessory={() => <ChevronRight />}
+        onPress={() => {
+          router.push("/pairing/select-glasses-model")
+        }}
+        tx="home:pairGlasses"
+      />
+    )
+  }
+
+  if (status.core_info.is_searching) {
+    return (
+      <Button
+        textStyle={[{marginLeft: spacing.xxl}]}
+        textAlignment="left"
+        LeftAccessory={() => <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
+        onPress={() => {}}
+        tx="home:connectingGlasses"
+      />
+    )
+  }
+
+  if (!status.glasses_info?.model_name) {
+    return (
+      <Button
+        textStyle={[{marginLeft: spacing.xxl}]}
+        textAlignment="left"
+        LeftAccessory={() => <SolarLineIconsSet4 />}
+        RightAccessory={() => <ChevronRight />}
+        onPress={handleConnectOrDisconnect}
+        tx="home:connectGlasses"
+      />
+    )
+  }
+}
+
+export const DeviceHome = () => {
+  const {status} = useStatus()
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.8)).current
+  const slideAnim = useRef(new Animated.Value(-50)).current
+
+  const {themed, theme} = useAppTheme()
+
+  return (
+    <View style={themed($deviceInfoContainer)}>
+      <View style={styles.connectedContent}>
+        <Animated.Image
+          source={getGlassesImage(status.core_info.default_wearable)}
+          style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
+        />
+      </View>
+    </View>
+  )
+}
+
+interface ConnectedGlassesProps {
+  showTitle: boolean
+}
+
+export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) => {
+  const {status} = useStatus()
+  const fadeAnim = useRef(new Animated.Value(0)).current
+  const scaleAnim = useRef(new Animated.Value(0.8)).current
+  const slideAnim = useRef(new Animated.Value(-50)).current
+  const {themed, theme} = useAppTheme()
+  const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
+
+  // green to red color gradient based on battery life:
+const getBatteryColor = (batteryLife: number) => {
+  if (batteryLife >= 80) {
+    return "#00ac1a"
+  } else if (batteryLife >= 50) {
+    return "#FFC107"
+  } else {
+    return "#E24A24"
+  }
+}
 
   useFocusEffect(
     useCallback(() => {
       // Reset animations to initial values
-      fadeAnim.setValue(0);
-      scaleAnim.setValue(0.8);
-      slideAnim.setValue(-50);
-
-      // Update connectedGlasses state when default_wearable changes
-      if (status.core_info.default_wearable) {
-        setConnectedGlasses(status.core_info.default_wearable);
-      }
+      fadeAnim.setValue(0)
+      scaleAnim.setValue(0.8)
+      slideAnim.setValue(-50)
 
       // Start animations if device is connected
       if (status.core_info.puck_connected) {
@@ -55,295 +180,127 @@ export default function ConnectedDeviceInfo() {
             duration: 700,
             useNativeDriver: true,
           }),
-        ]).start();
-      }
-      if (status.core_info.default_wearable !== '') {
-        setDisconnectButtonDisabled(false);
+        ]).start()
       }
       // Cleanup function
       return () => {
-        fadeAnim.stopAnimation();
-        scaleAnim.stopAnimation();
-        slideAnim.stopAnimation();
-      };
-    }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim]),
-  );
-
-  useEffect(() => {
-    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend);
-  }, [status.core_info.is_mic_enabled_for_frontend]);
-
-  const handleConnectToCore = async () => {
-    try {
-      // Request status to check connection instead of scanning
-      await coreCommunicator.sendRequestStatus();
-    } catch (error) {
-      GlobalEventEmitter.emit('SHOW_BANNER', {message: 'Failed to connect to AugmentOS Core', type: 'error'});
-    }
-  };
-
-  const connectGlasses = async () => {
-    if (!status.core_info.default_wearable) {
-      router.push('/pairing/select-glasses-model');
-      return;
-    }
-
-    // Check that Bluetooth and Location are enabled/granted
-    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements();
-    if (!requirementsCheck.isReady) {
-      // Show alert about missing requirements
-      console.log('Requirements not met, showing banner with message:', requirementsCheck.message);
-      GlobalEventEmitter.emit('SHOW_BANNER', {
-        message: requirementsCheck.message || 'Cannot connect to glasses - check Bluetooth and Location settings',
-        type: 'error',
-      });
-
-      return;
-    }
-
-    setConnectButtonDisabled(true);
-    setDisconnectButtonDisabled(false);
-
-    try {
-      console.log('Connecting to glasses:', status.core_info.default_wearable);
-      if (status.core_info.default_wearable && status.core_info.default_wearable != '') {
-        console.log('Connecting to glasses:', status.core_info.default_wearable);
-        await coreCommunicator.sendConnectWearable(status.core_info.default_wearable);
+        fadeAnim.stopAnimation()
+        scaleAnim.stopAnimation()
+        slideAnim.stopAnimation()
       }
-    } catch (error) {
-      console.error('connect to glasses error:', error);
-      setConnectButtonDisabled(false);
-      GlobalEventEmitter.emit('SHOW_BANNER', {
-        message: 'Failed to connect to glasses',
-        type: 'error',
-      });
-    }
-  };
+    }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim]),
+  )
 
-  const sendDisconnectWearable = async () => {
-    setDisconnectButtonDisabled(true);
-    setConnectButtonDisabled(false);
+  // no glasses paired
+  if (!status.core_info.default_wearable) {
+    return null
+  }
 
-    console.log('Disconnecting wearable');
+  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+    return <ConnectedSimulatedGlassesInfo />
+  }
 
-    try {
-      await coreCommunicator.sendDisconnectWearable();
-    } catch (error) {}
-  };
+  // glasses paired and connected:
+  return (
+    <View style={styles.connectedContent}>
+      <Animated.Image
+        source={getGlassesImage(status.core_info.default_wearable)}
+        style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
+      />
+      {showTitle && (
+        <Animated.View style={[styles.connectedStatus, {transform: [{translateX: slideAnim}]}]}>
+          <Text style={[styles.connectedTextTitle, {color: theme.colors.text}]}>
+            {formatGlassesTitle(status.core_info.default_wearable)}
+          </Text>
+        </Animated.View>
+      )}
+    </View>
+  )
+}
 
-  // New handler: if already connecting, pressing the button calls disconnect.
-  const handleConnectOrDisconnect = async () => {
-    if (isConnectButtonDisabled || status.core_info.is_searching) {
-      await sendDisconnectWearable();
-    } else {
-      await connectGlasses();
-    }
-  };
-
-  const {theme, themed} = useAppTheme();
-
-  const themeStyles = {
-    backgroundColor: theme.colors.palette.neutral200,
-    textColor: theme.colors.text,
-    statusLabelColor: theme.isDark ? '#CCCCCC' : '#666666',
-    statusValueColor: theme.isDark ? '#FFFFFF' : '#333333',
-    connectedDotColor: '#28a745',
-    separatorColor: theme.isDark ? '#666666' : '#999999',
-  };
-
-  const formatGlassesTitle = (title: string) => title.replace(/_/g, ' ').replace(/\b\w/g, char => char.toUpperCase());
-
-  const batteryIcon = getBatteryIcon(status.glasses_info?.battery_life ?? 0);
-  const batteryColor = getBatteryColor(status.glasses_info?.battery_life ?? 0);
-
-  // Determine the button style for connecting glasses
-  const getConnectButtonStyle = () => {
-    return status.core_info.is_searching
-      ? styles.connectingButton
-      : isConnectButtonDisabled
-      ? styles.disabledButton
-      : styles.connectButton;
-  };
-
-  let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true);
-  let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50);
+export default function ConnectedDeviceInfo() {
+  const {status, refreshStatus} = useStatus()
+  const {theme, themed} = useAppTheme()
+  const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
 
   useEffect(() => {
-    console.log('status?.glasses_settings?.brightness', status?.glasses_settings?.brightness);
-    setBrightness(status?.glasses_settings?.brightness ?? 50);
-    setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true);
-  }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness]);
+    setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
+  }, [status.core_info.is_mic_enabled_for_frontend])
 
-  const renderInterface = () => {
+
+  const renderConnectedInterface = () => {
     if (!status.glasses_info?.model_name) {
-      return (
-        // Connect button rendering with spinner on right
-        <View style={styles.noGlassesContent}>
-          <TouchableOpacity
-            style={getConnectButtonStyle()}
-            onPress={handleConnectOrDisconnect}
-            disabled={isConnectButtonDisabled && !status.core_info.is_searching}>
-            <Text style={styles.buttonText}>
-              {isConnectButtonDisabled || status.core_info.is_searching ? 'Connecting Glasses...' : 'Connect Glasses'}
-            </Text>
-            {status.core_info.is_searching && <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
-          </TouchableOpacity>
-        </View>
-      );
+      return null
     }
 
     return (
-      <>
-        <Animated.View style={[styles.statusBar, {opacity: fadeAnim}]}>
-          <View style={styles.statusInfo}>
-            {status.glasses_info?.battery_life != null && typeof status.glasses_info?.battery_life === 'number' && (
+      <View style={themed($statusBar)}>
+        {/* <View style={styles.statusInfo}>
+            {status.glasses_info?.battery_life != null && typeof status.glasses_info?.battery_life === "number" && (
               <>
-                <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor}]}>Battery</Text>
+                <Text style={themed($statusLabel)}>Battery</Text>
                 <View style={styles.batteryContainer}>
                   {status.glasses_info?.battery_life >= 0 && (
-                    <Icon name={batteryIcon} size={16} color={batteryColor} style={styles.batteryIcon} />
+                    <Icon
+                      name={getBatteryIcon(status.glasses_info?.battery_life ?? 0)}
+                      size={16}
+                      color={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+                    />
                   )}
-                  <Text style={[styles.batteryValue, {color: batteryColor}]}>
-                    {status.glasses_info.battery_life == -1 ? '-' : `${status.glasses_info.battery_life}%`}
+                  <Text style={themed($batteryValue)}>
+                    {status.glasses_info.battery_life == -1 ? "-" : `${status.glasses_info.battery_life}%`}
                   </Text>
                 </View>
               </>
             )}
-          </View>
-          <TouchableOpacity
-            style={[styles.disconnectButton, isDisconnectButtonDisabled && styles.disabledDisconnectButton]}
-            onPress={sendDisconnectWearable}
-            disabled={isDisconnectButtonDisabled}>
-            <Icon name="power-off" size={18} color="white" style={styles.icon} />
-            <Text style={styles.disconnectText}>Disconnect</Text>
-          </TouchableOpacity>
-        </Animated.View>
-        <View
-          style={[
-            styles.statusBar,
-            {
-              flexDirection: 'row',
-              justifyContent: 'space-between',
-              width: '100%',
-              gap: 12,
-              paddingVertical: 12,
-              marginBottom: 8,
-              marginTop: 8,
-            },
-          ]}>
-          <View style={[{flex: 8, flexShrink: 1}]}>
-            <View style={{flexDirection: 'row', justifyContent: 'space-between', width: '100%'}}>
-              <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor}]}>Brightness</Text>
-              {!autoBrightness ? (
-                <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}>{brightness}%</Text>
-              ) : (
-                <Text style={[styles.statusValue, {color: themeStyles.statusValueColor}]}></Text>
-              )}
-            </View>
-            {/* this is so dumb but it doesn't want to work any other way */}
-            {autoBrightness && (
-              <Slider
-                disabled={true}
-                style={{width: '100%'}}
-                value={100}
-                minimumValue={0}
-                maximumValue={100}
-                step={1}
-                thumbStyle={{height: 20, width: 20, backgroundColor: 'transparent'}}
-                thumbTouchSize={{width: 40, height: 40}}
-                thumbTintColor='transparent'
-                trackStyle={{height: 5}}
-                minimumTrackTintColor='transparent'
-              />
-            )}
-            {!autoBrightness && (
-              <Slider
-                disabled={false}
-                allowTouchTrack={false}
-                style={{width: '100%'}}
-                value={brightness}
-                minimumValue={0}
-                maximumValue={100}
-                step={1}
-                thumbStyle={{height: 20, width: 20}}
-                thumbTouchSize={{width: 40, height: 40}}
-                thumbTintColor="#FFFFFF"
-                trackStyle={{height: 5}}
-                onSlidingComplete={value => {
-                  coreCommunicator.setGlassesBrightnessMode(value, autoBrightness);
-                }}
-              />
-            )}
-          </View>
+          </View> */}
 
-          <View style={[{flex: 2, alignItems: 'center', gap: 4, flexDirection: 'column', paddingTop: 0}]}>
-            <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor, marginTop: -10}]}>Auto</Text>
-            <Switch
-              hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
-              value={status.glasses_settings.auto_brightness}
-              onValueChange={value => {
-                coreCommunicator.setGlassesBrightnessMode(brightness, value);
-              }}
-            />
-          </View>
+        {/* battery circular progress bar */}
+        <View>
+          {/* <Text style={themed($batteryValue)}>
+            {status.glasses_info?.battery_life == -1 ? "-" : `${status.glasses_info?.battery_life}%`}
+          </Text> */}
+
+          <AnimatedCircularProgress
+            size={36}
+            width={3}
+            lineCap="round"
+            fillLineCap="round"
+            fill={status.glasses_info?.battery_life}
+            tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+            backgroundColor={theme.colors.palette.neutral300}
+            children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
+            rotation={0}
+          />
         </View>
-      </>
-    );
-  };
 
-  const renderStatusBars = () => {
-    // if (!status.core_info.puck_connected) {
-    //   return (
-    //     <View style={styles.disconnectedContent}>
-    //       <Text style={[styles.connectText, {color: themeStyles.textColor}]}>{'Core service not connected'}</Text>
-    //       <TouchableOpacity style={styles.connectButton} onPress={handleConnectToCore}>
-    //         <Icon name="wifi" size={16} color="white" style={styles.icon} />
-    //         <Text style={styles.buttonText}>Connect to Core</Text>
-    //       </TouchableOpacity>
-    //     </View>
-    //   );
-    // }
-
-    if (!status.core_info.default_wearable) {
-      if (status.core_info.is_searching) {
-        return (
-          <View style={styles.disconnectedContent}>
-            <Text style={[styles.connectText, {color: themeStyles.textColor}]}>Searching for glasses</Text>
-            <ActivityIndicator size="small" color="#2196F3" />
-          </View>
-        );
-      }
-
-      return (
-        <View style={styles.noGlassesContent}>
-          <Text style={styles.noGlassesText}>{'No Glasses Paired'}</Text>
-          <TouchableOpacity style={styles.connectButton} onPress={connectGlasses}>
-            <Text style={styles.buttonText}>{'Connect Glasses'}</Text>
-          </TouchableOpacity>
-        </View>
-      );
-    }
-
-    return (
-      <View style={styles.connectedContent}>
-        <Animated.Image
-          source={getGlassesImage(status.core_info.default_wearable)}
-          style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
-        />
-        <Animated.View style={[styles.connectedStatus, {transform: [{translateX: slideAnim}]}]}>
-          <Text style={[styles.connectedTextTitle, {color: themeStyles.textColor}]}>
-            {formatGlassesTitle(connectedGlasses)}
-          </Text>
-        </Animated.View>
-        {renderInterface()}
+        {/* disconnect button */}
+        <TouchableOpacity
+          style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
+          onPress={() => {
+            coreCommunicator.sendDisconnectWearable()
+          }}
+          disabled={status.core_info.is_searching}>
+          <Icon name="power-off" size={18} color="white" style={styles.icon} />
+          <Text style={styles.disconnectText}>Disconnect</Text>
+        </TouchableOpacity>
       </View>
-    );
-  };
+    )
+  }
 
-  return (
-    <View style={themed($deviceInfoContainer)}>
-      {/* Status Indicators Row - Only render if indicators present */}
-      {(microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) && (
+  {
+    /* Use the simulated version if we're connected to simulated glasses */
+  }
+  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+    return <ConnectedSimulatedGlassesInfo />
+  }
+
+  const renderStatusIndicators = () => {
+    {
+      /* Status Indicators Row - Only render if indicators present */
+    }
+    if (microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) {
+      return (
         <View style={styles.statusIndicatorsRow}>
           {microphoneActive && <Icon name="microphone" size={20} color="#4CAF50" />}
 
@@ -356,9 +313,12 @@ export default function ConnectedDeviceInfo() {
               style={styles.wifiContainer}
               onPress={() => {
                 if (status.glasses_info) {
-                  navigation.navigate('GlassesWifiSetupScreen', {
-                    deviceModel: status.glasses_info.model_name || 'Glasses',
-                  });
+                  router.push({
+                    pathname: "/pairing/glasses-wifi-setup",
+                    params: {
+                      deviceModel: status.glasses_info.model_name || "Glasses",
+                    },
+                  })
                 }
               }}>
               {status.glasses_info.glasses_wifi_connected ? (
@@ -374,225 +334,236 @@ export default function ConnectedDeviceInfo() {
             </TouchableOpacity>
           )}
         </View>
-      )}
+      )
+    }
+    return null
+  }
 
-      {renderStatusBars()}
+  return (
+    <View style={themed($deviceInfoContainer)}>
+      {renderStatusIndicators()}
+      <ConnectedGlasses showTitle={true} />
+      {renderConnectedInterface()}
+      <ConnectDeviceButton />
     </View>
-  );
-};
+  )
+}
 
-const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  padding: 16,
+const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  // padding: 16,
+  // borderRadius: 12,
+  // width: "100%",
+  // minHeight: 240,
+  // justifyContent: "center",
+  marginTop: 16,
+  // paddingHorizontal: 24,
+  // backgroundColor: colors.palette.neutral200,
+})
+
+const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  lineHeight: 16,
+  fontWeight: "500",
+  letterSpacing: -0.08,
+  fontFamily: "SF Pro",
+})
+
+const $batteryValue: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  fontWeight: "bold",
+  fontFamily: "Montserrat-Bold",
+  color: colors.text,
+})
+
+const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
   borderRadius: 12,
-  width: '100%',
-  minHeight: 240,
-  justifyContent: 'center',
-  marginTop: 16, // Increased space above component
-  backgroundColor: colors.palette.neutral200,
+  padding: 10,
 })
 
 const styles = StyleSheet.create({
   deviceInfoContainer: {
     padding: 16,
     borderRadius: 12,
-    width: '100%',
+    width: "100%",
     minHeight: 240,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginTop: 16, // Increased space above component
-    backgroundColor: '#E5E5EA',
+    backgroundColor: "#E5E5EA",
   },
   connectedContent: {
     flex: 1,
     flexShrink: 1,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  noGlassesContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   disconnectedContent: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   glassesImage: {
-    width: '80%',
+    width: "80%",
     height: 120,
-    resizeMode: 'contain',
-  },
-  statusBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderRadius: 12,
-    padding: 10,
-    width: '100%',
-    backgroundColor: '#6750A414',
-    flexWrap: 'wrap',
+    resizeMode: "contain",
   },
   statusInfoNotConnected: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    width: '100%',
+    width: "100%",
   },
   statusInfo: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
     marginRight: 20,
   },
   batteryContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   batteryIcon: {
     marginRight: 4,
-    alignSelf: 'center',
-  },
-  batteryValue: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
+    alignSelf: "center",
   },
   statusValue: {
     fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: "bold",
+    fontFamily: "Montserrat-Bold",
   },
   connectedStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
   },
   connectedDot: {
     fontSize: 14,
     marginRight: 2,
-    fontFamily: 'Montserrat-Bold',
+    fontFamily: "Montserrat-Bold",
   },
   separator: {
     marginHorizontal: 10,
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: "bold",
+    fontFamily: "Montserrat-Bold",
   },
   connectedTextGreen: {
-    color: '#28a745',
+    color: "#28a745",
     marginLeft: 4,
     marginRight: 2,
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: "bold",
+    fontFamily: "Montserrat-Bold",
   },
   connectedTextTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: "bold",
+    fontFamily: "Montserrat-Bold",
   },
   statusLabel: {
     fontSize: 12,
     lineHeight: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     letterSpacing: -0.08,
-    fontFamily: 'SF Pro',
+    fontFamily: "SF Pro",
   },
   connectText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
-    fontFamily: 'Montserrat-Bold',
+    fontFamily: "Montserrat-Bold",
   },
   noGlassesText: {
-    color: 'black',
-    textAlign: 'center',
+    color: "black",
+    textAlign: "center",
     fontSize: 16,
     marginBottom: 10,
   },
   connectButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2196F3',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#2196F3",
     padding: 10,
     borderRadius: 8,
-    width: '80%',
+    width: "80%",
   },
   connectingButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FFC107', // Yellow when enabled & searching
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFC107", // Yellow when enabled & searching
     padding: 10,
     borderRadius: 8,
-    width: '80%',
+    width: "80%",
   },
   disabledButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#A9A9A9', // Grey when disabled
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#A9A9A9", // Grey when disabled
     padding: 10,
     borderRadius: 8,
-    width: '80%',
+    width: "80%",
   },
   disabledDisconnectButton: {
-    backgroundColor: '#A9A9A9',
+    backgroundColor: "#A9A9A9",
   },
   icon: {
     marginRight: 4,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
+    fontWeight: "bold",
+    fontFamily: "Montserrat-Bold",
   },
   disconnectButton: {
-    flexDirection: 'row',
-    backgroundColor: '#E24A24',
-    alignItems: 'center',
+    flexDirection: "row",
+    backgroundColor: "#E24A24",
+    alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 12,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginRight: 5,
-    width: '40%',
+    width: "40%",
   },
   disconnectText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
-    fontWeight: '500',
-    fontFamily: 'Montserrat-Regular',
+    fontWeight: "500",
+    fontFamily: "Montserrat-Regular",
   },
   statusIndicatorsRow: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 10,
     //height: 30,
   },
   iconContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
     width: 30,
     height: 30,
     borderRadius: 15,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   wifiContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
     paddingHorizontal: 5,
     paddingVertical: 2,
     borderRadius: 18,
   },
   wifiSsidText: {
     fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: 'bold',
+    color: "#4CAF50",
+    fontWeight: "bold",
     marginRight: 5,
     maxWidth: 120,
   },
-});
+})

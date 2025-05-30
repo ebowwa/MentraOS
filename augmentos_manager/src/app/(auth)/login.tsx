@@ -19,7 +19,7 @@ import {supabase} from "@/supabase/supabaseClient"
 import {Linking} from "react-native"
 import {Screen, Text, Button, Icon} from "@/components/ignite"
 import {translate} from "@/i18n"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {FontAwesome} from "@expo/vector-icons"
@@ -27,6 +27,8 @@ import GoogleIcon from "assets/icons/GoogleIcon"
 import AppleIcon from "assets/icons/AppleIcon"
 import { router } from "expo-router"
 import showAlert from "@/utils/AlertUtils"
+import { Pressable } from "react-native-gesture-handler"
+import { Spacer } from "@/components/misc/Spacer"
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -419,6 +421,7 @@ export default function LoginScreen() {
                           color={theme.colors.text}
                           // style={themed($inputIcon)}
                         />
+                        <Spacer width={spacing.xxs}/>
                         <TextInput
                           hitSlop={{top: 16, bottom: 16}}
                           style={themed($enhancedInput)}
@@ -442,6 +445,7 @@ export default function LoginScreen() {
                           color={theme.colors.text}
                           // style={themed($inputIcon)}
                         />
+                        <Spacer width={spacing.xxs}/>
                         <TextInput
                           hitSlop={{top: 16, bottom: 16}}
                           style={themed($enhancedInput)}
@@ -460,6 +464,8 @@ export default function LoginScreen() {
                       </View>
                     </View>
 
+                    <Spacer height={spacing.sm}/>
+
                     <Button
                       tx="login:login"
                       style={themed($primaryButton)}
@@ -477,7 +483,7 @@ export default function LoginScreen() {
                         )
                       }
                     />
-
+                    <Spacer height={spacing.sm}/>
                     <Button
                       tx="login:createAccount"
                       style={themed($secondaryButton)}
@@ -487,21 +493,21 @@ export default function LoginScreen() {
                       disabled={isFormLoading}
                     />
 
-                    <Button
-                      preset="reversed"
-                      tx="common:back"
-                      style={themed($ghostButton)}
-                      textStyle={themed($ghostButtonText)}
-                      onPress={() => setIsSigningUp(false)}
-                      LeftAccessory={() => (
+                    <Spacer height={spacing.sm}/>
+
+                      
+                    <Pressable onPress={() => setIsSigningUp(false)}>
+                      <View style={{ flexDirection: "row", justifyContent: "center", alignItems: "center" }}>
                         <FontAwesome
                           name="arrow-left"
                           size={16}
                           color={theme.colors.textDim}
                           // style={themed($backIcon)}
                         />
-                      )}
-                    />
+                        <Text style={{ marginLeft: 8, color: theme.colors.textDim }}>Back</Text>
+                      </View>
+                    </Pressable>
+                    
                   </Animated.View>
                 ) : (
                   <View style={themed($signInOptions)}>
@@ -625,6 +631,8 @@ const $title: ThemedStyle<TextStyle> = ({spacing, colors}) => ({
   color: colors.text,
   textAlign: "center",
   marginBottom: spacing.xs,
+  paddingTop: spacing.xl,
+  paddingBottom: spacing.md,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({spacing, colors}) => ({
@@ -733,33 +741,11 @@ const $appleButtonText: ThemedStyle<TextStyle> = () => ({
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.tint,
-  marginTop: spacing.xs,
-  borderRadius: 8,
-  height: 44,
-  shadowColor: colors.tint,
-  shadowOffset: {
-    width: 0,
-    height: 2,
-  },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
+ 
 })
 
 const $secondaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.secondary500,
-  marginTop: spacing.xs,
-  borderRadius: 8,
-  height: 44,
-  shadowColor: colors.palette.secondary500,
-  shadowOffset: {
-    width: 0,
-    height: 2,
-  },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
+
 })
 
 const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
