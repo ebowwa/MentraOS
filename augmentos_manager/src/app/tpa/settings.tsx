@@ -434,102 +434,49 @@ export default function AppSettings() {
   }
 
   return (
-    <Screen preset="scroll">
+    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
       {isUninstalling && (
         <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} isDarkTheme={isDarkTheme} />
       )}
 
       <Header leftIcon="caretLeft" onLeftPress={() => router.back()} />
-      {/* App Info Header Section */}
-      <View
-        style={[
-          styles.appInfoHeader,
-          {
-            backgroundColor: theme2.cardBackground,
-            borderColor: theme2.borderColor,
-          },
-        ]}>
-        <View style={styles.appIconRow}>
-          <View style={styles.appIconContainer}>
-            <View style={styles.iconWrapper}>
-              <AppIcon
-                app={appInfo}
-                isDarkTheme={isDarkTheme}
-                isForegroundApp={appInfo.is_foreground}
-                style={styles.appIconLarge}
-              />
+      <View style={{gap: 24}}>
+        {/* App Info Header Section */}
+        <View
+          style={[
+            styles.appInfoHeader,
+            {
+              backgroundColor: theme2.cardBackground,
+              borderColor: theme2.borderColor,
+            },
+          ]}>
+          <View style={styles.appIconRow}>
+            <View style={styles.appIconContainer}>
+              <View style={styles.iconWrapper}>
+                <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={styles.appIconLarge} />
+              </View>
+            </View>
+
+            <View style={styles.appInfoTextContainer}>
+              <Text style={[styles.appName, {color: theme2.textColor}]}>{appInfo.name}</Text>
+              <View style={styles.appMetaInfoContainer}>
+                <Text style={[styles.appMetaInfo, {color: theme2.secondaryTextColor}]}>
+                  Version {appInfo.version || "1.0.0"}
+                </Text>
+                <Text style={[styles.appMetaInfo, {color: theme2.secondaryTextColor}]}>Package: {packageName}</Text>
+              </View>
             </View>
           </View>
 
-          <View style={styles.appInfoTextContainer}>
-            <Text style={[styles.appName, {color: theme2.textColor}]}>{appInfo.name}</Text>
-            <View style={styles.appMetaInfoContainer}>
-              <Text style={[styles.appMetaInfo, {color: theme2.secondaryTextColor}]}>
-                Version {appInfo.version || "1.0.0"}
-              </Text>
-              <Text style={[styles.appMetaInfo, {color: theme2.secondaryTextColor}]}>Package: {packageName}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Description within the main card */}
-        <View style={[styles.descriptionContainer, {borderTopColor: theme2.separatorColor}]}>
-          <Text style={[styles.descriptionText, {color: theme2.textColor}]}>
-            {appInfo.description || "No description available."}
-          </Text>
-        </View>
-      </View>
-
-      {/* App Action Buttons Section */}
-      <View
-        style={[
-          styles.sectionContainer,
-          {
-            backgroundColor: theme2.cardBackground,
-            borderColor: theme2.borderColor,
-          },
-        ]}>
-        <View style={styles.actionButtonsRow}>
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              {
-                borderColor: theme2.borderColor,
-                backgroundColor: theme2.backgroundColor,
-              },
-            ]}
-            onPress={handleStartStopApp}
-            activeOpacity={0.7}>
-            <FontAwesome
-              name={appInfo.is_running ? "stop" : "play"}
-              size={16}
-              style={[styles.buttonIcon, {color: theme2.secondaryTextColor}]}
-            />
-            <Text style={[styles.buttonText, {color: theme2.secondaryTextColor}]}>
-              {appInfo.is_running ? "Stop" : "Start"}
+          {/* Description within the main card */}
+          <View style={[styles.descriptionContainer, {borderTopColor: theme2.separatorColor}]}>
+            <Text style={[styles.descriptionText, {color: theme2.textColor}]}>
+              {appInfo.description || "No description available."}
             </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              {
-                borderColor: theme2.borderColor,
-                backgroundColor: theme2.backgroundColor,
-              },
-              !serverAppInfo?.uninstallable && styles.disabledButton,
-            ]}
-            activeOpacity={0.7}
-            onPress={handleUninstallApp}
-            disabled={!serverAppInfo?.uninstallable}>
-            <FontAwesome name="trash" size={16} style={[styles.buttonIcon, {color: "#ff3b30"}]} />
-            <Text style={[styles.buttonText, {color: "#ff3b30"}]}>Uninstall</Text>
-          </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* App Instructions Section */}
-      {serverAppInfo?.instructions && (
+        {/* App Action Buttons Section */}
         <View
           style={[
             styles.sectionContainer,
@@ -538,34 +485,87 @@ export default function AppSettings() {
               borderColor: theme2.borderColor,
             },
           ]}>
-          <Text style={[styles.sectionTitle, {color: theme2.textColor}]}>About this App</Text>
-          <Text style={[styles.instructionsText, {color: theme2.textColor}]}>{serverAppInfo.instructions}</Text>
-        </View>
-      )}
+          <View style={styles.actionButtonsRow}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                {
+                  borderColor: theme2.borderColor,
+                  backgroundColor: theme2.backgroundColor,
+                },
+              ]}
+              onPress={handleStartStopApp}
+              activeOpacity={0.7}>
+              <FontAwesome
+                name={appInfo.is_running ? "stop" : "play"}
+                size={16}
+                style={[styles.buttonIcon, {color: theme2.secondaryTextColor}]}
+              />
+              <Text style={[styles.buttonText, {color: theme2.secondaryTextColor}]}>
+                {appInfo.is_running ? "Stop" : "Start"}
+              </Text>
+            </TouchableOpacity>
 
-      {/* App Settings Section */}
-      <View
-        style={[
-          styles.sectionContainer,
-          {
-            backgroundColor: theme2.cardBackground,
-            borderColor: theme2.borderColor,
-          },
-        ]}>
-        <Text style={[styles.sectionTitle, {color: theme2.textColor}]}>App Settings</Text>
-        <View style={styles.settingsContainer}>
-          {settingsLoading && (!serverAppInfo?.settings || typeof serverAppInfo.settings === "undefined") ? (
-            <SettingsSkeleton />
-          ) : serverAppInfo?.settings && serverAppInfo.settings.length > 0 ? (
-            serverAppInfo.settings.map((setting: any, index: number) =>
-              renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
-            )
-          ) : (
-            <Text style={[styles.noSettingsText, {color: theme2.secondaryTextColor}]}>
-              No settings available for this app
-            </Text>
-          )}
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                {
+                  borderColor: theme2.borderColor,
+                  backgroundColor: theme2.backgroundColor,
+                },
+                !serverAppInfo?.uninstallable && styles.disabledButton,
+              ]}
+              activeOpacity={0.7}
+              onPress={handleUninstallApp}
+              disabled={!serverAppInfo?.uninstallable}>
+              <FontAwesome name="trash" size={16} style={[styles.buttonIcon, {color: "#ff3b30"}]} />
+              <Text style={[styles.buttonText, {color: "#ff3b30"}]}>Uninstall</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* App Instructions Section */}
+        {serverAppInfo?.instructions && (
+          <View
+            style={[
+              styles.sectionContainer,
+              {
+                backgroundColor: theme2.cardBackground,
+                borderColor: theme2.borderColor,
+              },
+            ]}>
+            <Text style={[styles.sectionTitle, {color: theme2.textColor}]}>About this App</Text>
+            <Text style={[styles.instructionsText, {color: theme2.textColor}]}>{serverAppInfo.instructions}</Text>
+          </View>
+        )}
+
+        {/* App Settings Section */}
+        <View
+          style={[
+            styles.sectionContainer,
+            {
+              backgroundColor: theme2.cardBackground,
+              borderColor: theme2.borderColor,
+            },
+          ]}>
+          <Text style={[styles.sectionTitle, {color: theme2.textColor}]}>App Settings</Text>
+          <View style={styles.settingsContainer}>
+            {settingsLoading && (!serverAppInfo?.settings || typeof serverAppInfo.settings === "undefined") ? (
+              <SettingsSkeleton />
+            ) : serverAppInfo?.settings && serverAppInfo.settings.length > 0 ? (
+              serverAppInfo.settings.map((setting: any, index: number) =>
+                renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
+              )
+            ) : (
+              <Text style={[styles.noSettingsText, {color: theme2.secondaryTextColor}]}>
+                No settings available for this app
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* gives extra scroll height */}
+        <View style={{height: 40}} />
       </View>
     </Screen>
   )

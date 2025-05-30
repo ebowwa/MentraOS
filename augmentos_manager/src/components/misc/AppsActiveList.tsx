@@ -12,6 +12,7 @@ import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
+import AppsList from "@/components/misc/AppsList"
 
 export default function AppsActiveList() {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
@@ -60,48 +61,12 @@ export default function AppsActiveList() {
 
   function getNewRow() {
     return (
-      <View style={themed($appsContainer)}>
-        <View style={themed($listContainer)}>
-          {runningApps.length > 0 ? (
-            <>
-              <ListHeaderActiveApps />
-              {runningApps.map((app, index) => (
-                <View style={[themed($everything), themed($everythingFlexBox)]} key={index}>
-                  <View style={[themed($appDescription), themed($everythingFlexBox)]}>
-                    <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
-                    <View style={themed($appNameWrapper)}>
-                      <Text style={themed($appName)} numberOfLines={1}>
-                        {app.name}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
-                    <TouchableOpacity
-                      onPress={() => stopApp(app.packageName)}
-                      onLongPress={() => openAppSettings(app)}
-                      delayLongPress={500}
-                      style={{padding: 10, borderRadius: 20}}>
-                      <View style={themed($toggle)}>
-                        <View
-                          style={[themed($toggleBarIcon), themed($toggleIconLayout), {backgroundColor: "#565E8C"}]}
-                        />
-                        <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), {left: "44.44%"}]}>
-                          <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
-                        </View>
-                      </View>
-                    </TouchableOpacity>
-                    <ChevronRight />
-                  </View>
-                </View>
-              ))}
-            </>
-          ) : (
-            <EmptyAppsView
-              statusMessageKey={"home:noActiveApps"}
-              activeAppsMessageKey={"home:emptyActiveAppListInfo"}
-            />
-          )}
-        </View>
+      <View>
+        {runningApps.length > 0 && <ListHeaderActiveApps />}
+        <AppsList apps={runningApps} stopApp={stopApp} openAppSettings={openAppSettings} />
+        {runningApps.length === 0 && (
+          <EmptyAppsView statusMessageKey={"home:noActiveApps"} activeAppsMessageKey={"home:emptyActiveAppListInfo"} />
+        )}
       </View>
     )
   }
@@ -112,10 +77,6 @@ export default function AppsActiveList() {
 const $appsContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
   marginTop: 8,
-})
-
-const $listContainer: ThemedStyle<ViewStyle> = () => ({
-  gap: 10,
 })
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
