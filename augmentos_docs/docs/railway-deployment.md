@@ -94,7 +94,7 @@ cd my-augmentos-app
 
 ### 7. Import App Configuration
 
-You can now add permissions, settings, and tools to your app via the AugmentOS Developer Console. Instead of doing it manually, let's upload this example's `app_config.json` file by clicking the **"Import app_config.json"** button under **Configuration Management**:
+You can now add permissions, settings, and tools to your app via the AugmentOS Developer Console. Instead of doing it manually, let's upload this example's [`app_config.json`](https://raw.githubusercontent.com/AugmentOS-Community/AugmentOS-Extended-Example-App/refs/heads/main/app_config.json) file by clicking the **"Import app_config.json"** button under **Configuration Management**:
 
 ![Import app config](https://github.com/user-attachments/assets/14736150-7f02-43db-8b29-bbe918a4086b)
 
