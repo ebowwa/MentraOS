@@ -13,6 +13,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import AppsList from "@/components/misc/AppsList"
+import TempActivateAppWindow from "@/components/misc/TempActivateAppWindow"
 
 export default function AppsActiveList() {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
@@ -65,7 +66,9 @@ export default function AppsActiveList() {
         {runningApps.length > 0 && <ListHeaderActiveApps />}
         <AppsList apps={runningApps} stopApp={stopApp} openAppSettings={openAppSettings} />
         {runningApps.length === 0 && (
-          <EmptyAppsView statusMessageKey={"home:noActiveApps"} activeAppsMessageKey={"home:emptyActiveAppListInfo"} />
+          <>
+            <TempActivateAppWindow />
+          </>
         )}
       </View>
     )
@@ -132,6 +135,7 @@ const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
   left: "0%",
   borderRadius: 8,
   maxHeight: "100%",
+  backgroundColor: "blue"
 })
 
 const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({

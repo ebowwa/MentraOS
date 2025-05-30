@@ -48,7 +48,10 @@ const en = {
     tryLiveCaptionsMessage: "Start talking now to see your speech transcribed on your glasses in real-time!",
     permissionRequiredTitle: "Permission Required",
     permissionsRequiredTitle: "Permissions Required",
-    permissionMessage: "Please grant the following permissions to continue: {{permissions}}"
+    permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
+    activateAnApp: "Activate an app",
+    activateAnAppMessage: "Switch the toggle to run an app on your glasses."
+
   },
   glasses: {
     title: "Glasses",
