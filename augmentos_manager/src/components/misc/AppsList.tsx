@@ -16,7 +16,7 @@ interface AppsListProps {
 
 export default function AppsList({apps, stopApp, startApp, openAppSettings}: AppsListProps) {
   const {themed} = useAppTheme()
-  
+
   if (apps.length == 0) {
     return null
   }
@@ -93,6 +93,8 @@ export default function AppsList({apps, stopApp, startApp, openAppSettings}: App
       </View>
     )
   }
+
+  return null
 
   // if (startApp) {
   //   return (
