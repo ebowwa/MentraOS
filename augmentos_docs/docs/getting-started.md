@@ -161,7 +161,7 @@ Update your `package.json` with the following scripts:
     "dev": "bun --watch src/index.ts"
   },
   "dependencies": {
-    "@augmentos/sdk": "workspace:*"
+    "@augmentos/sdk": "^1.1.10"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
@@ -201,6 +201,9 @@ To make your locally running app accessible from the internet:
 4. Set a unique package name (e.g., `com.yourname.myfirstapp`)
 5. For "Public URL", enter your ngrok static URL
 6. After the app is created, you will be given an API key. Copy this key.
+7. In the edit app screen, add the microphone permission
+
+> **Note**: If your app needs access to device data like microphone, location, or notifications, you can configure permissions in the developer console. See the [Permissions](permissions) guide for details.
 
 ### 12. Update Your Environment Configuration
 
