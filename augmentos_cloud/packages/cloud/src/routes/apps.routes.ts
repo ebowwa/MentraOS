@@ -9,11 +9,13 @@ import jwt, { JwtPayload } from 'jsonwebtoken';
 import { DeveloperProfile, TpaType } from '@augmentos/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import UserSession from 'src/services/session/UserSession';
+import { authWithOptionalSession, OptionalUserSessionRequest } from '../middleware/client/client-auth-middleware';
 const logger = rootLogger.child({ service: 'apps.routes' });
 
 // Extended app interface for API responses that include developer profile
 interface AppWithDeveloperProfile extends AppI {
   developerProfile?: DeveloperProfile;
+  orgName?: string; // Organization name
 }
 
 // Enhanced app interface with running state properties
@@ -39,6 +41,11 @@ const ALLOWED_API_KEY_PACKAGES = ['test.augmentos.mira', 'cloud.augmentos.mira',
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
+/** 
+ * TODO(isaiah): Instead of having a unifiedAuthMiddleware, I would prefer to cleanly separate routes that are called 
+ * by either the client (mobile app, web app, etc.), system apps, or the TPA's (third-party applications), having a more clear separation of concerns.
+ * This way we would be able to log, track, and debug defined actions more clearly.
+ */
 /**
  * Unified authentication middleware: allows either
  * (1) apiKey + packageName + userId (for allowed TPAs), or
@@ -148,37 +155,37 @@ async function getUserIdFromToken(token: string): Promise<string | null> {
  * Dual mode auth middleware - works with or without active sessions
  * If a valid token is present but no active session, creates a minimal user context
  */
-async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Check for Authorization header
-  const authHeader = req.headers.authorization;
+// async function dualModeAuthMiddleware(req: Request, res: Response, next: NextFunction) {
+//   // Check for Authorization header
+//   const authHeader = req.headers.authorization;
 
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
-    // Try to get full session
-    const session = await getSessionFromToken(token);
-    if (session) {
-      (req as any).userSession = session;
-      next();
-      return;
-    }
-  }
+//   if (authHeader && authHeader.startsWith('Bearer ')) {
+//     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+//     // Try to get full session
+//     const session = await getSessionFromToken(token);
+//     if (session) {
+//       (req as any).userSession = session;
+//       next();
+//       return;
+//     }
+//   }
 
-  // Fall back to sessionId in body (for full session only)
-  if (req.body && req.body.sessionId) {
-    const session = sessionService.getSession(req.body.sessionId);
-    if (session) {
-      (req as any).userSession = session;
-      next();
-      return;
-    }
-  }
+//   // Fall back to sessionId in body (for full session only)
+//   if (req.body && req.body.sessionId) {
+//     const session = sessionService.getSession(req.body.sessionId);
+//     if (session) {
+//       (req as any).userSession = session;
+//       next();
+//       return;
+//     }
+//   }
 
-  // No valid authentication found
-  res.status(401).json({
-    success: false,
-    message: 'Authentication required. Please provide valid token or session ID with an active session.'
-  });
-}
+//   // No valid authentication found
+//   res.status(401).json({
+//     success: false,
+//     message: 'Authentication required. Please provide valid token or session ID with an active session.'
+//   });
+// }
 
 
 const router = express.Router();
@@ -275,6 +282,8 @@ async function getPublicApps(req: Request, res: Response) {
 async function searchApps(req: Request, res: Response) {
   try {
     const query = req.query.q as string;
+    const organizationId = req.query.organizationId as string;
+
     if (!query) {
       return res.status(400).json({
         success: false,
@@ -283,10 +292,21 @@ async function searchApps(req: Request, res: Response) {
     }
 
     const apps = await appService.getAllApps();
-    const searchResults = apps.filter(app =>
+
+    // First filter by search query
+    let searchResults = apps.filter(app =>
       app.name.toLowerCase().includes(query.toLowerCase()) ||
       (app.description && app.description.toLowerCase().includes(query.toLowerCase()))
     );
+
+    // Then filter by organization if specified
+    if (organizationId) {
+      searchResults = searchResults.filter(app =>
+        app.organizationId && app.organizationId.toString() === organizationId
+      );
+
+      logger.debug(`Filtered search results by organizationId: ${organizationId}, found ${searchResults.length} results`);
+    }
 
     res.json({
       success: true,
@@ -325,25 +345,43 @@ async function getAppByPackage(req: Request, res: Response) {
     // Log permissions for debugging
     logger.debug({ packageName, permissions: plainApp.permissions }, 'App permissions');
 
-    // If the app has a developerId, try to get the developer profile information
-    let developerProfile = null;
-    if (plainApp.developerId) {
-      try {
+    // If the app has an organizationId, get the organization profile information
+    let orgProfile = null;
+
+    try {
+      if (plainApp.organizationId) {
+        // Import Organization model
+        const Organization = require('../models/organization.model').Organization;
+        const org = await Organization.findById(plainApp.organizationId);
+        if (org) {
+          orgProfile = {
+            name: org.name,
+            profile: org.profile || {}
+          };
+        }
+      }
+      // Fallback to developer profile for backward compatibility
+      else if (plainApp.developerId) {
         const developer = await User.findByEmail(plainApp.developerId);
         if (developer && developer.profile) {
-          developerProfile = developer.profile;
+          orgProfile = {
+            name: developer.profile.company || developer.email.split('@')[0],
+            profile: developer.profile
+          };
         }
-      } catch (err) {
-        logger.error({ error: err, developerId: plainApp.developerId }, 'Error fetching developer profile');
-        // Continue without developer profile
       }
+    } catch (err) {
+      logger.error({ error: err, orgId: plainApp.organizationId, developerId: plainApp.developerId },
+        'Error fetching organization/developer profile');
+      // Continue without profile
     }
 
-    // Create response with developer profile if available
+    // Create response with organization profile if available
     // Use the plain app directly instead of spreading its properties
     const appObj = plainApp as AppWithDeveloperProfile;
-    if (developerProfile) {
-      appObj.developerProfile = developerProfile;
+    if (orgProfile) {
+      appObj.developerProfile = orgProfile.profile;
+      appObj.orgName = orgProfile.name;
     }
 
     res.json({
@@ -395,7 +433,7 @@ async function startApp(req: Request, res: Response) {
 }
 
 /**
- * Stop app for session 
+ * Stop app for session
  */
 async function stopApp(req: Request, res: Response) {
   const { packageName } = req.params;
@@ -449,20 +487,27 @@ async function stopApp(req: Request, res: Response) {
  * Install app for user
  */
 async function installApp(req: Request, res: Response) {
-  const { packageName } = req.params;
-  const userSession: UserSession = (req as any).userSession; // Get session from middleware
-  const email = userSession.userId;
+  const request = req as OptionalUserSessionRequest;
 
-  if (!email || !packageName) {
-    return res.status(400).json({
-      success: false,
-      message: 'User session and package name are required'
-    });
-  }
+  const { packageName } = req.params;
+  const userSession = request.userSession; // Get optional userSession from middleware
+  const email = request.email; // Get email from request
+  const user = request.user; // Get user from middleware
 
   try {
-    // Find or create user
-    const user = await User.findOrCreateUser(email);
+    if (!email || !packageName) {
+      return res.status(400).json({
+        success: false,
+        message: 'User session and package name are required'
+      });
+    }
+
+   if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
 
     // Get app details
     const app = await appService.findFromAppStore(packageName);
@@ -482,23 +527,14 @@ async function installApp(req: Request, res: Response) {
     }
 
     // Add to installed apps
-    if (!user.installedApps) {
-      user.installedApps = [];
-    }
-
-    user.installedApps.push({
-      packageName,
-      installedDate: new Date()
-    });
-
-    await user.save();
+    await user.installApp(packageName);
 
     res.json({
       success: true,
       message: `App ${packageName} installed successfully`
     });
 
-    // Always attempt WebSocket notifications for full session
+    // If there's an active userSession, update the session with the new app.
     try {
       // sessionService.triggerAppStateChange(email);
       userSession.appManager.broadcastAppState();
@@ -519,20 +555,22 @@ async function installApp(req: Request, res: Response) {
  * Uninstall app for user
  */
 async function uninstallApp(req: Request, res: Response) {
+  const request = req as OptionalUserSessionRequest;
   const { packageName } = req.params;
-  const session = (req as any).userSession; // Get session from middleware
-  const email = session.userId;
-
-  if (!email || !packageName) {
-    return res.status(400).json({
-      success: false,
-      message: 'User session and package name are required'
-    });
-  }
 
   try {
     // Find user
-    const user = await User.findByEmail(email);
+    const userSession = request.userSession; // Get userSession from middleware
+    const user = request.user; // Get user from middleware
+    const email = request.email; // Get email from request
+
+    if (!email || !packageName) {
+      return res.status(400).json({
+        success: false,
+        message: 'User session and package name are required'
+      });
+    }
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -561,7 +599,6 @@ async function uninstallApp(req: Request, res: Response) {
 
     // Attempt to stop the app session before uninstalling.
     try {
-      const userSession = sessionService.getSession(email);
       if (userSession) {
         // TODO(isaiah): Ensure this automatically triggers appstate change sent to client.
         await userSession.appManager.stopApp(packageName);
@@ -574,7 +611,7 @@ async function uninstallApp(req: Request, res: Response) {
       logger.warn('Error stopping app during uninstall:', error);
     }
   } catch (error) {
-    logger.error({ error, email, packageName }, 'Error uninstalling app');
+    logger.error({ error, userId: request.email, packageName }, 'Error uninstalling app');
     res.status(500).json({
       success: false,
       message: 'Error uninstalling app'
@@ -586,11 +623,10 @@ async function uninstallApp(req: Request, res: Response) {
  * Get installed apps for user
  */
 async function getInstalledApps(req: Request, res: Response) {
-  const session = (req as any).userSession; // Get session from middleware
-  const email = session.userId;
+  const request = req as OptionalUserSessionRequest;
 
   try {
-    const user = await User.findByEmail(email);
+    const user = request.user;
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -598,6 +634,7 @@ async function getInstalledApps(req: Request, res: Response) {
       });
     }
 
+    // TODO(isaiah): There's a better way to get list of all apps from MongoDB that doesn't spam DB with fetching one at a time.
     // Get details for all installed apps
     const installedApps = await Promise.all(
       (user.installedApps || []).map(async (installedApp) => {
@@ -647,25 +684,42 @@ async function getAppDetails(req: Request, res: Response) {
     // Convert to plain JavaScript object if it's a Mongoose document
     const plainApp = (app as any).toObject ? (app as any).toObject() : app;
 
-    // If the app has a developerId, try to get the developer profile information
-    let developerProfile = null;
-    if (plainApp.developerId) {
-      try {
+    // If the app has an organizationId, get the organization profile information
+    let orgProfile = null;
+
+    try {
+      if (plainApp.organizationId) {
+        // Import Organization model
+        const Organization = require('../models/organization.model').Organization;
+        const org = await Organization.findById(plainApp.organizationId);
+        if (org) {
+          orgProfile = {
+            name: org.name,
+            profile: org.profile || {}
+          };
+        }
+      }
+      // Fallback to developer profile for backward compatibility
+      else if (plainApp.developerId) {
         const developer = await User.findByEmail(plainApp.developerId);
         if (developer && developer.profile) {
-          developerProfile = developer.profile;
+          orgProfile = {
+            name: developer.profile.company || developer.email.split('@')[0],
+            profile: developer.profile
+          };
         }
-      } catch (err) {
-        logger.error('Error fetching developer profile:', err);
-        // Continue without developer profile
       }
+    } catch (err) {
+      logger.error('Error fetching organization/developer profile:', err);
+      // Continue without profile
     }
 
-    // Create response with developer profile if available
+    // Create response with organization/developer profile if available
     // Use the AppWithDeveloperProfile interface for type safety
     const appObj = plainApp as AppWithDeveloperProfile;
-    if (developerProfile) {
-      appObj.developerProfile = developerProfile;
+    if (orgProfile) {
+      appObj.developerProfile = orgProfile.profile;
+      appObj.orgName = orgProfile.name;
     }
 
     // Log the permissions to verify they are properly included
@@ -686,24 +740,44 @@ async function getAppDetails(req: Request, res: Response) {
 
 async function getAvailableApps(req: Request, res: Response) {
   try {
-    const apps = await appService.getAvailableApps();
+    const organizationId = req.query.organizationId as string;
+    let apps = await appService.getAvailableApps();
 
-    // Enhance apps with developer profiles
+    // Filter by organization if specified
+    if (organizationId) {
+      apps = apps.filter(app =>
+        app.organizationId && app.organizationId.toString() === organizationId
+      );
+
+      logger.debug(`Filtered available apps by organizationId: ${organizationId}, found ${apps.length} apps`);
+    }
+
+    // Enhance apps with organization profiles
     const enhancedApps = await Promise.all(apps.map(async (app) => {
       // Convert app to plain object for modification and type as AppWithDeveloperProfile
       const appObj = { ...app } as unknown as AppWithDeveloperProfile;
 
-      // Add developer profile if the app has a developerId
-      if (app.developerId) {
-        try {
+      // Add organization profile if the app has an organizationId
+      try {
+        if (app.organizationId) {
+          const Organization = require('../models/organization.model').Organization;
+          const org = await Organization.findById(app.organizationId);
+          if (org) {
+            appObj.developerProfile = org.profile || {};
+            appObj.orgName = org.name;
+          }
+        }
+        // Fallback to developer profile for backward compatibility
+        else if (app.developerId) {
           const developer = await User.findByEmail(app.developerId);
           if (developer && developer.profile) {
             appObj.developerProfile = developer.profile;
+            appObj.orgName = developer.profile.company || developer.email.split('@')[0];
           }
-        } catch (err) {
-          logger.error(`Error fetching developer profile for app ${app.packageName}:`, err);
-          // Continue without developer profile
         }
+      } catch (err) {
+        logger.error(`Error fetching profile for app ${app.packageName}:`, err);
+        // Continue without profile
       }
 
       return appObj;
@@ -728,10 +802,19 @@ router.get('/', unifiedAuthMiddleware, getAllApps);
 router.get('/public', getPublicApps);
 router.get('/search', searchApps);
 
+// [DEPRECATED] dualModeAuthMiddleware no longer exists.
+//  Use authWithEmail, authWithUser, authWithSession or authWithOptionalSession instead. from middleware/client/client-auth-middleware.ts
+
 // App store operations - use dual-mode auth (work with or without active sessions)
-router.get('/installed', dualModeAuthMiddleware, getInstalledApps);
-router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
-router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
+// router.get('/installed', dualModeAuthMiddleware, getInstalledApps);
+// router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
+// router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
+
+// TODO(isaiah): move appstore only 
+// App store operations - use client-auth-middleware.ts
+router.get('/installed', authWithOptionalSession, getInstalledApps);
+router.post('/install/:packageName', authWithOptionalSession, installApp);
+router.post('/uninstall/:packageName', authWithOptionalSession, uninstallApp);
 
 router.get('/version', async (req, res) => {
   res.json({ version: CLOUD_VERSION });

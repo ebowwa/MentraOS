@@ -248,13 +248,26 @@ export class TranscriptionService {
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognizing = (_sender: any, event: any) => {
         if (!event.result.translations) return;
 
+        // console.log('3223 event.result.translations', event.result.translations);
+
+        // console.log('event.result.text', event.result.translations);
         // TODO: Find a better way to handle this
         const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
-        const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
+        // console.log('4242 translateLanguage', translateLanguage);
+        const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(languageInfo.translateLanguage);
+        // console.log('5555 translatedText', translatedText);
         const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
+        // console.log('6666 didTranslate', didTranslate);
         const detectedSourceLang = didTranslate ? languageInfo.transcribeLanguage : languageInfo.translateLanguage;
 
-        sessionLogger.debug({
+        // console.log('detectedSourceLang', detectedSourceLang);
+        // console.log('languageInfo.translateLanguage', languageInfo.translateLanguage);
+        // console.log('languageInfo.transcribeLanguage', languageInfo.transcribeLanguage);
+        // console.log('didTranslate', didTranslate);
+        // console.log('translatedText', translatedText);
+        // console.log('event.result.text', event.result.text);
+
+        sessionLogger.debug({ 
           subscription,
           from: detectedSourceLang,
           to: languageInfo.translateLanguage,
@@ -275,6 +288,9 @@ export class TranscriptionService {
           translateLanguage: languageInfo.translateLanguage,
           didTranslate: didTranslate
         };
+
+        // console.log('translationData', translationData);
+
         this.broadcastTranscriptionResult(userSession, translationData);
 
         // Save transcript in the appropriate language

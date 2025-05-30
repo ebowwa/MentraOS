@@ -5,7 +5,7 @@ title: TpaServer
 
 # TpaServer
 
-`TpaServer` is the base class for creating Third Party Application (TPA) servers that handle webhook requests from AugmentOS Cloud to manage TPA sessions.
+`TpaServer` is the base class for creating Third Party Application (app) servers that handle webhook requests from AugmentOS Cloud to manage app sessions.
 
 ```typescript
 import { TpaServer } from '@augmentos/sdk';
@@ -18,7 +18,7 @@ constructor(config: TpaServerConfig)
 ```
 
 **Parameters:**
-- `config`: [Configuration](#configuration) options for the TPA server
+- `config`: [Configuration](#configuration) options for the app server
 
 ## Methods
 
@@ -34,12 +34,12 @@ getExpressApp(): express.Express
 
 ### onSession() _[protected]_
 
-Override this method to handle the initiation of a new TPA session when a user starts your app. Implement your TPA's core logic here (e.g., setting up event listeners).
+Override this method to handle the initiation of a new app session when a user starts your app. Implement your app's core logic here (e.g., setting up event listeners).
 
 ```typescript
 protected onSession(
-  session: TpaSession, 
-  sessionId: string, 
+  session: TpaSession,
+  sessionId: string,
   userId: string
 ): Promise<void>
 ```
@@ -53,12 +53,12 @@ protected onSession(
 
 ### onStop() _[protected]_
 
-Override this method to handle cleanup when a TPA session is stopped by the user or system.
+Override this method to handle cleanup when an app session is stopped by the user or system.
 
 ```typescript
 protected onStop(
-  sessionId: string, 
-  userId: string, 
+  sessionId: string,
+  userId: string,
   reason: string
 ): Promise<void>
 ```
@@ -93,15 +93,15 @@ protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
   console.log(`Tool called: ${toolCall.toolId}`);
   console.log(`Tool call timestamp: ${toolCall.timestamp}`);
   console.log(`Tool call userId: ${toolCall.userId}`);
-  
+
   if (toolCall.toolParameters && Object.keys(toolCall.toolParameters).length > 0) {
     console.log("Tool call parameter values:", toolCall.toolParameters);
   }
 
   if (toolCall.toolId === "add_todo") {
     const reminder = addReminder(
-      toolCall.userId, 
-      toolCall.toolParameters.todo_item as string, 
+      toolCall.userId,
+      toolCall.toolParameters.todo_item as string,
       toolCall.toolParameters.due_date as string | undefined
     );
     return `Added reminder: ${reminder.text}`;
@@ -113,7 +113,7 @@ protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
 
 ### start()
 
-Starts the TPA server, making it listen for incoming webhook requests.
+Starts the app server, making it listen for incoming webhook requests.
 
 ```typescript
 start(): Promise<void>
@@ -123,7 +123,7 @@ start(): Promise<void>
 
 ### stop()
 
-Gracefully shuts down the TPA server, cleaning up all active sessions and resources.
+Gracefully shuts down the app server, cleaning up all active sessions and resources.
 
 ```typescript
 stop(): void
@@ -131,12 +131,12 @@ stop(): void
 
 ### generateToken() _[protected]_
 
-Generates a JWT token suitable for TPA authentication, typically used for webviews. See [Token Utilities](/reference/token-utils) for more details.
+Generates a JWT token suitable for app authentication, typically used for webviews. See [Token Utilities](/reference/token-utils) for more details.
 
 ```typescript
 protected generateToken(
-  userId: string, 
-  sessionId: string, 
+  userId: string,
+  sessionId: string,
   secretKey: string
 ): string
 ```
@@ -144,7 +144,7 @@ protected generateToken(
 **Parameters:**
 - `userId`: The user's identifier
 - `sessionId`: The session identifier
-- `secretKey`: Your TPA's secret key (should match the one configured in AugmentOS Cloud)
+- `secretKey`: Your app's secret key (should match the one configured in AugmentOS Cloud)
 
 **Returns:** The generated JWT token string
 
@@ -163,24 +163,18 @@ protected addCleanupHandler(handler: () => void): void
 
 ```typescript
 interface TpaServerConfig {
-  /** Your unique TPA identifier (e.g., 'org.company.appname'). Must match console.augmentos.org. */
+  /** Your unique app identifier (e.g., 'org.company.appname'). Must match console.augmentos.org. */
   packageName: string;
-  
+
   /** Your API key obtained from console.augmentos.org for authentication. */
   apiKey: string;
-  
-  /** The port number the TPA server will listen on. Defaults to 7010. */
+
+  /** The port number the app server will listen on. Defaults to 3000. */
   port?: number;
-  
-  /** [DEPRECATED] The SDK automatically uses '/webhook'. Do not set. */
-  webhookPath?: string;
-  
+
   /** Path to a directory for serving static files (e.g., images, logos). Set to `false` to disable. Defaults to `false`. */
   publicDir?: string | false;
-  
-  /** [DEPRECATED] The WebSocket URL is provided dynamically via webhooks. Do not set. */
-  augmentOSWebsocketUrl?: string;
-  
+
   /** Whether to enable the `/health` endpoint for status checks. Defaults to `true`. */
   healthCheck?: boolean;
 }

@@ -1,5 +1,5 @@
 // cloud/src/models/user.model.ts
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import { AppSettingType, type AppSetting } from '@augmentos/sdk';
 import { MongoSanitizer } from '../utils/mongoSanitizer';
 import { logger } from '@augmentos/utils';
@@ -15,7 +15,7 @@ interface InstalledApp {
 }
 
 // Extend Document for TypeScript support
-interface UserDocument extends Document {
+export interface UserI extends Document {
   email: string;
   runningApps: string[];
   appSettings: Map<string, AppSetting[]>;
@@ -36,6 +36,23 @@ interface UserDocument extends Document {
     packageName: string;
     installedDate: Date;
   }>;
+
+  /**
+   * Organizations this user belongs to
+   * @since 2.0.0
+   */
+  organizations?: Types.ObjectId[];
+
+  /**
+   * Default organization for this user (typically personal org)
+   * @since 2.0.0
+   */
+  defaultOrg?: Types.ObjectId;
+
+  /**
+   * Developer profile information
+   * @deprecated Use organization.profile instead. Will be removed after migration.
+   */
   profile?: {
     company?: string;
     website?: string;
@@ -57,8 +74,8 @@ interface UserDocument extends Document {
   uninstallApp(packageName: string): Promise<void>;
   isAppInstalled(packageName: string): boolean;
 
-  updateAugmentosSettings(settings: Partial<UserDocument['augmentosSettings']>): Promise<void>;
-  getAugmentosSettings(): UserDocument['augmentosSettings'];
+  updateAugmentosSettings(settings: Partial<UserI['augmentosSettings']>): Promise<void>;
+  getAugmentosSettings(): UserI['augmentosSettings'];
 }
 
 const InstalledAppSchema = new Schema({
@@ -99,7 +116,7 @@ const AppSettingUpdateSchema = new Schema({
 // });
 
 // --- User Schema ---
-const UserSchema = new Schema<UserDocument>({
+const UserSchema = new Schema<UserI>({
   email: {
     type: String,
     required: true,
@@ -148,7 +165,29 @@ const UserSchema = new Schema<UserDocument>({
       lng: { type: Number, required: true }
     }
   },
-  
+
+  /**
+   * List of organizations this user belongs to
+   */
+  organizations: {
+    type: [{ type: Schema.Types.ObjectId, ref: 'Organization' }],
+    default: [],
+    index: true
+  },
+
+  /**
+   * Default organization for this user (typically their personal org)
+   */
+  defaultOrg: {
+    type: Schema.Types.ObjectId,
+    ref: 'Organization',
+    index: true
+  },
+
+  /**
+   * Developer profile information
+   * @deprecated Use organization.profile instead
+   */
   profile: {
     company: { type: String, required: false }, // Not required in schema, but validated in app publish flow
     website: { type: String },
@@ -216,7 +255,7 @@ UserSchema.index({ email: 1, 'runningApps': 1 }, { unique: true });
 
 // Install / uninstall.
 // Add methods for managing installed apps
-UserSchema.methods.installApp = async function (this: UserDocument, packageName: string): Promise<void> {
+UserSchema.methods.installApp = async function (this: UserI, packageName: string): Promise<void> {
   if (!this.isAppInstalled(packageName)) {
     if (!this.installedApps) {
       this.installedApps = [];
@@ -229,7 +268,7 @@ UserSchema.methods.installApp = async function (this: UserDocument, packageName:
   }
 };
 
-UserSchema.methods.uninstallApp = async function (this: UserDocument, packageName: string): Promise<void> {
+UserSchema.methods.uninstallApp = async function (this: UserI, packageName: string): Promise<void> {
   if (this.isAppInstalled(packageName)) {
     if (!this.installedApps) {
       this.installedApps = [];
@@ -239,24 +278,24 @@ UserSchema.methods.uninstallApp = async function (this: UserDocument, packageNam
   }
 };
 
-UserSchema.methods.isAppInstalled = function(this: UserDocument, packageName: string): boolean {
+UserSchema.methods.isAppInstalled = function(this: UserI, packageName: string): boolean {
   return this.installedApps?.some(app => app.packageName === packageName) ?? false;
 }
 
 // Update location.
-UserSchema.methods.setLocation = async function (this: UserDocument, location: Location): Promise<void> {
+UserSchema.methods.setLocation = async function (this: UserI, location: Location): Promise<void> {
   this.location = location;
   await this.save();
 }
 
-UserSchema.methods.addRunningApp = async function (this: UserDocument, appName: string): Promise<void> {
+UserSchema.methods.addRunningApp = async function (this: UserI, appName: string): Promise<void> {
   if (!this.runningApps.includes(appName)) {
     this.runningApps.push(appName);
     await this.save();
   }
 };
 
-UserSchema.methods.removeRunningApp = async function (this: UserDocument, appName: string): Promise<void> {
+UserSchema.methods.removeRunningApp = async function (this: UserI, appName: string): Promise<void> {
   if (this.runningApps.includes(appName)) {
     this.runningApps = this.runningApps.filter(app => app !== appName);
     await this.save();
@@ -284,7 +323,7 @@ UserSchema.methods.removeRunningApp = async function (this: UserDocument, appNam
 
 
 UserSchema.methods.updateAppSettings = async function(
-  appName: string, 
+  appName: string,
   settings: { key: string; value: any }[]
 ): Promise<void> {
   console.log('Settings update payload (before saving):', JSON.stringify(settings));
@@ -329,24 +368,24 @@ UserSchema.methods.updateAppSettings = async function(
   return afterUpdate;
 };
 
-UserSchema.methods.getAppSettings = function (this: UserDocument, appName: string): AppSetting[] | undefined {
+UserSchema.methods.getAppSettings = function (this: UserI, appName: string): AppSetting[] | undefined {
   const sanitizedAppName = MongoSanitizer.sanitizeKey(appName);
   const settings = this.appSettings.get(sanitizedAppName);
   return settings;
 };
 
-UserSchema.methods.isAppRunning = function (this: UserDocument, appName: string): boolean {
+UserSchema.methods.isAppRunning = function (this: UserI, appName: string): boolean {
   return this.runningApps.includes(appName);
 };
 
 UserSchema.methods.updateAugmentosSettings = async function(
-  this: UserDocument,
-  settings: Partial<UserDocument['augmentosSettings']>
+  this: UserI,
+  settings: Partial<UserI['augmentosSettings']>
 ): Promise<void> {
   // Convert to plain objects for clean logging
   const currentSettingsClean = JSON.parse(JSON.stringify(this.augmentosSettings));
   const newSettingsClean = JSON.parse(JSON.stringify(settings));
-  
+
   logger.info('Updating AugmentOS settings:', {
     userId: this.email,
     currentSettings: currentSettingsClean,
@@ -364,118 +403,15 @@ UserSchema.methods.updateAugmentosSettings = async function(
   // Convert to plain object for clean logging
   const mergedSettingsClean = JSON.parse(JSON.stringify(this.augmentosSettings));
   logger.info('Merged settings:', mergedSettingsClean);
-  
+
   await this.save();
   logger.info('Settings saved successfully');
 };
 
 UserSchema.methods.getAugmentosSettings = function(
-  this: UserDocument
-): UserDocument['augmentosSettings'] {
+  this: UserI
+): UserI['augmentosSettings'] {
   return this.augmentosSettings;
-};
-
-// --- Static Methods ---
-UserSchema.statics.findByEmail = async function(email: string): Promise<UserDocument | null> {
-  return this.findOne({ email: email.toLowerCase() });
-};
-
-UserSchema.statics.findOrCreateUser = async function (email: string): Promise<UserDocument> {
-  email = email.toLowerCase();
-  let user = await this.findOne({ email });
-  if (!user) {
-    user = await this.create({ email });
-  }
-  return user;
-};
-
-UserSchema.statics.findUserInstalledApps = async function (email: string): Promise<any[]> {
-  if (!email) {
-    console.warn('[User.findUserInstalledApps] Called with null or empty email');
-    return [];
-  }
-  
-  try {
-    const user = await this.findOne({ email: email.toLowerCase() });
-    
-    // Import app service to get full app details
-    const App = mongoose.model('App');
-    const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
-    
-    // Get package names from installed apps (or empty array if no user or no installed apps)
-    const userInstalledPackages = user?.installedApps?.map((app: any) => app.packageName) || [];
-    
-    // Create a map of package names to installation dates
-    const installDates = new Map();
-    if (user?.installedApps) {
-      user.installedApps.forEach((app: any) => {
-        installDates.set(app.packageName, app.installedDate);
-      });
-    }
-    
-    // Combine installed apps with full details
-    const result = [];
-    
-    // Always include all system apps and LOCAL_APPS, regardless of whether they're installed
-    const predefinedApps = [...LOCAL_APPS, ...SYSTEM_TPAS];
-    for (const app of predefinedApps) {
-      // Use actual installation date if available, otherwise use current date
-      const isInstalled = userInstalledPackages.includes(app.packageName);
-      const installedDate = isInstalled 
-        ? installDates.get(app.packageName) 
-        : new Date(); // Default to current date for system apps
-      
-      // Add isSystemApp flag
-      result.push({
-        ...app,
-        installedDate,
-        isSystemApp: true
-      });
-    }
-    
-    // Add user-installed apps from the database that aren't already in the list
-    if (userInstalledPackages.length > 0) {
-      // Filter out packages that are already in the result (system apps)
-      const existingPackages = result.map((app: any) => app.packageName);
-      const remainingPackages = userInstalledPackages.filter((pkg: string) => !existingPackages.includes(pkg));
-      
-      if (remainingPackages.length > 0) {
-        // Then check database apps
-        const dbApps = await App.find({ packageName: { $in: remainingPackages } });
-        for (const dbApp of dbApps) {
-          // Only add if not already added from predefined apps
-          if (!result.some(app => app.packageName === dbApp.packageName)) {
-            result.push({
-              ...dbApp.toObject(),
-              installedDate: installDates.get(dbApp.packageName)
-            });
-          }
-        }
-        
-        // For any app we couldn't find details for, include at least the package name
-        for (const packageName of remainingPackages) {
-          if (!result.some(app => app.packageName === packageName)) {
-            result.push({
-              packageName,
-              name: packageName, // Use package name as fallback name
-              installedDate: installDates.get(packageName)
-            });
-          }
-        }
-      }
-    }
-    
-    return result;
-  } catch (error) {
-    console.error(`[User.findUserInstalledApps] Error finding apps for user ${email}:`, error);
-    // In case of error, return at least the system apps
-    const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
-    return [...LOCAL_APPS, ...SYSTEM_TPAS].map(app => ({
-      ...app,
-      installedDate: new Date(),
-      isSystemApp: true
-    }));
-  }
 };
 
 // --- Middleware ---
@@ -489,11 +425,182 @@ UserSchema.pre('save', function(next) {
   next();
 });
 
-// --- Interface for Static Methods ---
-interface UserModel extends Model<UserDocument> {
-  findByEmail(email: string): Promise<UserDocument | null>;
-  findOrCreateUser(email: string): Promise<UserDocument>;
-  findUserInstalledApps(email: string): Promise<any[]>;
+// --- Static Methods ---
+UserSchema.statics.findByEmail = async function(email: string): Promise<UserI | null> {
+  return this.findOne({ email: email.toLowerCase() });
+};
+
+UserSchema.statics.findOrCreateUser = async function (email: string): Promise<UserI> {
+  email = email.toLowerCase();
+  let user = await this.findOne({ email });
+  if (!user) {
+    user = await this.create({ email });
+
+    // Create personal organization for new user if they don't have one
+    // Import OrganizationService to avoid circular dependency
+    const { OrganizationService } = require('../services/core/organization.service');
+
+    // Check if the user already has organizations
+    if (!user.organizations || user.organizations.length === 0) {
+      const personalOrgId = await OrganizationService.createPersonalOrg(user);
+      user.organizations = [personalOrgId];
+      user.defaultOrg = personalOrgId;
+      await user.save();
+    }
+  }
+  return user;
+};
+
+UserSchema.statics.findUserInstalledApps = async function (email: string): Promise<any[]> {
+  if (!email) {
+    console.warn('[User.findUserInstalledApps] Called with null or empty email');
+    return [];
+  }
+
+  try {
+    const user = await this.findOne({ email: email.toLowerCase() });
+
+    // Import app service to get full app details
+    const App = mongoose.model('App');
+    const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
+
+    // Get package names from installed apps (or empty array if no user or no installed apps)
+    const userInstalledPackages = user?.installedApps?.map((app: any) => app.packageName) || [];
+
+    // Create a map of package names to installation dates
+    const installDates = new Map();
+    if (user?.installedApps) {
+      user.installedApps.forEach((app: any) => {
+        installDates.set(app.packageName, app.installedDate);
+      });
+    }
+
+    // Combine installed apps with full details
+    const result = [];
+
+    // Always include all system apps and LOCAL_APPS, regardless of whether they're installed
+    const predefinedApps = [...LOCAL_APPS, ...SYSTEM_TPAS];
+    for (const app of predefinedApps) {
+      // Use actual installation date if available, otherwise use current date
+      const isInstalled = userInstalledPackages.includes(app.packageName);
+      const installedDate = isInstalled
+        ? installDates.get(app.packageName)
+        : new Date(); // Default to current date for system apps
+
+      // Add isSystemApp flag
+      result.push({
+        ...app,
+        installedDate,
+        isSystemApp: true
+      });
+    }
+
+    // Add user-installed apps from the database that aren't already in the list
+    if (userInstalledPackages.length > 0) {
+      // Filter out packages that are already in the result (system apps)
+      const existingPackages = result.map((app: any) => app.packageName);
+      const remainingPackages = userInstalledPackages.filter((pkg: string) => !existingPackages.includes(pkg));
+
+      if (remainingPackages.length > 0) {
+        // Then check database apps
+        const dbApps = await App.find({ packageName: { $in: remainingPackages } });
+        for (const dbApp of dbApps) {
+          // Only add if not already added from predefined apps
+          if (!result.some(app => app.packageName === dbApp.packageName)) {
+            result.push({
+              ...dbApp.toObject(),
+              installedDate: installDates.get(dbApp.packageName)
+            });
+          }
+        }
+
+        // For any app we couldn't find details for, include at least the package name
+        for (const packageName of remainingPackages) {
+          if (!result.some(app => app.packageName === packageName)) {
+            result.push({
+              packageName,
+              name: packageName, // Use package name as fallback name
+              installedDate: installDates.get(packageName)
+            });
+          }
+        }
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error(`[User.findUserInstalledApps] Error finding apps for user ${email}:`, error);
+    // In case of error, return at least the system apps
+    const { LOCAL_APPS, SYSTEM_TPAS } = require('../services/core/app.service');
+    return [...LOCAL_APPS, ...SYSTEM_TPAS].map(app => ({
+      ...app,
+      installedDate: new Date(),
+      isSystemApp: true
+    }));
+  }
+};
+
+/**
+ * Creates a slug from a name
+ * @private
+ */
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 }
 
-export const User = mongoose.model<UserDocument, UserModel>('User', UserSchema);
+/**
+ * Creates or ensures a personal organization for the user
+ * @param user The user document
+ * @returns The ObjectId of the personal organization
+ */
+UserSchema.statics.ensurePersonalOrg = async function(user: UserI): Promise<Types.ObjectId> {
+  // Import Organization service to avoid circular dependency
+  const { OrganizationService } = require('../services/core/organization.service');
+
+  if (user.defaultOrg) {
+    // User already has a default org, return it
+    return user.defaultOrg;
+  }
+
+  // Check if user has any organizations
+  if (user.organizations && user.organizations.length > 0) {
+    // User has organizations but no default, set the first one as default
+    user.defaultOrg = user.organizations[0];
+    await user.save();
+    return user.defaultOrg;
+  }
+
+  // Create a personal organization for this user
+  const personalOrgId = await OrganizationService.createPersonalOrg(user);
+
+  // Update user object with the new org
+  if (!user.organizations) {
+    user.organizations = [];
+  }
+
+  // Add to organizations array if not already present
+  if (!user.organizations.some(orgId => orgId.toString() === personalOrgId.toString())) {
+    user.organizations.push(personalOrgId);
+  }
+
+  // Set as default org
+  user.defaultOrg = personalOrgId;
+
+  // Save the updated user
+  await user.save();
+
+  return personalOrgId;
+};
+
+// --- Interface for Static Methods ---
+interface UserModel extends Model<UserI> {
+  findByEmail(email: string): Promise<UserI | null>;
+  findOrCreateUser(email: string): Promise<UserI>;
+  findUserInstalledApps(email: string): Promise<any[]>;
+  ensurePersonalOrg(user: UserI): Promise<Types.ObjectId>;
+}
+
+export const User = (mongoose.models.User || mongoose.model<UserI, UserModel>('User', UserSchema)) as UserModel;

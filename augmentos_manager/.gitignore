@@ -113,3 +113,6 @@ ios/credentials/*
 *.pem
 *.key
 *.crt
+
+# testing
+/coverage

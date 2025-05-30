@@ -27,7 +27,8 @@ For each notification in the output array:
   1. Include the notification "uuid".
   2. Include a short "summary" that captures the most important points from the title, body, and (optionally) the appName if it provides relevant context (e.g., times, tasks, or key details). The summary must be under 30 characters.
   3. If the notification title contains a name, the "summary" must include the summarized name of the sender (e.g., only their first name) or the relevant individual mentioned. Do not include the name of the group chat in the summary.
-  4. Include a "rank" integer between 1 and 10 (where 1 = highest importance, 10 = lowest).
+  4. If a notification contains inappropriate, offensive, or NSFW content, include it in the output, but the summary must be in the format: '<person>: inappropriate comment', where <person> is the sender's name if available, otherwise use 'Unknown'. Do not include any details of the inappropriate content in the summary.
+  5. Include a "rank" integer between 1 and 10 (where 1 = highest importance, 10 = lowest).
 
 Criteria of Importance:
   - Urgent tasks, deadlines, and time-sensitive events are ranked higher.
@@ -52,6 +53,11 @@ Example Output:
       "uuid": "456-abc",
       "summary": "Alex: party on Sunday?",
       "rank": 2
+    }},
+    {{
+      "uuid": "789-def",
+      "summary": "Sam: inappropriate comment",
+      "rank": 3
     }}
   ]
 }}

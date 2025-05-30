@@ -1,6 +1,6 @@
 /**
  * HeartbeatManager
- * 
+ *
  * Session-scoped manager for WebSocket connection health monitoring.
  * Replaces both the global health monitor service and TPA registration system with
  * a simpler, more targeted approach to connection health tracking and disconnect detection.
@@ -86,7 +86,7 @@ export class HeartbeatManager {
 
   /**
    * Register a glasses connection for health monitoring
-   * 
+   *
    * @param ws WebSocket connection to monitor
    */
   registerGlassesConnection(ws: WebSocket): void {
@@ -95,7 +95,7 @@ export class HeartbeatManager {
 
   /**
    * Register a TPA connection for health monitoring
-   * 
+   *
    * @param ws WebSocket connection to monitor
    * @param packageName Package name of the TPA
    */
@@ -105,7 +105,7 @@ export class HeartbeatManager {
 
   /**
    * General connection registration with optional package name
-   * 
+   *
    * @param ws WebSocket connection to monitor
    * @param packageName Optional package name for TPA connections
    */
@@ -144,7 +144,7 @@ export class HeartbeatManager {
 
   /**
    * Update activity timestamp for a glasses connection
-   * 
+   *
    * @param ws WebSocket connection that had activity
    * @param messageSize Optional size of the message in bytes
    */
@@ -154,7 +154,7 @@ export class HeartbeatManager {
 
   /**
    * Update activity timestamp for a TPA connection
-   * 
+   *
    * @param ws WebSocket connection that had activity
    * @param messageSize Optional size of the message in bytes
    */
@@ -164,7 +164,7 @@ export class HeartbeatManager {
 
   /**
    * Update activity for any connection type
-   * 
+   *
    * @param ws WebSocket connection that had activity
    * @param messageSize Optional size of the message in bytes
    */
@@ -181,7 +181,7 @@ export class HeartbeatManager {
 
   /**
    * Remove connection from monitoring when closed
-   * 
+   *
    * @param ws WebSocket connection to unregister
    */
   unregisterConnection(ws: WebSocket): void {
@@ -221,7 +221,7 @@ export class HeartbeatManager {
 
   /**
    * Set up event listeners for a connection
-   * 
+   *
    * @param ws WebSocket connection to set up listeners for
    */
   private setupListeners(ws: WebSocket): void {
@@ -261,7 +261,7 @@ export class HeartbeatManager {
 
   /**
    * Remove event listeners from a connection
-   * 
+   *
    * @param ws WebSocket connection to remove listeners from
    */
   private removeListeners(ws: WebSocket): void {
@@ -275,7 +275,7 @@ export class HeartbeatManager {
 
   /**
    * Send heartbeats to a specific connection type
-   * 
+   *
    * @param isTpa Whether to send to TPA connections (true) or glasses connections (false)
    */
   private sendHeartbeats(isTpa: boolean): void {
@@ -315,7 +315,7 @@ export class HeartbeatManager {
 
   /**
    * Handle an inactive connection that has missed too many pings
-   * 
+   *
    * @param ws WebSocket connection that is inactive
    * @param stats Connection statistics
    */
@@ -379,7 +379,7 @@ export class HeartbeatManager {
 
   /**
    * Capture detailed information about a disconnection
-   * 
+   *
    * @param ws WebSocket connection that disconnected
    * @param code Close code
    * @param reason Close reason
@@ -442,17 +442,17 @@ export class HeartbeatManager {
       clearInterval(this.glassesPingInterval);
       this.glassesPingInterval = null;
     }
-    
+
     if (this.tpaPingInterval) {
       clearInterval(this.tpaPingInterval);
       this.tpaPingInterval = null;
     }
-    
+
     // Clean up any remaining connections
     for (const [ws, stats] of this.connectionStats.entries()) {
       this.removeListeners(ws);
     }
-    
+
     this.connectionStats.clear();
   }
 }

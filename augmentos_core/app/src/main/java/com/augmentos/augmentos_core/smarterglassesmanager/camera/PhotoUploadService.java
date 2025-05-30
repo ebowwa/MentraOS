@@ -45,8 +45,8 @@ public class PhotoUploadService {
      * @deprecated Use ServerConfigUtil.getServerBaseUrl() instead
      */
     @Deprecated
-    private static String getServerUrl() {
-        return ServerConfigUtil.getServerBaseUrl();
+    private static String getServerUrl(Context context) {
+        return ServerConfigUtil.getServerBaseUrl(context);
     }
     
     /**
@@ -78,7 +78,7 @@ public class PhotoUploadService {
                 }
                 
                 // Get photo upload URL from central config
-                String uploadUrl = ServerConfigUtil.getPhotoUploadUrl();
+                String uploadUrl = ServerConfigUtil.getPhotoUploadUrl(context);
                 
                 Log.d(TAG, "Uploading photo to: " + uploadUrl);
                 

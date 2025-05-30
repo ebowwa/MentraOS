@@ -1,13 +1,14 @@
 /**
  * @fileoverview Service for managing TPAs (Third Party Applications).
  * Handles app lifecycle, authentication, and webhook interactions.
- * 
+ *
  * Currently uses in-memory storage with hardcoded system TPAs.
  * Design decision: Separate system TPAs from user-created TPAs
  * to maintain core functionality regardless of database state.
  */
 
-import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
+import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
+// TODO(isaiah): Consider splitting this into multiple services (appstore.service, developer.service, tools.service)
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App, { AppI } from '../../models/app.model';
@@ -15,6 +16,7 @@ import { ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 import { logger as rootLogger } from '../logging/pino-logger';
+import { Types } from 'mongoose';
 const logger = rootLogger.child({ service: 'app.service' });
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
@@ -90,9 +92,6 @@ export class AppService {
     let usersApps: AppI[] = [];
 
     if (APPSTORE_ENABLED && userId) {
-      // Find apps the developer made.
-      const _madeByUser = await App.find({ developerId: userId }) as AppI[];
-
       // Find apps the user installed.
       const user = await User.findOne({ email: userId });
       const _installedApps = user?.installedApps?.map((installedApp: { packageName: string; installedDate: Date; }) => {
@@ -102,11 +101,8 @@ export class AppService {
       // Fetch the apps from the appstore.
       const _appstoreApps = await App.find({ packageName: { $in: _installedApps } }) as AppI[];
 
-      // Fetch apps shared with this user by email
-      const _sharedWithUser = await App.find({ sharedWithEmails: userId }) as AppI[];
-
       // remove duplicates.
-      const _allApps = [..._madeByUser, ..._appstoreApps, ..._sharedWithUser];
+      const _allApps = _appstoreApps;
       const _appMap = new Map<string, AppI>();
       _allApps.forEach(app => {
         _appMap.set(app.packageName, app);
@@ -179,6 +175,7 @@ export class AppService {
     };
   }
 
+  // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   async triggerStopByPackageName(packageName: string, userId: string): Promise<void> {
     // Look up the TPA by packageName
     const app = await this.getApp(packageName);
@@ -283,18 +280,6 @@ export class AppService {
     return hashedKey === appDoc.hashedApiKey;
   }
 
-  /**
-   * Gets the current state of a TPA for a user.
-   * @param packageName - TPA identifier
-   * @param userId - User identifier
-   * @returns Promise resolving to app state
-   */
-  async getAppState(packageName: string, userId: string): Promise<AppState> {
-    const userStates = this.appStates.get(userId) || new Map<string, AppState>();
-
-    // Return existing state or default to not_installed
-    return userStates.get(packageName) || AppState.NOT_INSTALLED;
-  }
 
   /**
    * Validates tool definitions against the schema requirements
@@ -359,6 +344,170 @@ export class AppService {
   }
 
   /**
+   * Validates setting definitions against the schema requirements
+   * @param settings Array of setting definitions to validate
+   * @returns Validated and sanitized settings array or throws error if invalid
+   */
+  private validateSettingDefinitions(settings: any[]): AppSetting[] {
+    logger.debug('Validating setting definitions:', settings);
+    if (!Array.isArray(settings)) {
+      throw new Error('Settings must be an array');
+    }
+
+    return settings.map(setting => {
+      // Validate required type field
+      if (!setting.type || typeof setting.type !== 'string') {
+        throw new Error('Setting type is required and must be a string');
+      }
+
+      // Group settings validation
+      if (setting.type === 'group') {
+        if (!setting.title || typeof setting.title !== 'string') {
+          throw new Error('Group setting requires a title');
+        }
+        return {
+          type: AppSettingType.GROUP,
+          title: setting.title,
+          key: '', // Groups don't need keys but BaseAppSetting requires it
+          label: '' // Groups don't need labels but BaseAppSetting requires it
+        } as AppSetting;
+      }
+
+      // Title/Value settings validation (display-only, no key required)
+      if (setting.type === 'titleValue') {
+        if (!setting.label || typeof setting.label !== 'string') {
+          throw new Error('Title/Value setting requires a label');
+        }
+        return {
+          type: 'titleValue' as any,
+          label: setting.label,
+          value: setting.value || ''
+        } as AppSetting;
+      }
+
+      // Regular settings validation (require key and label)
+      if (!setting.key || typeof setting.key !== 'string') {
+        throw new Error('Setting key is required and must be a string');
+      }
+
+      if (!setting.label || typeof setting.label !== 'string') {
+        throw new Error('Setting label is required and must be a string');
+      }
+
+      // Type-specific validation
+      switch (setting.type) {
+        case 'toggle':
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
+            throw new Error('Toggle setting requires a boolean defaultValue');
+          }
+          return {
+            type: AppSettingType.TOGGLE,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : false,
+            value: setting.value
+          } as AppSetting;
+
+        case 'text':
+          return {
+            type: AppSettingType.TEXT,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue || '',
+            value: setting.value
+          } as AppSetting;
+
+        case 'text_no_save_button':
+          return {
+            type: 'text_no_save_button' as any,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue || '',
+            value: setting.value,
+            maxLines: setting.maxLines
+          } as AppSetting;
+
+        case 'select':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Select setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Select options must have label and value properties');
+          }
+          return {
+            type: AppSettingType.SELECT,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          } as AppSetting;
+
+        case 'select_with_search':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Select with search setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Select with search options must have label and value properties');
+          }
+          return {
+            type: 'select_with_search' as any,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          } as AppSetting;
+
+        case 'multiselect':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Multiselect setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Multiselect options must have label and value properties');
+          }
+          // Ensure defaultValue is an array for multiselect
+          const defaultValue = Array.isArray(setting.defaultValue) ? setting.defaultValue : [];
+          const value = Array.isArray(setting.value) ? setting.value : undefined;
+          return {
+            type: 'multiselect' as any,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: defaultValue,
+            value: value
+          } as AppSetting;
+
+        case 'slider':
+          if (typeof setting.min !== 'number' || typeof setting.max !== 'number') {
+            throw new Error('Slider setting requires numeric min and max values');
+          }
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+            throw new Error('Slider setting requires a numeric defaultValue');
+          }
+          if (setting.min > setting.max) {
+            throw new Error('Slider min value cannot be greater than max value');
+          }
+          return {
+            type: AppSettingType.SLIDER,
+            key: setting.key,
+            label: setting.label,
+            min: setting.min,
+            max: setting.max,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : setting.min,
+            value: setting.value
+          } as AppSetting;
+
+        default:
+          throw new Error(`Unsupported setting type: ${setting.type}`);
+      }
+    });
+  }
+
+  /**
    * Create a new app
    */
   async createApp(appData: any, developerId: string): Promise<{ app: AppI, apiKey: string }> {
@@ -375,26 +524,19 @@ export class AppService {
       }
     }
 
-    // Determine organization domain if shared
-    let organizationDomain = null;
-    let sharedWithOrganization = false;
-    let visibility: 'private' | 'organization' = 'private';
-    if (appData.sharedWithOrganization) {
-      const emailParts = developerId.split('@');
-      if (emailParts.length === 2) {
-        organizationDomain = emailParts[1].toLowerCase();
-        sharedWithOrganization = true;
-        visibility = 'organization';
+    // Parse and validate settings if present
+    if (appData.settings) {
+      try {
+        appData.settings = this.validateSettingDefinitions(appData.settings);
+      } catch (error: any) {
+        throw new Error(`Invalid setting definitions: ${error.message}`);
       }
     }
 
-    // Create app
+    // Create app with organization ownership
     const app = await App.create({
       ...appData,
-      developerId,
-      organizationDomain,
-      sharedWithOrganization,
-      visibility,
+      developerId, // Keep for backward compatibility during migration
       hashedApiKey
     });
 
@@ -402,11 +544,12 @@ export class AppService {
   }
 
 
+  // TODO(isaiah): Move this to the new developer service to declutter the app service.
   /**
    * Update an app
    */
-  async updateApp(packageName: string, appData: any, developerId: string): Promise<AppI> {
-    // Ensure developer owns the app or is in the org if shared
+  async updateApp(packageName: string, appData: any, developerId: string, organizationId?: Types.ObjectId): Promise<AppI> {
+    // Ensure organization owns the app
     const app = await App.findOne({ packageName });
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
@@ -414,18 +557,20 @@ export class AppService {
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-    if (!app.developerId) {
-      throw new Error('Developer ID not found for this app');
+
+    // Check if user has permission to update the app
+    let hasPermission = false;
+
+    // If organization ID is provided, check ownership
+    if (organizationId && app.organizationId) {
+      hasPermission = app.organizationId.toString() === organizationId.toString();
     }
-    const isOwner = app.developerId.toString() === developerId;
-    let isOrgMember = false;
-    if (app.sharedWithOrganization && app.organizationDomain) {
-      const emailParts = developerId.split('@');
-      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
-        isOrgMember = true;
-      }
+    // For backward compatibility, check developer ID
+    else if (app.developerId) {
+      hasPermission = app.developerId.toString() === developerId;
     }
-    if (!isOwner && !isOrgMember) {
+
+    if (!hasPermission) {
       throw new Error('You do not have permission to update this app');
     }
 
@@ -435,6 +580,15 @@ export class AppService {
         appData.tools = this.validateToolDefinitions(appData.tools);
       } catch (error: any) {
         throw new Error(`Invalid tool definitions: ${error.message}`);
+      }
+    }
+
+    // Parse and validate settings if present
+    if (appData.settings) {
+      try {
+        appData.settings = this.validateSettingDefinitions(appData.settings);
+      } catch (error: any) {
+        throw new Error(`Invalid setting definitions: ${error.message}`);
       }
     }
 
@@ -464,11 +618,12 @@ export class AppService {
     return updatedApp!;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Publish an app to the app store
    */
-  async publishApp(packageName: string, developerId: string): Promise<AppI> {
-    // Ensure developer owns the app or is in the org if shared
+  async publishApp(packageName: string, developerId: string, organizationId?: Types.ObjectId): Promise<AppI> {
+    // Ensure organization owns the app
     const app = await App.findOne({ packageName });
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
@@ -476,30 +631,49 @@ export class AppService {
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-    if (!app.developerId) {
-      throw new Error('Developer ID not found for this app');
+
+    // Check if user has permission to publish the app
+    let hasPermission = false;
+
+    // If organization ID is provided, check ownership
+    if (organizationId && app.organizationId) {
+      hasPermission = app.organizationId.toString() === organizationId.toString();
     }
-    const isOwner = app.developerId.toString() === developerId;
-    let isOrgMember = false;
-    if (app.sharedWithOrganization && app.organizationDomain) {
-      const emailParts = developerId.split('@');
-      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
-        isOrgMember = true;
-      }
+    // For backward compatibility, check developer ID
+    else if (app.developerId) {
+      hasPermission = app.developerId.toString() === developerId;
     }
-    if (!isOwner && !isOrgMember) {
+
+    if (!hasPermission) {
       throw new Error('You do not have permission to publish this app');
     }
 
-    // Verify that the developer has filled out the required profile information
-    const developer = await User.findOne({ email: developerId });
-    if (!developer) {
-      throw new Error('Developer not found');
-    }
+    // If the app belongs to an organization, verify organization profile completeness
+    if (organizationId) {
+      const Organization = require('../../models/organization.model').Organization;
+      const org = await Organization.findById(organizationId);
 
-    // Check if developer profile has the required fields
-    if (!developer.profile?.company || !developer.profile?.contactEmail) {
-      throw new Error('PROFILE_INCOMPLETE: Developer profile is incomplete. Please fill out your company name and contact email before publishing an app.');
+      if (!org) {
+        throw new Error('Organization not found');
+      }
+
+      // Check if organization profile has the required fields
+      if (!org.profile?.contactEmail) {
+        throw new Error('PROFILE_INCOMPLETE: Organization profile is incomplete. Please add a contact email before publishing an app.');
+      }
+    }
+    // For backward compatibility - check developer profile
+    else {
+      // Verify that the developer has filled out the required profile information
+      const developer = await User.findOne({ email: developerId });
+      if (!developer) {
+        throw new Error('Developer not found');
+      }
+
+      // Check if developer profile has the required fields
+      if (!developer.profile?.company || !developer.profile?.contactEmail) {
+        throw new Error('PROFILE_INCOMPLETE: Developer profile is incomplete. Please fill out your company name and contact email before publishing an app.');
+      }
     }
 
     // Update app status to SUBMITTED
@@ -512,11 +686,12 @@ export class AppService {
     return updatedApp!;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Delete an app
    */
-  async deleteApp(packageName: string, developerId: string): Promise<void> {
-    // Ensure developer owns the app or is in the org if shared
+  async deleteApp(packageName: string, developerId: string, organizationId?: Types.ObjectId): Promise<void> {
+    // Ensure organization owns the app
     const app = await App.findOne({ packageName });
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
@@ -524,28 +699,31 @@ export class AppService {
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-    if (!app.developerId) {
-      throw new Error('Developer ID not found for this app');
+
+    // Check if user has permission to delete the app
+    let hasPermission = false;
+
+    // If organization ID is provided, check ownership
+    if (organizationId && app.organizationId) {
+      hasPermission = app.organizationId.toString() === organizationId.toString();
     }
-    const isOwner = app.developerId.toString() === developerId;
-    let isOrgMember = false;
-    if (app.sharedWithOrganization && app.organizationDomain) {
-      const emailParts = developerId.split('@');
-      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
-        isOrgMember = true;
-      }
+    // For backward compatibility, check developer ID
+    else if (app.developerId) {
+      hasPermission = app.developerId.toString() === developerId;
     }
-    if (!isOwner && !isOrgMember) {
+
+    if (!hasPermission) {
       throw new Error('You do not have permission to delete this app');
     }
     await App.findOneAndDelete({ packageName });
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Regenerate API key for an app
    */
-  async regenerateApiKey(packageName: string, developerId: string): Promise<string> {
-    // Ensure developer owns the app or is in the org if shared
+  async regenerateApiKey(packageName: string, developerId: string, organizationId?: Types.ObjectId): Promise<string> {
+    // Ensure organization owns the app
     const app = await App.findOne({ packageName });
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
@@ -553,18 +731,20 @@ export class AppService {
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-    if (!app.developerId) {
-      throw new Error('Developer ID not found for this app');
+
+    // Check if user has permission to update the app
+    let hasPermission = false;
+
+    // If organization ID is provided, check ownership
+    if (organizationId && app.organizationId) {
+      hasPermission = app.organizationId.toString() === organizationId.toString();
     }
-    const isOwner = app.developerId.toString() === developerId;
-    let isOrgMember = false;
-    if (app.sharedWithOrganization && app.organizationDomain) {
-      const emailParts = developerId.split('@');
-      if (emailParts.length === 2 && emailParts[1].toLowerCase() === app.organizationDomain) {
-        isOrgMember = true;
-      }
+    // For backward compatibility, check developer ID
+    else if (app.developerId) {
+      hasPermission = app.developerId.toString() === developerId;
     }
-    if (!isOwner && !isOrgMember) {
+
+    if (!hasPermission) {
       throw new Error('You do not have permission to update this app');
     }
 
@@ -581,6 +761,7 @@ export class AppService {
     return apiKey;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Hash API key
    */
@@ -611,38 +792,20 @@ export class AppService {
   /**
    * Get app by package name
    */
-  async getAppByPackageName(packageName: string, developerId?: string): Promise<AppI | null> {
+  async getAppByPackageName(packageName: string, developerId?: string, organizationId?: Types.ObjectId): Promise<AppI | null> {
     const query: any = { packageName };
 
-    // If developerId is provided, ensure the app belongs to this developer
-    if (developerId) {
+    // If organizationId is provided, ensure the app belongs to this organization
+    if (organizationId) {
+      query.organizationId = organizationId;
+    }
+    // For backward compatibility, if only developerId is provided
+    else if (developerId) {
       query.developerId = developerId;
     }
 
     // Use lean() to get a plain JavaScript object instead of a Mongoose document
     return App.findOne(query).lean();
-  }
-
-  /**
-   * Get public apps
-   * TODO: DELETE THIS?
-   */
-  // export async function getPublicApps(developerEmail?: string): Promise<AppI[]> {
-  async getPublicApps(): Promise<AppI[]> {
-    // logger.debug('Getting public apps - developerEmail', developerEmail);
-    // if (developerEmail) {
-    //   const developer
-    //     = await User.findOne({ email: developerEmail }).lean();
-    //   if (!developer) {
-    //     return App.find({ isPublic: true }).lean();
-    //   }
-    //   else {
-    //     // Find all public apps, or apps by the developer.
-    //     return App.find({ $or: [{ isPublic: true }, { developerId: developer.email}] }).lean();
-    //   }
-    // }
-    return App.find({ isPublic: true }).lean();
-    // return App.find();
   }
 
   /**
@@ -779,36 +942,17 @@ export class AppService {
       throw new Error(`App ${packageName} not found`);
     }
 
-    if (!app.publicUrl) {
-      throw new Error(`App ${packageName} does not have a public URL`);
-    }
-
     logger.debug('Getting TPA tools for:', packageName);
 
-    try {
-      // Fetch the tpa_config.json from the app's publicUrl
-      const configUrl = `${app.publicUrl}/tpa_config.json`;
-      const response = await axios.get(configUrl, { timeout: 5000 });
-
-      // Check if the response contains a tools array
-      const config = response.data;
-      if (config && Array.isArray(config.tools)) {
-        // Validate the tools before returning them
-        logger.debug(`Found ${config.tools.length} tools in ${packageName}, validating...`);
-        return this.validateToolDefinitions(config.tools);
-      }
-
-      // If no tools found, return empty array
-      return [];
-    } catch (error) {
-      // Check if error is a 404 (file not found) and silently ignore
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Config file doesn't exist, silently return empty array
-        logger.debug(`No tpa_config.json found for app ${packageName} (404)`);
-        return [];
-      }
-      return [];
+    // Get tools from the database instead of fetching tpa_config.json
+    if (app.tools && Array.isArray(app.tools)) {
+      logger.debug(`Found ${app.tools.length} tools in ${packageName} database`);
+      return app.tools;
     }
+
+    // If no tools found in database, return empty array
+    logger.debug(`No tools found in database for app ${packageName}`);
+    return [];
   }
 
   // Add a method to update app visibility
@@ -818,7 +962,7 @@ export class AppService {
     if (!app) {
       throw new Error(`App with package name ${packageName} not found`);
     }
-    if (!developerId || app.developerId.toString() !== developerId) {
+    if (!developerId || !app.developerId || app.developerId.toString() !== developerId) {
       throw new Error('You do not have permission to update this app');
     }
     let organizationDomain = null;
@@ -837,6 +981,7 @@ export class AppService {
     return app;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   async updateSharedWithEmails(packageName: string, emails: string[], developerId: string): Promise<AppI> {
     // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
@@ -846,7 +991,7 @@ export class AppService {
     if (!developerId) {
       throw new Error('Developer ID is required');
     }
-    const isOwner = app.developerId.toString() === developerId;
+    const isOwner = app.developerId && app.developerId.toString() === developerId;
     let isOrgMember = false;
     if (app.sharedWithOrganization && app.organizationDomain) {
       const emailDomain = developerId.split('@')[1]?.toLowerCase();
@@ -862,31 +1007,74 @@ export class AppService {
     return app.toObject();
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
-   * Get apps by developer ID
+   * Get apps by organization ID
    */
+  async getAppsByOrgId(orgId: Types.ObjectId, developerId?: string): Promise<AppI[]> {
+    return App.find({ organizationId: orgId }).lean();
+  }
+
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
+  // Replace getAppsByDeveloperId with getAppsByOrgId, but keep for backward compatibility
   async getAppsByDeveloperId(developerId: string): Promise<AppI[]> {
     return App.find({ developerId }).lean();
   }
 
-  /**
-   * Get apps shared with a user by email
-   */
+  // TODO(isaiah): delete this or Move this logic to a new developer service to declutter the app service.
+  // These are no longer needed with the organization model, but keep for backward compatibility
   async getAppsSharedWithEmail(email: string): Promise<AppI[]> {
-    return App.find({ sharedWithEmails: email }).lean();
+    return [];
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Get apps created by or shared with a user (deduplicated)
    */
   async getAppsCreatedOrSharedWith(email: string): Promise<AppI[]> {
-    const createdApps = await this.getAppsByDeveloperId(email);
-    const sharedApps = await this.getAppsSharedWithEmail(email);
+    // Now just returns apps by developer ID for backward compatibility
+    return this.getAppsByDeveloperId(email);
+  }
 
-    const appMap = new Map<string, AppI>();
-    createdApps.forEach(app => appMap.set(app.packageName, app));
-    sharedApps.forEach(app => appMap.set(app.packageName, app));
-    return Array.from(appMap.values());
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
+  /**
+   * Move an app from one organization to another
+   * @param packageName - The package name of the app to move
+   * @param sourceOrgId - The ID of the source organization
+   * @param targetOrgId - The ID of the target organization
+   * @param userEmail - The email of the user performing the action
+   * @returns The updated app
+   * @throws Error if app not found or user doesn't have permission
+   */
+  async moveApp(
+    packageName: string,
+    sourceOrgId: Types.ObjectId,
+    targetOrgId: Types.ObjectId,
+    userEmail: string
+  ): Promise<AppI> {
+    // Find the app in the source organization
+    const app = await App.findOne({
+      packageName,
+      organizationId: sourceOrgId
+    });
+
+    if (!app) {
+      throw new Error(`App with package name ${packageName} not found in source organization`);
+    }
+
+    // Update organization ID
+    app.organizationId = targetOrgId;
+    await app.save();
+
+    // Log the move operation
+    logger.info({
+      packageName,
+      sourceOrgId: sourceOrgId.toString(),
+      targetOrgId: targetOrgId.toString(),
+      userEmail
+    }, 'App moved to new organization');
+
+    return app;
   }
 
 }

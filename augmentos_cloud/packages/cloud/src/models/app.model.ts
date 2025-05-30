@@ -1,6 +1,6 @@
 // cloud/server/src/models/app.model.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
+import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType } from '@augmentos/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 
@@ -32,11 +32,43 @@ export interface AppI extends _AppI, Document {
   reviewedAt?: Date;
   tools?: ToolSchema[];
   permissions?: Permission[];
-  developerId: string;
-  organizationDomain: string | null;
-  sharedWithOrganization: boolean;
-  visibility: 'private' | 'organization';
-  sharedWithEmails: string[];
+  settings?: AppSetting[];
+
+  /**
+   * Reference to the organization that owns this app
+   * @since 2.0.0
+   */
+  organizationId?: Types.ObjectId;
+
+  /**
+   * ID of the developer who created the app
+   * @deprecated Use organizationId instead. Will be removed after migration.
+   */
+  developerId?: string;
+
+  /**
+   * Domain of the organization for app sharing
+   * @deprecated Use organizationId instead. Will be removed after migration.
+   */
+  organizationDomain?: string | null;
+
+  /**
+   * Whether app is shared with the organization
+   * @deprecated Use organizationId instead. Will be removed after migration.
+   */
+  sharedWithOrganization?: boolean;
+
+  /**
+   * App visibility setting
+   * @deprecated Use organizationId instead. Will be removed after migration.
+   */
+  visibility?: 'private' | 'organization';
+
+  /**
+   * Specific emails the app is shared with
+   * @deprecated Use organizationId with member management instead. Will be removed after migration.
+   */
+  sharedWithEmails?: string[];
 }
 
 
@@ -66,7 +98,7 @@ const AppSchema = new Schema({
   reviewedAt: {
     type: Date
   },
-  
+
   // TPA AI Tools
   tools: [{
     id: {
@@ -106,6 +138,51 @@ const AppSchema = new Schema({
     }
   }],
 
+  // TPA Settings Configuration
+  settings: [{
+    type: {
+      type: String,
+      enum: Object.values(AppSettingType),
+      required: true
+    },
+    key: {
+      type: String,
+      required: false
+    },
+    label: {
+      type: String,
+      required: false
+    },
+    title: {
+      type: String,
+      required: false
+    },
+    defaultValue: {
+      type: Schema.Types.Mixed,
+      required: false
+    },
+    value: {
+      type: Schema.Types.Mixed,
+      required: false
+    },
+    options: [{
+      label: { type: String, required: true },
+      value: { type: Schema.Types.Mixed, required: true }
+    }],
+    min: {
+      type: Number,
+      required: false
+    },
+    max: {
+      type: Number,
+      required: false
+    },
+    maxLines: {
+      type: Number,
+      required: false
+    }
+  }],
+
   // Add permissions array to schema
   permissions: [{
     type: {
@@ -119,9 +196,20 @@ const AppSchema = new Schema({
     }
   }],
 
+  /**
+   * Reference to the organization that owns this app
+   */
+  organizationId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Organization',
+    index: true,
+    // not marking as required yet for backward compatibility during migration
+  },
+
+  // Deprecated fields - will be removed after migration
   developerId: {
     type: String,
-    required: true
+    required: true // keeping as required for backward compatibility
   },
   organizationDomain: {
     type: String,
@@ -143,9 +231,12 @@ const AppSchema = new Schema({
     required: false,
     default: []
   }
-}, { 
+}, {
   strict: false,
-  timestamps: true 
+  timestamps: true
 });
 
-export default mongoose.model<AppI>('App', AppSchema, 'apps');
+// Add index for organizationId
+AppSchema.index({ organizationId: 1 });
+
+export default mongoose.models.App || mongoose.model<AppI>('App', AppSchema, 'apps');
