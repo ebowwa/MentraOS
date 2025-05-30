@@ -579,6 +579,123 @@ const deleteOrg = async (req: Request, res: Response) => {
   }
 };
 
+/**
+ * Resend an invitation email
+ */
+const resendInvite = async (req: Request, res: Response) => {
+  try {
+    const { orgId } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required'
+      });
+    }
+
+    const userEmail = (req as OrgRequest).userEmail;
+    const user = await User.findOne({ email: userEmail });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    await OrganizationService.resendInvite(orgId, email, user);
+
+    res.json({
+      success: true,
+      message: `Invitation resent to ${email}`
+    });
+  } catch (error: any) {
+    logger.error('Error resending invite:', error);
+
+    if (error.statusCode === 404) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.statusCode === 403) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.statusCode === 400) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resend invitation'
+    });
+  }
+};
+
+/**
+ * Rescind (cancel) a pending invitation
+ */
+const rescindInvite = async (req: Request, res: Response) => {
+  try {
+    const { orgId } = req.params;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email address is required'
+      });
+    }
+
+    const userEmail = (req as OrgRequest).userEmail;
+    const user = await User.findOne({ email: userEmail });
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    await OrganizationService.rescindInvite(orgId, email, user);
+
+    res.json({
+      success: true,
+      message: 'Invitation rescinded successfully'
+    });
+  } catch (error: any) {
+    logger.error('Error rescinding invite:', error);
+
+    if (error.statusCode === 404) {
+      return res.status(404).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    if (error.statusCode === 403) {
+      return res.status(403).json({
+        success: false,
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to rescind invitation'
+    });
+  }
+};
+
 // Route definitions
 router.get('/', authMiddleware, listUserOrgs);
 router.post('/', authMiddleware, createOrg);
@@ -589,5 +706,7 @@ router.post('/:orgId/members', authMiddleware, authz('admin'), invite);
 router.patch('/:orgId/members/:memberId', authMiddleware, authz('admin'), changeRole);
 router.delete('/:orgId/members/:memberId', authMiddleware, authz('admin'), remove);
 router.post('/accept/:token', authMiddleware, acceptInvite);
+router.post('/:orgId/invites/resend', authMiddleware, authz('admin'), resendInvite);
+router.post('/:orgId/invites/rescind', authMiddleware, authz('admin'), rescindInvite);
 
 export default router;
