@@ -1,8 +1,7 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
-import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
-import type {NavigationProp} from "@react-navigation/native"
-import {Header, Screen, Button} from "@/components/ignite"
+import {View, Animated, Platform, ViewStyle} from "react-native"
+import {useFocusEffect} from "@react-navigation/native"
+import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -12,24 +11,15 @@ import semver from "semver"
 import Constants from "expo-constants"
 import CloudConnection from "@/components/misc/CloudConnection"
 import {loadSetting} from "@/utils/SettingsHelper"
-import DefaultButton from "@/components/ui/Button"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
-import {SETTINGS_KEYS} from "@/consts"
 import NonProdWarning from "@/components/misc/NonProdWarning"
-import {spacing, ThemedStyle} from "@/theme"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/MicIcon"
 import NotificationOff from "assets/icons/NotificationOff"
-import {router} from "expo-router"
-import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
-import {translate} from "@/i18n"
-import {FontAwesome} from "@expo/vector-icons"
-import ChevronRight from "assets/icons/ChevronRight"
-import ConnectedDeviceInfo, {
+import {
   ConnectDeviceButton,
-  ConnectedDeviceInfoHome,
   ConnectedGlasses,
-  DeviceHome,
 } from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {

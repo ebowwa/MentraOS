@@ -45,7 +45,7 @@ export default class BackendServerComms {
       throw new Error('No core token available for authentication');
     }
 
-    const url = `${this.serverUrl}/api/gallery`;
+    const url = `${await this.getServerUrl()}/api/gallery`;
     console.log('Fetching gallery photos from:', url);
 
     const config: AxiosRequestConfig = {

@@ -52,21 +52,6 @@ export default function SettingsPage() {
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
       <Header titleTx="settings:title" />
-      <View style={themed($settingItem2)}>
-        {/* <SelectSetting
-            theme={'dark' as any}
-            label={translate("settings:preferredMic")}
-            value={preferredMic}
-            description={translate("settings:selectMic")}
-            options={preferredMicOptions}
-            onValueChange={val => setMic(val)}
-          /> */}
-        {status.glasses_info?.model_name === "Simulated Glasses" && (
-          <View style={themed($flagContainer)}>
-            <Text style={themed($flagText)}>{translate("settings:simulatedGlassesNote")}</Text>
-          </View>
-        )}
-      </View>
 
       {/* Proofile Settings */}
       <TouchableOpacity
