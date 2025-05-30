@@ -4,7 +4,7 @@ import {useFocusEffect} from "@react-navigation/native"
 import {Button, Icon} from "@/components/ignite"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import {getGlassesImage} from "@/utils/getGlassesImage"
+import {getGlassesClosedImage, getGlassesImage, getGlassesOpenImage} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -93,7 +93,7 @@ export const ConnectDeviceButton = () => {
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
         LeftAccessory={() => <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
-        onPress={() => {}}
+        onPress={handleConnectOrDisconnect}
         tx="home:connectingGlasses"
       />
     )
@@ -115,26 +115,6 @@ export const ConnectDeviceButton = () => {
   return null
 }
 
-export const DeviceHome = () => {
-  const {status} = useStatus()
-  const fadeAnim = useRef(new Animated.Value(0)).current
-  const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const slideAnim = useRef(new Animated.Value(-50)).current
-
-  const {themed, theme} = useAppTheme()
-
-  return (
-    <View style={themed($deviceInfoContainer)}>
-      <View style={styles.connectedContent}>
-        <Animated.Image
-          source={getGlassesImage(status.core_info.default_wearable)}
-          style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
-        />
-      </View>
-    </View>
-  )
-}
-
 interface ConnectedGlassesProps {
   showTitle: boolean
 }
@@ -146,6 +126,8 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   const slideAnim = useRef(new Animated.Value(-50)).current
   const {themed, theme} = useAppTheme()
   const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
+
+  const [glassesImage, setGlassesImage] = useState(getGlassesImage(status.core_info.default_wearable))
 
   useFocusEffect(
     useCallback(() => {
@@ -179,18 +161,25 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
     return <ConnectedSimulatedGlassesInfo />
   }
 
-  // glasses paired and connected:
+  useEffect(() => {
+    let wearable = status.core_info.default_wearable
+    let image = getGlassesImage(wearable)
+
+    // if the glasses have not been removed from the case, show the case open or closed image
+    if (!status.glasses_info?.case_removed) {
+      if (status.glasses_info?.case_open) {
+        image = getGlassesOpenImage(wearable)
+      } else {
+        image = getGlassesClosedImage(wearable)
+      }
+    }
+
+    setGlassesImage(image)
+  }, [status.glasses_info])
+
   return (
     <View style={styles.connectedContent}>
-      <Animated.Image
-        source={getGlassesImage(status.core_info.default_wearable)}
-        style={[styles.glassesImage, {opacity: fadeAnim}]}
-      />
-      {/* {showTitle && (
-        <Text style={[styles.connectedTextTitle, {color: theme.colors.text}]}>
-          {formatGlassesTitle(status.core_info.default_wearable)}
-        </Text>
-      )} */}
+      <Animated.Image source={glassesImage} style={[styles.glassesImage, {opacity: fadeAnim}]} />
     </View>
   )
 }
@@ -305,11 +294,7 @@ export function ConnectedDeviceInfo() {
           </View> */}
 
       {/* battery circular progress bar */}
-      <View>
-        {/* <Text style={themed($batteryValue)}>
-            {status.glasses_info?.battery_life == -1 ? "-" : `${status.glasses_info?.battery_life}%`}
-          </Text> */}
-
+      {status.glasses_info?.battery_life != -1 ? (
         <AnimatedCircularProgress
           size={36}
           width={3}
@@ -321,7 +306,9 @@ export function ConnectedDeviceInfo() {
           children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
           rotation={0}
         />
-      </View>
+      ) : (
+        <ActivityIndicator size="small" color={theme.colors.text} />
+      )}
 
       {/* disconnect button */}
       <TouchableOpacity

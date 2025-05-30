@@ -93,6 +93,8 @@ enum GlassesError: Error {
   @Published public var rightBatteryLevel: Int = -1
   @Published public var caseCharging = false
   @Published public var caseOpen = false
+  @Published public var caseRemoved = true
+  
   public var isDisconnecting = false
   private var reconnectionTimer: Timer?
   private var reconnectionAttempts: Int = 0
@@ -689,11 +691,16 @@ enum GlassesError: Error {
         print("STOP RECORDING")
       case .TRIGGER_CHANGE_PAGE:
         print("TRIGGER_CHANGE_PAGE")
+      case .CASE_REMOVED:
+        print("REMOVED FROM CASE")
+        self.caseRemoved = true
       case .CASE_OPEN:
         self.caseOpen = true
+        self.caseRemoved = false
         print("CASE OPEN");
       case .CASE_CLOSED:
         self.caseOpen = false
+        self.caseRemoved = false
         print("CASE CLOSED");
       case .CASE_CHARGING_STATUS:
         guard data.count >= 3 else { break }

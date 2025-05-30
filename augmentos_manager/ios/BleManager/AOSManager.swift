@@ -135,6 +135,27 @@ struct ViewState {
         self.sendCurrentState(value)
     }.store(in: &cancellables)
     
+    // listen to case events:
+    g1Manager!.$caseOpen.sink { [weak self] (value: Bool) in
+        guard let self = self else { return }
+      handleRequestStatus()
+    }.store(in: &cancellables)
+    
+    g1Manager!.$caseRemoved.sink { [weak self] (value: Bool) in
+        guard let self = self else { return }
+      handleRequestStatus()
+    }.store(in: &cancellables)
+    
+    g1Manager!.$caseCharging.sink { [weak self] (value: Bool) in
+        guard let self = self else { return }
+      handleRequestStatus()
+    }.store(in: &cancellables)
+    
+//    g1Manager!.$caseBatteryLevel.sink { [weak self] (value: Bool) in
+//        guard let self = self else { return }
+//      handleRequestStatus()
+//    }.store(in: &cancellables)
+    
     
     // Subscribe to WebSocket status changes
     serverComms.wsManager.status
@@ -1021,6 +1042,10 @@ struct ViewState {
       connectedGlasses = [
         "model_name": self.defaultWearable,
         "battery_life": self.batteryLevel,
+        "case_removed": self.g1Manager?.caseRemoved ?? true,
+        "case_open": self.g1Manager?.caseOpen ?? true,
+        "case_charging": self.g1Manager?.caseCharging ?? false,
+        "case_battery_level": self.g1Manager?.caseBatteryLevel ?? 0,
       ]
       self.somethingConnected = true
     }

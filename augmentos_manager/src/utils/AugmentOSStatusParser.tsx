@@ -6,6 +6,10 @@ interface Glasses {
   glasses_use_wifi?: boolean; // Flag to indicate if glasses model supports WiFi
   glasses_wifi_connected?: boolean;
   glasses_wifi_ssid?: string;
+  case_removed: boolean;
+  case_open: boolean;
+  case_charging: boolean;
+  case_battery_level: number;
 }
 
 interface GlassesSettings {
@@ -129,6 +133,10 @@ export class AugmentOSParser {
       glasses_use_wifi: false,
       glasses_wifi_connected: false,
       glasses_wifi_ssid: '',
+      case_removed: true,
+      case_open: true,
+      case_charging: false,
+      case_battery_level: 0,
     },
     glasses_settings: {
       brightness: 87,
@@ -154,6 +162,8 @@ export class AugmentOSParser {
       let coreInfo = status.core_info ?? {};
       let glassesInfo = status.connected_glasses ?? {};
       let authInfo = status.auth ?? {};
+
+      console.log("glassesInfo", glassesInfo)
       
       // First determine if we have connected glasses in the status
       const hasConnectedGlasses = status.connected_glasses && status.connected_glasses.model_name;
@@ -187,6 +197,10 @@ export class AugmentOSParser {
             glasses_use_wifi: glassesInfo.glasses_use_wifi || false,
             glasses_wifi_connected: glassesInfo.glasses_wifi_connected || false,
             glasses_wifi_ssid: glassesInfo.glasses_wifi_ssid || '',
+            case_removed: glassesInfo.case_removed ?? true,
+            case_open: glassesInfo.case_open ?? true,
+            case_charging: glassesInfo.case_charging ?? false,
+            case_battery_level: glassesInfo.case_battery_level ?? 0,
           }
           : null,
         glasses_settings: {
