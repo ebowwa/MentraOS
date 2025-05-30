@@ -1,17 +1,24 @@
 // in ../icons/MicIcon.tsx
-import React from 'react';
-import { View } from 'react-native';
-import Svg, { G, Path, Defs, ClipPath, Rect } from 'react-native-svg';
-
+import React from "react"
+import {View} from "react-native"
+import Svg, {G, Path, Defs, ClipPath, Rect} from "react-native-svg"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 interface MicIconProps {
-  color?: string,
-  height?:number,
-  width?:number,
-  withBackground?: boolean,
-  
+  color?: string
+  height?: number
+  width?: number
+  withBackground?: boolean
 }
 
-const MicIcon = ({ color = '#030514', width = 17, height = 16, withBackground = false }: MicIconProps) => {
+const MicIcon = ({color = "#030514", width = 17, height = 16, withBackground = false}: MicIconProps) => {
+  const {themed, theme} = useAppTheme()
+  const {status} = useStatus()
+
+  if (!status.core_info.is_mic_enabled_for_frontend) {
+    return null
+  }
+
   const svgElement = (
     <Svg width={width} height={height} viewBox="0 0 17 16" fill="none">
       <G clipPath="url(#clip0_986_37039)">
@@ -29,13 +36,7 @@ const MicIcon = ({ color = '#030514', width = 17, height = 16, withBackground = 
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <Path
-          d="M8.25 12.667V15.3337"
-          stroke={color}
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
+        <Path d="M8.25 12.667V15.3337" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
         <Path
           d="M5.58337 15.333H10.9167"
           stroke={color}
@@ -50,24 +51,25 @@ const MicIcon = ({ color = '#030514', width = 17, height = 16, withBackground = 
         </ClipPath>
       </Defs>
     </Svg>
-  );
+  )
 
   if (withBackground) {
     return (
-      <View style={{
-        backgroundColor: "#23889C",
-        borderRadius: 20,
-        padding: 6,
-        marginLeft: 8,
-        justifyContent: "center",
-        alignItems: "center"
-      }}>
+      <View
+        style={{
+          backgroundColor: "#23889C",
+          borderRadius: 20,
+          padding: 6,
+          marginLeft: 8,
+          justifyContent: "center",
+          alignItems: "center",
+        }}>
         {svgElement}
       </View>
-    );
+    )
   }
 
-  return svgElement;
-};
+  return svgElement
+}
 
-export default MicIcon;
+export default MicIcon

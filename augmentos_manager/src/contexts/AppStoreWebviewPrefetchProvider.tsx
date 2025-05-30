@@ -31,7 +31,6 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
     setWebviewLoading(true);
     try {
       const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL
-      console.log("testing", Constants.expoConfig?.extra)
       const backendComms = BackendServerComms.getInstance();
       const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME);
       const urlWithToken = new URL(baseUrl);
