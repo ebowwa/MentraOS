@@ -123,9 +123,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   const {status} = useStatus()
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
-  const slideAnim = useRef(new Animated.Value(-50)).current
   const {themed, theme} = useAppTheme()
-  const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
 
   const [glassesImage, setGlassesImage] = useState(getGlassesImage(status.core_info.default_wearable))
 
@@ -152,15 +150,6 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
     }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim]),
   )
 
-  // no glasses paired
-  if (!status.core_info.default_wearable) {
-    return null
-  }
-
-  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
-    return <ConnectedSimulatedGlassesInfo />
-  }
-
   useEffect(() => {
     let wearable = status.core_info.default_wearable
     let image = getGlassesImage(wearable)
@@ -176,6 +165,15 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 
     setGlassesImage(image)
   }, [status.glasses_info])
+
+  // no glasses paired
+  if (!status.core_info.default_wearable) {
+    return null
+  }
+
+  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
+    return <ConnectedSimulatedGlassesInfo />
+  }
 
   return (
     <View style={styles.connectedContent}>
@@ -233,12 +231,12 @@ export function DeviceToolbar() {
 
       {/* mira button */}
       {/* <View style={{flexDirection: "row", alignItems: "center", gap: 4}}> */}
-      <Button
+      {/* <Button
         text="Mira"
         style={{minWidth: 110}}
         LeftAccessory={() => <Text style={{fontSize: 16}}>✨</Text>}
         onPress={() => {}}
-      />
+      /> */}
       {/* </View> */}
 
       {/* volume */}
