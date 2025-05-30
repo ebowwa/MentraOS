@@ -5,6 +5,9 @@ import { Logger } from 'pino';
 import { WebSocket } from 'ws';
 import axios from 'axios';
 
+
+const CLOUD_PUBLIC_HOST_NAME = "https://" + process.env.CLOUD_PUBLIC_HOST_NAME;
+
 // Extend DisplayRequest to include optional priority flag
 interface DisplayRequestWithPriority extends DisplayRequest {
   priority?: boolean;
@@ -49,7 +52,8 @@ class DisplayManager implements DisplayManagerI {
   private userSession: UserSession;
   private mainApp: string = ""; // systemApps.captions.packageName; // Hardcode captions as core app
   private logger: Logger; // child logger for this service & user session.
-  private priorityDisplayActive: boolean = false;
+  private onboardingActive: boolean = false;
+  private onboardingEndTime: number = 0;
 
   /**
    * Returns the user ID safely, providing a fallback value if it's undefined
@@ -98,38 +102,6 @@ class DisplayManager implements DisplayManagerI {
       return;
     }
 
-    // Onboarding logic: only for non-system apps
-    const userEmail = this.userSession.userId; // Assuming userId is email
-    if (userEmail && packageName) {
-      try {
-        const onboardingStatus = await this.getOnboardingStatus(userEmail, packageName);
-        if (!onboardingStatus) {
-          const instructions = await this.getOnboardingInstructions(packageName);
-          if (instructions) {
-            // Show onboarding instructions as a display
-            const onboardingDisplay: DisplayRequest = {
-              type: TpaToCloudMessageType.DISPLAY_REQUEST,
-              view: ViewType.MAIN,
-              packageName,
-              layout: {
-                layoutType: LayoutType.REFERENCE_CARD,
-                title: 'Welcome',
-                text: instructions
-              },
-              timestamp: new Date(),
-              durationMs: 10000 // Show for 10 seconds or until user action
-            };
-            this.sendDisplay(onboardingDisplay);
-            this.logger.info({ packageName }, `[${this.getUserId()}] Showing onboarding instructions for ${packageName}`);
-            // Mark onboarding as complete after showing (or after user action in a real system)
-            await this.completeOnboarding(userEmail, packageName);
-          }
-        }
-      } catch (err) {
-        this.logger.error({ err }, `[${this.getUserId()}] Error handling onboarding for ${packageName}`);
-      }
-    }
-
     // Save current display before showing boot screen (if not dashboard)
     if (this.displayState.currentDisplay &&
         this.displayState.currentDisplay.displayRequest.packageName !== systemApps.dashboard.packageName) {
@@ -149,7 +121,7 @@ class DisplayManager implements DisplayManagerI {
     this.bootingApps.add(packageName);
     this.updateBootScreen();
 
-    setTimeout(() => {
+    setTimeout(async () => {
       this.logger.info({ packageName }, `[${this.getUserId()}] Boot complete for app ${packageName}`);
       this.bootingApps.delete(packageName);
       if (this.bootingApps.size === 0) {
@@ -157,6 +129,45 @@ class DisplayManager implements DisplayManagerI {
         this.clearDisplay('main');
         // Process any queued display requests
         this.processBootQueue();
+
+        // Onboarding logic: only for non-system apps, after boot
+        const userEmail = this.userSession.userId; // Assuming userId is email
+        if (userEmail && packageName !== systemApps.dashboard.packageName) {
+          try {
+            const onboardingStatus = await this.getOnboardingStatus(userEmail, packageName);
+            console.log('4343 onboardingStatus', onboardingStatus);
+            if (true) {
+              const instructions = await this.getOnboardingInstructions(packageName);
+              console.log('4343 instructions', instructions);
+              if (instructions) {
+                // Show onboarding instructions as a display
+                const onboardingDisplay: DisplayRequest = {
+                  type: TpaToCloudMessageType.DISPLAY_REQUEST,
+                  view: ViewType.MAIN,
+                  packageName,
+                  layout: {
+                    layoutType: LayoutType.TEXT_WALL,
+                    text: instructions
+                  },
+                  timestamp: new Date(),
+                  durationMs: 15000 // Show for 10 seconds or until user action
+                };
+                this.onboardingActive = true;
+                this.onboardingEndTime = Date.now() + 5000;
+                this.sendDisplay(onboardingDisplay);
+                this.logger.info({ packageName }, `[${this.getUserId()}] Showing onboarding instructions for ${packageName}`);
+                setTimeout(() => {
+                  this.onboardingActive = false;
+                }, 5000);
+                console.log('4343 userEmail', userEmail);
+                console.log('4343 packageName', packageName);
+                await this.completeOnboarding(userEmail, packageName);
+              }
+            }
+          } catch (err) {
+            this.logger.error({ err }, `[${this.getUserId()}] Error handling onboarding for ${packageName}`);
+          }
+        }
       }
     }, this.BOOT_DURATION);
   }
@@ -166,8 +177,8 @@ class DisplayManager implements DisplayManagerI {
    */
   private async getOnboardingStatus(email: string, packageName: string): Promise<boolean> {
     try {
-      const baseUrl = process.env.AUGMENTOS_CLOUD_API_URL || 'http://localhost:8002/api';
-      const response = await axios.get(`${baseUrl}/onboarding/status`, { params: { email, packageName } });
+      const response = await axios.get(`${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/status`, { params: { email, packageName } });
+      console.log('4343 response', response);
       return !!response.data.hasCompletedOnboarding;
     } catch (err) {
       this.logger.error({ err }, `[${this.getUserId()}] Error fetching onboarding status`);
@@ -180,8 +191,7 @@ class DisplayManager implements DisplayManagerI {
    */
   private async getOnboardingInstructions(packageName: string): Promise<string | null> {
     try {
-      const baseUrl = process.env.AUGMENTOS_CLOUD_API_URL || 'http://localhost:8002/api';
-      const response = await axios.get(`${baseUrl}/onboarding/instructions`, { params: { packageName } });
+      const response = await axios.get(`${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/instructions`, { params: { packageName } });
       return response.data.instructions || null;
     } catch (err) {
       this.logger.error({ err }, `[${this.getUserId()}] Error fetching onboarding instructions`);
@@ -194,8 +204,8 @@ class DisplayManager implements DisplayManagerI {
    */
   private async completeOnboarding(email: string, packageName: string): Promise<boolean> {
     try {
-      const baseUrl = process.env.AUGMENTOS_CLOUD_API_URL || 'http://localhost:8002/api';
-      const response = await axios.post(`${baseUrl}/onboarding/complete`, { email, packageName });
+      const response = await axios.post(`${CLOUD_PUBLIC_HOST_NAME}/api/onboarding/complete`, { email, packageName });
+      console.log('#$%^4343 response', response);
       return !!response.data.success;
     } catch (err) {
       this.logger.error({ err }, `[${this.getUserId()}] Error completing onboarding`);
@@ -418,13 +428,13 @@ class DisplayManager implements DisplayManagerI {
 
   private showDisplay(activeDisplay: ActiveDisplay): boolean {
     const displayRequest = activeDisplay.displayRequest as DisplayRequestWithPriority;
-    // If a priority display is active, only allow another priority display to replace it
-    if (this.priorityDisplayActive && !displayRequest.priority) {
-      this.logger.info({ packageName: displayRequest.packageName }, `[${this.getUserId()}] 🚫 Priority display active, ignoring non-priority display request`);
-      return false;
-    }
-    if (displayRequest.priority) {
-      this.priorityDisplayActive = true;
+    // Block all non-onboarding displays if onboardingActive and within 5 seconds
+    if (this.onboardingActive && Date.now() < this.onboardingEndTime) {
+      // Only allow onboarding display to show
+      if (!(displayRequest.layout && displayRequest.layout.layoutType === LayoutType.REFERENCE_CARD && displayRequest.layout.title === 'Welcome')) {
+        this.logger.info({ packageName: displayRequest.packageName }, `[${this.getUserId()}] 🚫 Onboarding active, ignoring display request`);
+        return false;
+      }
     }
     // Check throttle
     if (Date.now() - this.lastDisplayTime < this.THROTTLE_DELAY && !displayRequest.forceDisplay) {
@@ -753,7 +763,6 @@ class DisplayManager implements DisplayManagerI {
     };
     this.logger.info({ viewName }, `[${this.getUserId()}] 🧹 Clearing display for view: ${viewName}`);
     this.sendDisplay(clearRequest);
-    this.priorityDisplayActive = false; // Clear priority flag when display is cleared
   }
 
   /**
