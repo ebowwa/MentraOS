@@ -20,6 +20,7 @@ import NotificationOff from "assets/icons/NotificationOff"
 import {
   ConnectDeviceButton,
   ConnectedGlasses,
+  DeviceToolbar,
 } from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {
@@ -206,6 +207,7 @@ export default function Homepage() {
       <NonProdWarning />
 
       <ConnectedGlasses showTitle={false} />
+      <DeviceToolbar />
       <ConnectDeviceButton />
 
       <AppsActiveList />

@@ -153,7 +153,10 @@ export default function ConnectedDeviceInfo() {
   return (
     <View style={themed($container)}>
       <View style={themed($settingsGroup)}>
-        <ToggleSetting label="Auto Brightness" value={autoBrightness} onValueChange={setAutoBrightness} />
+        <ToggleSetting label="Auto Brightness" value={autoBrightness} onValueChange={(value) => {
+          setAutoBrightness(value)
+          coreCommunicator.setGlassesBrightnessMode(brightness, value)
+        }} />
 
         {!autoBrightness && (
           <>

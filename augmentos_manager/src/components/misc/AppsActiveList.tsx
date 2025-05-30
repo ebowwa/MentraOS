@@ -11,7 +11,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import TempActivateAppWindow from "./TempActivateAppWindow"
-import { AppListItem } from "./AppListItem"
+import {AppListItem} from "./AppListItem"
 
 export default function AppsActiveList() {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
@@ -61,21 +61,19 @@ export default function AppsActiveList() {
   function getNewRow() {
     return (
       <View style={themed($appsContainer)}>
-        <View >
+        <View>
           {runningApps.length > 0 ? (
             <>
               <ListHeaderActiveApps />
               {runningApps.map((app, index) => (
-                <View>
-                  <AppListItem
-                    key={app.packageName}
-                    app={app}
-                    is_foreground= {app.is_foreground}
-                    isActive={true}
-                    onTogglePress={() => stopApp(app.packageName)}
-                    onSettingsPress={() => openAppSettings(app)}
-                  />
-                </View>
+                <AppListItem
+                  key={app.packageName}
+                  app={app}
+                  is_foreground={app.is_foreground}
+                  isActive={true}
+                  onTogglePress={() => stopApp(app.packageName)}
+                  onSettingsPress={() => openAppSettings(app)}
+                />
               ))}
             </>
           ) : (

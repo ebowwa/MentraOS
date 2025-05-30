@@ -511,7 +511,7 @@ export default function InactiveAppList() {
         }
 
         return (
-          <View>
+          <View key={app.packageName}>
             <AppListItem
               key={app.packageName}
               app={app}

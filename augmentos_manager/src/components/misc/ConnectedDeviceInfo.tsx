@@ -14,8 +14,8 @@ import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/ChevronRight"
 import {Circle} from "react-native-svg"
 import {AnimatedCircularProgress} from "react-native-circular-progress"
-import { getBatteryColor } from "@/utils/getBatteryIcon"
-
+import {getBatteryColor} from "@/utils/getBatteryIcon"
+import SunIcon from "assets/icons/SunIcon"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
@@ -143,17 +143,6 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   const {themed, theme} = useAppTheme()
   const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
 
-  // green to red color gradient based on battery life:
-const getBatteryColor = (batteryLife: number) => {
-  if (batteryLife >= 80) {
-    return "#00ac1a"
-  } else if (batteryLife >= 50) {
-    return "#FFC107"
-  } else {
-    return "#E24A24"
-  }
-}
-
   useFocusEffect(
     useCallback(() => {
       // Reset animations to initial values
@@ -218,6 +207,55 @@ const getBatteryColor = (batteryLife: number) => {
   )
 }
 
+export function DeviceToolbar() {
+  const {status} = useStatus()
+  const {themed, theme} = useAppTheme()
+  // if (!status.glasses_info?.model_name) {
+  //   return null
+  // }
+
+  let autoBrightness = status.glasses_settings.auto_brightness;
+
+  return (
+    <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10}}>
+      {/* battery */}
+      <View style={{}}>
+        <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_life}%</Text>
+      </View>
+
+      {/* brightness */}
+      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
+        <SunIcon size={24} color={theme.colors.text} />
+        {autoBrightness ? (
+          <Text style={{color: theme.colors.text}}>Auto</Text>
+        ) : (
+          <>
+            <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+              {status.glasses_settings.brightness}%
+            </Text>
+          </>
+        )}
+      </View>
+
+      {/* wifi connection */}
+      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
+        {/* <WifiIcon size={24} color={theme.colors.text} /> */}
+        <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+          {status.glasses_info?.glasses_wifi_ssid}
+        </Text>
+      </View>
+
+      {/* mira button */}
+      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
+        <Button text="Mira" onPress={() => {}} />
+      </View>
+
+      {/* volume */}
+      <View style={{}}></View>
+    </View>
+  )
+}
+
 export default function ConnectedDeviceInfo() {
   const {status, refreshStatus} = useStatus()
   const {theme, themed} = useAppTheme()
@@ -226,7 +264,6 @@ export default function ConnectedDeviceInfo() {
   useEffect(() => {
     setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
   }, [status.core_info.is_mic_enabled_for_frontend])
-
 
   const renderConnectedInterface = () => {
     if (!status.glasses_info?.model_name) {
