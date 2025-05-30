@@ -3,7 +3,7 @@ import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
-import ConnectedDeviceInfo from "@/components/misc/ConnectedDeviceInfo"
+import {ConnectedDeviceInfo, ConnectDeviceButton, ConnectedGlasses} from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -144,50 +144,11 @@ export default function Homepage() {
     }
   }, [])
 
-  // Simple animated wrapper so we do not duplicate logic
-  const AnimatedSection: React.FC<AnimatedSectionProps> = useCallback(
-    ({children}) => (
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{translateY: slideAnim}],
-        }}>
-        {children}
-      </Animated.View>
-    ),
-    [fadeAnim, slideAnim],
-  )
-
   useFocusEffect(
     useCallback(() => {
       checkNonProdBackend()
-
-      // Reset animations when screen is about to focus
-      fadeAnim.setValue(0)
-      slideAnim.setValue(-50)
-
-      // Start animations after a short delay
-      const animationTimeout = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-        ]).start()
-      }, 50)
-
-      return () => {
-        clearTimeout(animationTimeout)
-        fadeAnim.setValue(0)
-        slideAnim.setValue(-50)
-      }
-    }, [fadeAnim, slideAnim]),
+      return () => {}
+    }, []),
   )
 
   return (
@@ -196,9 +157,10 @@ export default function Homepage() {
       {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
       <View style={{flex: 1}}>
-        <AnimatedSection>
-          <ConnectedDeviceInfo />
-        </AnimatedSection>
+        <ConnectedGlasses showTitle={true} />
+        <ConnectedDeviceInfo />
+        <View style={{marginTop: 16}}/>
+        <ConnectDeviceButton />
       </View>
 
       {/* Device Settings */}

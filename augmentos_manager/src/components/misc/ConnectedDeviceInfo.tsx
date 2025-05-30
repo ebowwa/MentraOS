@@ -16,6 +16,7 @@ import {Circle} from "react-native-svg"
 import {AnimatedCircularProgress} from "react-native-circular-progress"
 import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/SunIcon"
+// import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 export const ConnectDeviceButton = () => {
@@ -149,7 +150,6 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
       // Reset animations to initial values
       fadeAnim.setValue(0)
       scaleAnim.setValue(0.8)
-      slideAnim.setValue(-50)
 
       // Start animations if device is connected
       if (status.core_info.puck_connected) {
@@ -159,26 +159,13 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
             duration: 1200,
             useNativeDriver: true,
           }),
-          Animated.spring(scaleAnim, {
-            toValue: 1,
-            friction: 8,
-            tension: 60,
-            useNativeDriver: true,
-          }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 700,
-            useNativeDriver: true,
-          }),
         ]).start()
       }
       // Cleanup function
       return () => {
         fadeAnim.stopAnimation()
-        scaleAnim.stopAnimation()
-        slideAnim.stopAnimation()
       }
-    }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim, scaleAnim, slideAnim]),
+    }, [status.core_info.default_wearable, status.core_info.puck_connected, fadeAnim]),
   )
 
   // no glasses paired
@@ -195,14 +182,12 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
     <View style={styles.connectedContent}>
       <Animated.Image
         source={getGlassesImage(status.core_info.default_wearable)}
-        style={[styles.glassesImage, {opacity: fadeAnim, transform: [{scale: scaleAnim}]}]}
+        style={[styles.glassesImage, {opacity: fadeAnim}]}
       />
       {showTitle && (
-        <Animated.View style={[styles.connectedStatus, {transform: [{translateX: slideAnim}]}]}>
           <Text style={[styles.connectedTextTitle, {color: theme.colors.text}]}>
-            {formatGlassesTitle(status.core_info.default_wearable)}
-          </Text>
-        </Animated.View>
+          {formatGlassesTitle(status.core_info.default_wearable)}
+        </Text>
       )}
     </View>
   )
@@ -218,15 +203,16 @@ export function DeviceToolbar() {
   let autoBrightness = status.glasses_settings.auto_brightness
 
   return (
-    <View style={{flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 10}}>
+    <View style={themed($deviceToolbar)}>
       {/* battery */}
-      <View style={{}}>
+      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+        <Icon icon="battery" size={18} color={theme.colors.text} />
         <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_life}%</Text>
       </View>
 
       {/* brightness */}
-      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
-        <SunIcon size={24} color={theme.colors.text} />
+      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+        <SunIcon size={18} color={theme.colors.text} />
         {autoBrightness ? (
           <Text style={{color: theme.colors.text}}>Auto</Text>
         ) : (
@@ -250,7 +236,7 @@ export function DeviceToolbar() {
       {/* <View style={{flexDirection: "row", alignItems: "center", gap: 4}}> */}
       <Button
         text="Mira"
-        style={{minWidth: 110, }}
+        style={{minWidth: 110}}
         LeftAccessory={() => <Text style={{fontSize: 16}}>✨</Text>}
         onPress={() => {}}
       />
@@ -262,7 +248,18 @@ export function DeviceToolbar() {
   )
 }
 
-export default function ConnectedDeviceInfo() {
+const $deviceToolbar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+  // backgroundColor: colors.palette.neutral200,
+  borderRadius: spacing.md,
+  paddingHorizontal: spacing.md,
+  marginTop: spacing.md,
+})
+
+export function ConnectedDeviceInfo() {
   const {status, refreshStatus} = useStatus()
   const {theme, themed} = useAppTheme()
   const [microphoneActive, setMicrophoneActive] = useState(status.core_info.is_mic_enabled_for_frontend)
@@ -271,7 +268,6 @@ export default function ConnectedDeviceInfo() {
     setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
   }, [status.core_info.is_mic_enabled_for_frontend])
 
-  const renderConnectedInterface = () => {
     if (!status.glasses_info?.model_name) {
       return null
     }
@@ -329,67 +325,6 @@ export default function ConnectedDeviceInfo() {
         </TouchableOpacity>
       </View>
     )
-  }
-
-  {
-    /* Use the simulated version if we're connected to simulated glasses */
-  }
-  if (status.glasses_info?.model_name && status.glasses_info.model_name.toLowerCase().includes("simulated")) {
-    return <ConnectedSimulatedGlassesInfo />
-  }
-
-  const renderStatusIndicators = () => {
-    {
-      /* Status Indicators Row - Only render if indicators present */
-    }
-    if (microphoneActive || (status.glasses_info && status.glasses_info.glasses_use_wifi === true)) {
-      return (
-        <View style={styles.statusIndicatorsRow}>
-          {microphoneActive && <Icon name="microphone" size={20} color="#4CAF50" />}
-
-          {/* Centered flex space */}
-          <View style={{flex: 1}} />
-
-          {/* WiFi Status Indicator */}
-          {status.glasses_info && status.glasses_info.glasses_use_wifi === true && (
-            <TouchableOpacity
-              style={styles.wifiContainer}
-              onPress={() => {
-                if (status.glasses_info) {
-                  router.push({
-                    pathname: "/pairing/glasses-wifi-setup",
-                    params: {
-                      deviceModel: status.glasses_info.model_name || "Glasses",
-                    },
-                  })
-                }
-              }}>
-              {status.glasses_info.glasses_wifi_connected ? (
-                <>
-                  {status.glasses_info.glasses_wifi_ssid && (
-                    <Text style={styles.wifiSsidText}>{status.glasses_info.glasses_wifi_ssid}</Text>
-                  )}
-                  <Icon name="wifi" size={20} color="#4CAF50" />
-                </>
-              ) : (
-                <MaterialIcon name="wifi-off" size={20} color="#E53935" />
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-      )
-    }
-    return null
-  }
-
-  return (
-    <View style={themed($deviceInfoContainer)}>
-      {renderStatusIndicators()}
-      <ConnectedGlasses showTitle={true} />
-      {renderConnectedInterface()}
-      <ConnectDeviceButton />
-    </View>
-  )
 }
 
 const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
