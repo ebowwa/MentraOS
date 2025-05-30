@@ -111,6 +111,8 @@ export const ConnectDeviceButton = () => {
       />
     )
   }
+
+  return null
 }
 
 export const DeviceHome = () => {
@@ -184,11 +186,11 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
         source={getGlassesImage(status.core_info.default_wearable)}
         style={[styles.glassesImage, {opacity: fadeAnim}]}
       />
-      {showTitle && (
-          <Text style={[styles.connectedTextTitle, {color: theme.colors.text}]}>
+      {/* {showTitle && (
+        <Text style={[styles.connectedTextTitle, {color: theme.colors.text}]}>
           {formatGlassesTitle(status.core_info.default_wearable)}
         </Text>
-      )}
+      )} */}
     </View>
   )
 }
@@ -196,9 +198,10 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 export function DeviceToolbar() {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
-  // if (!status.glasses_info?.model_name) {
-  //   return null
-  // }
+
+  if (!status.glasses_info?.model_name) {
+    return null
+  }
 
   let autoBrightness = status.glasses_settings.auto_brightness
 
@@ -206,8 +209,15 @@ export function DeviceToolbar() {
     <View style={themed($deviceToolbar)}>
       {/* battery */}
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
-        <Icon icon="battery" size={18} color={theme.colors.text} />
-        <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_life}%</Text>
+        {status.glasses_info?.battery_life != -1 ? (
+          <>
+            <Icon icon="battery" size={18} color={theme.colors.text} />
+            <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_life}%</Text>
+          </>
+        ) : (
+          // <Text style={{color: theme.colors.text}}>No battery</Text>
+          <ActivityIndicator size="small" color={theme.colors.text} />
+        )}
       </View>
 
       {/* brightness */}
@@ -268,13 +278,13 @@ export function ConnectedDeviceInfo() {
     setMicrophoneActive(status.core_info.is_mic_enabled_for_frontend)
   }, [status.core_info.is_mic_enabled_for_frontend])
 
-    if (!status.glasses_info?.model_name) {
-      return null
-    }
+  if (!status.glasses_info?.model_name) {
+    return null
+  }
 
-    return (
-      <View style={themed($statusBar)}>
-        {/* <View style={styles.statusInfo}>
+  return (
+    <View style={themed($statusBar)}>
+      {/* <View style={styles.statusInfo}>
             {status.glasses_info?.battery_life != null && typeof status.glasses_info?.battery_life === "number" && (
               <>
                 <Text style={themed($statusLabel)}>Battery</Text>
@@ -294,37 +304,37 @@ export function ConnectedDeviceInfo() {
             )}
           </View> */}
 
-        {/* battery circular progress bar */}
-        <View>
-          {/* <Text style={themed($batteryValue)}>
+      {/* battery circular progress bar */}
+      <View>
+        {/* <Text style={themed($batteryValue)}>
             {status.glasses_info?.battery_life == -1 ? "-" : `${status.glasses_info?.battery_life}%`}
           </Text> */}
 
-          <AnimatedCircularProgress
-            size={36}
-            width={3}
-            lineCap="round"
-            fillLineCap="round"
-            fill={status.glasses_info?.battery_life}
-            tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
-            backgroundColor={theme.colors.palette.neutral300}
-            children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
-            rotation={0}
-          />
-        </View>
-
-        {/* disconnect button */}
-        <TouchableOpacity
-          style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
-          onPress={() => {
-            coreCommunicator.sendDisconnectWearable()
-          }}
-          disabled={status.core_info.is_searching}>
-          <Icon name="power-off" size={18} color="white" style={styles.icon} />
-          <Text style={styles.disconnectText}>Disconnect</Text>
-        </TouchableOpacity>
+        <AnimatedCircularProgress
+          size={36}
+          width={3}
+          lineCap="round"
+          fillLineCap="round"
+          fill={status.glasses_info?.battery_life}
+          tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+          backgroundColor={theme.colors.palette.neutral300}
+          children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
+          rotation={0}
+        />
       </View>
-    )
+
+      {/* disconnect button */}
+      <TouchableOpacity
+        style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
+        onPress={() => {
+          coreCommunicator.sendDisconnectWearable()
+        }}
+        disabled={status.core_info.is_searching}>
+        <Icon name="power-off" size={18} color="white" style={styles.icon} />
+        <Text style={styles.disconnectText}>Disconnect</Text>
+      </TouchableOpacity>
+    </View>
+  )
 }
 
 const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({

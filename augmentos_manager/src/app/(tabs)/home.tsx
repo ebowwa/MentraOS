@@ -17,11 +17,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/MicIcon"
 import NotificationOff from "assets/icons/NotificationOff"
-import {
-  ConnectDeviceButton,
-  ConnectedGlasses,
-  DeviceToolbar,
-} from "@/components/misc/ConnectedDeviceInfo"
+import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -189,17 +185,15 @@ export default function Homepage() {
 
   return (
     <Screen preset="auto" style={themed($screen)}>
-      <AnimatedSection>
-        <Header
-          leftTx="home:title"
-          RightActionComponent={
-            <View style={themed($headerRight)}>
-              <NotificationOff />
-              <MicIcon withBackground />
-            </View>
-          }
-        />
-      </AnimatedSection>
+      <Header
+        leftTx="home:title"
+        RightActionComponent={
+          <View style={themed($headerRight)}>
+            <NotificationOff />
+            <MicIcon withBackground />
+          </View>
+        }
+      />
 
       {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
@@ -208,6 +202,7 @@ export default function Homepage() {
 
       <ConnectedGlasses showTitle={false} />
       <DeviceToolbar />
+      <View style={{marginTop: 16}} />
       <ConnectDeviceButton />
 
       <AppsActiveList />

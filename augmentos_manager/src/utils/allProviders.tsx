@@ -10,6 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext"
 import { SearchResultsProvider } from "@/contexts/SearchResultsContext"
 import { AppStoreWebviewPrefetchProvider } from "@/contexts/AppStoreWebviewPrefetchProvider"
 import { ModalProvider } from "./AlertUtils"
+import { GlassesMirrorProvider } from "@/contexts/GlassesMirrorContext"
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync()
@@ -23,6 +24,7 @@ export const AllProviders = withWrappers(
   SearchResultsProvider,
   AppStoreWebviewPrefetchProvider,
   AppStatusProvider,
+  GlassesMirrorProvider,
   GestureHandlerRootView,
   ModalProvider,
 )

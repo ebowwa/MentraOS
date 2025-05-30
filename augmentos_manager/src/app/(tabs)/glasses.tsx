@@ -18,6 +18,7 @@ import {SETTINGS_KEYS} from "@/consts"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
+import { translate } from "@/i18n/translate"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -151,9 +152,18 @@ export default function Homepage() {
     }, []),
   )
 
+  const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
+  let pageTitle;
+
+  if (status.core_info.default_wearable) {
+    pageTitle = formatGlassesTitle(status.core_info.default_wearable)
+  } else {
+    pageTitle = translate("glasses:title")
+  }
+
   return (
     <Screen preset="auto" style={{paddingHorizontal: 20}}>
-      <Header leftTx="glasses:title" />
+      <Header title={pageTitle} />
       {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
       <View style={{flex: 1}}>
@@ -162,8 +172,7 @@ export default function Homepage() {
         <View style={{marginTop: 16}}/>
         <ConnectDeviceButton />
       </View>
-
-      {/* Device Settings */}
+      
       <DeviceSettings />
     </Screen>
   )
