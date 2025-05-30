@@ -21,9 +21,9 @@ import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import EmptyAppsView from "../home/EmptyAppsView"
-import { AppListItem } from "./AppListItem"
-import { Spacer } from "./Spacer"
-import { spacing } from "@/theme"
+import {AppListItem} from "./AppListItem"
+import {Spacer} from "./Spacer"
+import {spacing} from "@/theme"
 
 export default function InactiveAppList() {
   const {
@@ -388,6 +388,7 @@ export default function InactiveAppList() {
 
     return (
       <View
+        key={"arrow"}
         style={[
           styles.arrowContainer,
           {
@@ -491,39 +492,39 @@ export default function InactiveAppList() {
     <View>
       {renderOnboardingArrow()}
       <ListHeaderInactiveApps />
-   
+
       {availableApps.map((app, index) => {
-          // Check if this is the LiveCaptions app
-          const isLiveCaptions =
-            app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
+        // Check if this is the LiveCaptions app
+        const isLiveCaptions =
+          app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
 
-          // Only set ref for LiveCaptions app
-          const ref = isLiveCaptions ? liveCaptionsRef : null
+        // Only set ref for LiveCaptions app
+        const ref = isLiveCaptions ? liveCaptionsRef : null
 
-          // Update LiveCaptions index without causing rerender loops
-          // This is safer than updating state during render
-          if (isLiveCaptions && liveCaptionsPosition.index !== index) {
-            // Use setTimeout to defer the state update until after render
-            setTimeout(() => {
-              setLiveCaptionsPosition(prev => ({...prev, index}))
-            }, 0)
-          }
+        // Update LiveCaptions index without causing rerender loops
+        // This is safer than updating state during render
+        if (isLiveCaptions && liveCaptionsPosition.index !== index) {
+          // Use setTimeout to defer the state update until after render
+          setTimeout(() => {
+            setLiveCaptionsPosition(prev => ({...prev, index}))
+          }, 0)
+        }
 
-          return (
-            <View>
-              <AppListItem
-                key={app.packageName}
-                app={app}
-                is_foreground= {app.is_foreground}
-                isActive={false}
-                onTogglePress={() => startApp(app.packageName)}
-                onSettingsPress={() => openAppSettings(app)}
-                refProp={ref}
-              />
-              <Spacer height={spacing.sm}/>
-            </View>
-          )
-        })} 
+        return (
+          <View>
+            <AppListItem
+              key={app.packageName}
+              app={app}
+              is_foreground={app.is_foreground}
+              isActive={false}
+              onTogglePress={() => startApp(app.packageName)}
+              onSettingsPress={() => openAppSettings(app)}
+              refProp={ref}
+            />
+            <Spacer height={spacing.sm} />
+          </View>
+        )
+      })}
     </View>
   )
 }
