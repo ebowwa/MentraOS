@@ -50,7 +50,8 @@ const en = {
     permissionsRequiredTitle: "Permissions Required",
     permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
     activateAnApp: "Activate an app",
-    activateAnAppMessage: "Switch the toggle to run an app on your glasses."
+    activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
+    foreground: "Foreground"
 
   },
   glasses: {

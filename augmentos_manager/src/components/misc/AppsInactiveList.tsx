@@ -21,10 +21,11 @@ import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import EmptyAppsView from "../home/EmptyAppsView"
-import AppsList from "@/components/misc/AppsList"
-import {ThemedStyle} from "@/theme"
+import { AppListItem } from "./AppListItem"
+import { Spacer } from "./Spacer"
+import { spacing } from "@/theme"
 
-export default function AppsInactiveList() {
+export default function InactiveAppList() {
   const {
     appStatus,
     refreshAppStatus,
@@ -490,12 +491,8 @@ export default function AppsInactiveList() {
     <View>
       {renderOnboardingArrow()}
       <ListHeaderInactiveApps />
-      {availableApps.length < 1 && (
-        <EmptyAppsView statusMessageKey="home:noInactiveApps" activeAppsMessageKey="home:emptyInactiveAppListInfo" />
-      )}
-      <AppsList apps={availableApps} startApp={startApp} openAppSettings={openAppSettings} />
-
-      {/* {availableApps.map((app, index) => {
+   
+      {availableApps.map((app, index) => {
           // Check if this is the LiveCaptions app
           const isLiveCaptions =
             app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
@@ -513,38 +510,20 @@ export default function AppsInactiveList() {
           }
 
           return (
-            <View key={app.packageName} style={[styles.everything, styles.everythingFlexBox]}>
-              <View style={[styles.appDescription, styles.everythingFlexBox]}>
-                <AppIcon app={app} isForegroundApp={app.is_foreground} style={styles.appIcon} />
-                <View style={styles.appNameWrapper}>
-                  <Text style={styles.appName} numberOfLines={1}>
-                    {app.name}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={[styles.toggleParent, styles.everythingFlexBox]}>
-                <TouchableOpacity
-                  key={app.packageName}
-                  onPress={() => startApp(app.packageName)}
-                  delayLongPress={500}
-                  style={{padding: 10, borderRadius: 20}}
-                  ref={ref}>
-                  <View style={styles.toggle}>
-                    <View style={[styles.toggleBarIcon, styles.toggleIconLayout, {backgroundColor: "#565E8C"}]} />
-                    <View style={[styles.toggleCircleIcon, styles.toggleIconLayout, {left: "-2.78%"}]}>
-                      <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-
-                <TouchableOpacity hitSlop={10} onPress={() => openAppSettings(app)}>
-                  <ChevronRight />
-                </TouchableOpacity>
-              </View>
+            <View>
+              <AppListItem
+                key={app.packageName}
+                app={app}
+                is_foreground= {app.is_foreground}
+                isActive={false}
+                onTogglePress={() => startApp(app.packageName)}
+                onSettingsPress={() => openAppSettings(app)}
+                refProp={ref}
+              />
+              <Spacer height={spacing.sm}/>
             </View>
           )
-        })} */}
+        })} 
     </View>
   )
 }

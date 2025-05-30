@@ -1,17 +1,23 @@
 import React, {useMemo, useState, useRef} from "react"
-import {View, ScrollView} from "react-native"
+import {View, ScrollView, ViewStyle, TextStyle} from "react-native"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {useNavigation} from "@react-navigation/native"
+import {NavigationProps} from "./types"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
+import ChevronRight from "assets/icons/ChevronRight"
+import EmptyAppsView from "../home/EmptyAppsView"
 import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
+import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
-import AppsList from "@/components/misc/AppsList"
-import TempActivateAppWindow from "@/components/misc/TempActivateAppWindow"
+import TempActivateAppWindow from "./TempActivateAppWindow"
+import { AppListItem } from "./AppListItem"
 
 export default function AppsActiveList() {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
   const backendComms = BackendServerComms.getInstance()
   const [_isLoading, setIsLoading] = useState(false)
+  const navigation = useNavigation<NavigationProps>()
   const scrollViewRef = useRef<ScrollView>(null)
 
   const stopApp = async (packageName: string) => {
@@ -46,19 +52,42 @@ export default function AppsActiveList() {
 
   const runningApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
 
+  const scrollToBottom = () => {
+    scrollViewRef.current?.scrollToEnd({animated: true})
+  }
 
   const {themed, theme} = useAppTheme()
 
   function getNewRow() {
     return (
-      <View>
-        {runningApps.length > 0 && <ListHeaderActiveApps />}
-        <AppsList apps={runningApps} stopApp={stopApp} openAppSettings={openAppSettings} />
-        {runningApps.length === 0 && (
-          <>
-            <TempActivateAppWindow />
-          </>
-        )}
+      <View style={themed($appsContainer)}>
+        <View >
+          {runningApps.length > 0 ? (
+            <>
+              <ListHeaderActiveApps />
+              {runningApps.map((app, index) => (
+                <View>
+                  <AppListItem
+                    key={app.packageName}
+                    app={app}
+                    is_foreground= {app.is_foreground}
+                    isActive={true}
+                    onTogglePress={() => stopApp(app.packageName)}
+                    onSettingsPress={() => openAppSettings(app)}
+                  />
+                </View>
+              ))}
+            </>
+          ) : (
+            <>
+              <TempActivateAppWindow />
+              <EmptyAppsView
+                statusMessageKey={"home:noActiveApps"}
+                activeAppsMessageKey={"home:emptyActiveAppListInfo"}
+              />
+            </>
+          )}
+        </View>
       </View>
     )
   }
@@ -66,13 +95,7 @@ export default function AppsActiveList() {
   return getNewRow()
 }
 
-
-
-
-
-
-
-
-
-
-
+const $appsContainer: ThemedStyle<ViewStyle> = () => ({
+  justifyContent: "flex-start",
+  marginTop: 8,
+})
