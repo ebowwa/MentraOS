@@ -1,6 +1,7 @@
 import express from 'express';
 import { User } from '../models/user.model';
 import App from '../models/app.model';
+import { Types } from 'mongoose';
 
 const router = express.Router();
 
@@ -11,14 +12,22 @@ router.get('/status', async (req, res) => {
   if (!email || !packageName) return res.status(400).json({ error: 'Missing email or packageName' });
   try {
     const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const app = await App.findOne({ packageName });
+    if (!app) return res.status(404).json({ error: 'App not found' });
+    const userId = user._id.toString();
     let hasCompleted = false;
-    if (user && user.onboardingStatus) {
-      const status = user.onboardingStatus;
-      if (status instanceof Map) {
-        hasCompleted = !!status.get(packageName);
-      } else if (typeof status === 'object' && status !== null) {
-        hasCompleted = !!status[packageName];
-      }
+    if (app.onboardingStatus && app.onboardingStatus instanceof Map) {
+      hasCompleted = !!app.onboardingStatus.get(userId);
+    } else if (app.onboardingStatus && typeof app.onboardingStatus === 'object') {
+      hasCompleted = !!app.onboardingStatus[userId];
+    }
+    // If not found, set onboardingStatus for this user to false
+    if (!hasCompleted && (!app.onboardingStatus || !(app.onboardingStatus instanceof Map ? app.onboardingStatus.has(userId) : userId in app.onboardingStatus))) {
+      await App.updateOne(
+        { _id: app._id },
+        { $set: { [`onboardingStatus.${userId}`]: false } }
+      );
     }
     res.json({ hasCompletedOnboarding: hasCompleted });
   } catch (err) {
@@ -32,18 +41,21 @@ router.post('/complete', async (req, res) => {
   const packageName = req.body.packageName as string;
   if (!email || !packageName) return res.status(400).json({ error: 'Missing email or packageName' });
   try {
-    const user = await User.findOneAndUpdate(
-      { email: email.toLowerCase() },
-      { $set: { [`onboardingStatus.${packageName}`]: true } },
-      { new: true, upsert: true }
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    // Update onboardingStatus for this user in the app
+    await App.updateOne(
+      { packageName },
+      { $set: { [`onboardingStatus.${user._id.toString()}`]: true } }
     );
+    // Reload the app to get the latest onboardingStatus
+    const app = await App.findOne({ packageName });
     let hasCompleted = false;
-    if (user && user.onboardingStatus) {
-      const status = user.onboardingStatus;
-      if (status instanceof Map) {
-        hasCompleted = !!status.get(packageName);
-      } else if (typeof status === 'object' && status !== null) {
-        hasCompleted = !!status[packageName];
+    if (app && app.onboardingStatus) {
+      if (app.onboardingStatus instanceof Map) {
+        hasCompleted = !!app.onboardingStatus.get(user._id.toString());
+      } else if (typeof app.onboardingStatus === 'object') {
+        hasCompleted = !!app.onboardingStatus[user._id.toString()];
       }
     }
     res.json({ success: true, hasCompletedOnboarding: hasCompleted });

@@ -71,6 +71,8 @@ export interface AppI extends _AppI, Document {
   sharedWithEmails?: string[];
 
   onboardingInstructions?: string;
+
+  onboardingStatus?: Map<string, boolean>;
 }
 
 
@@ -236,6 +238,11 @@ const AppSchema = new Schema({
   onboardingInstructions: {
     type: String,
     default: ''
+  },
+  onboardingStatus: {
+    type: Map,
+    of: Boolean,
+    default: {}
   }
 }, {
   strict: false,
