@@ -28,19 +28,16 @@ import {translate} from "@/i18n/translate"
 import showAlert from "@/utils/AlertUtils"
 import SunIcon from "assets/icons/SunIcon"
 import ChevronRight from "assets/icons/ChevronRight"
+import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 
 export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
+  const {theme, themed} = useAppTheme()
   const [connectedGlasses, setConnectedGlasses] = useState("")
-  const {status, refreshStatus} = useStatus()
+  const {status} = useStatus()
   const [preferredMic, setPreferredMic] = useState(status.core_info.preferred_mic)
-
-  const preferredMicOptions = [
-    {label: translate("settings:phoneHeadset"), value: "phone"},
-    {label: translate("settings:glasses"), value: "glasses"},
-  ]
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
@@ -101,31 +98,6 @@ export default function ConnectedDeviceInfo() {
     } catch (error) {}
   }
 
-  const {theme, themed} = useAppTheme()
-
-  const themeStyles = {
-    backgroundColor: theme.colors.palette.neutral300,
-    textColor: theme.colors.text,
-    statusLabelColor: theme.isDark ? "#CCCCCC" : "#666666",
-    statusValueColor: theme.isDark ? "#FFFFFF" : "#333333",
-    connectedDotColor: "#28a745",
-    separatorColor: theme.isDark ? "#666666" : "#999999",
-  }
-
-  const formatGlassesTitle = (title: string) => title.replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase())
-
-  const batteryIcon = getBatteryIcon(status.glasses_info?.battery_life ?? 0)
-  const batteryColor = getBatteryColor(status.glasses_info?.battery_life ?? 0)
-
-  // Determine the button style for connecting glasses
-  const getConnectButtonStyle = () => {
-    return status.core_info.is_searching
-      ? styles.connectingButton
-      : isConnectButtonDisabled
-        ? styles.disabledButton
-        : styles.connectButton
-  }
-
   let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
   let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
 
@@ -135,52 +107,28 @@ export default function ConnectedDeviceInfo() {
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
   }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness])
 
-  const renderInterface = () => {
-    if (!status.glasses_info?.model_name) {
-      return (
-        // Connect button rendering with spinner on right
-        <View style={styles.noGlassesContent}>
-          <TouchableOpacity
-            style={getConnectButtonStyle()}
-            onPress={handleConnectOrDisconnect}
-            disabled={isConnectButtonDisabled && !status.core_info.is_searching}>
-            <Text style={styles.buttonText}>
-              {isConnectButtonDisabled || status.core_info.is_searching ? "Connecting Glasses..." : "Connect Glasses"}
-            </Text>
-            {status.core_info.is_searching && <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
-          </TouchableOpacity>
-        </View>
-      )
+  const setMic = async (val: string) => {
+    if (val === "phone") {
+      // We're potentially about to enable the mic, so request permission
+      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE)
+      if (!hasMicPermission) {
+        // Permission denied, don't toggle the setting
+        console.log("Microphone permission denied, cannot enable phone microphone")
+        showAlert(
+          "Microphone Permission Required",
+          "Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.",
+          [{text: "OK"}],
+          {
+            iconName: "microphone",
+            iconColor: "#2196F3",
+          },
+        )
+        return
+      }
     }
 
-    return (
-      <>
-        <Animated.View style={[styles.statusBar, {opacity: fadeAnim}]}>
-          <View style={styles.statusInfo}>
-            {status.glasses_info?.battery_life != null && typeof status.glasses_info?.battery_life === "number" && (
-              <>
-                <Text style={[styles.statusLabel, {color: themeStyles.statusLabelColor}]}>Battery</Text>
-                <View style={styles.batteryContainer}>
-                  {status.glasses_info?.battery_life >= 0 && (
-                    <Icon name={batteryIcon} size={16} color={batteryColor} style={styles.batteryIcon} />
-                  )}
-                  <Text style={[styles.batteryValue, {color: batteryColor}]}>
-                    {status.glasses_info.battery_life == -1 ? "-" : `${status.glasses_info.battery_life}%`}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-          <TouchableOpacity
-            style={[styles.disconnectButton, isDisconnectButtonDisabled && styles.disabledDisconnectButton]}
-            onPress={sendDisconnectWearable}
-            disabled={isDisconnectButtonDisabled}>
-            <Icon name="power-off" size={18} color="white" style={styles.icon} />
-            <Text style={styles.disconnectText}>Disconnect</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </>
-    )
+    setPreferredMic(val)
+    await coreCommunicator.sendSetPreferredMic(val)
   }
 
   const confirmForgetGlasses = () => {
@@ -236,8 +184,8 @@ export default function ConnectedDeviceInfo() {
                   alignContent: "center",
                   marginLeft: 12,
                 }}>
-                <SunIcon size={24} color={theme.colors.text}/>
-                <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily:"Inter-Regular"}}>
+                <SunIcon size={24} color={theme.colors.text} />
+                <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
                   {brightness}%
                 </Text>
               </View>
@@ -250,7 +198,7 @@ export default function ConnectedDeviceInfo() {
       <View style={themed($settingsGroup)}>
         <TouchableOpacity
           style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
-          onPress={() => setPreferredMic("phone")}>
+          onPress={() => setMic("phone")}>
           <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
           <MaterialCommunityIcons
             name="check"
@@ -262,7 +210,7 @@ export default function ConnectedDeviceInfo() {
         <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />
         <TouchableOpacity
           style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
-          onPress={() => setPreferredMic("glasses")}>
+          onPress={() => setMic("glasses")}>
           <View style={{flexDirection: "column", gap: 4}}>
             <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
             {/* {!status.glasses_info?.model_name && (
@@ -295,9 +243,11 @@ export default function ConnectedDeviceInfo() {
 
       {status.glasses_info?.model_name && (
         <View style={themed($settingsGroup)}>
-          <TouchableOpacity style={{backgroundColor: "transparent", paddingVertical: 8}} onPress={() => {
-            coreCommunicator.sendDisconnectWearable()
-          }}>
+          <TouchableOpacity
+            style={{backgroundColor: "transparent", paddingVertical: 8}}
+            onPress={() => {
+              coreCommunicator.sendDisconnectWearable()
+            }}>
             <Text style={{color: theme.colors.palette.accent100}}>{translate("settings:disconnectGlasses")}</Text>
           </TouchableOpacity>
         </View>
@@ -316,7 +266,7 @@ export default function ConnectedDeviceInfo() {
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $container: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 12,
   width: "100%",
   minHeight: 240,
@@ -339,94 +289,16 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: spacing.sm,
 })
 
-const $settingTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-})
-
-const $dangerLabel: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.palette.angry500,
-})
-
-const $disabledItem: ThemedStyle<ViewStyle> = () => ({
-  opacity: 0.5,
-})
-
 const styles = StyleSheet.create({
-  deviceInfoContainer: {
-    padding: 16,
-    borderRadius: 12,
-    width: "100%",
-    minHeight: 240,
-    justifyContent: "center",
-    marginTop: 16, // Increased space above component
-    backgroundColor: "#E5E5EA",
-  },
-  connectedContent: {
-    flex: 1,
-    flexShrink: 1,
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  noGlassesContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    width: "100%",
-  },
-  disconnectedContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   glassesImage: {
     width: "80%",
     height: 120,
     resizeMode: "contain",
   },
-  statusBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderRadius: 12,
-    padding: 10,
-    width: "100%",
-    backgroundColor: "#6750A414",
-    flexWrap: "wrap",
-  },
-  statusInfoNotConnected: {
-    alignItems: "center",
-    flex: 1,
-    width: "100%",
-  },
-  statusInfo: {
-    alignItems: "center",
-    flex: 1,
-    marginRight: 20,
-  },
-  batteryContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  batteryIcon: {
-    marginRight: 4,
-    alignSelf: "center",
-  },
-  batteryValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
   statusValue: {
     fontSize: 14,
     fontWeight: "bold",
     fontFamily: "Montserrat-Bold",
-  },
-  connectedStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
   },
   connectedDot: {
     fontSize: 14,
