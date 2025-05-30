@@ -204,14 +204,7 @@ To make your locally running app accessible from the internet:
 
 ### 12. Set up App Permissions
 
-Your app must declare which permissions it needs to access device capabilities like:
-
-- **MICROPHONE**: For speech transcription, translation, and voice commands
-- **LOCATION**: For GPS coordinates and location-based features
-- **CALENDAR**: For calendar events and scheduling
-- **NOTIFICATIONS**: For phone notifications and alerts
-
-To add permissions to your app:
+Your app must declare which permissions it needs to access device capabilities.  To add permissions to your app:
 
 1. Go to [console.AugmentOS.org](https://console.AugmentOS.org/)
 2. Click on your app to open its settings
