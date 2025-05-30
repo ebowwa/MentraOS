@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Animated,
-  Switch,
   ViewStyle,
   TextStyle,
 } from "react-native"
@@ -16,15 +15,11 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getBatteryColor, getBatteryIcon} from "@/utils/getBatteryIcon"
-import {Slider} from "react-native-elements"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {spacing, ThemedStyle} from "@/theme"
 import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
-import {translate} from "@/i18n/translate"
 import SolarLineIconsSet4 from "assets/icons/SolarLineIconsSet4"
-import DefaultButton from "@/components/ui/Button"
 import ChevronRight from "assets/icons/ChevronRight"
 
 export const ConnectDeviceButton = () => {
