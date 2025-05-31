@@ -105,7 +105,7 @@ export default function Layout() {
 }
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
   // borderTopColor: colors.transparent,
   // borderTopWidth: 1,
   paddingTop: 4,

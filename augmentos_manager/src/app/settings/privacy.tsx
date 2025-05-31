@@ -25,6 +25,8 @@ import {Header, Screen} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import { translate } from "@/i18n"
 
 export default function PrivacySettingsScreen() {
   const {status} = useStatus()
@@ -292,8 +294,8 @@ export default function PrivacySettingsScreen() {
       )}
 
       {/* Calendar Permission - last item in this section so no border */}
-      <View style={[styles.settingItem, styles.lastItemInSection]}>
-        <View style={styles.settingTextContainer}>
+      <View style={themed($settingItem)}>
+        <View style={themed($settingTextContainer)}>
           <Text style={themed($label)}>Calendar Access</Text>
           <Text style={themed($value)}>Allow AugmentOS to display your calendar events on your smart glasses.</Text>
         </View>
@@ -310,7 +312,14 @@ export default function PrivacySettingsScreen() {
       {/* PRIVACY OPTIONS SECTION */}
       <Text style={[styles.sectionHeader, styles.sectionHeaderWithMargin, themed($label)]}>Privacy Options</Text>
 
-      <View style={[styles.settingItem, styles.lastItemInSection]}>
+      <ToggleSetting
+      label={translate("settings:sensingLabel")}
+        subLabel={translate("settings:sensingSubLabel")}
+        value={isSensingEnabled}
+        onValueChange={toggleSensing}
+      />
+
+      {/* <View style={[styles.settingItem, styles.lastItemInSection]}>
         <View style={styles.settingTextContainer}>
           <Text style={themed($label)}>Sensing</Text>
           <Text style={themed($value)}>Enable microphones & cameras.</Text>
@@ -322,7 +331,7 @@ export default function PrivacySettingsScreen() {
           thumbColor={switchColors.thumbColor}
           ios_backgroundColor={switchColors.ios_backgroundColor}
         />
-      </View>
+      </View> */}
     </Screen>
   )
 }
@@ -344,6 +353,19 @@ const $sectionHeader: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $borderColor: ThemedStyle<string> = ({colors}) => colors.border
+
+const $settingTextContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  paddingRight: 10,
+})
+
+const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  paddingVertical: 20,
+  backgroundColor: colors.background,
+})
 
 const styles = StyleSheet.create({
   scrollViewContainer: {

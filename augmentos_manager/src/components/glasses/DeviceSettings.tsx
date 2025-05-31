@@ -281,7 +281,7 @@ const $container: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $settingsGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
   paddingVertical: 12,
   paddingHorizontal: 16,
   borderRadius: 12,

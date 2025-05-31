@@ -176,7 +176,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
   // More subtle elevation for Android
   elevation: 2,
 
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
 })
 
 const styles = StyleSheet.create({

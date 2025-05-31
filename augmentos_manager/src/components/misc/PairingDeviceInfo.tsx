@@ -70,7 +70,7 @@ const $deviceInfoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   minHeight: 180,
   justifyContent: "center",
   marginTop: 16,
-  backgroundColor: colors.palette.neutral200,
+  backgroundColor: colors.background,
 })
 
 const $disconnectedContent: ThemedStyle<ViewStyle> = () => ({

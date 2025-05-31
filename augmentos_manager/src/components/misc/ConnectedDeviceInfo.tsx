@@ -177,6 +177,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 
   return (
     <View style={styles.connectedContent}>
+      <Text>{status.glasses_info?.case_charging ? "Charging" : "Not charging"}</Text>
       <Animated.Image source={glassesImage} style={[styles.glassesImage, {opacity: fadeAnim}]} />
     </View>
   )
@@ -269,6 +270,33 @@ export function ConnectedDeviceInfo() {
     return null
   }
 
+  let caseBattery = null
+  if (!status.glasses_info.case_removed) {
+    caseBattery = (
+      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+        <AnimatedCircularProgress
+          size={36}
+          width={3}
+          lineCap="round"
+          fillLineCap="round"
+          fill={status.glasses_info?.case_battery_level}
+          // tintColor={getBatteryColor(status.glasses_info?.case_battery_level ?? 0)}
+          tintColor={theme.colors.tint}
+          backgroundColor={theme.colors.palette.neutral300}
+          children={() => (
+            <Text style={themed($batteryValue)}>
+              {status.glasses_info?.case_battery_level}
+              {status.glasses_info?.case_charging && (
+                <MaterialCommunityIcons name="lightning-bolt" size={10} color={theme.colors.text} />
+              )}
+            </Text>
+          )}
+          rotation={0}
+        />
+      </View>
+    )
+  }
+
   return (
     <View style={themed($statusBar)}>
       {/* <View style={styles.statusInfo}>
@@ -299,7 +327,8 @@ export function ConnectedDeviceInfo() {
           lineCap="round"
           fillLineCap="round"
           fill={status.glasses_info?.battery_life}
-          tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+          // tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+          tintColor={theme.colors.palette.primary500}
           backgroundColor={theme.colors.palette.neutral300}
           children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
           rotation={0}
@@ -308,8 +337,10 @@ export function ConnectedDeviceInfo() {
         <ActivityIndicator size="small" color={theme.colors.text} />
       )}
 
+      {caseBattery}
+
       {/* disconnect button */}
-      <TouchableOpacity
+      {/* <TouchableOpacity
         style={[styles.disconnectButton, status.core_info.is_searching && styles.disabledDisconnectButton]}
         onPress={() => {
           coreCommunicator.sendDisconnectWearable()
@@ -317,7 +348,7 @@ export function ConnectedDeviceInfo() {
         disabled={status.core_info.is_searching}>
         <Icon name="power-off" size={18} color="white" style={styles.icon} />
         <Text style={styles.disconnectText}>Disconnect</Text>
-      </TouchableOpacity>
+      </TouchableOpacity> */}
     </View>
   )
 }
@@ -342,7 +373,7 @@ const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $batteryValue: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 12,
+  fontSize: 10,
   fontWeight: "bold",
   fontFamily: "Montserrat-Bold",
   color: colors.text,
