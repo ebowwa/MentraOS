@@ -4,10 +4,10 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import React from "react"
 import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from "react-native"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
-import {Button} from "../ignite"
-import {Spacer} from "./Spacer"
-import {spacing} from "@/theme"
+import {Button} from "@/components/ignite"
 import {translate} from "@/i18n"
+import showAlert from "@/utils/AlertUtils"
+import {Spacer} from "./Spacer"
 
 // 2) Declare each guide component with the correct prop type
 export function EvenRealitiesG1PairingGuide() {
@@ -134,7 +134,17 @@ export function MentraLivePairingGuide() {
 
           <Button
             onPress={() => {
-              Linking.openURL("https://mentra.glass/live")
+              // Linking.openURL("https://mentra.glass/live")
+              showAlert("Open External Website", "This will open mentra.glass in your web browser. Continue?", [
+                {
+                  text: "Cancel",
+                  style: "cancel",
+                },
+                {
+                  text: "Continue",
+                  onPress: () => Linking.openURL("https://mentra.glass/live"),
+                },
+              ])
             }}
             children={
               <View>
