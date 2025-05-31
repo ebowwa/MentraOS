@@ -44,7 +44,15 @@ Your app *subscribes* to the events it needs.  The [`EventManager`](/reference/m
 
 See the [Events](./events) section for a complete list of available events.
 
-## 5. Layouts
+## 5. Permissions
+
+AugmentOS uses a permissions system to control which device data and system resources your app can access. This system ensures user privacy and transparency while allowing you to build powerful applications with access to the data streams you need.
+
+Your app must declare which permissions it needs to access device capabilities.
+
+See the [Permissions](./permissions) section for detailed information about declaring and using permissions.
+
+## 6. Layouts
 
 Layouts control what is displayed on the smart glasses' screen.  The SDK provides several pre-defined layout types:
 
@@ -57,7 +65,7 @@ You use the [`LayoutManager`](/reference/managers/layout-manager) (accessible th
 
 See the [Layouts](./layouts) section for more details.
 
-## 6. The App Lifecycle
+## 7. The App Lifecycle
 
 A typical AugmentOS app lifecycle looks like this:
 
@@ -69,7 +77,7 @@ A typical AugmentOS app lifecycle looks like this:
 
 See [App Lifecycle](./tpa-lifecycle) for a more detailed explanation.
 
-## 7.  User Authentication
+## 8. User Authentication
 
 AugmentOS provides mechanisms for identifying and authenticating users:
 
@@ -80,19 +88,17 @@ This allows you to provide personalized experiences and maintain user data acros
 
 See the [Webview Authentication](/webview-auth-overview) section for more details about the webview authentication flow.
 
-## 8.  AI Tools
+## 9. AI Tools
 
 Your app can provide tools to the Mira AI assistant:
 
-1. Your app registers tools that the AI assistant can use in its `tpa_config.json` file.
-2. When a user asks the AI to perform a task related to your app, the AI calls your tools via the `onToolCall` event.
-3. Your app executes the requested action and returns results to the AI.
+Your app defines tools in the [AugmentOS Developer Console](https://console.augmentos.org/tpas) under the "AI Tools" section.  When a user asks the AI to perform a task related to your app, the AI calls your tools via the `onToolCall` event.  Your app executes the requested action and returns results to the AI.
 
-This allows users to interact with your app through natural language via the AI assistant.
+This allows users to interact with your app through natural language via the AI assistant. Tool calls don't happen in the context of a session, and your app does not need to be running to respond to a tool call.
 
 See the [Tools](/tools) section for more details.
 
-## 9. Settings
+## 10. Settings
 
 AugmentOS provides a comprehensive settings system that allows users to customize how your app behaves.
 
@@ -100,7 +106,7 @@ Settings support various types including toggles, text inputs, dropdowns, slider
 
 See the [Settings](/settings) section for more details.
 
-## 10. The AugmentOS Cloud
+## 11. The AugmentOS Cloud
 
 The AugmentOS Cloud acts as a central hub, managing:
 

@@ -19,9 +19,9 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
-import { Mail, UserPlus, AlertCircle, CheckCircle2, Loader2, Shield, User, UserCog, AlertTriangle } from "lucide-react";
+import { Mail, UserPlus, AlertCircle, CheckCircle2, Loader2, Shield, User, UserCog, AlertTriangle, LogOut } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import api, { OrgMember, OrgRole } from '@/services/api.service';
+import api, { OrgMember, OrgRole, PendingInvite } from '@/services/api.service';
 import { useOrganization } from '@/context/OrganizationContext';
 import { toast } from 'sonner';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
@@ -38,6 +38,7 @@ const Members: React.FC = () => {
 
   // Member list state
   const [members, setMembers] = useState<OrgMember[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -63,8 +64,9 @@ const Members: React.FC = () => {
       setLoadingMembers(true);
       setError(null);
 
-      const orgMembers = await api.orgs.members(currentOrg.id);
-      setMembers(orgMembers);
+      const orgDetails = await api.orgs.get(currentOrg.id);
+      setMembers(orgDetails.members);
+      setPendingInvites(orgDetails.pendingInvites || []);
     } catch (err) {
       console.error('Error fetching members:', err);
       setError('Failed to load organization members');
@@ -106,6 +108,89 @@ const Members: React.FC = () => {
     }
   };
 
+  /**
+   * Check if there are other admins in the organization besides the current user
+   */
+  const hasOtherAdmins = (): boolean => {
+    const currentUserEmail = user?.email?.toLowerCase();
+    const otherAdmins = members.filter(
+      member =>
+        member.role === 'admin' &&
+        member.user.email.toLowerCase() !== currentUserEmail
+    );
+    return otherAdmins.length > 0;
+  };
+
+  /**
+   * Handle current user leaving the organization
+   */
+  const handleLeaveOrganization = async () => {
+    if (!currentOrg || !user) return;
+
+    const currentUserMember = members.find(
+      member => member.user.email.toLowerCase() === user.email?.toLowerCase()
+    );
+
+    if (!currentUserMember) return;
+
+    // Check if user is an admin and there are no other admins
+    if (currentUserMember.role === 'admin' && !hasOtherAdmins()) {
+      toast.error('You cannot leave the organization as you are the only admin. Please promote another member to admin first.');
+      return;
+    }
+
+    const confirmMessage = currentUserMember.role === 'admin'
+      ? 'Are you sure you want to leave this organization? You will lose admin access and will need to be re-invited to rejoin.'
+      : 'Are you sure you want to leave this organization? You will need to be re-invited to rejoin.';
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      await api.orgs.removeMember(currentOrg.id, currentUserMember.user.id);
+      toast.success('You have left the organization');
+
+      // Refresh the organization list since the user is no longer part of this org
+      await refreshOrgs();
+    } catch (err) {
+      console.error('Error leaving organization:', err);
+      toast.error('Failed to leave organization');
+    }
+  };
+
+  // Handle resending an invitation
+  const handleResendInvite = async (email: string) => {
+    if (!currentOrg) return;
+
+    try {
+      await api.orgs.resendInvite(currentOrg.id, email);
+      toast.success(`Invitation resent to ${email}`);
+      await fetchMembers(); // Refresh to update emailSentCount
+    } catch (err) {
+      console.error('Error resending invite:', err);
+      toast.error('Failed to resend invitation');
+    }
+  };
+
+  // Handle rescinding an invitation
+  const handleRescindInvite = async (email: string) => {
+    if (!currentOrg) return;
+
+    if (!confirm(`Are you sure you want to cancel the invitation to ${email}?`)) {
+      return;
+    }
+
+    try {
+      await api.orgs.rescindInvite(currentOrg.id, email);
+      await fetchMembers();
+      toast.success('Invitation cancelled');
+    } catch (err) {
+      console.error('Error rescinding invite:', err);
+      toast.error('Failed to cancel invitation');
+    }
+  };
+
   // Handle invite submission
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,6 +219,9 @@ const Members: React.FC = () => {
       setInviteRole('member');
 
       toast.success(`Invitation sent to ${inviteEmail}`);
+
+      // Refresh members to show pending invite
+      await fetchMembers();
 
       // Reset success after 3 seconds
       setTimeout(() => {
@@ -213,67 +301,123 @@ const Members: React.FC = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {members.length === 0 ? (
+                    {members.length === 0 && pendingInvites.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={isAdmin ? 4 : 3} className="text-center py-4 text-gray-500">
                           No members found
                         </TableCell>
                       </TableRow>
                     ) : (
-                      members.map((member) => (
-                        <TableRow key={member.user.id}>
-                          <TableCell>{member.user.email}</TableCell>
-                          <TableCell className="flex items-center gap-1">
-                            <RoleIcon role={member.role} />
-                            {isAdmin ? (
-                              // Prevent modifying your own role
-                              user?.email?.toLowerCase() === member.user.email.toLowerCase() ? (
-                                <div className="ml-2 flex items-center">
-                                  <span className="capitalize text-sm">{member.role}</span>
-                                </div>
+                      <>
+                        {members.map((member) => (
+                          <TableRow key={member.user.id}>
+                            <TableCell>{member.user.email}</TableCell>
+                            <TableCell className="flex items-center gap-1">
+                              <RoleIcon role={member.role} />
+                              {isAdmin ? (
+                                // Prevent modifying your own role
+                                user?.email?.toLowerCase() === member.user.email.toLowerCase() ? (
+                                  <div className="ml-2 flex items-center">
+                                    <span className="capitalize text-sm">{member.role}</span>
+                                  </div>
+                                ) : (
+                                  <Select
+                                    value={member.role}
+                                    onValueChange={(value: OrgRole) => handleRoleChange(member.user.id, value)}
+                                  >
+                                    <SelectTrigger className="w-32">
+                                      <SelectValue placeholder={member.role} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="admin">Admin</SelectItem>
+                                      <SelectItem value="member">Member</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                )
                               ) : (
-                                <Select
-                                  value={member.role}
-                                  onValueChange={(value: OrgRole) => handleRoleChange(member.user.id, value)}
-                                >
-                                  <SelectTrigger className="w-32">
-                                    <SelectValue placeholder={member.role} />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="admin">Admin</SelectItem>
-                                    <SelectItem value="member">Member</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              )
-                            ) : (
-                              <span className="ml-2 capitalize text-sm">{member.role}</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
-                          {isAdmin && (
-                            <TableCell className="text-right">
-                              {user?.email?.toLowerCase() === member.user.email.toLowerCase() ? (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled
-                                  title="You cannot remove yourself from the organization"
-                                >
-                                  Remove
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleRemoveMember(member.user.id)}
-                                >
-                                  Remove
-                                </Button>
+                                <span className="ml-2 capitalize text-sm">{member.role}</span>
                               )}
                             </TableCell>
-                          )}
-                        </TableRow>
-                      ))
+                            <TableCell>{new Date(member.joinedAt).toLocaleDateString()}</TableCell>
+                            {isAdmin && (
+                              <TableCell className="text-right">
+                                {user?.email?.toLowerCase() === member.user.email.toLowerCase() ? (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    disabled={member.role === 'admin' && !hasOtherAdmins()}
+                                    title={
+                                      member.role === 'admin' && !hasOtherAdmins()
+                                        ? "You cannot leave as you are the only admin. Promote another member to admin first."
+                                        : "Leave this organization"
+                                    }
+                                    onClick={handleLeaveOrganization}
+                                  >
+                                    <LogOut className="mr-2 h-4 w-4" />
+                                    Leave
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRemoveMember(member.user.id)}
+                                  >
+                                    Remove
+                                  </Button>
+                                )}
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                        {/* Pending invitations */}
+                        {pendingInvites.map((invite) => (
+                          <TableRow key={invite.email} className="bg-gray-50">
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {invite.email}
+                                <span className="text-xs text-gray-500">(pending)</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="flex items-center gap-1">
+                              <RoleIcon role={invite.role} />
+                              <span className="ml-2 capitalize text-sm">{invite.role}</span>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="text-sm">Invited {new Date(invite.invitedAt).toLocaleDateString()}</div>
+                                <div className="text-xs text-gray-500">
+                                  {invite.emailSentCount > 1 && `Resent ${invite.emailSentCount - 1} time${invite.emailSentCount > 2 ? 's' : ''}`}
+                                  {new Date(invite.expiresAt) < new Date() && (
+                                    <span className="text-red-500 ml-2">Expired</span>
+                                  )}
+                                </div>
+                              </div>
+                            </TableCell>
+                            {isAdmin && (
+                              <TableCell className="text-right">
+                                <div className="flex justify-end gap-2">
+                                  {new Date(invite.expiresAt) > new Date() && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleResendInvite(invite.email)}
+                                    >
+                                      Resend
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleRescindInvite(invite.email)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))}
+                      </>
                     )}
                   </TableBody>
                 </Table>
