@@ -76,6 +76,7 @@ export interface AppI {
   description?: string;
   version?: string;
   settings?: AppSettings;
+  tools?: ToolSchema[];
 
   isPublic?: boolean;
   appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
@@ -97,22 +98,44 @@ export interface BaseAppSetting {
 export type AppSetting =
   | (BaseAppSetting & { type: AppSettingType.TOGGLE; defaultValue: boolean; value?: boolean })
   | (BaseAppSetting & { type: AppSettingType.TEXT; defaultValue?: string; value?: string })
+  | (BaseAppSetting & { type: AppSettingType.TEXT_NO_SAVE_BUTTON; defaultValue?: string; value?: string; maxLines?: number })
   | (BaseAppSetting & {
       type: AppSettingType.SELECT;
       options: { label: string; value: any }[];
       defaultValue?: any;
       value?: any;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.SELECT_WITH_SEARCH;
+      options: { label: string; value: any }[];
+      defaultValue?: any;
+      value?: any;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.MULTISELECT;
+      options: { label: string; value: any }[];
+      defaultValue?: any[];
+      value?: any[];
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.SLIDER;
+      min: number;
+      max: number;
+      defaultValue: number;
+      value?: number;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.GROUP;
+      title: string;
+    })
+  | (BaseAppSetting & {
+      type: AppSettingType.TITLE_VALUE;
+      label: string;
+      value: any;
+      key?: never; // TITLE_VALUE settings don't need keys since they're display-only
     });
 
 export type AppSettings = AppSetting[];
-
-/**
- * Group setting (for UI organization)
- */
-export interface GroupSetting {
-  type: 'group';
-  title: string;
-}
 
 /**
  * TPA configuration file structure
@@ -122,7 +145,8 @@ export interface TpaConfig {
   name: string;
   description: string;
   version: string;
-  settings: (AppSetting | GroupSetting)[];
+  settings: AppSetting[];
+  tools: ToolSchema[];
 }
 
 /**
@@ -150,6 +174,11 @@ export function validateTpaConfig(config: any): config is TpaConfig {
       return typeof setting.title === 'string';
     }
 
+    // TITLE_VALUE settings just need label and value
+    if (setting.type === 'titleValue') {
+      return typeof setting.label === 'string' && 'value' in setting;
+    }
+
     // Regular settings need key and label
     if (typeof setting.key !== 'string' || typeof setting.label !== 'string') {
       return false;
@@ -161,12 +190,32 @@ export function validateTpaConfig(config: any): config is TpaConfig {
         return typeof setting.defaultValue === 'boolean';
 
       case AppSettingType.TEXT:
+      case AppSettingType.TEXT_NO_SAVE_BUTTON:
         return setting.defaultValue === undefined || typeof setting.defaultValue === 'string';
 
       case AppSettingType.SELECT:
+      case AppSettingType.SELECT_WITH_SEARCH:
         return Array.isArray(setting.options) &&
                setting.options.every((opt: any) =>
                  typeof opt.label === 'string' && 'value' in opt);
+
+      case AppSettingType.MULTISELECT:
+        return Array.isArray(setting.options) &&
+               setting.options.every((opt: any) =>
+                 typeof opt.label === 'string' && 'value' in opt) &&
+               (setting.defaultValue === undefined || Array.isArray(setting.defaultValue));
+
+      case AppSettingType.SLIDER:
+        return typeof setting.defaultValue === 'number' &&
+               typeof setting.min === 'number' &&
+               typeof setting.max === 'number' &&
+               setting.min <= setting.max;
+
+      case AppSettingType.GROUP:
+        return typeof setting.title === 'string';
+
+      case AppSettingType.TITLE_VALUE:
+        return typeof setting.label === 'string' && 'value' in setting;
 
       default:
         return false;

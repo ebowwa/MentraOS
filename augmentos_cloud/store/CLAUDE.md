@@ -22,6 +22,6 @@
 
 ## Project Structure
 - **/web**: React/Vite frontend using TypeScript and Tailwind
-- **/server**: TypeScript backend for the AugmentOS app store
+- **/server**: TypeScript backend for the AugmentOS Store
 
 This project uses Bun as the package manager throughout the codebase.

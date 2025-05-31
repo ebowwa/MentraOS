@@ -5,19 +5,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle2, AlertCircle, Loader2, Building, Globe, Mail, FileText, Image, AlertTriangle, LockIcon, Trash } from "lucide-react";
+import { CheckCircle2, AlertCircle, Loader2, Building, Globe, Mail, FileText, Image, AlertTriangle, LockIcon, Trash, Plus } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import DashboardLayout from "../components/DashboardLayout";
 import api from '@/services/api.service';
 import { toast } from 'sonner';
 import { useOrganization } from '@/context/OrganizationContext';
 import { useOrgPermissions } from '@/hooks/useOrgPermissions';
+import CreateOrgDialog from '@/components/dialogs/CreateOrgDialog';
+import { useSearchParams } from 'react-router-dom';
 
 /**
  * Organization settings page - allows editing the current organization's profile
  */
 const OrganizationSettings: React.FC = () => {
-  const { currentOrg, refreshOrgs, ensurePersonalOrg, loading: orgLoading } = useOrganization();
+  const { currentOrg, refreshOrgs, ensurePersonalOrg, loading: orgLoading, orgs, setCurrentOrg } = useOrganization();
   const { isAdmin, loading: permissionsLoading } = useOrgPermissions();
+  const [searchParams] = useSearchParams();
+
+  // Check for welcome parameters
+  const isNewMember = searchParams.get('welcome') === 'true';
+  const invitedOrgName = searchParams.get('orgName');
+  const invitedOrgId = searchParams.get('orgId');
+  const isExistingMember = searchParams.get('existing') === 'true';
 
   // Form state
   const [formData, setFormData] = useState({
@@ -39,6 +49,9 @@ const OrganizationSettings: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // State for create org dialog
+  const [showCreateOrgDialog, setShowCreateOrgDialog] = useState(false);
+
   // Handle missing organization by creating a personal one
   useEffect(() => {
     const createPersonalOrg = async () => {
@@ -58,6 +71,16 @@ const OrganizationSettings: React.FC = () => {
 
     createPersonalOrg();
   }, [currentOrg, orgLoading, ensurePersonalOrg, isCreatingOrg]);
+
+  // Auto-switch to invited organization
+  useEffect(() => {
+    if (invitedOrgId && orgs.length > 0 && !orgLoading) {
+      const invitedOrg = orgs.find(org => org.id === invitedOrgId);
+      if (invitedOrg && (!currentOrg || currentOrg.id !== invitedOrgId)) {
+        setCurrentOrg(invitedOrg);
+      }
+    }
+  }, [invitedOrgId, orgs, orgLoading, currentOrg, setCurrentOrg]);
 
   // Fetch organization data
   useEffect(() => {
@@ -212,6 +235,28 @@ const OrganizationSettings: React.FC = () => {
     }
   };
 
+  // Handle organization selection change
+  const handleOrgChange = (orgId: string) => {
+    const selectedOrg = orgs.find(org => org.id === orgId);
+    if (selectedOrg) {
+      setCurrentOrg(selectedOrg);
+      toast.success(`Switched to ${selectedOrg.name}`);
+    }
+  };
+
+  // Handle successful organization creation
+  const handleOrgCreated = async () => {
+    await refreshOrgs();
+
+    // Get the updated list and find the most recently created org (it should be the last one)
+    const updatedOrgs = await api.orgs.list();
+    if (updatedOrgs.length > 0) {
+      const newestOrg = updatedOrgs[updatedOrgs.length - 1];
+      setCurrentOrg(newestOrg);
+      toast.success(`Organization "${newestOrg.name}" created and selected`);
+    }
+  };
+
   // If no organization selected but we're creating one, show loading state
   if (!currentOrg) {
     return (
@@ -250,6 +295,104 @@ const OrganizationSettings: React.FC = () => {
   return (
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
+        {/* Welcome message for new members */}
+        {(isNewMember || isExistingMember) && (
+          <Card className="shadow-sm mb-6 border-green-200 bg-green-50">
+            <CardHeader className="pb-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="h-8 w-8 text-green-600 mt-1" />
+                <div className="flex-1">
+                  <CardTitle className="text-2xl text-green-900">
+                    {isNewMember
+                      ? `Welcome to ${invitedOrgName || currentOrg?.name || 'the organization'}!`
+                      : 'Welcome back!'}
+                  </CardTitle>
+                  <CardDescription className="text-green-700 mt-2">
+                    {isNewMember
+                      ? `You have successfully joined ${invitedOrgName || currentOrg?.name || 'the organization'}. You can now collaborate with your team members and manage apps together.`
+                      : `You're already a member of this organization. You can access all your organization's resources and collaborate with your team.`}
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-col gap-2 text-sm text-green-700">
+                <p className="font-medium">What you can do now:</p>
+                <ul className="list-disc list-inside space-y-1 ml-2">
+                  {isAdmin && (
+                    <li>View and manage organization settings on this page</li>
+                  )}
+                  <li>
+                    Access the organization's{' '}
+                    <a
+                      href="/tpas"
+                      className="font-medium underline hover:text-green-800"
+                    >
+                      apps and resources
+                    </a>
+                  </li>
+                  <li>Collaborate with other team members</li>
+                  <li>Create and publish apps under this organization</li>
+                </ul>
+                <div className="mt-3 p-3 bg-green-100 rounded-md">
+                  <p className="text-sm text-green-800">
+                    💡 <strong>Tip:</strong> You can switch between different organizations you're a member of using the dropdown in the upper left corner of the dashboard.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Organization Selector Section */}
+        <Card className="shadow-sm mb-6">
+          <CardHeader>
+            <CardTitle className="text-xl">Current Organization</CardTitle>
+            <CardDescription>
+              Select which organization you want to manage. You can switch between organizations you're a member of or create a new one.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-4">
+              <div className="flex-1">
+                <Label htmlFor="org-selector" className="sr-only">
+                  Select Organization
+                </Label>
+                <Select
+                  value={currentOrg?.id}
+                  onValueChange={handleOrgChange}
+                  disabled={orgLoading}
+                >
+                  <SelectTrigger id="org-selector" className="w-full">
+                    <SelectValue placeholder={orgLoading ? "Loading..." : "Select an organization"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orgs.length === 0 ? (
+                      <SelectItem value="no-orgs" disabled>
+                        No organizations available
+                      </SelectItem>
+                    ) : (
+                      orgs.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                onClick={() => setShowCreateOrgDialog(true)}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                New Organization
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Main Settings Card */}
         <Card className="shadow-sm">
           {isLoading || permissionsLoading ? (
             <div className="p-8 text-center">
@@ -281,7 +424,7 @@ const OrganizationSettings: React.FC = () => {
                   </Alert>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-2 mt-4">
                   <Label htmlFor="name" className="flex items-center gap-2">
                     <Building className="h-4 w-4" />
                     Organization Name <span className="text-red-500 ml-1">*</span>
@@ -430,6 +573,13 @@ const OrganizationSettings: React.FC = () => {
             </form>
           )}
         </Card>
+
+        {/* Create Organization Dialog */}
+        <CreateOrgDialog
+          open={showCreateOrgDialog}
+          onOpenChange={setShowCreateOrgDialog}
+          onOrgCreated={handleOrgCreated}
+        />
       </div>
     </DashboardLayout>
   );

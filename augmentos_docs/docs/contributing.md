@@ -184,17 +184,6 @@ bun run dev
 
 ### Build Commands
 
-#### Android Core
-```bash
-# Build the Android core
-./gradlew build
-./gradlew assembleDebug
-
-# Run Android tests
-./gradlew test
-./gradlew androidTest
-```
-
 #### React Native
 ```bash
 # Start the development server

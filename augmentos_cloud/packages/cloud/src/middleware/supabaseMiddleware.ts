@@ -9,6 +9,7 @@ export interface UserRequest extends Request {
   email: string;
 }
 
+// TODO(isaiah): It doen't seem like this is used anywhere, so we can remove it, double check if we can remove this safely.
 /**
  * Middleware to validate Supabase token
  */
@@ -49,7 +50,7 @@ export const validateSupabaseToken = async (req: Request, res: Response, next: N
   }
 };
 
-
+// TODO(isaiah): Depricate this, and replace all usages with middleware/client/client-auth-middleware.ts authWithEmail.
 export const validateCoreToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
 

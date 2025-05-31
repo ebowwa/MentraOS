@@ -16,4 +16,4 @@ const TempTokenSchema: Schema = new Schema({
   used: { type: Boolean, default: false },
 });
 
-export const TempToken = mongoose.model<ITempToken>('TempToken', TempTokenSchema); 
+export const TempToken = mongoose.models.TempToken || mongoose.model<ITempToken>('TempToken', TempTokenSchema); 

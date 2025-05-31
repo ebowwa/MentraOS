@@ -1,15 +1,25 @@
 // routes/admin.routes.ts
 import { Router, Request, Response } from 'express';
 import { validateAdminEmail } from '../middleware/admin-auth.middleware';
-import App from '../models/app.model';
+import App, { AppI } from '../models/app.model';
 // import { logger } from '@augmentos/utils';
 import { Exception } from '@sentry/node';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import { Organization } from '../models/organization.model';
+import { LeanDocument, Types } from 'mongoose';
 const logger = rootLogger.child({ service: 'admin.routes' });
 
 const router = Router();
 
+interface EnhancedApp extends LeanDocument<AppI & {_id: Types.ObjectId;}>
+{
+  organizationName?: string;
+  organizationProfile?: {
+    contactEmail?: string;
+    logo?: string;
+    description?: string;
+  };
+}
 /**
  * Get admin dashboard stats - simplified version
  */
@@ -128,7 +138,7 @@ const getAppDetail = async (req: Request, res: Response) => {
     }
 
     // Enhance with organization info if available
-    let enhancedApp = { ...app };
+    let enhancedApp: EnhancedApp = { ...app };
     try {
       if (app.organizationId) {
         const org = await Organization.findById(app.organizationId);

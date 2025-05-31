@@ -9,6 +9,7 @@ export enum TpaType {
     STANDARD = 'standard'                   // Regular TPA (default) only one standard app can run at a time. starting a standard TPA will close any other standard TPA that is running.
 }
 
+// TODO(isaiah): doesn't seem like this is actually used anywhere, remove?
 /**
  * Application states in the system
  */
@@ -55,7 +56,13 @@ export enum ViewType {
 export enum AppSettingType {
     TOGGLE = 'toggle',
     TEXT = 'text',
-    SELECT = 'select'
+    SELECT = 'select',
+    SLIDER = 'slider',
+    GROUP = 'group',
+    TEXT_NO_SAVE_BUTTON = 'text_no_save_button',
+    SELECT_WITH_SEARCH = 'select_with_search',
+    MULTISELECT = 'multiselect',
+    TITLE_VALUE = 'titleValue'
 }
 // | { type: "toggle"; key: string; label: string; defaultValue: boolean }
 // | { type: "text"; key: string; label: string; defaultValue?: string }

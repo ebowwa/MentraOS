@@ -98,6 +98,24 @@ export interface OrgMember {
 }
 
 /**
+ * Pending invitation interface
+ */
+export interface PendingInvite {
+  email: string;
+  role: OrgRole;
+  token: string;
+  invitedBy: {
+    id: string;
+    email: string;
+    displayName?: string;
+  };
+  invitedAt: string;
+  expiresAt: string;
+  emailSentCount: number;
+  lastEmailSentAt?: string;
+}
+
+/**
  * Organization interface
  */
 export interface Organization {
@@ -111,6 +129,7 @@ export interface Organization {
     logo?: string;
   };
   members: OrgMember[];
+  pendingInvites?: PendingInvite[];
   createdAt: string;
   updatedAt: string;
 }
@@ -216,6 +235,26 @@ const api = {
     acceptInvite: async (token: string): Promise<Organization> => {
       const response = await axios.post(`/api/orgs/accept/${token}`);
       return response.data.data;
+    },
+
+    /**
+     * Resend an invitation email
+     * @param orgId - The organization ID
+     * @param email - The email address of the pending invite
+     */
+    resendInvite: async (orgId: string, email: string): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/invites/resend`, { email });
+      return response.data;
+    },
+
+    /**
+     * Rescind (cancel) a pending invitation
+     * @param orgId - The organization ID
+     * @param email - The email address of the pending invite
+     */
+    rescindInvite: async (orgId: string, email: string): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/invites/rescind`, { email });
+      return response.data;
     },
 
     /**

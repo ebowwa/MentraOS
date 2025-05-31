@@ -10,7 +10,7 @@ const router = Router();
 
 // Initialize Supabase client using environment variables
 const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
   logger.error('Missing Supabase environment variables');

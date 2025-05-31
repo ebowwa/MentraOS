@@ -11,6 +11,10 @@ import photoRequestService, { PendingPhotoRequest } from '../services/core/photo
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
+// TODO(isaiah): We should use the middleware/client/client-auth-middleware.ts for this instead of duplicating the logic here.
+// TODO(isaiah): for the has pending photo request, we can define a specifc middleware for that in the galary routes since it only applies to the photo upload route.
+// Then we can remove this logic from here and just use the client auth middleware to validate the token.
+
 /**
  * Validates the glasses authentication token and request
  */
@@ -53,7 +57,8 @@ export const validateGlassesAuth = (req: Request, res: Response, next: NextFunct
       logger.error('Invalid JWT token:', jwtError);
       return res.status(401).json({ error: 'Invalid authorization token' });
     }
-    
+
+    // TODO(isaiah): This logic belongs in the request handler for /photos/upload and should be moved there.
     // For photo uploads, also verify the requestId corresponds to a pending request
     if (req.path.includes('/photos/upload') && req.body && req.body.requestId) {
       const requestId = req.body.requestId;

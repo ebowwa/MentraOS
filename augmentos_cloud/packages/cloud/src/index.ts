@@ -130,8 +130,14 @@ app.use(cors({
     "https://augmentos-developer-portal.netlify.app",
 
     "https://appstore.augmentos.org",
+    "https://store.augmentos.org",
+    "https://storedev.augmentos.org",
     "https://console.augmentos.org",
+    "https://consoledev.augmentos.org",
     "https://account.augmentos.org",
+    "https://accountdev.augmentos.org",
+    "https://docs.augmentos.org",
+    "https://docsdev.augmentos.org",
 
     "https://augmentos.pages.dev",
     "https://augmentos-appstore-2.pages.dev",
@@ -182,12 +188,17 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 webSocketService.setupWebSocketServers(server);
 
 // Start the server
-server.listen(PORT, () => {
-  logger.info(`\n
-              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
-              😎 AugmentOS Cloud Server🚀
-              🌐 Listening on port ${PORT}             🌐
-              ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
-});
+try {
+  server.listen(PORT, () => {
+    logger.info(`\n
+                ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️
+                😎 AugmentOS Cloud Server🚀
+                🌐 Listening on port ${PORT}             🌐
+                ☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️☁️ \n`);
+  });
+}
+catch (error) {
+  logger.error(error, 'Failed to start server:');
+}
 
 export default server;

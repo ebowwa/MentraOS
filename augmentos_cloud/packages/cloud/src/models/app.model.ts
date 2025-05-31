@@ -1,6 +1,6 @@
 // cloud/server/src/models/app.model.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
+import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType } from '@augmentos/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 
@@ -32,6 +32,7 @@ export interface AppI extends _AppI, Document {
   reviewedAt?: Date;
   tools?: ToolSchema[];
   permissions?: Permission[];
+  settings?: AppSetting[];
 
   /**
    * Reference to the organization that owns this app
@@ -137,6 +138,51 @@ const AppSchema = new Schema({
     }
   }],
 
+  // TPA Settings Configuration
+  settings: [{
+    type: {
+      type: String,
+      enum: Object.values(AppSettingType),
+      required: true
+    },
+    key: {
+      type: String,
+      required: false
+    },
+    label: {
+      type: String,
+      required: false
+    },
+    title: {
+      type: String,
+      required: false
+    },
+    defaultValue: {
+      type: Schema.Types.Mixed,
+      required: false
+    },
+    value: {
+      type: Schema.Types.Mixed,
+      required: false
+    },
+    options: [{
+      label: { type: String, required: true },
+      value: { type: Schema.Types.Mixed, required: true }
+    }],
+    min: {
+      type: Number,
+      required: false
+    },
+    max: {
+      type: Number,
+      required: false
+    },
+    maxLines: {
+      type: Number,
+      required: false
+    }
+  }],
+
   // Add permissions array to schema
   permissions: [{
     type: {
@@ -193,4 +239,4 @@ const AppSchema = new Schema({
 // Add index for organizationId
 AppSchema.index({ organizationId: 1 });
 
-export default mongoose.model<AppI>('App', AppSchema, 'apps');
+export default mongoose.models.App || mongoose.model<AppI>('App', AppSchema, 'apps');

@@ -80,6 +80,19 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+/**
+ * Disable Hermes by setting it to false.
+ */
+def hermesEnabled = false  // Set Hermes to false
+
+/**
+ * Release-Store credentials.
+ */
+def releaseStorePassword = project.hasProperty("AUGMENTOS_UPLOAD_STORE_PASSWORD") ? project.property("AUGMENTOS_UPLOAD_STORE_PASSWORD") : ""
+def releaseKeyPassword = project.hasProperty("AUGMENTOS_UPLOAD_KEY_PASSWORD") ? project.property("AUGMENTOS_UPLOAD_KEY_PASSWORD") : ""
+def releaseKeyAlias = project.hasProperty("AUGMENTOS_UPLOAD_KEY_ALIAS") ? project.property("AUGMENTOS_UPLOAD_KEY_ALIAS") : "upload"
+
+
 android {
     ndkVersion rootProject.ext.ndkVersion
 
@@ -101,16 +114,19 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            storeFile file('../credentials/upload-keystore.jks')
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias  
+            keyPassword = releaseKeyPassword
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            shrinkResources (findProperty('android.enableShrinkResourcesInReleaseBuilds')?.toBoolean() ?: false)
+            signingConfig releaseStorePassword ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             crunchPngs (findProperty('android.enablePngCrunchInReleaseBuilds')?.toBoolean() ?: true)

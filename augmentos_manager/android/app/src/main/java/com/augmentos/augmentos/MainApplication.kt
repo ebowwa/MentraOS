@@ -21,7 +21,7 @@ import com.swmansion.rnscreens.RNScreensPackage
 import com.th3rdwave.safeareacontext.SafeAreaContextPackage
 import com.zoontek.rnpermissions.RNPermissionsPackage
 import it.innove.BleManagerPackage
-import kjd.reactnative.bluetooth.RNBluetoothClassicPackage
+// import kjd.reactnative.bluetooth.RNBluetoothClassicPackage
 // import com.reactnativecommunity.slider.ReactSliderPackage
 import com.lugg.RNCConfig.RNCConfigPackage
 // import org.reactnative.camera.RNCameraPackage
