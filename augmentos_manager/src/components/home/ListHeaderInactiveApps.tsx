@@ -1,7 +1,7 @@
 import {translate} from "@/i18n"
 import {colors, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import SearchIcon from "assets/icons/SearchIcon"
+import SearchIcon from "assets/icons/component/SearchIcon"
 import * as React from "react"
 import {Text, View, TextStyle, ViewStyle, Pressable} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"

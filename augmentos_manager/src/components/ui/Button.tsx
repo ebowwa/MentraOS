@@ -5,7 +5,7 @@ import * as React from "react";
 import {Text, View, Image, TouchableOpacity, ViewStyle, TextStyle} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {SafeAreaView} from "react-native-safe-area-context";
-import ChevronRight from "assets/icons/ChevronRight"
+import ChevronRight from "assets/icons/component/ChevronRight"
 
 interface ButtonProps {
   title: string;

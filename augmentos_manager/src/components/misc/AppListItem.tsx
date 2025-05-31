@@ -3,9 +3,9 @@ import {View, Text, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {colors, ThemedStyle} from "@/theme"
 import AppIcon from "./AppIcon"
-import ChevronRight from "assets/icons/ChevronRight"
-import SunIcon from "assets/icons/SunIcon"
-import {TreeIcon} from "assets/icons/TreeIcon"
+import ChevronRight from "assets/icons/component/ChevronRight"
+import SunIcon from "assets/icons/component/SunIcon"
+import {TreeIcon} from "assets/icons/component/TreeIcon"
 import {translate} from "@/i18n"
 
 interface AppModel {

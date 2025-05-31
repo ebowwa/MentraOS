@@ -1,4 +1,4 @@
-import SearchIcon from "assets/icons/SearchIcon"
+import SearchIcon from "assets/icons/component/SearchIcon"
 import * as React from "react"
 import {Text, View, Pressable, TextStyle, ViewStyle} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"

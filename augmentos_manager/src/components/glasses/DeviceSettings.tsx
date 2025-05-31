@@ -26,8 +26,8 @@ import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert from "@/utils/AlertUtils"
-import SunIcon from "assets/icons/SunIcon"
-import ChevronRight from "assets/icons/ChevronRight"
+import SunIcon from "assets/icons/component/SunIcon"
+import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 
 export default function ConnectedDeviceInfo() {

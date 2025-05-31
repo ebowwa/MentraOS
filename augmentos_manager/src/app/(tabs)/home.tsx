@@ -15,8 +15,8 @@ import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import NonProdWarning from "@/components/misc/NonProdWarning"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import MicIcon from "assets/icons/MicIcon"
-import NotificationOff from "assets/icons/NotificationOff"
+import MicIcon from "assets/icons/component/MicIcon"
+import NotificationOff from "assets/icons/component/NotificationOff"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 
 interface AnimatedSectionProps extends PropsWithChildren {

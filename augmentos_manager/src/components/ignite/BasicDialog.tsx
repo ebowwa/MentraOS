@@ -1,4 +1,4 @@
-import AppleIcon from "assets/icons/AppleIcon";
+import AppleIcon from "assets/icons/component/AppleIcon";
 import * as React from "react";
 import {StyleSheet, Text, View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
