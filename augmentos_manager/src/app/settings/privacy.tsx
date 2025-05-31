@@ -128,29 +128,6 @@ export default function PrivacySettingsScreen() {
     setIsSensingEnabled(newSensing)
   }
 
-  const toggleForceCoreOnboardMic = async () => {
-    // First request microphone permission if we're enabling the mic
-    if (!forceCoreOnboardMic) {
-      // We're about to enable the mic, so request permission
-      const hasMicPermission = await requestFeaturePermissions(PermissionFeatures.MICROPHONE)
-      if (!hasMicPermission) {
-        // Permission denied, don't toggle the setting
-        console.log("Microphone permission denied, cannot enable onboard mic")
-        showAlert(
-          "Microphone Permission Required",
-          "Microphone permission is required to use the onboard microphone feature. Please grant microphone permission in settings.",
-          [{text: "OK"}],
-        )
-        return
-      }
-    }
-
-    // Continue with toggling the setting if permission granted or turning off
-    let newForceCoreOnboardMic = !forceCoreOnboardMic
-    await coreCommunicator.sendToggleForceCoreOnboardMic(newForceCoreOnboardMic)
-    setForceCoreOnboardMic(newForceCoreOnboardMic)
-  }
-
   const handleToggleNotifications = async () => {
     if (!notificationsEnabled) {
       if (Platform.OS === "android") {
