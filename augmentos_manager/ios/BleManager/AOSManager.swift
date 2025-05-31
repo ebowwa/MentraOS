@@ -60,6 +60,9 @@ struct ViewState {
     ViewState(topText: " ", bottomText: " ", layoutType: "text_wall", text: "$TIME12$ $DATE$ $GBATT$ $CONNECTION_STATUS", eventStr: ""),
   ]
   
+  private var sendStateWorkItem: DispatchWorkItem?
+  private let sendStateQueue = DispatchQueue(label: "sendStateQueue", qos: .userInitiated)
+  
   
   // mic:
   private var useOnboardMic = false;
@@ -452,6 +455,23 @@ struct ViewState {
   }
   
   public func sendCurrentState(_ isDashboard: Bool) -> Void {
+      // Cancel any pending delayed execution
+      sendStateWorkItem?.cancel()
+      
+      // Execute immediately
+      executeSendCurrentState(isDashboard)
+      
+      // Schedule a delayed execution that will fire in 1 second if not cancelled
+      let workItem = DispatchWorkItem { [weak self] in
+          self?.executeSendCurrentState(isDashboard)
+      }
+      
+      sendStateWorkItem = workItem
+      sendStateQueue.asyncAfter(deadline: .now() + 1.0, execute: workItem)
+  }
+
+  
+  public func executeSendCurrentState(_ isDashboard: Bool) -> Void {
     Task {
       var currentViewState: ViewState!;
       if (isDashboard) {

@@ -1,6 +1,6 @@
 // src/AppSettings.tsx
 import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, ViewStyle, TextStyle} from "react-native"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import TextSettingNoSave from "@/components/settings/TextSettingNoSave"
@@ -21,11 +21,13 @@ import SettingsSkeleton from "@/components/misc/SettingsSkeleton"
 import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
+import {ThemedStyle} from "@/theme"
 
 export default function AppSettings() {
   const {packageName, appName, fromWebView} = useLocalSearchParams()
   const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
+  const {theme, themed} = useAppTheme()
 
   if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
     console.error("No packageName or appName found in params")
@@ -43,13 +45,10 @@ export default function AppSettings() {
   const appInfo = useMemo(() => {
     return appStatus.find(app => app.packageName === packageName) || null
   }, [appStatus, packageName])
-  const {theme} = useAppTheme()
 
   const SETTINGS_CACHE_KEY = (packageName: string) => `app_settings_cache_${packageName}`
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
-
-  console.log("AppInfo", appInfo)
 
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
@@ -322,23 +321,11 @@ export default function AppSettings() {
       })
   }
 
-  const isDarkTheme = theme.isDark
-
-  // Theme colors.
-  const theme2 = {
-    backgroundColor: isDarkTheme ? "#1c1c1c" : "#f9f9f9",
-    textColor: isDarkTheme ? "#FFFFFF" : "#333333",
-    cardBackground: isDarkTheme ? "#2c2c2c" : "#ffffff",
-    borderColor: isDarkTheme ? "#444444" : "#e0e0e0",
-    secondaryTextColor: isDarkTheme ? "#cccccc" : "#666666",
-    separatorColor: isDarkTheme ? "#444444" : "#e0e0e0",
-  }
-
   // Render each setting.
   const renderSetting = (setting: any, index: number) => {
     switch (setting.type) {
       case "group":
-        return <GroupTitle key={`group-${index}`} title={setting.title} theme={theme} />
+        return <GroupTitle key={`group-${index}`} title={setting.title} />
       case "toggle":
         return (
           <ToggleSetting
@@ -346,7 +333,6 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onValueChange={val => handleSettingChange(setting.key, val)}
-            theme={theme2}
           />
         )
       case "text":
@@ -356,7 +342,6 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
-            theme={theme2}
           />
         )
       case "text_no_save_button":
@@ -366,7 +351,6 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
-            theme={theme2}
           />
         )
       case "slider":
@@ -384,7 +368,6 @@ export default function AppSettings() {
               }))
             }
             onValueSet={val => handleSettingChange(setting.key, val)}
-            theme={theme}
           />
         )
       case "select":
@@ -395,7 +378,6 @@ export default function AppSettings() {
             value={settingsState[setting.key]}
             options={setting.options}
             onValueChange={val => handleSettingChange(setting.key, val)}
-            theme={theme}
           />
         )
       case "select_with_search":
@@ -406,7 +388,6 @@ export default function AppSettings() {
             value={settingsState[setting.key]}
             options={setting.options}
             onValueChange={val => handleSettingChange(setting.key, val)}
-            theme={theme}
           />
         )
         return null
@@ -418,11 +399,10 @@ export default function AppSettings() {
             values={settingsState[setting.key]}
             options={setting.options}
             onValueChange={vals => handleSettingChange(setting.key, vals)}
-            theme={theme}
           />
         )
       case "titleValue":
-        return <TitleValueSetting key={index} label={setting.label} value={setting.value} theme={theme} />
+        return <TitleValueSetting key={index} label={setting.label} value={setting.value} />
       default:
         return null
     }
@@ -439,87 +419,46 @@ export default function AppSettings() {
 
       <Header leftIcon="caretLeft" onLeftPress={() => router.back()} />
 
-      <ScrollView>
+      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={{gap: 24}}>
-          {/* App Info Header Section */}
-          <View
-            style={[
-              styles.appInfoHeader,
-              {
-                backgroundColor: theme2.cardBackground,
-                borderColor: theme2.borderColor,
-              },
-            ]}>
-            <View style={styles.appIconRow}>
-              <View style={styles.appIconContainer}>
-                <View style={styles.iconWrapper}>
-                  <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={styles.appIconLarge} />
+          <View style={themed($appInfoHeader)}>
+            <View style={themed($appIconRow)}>
+              <View style={themed($appIconContainer)}>
+                <View style={themed($iconWrapper)}>
+                  <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={themed($appIconLarge)} />
                 </View>
               </View>
 
-              <View style={styles.appInfoTextContainer}>
-                <Text style={[styles.appName, {color: theme2.textColor}]}>{appInfo.name}</Text>
-                <View style={styles.appMetaInfoContainer}>
-                  <Text style={[styles.appMetaInfo, {color: theme2.secondaryTextColor}]}>
-                    Version {appInfo.version || "1.0.0"}
-                  </Text>
-                  <Text style={[styles.appMetaInfo, {color: theme2.secondaryTextColor}]}>Package: {packageName}</Text>
+              <View style={themed($appInfoTextContainer)}>
+                <Text style={[themed($appName)]}>{appInfo.name}</Text>
+                <View style={themed($appMetaInfoContainer)}>
+                  <Text style={[themed($appMetaInfo)]}>Version {appInfo.version || "1.0.0"}</Text>
+                  <Text style={themed($appMetaInfo)}>Package: {packageName}</Text>
                 </View>
               </View>
             </View>
 
             {/* Description within the main card */}
-            <View style={[styles.descriptionContainer, {borderTopColor: theme2.separatorColor}]}>
-              <Text style={[styles.descriptionText, {color: theme2.textColor}]}>
-                {appInfo.description || "No description available."}
-              </Text>
+            <View style={[themed($descriptionContainer)]}>
+              <Text style={themed($descriptionText)}>{appInfo.description || "No description available."}</Text>
             </View>
           </View>
 
           {/* App Action Buttons Section */}
-          <View
-            style={[
-              styles.sectionContainer,
-              {
-                backgroundColor: theme2.cardBackground,
-                borderColor: theme2.borderColor,
-              },
-            ]}>
-            <View style={styles.actionButtonsRow}>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  {
-                    borderColor: theme2.borderColor,
-                    backgroundColor: theme2.backgroundColor,
-                  },
-                ]}
-                onPress={handleStartStopApp}
-                activeOpacity={0.7}>
-                <FontAwesome
-                  name={appInfo.is_running ? "stop" : "play"}
-                  size={16}
-                  style={[styles.buttonIcon, {color: theme2.secondaryTextColor}]}
-                />
-                <Text style={[styles.buttonText, {color: theme2.secondaryTextColor}]}>
-                  {appInfo.is_running ? "Stop" : "Start"}
-                </Text>
+          <View style={[themed($sectionContainer)]}>
+            <View style={themed($actionButtonsRow)}>
+              <TouchableOpacity style={[themed($actionButton)]} onPress={handleStartStopApp} activeOpacity={0.7}>
+                <FontAwesome name={appInfo.is_running ? "stop" : "play"} size={16} style={[themed($buttonIcon)]} />
+                <Text style={[themed($buttonText)]}>{appInfo.is_running ? "Stop" : "Start"}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.actionButton,
-                  {
-                    borderColor: theme2.borderColor,
-                    backgroundColor: theme2.backgroundColor,
-                  },
-                  !serverAppInfo?.uninstallable && styles.disabledButton,
-                ]}
+                style={[themed($actionButton), !serverAppInfo?.uninstallable && themed($disabledButton)]}
                 activeOpacity={0.7}
                 onPress={handleUninstallApp}
                 disabled={!serverAppInfo?.uninstallable}>
-                <FontAwesome name="trash" size={16} style={[styles.buttonIcon, {color: "#ff3b30"}]} />
-                <Text style={[styles.buttonText, {color: "#ff3b30"}]}>Uninstall</Text>
+                <FontAwesome name="trash" size={16} style={[themed($buttonIcon), {color: "#ff3b30"}]} />
+                <Text style={[themed($buttonText), {color: "#ff3b30"}]}>Uninstall</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -528,28 +467,17 @@ export default function AppSettings() {
           {serverAppInfo?.instructions && (
             <View
               style={[
-                styles.sectionContainer,
-                {
-                  backgroundColor: theme2.cardBackground,
-                  borderColor: theme2.borderColor,
-                },
+                themed($sectionContainer),
               ]}>
-              <Text style={[styles.sectionTitle, {color: theme2.textColor}]}>About this App</Text>
-              <Text style={[styles.instructionsText, {color: theme2.textColor}]}>{serverAppInfo.instructions}</Text>
+              <Text style={[themed($sectionTitle)]}>About this App</Text>
+              <Text style={[themed($instructionsText)]}>{serverAppInfo.instructions}</Text>
             </View>
           )}
 
           {/* App Settings Section */}
-          <View
-            style={[
-              styles.sectionContainer,
-              {
-                backgroundColor: theme2.cardBackground,
-                borderColor: theme2.borderColor,
-              },
-            ]}>
-            <Text style={[styles.sectionTitle, {color: theme2.textColor}]}>App Settings</Text>
-            <View style={styles.settingsContainer}>
+          <View style={[themed($sectionContainer)]}>
+            <Text style={themed($sectionTitle)}>App Settings</Text>
+            <View style={themed($settingsContainer)}>
               {settingsLoading && (!serverAppInfo?.settings || typeof serverAppInfo.settings === "undefined") ? (
                 <SettingsSkeleton />
               ) : serverAppInfo?.settings && serverAppInfo.settings.length > 0 ? (
@@ -557,9 +485,7 @@ export default function AppSettings() {
                   renderSetting({...setting, uniqueKey: `${setting.key}-${index}`}, index),
                 )
               ) : (
-                <Text style={[styles.noSettingsText, {color: theme2.secondaryTextColor}]}>
-                  No settings available for this app
-                </Text>
+                <Text style={themed($noSettingsText)}>No settings available for this app</Text>
               )}
             </View>
           </View>
@@ -572,156 +498,190 @@ export default function AppSettings() {
   )
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
-  mainContainer: {
-    flexGrow: 1,
-    padding: 16,
-    alignItems: "stretch",
-    gap: 16,
-  },
-  appInfoHeader: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  appIconRow: {
-    flexDirection: "row",
-    marginBottom: 12,
-  },
-  appIconContainer: {
-    marginRight: 16,
-  },
-  descriptionContainer: {
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#e0e0e0",
-  },
-  iconGradient: {
-    borderRadius: 24,
-    padding: 3,
-  },
-  iconWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 22,
-    overflow: "hidden",
-    backgroundColor: "white",
-  },
-  appIconLarge: {
-    width: 100,
-    height: 100,
-    borderRadius: 18,
-  },
-  appIconRounded: {
-    borderRadius: 18,
-  },
-  appInfoTextContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  appName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    marginBottom: 4,
-  },
-  descriptionText: {
-    fontSize: 16,
-    fontFamily: "Montserrat-Regular",
-    lineHeight: 22,
-  },
-  appMetaInfoContainer: {
-    marginTop: 4,
-  },
-  appMetaInfo: {
-    fontSize: 12,
-    fontFamily: "Montserrat-Regular",
-    marginVertical: 1,
-  },
-  sectionContainer: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    marginBottom: 12,
-  },
-  instructionsText: {
-    fontSize: 14,
-    lineHeight: 22,
-    fontFamily: "Montserrat-Regular",
-  },
-  settingsContainer: {
-    gap: 8,
-  },
-  noSettingsText: {
-    fontSize: 14,
-    fontFamily: "Montserrat-Regular",
-    fontStyle: "italic",
-    textAlign: "center",
-    padding: 16,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    marginHorizontal: 20,
-  },
-  actionButtonsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 10,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: "#f5f5f5",
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-  },
-  // websiteButton style removed - now using header button
-  startButton: {
-    // Light background for Android-style
-  },
-  stopButton: {
-    // Same styling as start for consistency
-  },
-  uninstallButton: {
-    // Same styling as other buttons
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
-  buttonIcon: {
-    marginRight: 8,
-    color: "#5c5c5c",
-  },
-  buttonText: {
-    color: "#5c5c5c",
-    fontWeight: "600",
-    fontSize: 14,
-    fontFamily: "Montserrat-Bold",
-  },
+const $appInfoHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+  padding: 16,
+  borderRadius: 12,
+  borderWidth: 1,
+  elevation: 2,
+  shadowColor: "#000",
+  shadowOffset: {width: 0, height: 2},
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+})
+
+const $mainContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flexGrow: 1,
+  padding: 16,
+  alignItems: "stretch",
+  gap: 16,
+})
+
+const $appIconRow: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  marginBottom: 12,
+})
+
+const $appIconContainer: ThemedStyle<ViewStyle> = () => ({
+  marginRight: 16,
+})
+
+const $iconWrapper: ThemedStyle<ViewStyle> = () => ({
+  width: 100,
+  height: 100,
+  borderRadius: 22,
+  overflow: "hidden",
+  backgroundColor: "white",
+})
+
+const $appIconLarge: ThemedStyle<ViewStyle> = () => ({
+  width: 100,
+  height: 100,
+  borderRadius: 18,
+})
+
+const $iconGradient: ThemedStyle<ViewStyle> = () => ({
+  borderRadius: 24,
+  padding: 3,
+})
+
+const $descriptionContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  paddingTop: 12,
+  borderTopWidth: 1,
+  // borderTopColor: "#e0e0e0",
+  borderTopColor: colors.separator,
+})
+
+const $descriptionText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 16,
+  fontFamily: "Montserrat-Regular",
+  lineHeight: 22,
+  color: colors.text,
+})
+
+const $appName: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 24,
+  fontWeight: "bold",
+  fontFamily: "Montserrat-Bold",
+  marginBottom: 4,
+  color: colors.text,
+})
+
+const $appIconRounded: ThemedStyle<ViewStyle> = () => ({
+  borderRadius: 18,
+})
+
+const $appInfoTextContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+})
+
+const $appMetaInfoContainer: ThemedStyle<ViewStyle> = () => ({
+  marginTop: 4,
+})
+
+const $appMetaInfo: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 12,
+  fontFamily: "Montserrat-Regular",
+  marginVertical: 1,
+  color: colors.textDim,
+})
+
+const $sectionContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
+  borderRadius: 12,
+  borderWidth: 1,
+  padding: 16,
+  elevation: 2,
+  shadowColor: "#000",
+  shadowOffset: {width: 0, height: 2},
+  shadowOpacity: 0.1,
+  shadowRadius: 4,
+  backgroundColor: colors.background,
+  borderColor: colors.border,
+})
+
+const $sectionTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 18,
+  fontWeight: "bold",
+  fontFamily: "Montserrat-Bold",
+  marginBottom: 12,
+  color: colors.text,
+})
+
+const $instructionsText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  lineHeight: 22,
+  fontFamily: "Montserrat-Regular",
+  color: colors.text,
+})
+
+const $settingsContainer: ThemedStyle<ViewStyle> = () => ({
+  gap: 8,
+})
+
+const $noSettingsText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontFamily: "Montserrat-Regular",
+  fontStyle: "italic",
+  textAlign: "center",
+  padding: 16,
+  color: colors.textDim,
+})
+
+const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  marginHorizontal: 20,
+})
+
+const $actionButtonsRow: ThemedStyle<ViewStyle> = () => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 10,
+})
+
+const $actionButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: colors.border,
+  backgroundColor: colors.background,
+})
+
+const $buttonIcon: ThemedStyle<TextStyle> = ({colors}) => ({
+  marginRight: 8,
+  color: colors.textDim,
+})
+
+const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: "#5c5c5c",
+  fontWeight: "600",
+  fontSize: 14,
+  fontFamily: "Montserrat-Bold",
+})
+
+const $disabledButton: ThemedStyle<ViewStyle> = () => ({
+  opacity: 0.5,
+})
+
+const $startButton: ThemedStyle<ViewStyle> = () => ({
+  backgroundColor: "#f5f5f5",
+  borderColor: "#e0e0e0",
+})
+
+const $stopButton: ThemedStyle<ViewStyle> = () => ({
+  backgroundColor: "#f5f5f5",
+  borderColor: "#e0e0e0",
+})
+
+const $uninstallButton: ThemedStyle<ViewStyle> = () => ({
+  backgroundColor: "#f5f5f5",
+  borderColor: "#e0e0e0",
 })

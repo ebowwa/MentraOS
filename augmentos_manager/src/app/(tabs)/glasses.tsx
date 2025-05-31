@@ -1,5 +1,5 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle, TextStyle} from "react-native"
+import {View, Animated, Platform, ViewStyle, TextStyle, ScrollView} from "react-native"
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
@@ -19,6 +19,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
 import {translate} from "@/i18n/translate"
+import { Spacer } from "@/components/misc/Spacer"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -162,18 +163,21 @@ export default function Homepage() {
   }
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: 20}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title={pageTitle} />
-      {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
-      <View style={{flex: 1}}>
-        <ConnectedGlasses showTitle={true} />
-        <ConnectedDeviceInfo />
-        <View style={{marginTop: 16}} />
-        <ConnectDeviceButton />
-      </View>
+      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
+        {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
-      <DeviceSettings />
+        {/* <View style={{flex: 1}}> */}
+          <ConnectedGlasses showTitle={true} />
+          <ConnectedDeviceInfo />
+          <Spacer height={theme.spacing.md} />
+          <ConnectDeviceButton />
+        {/* </View> */}
+
+        <DeviceSettings />
+      </ScrollView>
     </Screen>
   )
 }

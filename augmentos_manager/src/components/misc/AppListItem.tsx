@@ -7,6 +7,7 @@ import ChevronRight from "assets/icons/component/ChevronRight"
 import SunIcon from "assets/icons/component/SunIcon"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
 import {translate} from "@/i18n"
+import {Switch} from "@/components/ignite"
 
 interface AppModel {
   name: string
@@ -23,11 +24,9 @@ interface AppListItemProps {
   is_foreground?: boolean
 }
 
-export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, refProp}: AppListItemProps) => {
-  const {themed} = useAppTheme()
+export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress}: AppListItemProps) => {
+  const {themed, theme} = useAppTheme()
 
-  const toggleLeft = isActive ? "44.44%" : "-2.78%"
-  const toggleBarStyle = isActive ? {} : {backgroundColor: "#565E8C"}
 
   return (
     <View style={[themed($everything), themed($everythingFlexBox)]}>
@@ -42,20 +41,9 @@ export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, refP
       </View>
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
-        <TouchableOpacity
-          onPress={onTogglePress}
-          delayLongPress={500}
-          style={{padding: 10, borderRadius: 20}}
-          {...(refProp ? {ref: refProp} : {})}>
-          <View style={themed($toggle)}>
-            <View style={[themed($toggleBarIcon), themed($toggleIconLayout), toggleBarStyle]} />
-            <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), {left: toggleLeft}]}>
-              <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
-            </View>
-          </View>
-        </TouchableOpacity>
+        <Switch value={isActive} onValueChange={onTogglePress} />
         <TouchableOpacity onPress={onSettingsPress} hitSlop={10}>
-          <ChevronRight />
+          <ChevronRight color={theme.colors.text} />
         </TouchableOpacity>
       </View>
     </View>
@@ -75,6 +63,7 @@ const $everything: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",
   gap: 0,
   alignSelf: "stretch",
+  height: 72,
 })
 
 const $everythingFlexBox: ThemedStyle<ViewStyle> = () => ({
@@ -88,8 +77,8 @@ const $appDescription: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = () => ({
-  width: 32,
-  height: 32,
+  width: 48,
+  height: 48,
 })
 
 const $appNameWrapper: ThemedStyle<ViewStyle> = () => ({
@@ -109,37 +98,7 @@ const $toggleParent: ThemedStyle<ViewStyle> = () => ({
   gap: 12,
 })
 
-const $toggle: ThemedStyle<ViewStyle> = () => ({
-  width: 36,
-  height: 20,
-})
 
-const $toggleBarIcon: ThemedStyle<ViewStyle> = () => ({
-  height: "80%",
-  width: "94.44%",
-  top: "15%",
-  right: "5.56%",
-  bottom: "15%",
-  left: "0%",
-  borderRadius: 8,
-  maxHeight: "100%",
-  backgroundColor: "blue",
-})
-
-const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
-  width: "55.56%",
-  top: 0,
-  right: "47.22%",
-  left: "-2.78%",
-  borderRadius: 12,
-  height: 20,
-})
-
-const $toggleIconLayout: ThemedStyle<ViewStyle> = () => ({
-  maxWidth: "100%",
-  position: "absolute",
-  overflow: "hidden",
-})
 
 const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
   const {themed} = useAppTheme()

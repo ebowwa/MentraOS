@@ -295,4 +295,5 @@ const $justifyFlexEnd: ViewStyle = {
 const $innerStyle: ViewStyle = {
   justifyContent: "flex-start",
   alignItems: "stretch",
+  flex: 1,// added this so scroll views will expand to fill the screen
 }

@@ -271,7 +271,7 @@ export function ConnectedDeviceInfo() {
   }
 
   let caseBattery = null
-  if (!status.glasses_info.case_removed) {
+  if (!status.glasses_info.case_removed && status.glasses_info.case_battery_level !== -1) {
     caseBattery = (
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         <AnimatedCircularProgress

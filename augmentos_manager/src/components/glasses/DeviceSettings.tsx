@@ -103,7 +103,6 @@ export default function ConnectedDeviceInfo() {
   let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
 
   useEffect(() => {
-    console.log("status?.glasses_settings?.brightness", status?.glasses_settings?.brightness)
     setBrightness(status?.glasses_settings?.brightness ?? 50)
     setAutoBrightness(status?.glasses_settings?.auto_brightness ?? true)
   }, [status?.glasses_settings?.brightness, status?.glasses_settings?.auto_brightness])

@@ -61,10 +61,9 @@ export default function AppsActiveList() {
   function getNewRow() {
     return (
       <View style={themed($appsContainer)}>
-        <View>
-          {runningApps.length > 0 ? (
-            <>
-              <ListHeaderActiveApps />
+        {runningApps.length > 0 ? (
+          <>
+            <ListHeaderActiveApps />
               {runningApps.map((app, index) => (
                 <AppListItem
                   key={app.packageName}
@@ -75,17 +74,16 @@ export default function AppsActiveList() {
                   onSettingsPress={() => openAppSettings(app)}
                 />
               ))}
-            </>
-          ) : (
-            <>
-              <TempActivateAppWindow />
-              <EmptyAppsView
-                statusMessageKey={"home:noActiveApps"}
-                activeAppsMessageKey={"home:emptyActiveAppListInfo"}
-              />
-            </>
-          )}
-        </View>
+          </>
+        ) : (
+          <>
+            <TempActivateAppWindow />
+            <EmptyAppsView
+              statusMessageKey={"home:noActiveApps"}
+              activeAppsMessageKey={"home:emptyActiveAppListInfo"}
+            />
+          </>
+        )}
       </View>
     )
   }

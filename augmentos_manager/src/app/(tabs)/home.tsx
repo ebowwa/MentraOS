@@ -1,5 +1,5 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle} from "react-native"
+import {View, Animated, Platform, ViewStyle, ScrollView} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
@@ -18,6 +18,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/component/MicIcon"
 import NotificationOff from "assets/icons/component/NotificationOff"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
+import {Spacer} from "@/components/misc/Spacer"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -31,7 +32,7 @@ export default function Homepage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const {themed} = useAppTheme()
+  const {themed, theme} = useAppTheme()
 
   // Reset loading state when connection status changes
   useEffect(() => {
@@ -164,7 +165,7 @@ export default function Homepage() {
   )
 
   return (
-    <Screen preset="auto" style={themed($screen)}>
+    <Screen preset="fixed" style={themed($screen)}>
       <Header
         leftTx="home:title"
         RightActionComponent={
@@ -175,18 +176,20 @@ export default function Homepage() {
         }
       />
 
-      {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
+      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
+        {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
-      <SensingDisabledWarning />
-      <NonProdWarning />
+        <SensingDisabledWarning />
+        <NonProdWarning />
 
-      <ConnectedGlasses showTitle={false} />
-      <DeviceToolbar />
-      <View style={{marginTop: 16}} />
-      <ConnectDeviceButton />
+        <ConnectedGlasses showTitle={false} />
+        <DeviceToolbar />
+        <Spacer height={theme.spacing.md} />
+        <ConnectDeviceButton />
 
-      <AppsActiveList />
-      <AppsInactiveList key={`apps-list-${appStatus.length}`} />
+        <AppsActiveList />
+        <AppsInactiveList key={`apps-list-${appStatus.length}`} />
+      </ScrollView>
     </Screen>
   )
 }

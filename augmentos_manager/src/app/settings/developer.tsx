@@ -162,10 +162,10 @@ export default function DeveloperSettingsScreen() {
   }
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.replace("/(tabs)/settings")} />
-      <ScrollView>
 
+      <ScrollView>
         <ToggleSetting
           label="T: Bypass VAD for Debugging"
           subtitle="T: Bypass Voice Activity Detection in case transcription stops working."

@@ -202,7 +202,7 @@ export class AugmentOSParser {
           }
           : null,
         glasses_settings: {
-          brightness: status.glasses_settings.brightness ?? '50%',
+          brightness: status.glasses_settings.brightness ?? 50,
           auto_brightness: status.glasses_settings.auto_brightness ?? false,
           dashboard_height: status.glasses_settings.dashboard_height ?? 4,
           depth: status.glasses_settings.depth ?? 5,

@@ -586,7 +586,7 @@ enum GlassesError: Error {
     
     let side = peripheral == leftPeripheral ? "left" : "right"
     let s = peripheral == leftPeripheral ? "L" : "R"
-    print("RECV (\(s)) \(data.hexEncodedString())")
+//    print("RECV (\(s)) \(data.hexEncodedString())")
     
     switch Commands(rawValue: command) {
     case .BLE_REQ_INIT:

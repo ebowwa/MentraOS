@@ -163,7 +163,7 @@ export default function DashboardSettingsScreen() {
   )
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         titleTx="settings:dashboardSettings"
         leftIcon="caretLeft"

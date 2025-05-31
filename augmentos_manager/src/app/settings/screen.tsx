@@ -1,5 +1,17 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, Switch, ScrollView, Alert, Platform, Button, ViewStyle, TextStyle} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  Switch,
+  ScrollView,
+  Alert,
+  Platform,
+  Button,
+  ViewStyle,
+  TextStyle,
+  Dimensions,
+} from "react-native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Slider} from "react-native-elements"
@@ -141,7 +153,7 @@ export default function ScreenSettingsScreen() {
   }
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         titleTx="screenSettings:title"
         leftIcon="caretLeft"
