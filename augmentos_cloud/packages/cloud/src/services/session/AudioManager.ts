@@ -116,15 +116,15 @@ export class AudioManager {
       this.userSession.lastAudioTimestamp = Date.now();
 
       // Add to recent audio buffer
-      this.addToRecentBuffer(audioData);
+      // this.addToRecentBuffer(audioData);
 
       // Lazy initialize the audio writer if needed
-      this.initializeAudioWriterIfNeeded();
+      // this.initializeAudioWriterIfNeeded();
 
       // Write raw LC3 audio for debugging if applicable
-      if (this.DEBUG_AUDIO && isLC3 && audioData) {
-        await this.audioWriter?.writeLC3(audioData);
-      }
+      // if (this.DEBUG_AUDIO && isLC3 && audioData) {
+      //   await this.audioWriter?.writeLC3(audioData);
+      // }
 
       // Process the audio data
       // let processedAudioData = await this.processAudioInternal(audioData, isLC3);

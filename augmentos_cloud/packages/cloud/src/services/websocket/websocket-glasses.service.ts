@@ -16,8 +16,11 @@ import {
   GlassesConnectionState,
   GlassesToCloudMessage,
   GlassesToCloudMessageType,
+  KeepAliveAck,
   LocationUpdate,
+  PhotoResponse,
   RequestSettings,
+  RtmpStreamStatus,
   SettingsUpdate,
   Vad
 } from '@augmentos/sdk';
@@ -224,8 +227,23 @@ export class GlassesWebSocketService {
           await this.handleAugmentOSSettingsUpdateRequest(userSession, message as AugmentosSettingsUpdateRequest);
           break;
 
-        // Add other message type handlers as needed
+        // Mentra Live.
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
+          // Delegate to VideoManager within the user's session
+          userSession.videoManager.handleRtmpStatusUpdate(message as RtmpStreamStatus);
+          break;
 
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK:
+          // Delegate to VideoManager
+          userSession.videoManager.handleKeepAliveAck(message as KeepAliveAck);
+          break;
+
+        case GlassesToCloudMessageType.PHOTO_RESPONSE:
+          // Delegate to PhotoManager
+          userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
+          break;
+
+        // TODO(isaiah): Add other message type handlers as needed
         default:
           // For messages that don't need special handling, relay to TPAs
           // based on subscriptions

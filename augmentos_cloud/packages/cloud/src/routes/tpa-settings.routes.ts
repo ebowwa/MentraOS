@@ -275,7 +275,6 @@ router.post('/:tpaName', async (req, res) => {
     rootLogger.info(`Updated settings for app "${tpaName}" for user ${userId}`);
 
     // Get user session to send WebSocket update
-    // const sessionService = require('../services/core/session.service');
     const userSession = sessionService.getSession(userId);
 
     // If user has active sessions, send them settings updates via WebSocket

@@ -5,15 +5,18 @@
 
 import { Logger } from 'pino';
 import WebSocket from 'ws';
-import { AppI, TranscriptSegment } from '@augmentos/sdk';
+import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@augmentos/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import AppManager from './AppManager';
 import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-import { HeartbeatManager } from '../core/HeartbeatManager';
+import { HeartbeatManager } from './HeartbeatManager';
 import { ASRStreamInstance } from '../processing/transcription.service';
+import VideoManager from './VideoManager';
+import PhotoManager from './PhotoManager';
+import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 
 /**
  * Complete user session class that encapsulates all session-related
@@ -63,6 +66,9 @@ export class UserSession {
   public audioManager: AudioManager;
   public heartbeatManager: HeartbeatManager;
 
+  public videoManager: VideoManager;
+  public photoManager: PhotoManager;
+
   // Transcription state
   // transcriptionStreams: Map<string, ASRStreamInstance> = new Map();
 
@@ -84,6 +90,8 @@ export class UserSession {
     this.appManager = new AppManager(this);
     this.audioManager = new AudioManager(this);
     this.heartbeatManager = new HeartbeatManager(this);
+    this.videoManager = new VideoManager(this);
+    this.photoManager = new PhotoManager(this);
 
     this._reconnectionTimers = new Map();
 
@@ -122,6 +130,34 @@ export class UserSession {
   }
 
   /**
+   * Send error message to glasses
+   * 
+   * @param code Error code
+   * @param message Error message
+   */
+  public sendError(code: GlassesErrorCode, message: string): void {
+    try {
+      const errorMessage: ConnectionError = {
+        type: CloudToGlassesMessageType.CONNECTION_ERROR,
+        code,
+        message,
+        timestamp: new Date()
+      };
+
+      this.websocket.send(JSON.stringify(errorMessage));
+      // this.websocket.close(1008, message);
+    } catch (error) {
+      this.logger.error('Error sending error message to glasses:', error);
+
+      // try {
+      //   this.websocket.close(1011, 'Internal server error');
+      // } catch (closeError) {
+      //   this.logger.error('Error closing WebSocket connection:', closeError);
+      // }
+    }
+  }
+
+  /**
    * Dispose of all resources and remove from sessions map
    */
   dispose(): void {
@@ -134,6 +170,8 @@ export class UserSession {
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
     if (this.heartbeatManager) this.heartbeatManager.dispose();
+    if (this.videoManager) this.videoManager.dispose();
+    if (this.photoManager) this.photoManager.dispose();
 
     // Clear any timers
     if (this.cleanupTimerId) {

@@ -183,6 +183,19 @@ export class SubscriptionService {
 
     for (const sub of processedSubscriptions) {
       if (!this.isValidSubscription(sub)) {
+        logger.error({
+          debugKey: 'RTMP_SUB_VALIDATION_FAIL',
+          subscription: sub,
+          packageName,
+          sessionId: userSession.sessionId,
+          userId: userSession.userId,
+          availableStreamTypes: Object.values(StreamType),
+          isRtmpStreamStatus: sub === 'rtmp_stream_status',
+          isRtmpStreamStatusEnum: sub === StreamType.RTMP_STREAM_STATUS,
+          streamTypeEnumValue: StreamType.RTMP_STREAM_STATUS,
+          processedSubscriptions,
+          originalSubscriptions: subscriptions
+        }, 'RTMP_SUB_VALIDATION_FAIL: Invalid subscription type detected in session subscription service');
         throw new Error(`Invalid subscription type: ${sub}`);
       }
     }
@@ -552,11 +565,31 @@ export class SubscriptionService {
    */
   private isValidSubscription(subscription: ExtendedStreamType): boolean {
     const validTypes = new Set(Object.values(StreamType));
+    const isValid = validTypes.has(subscription as StreamType) || isLanguageStream(subscription);
+    
     // Allow augmentos:<key> subscriptions for AugmentOS settings
     if (typeof subscription === 'string' && subscription.startsWith('augmentos:')) {
       return true;
     }
-    return validTypes.has(subscription as StreamType) || isLanguageStream(subscription);
+    
+    // Enhanced debugging for RTMP stream status
+    if (subscription === 'rtmp_stream_status' || subscription === StreamType.RTMP_STREAM_STATUS) {
+      logger.info({
+        debugKey: 'RTMP_SUB_VALIDATION_CHECK',
+        subscription,
+        subscriptionType: typeof subscription,
+        isValid,
+        hasInValidTypes: validTypes.has(subscription as StreamType),
+        isLanguageStream: isLanguageStream(subscription),
+        streamTypeEnum: StreamType.RTMP_STREAM_STATUS,
+        validTypesArray: Array.from(validTypes).slice(0, 10), // First 10 to avoid log spam
+        validTypesSize: validTypes.size,
+        validTypesHasRtmp: validTypes.has(StreamType.RTMP_STREAM_STATUS),
+        streamTypeImport: '@augmentos/sdk'
+      }, 'RTMP_SUB_VALIDATION_CHECK: Validating RTMP stream status subscription in session service');
+    }
+    
+    return isValid;
   }
 
   public getSubscriptionEntries() {

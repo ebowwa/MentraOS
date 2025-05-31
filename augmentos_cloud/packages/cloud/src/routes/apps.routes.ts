@@ -502,7 +502,7 @@ async function installApp(req: Request, res: Response) {
       });
     }
 
-   if (!user) {
+    if (!user) {
       return res.status(404).json({
         success: false,
         message: 'User not found'
@@ -537,7 +537,9 @@ async function installApp(req: Request, res: Response) {
     // If there's an active userSession, update the session with the new app.
     try {
       // sessionService.triggerAppStateChange(email);
-      userSession.appManager.broadcastAppState();
+      if (userSession) {
+        userSession.appManager.broadcastAppState();
+      }
     } catch (error) {
       logger.warn({ error, email, packageName }, 'Error sending app state notification');
       // Non-critical error, installation succeeded

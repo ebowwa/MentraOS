@@ -6,9 +6,6 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-// import "./instrument";
-// import "./sentry";
-
 import express from 'express';
 import { Server } from 'http';
 import cookieParser from 'cookie-parser';
@@ -16,11 +13,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 
 // Import services
-// import { healthMonitorService } from './services/core/health-monitor.service'; // TODO(isaiah): Deprecated, replaced by HeartbeatManager. 
-import { photoRequestService } from './services/core/photo-request.service';
+// import { photoRequestService } from './services/core/photo-request.service';
 import { DebugService } from './services/debug/debug-service';
-// import { SessionService, initializeSessionService } from './services/core/session.service';
-// import { webSocketService } from './services/core/websocket.service';
 import { sessionService } from './services/session/session.service';
 import { websocketService } from './services/websocket/websocket.service';
 

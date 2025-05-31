@@ -49,11 +49,11 @@ export interface PhotoRequestConfig {
 /**
  * Response object when a photo is uploaded
  */
-export interface PhotoResponse {
-  requestId: string;
-  photoUrl: string;
-  savedToGallery: boolean;
-}
+// export interface PhotoResponse {
+//   requestId: string;
+//   photoUrl: string;
+//   savedToGallery: boolean;
+// }
 
 /**
  * Service for managing photo requests

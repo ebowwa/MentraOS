@@ -21,8 +21,8 @@ import {
   GlassesToCloudMessageType,
   CloudToGlassesMessageType,
   PhotoRequest,
-  VideoStreamRequest,
-  VideoStreamRequestToGlasses
+  RtmpStreamRequest,
+  RtmpStreamStopRequest,
 } from '@augmentos/sdk';
 import UserSession from '../session/UserSession';
 import * as developerService from '../core/developer.service';
@@ -72,6 +72,7 @@ interface TpaIncomingMessage extends IncomingMessage {
  */
 export class TpaWebSocketService {
   private static instance: TpaWebSocketService;
+  private logger = rootLogger.child({ service: SERVICE_NAME });
   constructor() { }
 
   /**
@@ -124,7 +125,7 @@ export class TpaWebSocketService {
         await userSession.appManager.handleTpaInit(ws, initMessage);
       }
     } catch (error) {
-      logger.error(error , 'Error processing TPA connection request');
+      logger.error(error, 'Error processing TPA connection request');
       ws.close(1011, 'Internal server error');
       return;
     }
@@ -141,7 +142,7 @@ export class TpaWebSocketService {
           // Parse session ID to get user session ID
           const sessionParts = initMessage.sessionId.split('-');
           const userId = sessionParts[0];
-          if (sessionParts.length !== 2) {
+          if (sessionParts.length < 2) {
             logger.error({ service: SERVICE_NAME, message }, `Invalid session ID format: ${initMessage.sessionId}`);
             ws.close(1008, 'Invalid session ID format');
             return;
@@ -168,7 +169,7 @@ export class TpaWebSocketService {
           await this.handleTpaMessage(ws, userSession, message)
         }
       } catch (error) {
-        logger.error(error , 'Unexpected error processing TPA message');
+        logger.error(error, 'Unexpected error processing TPA message');
         logger.debug({ service: SERVICE_NAME, data }, '[debug] Unexpected error processing TPA message', data);
         // General error handling when we can't even parse the message
         ws.close(1011, 'Internal server error');
@@ -190,7 +191,6 @@ export class TpaWebSocketService {
           this.handleSubscriptionUpdate(tpaWebsocket, userSession, message);
           break;
 
-        // ... other message type handlers would go here ...
         case TpaToCloudMessageType.DISPLAY_REQUEST:
           userSession.logger.debug({ service: SERVICE_NAME, message, packageName: message.packageName }, `Received display request from TPA: ${message.packageName}`);
           userSession.displayManager.handleDisplayRequest(message);
@@ -206,11 +206,53 @@ export class TpaWebSocketService {
         }
 
         // Mentra Live Photo / Video Stream Request message handling.
-        case TpaToCloudMessageType.PHOTO_REQUEST:
-        case TpaToCloudMessageType.VIDEO_STREAM_REQUEST: {
-          await this.handleMentraLiveRequest(tpaWebsocket, userSession, message);
+        case TpaToCloudMessageType.RTMP_STREAM_REQUEST:
+          // Delegate to VideoManager
+          // The RtmpStreamRequest SDK type should be used by the TPA
+          try {
+            const streamId = await userSession.videoManager.startRtmpStream(message as RtmpStreamRequest);
+            // Optionally send an immediate ack to TPA if startRtmpStream doesn't or if TPA expects it
+            // (VideoManager.startRtmpStream already sends initial status)
+            this.logger.info({ streamId, packageName: message.packageName }, "RTMP Stream request processed by VideoManager.");
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error starting RTMP stream via VideoManager");
+            this.sendError(tpaWebsocket, TpaErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to start stream.");
+          }
           break;
-        }
+
+        case TpaToCloudMessageType.RTMP_STREAM_STOP:
+          // Delegate to VideoManager
+          try {
+            await userSession.videoManager.stopRtmpStream(message as RtmpStreamStopRequest);
+            this.logger.info({ packageName: message.packageName, streamId: (message as RtmpStreamStopRequest).streamId }, "RTMP Stream stop request processed by VideoManager.");
+          } catch (e) {
+            this.logger.error({ e, packageName: message.packageName }, "Error stopping RTMP stream via VideoManager");
+            this.sendError(tpaWebsocket, TpaErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to stop stream.");
+          }
+          break;
+
+        case TpaToCloudMessageType.PHOTO_REQUEST:
+          // Delegate to PhotoManager
+          // The TpaPhotoRequestSDK type should be used by the TPA
+          // PhotoManager's requestPhoto now takes the TpaPhotoRequestSDK object
+          try {
+            const photoRequestMsg = message as PhotoRequest;
+            // The PhotoManager's requestPhoto method now takes the entire TPA request object
+            // and internally extracts what it needs, plus gets the tpaWebSocket.
+            // The old `photoRequestService.createTpaPhotoRequest` took `userId, appId, ws, config`.
+            // The new `PhotoManager.requestPhoto` will take the `TpaPhotoRequestSDK` object
+            // and the `tpaWs` is passed from `handleTpaMessage`.
+            // We need to make sure the PhotoManager has access to the tpaWs that sent this message.
+            // The current PhotoManager.requestPhoto is:
+            // async requestPhoto(tpaRequest: TpaPhotoRequestSDK): Promise<string>
+            // It internally uses this.userSession.appWebsockets.get(tpaRequest.packageName) to get the websocket.
+            // This is fine if the TPA ws is already stored by AppManager.handleTpaInit.
+            const requestId = await userSession.photoManager.requestPhoto(photoRequestMsg);
+            this.logger.info({ requestId, packageName: photoRequestMsg.packageName }, "Photo request processed by PhotoManager.");
+          } catch(e) {
+            this.logger.error({e, packageName: message.packageName}, "Error requesting photo via PhotoManager");
+            this.sendError(tpaWebsocket, TpaErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to request photo.");
+          }
 
         default:
           logger.warn(`Unhandled TPA message type: ${message.type}`);
@@ -345,57 +387,6 @@ export class TpaWebSocketService {
     };
 
     userSession.websocket.send(JSON.stringify(clientResponse));
-  }
-
-  // Handle Mentra Live Photo / Video Stream Request message handling.
-  private async handleMentraLiveRequest(tpaWebsocket: WebSocket, userSession: UserSession, message: PhotoRequest | VideoStreamRequest): Promise<void> {
-    logger.info({ service: SERVICE_NAME, message }, 'Handling Mentra Live Stream Request');
-    switch (message.type) {
-      case 'photo_request': {
-
-        // Check if app has permission to request photos
-        const photoRequestMessage = message as PhotoRequest;
-        const appId = photoRequestMessage.packageName;
-        const saveToGallery = photoRequestMessage.saveToGallery || false;
-
-        // Create a TPA photo request using PhotoRequestService
-        const requestId = photoRequestService.createTpaPhotoRequest(
-          userSession.userId, appId, tpaWebsocket, { saveToGallery }
-        );
-        userSession.websocket.send(JSON.stringify({
-          type: CloudToGlassesMessageType.PHOTO_REQUEST,
-          requestId,
-          appId,
-          timestamp: new Date()
-        }));
-
-        userSession.logger.info({ service: SERVICE_NAME, packageName: appId, message }, `Photo request sent to glasses, from app: ${appId} requestId: ${requestId}`);
-        break;
-      }
-
-      case 'video_stream_request': {
-        // Check if app has permission to request video stream
-        const videoStreamRequestMessage = message as VideoStreamRequest;
-        const appId = videoStreamRequestMessage.packageName;
-
-        // Build request to glasses
-        const videoStreamRequestToGlasses: VideoStreamRequestToGlasses = {
-          type: CloudToGlassesMessageType.VIDEO_STREAM_REQUEST,
-          userSession: {
-            sessionId: userSession.sessionId,
-            userId: userSession.userId
-          },
-          appId,
-          timestamp: new Date()
-        };
-
-        // Send request to glasses
-        userSession.websocket.send(JSON.stringify(videoStreamRequestToGlasses));
-        userSession.logger.info({ service: SERVICE_NAME, packageName: appId, message }, `Video stream request sent to glasses for app: ${appId}`);
-
-        break;
-      }
-    }
   }
 
   /**

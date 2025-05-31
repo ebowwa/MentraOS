@@ -6,7 +6,7 @@ import { User } from '../models/user.model';
 import { Types } from 'mongoose';
 import { OrganizationService } from '../services/core/organization.service';
 import App from '../models/app.model';
-import sessionService from '../services/core/session.service';
+import sessionService from '../services/session/session.service';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 
 const logger = rootLogger.child({ service: 'developer.routes' });
@@ -26,6 +26,7 @@ const router = Router();
  * Middleware to validate Core token - similar to how apps.routes.ts works
  */
 import jwt from 'jsonwebtoken';
+import UserSession from 'src/services/session/UserSession';
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
 // TODO(isaiah): This is called validateSupabaseToken, but i'm pretty sure this is using an AugmentOS JWT(coreToken), not a Supabase token.
@@ -118,7 +119,13 @@ const autoInstallAppForDeveloper = async (packageName: string, developerEmail: s
 
     // Trigger app state change notification for any active sessions
     try {
-      sessionService.triggerAppStateChange(developerEmail);
+      // sessionService.triggerAppStateChange(developerEmail);
+      const userSession = UserSession.getById(user.email);
+      if (userSession) {
+        userSession.appManager.broadcastAppState();
+      } else {
+        logger.warn(`No active session found for developer ${developerEmail} to trigger app state change`);
+      }
     } catch (error) {
       logger.warn({ error, email: developerEmail, packageName }, 'Error sending app state notification after auto-install');
       // Non-critical error, installation succeeded

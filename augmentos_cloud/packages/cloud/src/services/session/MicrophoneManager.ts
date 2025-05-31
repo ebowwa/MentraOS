@@ -31,6 +31,9 @@ export class MicrophoneManager {
   private pendingState: boolean | null = null;
   private lastSentState: boolean = false;
 
+  // Debounce mechanism for subscription changes
+  private subscriptionDebounceTimer: NodeJS.Timeout | null = null;
+
   constructor(session: UserSession) {
     this.session = session;
     this.logger = session.logger.child({ component: 'MicrophoneManager' });
@@ -156,13 +159,22 @@ export class MicrophoneManager {
 
 
   /**
-   * Handle subscription changes
+   * Handle subscription changes with debouncing
    * This should be called when TPAs update their subscriptions
    */
   handleSubscriptionChange(): void {
-    const hasMediaSubscriptions = subscriptionService.hasMediaSubscriptions(this.session.sessionId);
-    this.logger.info(`Subscription changed, media subscriptions: ${hasMediaSubscriptions}`);
-    this.updateState(hasMediaSubscriptions);
+    // Clear any existing debounce timer
+    if (this.subscriptionDebounceTimer) {
+      clearTimeout(this.subscriptionDebounceTimer);
+    }
+
+    // Set new debounce timer to batch rapid subscription changes
+    this.subscriptionDebounceTimer = setTimeout(() => {
+      const hasMediaSubscriptions = subscriptionService.hasMediaSubscriptions(this.session.sessionId);
+      this.logger.info(`Subscription changed, media subscriptions: ${hasMediaSubscriptions}`);
+      this.updateState(hasMediaSubscriptions);
+      this.subscriptionDebounceTimer = null;
+    }, 100); // 100ms debounce - short enough to be responsive, long enough to batch rapid calls
   }
 
   /**
@@ -184,6 +196,10 @@ export class MicrophoneManager {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer);
       this.debounceTimer = null;
+    }
+    if (this.subscriptionDebounceTimer) {
+      clearTimeout(this.subscriptionDebounceTimer);
+      this.subscriptionDebounceTimer = null;
     }
   }
 }

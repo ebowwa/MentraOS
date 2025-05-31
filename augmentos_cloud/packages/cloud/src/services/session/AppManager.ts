@@ -26,6 +26,7 @@ import { User } from '../../models/user.model';
 import { logger as rootLogger } from '../logging/pino-logger';
 import sessionService from './session.service';
 import axios, { AxiosError } from 'axios';
+import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 
 const logger = rootLogger.child({ service: 'AppManager' });
 
@@ -188,7 +189,8 @@ export class AppManager {
     } catch (error) {
       this.logger.error(error, `Error starting app ${packageName} for user ${this.userSession.userId}`);
       this.userSession.loadingApps.delete(packageName);
-      throw error;
+      this.userSession.sendError(GlassesErrorCode.INTERNAL_ERROR, `Error starting app ${packageName}: ${app.name}`);
+      // throw error;
     }
   }
 
@@ -215,7 +217,17 @@ export class AppManager {
       } catch (error: unknown) {
         if (attempt === maxRetries - 1) {
           if (axios.isAxiosError(error)) {
-            this.logger.error(error, `Webhook failed after ${maxRetries} attempts: ${error.message}`);
+            // Enrich the error with context for better debugging
+            const enrichedError = Object.assign(error, {
+              packageName: payload.sessionId.split('-')[1],
+              webhookUrl: url,
+              attempts: maxRetries,
+              timeout: 10000,
+              operation: 'triggerWebhook',
+              userId: payload.userId,
+              payloadType: payload.type
+            });
+            this.logger.error(enrichedError, `Webhook failed after ${maxRetries} attempts`);
           }
           throw new Error(`Webhook failed after ${maxRetries} attempts: ${(error as AxiosError).message || 'Unknown error'}`);
         }

@@ -24,7 +24,6 @@ import {
 } from '@augmentos/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { systemApps } from '../core/system-apps';
-// import { ExtendedUserSession } from '../core/session.service';
 import { Logger } from 'pino';
 import UserSession from '../session/UserSession';
 
