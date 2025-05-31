@@ -38,10 +38,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12, // Match ConnectedDeviceInfo
     borderWidth: 1, // Restore border for the warning
-    marginBottom: 0,
-    marginHorizontal: 0,
-    marginTop: 16, // Added spacing above the warning
-    width: "100%",
+    marginVertical: 16,
+    // marginHorizontal: 8,
+    alignSelf: "center",
   },
   warningContent: {
     flexDirection: "row",

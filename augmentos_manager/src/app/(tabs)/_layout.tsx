@@ -60,7 +60,7 @@ export default function Layout() {
         options={{
           href: "/home",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={focused ? color : colors.textDim} />,
           tabBarLabel: translate("navigation:home"),
         }}
       />
@@ -69,7 +69,7 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({ focused, color }) => <SolarLineIconsSet4 size={28} color = {color}/>,
+          tabBarIcon: ({focused, color}) => <SolarLineIconsSet4 size={28} color={focused ? color : colors.textDim} />,
           tabBarLabel: translate("navigation:glasses"),
         }}
       />
@@ -78,7 +78,7 @@ export default function Layout() {
         options={{
           href: "/mirror",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={focused ? color : colors.textDim} />,
           tabBarLabel: translate("navigation:mirror"),
         }}
       />
@@ -87,7 +87,7 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={color} />,
+          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={focused ? color : colors.textDim} />,
           tabBarLabel: translate("navigation:store"),
         }}
       />
@@ -96,8 +96,8 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={color} />,
-          tabBarLabel: translate("navigation:account")
+          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={focused ? color : colors.textDim} />,
+          tabBarLabel: translate("navigation:account"),
         }}
       />
     </Tabs>

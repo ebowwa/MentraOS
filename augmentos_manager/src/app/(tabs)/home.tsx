@@ -31,7 +31,6 @@ export default function Homepage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
-  const slideAnim = useRef(new Animated.Value(-50)).current
   const {themed} = useAppTheme()
 
   // Reset loading state when connection status changes
@@ -140,24 +139,11 @@ export default function Homepage() {
   }, [])
 
   // Simple animated wrapper so we do not duplicate logic
-  const AnimatedSection: React.FC<AnimatedSectionProps> = useCallback(
-    ({children}) => (
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{translateY: slideAnim}],
-        }}>
-        {children}
-      </Animated.View>
-    ),
-    [fadeAnim, slideAnim],
-  )
 
   useFocusEffect(
     useCallback(() => {
       // Reset animations when screen is about to focus
       fadeAnim.setValue(0)
-      slideAnim.setValue(-50)
 
       // Start animations after a short delay
       const animationTimeout = setTimeout(() => {
@@ -167,20 +153,14 @@ export default function Homepage() {
             duration: 500,
             useNativeDriver: true,
           }),
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true,
-          }),
         ]).start()
       }, 50)
 
       return () => {
         clearTimeout(animationTimeout)
         fadeAnim.setValue(0)
-        slideAnim.setValue(-50)
       }
-    }, [fadeAnim, slideAnim]),
+    }, [fadeAnim]),
   )
 
   return (
