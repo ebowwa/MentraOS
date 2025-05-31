@@ -127,6 +127,7 @@ struct ViewState {
       guard level >= 0 else { return }
       self.batteryLevel = level
       self.serverComms.sendBatteryStatus(level: self.batteryLevel, charging: false);
+      handleRequestStatus()
     }.store(in: &cancellables)
     
     // listen to headUp events:
