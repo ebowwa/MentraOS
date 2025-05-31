@@ -96,59 +96,59 @@ export default function SelectGlassesModelScreen() {
   }
 
   return (
-    <Screen preset="fixed" style={{flex: 1, paddingHorizontal: 16}} safeAreaEdges={["bottom"]}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-      {isOnboarding && (
-        <View style={[styles.onboardingBanner, {backgroundColor: isDarkTheme ? "#1e88e5" : "#bbdefb"}]}>
-          <Icon name="info-circle" size={20} color={isDarkTheme ? "#ffffff" : "#0d47a1"} style={{marginRight: 8}} />
+      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
+        {isOnboarding && (
+          <View style={[styles.onboardingBanner, {backgroundColor: isDarkTheme ? "#1e88e5" : "#bbdefb"}]}>
+            <Icon name="info-circle" size={20} color={isDarkTheme ? "#ffffff" : "#0d47a1"} style={{marginRight: 8}} />
 
-          <Text
-            style={{
-              color: isDarkTheme ? "#ffffff" : "#0d47a1",
-              fontWeight: "bold",
-              textAlign: "center",
-              fontSize: 16,
-              flex: 1,
-            }}>
-            {Platform.OS === "ios" && !isTestFlightOrDev
-              ? "Please connect your smart glasses to continue."
-              : 'If you don\'t have smart glasses yet, you can select "Simulated Glasses".'}
-          </Text>
-        </View>
-      )}
-      {/** RENDER EACH GLASSES OPTION */}
-      {glassesOptions.map(glasses => (
-        <TouchableOpacity
-          key={glasses.key}
-          style={[
-            themed($settingItem),
-          ]}
-          onPress={() => {
-            triggerGlassesPairingGuide(glasses.modelName)
-          }}>
-          <Image source={getGlassesImage(glasses.modelName)} style={styles.glassesImage} />
-          <View style={styles.settingTextContainer}>
             <Text
-              style={[
-                styles.label,
-                {
-                  color: isOnboarding && glasses.modelName === "Simulated Glasses" ? "#2196F3" : theme.colors.text,
-                  fontWeight: isOnboarding && glasses.modelName === "Simulated Glasses" ? "800" : "600",
-                },
-              ]}>
-              {glasses.modelName}
+              style={{
+                color: isDarkTheme ? "#ffffff" : "#0d47a1",
+                fontWeight: "bold",
+                textAlign: "center",
+                fontSize: 16,
+                flex: 1,
+              }}>
+              {Platform.OS === "ios" && !isTestFlightOrDev
+                ? "Please connect your smart glasses to continue."
+                : 'If you don\'t have smart glasses yet, you can select "Simulated Glasses".'}
             </Text>
           </View>
-          {isOnboarding && glasses.modelName === "Simulated Glasses" ? (
-            <View style={{flexDirection: "row", alignItems: "center"}}>
-              <Text style={{color: "#2196F3", marginRight: 5, fontWeight: "bold"}}>Select</Text>
-              <Icon name="angle-right" size={24} color="#2196F3" />
+        )}
+        {/** RENDER EACH GLASSES OPTION */}
+        {glassesOptions.map(glasses => (
+          <TouchableOpacity
+            key={glasses.key}
+            style={[themed($settingItem)]}
+            onPress={() => {
+              triggerGlassesPairingGuide(glasses.modelName)
+            }}>
+            <Image source={getGlassesImage(glasses.modelName)} style={styles.glassesImage} />
+            <View style={styles.settingTextContainer}>
+              <Text
+                style={[
+                  styles.label,
+                  {
+                    color: isOnboarding && glasses.modelName === "Simulated Glasses" ? "#2196F3" : theme.colors.text,
+                    fontWeight: isOnboarding && glasses.modelName === "Simulated Glasses" ? "800" : "600",
+                  },
+                ]}>
+                {glasses.modelName}
+              </Text>
             </View>
-          ) : (
-            <Icon name="angle-right" size={24} color={theme.colors.text} />
-          )}
-        </TouchableOpacity>
-      ))}
+            {isOnboarding && glasses.modelName === "Simulated Glasses" ? (
+              <View style={{flexDirection: "row", alignItems: "center"}}>
+                <Text style={{color: "#2196F3", marginRight: 5, fontWeight: "bold"}}>Select</Text>
+                <Icon name="angle-right" size={24} color="#2196F3" />
+              </View>
+            ) : (
+              <Icon name="angle-right" size={24} color={theme.colors.text} />
+            )}
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
     </Screen>
   )
 }

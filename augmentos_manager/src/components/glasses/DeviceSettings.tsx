@@ -31,7 +31,7 @@ import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import RouteButton from "../ui/RouteButton"
 
-export default function ConnectedDeviceInfo() {
+export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
   const scaleAnim = useRef(new Animated.Value(0.8)).current
   const slideAnim = useRef(new Animated.Value(-50)).current
@@ -150,54 +150,58 @@ export default function ConnectedDeviceInfo() {
     )
   }
 
+  let hasBrightness = status?.glasses_info?.model_name !== "Simulated Glasses"
+
   return (
     <View style={themed($container)}>
-      <View style={themed($settingsGroup)}>
-        <ToggleSetting
-          label="Auto Brightness"
-          value={autoBrightness}
-          onValueChange={value => {
-            setAutoBrightness(value)
-            coreCommunicator.setGlassesBrightnessMode(brightness, value)
-          }}
-          containerStyle={{paddingHorizontal: 0, paddingTop: 0}}
-        />
+      {hasBrightness && (
+        <View style={themed($settingsGroup)}>
+          <ToggleSetting
+            label="Auto Brightness"
+            value={autoBrightness}
+            onValueChange={value => {
+              setAutoBrightness(value)
+              coreCommunicator.setGlassesBrightnessMode(brightness, value)
+            }}
+            containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: autoBrightness ? 0 : undefined}}
+          />
 
-        {!autoBrightness && (
-          <>
-            <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300}} />
-            <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
-              <View style={{flexGrow: 1, marginTop: 8}}>
-                <SliderSetting
-                  label="Brightness"
-                  value={brightness}
-                  onValueChange={setBrightness}
-                  min={0}
-                  max={100}
-                  onValueSet={value => {
-                    coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
-                  }}
-                />
+          {!autoBrightness && (
+            <>
+              <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300}} />
+              <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
+                <View style={{flexGrow: 1, marginTop: 8}}>
+                  <SliderSetting
+                    label="Brightness"
+                    value={brightness}
+                    onValueChange={setBrightness}
+                    min={0}
+                    max={100}
+                    onValueSet={value => {
+                      coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
+                    }}
+                  />
+                </View>
+                <View
+                  style={{
+                    alignItems: "center",
+                    alignSelf: "flex-end",
+                    marginBottom: -4,
+                    paddingBottom: 12,
+                    flexDirection: "row",
+                    alignContent: "center",
+                    marginLeft: 12,
+                  }}>
+                  <SunIcon size={24} color={theme.colors.text} />
+                  <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                    {brightness}%
+                  </Text>
+                </View>
               </View>
-              <View
-                style={{
-                  alignItems: "center",
-                  alignSelf: "flex-end",
-                  marginBottom: -4,
-                  paddingBottom: 12,
-                  flexDirection: "row",
-                  alignContent: "center",
-                  marginLeft: 12,
-                }}>
-                <SunIcon size={24} color={theme.colors.text} />
-                <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-                  {brightness}%
-                </Text>
-              </View>
-            </View>
-          </>
-        )}
-      </View>
+            </>
+          )}
+        </View>
+      )}
 
       <View style={themed($settingsGroup)}>
         <TouchableOpacity

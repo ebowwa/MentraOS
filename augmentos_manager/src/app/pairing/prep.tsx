@@ -1,5 +1,5 @@
 import React from "react"
-import {View, Text, StyleSheet, Platform, Linking, ViewStyle} from "react-native"
+import {View, Text, StyleSheet, Platform, Linking, ViewStyle, ScrollView} from "react-native"
 import {useRoute} from "@react-navigation/native"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
@@ -112,9 +112,7 @@ export default function PairingPrepScreen() {
                 showAlert(
                   translate("pairing:bluetoothPermissionRequiredTitle"),
                   translate("pairing:bluetoothPermissionRequiredMessage"),
-                  [
-                    {text:translate("common:ok")},
-                  ]
+                  [{text: translate("common:ok")}],
                 )
               }
               return
@@ -132,9 +130,7 @@ export default function PairingPrepScreen() {
         showAlert(
           translate("pairing:bluetoothPermissionRequiredTitle"),
           translate("pairing:bluetoothPermissionRequiredMessageAlt"),
-          [
-            {text: translate("common:ok")},
-          ]
+          [{text: translate("common:ok")}],
         )
         return // Stop the connection process
       }
@@ -168,11 +164,9 @@ export default function PairingPrepScreen() {
       }
     } catch (error) {
       console.error("Error requesting permissions:", error)
-      showAlert(
-        translate("pairing:errorTitle"),
-        translate("pairing:permissionsError"),
-        [{text: translate("common:ok")}]
-      )
+      showAlert(translate("pairing:errorTitle"), translate("pairing:permissionsError"), [
+        {text: translate("common:ok")},
+      ])
       return
     }
 
@@ -197,13 +191,16 @@ export default function PairingPrepScreen() {
   }
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
-      <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
-      <Button onPress={advanceToPairing} disabled={false}>
-        <Text>{translate("common:continue")}</Text>
-      </Button>
-      
+      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
+        <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
+      </ScrollView>
+      <View style={{marginBottom: theme.spacing.md}}>
+        <Button onPress={advanceToPairing} disabled={false}>
+          <Text>{translate("common:continue")}</Text>
+        </Button>
+      </View>
     </Screen>
   )
 }

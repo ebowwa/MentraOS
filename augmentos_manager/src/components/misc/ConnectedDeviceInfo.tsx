@@ -193,7 +193,7 @@ export function SplitDeviceInfo() {
 
   let wearable = status.core_info.default_wearable
   let glassesImage = getGlassesImage(wearable)
-  let caseImage = null;
+  let caseImage = null
   if (!status.glasses_info?.case_removed) {
     if (status.glasses_info?.case_open) {
       caseImage = getGlassesOpenImage(wearable)
@@ -215,6 +215,11 @@ export function DeviceToolbar() {
   const {themed, theme} = useAppTheme()
 
   if (!status.glasses_info?.model_name) {
+    return null
+  }
+
+  // don't show if simulated glasses
+  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
     return null
   }
 
@@ -294,6 +299,11 @@ export function ConnectedDeviceInfo() {
   }, [status.core_info.is_mic_enabled_for_frontend])
 
   if (!status.glasses_info?.model_name) {
+    return null
+  }
+
+  // don't show if simulated glasses
+  if (status.glasses_info?.model_name.toLowerCase().includes("simulated")) {
     return null
   }
 
