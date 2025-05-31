@@ -100,7 +100,7 @@ export default function GlassesPairingGuideScreen () {
   const isDarkTheme = theme.isDark
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: 16}}>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       <Header leftIcon="caretLeft" onLeftPress={() => router.back()} />
       {pairingInProgress ? (
         // Show the beautiful animated loader while pairing is in progress

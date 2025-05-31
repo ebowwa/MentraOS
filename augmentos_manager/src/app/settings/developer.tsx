@@ -10,6 +10,8 @@ import TestFlightDetector from "@/bridge/TestFlightDetector"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
 import {router} from "expo-router"
+import {Spacer} from "@/components/misc/Spacer"
+import ToggleSetting from "@/components/settings/ToggleSetting"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useStatus()
@@ -160,45 +162,25 @@ export default function DeveloperSettingsScreen() {
   }
 
   return (
-    <Screen preset="auto" style={styles.container}>
-      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.replace('/(tabs)/settings')} />
-      <ScrollView style={styles.scrollView}>
-        {/* Bypass VAD for Debugging Toggle */}
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, theme.isDark ? styles.lightText : styles.darkText]}>
-              Bypass VAD for Debugging
-            </Text>
-            <Text style={[styles.value, theme.isDark ? styles.lightSubtext : styles.darkSubtext]}>
-              Bypass Voice Activity Detection in case transcription stops working.
-            </Text>
-          </View>
-          <Switch
-            value={isBypassVADForDebuggingEnabled}
-            onValueChange={toggleBypassVadForDebugging}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
+      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.replace("/(tabs)/settings")} />
+      <ScrollView>
 
-        <View style={styles.settingItem}>
-          <View style={styles.settingTextContainer}>
-            <Text style={[styles.label, theme.isDark ? styles.lightText : styles.darkText]}>
-              Reconnect on App Foreground
-            </Text>
-            <Text style={[styles.value, theme.isDark ? styles.lightSubtext : styles.darkSubtext]}>
-              Automatically attempt to reconnect to glasses when the app comes back to the foreground.
-            </Text>
-          </View>
-          <Switch
-            value={reconnectOnAppForeground}
-            onValueChange={toggleReconnectOnAppForeground}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
-          />
-        </View>
+        <ToggleSetting
+          label="T: Bypass VAD for Debugging"
+          subtitle="T: Bypass Voice Activity Detection in case transcription stops working."
+          value={isBypassVADForDebuggingEnabled}
+          onValueChange={toggleBypassVadForDebugging}
+        />
+
+        <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label="T: Reconnect on App Foreground"
+          subtitle="T: Automatically attempt to reconnect to glasses when the app comes back to the foreground."
+          value={reconnectOnAppForeground}
+          onValueChange={toggleReconnectOnAppForeground}
+        />
 
         {isTestFlightOrDev && (
           <>
@@ -333,13 +315,6 @@ const styles = StyleSheet.create({
     gap: 12,
     flexDirection: "row",
     justifyContent: "space-between",
-  },
-  scrollView: {
-    marginBottom: 55,
-  },
-  container: {
-    flex: 1,
-    padding: 20,
   },
   darkBackground: {
     backgroundColor: "#1c1c1c",

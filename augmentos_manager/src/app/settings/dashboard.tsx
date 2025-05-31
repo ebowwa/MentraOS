@@ -10,6 +10,7 @@ import {
   Modal,
   ViewStyle,
   TextStyle,
+  ScrollView,
 } from "react-native"
 import Icon from "react-native-vector-icons/FontAwesome"
 
@@ -22,8 +23,8 @@ import {Screen} from "@/components/ignite"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import ToggleSetting from "@/components/settings/ToggleSetting"
-import { translate } from "@/i18n/translate"
-import { Spacer } from "@/components/misc/Spacer"
+import {translate} from "@/i18n/translate"
+import {Spacer} from "@/components/misc/Spacer"
 import RouteButton from "@/components/ui/RouteButton"
 
 export default function DashboardSettingsScreen() {
@@ -162,14 +163,15 @@ export default function DashboardSettingsScreen() {
   )
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         titleTx="settings:dashboardSettings"
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/settings")}
       />
-      {/* <Text style={themed($sectionTitle)}>General Settings</Text> */}
-      {/* <View style={themed($settingItem)}>
+      <ScrollView>
+        {/* <Text style={themed($sectionTitle)}>General Settings</Text> */}
+        {/* <View style={themed($settingItem)}>
         <View style={themed($settingTextContainer)}>
           <Text style={themed($label)}>Contextual Dashboard</Text>
           {status.glasses_info?.model_name && (
@@ -189,26 +191,26 @@ export default function DashboardSettingsScreen() {
         />
       </View> */}
 
-      <ToggleSetting
-        label={translate("settings:contextualDashboardLabel")}
-        subtitle={translate("settings:contextualDashboardSubtitle")}
-        value={isContextualDashboardEnabled}
-        onValueChange={toggleContextualDashboard}
-      />
+        <ToggleSetting
+          label={translate("settings:contextualDashboardLabel")}
+          subtitle={translate("settings:contextualDashboardSubtitle")}
+          value={isContextualDashboardEnabled}
+          onValueChange={toggleContextualDashboard}
+        />
 
-      <Spacer height={theme.spacing.md} />
+        <Spacer height={theme.spacing.md} />
 
-      <ToggleSetting
-        label={translate("settings:metricSystemLabel")}
-        subtitle={translate("settings:metricSystemSubtitle")}
-        value={isMetricSystemEnabled}
-        onValueChange={toggleMetricSystem}
-      />
+        <ToggleSetting
+          label={translate("settings:metricSystemLabel")}
+          subtitle={translate("settings:metricSystemSubtitle")}
+          value={isMetricSystemEnabled}
+          onValueChange={toggleMetricSystem}
+        />
 
-      <Spacer height={theme.spacing.md} />
+        <Spacer height={theme.spacing.md} />
 
-      {/* Dashboard Content Selection */}
-      {/* <View style={styles.section}>
+        {/* Dashboard Content Selection */}
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>
             Content Settings
           </Text>
@@ -245,25 +247,25 @@ export default function DashboardSettingsScreen() {
           </TouchableOpacity>
         </View> */}
 
-      <RouteButton
-        label={translate("settings:adjustHeadAngleLabel")}
-        subtitle={translate("settings:adjustHeadAngleSubtitle")}
-        onPress={() => setHeadUpAngleComponentVisible(true)}
-      />
-
-      {renderContentPicker()}
-      {headUpAngle !== null && (
-        <HeadUpAngleComponent
-          visible={headUpAngleComponentVisible}
-          initialAngle={headUpAngle}
-          onCancel={onCancelHeadUpAngle}
-          onSave={onSaveHeadUpAngle}
+        <RouteButton
+          label={translate("settings:adjustHeadAngleLabel")}
+          subtitle={translate("settings:adjustHeadAngleSubtitle")}
+          onPress={() => setHeadUpAngleComponentVisible(true)}
         />
-      )}
+
+        {renderContentPicker()}
+        {headUpAngle !== null && (
+          <HeadUpAngleComponent
+            visible={headUpAngleComponentVisible}
+            initialAngle={headUpAngle}
+            onCancel={onCancelHeadUpAngle}
+            onSave={onSaveHeadUpAngle}
+          />
+        )}
+      </ScrollView>
     </Screen>
   )
 }
-
 
 const $sectionTitle: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,

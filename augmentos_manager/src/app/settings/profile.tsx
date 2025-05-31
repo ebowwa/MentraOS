@@ -9,17 +9,19 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
-  ImageStyle, TextStyle, ViewStyle
-} from 'react-native';
-import {supabase} from '@/supabase/supabaseClient';
-import Icon from 'react-native-vector-icons/FontAwesome';
-import BackendServerComms from '@/backend_comms/BackendServerComms';
-import { useAuth } from '@/contexts/AuthContext';
-import { Button, Header, Screen } from '@/components/ignite';
-import { useAppTheme } from '@/utils/useAppTheme';
-import { ThemedStyle } from '@/theme';
-import { router } from 'expo-router';
-import { translate } from "@/i18n";
+  ImageStyle,
+  TextStyle,
+  ViewStyle,
+} from "react-native"
+import {supabase} from "@/supabase/supabaseClient"
+import Icon from "react-native-vector-icons/FontAwesome"
+import BackendServerComms from "@/backend_comms/BackendServerComms"
+import {useAuth} from "@/contexts/AuthContext"
+import {Button, Header, Screen} from "@/components/ignite"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {ThemedStyle} from "@/theme"
+import {router} from "expo-router"
+import {translate} from "@/i18n"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -108,152 +110,153 @@ export default function ProfileSettingsPage() {
   const {theme, themed} = useAppTheme()
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         title={translate("profileSettings:title")}
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/settings")}
       />
-      {loading ? (
-        <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
-      ) : userData ? (
-        <>
-          {userData.avatarUrl ? (
-            <Image source={{uri: userData.avatarUrl}} style={themed($profileImage)} />
-          ) : (
-            <View style={themed($profilePlaceholder)}>
-              <Text style={themed($profilePlaceholderText)}>{translate("profileSettings:noProfilePicture")}</Text>
-            </View>
-          )}
-
-          <View style={themed($infoContainer)}>
-            <Text style={themed($label)}>{translate("profileSettings:name")}</Text>
-            <Text style={themed($infoText)}>{userData.fullName || "N/A"}</Text>
-          </View>
-
-          <View style={themed($infoContainer)}>
-            <Text style={themed($label)}>{translate("profileSettings:email")}</Text>
-            <Text style={themed($infoText)}>{userData.email || "N/A"}</Text>
-          </View>
-
-          <View style={themed($infoContainer)}>
-            <Text style={themed($label)}>{translate("profileSettings:createdAt")}</Text>
-            <Text style={themed($infoText)}>
-              {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : "N/A"}
-            </Text>
-          </View>
-
-          <View style={themed($infoContainer)}>
-            <Text style={themed($label)}>{translate("profileSettings:provider")}</Text>
-            <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
-              {userData.provider === "google" && (
-                <>
-                  <Icon name="google" size={18} />
-                  <View style={{width: 6}} />
-                </>
-              )}
-              {userData.provider === "apple" && (
-                <>
-                  <Icon name="apple" size={18} />
-                  <View style={{width: 6}} />
-                </>
-              )}
-              {userData.provider === "facebook" && (
-                <>
-                  <Icon name="facebook" size={18} color="#4267B2" />
-                  <View style={{width: 6}} />
-                </>
-              )}
-              {userData.provider === "email" && (
-                <>
-                  <Icon name="envelope" size={18} />
-                  <View style={{width: 6}} />
-                </>
-              )}
-            </View>
-          </View>
-
-          {userData.provider == "email" && (
-            <TouchableOpacity
-              onPress={() => setShowChangePassword(!showChangePassword)}
-              style={themed($changePasswordButton)}>
-              <Text style={themed($changePasswordButtonText)}>{translate("profileSettings:changePassword")}</Text>
-            </TouchableOpacity>
-          )}
-
-          {showChangePassword && (
-            <View style={themed($passwordChangeContainer)}>
-              <View style={themed($inputGroup)}>
-                <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
-                <View style={themed($enhancedInputContainer)}>
-                  <Icon name="lock" size={16} color="#6B7280" />
-                  <TextInput
-                    hitSlop={{top: 16, bottom: 16}}
-                    style={themed($enhancedInput)}
-                    placeholder={translate("profileSettings:enterNewPassword")}
-                    value={newPassword}
-                    autoCapitalize="none"
-                    onChangeText={(text: any) => {
-                      setNewPassword(text)
-                      setPasswordMatched(text === confirmPassword)
-                    }}
-                    secureTextEntry={!showNewPassword}
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  <TouchableOpacity
-                    hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
-                    onPress={() => setShowNewPassword(!showNewPassword)}>
-                    <Icon name={showNewPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
+      <ScrollView>
+        {loading ? (
+          <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
+        ) : userData ? (
+          <>
+            {userData.avatarUrl ? (
+              <Image source={{uri: userData.avatarUrl}} style={themed($profileImage)} />
+            ) : (
+              <View style={themed($profilePlaceholder)}>
+                <Text style={themed($profilePlaceholderText)}>{translate("profileSettings:noProfilePicture")}</Text>
               </View>
+            )}
 
-              <View style={themed($inputGroup)}>
-                <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
-                <View style={themed($enhancedInputContainer)}>
-                  <Icon name="lock" size={16} color="#6B7280" />
-                  <TextInput
-                    hitSlop={{top: 16, bottom: 16}}
-                    style={themed($enhancedInput)}
-                    placeholder={translate("profileSettings:confirmNewPassword")}
-                    value={confirmPassword}
-                    autoCapitalize="none"
-                    onChangeText={(text: any) => {
-                      setConfirmPassword(text)
-                      setPasswordMatched(text === newPassword)
-                    }}
-                    secureTextEntry={!showConfirmPassword}
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  <TouchableOpacity
-                    hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                    <Icon name={showConfirmPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
-                  </TouchableOpacity>
-                </View>
+            <View style={themed($infoContainer)}>
+              <Text style={themed($label)}>{translate("profileSettings:name")}</Text>
+              <Text style={themed($infoText)}>{userData.fullName || "N/A"}</Text>
+            </View>
+
+            <View style={themed($infoContainer)}>
+              <Text style={themed($label)}>{translate("profileSettings:email")}</Text>
+              <Text style={themed($infoText)}>{userData.email || "N/A"}</Text>
+            </View>
+
+            <View style={themed($infoContainer)}>
+              <Text style={themed($label)}>{translate("profileSettings:createdAt")}</Text>
+              <Text style={themed($infoText)}>
+                {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : "N/A"}
+              </Text>
+            </View>
+
+            <View style={themed($infoContainer)}>
+              <Text style={themed($label)}>{translate("profileSettings:provider")}</Text>
+              <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
+                {userData.provider === "google" && (
+                  <>
+                    <Icon name="google" size={18} />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+                {userData.provider === "apple" && (
+                  <>
+                    <Icon name="apple" size={18} />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+                {userData.provider === "facebook" && (
+                  <>
+                    <Icon name="facebook" size={18} color="#4267B2" />
+                    <View style={{width: 6}} />
+                  </>
+                )}
+                {userData.provider === "email" && (
+                  <>
+                    <Icon name="envelope" size={18} />
+                    <View style={{width: 6}} />
+                  </>
+                )}
               </View>
+            </View>
 
+            {userData.provider == "email" && (
               <TouchableOpacity
-                style={[
-                  themed($updatePasswordButton),
-                  passwordMatched ? themed($activeUpdatePasswordButton) : themed($disabledUpdatePasswordButton),
-                ]}
-                disabled={!passwordMatched}
-                onPress={() => {
-                  console.log("Password updated:", newPassword)
-                  setShowChangePassword(false)
-                  setNewPassword("")
-                  setConfirmPassword("")
-                }}>
-                <Text style={themed($updatePasswordButtonText)}>{translate("profileSettings:updatePassword")}</Text>
+                onPress={() => setShowChangePassword(!showChangePassword)}
+                style={themed($changePasswordButton)}>
+                <Text style={themed($changePasswordButtonText)}>{translate("profileSettings:changePassword")}</Text>
               </TouchableOpacity>
-            </View>
-          )}
+            )}
+
+            {showChangePassword && (
+              <View style={themed($passwordChangeContainer)}>
+                <View style={themed($inputGroup)}>
+                  <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
+                  <View style={themed($enhancedInputContainer)}>
+                    <Icon name="lock" size={16} color="#6B7280" />
+                    <TextInput
+                      hitSlop={{top: 16, bottom: 16}}
+                      style={themed($enhancedInput)}
+                      placeholder={translate("profileSettings:enterNewPassword")}
+                      value={newPassword}
+                      autoCapitalize="none"
+                      onChangeText={(text: any) => {
+                        setNewPassword(text)
+                        setPasswordMatched(text === confirmPassword)
+                      }}
+                      secureTextEntry={!showNewPassword}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                    <TouchableOpacity
+                      hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
+                      onPress={() => setShowNewPassword(!showNewPassword)}>
+                      <Icon name={showNewPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={themed($inputGroup)}>
+                  <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
+                  <View style={themed($enhancedInputContainer)}>
+                    <Icon name="lock" size={16} color="#6B7280" />
+                    <TextInput
+                      hitSlop={{top: 16, bottom: 16}}
+                      style={themed($enhancedInput)}
+                      placeholder={translate("profileSettings:confirmNewPassword")}
+                      value={confirmPassword}
+                      autoCapitalize="none"
+                      onChangeText={(text: any) => {
+                        setConfirmPassword(text)
+                        setPasswordMatched(text === newPassword)
+                      }}
+                      secureTextEntry={!showConfirmPassword}
+                      placeholderTextColor="#9CA3AF"
+                    />
+                    <TouchableOpacity
+                      hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                      <Icon name={showConfirmPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    themed($updatePasswordButton),
+                    passwordMatched ? themed($activeUpdatePasswordButton) : themed($disabledUpdatePasswordButton),
+                  ]}
+                  disabled={!passwordMatched}
+                  onPress={() => {
+                    console.log("Password updated:", newPassword)
+                    setShowChangePassword(false)
+                    setNewPassword("")
+                    setConfirmPassword("")
+                  }}>
+                  <Text style={themed($updatePasswordButtonText)}>{translate("profileSettings:updatePassword")}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             <Button style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
               <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
             </Button>
-            <View style={{ height: 10 }} />
+            <View style={{height: 10}} />
             <Button style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
               <Text style={themed($deleteAccountButtonText)}>{translate("profileSettings:deleteAccount")}</Text>
             </Button>
@@ -261,7 +264,7 @@ export default function ProfileSettingsPage() {
         ) : (
           <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
         )}
-
+      </ScrollView>
     </Screen>
   )
 }
@@ -293,12 +296,10 @@ const darkHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $deleteAccountButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-   backgroundColor: colors.palette.angry500,
+  backgroundColor: colors.palette.angry500,
 })
 
-const $requestDataExportButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-
-})
+const $requestDataExportButton: ThemedStyle<ViewStyle> = ({colors}) => ({})
 
 const $updatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   backgroundColor: colors.palette.primary500,

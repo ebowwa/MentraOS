@@ -138,8 +138,7 @@ function SwitchInput(props: SwitchInputProps) {
         ? [+(knobWidth || 0) + offsetRight, offsetLeft]
         : [offsetLeft, +(knobWidth || 0) + offsetRight]
       : [rtlAdjustment * offsetLeft, rtlAdjustment * (+(knobWidth || 0) + offsetRight)]
-
-  console.log(outputRange)
+  
   const $animatedSwitchKnob = animate.current.interpolate({
     inputRange: [0, 1],
     // outputRange,

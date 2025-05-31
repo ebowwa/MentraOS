@@ -177,7 +177,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
 
   return (
     <View style={styles.connectedContent}>
-      <Text>{status.glasses_info?.case_charging ? "Charging" : "Not charging"}</Text>
+      {/* <Text>{status.glasses_info?.case_charging ? "Charging" : "Not charging"}</Text> */}
       <Animated.Image source={glassesImage} style={[styles.glassesImage, {opacity: fadeAnim}]} />
     </View>
   )

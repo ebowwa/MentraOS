@@ -40,7 +40,7 @@ export default function PrivacySettingsScreen() {
   const [calendarEnabled, setCalendarEnabled] = React.useState(true)
   const [calendarPermissionPending, setCalendarPermissionPending] = React.useState(false)
   const [appState, setAppState] = React.useState(AppState.currentState)
-  const {theme, themed} = useAppTheme()
+  const {theme} = useAppTheme()
 
   // Check permissions when screen loads
   useEffect(() => {
@@ -231,211 +231,43 @@ export default function PrivacySettingsScreen() {
     }
   }
 
-  // React.useEffect(() => {
-  //   setIsSensingEnabled(status.core_info.sensing_enabled);
-  // }, [status]);
-
-  const switchColors = {
-    trackColor: {
-      false: "#666666",
-      true: "#2196F3",
-    },
-    thumbColor: Platform.OS === "ios" ? undefined : "#FFFFFF",
-    ios_backgroundColor: "#666666",
-  }
-
-  // Theme colors
-  const theme2 = {
-    backgroundColor: "#1c1c1c",
-    headerBg: "#333333",
-    textColor: "#FFFFFF",
-    subTextColor: "#999999",
-    cardBg: "#333333",
-    borderColor: "#444444",
-    searchBg: "#2c2c2c",
-    categoryChipBg: "#444444",
-    categoryChipText: "#FFFFFF",
-    selectedChipBg: "#666666",
-    selectedChipText: "#FFFFFF",
-  }
-
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         titleTx="privacySettings:title"
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/settings")}
       />
+      <ScrollView>
+        {/* Notification Permission - Android Only */}
+        {Platform.OS === "android" && (
+          <>
+            <ToggleSetting
+              label={translate("settings:notificationsLabel")}
+              subtitle={translate("settings:notificationsSubtitle")}
+              value={notificationsEnabled}
+              onValueChange={handleToggleNotifications}
+            />
+            <Spacer height={theme.spacing.md} />
+          </>
+        )}
 
-      {/* Notification Permission - Android Only */}
-      {Platform.OS === "android" && (
-        <>
-          <ToggleSetting
-            label={translate("settings:notificationsLabel")}
-            subtitle={translate("settings:notificationsSubtitle")}
-            value={notificationsEnabled}
-            onValueChange={handleToggleNotifications}
-          />
-          <Spacer height={theme.spacing.md} />
-        </>
-      )}
+        <ToggleSetting
+          label={translate("settings:calendarLabel")}
+          subtitle={translate("settings:calendarSubtitle")}
+          value={calendarEnabled}
+          onValueChange={handleToggleCalendar}
+        />
 
-      <ToggleSetting
-        label={translate("settings:calendarLabel")}
-        subtitle={translate("settings:calendarSubtitle")}
-        value={calendarEnabled}
-        onValueChange={handleToggleCalendar}
-      />
+        <Spacer height={theme.spacing.md} />
 
-      <Spacer height={theme.spacing.md} />
-
-      <ToggleSetting
-        label={translate("settings:sensingLabel")}
-        subtitle={translate("settings:sensingSubtitle")}
-        value={isSensingEnabled}
-        onValueChange={toggleSensing}
-      />
+        <ToggleSetting
+          label={translate("settings:sensingLabel")}
+          subtitle={translate("settings:sensingSubtitle")}
+          value={isSensingEnabled}
+          onValueChange={toggleSensing}
+        />
+      </ScrollView>
     </Screen>
   )
 }
-
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
-})
-
-const $label: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-})
-
-const $value: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.textDim,
-})
-
-const $sectionHeader: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text,
-})
-
-const $borderColor: ThemedStyle<string> = ({colors}) => colors.border
-
-const $settingTextContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flex: 1,
-  paddingRight: 10,
-})
-
-const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  paddingVertical: 20,
-  backgroundColor: colors.background,
-})
-
-const styles = StyleSheet.create({
-  scrollViewContainer: {
-    marginBottom: 55,
-  },
-  container: {
-    flex: 1,
-    padding: 20,
-  },
-  sectionHeader: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginBottom: 12,
-    marginTop: 8,
-    fontFamily: "Montserrat-Bold",
-  },
-  sectionHeaderWithMargin: {
-    marginTop: 30, // Add space between sections
-  },
-  titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    marginHorizontal: -20,
-    marginTop: -20,
-    marginBottom: 10,
-  },
-  titleContainerDark: {
-    backgroundColor: "#333333",
-  },
-  titleContainerLight: {
-    backgroundColor: "#ffffff",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    textAlign: "left",
-    color: "#FFFFFF",
-    marginBottom: 5,
-  },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
-  redText: {
-    color: "#FF0F0F", // Using orange as a warning color
-  },
-  darkText: {
-    color: "black",
-  },
-  lightText: {
-    color: "white",
-  },
-  darkSubtext: {
-    color: "#666666",
-  },
-  lightSubtext: {
-    color: "#999999",
-  },
-  darkIcon: {
-    color: "#333333",
-  },
-  lightIcon: {
-    color: "#666666",
-  },
-  backButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
-  },
-  backButtonText: {
-    marginLeft: 10,
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 20,
-  },
-  settingItemWithBorder: {
-    borderBottomWidth: 1,
-    // Border color will be set dynamically based on theme
-  },
-  lastItemInSection: {
-    // No bottom border for the last item in a section
-    borderBottomWidth: 0,
-  },
-  settingTextContainer: {
-    flex: 1,
-    paddingRight: 10,
-  },
-  value: {
-    fontSize: 12,
-    marginTop: 5,
-    flexWrap: "wrap",
-  },
-  headerContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  disabledItem: {
-    opacity: 0.4,
-  },
-})

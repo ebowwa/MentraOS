@@ -17,7 +17,7 @@ import showAlert from "@/utils/AlertUtils"
 import {router, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
-import { ThemedStyle } from "@/theme"
+import {ThemedStyle} from "@/theme"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useStatus()
@@ -202,7 +202,7 @@ export default function SelectGlassesBluetoothScreen() {
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: 16}} safeAreaEdges={["bottom"]}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />

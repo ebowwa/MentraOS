@@ -190,7 +190,7 @@ export default function AppWebView() {
 
   // Render WebView only when finalUrl is ready
   return (
-    // <Screen preset="auto" style={{paddingHorizontal: 16, flex: 1}}>
+    // <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
     <View style={{flex: 1}}>
       <Header leftIcon="caretLeft" style={{paddingLeft: 16}} onLeftPress={() => router.back()} />
       <View style={styles.container}>

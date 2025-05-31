@@ -141,68 +141,52 @@ export default function ScreenSettingsScreen() {
   }
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 16}}>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         titleTx="screenSettings:title"
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/settings")}
       />
-      {/* Auto Brightness */}
-      <View style={styles.settingItem}>
-        <View style={styles.settingTextContainer}>
-          <Text style={themed($label)}>Auto Brightness</Text>
-          {status.glasses_info?.model_name && (
-            <Text style={[styles.value, styles.darkSubtext]}>
-              Automatically adjust the brightness of your smart glasses based on the ambient light.
-            </Text>
-          )}
-        </View>
-        <Switch
+
+      <ScrollView>
+        <ToggleSetting
+          label={translate("settings:autoBrightnessLabel")}
+          subtitle={translate("settings:autoBrightnessSubtitle")}
           value={isAutoBrightnessEnabled}
           onValueChange={toggleAutoBrightness}
-          trackColor={switchColors.trackColor}
-          thumbColor={switchColors.thumbColor}
-          ios_backgroundColor={switchColors.ios_backgroundColor}
         />
-      </View>
 
-      <ToggleSetting
-        label={translate("settings:autoBrightnessLabel")}
-        subtitle={translate("settings:autoBrightnessSubtitle")}
-        value={isAutoBrightnessEnabled}
-        onValueChange={toggleAutoBrightness}
-      />
+        <Spacer height={theme.spacing.md} />
 
-      <Spacer height={theme.spacing.md} />
+        {/* Brightness Slider */}
+        {!isAutoBrightnessEnabled && (
+          <View style={styles.settingItem}>
+            <View style={styles.settingTextContainer}>
+              <Text style={themed($label)}>Brightness</Text>
+              <Text style={[styles.value, styles.darkSubtext]}>
+                {"Adjust the brightness level of your smart glasses."}
+              </Text>
+              <Slider {...sliderProps} />
+            </View>
+          </View>
+        )}
 
-      {/* Brightness Slider */}
-      {!isAutoBrightnessEnabled && (
         <View style={styles.settingItem}>
           <View style={styles.settingTextContainer}>
-            <Text style={themed($label)}>Brightness</Text>
-            <Text style={[styles.value, styles.darkSubtext]}>
-              {"Adjust the brightness level of your smart glasses."}
-            </Text>
-            <Slider {...sliderProps} />
+            <Text style={themed($label)}>Depth</Text>
+            <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the depth of the contextual dashboard."}</Text>
+            <Slider {...depthSliderProps} />
           </View>
         </View>
-      )}
 
-      <View style={styles.settingItem}>
-        <View style={styles.settingTextContainer}>
-          <Text style={themed($label)}>Depth</Text>
-          <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the depth of the contextual dashboard."}</Text>
-          <Slider {...depthSliderProps} />
+        <View style={styles.settingItem}>
+          <View style={styles.settingTextContainer}>
+            <Text style={themed($label)}>Dashboard Height</Text>
+            <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the height of the contextual dashboard."}</Text>
+            <Slider {...heightSliderProps} />
+          </View>
         </View>
-      </View>
-
-      <View style={styles.settingItem}>
-        <View style={styles.settingTextContainer}>
-          <Text style={themed($label)}>Dashboard Height</Text>
-          <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the height of the contextual dashboard."}</Text>
-          <Slider {...heightSliderProps} />
-        </View>
-      </View>
+      </ScrollView>
     </Screen>
   )
 }

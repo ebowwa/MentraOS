@@ -21,6 +21,7 @@ import {translate} from "@/i18n"
 export default function PairingPrepScreen() {
   const {status} = useStatus()
   const route = useRoute()
+  const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
 
   // React.useEffect(() => {
@@ -196,7 +197,7 @@ export default function PairingPrepScreen() {
   }
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 16}} safeAreaEdges={["bottom"]}>
+    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       <Button onPress={advanceToPairing} disabled={false}>
