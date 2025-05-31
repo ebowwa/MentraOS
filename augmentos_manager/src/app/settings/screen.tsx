@@ -4,9 +4,12 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {Slider} from "react-native-elements"
 import {Header, Screen} from "@/components/ignite"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
+import {Spacer} from "@/components/misc/Spacer"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import {translate} from "@/i18n"
 
 const parseBrightness = (brightnessStr: string | null | undefined): number => {
   if (typeof brightnessStr === "number") {
@@ -21,13 +24,13 @@ const parseBrightness = (brightnessStr: string | null | undefined): number => {
 
 export default function ScreenSettingsScreen() {
   const {status} = useStatus()
+  const {theme, themed} = useAppTheme()
 
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null)
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
   const [depth, setDepth] = useState<number | null>(null)
   const [height, setHeight] = useState<number | null>(null)
-  const {themed} = useAppTheme()
 
   // -- Effects --
   useEffect(() => {
@@ -162,6 +165,15 @@ export default function ScreenSettingsScreen() {
           ios_backgroundColor={switchColors.ios_backgroundColor}
         />
       </View>
+
+      <ToggleSetting
+        label={translate("settings:autoBrightnessLabel")}
+        subtitle={translate("settings:autoBrightnessSubtitle")}
+        value={isAutoBrightnessEnabled}
+        onValueChange={toggleAutoBrightness}
+      />
+
+      <Spacer height={theme.spacing.md} />
 
       {/* Brightness Slider */}
       {!isAutoBrightnessEnabled && (

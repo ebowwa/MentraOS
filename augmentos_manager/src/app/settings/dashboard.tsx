@@ -19,8 +19,12 @@ import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
 import {router} from "expo-router"
 import {Screen} from "@/components/ignite"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
+import ToggleSetting from "@/components/settings/ToggleSetting"
+import { translate } from "@/i18n/translate"
+import { Spacer } from "@/components/misc/Spacer"
+import RouteButton from "@/components/ui/RouteButton"
 
 export default function DashboardSettingsScreen() {
   const {status} = useStatus()
@@ -152,36 +156,6 @@ export default function DashboardSettingsScreen() {
               <Text style={styles.closeButtonText}>✕</Text>
             </TouchableOpacity>
           </View>
-          {/* <ScrollView style={styles.pickerOptionsContainer}>
-            {dashboardContentOptions.map((option) => (
-              <TouchableOpacity
-                key={option.value}
-                style={[
-                  styles.pickerOption,
-                  dashboardContent === option.value && styles.selectedOption,
-                  isUpdating && styles.disabledItem
-                ]}
-                onPress={() => !isUpdating && handleDashboardContentChange(option.value)}
-                disabled={isUpdating}
-              >
-                <View style={styles.optionContent}>
-                  <Text style={[
-                    styles.pickerOptionText,
-                    dashboardContent === option.value && styles.selectedOptionText
-                  ]}>
-                    {option.label}
-                  </Text>
-                  {dashboardContent === option.value && (
-                    isUpdating ? (
-                      <ActivityIndicator size="small" color="#FFFFFF" />
-                    ) : (
-                      <Icon name="check" size={20} color="#FFFFFF" />
-                    )
-                  )}
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView> */}
         </View>
       </View>
     </Modal>
@@ -194,8 +168,8 @@ export default function DashboardSettingsScreen() {
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/settings")}
       />
-      <Text style={themed($sectionTitle)}>General Settings</Text>
-      <View style={themed($settingItem)}>
+      {/* <Text style={themed($sectionTitle)}>General Settings</Text> */}
+      {/* <View style={themed($settingItem)}>
         <View style={themed($settingTextContainer)}>
           <Text style={themed($label)}>Contextual Dashboard</Text>
           {status.glasses_info?.model_name && (
@@ -213,21 +187,25 @@ export default function DashboardSettingsScreen() {
           thumbColor={switchColors.thumbColor}
           ios_backgroundColor={switchColors.ios_backgroundColor}
         />
-      </View>
+      </View> */}
 
-      <View style={themed($settingItem)}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($label)}>Use Metric System</Text>
-          <Text style={themed($value)}>Metric System (°C) or Imperial System (°F).</Text>
-        </View>
-        <Switch
-          value={isMetricSystemEnabled}
-          onValueChange={toggleMetricSystem}
-          trackColor={switchColors.trackColor}
-          thumbColor={switchColors.thumbColor}
-          ios_backgroundColor={switchColors.ios_backgroundColor}
-        />
-      </View>
+      <ToggleSetting
+        label={translate("settings:contextualDashboardLabel")}
+        subtitle={translate("settings:contextualDashboardSubtitle")}
+        value={isContextualDashboardEnabled}
+        onValueChange={toggleContextualDashboard}
+      />
+
+      <Spacer height={theme.spacing.md} />
+
+      <ToggleSetting
+        label={translate("settings:metricSystemLabel")}
+        subtitle={translate("settings:metricSystemSubtitle")}
+        value={isMetricSystemEnabled}
+        onValueChange={toggleMetricSystem}
+      />
+
+      <Spacer height={theme.spacing.md} />
 
       {/* Dashboard Content Selection */}
       {/* <View style={styles.section}>
@@ -267,19 +245,12 @@ export default function DashboardSettingsScreen() {
           </TouchableOpacity>
         </View> */}
 
-      {/* Display Settings Section */}
-      <Text style={themed($sectionTitle)}>Display Settings</Text>
+      <RouteButton
+        label={translate("settings:adjustHeadAngleLabel")}
+        subtitle={translate("settings:adjustHeadAngleSubtitle")}
+        onPress={() => setHeadUpAngleComponentVisible(true)}
+      />
 
-      {/* Head-Up Angle Setting */}
-      <TouchableOpacity style={themed($settingItem)} onPress={() => setHeadUpAngleComponentVisible(true)}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($label)}>Adjust Head-Up Angle</Text>
-          <Text style={[themed($value)]}>
-            Adjust the angle at which the contextual dashboard appears when you look up.
-          </Text>
-        </View>
-        <Icon name="chevron-right" size={16} color={theme.colors.text} />
-      </TouchableOpacity>
       {renderContentPicker()}
       {headUpAngle !== null && (
         <HeadUpAngleComponent

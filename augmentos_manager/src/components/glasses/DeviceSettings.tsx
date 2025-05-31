@@ -29,6 +29,7 @@ import showAlert from "@/utils/AlertUtils"
 import SunIcon from "assets/icons/component/SunIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
+import RouteButton from "../ui/RouteButton"
 
 export default function ConnectedDeviceInfo() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -153,10 +154,14 @@ export default function ConnectedDeviceInfo() {
   return (
     <View style={themed($container)}>
       <View style={themed($settingsGroup)}>
-        <ToggleSetting label="Auto Brightness" value={autoBrightness} onValueChange={(value) => {
-          setAutoBrightness(value)
-          coreCommunicator.setGlassesBrightnessMode(brightness, value)
-        }} />
+        <ToggleSetting
+          label="Auto Brightness"
+          value={autoBrightness}
+          onValueChange={value => {
+            setAutoBrightness(value)
+            coreCommunicator.setGlassesBrightnessMode(brightness, value)
+          }}
+        />
 
         {!autoBrightness && (
           <>
@@ -228,21 +233,11 @@ export default function ConnectedDeviceInfo() {
         </TouchableOpacity>
       </View>
 
-      <View style={[themed($settingsGroup), {paddingVertical: 0}]}>
-        <TouchableOpacity
-          onPress={() => {
-            router.push("/settings/dashboard")
-          }}>
-          <View
-            style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8, alignItems: "center"}}>
-            <View style={{flexDirection: "column", justifyContent: "space-between", paddingVertical: 8}}>
-              <Text style={{color: theme.colors.text}}>Dashboard Settings</Text>
-              <Text style={themed($subtitle)}>Contextual Dashboard and Head Up Settings</Text>
-            </View>
-            <ChevronRight size={24} color={theme.colors.text} />
-          </View>
-        </TouchableOpacity>
-      </View>
+      <RouteButton
+        label={translate("settings:dashboardSettings")}
+        subtitle={translate("settings:dashboardDescription")}
+        onPress={() => router.push("/settings/dashboard")}
+      />
 
       {status.glasses_info?.model_name && (
         <View style={themed($settingsGroup)}>

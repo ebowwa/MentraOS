@@ -22,11 +22,12 @@ import {
 // import {NotificationService} from '@/utils/NotificationServiceUtils';
 import showAlert from "@/utils/AlertUtils"
 import {Header, Screen} from "@/components/ignite"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import ToggleSetting from "@/components/settings/ToggleSetting"
-import { translate } from "@/i18n"
+import {translate} from "@/i18n"
+import {Spacer} from "@/components/misc/Spacer"
 
 export default function PrivacySettingsScreen() {
   const {status} = useStatus()
@@ -39,7 +40,7 @@ export default function PrivacySettingsScreen() {
   const [calendarEnabled, setCalendarEnabled] = React.useState(true)
   const [calendarPermissionPending, setCalendarPermissionPending] = React.useState(false)
   const [appState, setAppState] = React.useState(AppState.currentState)
-  const {themed} = useAppTheme()
+  const {theme, themed} = useAppTheme()
 
   // Check permissions when screen loads
   useEffect(() => {
@@ -244,7 +245,7 @@ export default function PrivacySettingsScreen() {
   }
 
   // Theme colors
-  const theme = {
+  const theme2 = {
     backgroundColor: "#1c1c1c",
     headerBg: "#333333",
     textColor: "#FFFFFF",
@@ -265,73 +266,35 @@ export default function PrivacySettingsScreen() {
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/settings")}
       />
-      {/* ADDITIONAL PERMISSIONS SECTION */}
-      <Text style={themed($sectionHeader)}>Additional Permissions</Text>
 
       {/* Notification Permission - Android Only */}
       {Platform.OS === "android" && (
-        <View
-          style={[
-            styles.settingItem,
-            // Add a border at the bottom of the notifications item since it's not the last item
-            styles.settingItemWithBorder,
-            {borderBottomColor: themed($borderColor)},
-          ]}>
-          <View style={styles.settingTextContainer}>
-            <Text style={themed($label)}>Notification Access</Text>
-            <Text style={themed($value)}>
-              Allow AugmentOS to forward your phone notifications to your smart glasses.
-            </Text>
-          </View>
-          <Switch
+        <>
+          <ToggleSetting
+            label={translate("settings:notificationsLabel")}
+            subtitle={translate("settings:notificationsSubtitle")}
             value={notificationsEnabled}
             onValueChange={handleToggleNotifications}
-            trackColor={switchColors.trackColor}
-            thumbColor={switchColors.thumbColor}
-            ios_backgroundColor={switchColors.ios_backgroundColor}
           />
-        </View>
+          <Spacer height={theme.spacing.md} />
+        </>
       )}
 
-      {/* Calendar Permission - last item in this section so no border */}
-      <View style={themed($settingItem)}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($label)}>Calendar Access</Text>
-          <Text style={themed($value)}>Allow AugmentOS to display your calendar events on your smart glasses.</Text>
-        </View>
-        <Switch
-          value={calendarEnabled}
-          onValueChange={handleToggleCalendar}
-          disabled={calendarPermissionPending}
-          trackColor={switchColors.trackColor}
-          thumbColor={switchColors.thumbColor}
-          ios_backgroundColor={switchColors.ios_backgroundColor}
-        />
-      </View>
+      <ToggleSetting
+        label={translate("settings:calendarLabel")}
+        subtitle={translate("settings:calendarSubtitle")}
+        value={calendarEnabled}
+        onValueChange={handleToggleCalendar}
+      />
 
-      {/* PRIVACY OPTIONS SECTION */}
-      <Text style={[styles.sectionHeader, styles.sectionHeaderWithMargin, themed($label)]}>Privacy Options</Text>
+      <Spacer height={theme.spacing.md} />
 
       <ToggleSetting
-      label={translate("settings:sensingLabel")}
-        subLabel={translate("settings:sensingSubLabel")}
+        label={translate("settings:sensingLabel")}
+        subtitle={translate("settings:sensingSubtitle")}
         value={isSensingEnabled}
         onValueChange={toggleSensing}
       />
-
-      {/* <View style={[styles.settingItem, styles.lastItemInSection]}>
-        <View style={styles.settingTextContainer}>
-          <Text style={themed($label)}>Sensing</Text>
-          <Text style={themed($value)}>Enable microphones & cameras.</Text>
-        </View>
-        <Switch
-          value={isSensingEnabled}
-          onValueChange={toggleSensing}
-          trackColor={switchColors.trackColor}
-          thumbColor={switchColors.thumbColor}
-          ios_backgroundColor={switchColors.ios_backgroundColor}
-        />
-      </View> */}
     </Screen>
   )
 }

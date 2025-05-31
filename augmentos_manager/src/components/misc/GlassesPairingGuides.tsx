@@ -1,19 +1,18 @@
 // GlassesPairingGuides.tsx
 
-import { useAppTheme } from '@/utils/useAppTheme';
-import React from 'react';
-import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from 'react-native';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { Button } from '../ignite';
-import { Spacer } from './Spacer';
-import { spacing } from '@/theme';
+import {useAppTheme} from "@/utils/useAppTheme"
+import React from "react"
+import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from "react-native"
+import FontAwesome from "react-native-vector-icons/FontAwesome"
+import {Button} from "../ignite"
+import {Spacer} from "./Spacer"
+import {spacing} from "@/theme"
 import {translate} from "@/i18n"
-
 
 // 2) Declare each guide component with the correct prop type
 export function EvenRealitiesG1PairingGuide() {
-  const { theme } = useAppTheme();
-  const textColor = theme.isDark ? 'white' : 'black';
+  const {theme} = useAppTheme()
+  const textColor = theme.isDark ? "white" : "black"
 
   return (
     <View style={styles.guideContainer}>
@@ -26,20 +25,20 @@ export function EvenRealitiesG1PairingGuide() {
       </Text>
 
       <Image
-        source={require('../../../assets/glasses/g1.png')}
-        style={{...styles.guideImage, width: '60%', alignSelf: 'center'}}
+        source={require("../../../assets/glasses/g1.png")}
+        style={{...styles.guideImage, width: "60%", alignSelf: "center"}}
       />
 
-      <FontAwesome name="arrow-down" size={36} color={textColor} style={{alignSelf: 'center', marginTop: -36}} />
+      <FontAwesome name="arrow-down" size={36} color={textColor} style={{alignSelf: "center", marginTop: -36}} />
 
-      <Image source={require('../../../assets/guide/image_g1_pair.png')} style={styles.guideImage} />
+      <Image source={require("../../../assets/guide/image_g1_pair.png")} style={styles.guideImage} />
     </View>
-  );
-};
+  )
+}
 
 export function VuzixZ100PairingGuide() {
-  const { theme } = useAppTheme();
-  const textColor = theme.isDark ? 'white' : 'black';
+  const {theme} = useAppTheme()
+  const textColor = theme.isDark ? "white" : "black"
 
   return (
     <View style={styles.guideContainer}>
@@ -49,12 +48,12 @@ export function VuzixZ100PairingGuide() {
         2. Pair your Z100 with your device using the Vuzix Connect app.
       </Text>
     </View>
-  );
-};
+  )
+}
 
 export function MentraMach1PairingGuide() {
-  const { theme } = useAppTheme();
-  const textColor = theme.isDark ? 'white' : 'black';
+  const {theme} = useAppTheme()
+  const textColor = theme.isDark ? "white" : "black"
 
   return (
     <View style={styles.guideContainer}>
@@ -66,65 +65,65 @@ export function MentraMach1PairingGuide() {
         2. Pair your Mach1 with your device using the Vuzix Connect app.
       </Text>
     </View>
-  );
-};
+  )
+}
 
 export function MentraLivePairingGuide() {
-  const { theme } = useAppTheme();
-  const textColor = theme.isDark ? 'white' : 'black';
-  const primaryColor = '#5E17EB'; // Purple brand color based on website
-  const secondaryColor = '#FF4F00'; // Orange accent color
+  const {theme} = useAppTheme()
+  const textColor = theme.isDark ? "white" : "black"
+  const primaryColor = "#5E17EB" // Purple brand color based on website
+  const secondaryColor = "#FF4F00" // Orange accent color
 
   return (
     <View style={styles.guideContainer}>
-      <View style={{flex: 1, justifyContent: 'space-between', flexDirection: 'column'}}>
+      <View style={{flex: 1, justifyContent: "space-between", flexDirection: "column"}}>
         {/* <ScrollView style={{}} nestedScrollEnabled={true}> */}
-          <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Live [Beta]</Text>
+        <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Live [Beta]</Text>
 
-          {/* <Text style={[styles.guideStep, {color: textColor}]}>
+        {/* <Text style={[styles.guideStep, {color: textColor}]}>
         1. Make sure your Mentra Live is fully charged and turned on.
         </Text>
         <Text style={[styles.guideStep, {color: textColor}]}>
         2. Make sure your Mentra Live is not already paired to a different device.
         </Text> */}
 
-          {/* Product image would go here */}
-          <Image
-            source={require('../../../assets/glasses/mentra_live.png')}
-            style={styles.guideImage}
-            // Fallback if image doesn't exist
-            onError={e => console.log('Image failed to load')}
-          />
-          {/* Feature highlights */}
-          <View style={[styles.featuresContainer]}>
-            <View style={[styles.featuresRow]}>
-              <View style={styles.featureItem}>
-                <FontAwesome name="camera" size={24} color={primaryColor} />
-                <Text style={[styles.featureText, {color: textColor}]}>Camera</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <FontAwesome name="microphone" size={24} color={primaryColor} />
-                <Text style={[styles.featureText, {color: textColor}]}>Microphone</Text>
-              </View>
+        {/* Product image would go here */}
+        <Image
+          source={require("../../../assets/glasses/mentra_live.png")}
+          style={styles.guideImage}
+          // Fallback if image doesn't exist
+          onError={e => console.log("Image failed to load")}
+        />
+        {/* Feature highlights */}
+        <View style={[styles.featuresContainer]}>
+          <View style={[styles.featuresRow]}>
+            <View style={styles.featureItem}>
+              <FontAwesome name="camera" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Camera</Text>
             </View>
-            <View style={[styles.featuresRow]}>
-              <View style={styles.featureItem}>
-                <FontAwesome name="volume-up" size={24} color={primaryColor} />
-                <Text style={[styles.featureText, {color: textColor}]}>Speakers</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <FontAwesome name="bluetooth" size={24} color={primaryColor} />
-                <Text style={[styles.featureText, {color: textColor}]}>Bluetooth</Text>
-              </View>
+            <View style={styles.featureItem}>
+              <FontAwesome name="microphone" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Microphone</Text>
             </View>
           </View>
+          <View style={[styles.featuresRow]}>
+            <View style={styles.featureItem}>
+              <FontAwesome name="volume-up" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Speakers</Text>
+            </View>
+            <View style={styles.featureItem}>
+              <FontAwesome name="bluetooth" size={24} color={primaryColor} />
+              <Text style={[styles.featureText, {color: textColor}]}>Bluetooth</Text>
+            </View>
+          </View>
+        </View>
 
-          {/* Marketing description */}
-          <Text style={[styles.guideDescription, {color: textColor}]}>
-            Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see,
-            you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
-            developers creating the next generation of augmented reality experiences.
-          </Text>
+        {/* Marketing description */}
+        <Text style={[styles.guideDescription, {color: textColor}]}>
+          Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see,
+          you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
+          developers creating the next generation of augmented reality experiences.
+        </Text>
         {/* </ScrollView> */}
 
         <View style={styles.buySection}>
@@ -133,9 +132,9 @@ export function MentraLivePairingGuide() {
             <Text style={styles.currentPrice}>$219</Text>
           </View>
 
-           <Button 
-           onPress={() => {
-              Linking.openURL('https://mentra.glass/live');
+          <Button
+            onPress={() => {
+              Linking.openURL("https://mentra.glass/live")
             }}
             children={
               <View>
@@ -144,17 +143,16 @@ export function MentraLivePairingGuide() {
               </View>
             }
           />
-          <Spacer height={spacing.md}/>
-
+          <Spacer height={theme.spacing.md} />
         </View>
       </View>
     </View>
-  );
-};
+  )
+}
 
 export function AudioWearablePairingGuide() {
-  const { theme } = useAppTheme();
-  const textColor = theme.isDark ? 'white' : 'black';
+  const {theme} = useAppTheme()
+  const textColor = theme.isDark ? "white" : "black"
 
   return (
     <View style={styles.guideContainer}>
@@ -174,12 +172,11 @@ export function AudioWearablePairingGuide() {
         feedback.
       </Text>
     </View>
-  );
-};
+  )
+}
 
 export function VirtualWearablePairingGuide() {
-
-  const {theme} = useAppTheme();
+  const {theme} = useAppTheme()
   return (
     <View style={styles.guideContainer}>
       <Text style={[styles.guideTitle, {color: theme.colors.text}]}>Simulated Glasses</Text>
@@ -187,8 +184,8 @@ export function VirtualWearablePairingGuide() {
         The Simulated Glasses allows you to run AugmentOS without physical smart glasses.
       </Text>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   // guideContainer: {
@@ -219,11 +216,11 @@ const styles = StyleSheet.create({
 
   guideContainer: {
     marginTop: 20,
-    width: '90%',
+    width: "90%",
   },
   guideTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
   },
   marketingBanner: {
@@ -233,12 +230,12 @@ const styles = StyleSheet.create({
   },
   marketingTag: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 5,
   },
   marketingText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   guideStep: {
     fontSize: 16,
@@ -251,74 +248,74 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   guideImage: {
-    width: '100%',
+    width: "100%",
     height: 180,
-    resizeMode: 'contain',
+    resizeMode: "contain",
     marginVertical: 15,
   },
   featuresContainer: {
-    backgroundColor: 'rgba(204, 204, 204, 0.25)', // equals to '#ccc'  with opacity
-    flexDirection: 'column',
-    alignItems: 'center',
+    backgroundColor: "rgba(204, 204, 204, 0.25)", // equals to '#ccc'  with opacity
+    flexDirection: "column",
+    alignItems: "center",
     borderRadius: 16,
     padding: 12,
     paddingLeft: 36,
   },
   featuresRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
     marginBottom: 12,
     flex: 1,
   },
   featureText: {
     marginLeft: 10,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   buySection: {
     marginTop: 20,
     borderTopWidth: 1,
-    borderTopColor: '#ddd',
+    borderTopColor: "#ddd",
   },
   pricingContainer: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
+    flexDirection: "row",
+    alignItems: "baseline",
     marginBottom: 15,
   },
   originalPrice: {
     fontSize: 16,
-    textDecorationLine: 'line-through',
+    textDecorationLine: "line-through",
     marginRight: 10,
   },
   currentPrice: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#5E17EB',
+    fontWeight: "bold",
+    color: "#5E17EB",
     marginRight: 10,
   },
   discount: {
     fontSize: 14,
-    color: '#FF4F00',
-    fontWeight: '500',
+    color: "#FF4F00",
+    fontWeight: "500",
   },
   buyButton: {
     paddingVertical: 15,
     borderRadius: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   buyButtonText: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   shippingText: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: "rgba(255, 255, 255, 0.8)",
     fontSize: 12,
     marginTop: 5,
   },
-});
+})

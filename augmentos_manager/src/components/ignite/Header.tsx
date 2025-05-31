@@ -283,6 +283,8 @@ const $container: ViewStyle = {
 
 const $title: TextStyle = {
   textAlign: "center",
+  fontFamily: "SF Pro Rounded",
+  fontSize: 15,
 }
 
 const $actionTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -295,7 +297,7 @@ const $actionTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $actionText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text, fontFamily: "SF Pro Rounded" 
+  color: colors.text, fontFamily: "SF Pro Rounded"
 })
 
 const $actionIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

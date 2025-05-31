@@ -3,7 +3,7 @@ import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle} from "re
 import {FontAwesome} from "@expo/vector-icons"
 import {Screen, Header, Icon} from "@/components/ignite"
 import {router} from "expo-router"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 
@@ -11,6 +11,8 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
+import RouteButton from "@/components/ui/RouteButton"
+import {Spacer} from "@/components/misc/Spacer"
 
 export default function SettingsPage() {
   const {status} = useStatus()
@@ -53,46 +55,34 @@ export default function SettingsPage() {
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
       <Header titleTx="settings:title" />
 
-      {/* Proofile Settings */}
-      <TouchableOpacity
-        style={themed($settingItem)}
-        onPress={() => {
-          router.push("/settings/profile")
-        }}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={[themed($label)]}>{translate("settings:profileSettings")}</Text>
-        </View>
-        <Icon name="angle-right" size={20} color={themed($iconColor)} />
-      </TouchableOpacity>
+      <RouteButton label={translate("settings:profileSettings")} onPress={() => router.push("/settings/profile")} />
 
-      {/* Privacy Settings */}
-      <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/privacy")}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($label)}>{translate("settings:privacySettings")}</Text>
-        </View>
-        <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-      </TouchableOpacity>
+      <Spacer height={theme.spacing.md} />
 
-      {/* Screen Settings */}
-      <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/screen")}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($label)}>{translate("settings:screenSettings")}</Text>
-          <Text style={themed($value)}>{translate("settings:screenDescription")}</Text>
-        </View>
-        <Icon name="angle-right" size={20} color={themed($iconColor)} />
-      </TouchableOpacity>
+      <RouteButton label={translate("settings:privacySettings")} onPress={() => router.push("/settings/privacy")} />
 
-      {/* Glasses Wifi Settings */}
-      <TouchableOpacity
-        style={themed($settingItem)}
+      <Spacer height={theme.spacing.md} />
+
+      <RouteButton
+        label={translate("settings:screenSettings")}
+        subtitle={translate("settings:screenDescription")}
+        onPress={() => router.push("/settings/screen")}
+      />
+
+      <Spacer height={theme.spacing.md} />
+
+      <RouteButton
+        label={translate("settings:glassesWifiSettings")}
+        subtitle={translate("settings:glassesWifiDescription")}
         onPress={() => {
           // Check if connected glasses support WiFi
           const supportsWifi = status.glasses_info && status.glasses_info.glasses_use_wifi === true
 
           if (supportsWifi) {
-            navigateTo("glasseswifisetup", {
-              deviceModel: status.glasses_info?.model_name || "Glasses",
-            })
+            // router.push({
+            //   pathname: "/pairing/glasseswifisetup",
+            //   params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
+            // })
           } else {
             showAlert(
               translate("common:notAvailable"),
@@ -104,40 +94,24 @@ export default function SettingsPage() {
               },
             )
           }
-        }}>
-        <View style={themed($settingTextContainer)}>
-          <Text
-            style={[
-              themed($label),
-              (!status.glasses_info || status.glasses_info.glasses_use_wifi !== true) && themed($disabledItem),
-            ]}>
-            {translate("settings:glassesWifiSettings")}
-          </Text>
-          <Text
-            style={[
-              themed($value),
-              (!status.glasses_info || status.glasses_info.glasses_use_wifi !== true) && themed($disabledItem),
-            ]}>
-            {translate("settings:glassesWifiDescription")}
-          </Text>
-        </View>
-        <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-      </TouchableOpacity>
+        }}
+      />
 
-      {/* Developer Settings */}
-      <TouchableOpacity style={themed($settingItem)} onPress={() => router.push("/settings/developer")}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($label)}>{translate("settings:developerSettings")}</Text>
-        </View>
-        <FontAwesome name="angle-right" size={20} color={themed($iconColor)} />
-      </TouchableOpacity>
+      <Spacer height={theme.spacing.md} />
 
-      {/* Sign Out */}
-      <TouchableOpacity style={themed($settingItem)} onPress={confirmSignOut}>
-        <View style={themed($settingTextContainer)}>
-          <Text style={themed($dangerLabel)}>{translate("settings:signOut")}</Text>
-        </View>
-      </TouchableOpacity>
+      <RouteButton
+        label={translate("settings:developerSettings")}
+        // subtitle={translate("settings:developerSettingsSubtitle")}
+        onPress={() => router.push("/settings/developer")}
+      />
+
+      <Spacer height={theme.spacing.md} />
+
+      <RouteButton
+        label={translate("settings:signOut")}
+        onPress={confirmSignOut}
+      />
+      
     </Screen>
   )
 }
