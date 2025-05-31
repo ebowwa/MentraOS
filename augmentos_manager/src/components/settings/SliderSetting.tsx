@@ -66,13 +66,11 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
 const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: '100%',
   borderRadius: 8,
-  marginTop: 16,
 })
 
 const $label: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
+  fontSize: 15,
   color: colors.text,
-  paddingBottom: 4,
 })
 
 const $slider: ThemedStyle<ViewStyle> = ({colors}) => ({

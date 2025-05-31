@@ -160,15 +160,14 @@ export default function ConnectedDeviceInfo() {
             setAutoBrightness(value)
             coreCommunicator.setGlassesBrightnessMode(brightness, value)
           }}
+          containerStyle={{paddingHorizontal: 0, paddingTop: 0}}
         />
 
         {!autoBrightness && (
           <>
-            <View
-              style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginTop: 12, marginBottom: 4}}
-            />
+            <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300}} />
             <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between"}}>
-              <View style={{flex: 8}}>
+              <View style={{flexGrow: 1, marginTop: 8}}>
                 <SliderSetting
                   label="Brightness"
                   value={brightness}
@@ -182,7 +181,6 @@ export default function ConnectedDeviceInfo() {
               </View>
               <View
                 style={{
-                  flex: 3,
                   alignItems: "center",
                   alignSelf: "flex-end",
                   marginBottom: -4,
@@ -200,7 +198,6 @@ export default function ConnectedDeviceInfo() {
           </>
         )}
       </View>
-      {/* divider */}
 
       <View style={themed($settingsGroup)}>
         <TouchableOpacity

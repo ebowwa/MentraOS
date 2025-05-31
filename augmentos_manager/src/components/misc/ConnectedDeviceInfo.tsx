@@ -183,6 +183,33 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   )
 }
 
+export function SplitDeviceInfo() {
+  const {status} = useStatus()
+  const {themed, theme} = useAppTheme()
+
+  if (!status.glasses_info?.model_name) {
+    return null
+  }
+
+  let wearable = status.core_info.default_wearable
+  let glassesImage = getGlassesImage(wearable)
+  let caseImage = null;
+  if (!status.glasses_info?.case_removed) {
+    if (status.glasses_info?.case_open) {
+      caseImage = getGlassesOpenImage(wearable)
+    } else {
+      caseImage = getGlassesClosedImage(wearable)
+    }
+  }
+
+  return (
+    <View style={{flexDirection: "row", alignItems: "center", gap: 10}}>
+      <Animated.Image source={glassesImage} style={[styles.glassesImage, {width: caseImage ? "50%" : "100%"}]} />
+      {caseImage && <Animated.Image source={caseImage} style={[styles.glassesImage, {width: "50%"}]} />}
+    </View>
+  )
+}
+
 export function DeviceToolbar() {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
