@@ -1,3 +1,5 @@
+import { Platform } from "react-native"
+
 export const getGlassesImage = (glasses: string | null) => {
   switch (glasses) {
     case "Vuzix-z100":
@@ -23,7 +25,11 @@ export const getGlassesImage = (glasses: string | null) => {
     case "Audio Wearable":
       return require("../../assets/glasses/audio_wearable.png")
     case "Simulated Glasses":
-      return require("../../assets/glasses/phoneframe.png")
+      if (Platform.OS === "ios") {
+        return require("../../assets/guide/iphone.png")
+      } else {
+        return require("../../assets/guide/android.png")
+      }
     default:
       return require("../../assets/glasses/unknown_wearable.png")
   }

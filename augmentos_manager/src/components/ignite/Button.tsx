@@ -1,5 +1,5 @@
-import { ComponentType } from "react"
-import { LinearGradient } from "expo-linear-gradient"
+import {ComponentType} from "react"
+import {LinearGradient} from "expo-linear-gradient"
 const gradientColors = ["#4340D3", "#06114D"]
 
 const gradientBorderStyle: ViewStyle = {
@@ -15,10 +15,10 @@ import {
   ViewStyle,
   View,
 } from "react-native"
-import type { ThemedStyle, ThemedStyleArray } from "@/theme"
-import { $styles, spacing } from "@/theme"
-import { Text, TextProps } from "./Text"
-import { useAppTheme } from "@/utils/useAppTheme"
+import type {ThemedStyle, ThemedStyleArray} from "@/theme"
+import {$styles, spacing} from "@/theme"
+import {Text, TextProps} from "./Text"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 type Presets = "default" | "filled" | "reversed"
 
@@ -132,7 +132,7 @@ export function Button(props: ButtonProps) {
     ...rest
   } = props
 
-  const { themed } = useAppTheme()
+  const {themed} = useAppTheme()
 
   const preset: Presets = props.preset ?? "default"
   /**
@@ -140,7 +140,7 @@ export function Button(props: ButtonProps) {
    * @param {boolean} root0.pressed - The pressed state.
    * @returns {StyleProp<ViewStyle>} The view style based on the pressed state.
    */
-  function $viewStyle({ pressed }: PressableStateCallbackType): StyleProp<ViewStyle> {
+  function $viewStyle({pressed}: PressableStateCallbackType): StyleProp<ViewStyle> {
     return [
       themed($viewPresets[preset]),
       $viewStyleOverride,
@@ -153,7 +153,7 @@ export function Button(props: ButtonProps) {
    * @param {boolean} root0.pressed - The pressed state.
    * @returns {StyleProp<TextStyle>} The text style based on the pressed state.
    */
-  function $textStyle({ pressed }: PressableStateCallbackType): StyleProp<TextStyle> {
+  function $textStyle({pressed}: PressableStateCallbackType): StyleProp<TextStyle> {
     return [
       themed($textPresets[preset]),
       $textStyleOverride,
@@ -163,23 +163,17 @@ export function Button(props: ButtonProps) {
   }
 
   return (
-    <LinearGradient
-      colors={gradientColors}
-      start={{ x: 1, y: 0 }}
-      end={{ x: 0, y: 0 }}
-      style={gradientBorderStyle}
-    >
+    <LinearGradient colors={gradientColors} start={{x: 1, y: 0}} end={{x: 0, y: 0}} style={gradientBorderStyle}>
       <Pressable
         style={$viewStyle}
         accessibilityRole="button"
-        accessibilityState={{ disabled: !!disabled }}
+        accessibilityState={{disabled: !!disabled}}
         {...rest}
-        disabled={disabled}
-      >
-        {(state) => (
-          <View style={{ flex: 1, position: "relative", justifyContent: "center" }}>
+        disabled={disabled}>
+        {state => (
+          <View style={{flex: 1, position: "relative", justifyContent: "center"}}>
             {!!LeftAccessory && (
-              <View style={{ marginLeft:spacing.xxs, position: "absolute", left: 0 }}>
+              <View style={{marginLeft: spacing.xxs, position: "absolute", left: 0}}>
                 <LeftAccessory style={$leftAccessoryStyle} pressableState={state} disabled={disabled} />
               </View>
             )}
@@ -188,16 +182,12 @@ export function Button(props: ButtonProps) {
               tx={tx}
               text={text}
               txOptions={txOptions}
-              style={[
-                $textStyle(state),
-                { textAlign: props.textAlignment === "left" ? "left" : "center" },
-              ]}
-            >
+              style={[$textStyle(state), {textAlign: props.textAlignment === "left" ? "left" : "center"}]}>
               {children}
             </Text>
 
             {!!RightAccessory && (
-              <View style={{ position: "absolute", right: 0 }}>
+              <View style={{position: "absolute", right: 0}}>
                 <RightAccessory style={$rightAccessoryStyle} pressableState={state} disabled={disabled} />
               </View>
             )}
@@ -208,7 +198,7 @@ export function Button(props: ButtonProps) {
   )
 }
 
-const $baseViewStyle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $baseViewStyle: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
   minHeight: 44,
   borderRadius: 30,
   justifyContent: "center",
@@ -216,10 +206,10 @@ const $baseViewStyle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.sm,
   overflow: "hidden",
-  
+  backgroundColor: colors.palette.primary200,
 })
 
-const $baseTextStyle: ThemedStyle<TextStyle> = ({ typography }) => ({
+const $baseTextStyle: ThemedStyle<TextStyle> = ({typography}) => ({
   fontSize: 16,
   lineHeight: 20,
   fontFamily: "SF Pro Rounded",
@@ -229,11 +219,11 @@ const $baseTextStyle: ThemedStyle<TextStyle> = ({ typography }) => ({
   zIndex: 2,
 })
 
-const $rightAccessoryStyle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $rightAccessoryStyle: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginStart: spacing.xs,
   zIndex: 1,
 })
-const $leftAccessoryStyle: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $leftAccessoryStyle: ThemedStyle<ViewStyle> = ({spacing}) => ({
   marginEnd: spacing.xs,
   zIndex: 1,
 })
@@ -242,35 +232,32 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
   default: [
     $styles.row,
     $baseViewStyle,
-    ({ colors }) => ({
-      backgroundColor: "navy",
-    }),
+    // ({colors}) => ({
+    //   backgroundColor: colors.palette.primary100,
+    // }),
   ],
-  filled: [
-    $styles.row,
-    $baseViewStyle,
-  ],
+  filled: [$styles.row, $baseViewStyle],
   reversed: [
     $styles.row,
     $baseViewStyle,
-    ({ colors }) => ({ backgroundColor: colors.palette.neutral800, borderColor:"black" }),
-    ],
+    ({colors}) => ({backgroundColor: colors.palette.neutral800, borderColor: "black"}),
+  ],
 }
 
 const $textPresets: Record<Presets, ThemedStyleArray<TextStyle>> = {
   default: [$baseTextStyle],
   filled: [$baseTextStyle],
-  reversed: [$baseTextStyle, ({ colors }) => ({ color: colors.palette.neutral100 })],
+  reversed: [$baseTextStyle, ({colors}) => ({color: colors.palette.neutral100})],
 }
 
 const $pressedViewPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
-  default: ({ colors }) => ({ backgroundColor: colors.palette.neutral200 }),
-  filled: ({ colors }) => ({ backgroundColor: colors.palette.neutral400 }),
-  reversed: ({ colors }) => ({ backgroundColor: colors.palette.neutral700 }),
+  default: ({colors}) => ({backgroundColor: colors.palette.neutral200}),
+  filled: ({colors}) => ({backgroundColor: colors.palette.neutral400}),
+  reversed: ({colors}) => ({backgroundColor: colors.palette.neutral700}),
 }
 
 const $pressedTextPresets: Record<Presets, ThemedStyle<ViewStyle>> = {
-  default: () => ({ opacity: 0.9 }),
-  filled: () => ({ opacity: 0.9 }),
-  reversed: () => ({ opacity: 0.9 }),
+  default: () => ({opacity: 0.9}),
+  filled: () => ({opacity: 0.9}),
+  reversed: () => ({opacity: 0.9}),
 }

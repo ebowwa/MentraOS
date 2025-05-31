@@ -1,7 +1,7 @@
 import React from "react"
 import {View, Text, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {ThemedStyle} from "@/theme"
+import {colors, ThemedStyle} from "@/theme"
 import AppIcon from "./AppIcon"
 import ChevronRight from "assets/icons/ChevronRight"
 import SunIcon from "assets/icons/SunIcon"
@@ -34,7 +34,7 @@ export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, refP
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
-          <Text style={[themed($appName), {color: isActive ? "#F7F7F7" : "#CED2ED"}]} numberOfLines={1}>
+          <Text style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]} numberOfLines={1}>
             {app.name}
           </Text>
           {app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />}
@@ -61,6 +61,15 @@ export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, refP
     </View>
   )
 }
+
+const $activeApp: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  // "#F7F7F7" : "#CED2ED"
+})
+
+const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textDim,
+})
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "space-between",

@@ -453,24 +453,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 10,
   },
-  connectButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#2196F3",
-    padding: 10,
-    borderRadius: 8,
-    width: "80%",
-  },
-  connectingButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#FFC107", // Yellow when enabled & searching
-    padding: 10,
-    borderRadius: 8,
-    width: "80%",
-  },
   disabledButton: {
     flexDirection: "row",
     alignItems: "center",
