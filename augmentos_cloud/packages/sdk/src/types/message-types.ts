@@ -89,7 +89,14 @@ export enum TpaToCloudMessageType {
   // Dashboard requests
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update',
   DASHBOARD_MODE_CHANGE = 'dashboard_mode_change',
-  DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update'
+  DASHBOARD_SYSTEM_UPDATE = 'dashboard_system_update',
+  
+  // TPA-to-TPA Communication
+  TPA_BROADCAST_MESSAGE = 'tpa_broadcast_message',
+  TPA_DIRECT_MESSAGE = 'tpa_direct_message',
+  TPA_USER_DISCOVERY = 'tpa_user_discovery',
+  TPA_ROOM_JOIN = 'tpa_room_join',
+  TPA_ROOM_LEAVE = 'tpa_room_leave'
 }
 
 /**
@@ -118,7 +125,15 @@ export enum CloudToTpaMessageType {
   WEBSOCKET_ERROR = 'websocket_error',
   
   // General purpose messaging
-  CUSTOM_MESSAGE = 'custom_message'
+  CUSTOM_MESSAGE = 'custom_message',
+  
+  // TPA-to-TPA Communication Responses
+  TPA_MESSAGE_RECEIVED = 'tpa_message_received',
+  TPA_USER_LIST = 'tpa_user_list',
+  TPA_USER_JOINED = 'tpa_user_joined',
+  TPA_USER_LEFT = 'tpa_user_left',
+  TPA_ROOM_UPDATED = 'tpa_room_updated',
+  TPA_DIRECT_MESSAGE_RESPONSE = 'tpa_direct_message_response'
 }
 
 /**
