@@ -291,25 +291,11 @@ export class EventManager {
     handler: Handler<EventData<T>>
   ): () => void {
     const handlers = this.handlers.get(type) ?? new Set();
-    
     if (handlers.size === 0) {
-      // console.log(`$$$#### Subscribing to ${type}`);
       this.handlers.set(type, handlers);
       this.subscribe(type);
     }
-
-    // console.log(`((())) Handler: ${handler.toString()}`);
-    // console.log(`$$$#### Handlers: ${JSON.stringify(handlers)}`);
-
     handlers.add(handler as Handler<unknown>);
-    // console.log(`@@@@ #### Handlers: ${JSON.stringify(handlers)}`);
-    // console.log(`#### Added handler for ${type}`);
-    // console.log('Handler details:', {
-    //   type,
-    //   handler: handler.toString(),
-    //   handlerCount: handlers.size,
-    //   allHandlers: Array.from(handlers).map(h => h.toString())
-    // });
     return () => this.removeHandler(type, handler);
   }
 

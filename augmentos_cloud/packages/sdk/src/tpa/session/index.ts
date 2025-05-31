@@ -52,6 +52,7 @@ import { DashboardAPI } from '../../types/dashboard';
 import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
 import { Logger } from 'pino';
 import { TpaServer } from '../server';
+import EventEmitter from 'events';
 
 /**
  * ⚙️ Configuration options for TPA Session
@@ -83,6 +84,16 @@ export interface TpaSessionConfig {
   userId: string; // user ID for tracking sessions (email of the user).
   tpaServer: TpaServer; // Optional TPA server instance for advanced features
 }
+
+// List of event types that should never be subscribed to as streams
+const TPA_TO_TPA_EVENT_TYPES = [
+  'tpa_message_received',
+  'tpa_user_joined',
+  'tpa_user_left',
+  'tpa_room_updated',
+  'tpa_user_list',
+  'tpa_direct_message_response'
+];
 
 /**
  * 🚀 TPA Session Implementation
@@ -159,6 +170,9 @@ export class TpaSession {
   public readonly tpaServer: TpaServer;
   public readonly logger: Logger;
   public readonly userId: string;
+
+  /** Dedicated emitter for TPA-to-TPA events */
+  private tpaEvents = new EventEmitter();
 
   constructor(private config: TpaSessionConfig) {
     // Set defaults and merge with provided config
@@ -332,6 +346,10 @@ export class TpaSession {
    * @param type - Type of event to subscribe to
    */
   subscribe(type: ExtendedStreamType): void {
+    if (TPA_TO_TPA_EVENT_TYPES.includes(type as string)) {
+      this.logger.warn(`[TpaSession] Attempted to subscribe to TPA-to-TPA event type '${type}', which is not a valid stream. Use the event handler (e.g., onTpaMessage) instead.`);
+      return;
+    }
     this.subscriptions.add(type);
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
@@ -343,6 +361,10 @@ export class TpaSession {
    * @param type - Type of event to unsubscribe from
    */
   unsubscribe(type: ExtendedStreamType): void {
+    if (TPA_TO_TPA_EVENT_TYPES.includes(type as string)) {
+      this.logger.warn(`[TpaSession] Attempted to unsubscribe from TPA-to-TPA event type '${type}', which is not a valid stream.`);
+      return;
+    }
     this.subscriptions.delete(type);
     if (this.ws?.readyState === 1) {
       this.updateSubscriptions();
@@ -1006,7 +1028,7 @@ export class TpaSession {
         }
         // Handle TPA-to-TPA communication messages
         else if ((message as any).type === 'tpa_message_received') {
-          this.events.emit('tpa_message_received' as any, message as any);
+          this.tpaEvents.emit('tpa_message_received', message as any);
         }
         else if ((message as any).type === 'tpa_user_list') {
           const userListMessage = message as any;
@@ -1017,13 +1039,13 @@ export class TpaSession {
           }
         }
         else if ((message as any).type === 'tpa_user_joined') {
-          this.events.emit('tpa_user_joined' as any, message as any);
+          this.tpaEvents.emit('tpa_user_joined', message as any);
         }
         else if ((message as any).type === 'tpa_user_left') {
-          this.events.emit('tpa_user_left' as any, message as any);
+          this.tpaEvents.emit('tpa_user_left', message as any);
         }
         else if ((message as any).type === 'tpa_room_updated') {
-          this.events.emit('tpa_room_updated' as any, message as any);
+          this.tpaEvents.emit('tpa_room_updated', message as any);
         }
         else if ((message as any).type === 'tpa_direct_message_response') {
           const response = message as any;
@@ -1534,7 +1556,8 @@ export class TpaSession {
    * @returns Cleanup function to remove the handler
    */
   onTpaMessage(handler: (message: any) => void): () => void {
-    return this.events.on('tpa_message_received', handler);
+    this.tpaEvents.on('tpa_message_received', handler);
+    return () => this.tpaEvents.off('tpa_message_received', handler);
   }
 
   /**
@@ -1543,7 +1566,8 @@ export class TpaSession {
    * @returns Cleanup function to remove the handler
    */
   onTpaUserJoined(handler: (data: any) => void): () => void {
-    return this.events.on('tpa_user_joined', handler);
+    this.tpaEvents.on('tpa_user_joined', handler);
+    return () => this.tpaEvents.off('tpa_user_joined', handler);
   }
 
   /**
@@ -1552,7 +1576,8 @@ export class TpaSession {
    * @returns Cleanup function to remove the handler
    */
   onTpaUserLeft(handler: (data: any) => void): () => void {
-    return this.events.on('tpa_user_left', handler);
+    this.tpaEvents.on('tpa_user_left', handler);
+    return () => this.tpaEvents.off('tpa_user_left', handler);
   }
 
   /**
@@ -1561,7 +1586,8 @@ export class TpaSession {
    * @returns Cleanup function to remove the handler
    */
   onTpaRoomUpdated(handler: (data: any) => void): () => void {
-    return this.events.on('tpa_room_updated', handler);
+    this.tpaEvents.on('tpa_room_updated', handler);
+    return () => this.tpaEvents.off('tpa_room_updated', handler);
   }
 
   /**
