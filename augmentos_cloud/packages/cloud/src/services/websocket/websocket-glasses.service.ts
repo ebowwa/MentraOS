@@ -230,7 +230,7 @@ export class GlassesWebSocketService {
         // Mentra Live.
         case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
           // Delegate to VideoManager within the user's session
-          userSession.videoManager.handleRtmpStatusUpdate(message as RtmpStreamStatus);
+          userSession.videoManager.handleRtmpStreamStatus(message as RtmpStreamStatus);
           break;
 
         case GlassesToCloudMessageType.KEEP_ALIVE_ACK:

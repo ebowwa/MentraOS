@@ -359,6 +359,7 @@ export class VideoManager {
    */
   handleKeepAliveAck(ackMessage: KeepAliveAck): void {
     const { streamId, ackId } = ackMessage;
+    this.logger.debug({ ackMessage, debugKey: "KEEP_ALIVE_ACK_RECEIVED" }, 'KEEP_ALIVE_ACK_RECEIVED Handling keep-alive ACK from glasses');
     const stream = this.activeSessionStreams.get(streamId);
     if (!stream) {
       this.logger.warn({ streamId, ackId }, 'Received ACK for unknown stream');
@@ -382,6 +383,7 @@ export class VideoManager {
    */
   handleRtmpStreamStatus(statusMessage: RtmpStreamStatus): void {
     const { streamId, status } = statusMessage;
+    this.logger.debug({ streamId, status, debugKey: "RTMP_STREAM_STATUS" }, 'RTMP_STREAM_STATUS Handling RTMP stream status update');
     
     if (!streamId) {
       this.logger.warn({ statusMessage }, 'Received status message without streamId');
