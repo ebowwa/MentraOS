@@ -1,5 +1,6 @@
 // SelectWithSearchSetting.tsx
-import React, {useState, useMemo} from 'react';
+import {useAppTheme} from "@/utils/useAppTheme"
+import React, {useState, useMemo} from "react"
 import {
   View,
   Text,
@@ -12,52 +13,47 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
-} from 'react-native';
+} from "react-native"
 
 type Option = {
-  label: string;
-  value: string;
-};
+  label: string
+  value: string
+}
 
 type Theme = {
-  backgroundColor: string;
-  textColor: string;
-};
+  backgroundColor: string
+  textColor: string
+}
 
 type SelectWithSearchSettingProps = {
-  label: string;
-  value: string;
-  options: Option[];
-  onValueChange: (value: string) => void;
-  theme: Theme;
-};
+  label: string
+  value: string
+  options: Option[]
+  onValueChange: (value: string) => void
+}
 
-const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
-  label,
-  value,
-  options,
-  onValueChange,
-  theme,
-}) => {
-  const [search, setSearch] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
+const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({label, value, options, onValueChange}) => {
+  const {theme, themed} = useAppTheme()
+
+  const [search, setSearch] = useState("")
+  const [modalVisible, setModalVisible] = useState(false)
 
   // Filter options based on search
   const filteredOptions = useMemo(() => {
-    if (!search) return options;
-    return options.filter(option => option.label.toLowerCase().includes(search.toLowerCase()));
-  }, [search, options]);
+    if (!search) return options
+    return options.filter(option => option.label.toLowerCase().includes(search.toLowerCase()))
+  }, [search, options])
 
-  const selectedLabel = options.find(option => option.value === value)?.label || 'Select...';
+  const selectedLabel = options.find(option => option.value === value)?.label || "Select..."
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.label, {color: theme.textColor}]}>{label}</Text>
+      <Text style={[styles.label, {color: theme.colors.text}]}>{label}</Text>
       <TouchableOpacity
-        style={[styles.selectField, {borderColor: theme.textColor, backgroundColor: theme.backgroundColor}]}
+        style={[styles.selectField, {borderColor: theme.colors.text, backgroundColor: theme.colors.background}]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.7}>
-        <Text style={[styles.selectText, {color: theme.textColor}]}>{selectedLabel}</Text>
+        <Text style={[styles.selectText, {color: theme.colors.text}]}>{selectedLabel}</Text>
       </TouchableOpacity>
       <Modal
         visible={modalVisible}
@@ -65,25 +61,29 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
         transparent={true}
         style={{flex: 1}}
         onRequestClose={() => setModalVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{flex: 1}}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{flex: 1}}>
           <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
             <View style={styles.modalOverlay}>
-              <View style={[styles.modalContent, {backgroundColor: theme.backgroundColor}]}>
+              <View style={[styles.modalContent, {backgroundColor: theme.colors.background}]}>
                 <TouchableWithoutFeedback>
                   <View style={styles.modalHeader}>
-                    <Text style={[styles.modalLabel, {color: theme.textColor}]}>{label}</Text>
+                    <Text style={[styles.modalLabel, {color: theme.colors.text}]}>{label}</Text>
                     <TouchableOpacity hitSlop={10} onPress={() => setModalVisible(false)}>
-                      <Text style={[styles.closeButton, {color: theme.textColor, marginRight: -8}]}>✕</Text>
+                      <Text style={[styles.closeButton, {color: theme.colors.text, marginRight: -8}]}>✕</Text>
                     </TouchableOpacity>
                   </View>
                 </TouchableWithoutFeedback>
                 <TextInput
                   style={[
                     styles.searchInput,
-                    {color: theme.textColor, borderColor: theme.textColor, backgroundColor: theme.backgroundColor},
+                    {
+                      color: theme.colors.text,
+                      borderColor: theme.colors.text,
+                      backgroundColor: theme.colors.background,
+                    },
                   ]}
                   placeholder="Search..."
-                  placeholderTextColor={theme.textColor + '99'}
+                  placeholderTextColor={theme.colors.text + "99"}
                   value={search}
                   onChangeText={setSearch}
                   autoFocus
@@ -95,17 +95,17 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
                   style={styles.optionsList}
                   renderItem={({item}) => (
                     <Pressable
-                      style={[styles.optionItem, item.value === value && {backgroundColor: theme.textColor + '22'}]}
+                      style={[styles.optionItem, item.value === value && {backgroundColor: theme.colors.text + "22"}]}
                       onPress={() => {
-                        onValueChange(item.value);
-                        setModalVisible(false);
-                        setSearch('');
+                        onValueChange(item.value)
+                        setModalVisible(false)
+                        setSearch("")
                       }}>
-                      <Text style={[styles.optionText, {color: theme.textColor}]}>{item.label}</Text>
+                      <Text style={[styles.optionText, {color: theme.colors.text}]}>{item.label}</Text>
                     </Pressable>
                   )}
                   ListEmptyComponent={
-                    <Text style={[styles.emptyText, {color: theme.textColor + '99'}]}>No options found</Text>
+                    <Text style={[styles.emptyText, {color: theme.colors.text + "99"}]}>No options found</Text>
                   }
                 />
               </View>
@@ -114,13 +114,13 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({
         </KeyboardAvoidingView>
       </Modal>
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
-    width: '100%',
+    width: "100%",
   },
   label: {
     fontSize: 16,
@@ -131,7 +131,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginBottom: 2,
   },
   selectText: {
@@ -140,30 +140,30 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0,0,0,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    width: '90%',
-    maxHeight: '70%',
+    width: "90%",
+    maxHeight: "70%",
     borderRadius: 10,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 5,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
   modalLabel: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   closeButton: {
     fontSize: 22,
@@ -192,10 +192,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 20,
     fontSize: 15,
   },
-});
+})
 
-export default SelectWithSearchSetting;
+export default SelectWithSearchSetting
