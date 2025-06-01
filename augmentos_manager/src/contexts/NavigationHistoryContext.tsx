@@ -8,7 +8,7 @@ interface NavigationHistoryContextType {
   getHistory: () => string[]
   clearHistory: () => void
   push: (path: string) => void
-  replace: (path: string) => void
+  replace: (path: string, params?: any) => void
 }
 
 const NavigationHistoryContext = createContext<NavigationHistoryContextType | undefined>(undefined)

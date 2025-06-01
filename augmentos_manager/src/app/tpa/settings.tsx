@@ -149,10 +149,8 @@ export default function AppSettings() {
               message: `${appInfo?.name || appName} has been uninstalled successfully`,
               type: "success",
             })
-
-            // Navigate back to the previous screen
-            // navigation.goBack()
-            router.back()
+            
+            goBack()
           } catch (error: any) {
             console.error("Error uninstalling app:", error)
             clearPendingOperation(packageName)
