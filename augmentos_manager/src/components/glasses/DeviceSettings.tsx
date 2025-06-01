@@ -43,6 +43,9 @@ export default function DeviceSettings() {
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
 
+  const { model_name } = status.glasses_info ?? {};
+  const { default_wearable } = status.core_info ?? {};
+
   useFocusEffect(
     useCallback(() => {
       // Reset animations to initial values
@@ -150,7 +153,16 @@ export default function DeviceSettings() {
     )
   }
 
-  let hasBrightness = status?.glasses_info?.model_name !== "Simulated Glasses"
+  let hasBrightness = true
+  if (status?.glasses_info?.model_name === "Simulated Glasses") {
+    hasBrightness = false
+  }
+  if (status?.glasses_info?.model_name?.toLowerCase().includes("live")) {
+    hasBrightness = false
+  }
+  if (!status?.glasses_info?.model_name) {
+    hasBrightness = false
+  }
 
   return (
     <View style={themed($container)}>
@@ -244,7 +256,7 @@ export default function DeviceSettings() {
           <TouchableOpacity
             style={{backgroundColor: "transparent", paddingVertical: 8}}
             onPress={() => {
-              coreCommunicator.sendDisconnectWearable()
+              coreCommunicator.sendDisconnectWearable();
             }}>
             <Text style={{color: theme.colors.palette.accent100}}>{translate("settings:disconnectGlasses")}</Text>
           </TouchableOpacity>

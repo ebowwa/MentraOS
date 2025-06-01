@@ -75,3 +75,29 @@ Read our [Upgrade Guide](https://ignitecookbook.com/docs/recipes/UpdatingIgnite)
 - there is no longer a src/screens folder, as screens have been replaced with expo-router's file based routing (react-navigation under the hood) 
 - most components have been categorized into folders or the misc/ folder
 - most components now use the theme/themed from the useAppTheme() hook
+
+
+
+### Quickstart
+
+build and run the app on android from scratch:
+
+## Android
+```
+pnpm expo prebuild
+pnpm android
+```
+
+## iOS
+```
+pnpm expo prebuild
+cd ios
+pod install
+cd ..
+open ios/AOS.xcworkspace
+(install a dev build on your phone using xcode)
+pnpm run start
+```
+
+for pure JS changes once you have a build installed all you need to run is
+```pnpm run start```

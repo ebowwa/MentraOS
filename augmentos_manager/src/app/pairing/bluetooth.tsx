@@ -26,8 +26,6 @@ export default function SelectGlassesBluetoothScreen() {
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
 
-  console.log("glassesModelName", glassesModelName)
-
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
 
@@ -207,7 +205,8 @@ export default function SelectGlassesBluetoothScreen() {
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>
-      <ScrollView style={{marginBottom: 20, marginTop: 10}}>
+      <ScrollView
+        style={{marginBottom: 20, marginTop: 10, marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {/* DISPLAY LIST OF BLUETOOTH SEARCH RESULTS */}
         {searchResults && searchResults.length > 0 && (
           <>
