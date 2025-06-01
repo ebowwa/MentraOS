@@ -323,7 +323,7 @@ export default function LoginScreen() {
       // Handle sign-in error
     } else {
       console.log("Sign-in successful:", data)
-      //navigation.replace('SplashScreen');
+      replace("/")
     }
     setIsFormLoading(false)
   }

@@ -30,6 +30,8 @@ struct ViewState {
   var micManager: OnboardMicrophoneManager!
   var serverComms: ServerComms!
   
+  private var lastStatusObj: [String: Any] = [:]
+
   private var cancellables = Set<AnyCancellable>()
   private var cachedThirdPartyAppList: [ThirdPartyCloudApp] = []
   //  private var cachedWhatToStream = [String]()
@@ -1001,6 +1003,7 @@ struct ViewState {
           self.metricSystemEnabled = enabled
           saveSettings()
           handleRequestStatus()
+          serverComms.sendCoreStatus(status: self.lastStatusObj)
           break
         case .unknown:
           print("Unknown command type: \(commandString)")
@@ -1129,6 +1132,9 @@ struct ViewState {
       "core_info": coreInfo,
       "auth": authObj
     ]
+
+    self.lastStatusObj = statusObj
+
     let wrapperObj: [String: Any] = ["status": statusObj]
     
     // print("wrapperStatusObj \(wrapperObj)")
