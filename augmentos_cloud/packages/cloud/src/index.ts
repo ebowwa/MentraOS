@@ -31,7 +31,7 @@ import errorReportRoutes from './routes/error-report.routes';
 import devRoutes from './routes/developer.routes';
 import serverRoutes from './routes/server.routes';
 import adminRoutes from './routes/admin.routes';
-import tpaServerRoutes from './routes/tpa-server.routes';
+// import tpaServerRoutes from './routes/tpa-server.routes';
 import photoRoutes from './routes/photos.routes';
 import galleryRoutes from './routes/gallery.routes';
 import toolsRoutes from './routes/tools.routes';

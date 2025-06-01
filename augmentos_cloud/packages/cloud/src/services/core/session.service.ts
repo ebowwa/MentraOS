@@ -10,12 +10,12 @@ import {
   DisplayRequest,
   AppI, // Import if needed for installedApps type
 } from '@augmentos/sdk';
-import appService from './app.service';
+import appService, { SYSTEM_DASHBOARD_PACKAGE_NAME } from './app.service';
 import transcriptionService, { ASRStreamInstance } from '../processing/transcription.service';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { createLC3Service, LC3Service, createLoggerForUserSession } from '@augmentos/utils';
 import { AudioWriter } from "../debug/audio-writer";
-import { systemApps } from './system-apps';
+// import { systemApps } from './system-apps';
 import { SubscriptionManager } from './subscription.manager'; // Import the new manager
 // import { Logger } from 'winston';
 import { DebugService } from '../debug/debug-service';
@@ -290,7 +290,7 @@ export class SessionService {
       subs.forEach(sub => whatToStreamSet.add(sub));
     }
 
-    const dashboardPackageName = systemApps.dashboard.packageName;
+    const dashboardPackageName = SYSTEM_DASHBOARD_PACKAGE_NAME;
     const dashboardSubs = allSubs.get(dashboardPackageName) || [];
     if (dashboardSubs.length > 0 || userSession.appConnections.has(dashboardPackageName)) {
       appSubscriptionsMap.set(dashboardPackageName, dashboardSubs);

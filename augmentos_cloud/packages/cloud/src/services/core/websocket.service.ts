@@ -20,7 +20,7 @@ import { IncomingMessage, Server } from 'http';
 import { ExtendedUserSession, IS_LC3, SequencedAudioChunk } from './session.service';
 import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
-import appService from './app.service';
+import appService, { SYSTEM_DASHBOARD_PACKAGE_NAME } from './app.service';
 import {
   AppStateChange,
   AuthError,
@@ -66,9 +66,7 @@ import {
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../logging/posthog.service';
-import { systemApps } from './system-apps';
 import { User } from '../../models/user.model';
-// import { logger } from '@augmentos/utils';
 import { logger as rootLogger } from '../logging/pino-logger';
 import photoRequestService from './photo-request.service';
 import axios from 'axios';
@@ -521,9 +519,9 @@ export class WebSocketService {
     // Dashboard subscriptions
     const dashboardSubscriptions = subscriptionService.getAppSubscriptions(
       userSession.sessionId,
-      systemApps.dashboard.packageName
+      SYSTEM_DASHBOARD_PACKAGE_NAME
     );
-    appSubscriptions.set(systemApps.dashboard.packageName, dashboardSubscriptions);
+    appSubscriptions.set(SYSTEM_DASHBOARD_PACKAGE_NAME, dashboardSubscriptions);
     for (const subscription of dashboardSubscriptions) {
       whatToStream.add(subscription);
     }
@@ -1101,7 +1099,7 @@ export class WebSocketService {
           try {
             // Start the dashboard app, but let's not add to the user's running apps since it's a system app.
             // honestly there should be no annyomous users so if it's an anonymous user we should just not start the dashboard
-            await this.startAppSession(userSession, systemApps.dashboard.packageName);
+            await this.startAppSession(userSession, SYSTEM_DASHBOARD_PACKAGE_NAME);
           }
           catch (error) {
             userSession.logger.error(error, `[websocket.service]: Error starting dashboard app`);
@@ -1129,7 +1127,7 @@ export class WebSocketService {
                 }
               }
             }
-            userSession.logger.info(`[websocket.service]: 🗿🗿✅🗿🗿 Starting app ${systemApps.dashboard.packageName}`);
+            userSession.logger.info(`[websocket.service]: 🗿🗿✅🗿🗿 Starting app ${SYSTEM_DASHBOARD_PACKAGE_NAME}`);
           }
           catch (error) {
             userSession.logger.error(error, `[websocket.service] Error starting user apps`);
@@ -2301,15 +2299,10 @@ export class WebSocketService {
       return;
     }
 
-    // Get client IP address for system app validation
-    const clientIp = (ws as any)._socket?.remoteAddress || '';
-    userSession.logger.info(`[websocket.service] TPA connection from IP: ${clientIp}`);
-
     // Validate API key with IP check for system apps
     const isValidKey = await appService.validateApiKey(
       initMessage.packageName,
-      initMessage.apiKey,
-      clientIp
+      initMessage.apiKey
     );
 
     if (!isValidKey) {
@@ -2320,20 +2313,20 @@ export class WebSocketService {
 
 
     // Check if this is a system app
-    const isSystemApp = Object.values(systemApps).some(
-      app => app.packageName === initMessage.packageName
-    );
+    // const isSystemApp = Object.values(systemApps).some(
+    //   app => app.packageName === initMessage.packageName
+    // );
 
     // For regular apps, check if they're in the loading apps list or already active
     const isLoading = userSession.loadingApps.has(initMessage.packageName);
     const isActive = userSession.activeAppSessions.includes(initMessage.packageName);
 
-    if (!isSystemApp && !isLoading && !isActive) {
-      userSession.logger.warn(`[websocket.service] TPA not in loading or active state: ${initMessage.packageName}`);
-      // In production, we would reject TPAs that aren't properly initialized
-      // ws.close(1008, 'TPA not initialized properly');
-      // return;
-    }
+    // if (!isSystemApp && !isLoading && !isActive) {
+    //   userSession.logger.warn(`[websocket.service] TPA not in loading or active state: ${initMessage.packageName}`);
+    //   // In production, we would reject TPAs that aren't properly initialized
+    //   // ws.close(1008, 'TPA not initialized properly');
+    //   // return;
+    // }
 
     // Store the connection
     userSession.appConnections.set(initMessage.packageName, ws);
@@ -2412,7 +2405,7 @@ export class WebSocketService {
     // If this is the dashboard app, send the current location if it's cached
     try {
       const user = await User.findByEmail(userSession.userId);
-      if (user && initMessage.packageName === systemApps.dashboard.packageName) {
+      if (user && initMessage.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
         const location = user.location;
         if (location) {
           const locationUpdate: LocationUpdate = {

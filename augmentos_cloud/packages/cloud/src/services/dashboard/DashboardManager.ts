@@ -23,9 +23,9 @@ import {
   UserSession
 } from '@augmentos/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
-import { systemApps } from '../core/system-apps';
 import { ExtendedUserSession } from '../core/session.service';
 import { Logger } from 'pino';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 
 /**
  * Dashboard content from a TPA
@@ -231,7 +231,7 @@ export class DashboardManager {
     const { packageName, mode } = message;
 
     // Only allow system dashboard to change mode
-    if (packageName !== systemApps.dashboard.packageName) {
+    if (packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
       this.logger.warn({ packageName }, `Unauthorized dashboard mode change attempt from ${packageName}`);
       return;
     }
@@ -250,7 +250,7 @@ export class DashboardManager {
     const { packageName, section, content } = message;
 
     // Only allow system dashboard to update system sections
-    if (packageName !== systemApps.dashboard.packageName) {
+    if (packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
       this.logger.warn({ packageName, section }, `Unauthorized system dashboard update attempt for section ${section} from ${packageName}`);
       return;
     }
@@ -303,7 +303,7 @@ export class DashboardManager {
       // Create a display request for regular dashboard
       const displayRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
-        packageName: systemApps.dashboard.packageName,
+        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.DASHBOARD,
         layout,
         timestamp: new Date(),
@@ -350,7 +350,7 @@ export class DashboardManager {
       // Create a display request specifically for always-on with the new view type
       const displayRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
-        packageName: systemApps.dashboard.packageName,
+        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.ALWAYS_ON,  // Use the new view type
         layout,
         timestamp: new Date(),
@@ -698,7 +698,7 @@ export class DashboardManager {
       // Send an empty layout to clear the always-on view
       const clearRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
-        packageName: systemApps.dashboard.packageName,
+        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.ALWAYS_ON,
         layout: {
           layoutType: LayoutType.DASHBOARD_CARD,

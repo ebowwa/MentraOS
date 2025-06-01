@@ -529,7 +529,7 @@ async function installApp(req: Request, res: Response) {
     }
 
     // Get app details
-    const app = await appService.findFromAppStore(packageName);
+    const app = await appService.getApp(packageName);
     if (!app) {
       return res.status(404).json({
         success: false,

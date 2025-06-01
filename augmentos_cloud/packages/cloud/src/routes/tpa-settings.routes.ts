@@ -2,11 +2,11 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
-import { systemApps } from '../services/core/system-apps';
+// import { systemApps } from '../services/core/system-apps';
 import { User } from '../models/user.model';
 
 export const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
-import appService, { isUninstallable } from '../services/core/app.service';
+import appService, { isUninstallable, SYSTEM_DASHBOARD_PACKAGE_NAME } from '../services/core/app.service';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import { CloudToTpaMessageType, UserSession, AppSetting } from '@augmentos/sdk';
 import { sessionService } from '../services/core/session.service';
@@ -46,7 +46,7 @@ router.get('/:tpaName', async (req, res) => {
 
   // Extract TPA name from URL (use third segment if dot-separated).
   // const parts = req.params.tpaName.split('.');
-  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? systemApps.dashboard.packageName : req.params.tpaName;
+  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? SYSTEM_DASHBOARD_PACKAGE_NAME : req.params.tpaName;
 
   let webviewURL: string | undefined;
 
@@ -169,13 +169,13 @@ router.get('/user/:tpaName', async (req, res) => {
     return res.status(400).json({ error: 'User ID missing in Authorization header' });
   }
   const userId = authHeader.split(' ')[1];
-  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? systemApps.dashboard.packageName : req.params.tpaName;
+  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? SYSTEM_DASHBOARD_PACKAGE_NAME : req.params.tpaName;
 
   try {
     const user = await User.findOrCreateUser(userId);
     let storedSettings = user.getAppSettings(tpaName);
 
-    if (!storedSettings && tpaName !== systemApps.dashboard.packageName) {
+    if (!storedSettings && tpaName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
       // Get TPA configuration from database instead of tpa_config.json
       const _tpa = await appService.getApp(tpaName);
 
@@ -221,7 +221,7 @@ router.get('/user/:tpaName', async (req, res) => {
 router.post('/:tpaName', async (req, res) => {
   // Extract TPA name.
   // const parts = req.params.tpaName.split('.');
-  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? systemApps.dashboard.packageName : req.params.tpaName;
+  const tpaName = req.params.tpaName === "com.augmentos.dashboard" ? SYSTEM_DASHBOARD_PACKAGE_NAME : req.params.tpaName;
 
   if (!tpaName) {
     return res.status(400).json({ error: 'TPA name missing in request' });
@@ -279,7 +279,7 @@ router.post('/:tpaName', async (req, res) => {
     const userSession = sessionService.getSession(userId);
 
     // If user has active sessions, send them settings updates via WebSocket
-    if (userSession && tpaName !== systemApps.dashboard.packageName && tpaName !== "com.augmentos.dashboard") {
+    if (userSession && tpaName !== SYSTEM_DASHBOARD_PACKAGE_NAME && tpaName !== "com.augmentos.dashboard") {
       const settingsUpdate = {
         type: CloudToTpaMessageType.SETTINGS_UPDATE,
         packageName: tpaName,
@@ -303,20 +303,6 @@ router.post('/:tpaName', async (req, res) => {
 
     if (app) {
       let appEndpoint;
-
-      // console.log('@@@@@ app', app);
-
-      // Check if it's a system app first
-      if (app.isSystemApp) {
-        // For system apps, use the internal host approach
-        const matchingApp = Object.values(systemApps).find(sysApp =>
-          sysApp.packageName === tpaName
-        );
-
-        if (matchingApp && matchingApp.host) {
-          appEndpoint = `http://${matchingApp.host}/settings`;
-        }
-      }
 
       // If not a system app or system app info not found, use publicUrl
       if (!appEndpoint && app.publicUrl) {
