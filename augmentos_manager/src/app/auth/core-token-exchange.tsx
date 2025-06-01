@@ -14,7 +14,8 @@ import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Screen} from "@/components/ignite"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {translate} from "@/i18n/translate"
 
 export default function CoreTokenExchange() {
   const {status} = useStatus()
@@ -110,14 +111,11 @@ export default function CoreTokenExchange() {
   // Loading screen
   if (!connectionError) {
     return (
-      <Screen
-        preset="fixed"
-        style={{flex: 1, justifyContent: "center", alignItems: "center"}}
-        safeAreaEdges={["bottom"]}>
-        <View style={styles.authLoadingContent}>
+      <Screen preset="fixed" safeAreaEdges={["bottom"]}>
+        <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
           <View style={styles.authLoadingLogoPlaceholder} />
           <ActivityIndicator size="large" color="#2196F3" style={styles.authLoadingIndicator} />
-          <Text style={themed($authLoadingText)}>Connecting to AugmentOS...</Text>
+          <Text style={themed($authLoadingText)}>{translate("login:connectingToAugmentOS")}</Text>
         </View>
       </Screen>
     )
@@ -178,10 +176,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
     justifyContent: "center",
     alignItems: "center",
-  },
-  authLoadingContent: {
-    alignItems: "center",
-    padding: 20,
   },
   authLoadingLogoPlaceholder: {
     width: 100,

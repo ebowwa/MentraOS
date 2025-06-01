@@ -137,6 +137,7 @@ const en = {
     passwordPlaceholder: "********",
     createAccount: "Create Account",
     login: "Login",
+    connectingToAugmentOS: "Connecting to AugmentOS...",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
@@ -175,7 +176,6 @@ const en = {
       button: "Let's try this again",
     },
   },
-
   errors: {
     invalidEmail: "Invalid email address.",
   },
