@@ -64,9 +64,9 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12, // Match ConnectedDeviceInfo
     borderWidth: 1, // Restore border for the warning
-    marginBottom: 0,
-    marginHorizontal: 0,
+    marginBottom: 16,
     marginTop: 16, // Added spacing above the warning
+    marginHorizontal: 0,
     width: "100%",
   },
   warningContent: {
