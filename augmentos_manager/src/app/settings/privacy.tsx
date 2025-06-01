@@ -24,10 +24,10 @@ import showAlert from "@/utils/AlertUtils"
 import {Header, Screen} from "@/components/ignite"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router} from "expo-router"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
 import {Spacer} from "@/components/misc/Spacer"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function PrivacySettingsScreen() {
   const {status} = useStatus()
@@ -41,7 +41,7 @@ export default function PrivacySettingsScreen() {
   const [calendarPermissionPending, setCalendarPermissionPending] = React.useState(false)
   const [appState, setAppState] = React.useState(AppState.currentState)
   const {theme} = useAppTheme()
-
+  const {goBack, push} = useNavigationHistory()
   // Check permissions when screen loads
   useEffect(() => {
     const checkPermissions = async () => {
@@ -233,11 +233,7 @@ export default function PrivacySettingsScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header
-        titleTx="privacySettings:title"
-        leftIcon="caretLeft"
-        onLeftPress={() => router.replace("/(tabs)/settings")}
-      />
+      <Header titleTx="privacySettings:title" leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView>
         {/* Notification Permission - Android Only */}
         {Platform.OS === "android" && (

@@ -13,11 +13,13 @@ import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
 import {Spacer} from "@/components/misc/Spacer"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function SettingsPage() {
   const {status} = useStatus()
   const {logout} = useAuth()
-  const {themed, theme} = useAppTheme()
+  const {theme} = useAppTheme()
+  const {push, replace} = useNavigationHistory()
 
   const handleSignOut = async () => {
     try {
@@ -25,11 +27,11 @@ export default function SettingsPage() {
 
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
-      router.replace("/")
+      replace("/")
     } catch (err) {
       console.error("Error during sign-out:", err)
       // Even if there's an error, still try to navigate away to login
-      router.replace("/")
+      replace("/")
     }
   }
 
@@ -45,28 +47,22 @@ export default function SettingsPage() {
     )
   }
 
-  // Switch track colors
-
-  const navigateTo = (screen: string, params = {}) => {
-    router.push(`/${screen.toLowerCase()}` as any, params)
-  }
-
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
       <Header titleTx="settings:title" />
 
-      <RouteButton label={translate("settings:profileSettings")} onPress={() => router.push("/settings/profile")} />
+      <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
 
       <Spacer height={theme.spacing.md} />
 
-      <RouteButton label={translate("settings:privacySettings")} onPress={() => router.push("/settings/privacy")} />
+      <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
       <Spacer height={theme.spacing.md} />
 
       <RouteButton
         label={translate("settings:screenSettings")}
         subtitle={translate("settings:screenDescription")}
-        onPress={() => router.push("/settings/screen")}
+        onPress={() => push("/settings/screen")}
       />
 
       <Spacer height={theme.spacing.md} />
@@ -79,7 +75,7 @@ export default function SettingsPage() {
           const supportsWifi = status.glasses_info && status.glasses_info.glasses_use_wifi === true
 
           if (supportsWifi) {
-            // router.push({
+            // push({
             //   pathname: "/pairing/glasseswifisetup",
             //   params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
             // })
@@ -110,7 +106,7 @@ export default function SettingsPage() {
       <RouteButton
         label={translate("settings:developerSettings")}
         // subtitle={translate("settings:developerSettingsSubtitle")}
-        onPress={() => router.push("/settings/developer")}
+        onPress={() => push("/settings/developer")}
       />
 
       <Spacer height={theme.spacing.md} />
@@ -119,64 +115,3 @@ export default function SettingsPage() {
     </Screen>
   )
 }
-
-const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  paddingVertical: spacing.md,
-  borderBottomColor: colors.border,
-  borderBottomWidth: 1,
-})
-
-const $settingItem2: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingVertical: spacing.md,
-  borderBottomColor: colors.border,
-  borderBottomWidth: 1,
-})
-
-const $settingTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  flex: 1,
-  paddingRight: spacing.sm,
-})
-
-const $label: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 16,
-  flexWrap: "wrap",
-  color: colors.text,
-  fontFamily: "SF Pro Rounded",
-})
-
-const $dangerLabel: ThemedStyle<TextStyle> = () => ({
-  fontSize: 16,
-  flexWrap: "wrap",
-  color: "#FF0F0F",
-})
-
-const $value: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 12,
-  marginTop: 5,
-  flexWrap: "wrap",
-  color: colors.textDim,
-})
-
-const $disabledItem: ThemedStyle<TextStyle> = () => ({
-  opacity: 0.4,
-})
-
-const $iconColor: ThemedStyle<string> = ({colors}) => colors.textDim
-
-const $flagContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  marginTop: spacing.xs,
-  paddingHorizontal: spacing.sm,
-  paddingVertical: 2,
-  borderRadius: 4,
-  backgroundColor: "rgba(255, 107, 107, 0.1)",
-  alignSelf: "flex-start",
-})
-
-const $flagText: ThemedStyle<TextStyle> = () => ({
-  fontSize: 12,
-  fontWeight: "500",
-  color: "#ff6b6b",
-})

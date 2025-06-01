@@ -51,8 +51,6 @@ const en = {
     permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
     activateAnApp: "Activate an app",
     activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
-    foreground: "Foreground"
-
   },
   glasses: {
     title: "Glasses",
@@ -64,6 +62,8 @@ const en = {
     title: "Settings",
     phoneHeadset: "Phone / Headset",
     glasses: "Glasses",
+    bypassVAD: "Bypass VAD for Debugging",
+    bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
     sensingLabel: "Microphone & Camera Access",
     sensingSubtitle: "Enable microphones and cameras.",
     calendarLabel: "Calendar Access",
@@ -97,6 +97,8 @@ const en = {
     metricSystemSubtitle: "Metric System (°C) or Imperial System (°F).",
     adjustHeadAngleLabel: "Adjust Head-Up Angle",
     adjustHeadAngleSubtitle: "Adjust the angle at which the contextual dashboard appears when you look up.",
+    reconnectOnAppForeground: "Reconnect on App Foreground",
+    reconnectOnAppForegroundSubtitle: "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
   },
   profileSettings: {
       title: "Profile Settings",
@@ -135,6 +137,7 @@ const en = {
     passwordPlaceholder: "********",
     createAccount: "Create Account",
     login: "Login",
+    connectingToAugmentOS: "Connecting to AugmentOS...",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
@@ -173,7 +176,6 @@ const en = {
       button: "Let's try this again",
     },
   },
-
   errors: {
     invalidEmail: "Invalid email address.",
   },

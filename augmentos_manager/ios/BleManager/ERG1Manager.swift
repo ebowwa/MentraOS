@@ -458,7 +458,7 @@ enum GlassesError: Error {
     
     while attempts < maxAttempts && !result {
       if (attempts > 0) {
-        print("trying again to send to left: \(attempts)")
+        print("trying again to send to:\(s): \(attempts)")
       }
       let data = Data(chunks[0])
       print("SEND (\(s)) \(data.hexEncodedString())")
@@ -471,13 +471,13 @@ enum GlassesError: Error {
       for i in 0..<chunks.count-1 {
         let chunk = chunks[i]
         await sendCommandToSide(chunk, side: side)
-        try? await Task.sleep(nanoseconds: 50 * 1_000_000)// 50ms
+        try? await Task.sleep(nanoseconds: 100 * 1_000_000)// 100ms
       }
       
       let lastChunk = chunks.last!
       await sendCommandToSide(lastChunk, side: side)
       
-      result = waitForSemaphore(semaphore: semaphore, timeout: 0.1)
+      result = waitForSemaphore(semaphore: semaphore, timeout: 0.3)
       
       attempts += 1
       if !result && (attempts >= maxAttempts) {

@@ -136,7 +136,7 @@ export interface LanguageStreamInfo {
  * Simple validation for language code format: xx-XX (e.g., en-US)
  */
 export function isValidLanguageCode(code: string): boolean {
-  return /^[a-z]{2}-[A-Z]{2}$/.test(code);
+  return /^[a-z]{2,3}-[A-Z]{2}$/.test(code);
 }
 
 /**

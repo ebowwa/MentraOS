@@ -22,13 +22,14 @@ import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 export default function AppSettings() {
   const {packageName, appName, fromWebView} = useLocalSearchParams()
   const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
-
+  const {goBack, push, replace} = useNavigationHistory()
   if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
     console.error("No packageName or appName found in params")
     return null
@@ -148,10 +149,8 @@ export default function AppSettings() {
               message: `${appInfo?.name || appName} has been uninstalled successfully`,
               type: "success",
             })
-
-            // Navigate back to the previous screen
-            // navigation.goBack()
-            router.back()
+            
+            goBack()
           } catch (error: any) {
             console.error("Error uninstalling app:", error)
             clearPendingOperation(packageName)
@@ -274,14 +273,13 @@ export default function AppSettings() {
       setSettingsLoading(false)
       // Auto-redirect to webview if needed
       if (data.webviewURL && fromWebView !== "true") {
-        router.replace({
-          pathname: "/tpa/webview",
-          params: {
+        replace("/tpa/webview",
+          {
             webviewURL: data.webviewURL,
             appName: appName,
             packageName: packageName,
           },
-        })
+        )
       }
     } catch (err) {
       setSettingsLoading(false)

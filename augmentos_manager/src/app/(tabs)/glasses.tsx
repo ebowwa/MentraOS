@@ -20,6 +20,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
 import {translate} from "@/i18n/translate"
 import { Spacer } from "@/components/misc/Spacer"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number

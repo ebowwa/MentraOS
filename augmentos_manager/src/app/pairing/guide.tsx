@@ -9,12 +9,14 @@ import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootin
 import GlassesPairingLoader from "@/components/misc/GlassesPairingLoader"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {router} from "expo-router"
-import { useAppTheme } from "@/utils/useAppTheme"
-import { Screen } from "@/components/ignite/Screen"
-import { ThemedStyle } from "@/theme"
-import { Header } from "@/components/ignite/Header"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {Screen} from "@/components/ignite/Screen"
+import {ThemedStyle} from "@/theme"
+import {Header} from "@/components/ignite/Header"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
-export default function GlassesPairingGuideScreen () {
+export default function GlassesPairingGuideScreen() {
+  const {goBack, push} = useNavigationHistory()
   const {status} = useStatus()
   const route = useRoute()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -100,8 +102,8 @@ export default function GlassesPairingGuideScreen () {
   const isDarkTheme = theme.isDark
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header leftIcon="caretLeft" onLeftPress={() => router.back()} />
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+      <Header leftIcon="caretLeft" onLeftPress={goBack} />
       {pairingInProgress ? (
         // Show the beautiful animated loader while pairing is in progress
         <GlassesPairingLoader glassesModelName={glassesModelName} />

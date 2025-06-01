@@ -29,6 +29,8 @@ import { router } from "expo-router"
 import showAlert from "@/utils/AlertUtils"
 import { Pressable } from "react-native-gesture-handler"
 import { Spacer } from "@/components/misc/Spacer"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import * as WebBrowser from 'expo-web-browser';
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -37,6 +39,7 @@ export default function LoginScreen() {
   const [isFormLoading, setIsFormLoading] = useState(false)
   const [isAuthLoading, setIsAuthLoading] = useState(false)
   const [backPressCount, setBackPressCount] = useState(0)
+  const {goBack, push, replace} = useNavigationHistory()
 
   // Get theme and safe area insets
   const {theme, themed} = useAppTheme()
@@ -191,6 +194,7 @@ export default function LoginScreen() {
         options: {
           // Must match the deep link scheme/host/path in your AndroidManifest.xml
           redirectTo: "com.augmentos://auth/callback",
+          skipBrowserRedirect: true,
         },
       })
 
@@ -206,7 +210,9 @@ export default function LoginScreen() {
       // 3) If we get a `url` back, we must open it ourselves in RN
       if (data?.url) {
         console.log("Opening browser with:", data.url)
-        await Linking.openURL(data.url)
+        // await Linking.openURL(data.url)
+
+        await WebBrowser.openBrowserAsync(data.url)
 
         // Directly hide the loading overlay when we leave the app
         // This ensures it won't be shown when user returns without completing auth
@@ -257,7 +263,7 @@ export default function LoginScreen() {
       // If we get a `url` back, we must open it ourselves in React Native
       if (data?.url) {
         console.log("Opening browser with:", data.url)
-        await Linking.openURL(data.url)
+        await WebBrowser.openBrowserAsync(data.url)
       }
 
       // After returning from the browser, check the session
@@ -299,7 +305,7 @@ export default function LoginScreen() {
         showAlert(translate("login:success"), translate("login:checkEmailVerification"))
       } else {
         console.log("Sign-up successful:", data)
-        router.replace("/")
+        replace("/")
       }
     } catch (err) {
       console.error("Error during sign-up:", err)
@@ -321,7 +327,7 @@ export default function LoginScreen() {
       // Handle sign-in error
     } else {
       console.log("Sign-in successful:", data)
-      //navigation.replace('SplashScreen');
+      replace("/")
     }
     setIsFormLoading(false)
   }

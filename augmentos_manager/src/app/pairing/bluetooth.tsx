@@ -18,6 +18,7 @@ import {router, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function SelectGlassesBluetoothScreen() {
   const {status} = useStatus()
@@ -25,7 +26,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-
+  const {goBack, push} = useNavigationHistory()
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
 
@@ -201,7 +202,7 @@ export default function SelectGlassesBluetoothScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={goBack} />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>

@@ -30,6 +30,7 @@ import SunIcon from "assets/icons/component/SunIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import RouteButton from "../ui/RouteButton"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -42,9 +43,10 @@ export default function DeviceSettings() {
 
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
+  const {push} = useNavigationHistory()
 
-  const { model_name } = status.glasses_info ?? {};
-  const { default_wearable } = status.core_info ?? {};
+  const {model_name} = status.glasses_info ?? {}
+  const {default_wearable} = status.core_info ?? {}
 
   useFocusEffect(
     useCallback(() => {
@@ -248,7 +250,7 @@ export default function DeviceSettings() {
       <RouteButton
         label={translate("settings:dashboardSettings")}
         subtitle={translate("settings:dashboardDescription")}
-        onPress={() => router.push("/settings/dashboard")}
+        onPress={() => push("/settings/dashboard")}
       />
 
       {status.glasses_info?.model_name && (
@@ -256,7 +258,7 @@ export default function DeviceSettings() {
           <TouchableOpacity
             style={{backgroundColor: "transparent", paddingVertical: 8}}
             onPress={() => {
-              coreCommunicator.sendDisconnectWearable();
+              coreCommunicator.sendDisconnectWearable()
             }}>
             <Text style={{color: theme.colors.palette.accent100}}>{translate("settings:disconnectGlasses")}</Text>
           </TouchableOpacity>

@@ -22,6 +22,7 @@ import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 const parseBrightness = (brightnessStr: string | null | undefined): number => {
   if (typeof brightnessStr === "number") {
@@ -37,7 +38,7 @@ const parseBrightness = (brightnessStr: string | null | undefined): number => {
 export default function ScreenSettingsScreen() {
   const {status} = useStatus()
   const {theme, themed} = useAppTheme()
-
+  const {goBack, push} = useNavigationHistory()
   // -- States --
   const [brightness, setBrightness] = useState<number | null>(null)
   const [isAutoBrightnessEnabled, setIsAutoBrightnessEnabled] = useState(status.glasses_settings.auto_brightness)
@@ -154,11 +155,7 @@ export default function ScreenSettingsScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header
-        titleTx="screenSettings:title"
-        leftIcon="caretLeft"
-        onLeftPress={() => router.replace("/(tabs)/settings")}
-      />
+      <Header titleTx="screenSettings:title" leftIcon="caretLeft" onLeftPress={goBack} />
 
       <ScrollView>
         <ToggleSetting

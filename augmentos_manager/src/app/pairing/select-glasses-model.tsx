@@ -12,6 +12,7 @@ import {router} from "expo-router"
 import {Screen} from "@/components/ignite/Screen"
 import {Header} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function SelectGlassesModelScreen() {
   const {status} = useStatus()
@@ -21,7 +22,7 @@ export default function SelectGlassesModelScreen() {
   const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(true)
   const {theme, themed} = useAppTheme()
   const isDarkTheme = theme.isDark
-
+  const {goBack, push} = useNavigationHistory()
   // Check if running on TestFlight (iOS) or development mode
   useEffect(() => {
     async function checkTestFlightOrDev() {
@@ -97,7 +98,7 @@ export default function SelectGlassesModelScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {isOnboarding && (
           <View style={[styles.onboardingBanner, {backgroundColor: isDarkTheme ? "#1e88e5" : "#bbdefb"}]}>

@@ -294,6 +294,23 @@ class ServerComms {
       print("Error building config message: \(error)")
     }
   }
+
+  func sendCoreStatus(status: [String: Any]) {
+    do {
+      let event: [String: Any] = [
+        "type": "core_status_update",
+        "status": status,
+        "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+      ]
+
+      let jsonData = try JSONSerialization.data(withJSONObject: event)
+      if let jsonString = String(data: jsonData, encoding: .utf8) {
+        wsManager.sendText(jsonString)
+      }
+    } catch {
+      print("Error building core_status_update JSON: \(error)")
+    }
+  }
   
   // MARK: - App Lifecycle
   

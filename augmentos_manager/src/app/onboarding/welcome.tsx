@@ -7,12 +7,13 @@ import {useAppStatus} from '@/contexts/AppStatusProvider';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 import { router } from 'expo-router';
 import { useAppTheme } from '@/utils/useAppTheme';
+import { useNavigationHistory } from '@/contexts/NavigationHistoryContext';
 
 export default function OnboardingWelcome() {
   const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus();
   const {theme, themed} = useAppTheme();
   const isDarkTheme = theme.isDark;
-
+  const {goBack, push, replace} = useNavigationHistory()
   const backendComms = BackendServerComms.getInstance();
 
   const stopAllApps = async () => {
@@ -33,7 +34,7 @@ export default function OnboardingWelcome() {
   const handleSkip = () => {
     // Mark onboarding as completed when skipped
     saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
-    router.replace('/(tabs)/home');
+    replace('/(tabs)/home');
   };
 
   // Continue to glasses selection screen
