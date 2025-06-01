@@ -836,8 +836,7 @@ public class RtmpStreamingService extends Service {
      */
     private void handleStreamTimeout(String streamId) {
         synchronized (mStateLock) {
-            if (mCurrentStreamId != null && mCurrentStreamId.equals(streamId) && 
-                mIsStreamingActive && mStreamState == StreamState.STREAMING) {
+            if (mCurrentStreamId != null && mCurrentStreamId.equals(streamId) && mIsStreamingActive) {
                 Log.w(TAG, "Stream timed out due to missing keep-alive messages: " + streamId);
 
                 // Notify about timeout
@@ -850,8 +849,7 @@ public class RtmpStreamingService extends Service {
                 forceStopStreamingInternal();
             } else {
                 Log.d(TAG, "Ignoring timeout for old stream: " + streamId +
-                      " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + 
-                      ", state: " + mStreamState + ")");
+                      " (current: " + mCurrentStreamId + ", active: " + mIsStreamingActive + ")");
             }
         }
     }
