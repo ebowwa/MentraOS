@@ -82,7 +82,8 @@
     "react-native-view-shot": "^4.0.3",
     "react-native-web": "~0.19.6",
     "react-native-webview": "13.12.5",
-    "semver": "^7.7.2"
+    "semver": "^7.7.2",
+    "expo-web-browser": "~14.0.2"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
