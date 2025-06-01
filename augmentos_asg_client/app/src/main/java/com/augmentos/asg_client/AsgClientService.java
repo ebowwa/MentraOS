@@ -1319,6 +1319,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "set_mic_vad_state":
 
                     break;
+                case "set_hotspot_state":
+                    boolean hotspotEnabled = dataToProcess.optBoolean("enabled", false);
+
+                    if(hotspotEnabled){
+                        String hotspotSsid = dataToProcess.optString("ssid", "");
+                        String hotspotPassword = dataToProcess.optString("password", "");
+                        networkManager.startHotspot(hotspotSsid, hotspotPassword);
+                    } else {
+                        networkManager.stopHotspot();
+                    }
+                    break;
                 case "request_version":
                 case "cs_syvr":
                     Log.d(TAG, "📊 Received version request - sending version info");
@@ -1806,25 +1817,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private void sendRtmpStatusResponse(boolean success, JSONObject statusObject) {
         if (bluetoothManager != null && bluetoothManager.isConnected()) {
             try {
-                JSONObject response = new JSONObject();
-                response.put("type", "rtmp_status");
-                response.put("success", success);
-
-                // Merge the status object fields into the response
-                Iterator<String> keys = statusObject.keys();
-                while (keys.hasNext()) {
-                    String key = keys.next();
-                    response.put(key, statusObject.get(key));
-                }
-
-                // Convert to string
-                String jsonString = response.toString();
+                // Don't wrap - send the status object directly since it's already in correct format
+                String jsonString = statusObject.toString();
                 Log.d(TAG, "Sending RTMP status: " + jsonString);
-
-                // Send the JSON response
                 bluetoothManager.sendData(jsonString.getBytes(StandardCharsets.UTF_8));
-            } catch (JSONException e) {
-                Log.e(TAG, "Error creating RTMP status response", e);
+            } catch (Exception e) {
+                Log.e(TAG, "Error sending RTMP status response", e);
             }
         }
     }

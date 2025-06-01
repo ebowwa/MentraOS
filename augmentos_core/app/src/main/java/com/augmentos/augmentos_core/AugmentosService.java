@@ -55,7 +55,9 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadUpAngleEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
@@ -801,6 +803,25 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 //                10
 //            );
 //        }
+    }
+    
+    @Subscribe
+    public void onRtmpStreamStatusEvent(RtmpStreamStatusEvent event) {
+        Log.d(TAG, "Received RTMP stream status event: " + event.statusMessage.toString());
+        
+        // Forward to ServerComms for cloud communication
+        ServerComms.getInstance().sendRtmpStreamStatus(event.statusMessage);
+        
+        // Update local state and notify manager
+        sendStatusToAugmentOsManager();
+    }
+    
+    @Subscribe
+    public void onKeepAliveAckEvent(KeepAliveAckEvent event) {
+        Log.d(TAG, "Received keep-alive ACK event: " + event.ackMessage.toString());
+        
+        // Forward to ServerComms for cloud communication
+        ServerComms.getInstance().sendKeepAliveAck(event.ackMessage);
     }
 
     private static final String[] ARROW_FRAMES = {

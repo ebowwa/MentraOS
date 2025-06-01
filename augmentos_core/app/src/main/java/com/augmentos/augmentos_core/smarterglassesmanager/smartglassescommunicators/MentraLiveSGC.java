@@ -32,6 +32,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.Glass
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiScanResultEvent;
 //import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.SmartGlassesBatteryEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesWifiStatusChange;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
 
@@ -1149,10 +1151,8 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     JSONObject rtmpStatusMsg = new JSONObject(json.toString());
                     rtmpStatusMsg.put("type", "rtmp_stream_status");
                     
-                    // Forward to dataObservable for cloud communication
-                    if (dataObservable != null) {
-                        dataObservable.onNext(rtmpStatusMsg);
-                    }
+                    // Forward via EventBus for cloud communication (consistent with battery/WiFi)
+                    EventBus.getDefault().post(new RtmpStreamStatusEvent(rtmpStatusMsg));
                 } catch (JSONException e) {
                     Log.e(TAG, "Error processing RTMP status update", e);
                 }
@@ -1277,6 +1277,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Finally, mark the connection as fully established
                 Log.d(TAG, "✅ Glasses connection is now fully established!");
                 connectionEvent(SmartGlassesConnectionState.CONNECTED);
+                break;
+                
+            case "keep_alive_ack":
+                // Process keep-alive ACK from ASG client
+                Log.d(TAG, "Received keep-alive ACK from glasses: " + json.toString());
+                
+                // Forward via EventBus for cloud communication (consistent with other message types)
+                EventBus.getDefault().post(new KeepAliveAckEvent(json));
                 break;
                 
             default:
