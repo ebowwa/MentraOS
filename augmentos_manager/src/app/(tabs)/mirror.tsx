@@ -25,16 +25,11 @@ import {showAlert} from "@/utils/AlertUtils"
 import {shareFile} from "@/utils/FileUtils"
 import RNFS from "react-native-fs"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
-import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
+import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
-
-interface GlassesMirrorProps {
-  isDarkTheme: boolean
-}
-
 interface GalleryPhoto {
   id: string
   photoUrl: string
@@ -252,10 +247,10 @@ export default function GlassesMirror() {
       ToastAndroid.show("Some cloud items could not be loaded", ToastAndroid.SHORT)
     } else if (shouldShowCloudWarning) {
       // Use a non-blocking approach for iOS instead of an alert
-      GlobalEventEmitter.emit('SHOW_BANNER', {
-        message: 'Some cloud items could not be loaded',
-        type: 'warning'
-      });
+      GlobalEventEmitter.emit("SHOW_BANNER", {
+        message: "Some cloud items could not be loaded",
+        type: "warning",
+      })
     }
 
     setIsLoading(false)
@@ -449,40 +444,7 @@ export default function GlassesMirror() {
   }
 
   return (
-    <Screen
-      preset="scroll"
-      ScrollViewProps={{
-        refreshControl: (
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.palette.primary500]}
-            tintColor={theme.colors.text}
-          />
-        ),
-      }}
-      // contentContainerStyle={themed($container)}
-    >
-      {/* Header */}
-      {/* <View style={themed($titleContainer)}>
-          <Text preset="heading" style={themed($title)}>
-            Glasses Mirror
-          </Text>
-          
-          <TouchableOpacity
-            onPress={navigateToFullScreen}
-            disabled={!isGlassesConnected || !lastEvent}
-          >
-            <Icon
-              name="camera"
-              size={24}
-              color={isGlassesConnected && lastEvent
-                ? theme.colors.text
-                : theme.colors.textDim}
-            />
-          </TouchableOpacity>
-        </View> */}
-
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header
         leftTx="mirror:title"
         RightActionComponent={
@@ -496,102 +458,113 @@ export default function GlassesMirror() {
         }
       />
 
-      {/* Mirror Content */}
-      <View style={themed($mirrorSection)}>
-        {isGlassesConnected ? (
-          <View style={themed($contentContainer)}>
-            {lastEvent ? (
-              <GlassesDisplayMirror layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
+      <ScrollView
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.palette.primary500]}
+            tintColor={theme.colors.text}
+          />
+        }>
+        {/* Mirror Content */}
+        <View style={themed($mirrorSection)}>
+          {isGlassesConnected ? (
+            <View style={themed($contentContainer)}>
+              {lastEvent ? (
+                <GlassesDisplayMirror layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
+              ) : (
+                <View style={themed($fallbackContainer)}>
+                  <Text style={themed($fallbackText)}>No display events available</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View style={themed($fallbackContainer)}>
+              <Text style={themed($fallbackText)}>Connect smart glasses to use the Glasses Mirror</Text>
+            </View>
+          )}
+        </View>
+
+        {/* Gallery Section */}
+        <View style={themed($gallerySection)}>
+          <Text preset="heading" style={themed($sectionTitle)}>
+            Gallery
+          </Text>
+
+          {/* Gallery Content */}
+          <View style={themed($galleryContent)}>
+            {isLoading ? (
+              <View style={themed($loadingContainer)}>
+                <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
+                <Text style={themed($loadingText)}>Loading media...</Text>
+              </View>
+            ) : // Content based on data availability
+            mediaItems.length === 0 ? (
+              renderEmptyGalleryState()
             ) : (
-              <View style={themed($fallbackContainer)}>
-                <Text style={themed($fallbackText)}>No display events available</Text>
+              <View style={themed($contentList)}>
+                {/* Unified media content */}
+                {mediaItems.map((item, index) =>
+                  item.mediaType === "video" ? (
+                    <VideoItem
+                      key={`video-${index}`}
+                      videoPath={item.contentUrl}
+                      isDarkTheme={theme.isDark}
+                      onPlayVideo={playVideo}
+                      onShareVideo={shareVideo}
+                      onDeleteVideo={deleteVideo}
+                      showSourceBadge={true}
+                    />
+                  ) : (
+                    <PhotoItem
+                      key={`photo-${index}`}
+                      photo={{
+                        id: item.id,
+                        photoUrl: item.contentUrl,
+                        uploadDate: new Date(item.timestamp).toISOString(),
+                        appId: item.metadata.appId || "Unknown",
+                      }}
+                      isDarkTheme={theme.isDark}
+                      onViewPhoto={viewPhoto}
+                      onDeletePhoto={deletePhoto}
+                      showSourceBadge={true}
+                    />
+                  ),
+                )}
               </View>
             )}
           </View>
-        ) : (
-          <View style={themed($fallbackContainer)}>
-            <Text style={themed($fallbackText)}>Connect smart glasses to use the Glasses Mirror</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Gallery Section */}
-      <View style={themed($gallerySection)}>
-        <Text preset="heading" style={themed($sectionTitle)}>
-          Gallery
-        </Text>
-
-        {/* Gallery Content */}
-        <View style={themed($galleryContent)}>
-          {isLoading ? (
-            <View style={themed($loadingContainer)}>
-              <ActivityIndicator size="large" color={theme.colors.palette.primary500} />
-              <Text style={themed($loadingText)}>Loading media...</Text>
-            </View>
-          ) : // Content based on data availability
-          mediaItems.length === 0 ? (
-            renderEmptyGalleryState()
-          ) : (
-            <View style={themed($contentList)}>
-              {/* Unified media content */}
-              {mediaItems.map((item, index) =>
-                item.mediaType === "video" ? (
-                  <VideoItem
-                    key={`video-${index}`}
-                    videoPath={item.contentUrl}
-                    isDarkTheme={theme.isDark}
-                    onPlayVideo={playVideo}
-                    onShareVideo={shareVideo}
-                    onDeleteVideo={deleteVideo}
-                    showSourceBadge={true}
-                  />
-                ) : (
-                  <PhotoItem
-                    key={`photo-${index}`}
-                    photo={{
-                      id: item.id,
-                      photoUrl: item.contentUrl,
-                      uploadDate: new Date(item.timestamp).toISOString(),
-                      appId: item.metadata.appId || "Unknown",
-                    }}
-                    isDarkTheme={theme.isDark}
-                    onViewPhoto={viewPhoto}
-                    onDeletePhoto={deletePhoto}
-                    showSourceBadge={true}
-                  />
-                ),
-              )}
-            </View>
-          )}
         </View>
-      </View>
 
-      {/* Photo viewer modal */}
-      <Modal
-        visible={photoModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setPhotoModalVisible(false)}>
-        <View style={$modalContainer}>
-          <TouchableOpacity style={$closeButton} onPress={() => setPhotoModalVisible(false)}>
-            <Icon name="close" size={24} color="white" />
-          </TouchableOpacity>
+        {/* Photo viewer modal */}
+        <Modal
+          visible={photoModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setPhotoModalVisible(false)}>
+          <View style={$modalContainer}>
+            <TouchableOpacity style={$closeButton} onPress={() => setPhotoModalVisible(false)}>
+              <Icon name="close" size={24} color="white" />
+            </TouchableOpacity>
 
-          {selectedPhoto && (
-            <View style={$modalImageContainer}>
-              <Image source={{uri: selectedPhoto.photoUrl}} style={$fullscreenImage} resizeMode="contain" />
-              <View style={$photoDetails}>
-                <Text style={$photoDetailText} preset="default">
-                  {new Date(selectedPhoto.uploadDate).toLocaleString()}
-                </Text>
-                <Text style={$photoDetailText} preset="default">
-                  From app: {selectedPhoto.appId}
-                </Text>
+            {selectedPhoto && (
+              <View style={$modalImageContainer}>
+                <Image source={{uri: selectedPhoto.photoUrl}} style={$fullscreenImage} resizeMode="contain" />
+                <View style={$photoDetails}>
+                  <Text style={$photoDetailText} preset="default">
+                    {new Date(selectedPhoto.uploadDate).toLocaleString()}
+                  </Text>
+                  <Text style={$photoDetailText} preset="default">
+                    From app: {selectedPhoto.appId}
+                  </Text>
+                </View>
               </View>
-            </View>
-          )}
-        </View>
-      </Modal>
+            )}
+          </View>
+        </Modal>
+      </ScrollView>
     </Screen>
   )
 }
