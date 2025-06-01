@@ -438,7 +438,7 @@ export default class BackendServerComms {
         throw new Error(`Bad response: ${response.statusText}`);
       }
     } catch (error: any) {
-      console.error('Error fetching apps:', error.message || error);
+      // console.error('Error fetching apps:', error.message || error);
       throw error;
     }
   }
