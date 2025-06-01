@@ -1,21 +1,15 @@
 // app/index.js
 
-import {router} from "expo-router"
 import {useEffect} from "react"
-import {supabase} from "@/supabase/supabaseClient"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAuth} from "@/contexts/AuthContext"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-
-// useEffect(() => {
-//   console.log('Initializing CoreCommunicator2');
-//   CoreCommunicator.initialize();
-// }, []);
 
 export default function IndexPage() {
   const {user, loading} = useAuth()
   const {status, initializeCoreConnection} = useStatus()
   const {goBack, push, replace} = useNavigationHistory()
+
   useEffect(() => {
     const initializeApp = async () => {
       /*

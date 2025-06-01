@@ -1,5 +1,5 @@
 import {useEffect, useState} from "react"
-import {Slot, SplashScreen, useNavigation} from "expo-router"
+import {Slot, SplashScreen} from "expo-router"
 
 import {useFonts} from "@expo-google-fonts/space-grotesk"
 import {customFontsToLoad} from "@/theme"
@@ -25,7 +25,6 @@ export default function Root() {
   const [fontsLoaded, fontError] = useFonts(customFontsToLoad)
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
   const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
-  const navigation = useNavigation()
 
   useEffect(() => {
     initI18n()
@@ -44,18 +43,6 @@ export default function Root() {
       SplashScreen.hideAsync()
     }
   }, [loaded])
-
-  useEffect(() => {
-    
-    navigation.addListener("beforeRemove", e => {
-      // Prevent default behavior of leaving the screen
-      if (e.data.action.type === "GO_BACK") {
-        // e.preventDefault()
-        console.log("GO_BACK")
-
-      }
-    })
-  }, [])
 
   if (!loaded) {
     return null
