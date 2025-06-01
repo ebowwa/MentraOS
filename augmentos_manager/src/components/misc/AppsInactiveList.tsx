@@ -33,6 +33,7 @@ import {router} from "expo-router"
 import EmptyAppsView from "../home/EmptyAppsView"
 import {AppListItem} from "./AppListItem"
 import {Spacer} from "./Spacer"
+import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
 
 export default function InactiveAppList() {
@@ -195,7 +196,7 @@ export default function InactiveAppList() {
 
   const checkPermissions = async (app: AppInterface) => {
     let permissions = app.permissions || []
-    let neededPermissions: string[] = []
+    const neededPermissions: string[] = []
 
     if (permissions.length == 1 && permissions[0].type == "ALL") {
       permissions = [
@@ -344,6 +345,9 @@ export default function InactiveAppList() {
       await backendComms.startApp(packageName)
       // Clear the pending operation since it completed successfully
       clearPendingOperation(packageName)
+
+      // Mark that the user has ever activated an app
+      await saveSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, true)
 
       if (!onboardingCompleted && packageName === "com.augmentos.livecaptions") {
         // If this is the Live Captions app, make sure we've hidden the tip
@@ -521,9 +525,8 @@ export default function InactiveAppList() {
         }
 
         return (
-          <View key={app.packageName}>
+          <React.Fragment key={app.packageName}>
             <AppListItem
-              key={app.packageName}
               app={app}
               is_foreground={app.is_foreground}
               isActive={false}
@@ -531,8 +534,14 @@ export default function InactiveAppList() {
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
             />
-            <Spacer height={spacing.sm} />
-          </View>
+            {index < availableApps.length - 1 && (
+              <>
+                <Spacer height={8} />
+                <Divider variant="inset" />
+                <Spacer height={8} />
+              </>
+            )}
+          </React.Fragment>
         )
       })}
     </View>
@@ -608,36 +617,36 @@ const styles = StyleSheet.create({
   //   height: 50, // Match RunningAppsList icon size
   // },
   arrowContainer: {
+    alignItems: "center",
+    marginLeft: 20,
     position: "absolute",
     top: -90,
     zIndex: 10,
-    alignItems: "center",
-    marginLeft: 20,
   },
   arrowWrapper: {
     alignItems: "center",
     justifyContent: "center",
   },
   arrowBubble: {
+    alignItems: "center",
     backgroundColor: "#00B0FF",
+    borderColor: "#0288D1",
     borderRadius: 16,
+    borderWidth: 1,
+    elevation: 10,
+    flexDirection: "row",
+    marginBottom: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    marginBottom: 8,
-    flexDirection: "row",
-    alignItems: "center",
     shadowColor: "#0288D1",
     shadowOffset: {width: 0, height: 3},
     shadowOpacity: 0.5,
     shadowRadius: 8,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: "#0288D1",
   },
   arrowBubbleText: {
     color: "#FFFFFF",
-    fontWeight: "bold",
     fontSize: 15,
+    fontWeight: "bold",
     marginRight: 6,
     textShadowColor: "rgba(0, 0, 0, 0.2)",
     textShadowOffset: {width: 0, height: 1},
@@ -647,20 +656,20 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
   arrowIconContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 23,
     alignItems: "center",
+    borderColor: "#0288D1",
+    borderRadius: 23,
+    borderWidth: 2,
+    elevation: 12,
+    height: 45,
     justifyContent: "center",
+    overflow: "hidden",
+    position: "relative",
     shadowColor: "#0288D1",
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.6,
     shadowRadius: 8,
-    elevation: 12,
-    overflow: "hidden",
-    position: "relative",
-    borderWidth: 2,
-    borderColor: "#0288D1",
+    width: 45,
   },
   arrowIconContainerLight: {
     backgroundColor: "#00B0FF",
@@ -669,11 +678,11 @@ const styles = StyleSheet.create({
     backgroundColor: "#00B0FF",
   },
   glowEffect: {
+    backgroundColor: "rgba(0, 176, 255, 0.3)",
+    borderRadius: 23,
+    height: "100%",
     position: "absolute",
     width: "100%",
-    height: "100%",
-    borderRadius: 23,
-    backgroundColor: "rgba(0, 176, 255, 0.3)",
   },
   // settingsHintContainer: {
   //   padding: 12,

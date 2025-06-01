@@ -5,12 +5,27 @@ import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Icon} from "../ignite"
 import {translate} from "@/i18n"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 
 const TempActivateAppWindow = () => {
   const {themed} = useAppTheme()
   const [visible, setVisible] = React.useState(true)
+  const [shouldShow, setShouldShow] = React.useState(false)
 
-  if (!visible) return null
+  React.useEffect(() => {
+    const checkIfShouldShow = async () => {
+      const hasEverActivatedApp = await loadSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
+      // Only update state if we should actually show the window
+      if (!hasEverActivatedApp) {
+        setShouldShow(true)
+      }
+    }
+
+    checkIfShouldShow()
+  }, [])
+
+  if (!visible || !shouldShow) return null
 
   return (
     <View style={{marginTop: 16}}>

@@ -100,6 +100,14 @@ export default function SettingsPage() {
       <Spacer height={theme.spacing.md} />
 
       <RouteButton
+        label="Theme Settings"
+        subtitle="Customize your app appearance"
+        onPress={() => router.push("/settings/theme")}
+      />
+
+      <Spacer height={theme.spacing.md} />
+
+      <RouteButton
         label={translate("settings:developerSettings")}
         // subtitle={translate("settings:developerSettingsSubtitle")}
         onPress={() => router.push("/settings/developer")}
@@ -107,11 +115,7 @@ export default function SettingsPage() {
 
       <Spacer height={theme.spacing.md} />
 
-      <RouteButton
-        label={translate("settings:signOut")}
-        onPress={confirmSignOut}
-      />
-      
+      <RouteButton label={translate("settings:signOut")} onPress={confirmSignOut} />
     </Screen>
   )
 }
