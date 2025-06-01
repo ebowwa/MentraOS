@@ -1,6 +1,16 @@
 // YourAppsList.tsx
 import React, {useCallback, useEffect, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, Platform, ViewStyle} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Animated,
+  Platform,
+  ViewStyle,
+  ActivityIndicator,
+} from "react-native"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -23,7 +33,7 @@ import {router} from "expo-router"
 import EmptyAppsView from "../home/EmptyAppsView"
 import {AppListItem} from "./AppListItem"
 import {Spacer} from "./Spacer"
-import {spacing} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 
 export default function InactiveAppList() {
   const {
@@ -34,14 +44,14 @@ export default function InactiveAppList() {
     clearPendingOperation,
     isSensingEnabled,
   } = useAppStatus()
-  const navigation = useNavigation<NavigationProps>()
-  const [_isLoading, setIsLoading] = React.useState(false)
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
   const [showSettingsHint, setShowSettingsHint] = useState(false)
   const [showOnboardingTip, setShowOnboardingTip] = useState(false)
-  const {theme, themed} = useAppTheme()
+  const [isLoading, setIsLoading] = useState(true)
+  const {themed, theme} = useAppTheme()
+
   // Static values instead of animations
   const bounceAnim = React.useRef(new Animated.Value(0)).current
   const pulseAnim = React.useRef(new Animated.Value(0)).current
@@ -529,78 +539,74 @@ export default function InactiveAppList() {
   )
 }
 
+const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  marginTop: 50,
+})
+
 const styles = StyleSheet.create({
-  appsContainer: {
-    marginTop: -8,
-    marginBottom: 0,
-    width: "100%",
-    paddingHorizontal: 0,
-    paddingVertical: 10,
-  },
-  titleContainer: {
-    width: "100%",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginLeft: 0,
-    paddingLeft: 0,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    fontFamily: "Montserrat-Bold",
-    lineHeight: 22,
-    letterSpacing: 0.38,
-    marginBottom: 10,
-  },
-  adjustableText: {
-    minHeight: 0,
-  },
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-start",
-  },
-  listContainer: {
-    gap: 16,
-  },
-  appContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    minHeight: 40, // Match RunningAppsList minHeight
-  },
-  itemContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  tipButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 15,
-  },
-  tipText: {
-    marginLeft: 5,
-    fontSize: 14,
-  },
-  appTextContainer: {
-    flex: 1,
-    marginLeft: 8,
-    justifyContent: "center",
-  },
-  settingsButton: {
-    padding: 50,
-    margin: -46,
-  },
-  appIconStyle: {
-    width: 50, // Match RunningAppsList icon size
-    height: 50, // Match RunningAppsList icon size
-  },
+  // appsContainer: {
+  //   marginTop: -8,
+  //   marginBottom: 0,
+  //   width: "100%",
+  //   paddingHorizontal: 0,
+  //   paddingVertical: 10,
+  // },
+  // titleContainer: {
+  //   width: "100%",
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   justifyContent: "space-between",
+  //   marginLeft: 0,
+  //   paddingLeft: 0,
+  // },
+  // gridContainer: {
+  //   flexDirection: "row",
+  //   flexWrap: "wrap",
+  //   justifyContent: "flex-start",
+  // },
+  // listContainer: {
+  //   gap: 16,
+  // },
+  // appContent: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   minHeight: 40, // Match RunningAppsList minHeight
+  // },
+  // itemContainer: {
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  // },
+  // emptyContainer: {
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  // },
+  // tipButton: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   paddingHorizontal: 10,
+  //   paddingVertical: 5,
+  //   borderRadius: 15,
+  // },
+  // tipText: {
+  //   marginLeft: 5,
+  //   fontSize: 14,
+  // },
+  // appTextContainer: {
+  //   flex: 1,
+  //   marginLeft: 8,
+  //   justifyContent: "center",
+  // },
+  // settingsButton: {
+  //   padding: 50,
+  //   margin: -46,
+  // },
+  // appIconStyle: {
+  //   width: 50, // Match RunningAppsList icon size
+  //   height: 50, // Match RunningAppsList icon size
+  // },
   arrowContainer: {
     position: "absolute",
     top: -90,
@@ -669,119 +675,119 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     backgroundColor: "rgba(0, 176, 255, 0.3)",
   },
-  settingsHintContainer: {
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  hintContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  hintText: {
-    marginLeft: 10,
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  sensingWarningContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 12,
-  },
-  warningContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  warningText: {
-    marginLeft: 10,
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#E65100",
-    flex: 1,
-  },
-  settingsButtonText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "bold",
-  },
-  settingsButtonBlue: {
-    backgroundColor: "#007AFF",
-    borderRadius: 5,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    margin: 0,
-  },
-  settingsButtonTextBlue: {
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  scrollViewContent: {
-    paddingBottom: Platform.OS === "ios" ? 24 : 38, // Account for nav bar height + iOS home indicator
-  },
-  appIcon: {
-    width: 32,
-    height: 32,
-  },
-  toggle: {
-    width: 36,
-    height: 20,
-  },
-  toggleBarIcon: {
-    height: "80%",
-    width: "94.44%",
-    top: "15%",
-    right: "5.56%",
-    bottom: "15%",
-    left: "0%",
-    borderRadius: 8,
-    maxHeight: "100%",
-  },
-  toggleCircleIcon: {
-    width: "55.56%",
-    top: 0,
-    right: "47.22%",
-    left: "-2.78%",
-    borderRadius: 12,
-    height: 20,
-  },
-  toggleIconLayout: {
-    maxWidth: "100%",
-    position: "absolute",
-    overflow: "hidden",
-  },
-  everythingFlexBox: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  everything: {
-    justifyContent: "space-between",
-    gap: 0,
-    alignSelf: "stretch",
-  },
-  toggleParent: {
-    gap: 12,
-  },
-  appDescription: {
-    gap: 17,
-    justifyContent: "center",
-  },
-  appNameWrapper: {
-    justifyContent: "center",
-  },
-  appName: {
-    fontSize: 15,
-    letterSpacing: 0.6,
-    lineHeight: 20,
-    fontFamily: "SF Pro Rounded",
-    color: "#ced2ed",
-    textAlign: "left",
-    overflow: "hidden",
-  },
+  // settingsHintContainer: {
+  //   padding: 12,
+  //   borderRadius: 8,
+  //   borderWidth: 1,
+  //   marginBottom: 12,
+  // },
+  // hintContent: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  // },
+  // hintText: {
+  //   marginLeft: 10,
+  //   fontSize: 14,
+  //   fontWeight: "500",
+  // },
+  // sensingWarningContainer: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   justifyContent: "space-between",
+  //   padding: 12,
+  //   borderRadius: 8,
+  //   borderWidth: 1,
+  //   marginBottom: 12,
+  // },
+  // warningContent: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  //   flex: 1,
+  // },
+  // warningText: {
+  //   marginLeft: 10,
+  //   fontSize: 14,
+  //   fontWeight: "500",
+  //   color: "#E65100",
+  //   flex: 1,
+  // },
+  // settingsButtonText: {
+  //   color: "#FFFFFF",
+  //   fontSize: 13,
+  //   fontWeight: "bold",
+  // },
+  // settingsButtonBlue: {
+  //   backgroundColor: "#007AFF",
+  //   borderRadius: 5,
+  //   paddingVertical: 5,
+  //   paddingHorizontal: 10,
+  //   margin: 0,
+  // },
+  // settingsButtonTextBlue: {
+  //   color: "#007AFF",
+  //   fontSize: 14,
+  //   fontWeight: "bold",
+  // },
+  // scrollViewContent: {
+  //   paddingBottom: Platform.OS === "ios" ? 24 : 38, // Account for nav bar height + iOS home indicator
+  // },
+  // appIcon: {
+  //   width: 32,
+  //   height: 32,
+  // },
+  // toggle: {
+  //   width: 36,
+  //   height: 20,
+  // },
+  // toggleBarIcon: {
+  //   height: "80%",
+  //   width: "94.44%",
+  //   top: "15%",
+  //   right: "5.56%",
+  //   bottom: "15%",
+  //   left: "0%",
+  //   borderRadius: 8,
+  //   maxHeight: "100%",
+  // },
+  // toggleCircleIcon: {
+  //   width: "55.56%",
+  //   top: 0,
+  //   right: "47.22%",
+  //   left: "-2.78%",
+  //   borderRadius: 12,
+  //   height: 20,
+  // },
+  // toggleIconLayout: {
+  //   maxWidth: "100%",
+  //   position: "absolute",
+  //   overflow: "hidden",
+  // },
+  // everythingFlexBox: {
+  //   flexDirection: "row",
+  //   alignItems: "center",
+  // },
+  // everything: {
+  //   justifyContent: "space-between",
+  //   gap: 0,
+  //   alignSelf: "stretch",
+  // },
+  // toggleParent: {
+  //   gap: 12,
+  // },
+  // appDescription: {
+  //   gap: 17,
+  //   justifyContent: "center",
+  // },
+  // appNameWrapper: {
+  //   justifyContent: "center",
+  // },
+  // appName: {
+  //   fontSize: 15,
+  //   letterSpacing: 0.6,
+  //   lineHeight: 20,
+  //   fontFamily: "SF Pro Rounded",
+  //   color: "#ced2ed",
+  //   textAlign: "left",
+  //   overflow: "hidden",
+  // },
 })
