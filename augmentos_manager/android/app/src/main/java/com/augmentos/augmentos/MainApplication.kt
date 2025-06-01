@@ -46,7 +46,6 @@ class MainApplication : Application(), ReactApplication {
             // Packages that cannot be autolinked yet can be added manually here, for example:
             // packages.add(new MyReactNativePackage());
             packages.add(MainReactPackage());
-            packages.add(RNBluetoothClassicPackage());
             packages.add(BleManagerPackage());
             packages.add(ReanimatedPackage());
             packages.add(RNScreensPackage());
