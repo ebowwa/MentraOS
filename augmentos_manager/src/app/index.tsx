@@ -5,6 +5,7 @@ import {useEffect} from "react"
 import {supabase} from "@/supabase/supabaseClient"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAuth} from "@/contexts/AuthContext"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 // useEffect(() => {
 //   console.log('Initializing CoreCommunicator2');
@@ -14,7 +15,7 @@ import {useAuth} from "@/contexts/AuthContext"
 export default function IndexPage() {
   const {user, loading} = useAuth()
   const {status, initializeCoreConnection} = useStatus()
-
+  const {goBack, push, replace} = useNavigationHistory()
   useEffect(() => {
     const initializeApp = async () => {
       /*
@@ -24,7 +25,7 @@ export default function IndexPage() {
       If they're logged in + perms => SimulatedPucK setup
       */
       if (!user) {
-        router.replace("/auth/login")
+        replace("/auth/login")
         return
       }
 
@@ -34,9 +35,7 @@ export default function IndexPage() {
 
       initializeCoreConnection()
 
-      // router.replace("/(tabs)/home")
-
-      router.replace("/auth/core-token-exchange")
+      replace("/auth/core-token-exchange")
     }
 
     if (!loading) {

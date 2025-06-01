@@ -136,7 +136,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       // if (("" + err).includes("401")) {
       //   // log out the user
       //   await logout()
-      //   router.replace("/auth/login")
+      //   replace("/auth/login")
       // }
       setError("Error fetching apps")
     } finally {

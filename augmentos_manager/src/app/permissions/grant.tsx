@@ -12,10 +12,12 @@ import {
   markPermissionRequested,
 } from "@/utils/PermissionsUtils"
 import {Button} from "@/components/ignite"
-import { useAppTheme } from "@/utils/useAppTheme"
-import { router } from "expo-router"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {router} from "expo-router"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 const GrantPermissionsScreen: React.FC = () => {
+  const {goBack, push, replace} = useNavigationHistory()
   const {theme} = useAppTheme()
   const [appState, setAppState] = useState(AppState.currentState)
   const [isMonitoringAppState, setIsMonitoringAppState] = useState(false)
@@ -25,7 +27,7 @@ const GrantPermissionsScreen: React.FC = () => {
       if (await doesHaveAllPermissions()) {
         // Alert, you already have the perms! Why are you even here? Go away!
 
-        router.replace("/home")
+        replace("/home")
         return
       }
     })()
@@ -45,7 +47,7 @@ const GrantPermissionsScreen: React.FC = () => {
             // Battery optimization temporarily disabled
             // const hasBatteryOptimization = await requestFeaturePermissions(PermissionFeatures.BATTERY_OPTIMIZATION);
 
-            router.replace("/home")
+            replace("/home")
             return
           } else {
             await displayPermissionDeniedWarning("Required Permissions")
@@ -126,7 +128,7 @@ const GrantPermissionsScreen: React.FC = () => {
 
     // Add a small delay to ensure state updates have completed
     setTimeout(() => {
-      router.replace("/home")
+      replace("/home")
     }, 100)
   }
 

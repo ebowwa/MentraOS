@@ -12,6 +12,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {Screen} from "@/components/ignite/Screen"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -23,7 +24,7 @@ export default function PairingPrepScreen() {
   const route = useRoute()
   const {theme} = useAppTheme()
   const {glassesModelName} = route.params as {glassesModelName: string}
-
+  const {goBack, push} = useNavigationHistory()
   // React.useEffect(() => {
   //   const unsubscribe = navigation.addListener('beforeRemove', (e) => {
   //     const actionType = e.data?.action?.type;
@@ -192,7 +193,7 @@ export default function PairingPrepScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       </ScrollView>

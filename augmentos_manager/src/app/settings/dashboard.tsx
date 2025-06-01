@@ -12,13 +12,13 @@ import {
   TextStyle,
   ScrollView,
 } from "react-native"
-import Icon from "react-native-vector-icons/FontAwesome"
 
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import HeadUpAngleComponent from "@/components/misc/HeadUpAngleComponent"
 import {Header} from "@/components/ignite"
 import {router} from "expo-router"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {Screen} from "@/components/ignite"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -30,6 +30,7 @@ import RouteButton from "@/components/ui/RouteButton"
 export default function DashboardSettingsScreen() {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
+  const {goBack, push} = useNavigationHistory()
   const [isContextualDashboardEnabled, setIsContextualDashboardEnabled] = useState(
     status.core_info.contextual_dashboard_enabled,
   )
@@ -167,7 +168,7 @@ export default function DashboardSettingsScreen() {
       <Header
         titleTx="settings:dashboardSettings"
         leftIcon="caretLeft"
-        onLeftPress={() => router.replace("/(tabs)/settings")}
+        onLeftPress={goBack}
       />
       <ScrollView>
         {/* <Text style={themed($sectionTitle)}>General Settings</Text> */}

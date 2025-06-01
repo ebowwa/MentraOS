@@ -14,6 +14,7 @@ import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {Screen} from "@/components/ignite"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 export default function CoreTokenExchange() {
   const {status} = useStatus()
@@ -26,6 +27,7 @@ export default function CoreTokenExchange() {
   const hasAttemptedConnection = useRef(false)
   const loadingOverlayOpacity = useRef(new Animated.Value(1)).current
   const {theme, themed} = useAppTheme()
+  const {goBack, push, replace} = useNavigationHistory()
 
   const handleTokenExchange = async () => {
     if (isLoading) return
@@ -58,10 +60,10 @@ export default function CoreTokenExchange() {
       const onboardingCompleted = await loadSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
       if (onboardingCompleted) {
         // If onboarding is completed, go directly to Home
-        router.replace("/(tabs)/home")
+        replace("/(tabs)/home")
       } else {
         // If onboarding is not completed, go to WelcomePage
-        router.replace("/onboarding/welcome")
+        replace("/onboarding/welcome")
       }
     } catch (err) {
       // Don't log the error to console
@@ -100,7 +102,7 @@ export default function CoreTokenExchange() {
       } else {
         // If we already have a token, go straight to Home
         BackendServerComms.getInstance().setCoreToken(status.core_info.core_token)
-        router.replace("/home")
+        replace("/home")
       }
     }
   }, [status.core_info.puck_connected, authLoading, user])

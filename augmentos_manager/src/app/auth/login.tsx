@@ -29,6 +29,7 @@ import { router } from "expo-router"
 import showAlert from "@/utils/AlertUtils"
 import { Pressable } from "react-native-gesture-handler"
 import { Spacer } from "@/components/misc/Spacer"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -37,6 +38,7 @@ export default function LoginScreen() {
   const [isFormLoading, setIsFormLoading] = useState(false)
   const [isAuthLoading, setIsAuthLoading] = useState(false)
   const [backPressCount, setBackPressCount] = useState(0)
+  const {goBack, push, replace} = useNavigationHistory()
 
   // Get theme and safe area insets
   const {theme, themed} = useAppTheme()
@@ -299,7 +301,7 @@ export default function LoginScreen() {
         showAlert(translate("login:success"), translate("login:checkEmailVerification"))
       } else {
         console.log("Sign-up successful:", data)
-        router.replace("/")
+        replace("/")
       }
     } catch (err) {
       console.error("Error during sign-up:", err)

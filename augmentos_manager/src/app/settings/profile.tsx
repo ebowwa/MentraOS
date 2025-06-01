@@ -22,6 +22,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {router} from "expo-router"
 import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -41,6 +42,7 @@ export default function ProfileSettingsPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const {logout} = useAuth()
+  const {goBack, push} = useNavigationHistory()
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -111,11 +113,7 @@ export default function ProfileSettingsPage() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header
-        title={translate("profileSettings:title")}
-        leftIcon="caretLeft"
-        onLeftPress={() => router.replace("/(tabs)/settings")}
-      />
+      <Header title={translate("profileSettings:title")} leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView>
         {loading ? (
           <ActivityIndicator size="large" color={theme.colors.palette.primary500} />

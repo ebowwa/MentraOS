@@ -12,6 +12,8 @@ import {Header, Screen} from "@/components/ignite"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
+import { translate } from "@/i18n"
+import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useStatus()
@@ -24,7 +26,7 @@ export default function DeveloperSettingsScreen() {
   const [isTestFlightOrDev, setIsTestFlightOrDev] = useState<boolean>(false)
 
   const {theme} = useAppTheme()
-
+  const {goBack, push} = useNavigationHistory()
   // State for custom URL management
   const [customUrlInput, setCustomUrlInput] = useState("")
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
@@ -163,12 +165,12 @@ export default function DeveloperSettingsScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => router.replace("/(tabs)/settings")} />
+      <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
 
       <ScrollView>
         <ToggleSetting
-          label="T: Bypass VAD for Debugging"
-          subtitle="T: Bypass Voice Activity Detection in case transcription stops working."
+          label={translate("settings:bypassVAD")}
+          subtitle={translate("settings:bypassVADSubtitle")}
           value={isBypassVADForDebuggingEnabled}
           onValueChange={toggleBypassVadForDebugging}
         />
@@ -176,8 +178,8 @@ export default function DeveloperSettingsScreen() {
         <Spacer height={theme.spacing.md} />
 
         <ToggleSetting
-          label="T: Reconnect on App Foreground"
-          subtitle="T: Automatically attempt to reconnect to glasses when the app comes back to the foreground."
+          label={translate("settings:reconnectOnAppForeground")}
+          subtitle={translate("settings:reconnectOnAppForegroundSubtitle")}
           value={reconnectOnAppForeground}
           onValueChange={toggleReconnectOnAppForeground}
         />
