@@ -16,9 +16,8 @@ import {AppListItem} from "./AppListItem"
 export default function AppsActiveList() {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
   const backendComms = BackendServerComms.getInstance()
-  const [_isLoading, setIsLoading] = useState(false)
-  const navigation = useNavigation<NavigationProps>()
-  const scrollViewRef = useRef<ScrollView>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const {themed, theme} = useAppTheme()
 
   const stopApp = async (packageName: string) => {
     console.log("STOP APP")
@@ -52,28 +51,22 @@ export default function AppsActiveList() {
 
   const runningApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
 
-  const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({animated: true})
-  }
-
-  const {themed, theme} = useAppTheme()
-
   function getNewRow() {
     return (
       <View style={themed($appsContainer)}>
         {runningApps.length > 0 ? (
           <>
             <ListHeaderActiveApps />
-              {runningApps.map((app, index) => (
-                <AppListItem
-                  key={app.packageName}
-                  app={app}
-                  is_foreground={app.is_foreground}
-                  isActive={true}
-                  onTogglePress={() => stopApp(app.packageName)}
-                  onSettingsPress={() => openAppSettings(app)}
-                />
-              ))}
+            {runningApps.map((app, index) => (
+              <AppListItem
+                key={app.packageName}
+                app={app}
+                is_foreground={app.is_foreground}
+                isActive={true}
+                onTogglePress={() => stopApp(app.packageName)}
+                onSettingsPress={() => openAppSettings(app)}
+              />
+            ))}
           </>
         ) : (
           <>
