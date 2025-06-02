@@ -16,11 +16,13 @@ import {Circle} from "react-native-svg"
 import {AnimatedCircularProgress} from "react-native-circular-progress"
 import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/component/SunIcon"
+import { theme } from "assets/icons/component/SunIcon"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
+  const {themed, theme} = useAppTheme()
 
   const connectGlasses = async () => {
     if (!status.core_info.default_wearable) {
@@ -83,8 +85,8 @@ export const ConnectDeviceButton = () => {
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <SolarLineIconsSet4  color={colors.icon}/>}
-        RightAccessory={() => <ChevronRight   color={colors.icon}/>}
+        LeftAccessory={() => <SolarLineIconsSet4  color={ theme.isDark ? "white" : "black"}/>}
+        RightAccessory={() => <ChevronRight   color={ theme.isDark ? "white" : "black"}/>}
         onPress={() => {
           router.push("/pairing/select-glasses-model")
         }}

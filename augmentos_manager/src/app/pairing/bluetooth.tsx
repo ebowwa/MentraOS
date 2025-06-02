@@ -189,7 +189,14 @@ export default function SelectGlassesBluetoothScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={goBack} />
+      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress=
+      {async () => {
+          await coreCommunicator.sendDisconnectWearable();
+          await coreCommunicator.sendForgetSmartGlasses()
+          router.replace('/pairing/select-glasses-model');
+          //goBack();
+        }}
+         />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>

@@ -103,7 +103,10 @@ export default function GlassesPairingGuideScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header leftIcon="caretLeft" onLeftPress={goBack} />
+      <Header leftIcon="caretLeft" onLeftPress={() => {
+          setPairingInProgress(false);
+          router.replace('/pairing/select-glasses-model');
+        }} />
       {pairingInProgress ? (
         // Show the beautiful animated loader while pairing is in progress
         <GlassesPairingLoader glassesModelName={glassesModelName} />
