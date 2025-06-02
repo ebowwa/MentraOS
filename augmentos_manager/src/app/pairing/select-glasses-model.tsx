@@ -92,7 +92,7 @@ export default function SelectGlassesModelScreen() {
 
             <Text
               style={{
-                color: theme.colors.icon,
+                color: "white",
                 fontWeight: "bold",
                 textAlign: "center",
                 fontSize: 16,
