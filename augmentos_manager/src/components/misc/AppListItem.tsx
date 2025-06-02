@@ -33,7 +33,11 @@ export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress}: App
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
-          <Text style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]} numberOfLines={1}>
+          <Text 
+            style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]} 
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {app.name}
           </Text>
           {app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />}
@@ -74,6 +78,7 @@ const $everythingFlexBox: ThemedStyle<ViewStyle> = () => ({
 const $appDescription: ThemedStyle<ViewStyle> = () => ({
   gap: 17,
   justifyContent: "center",
+  flex: 1,
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = () => ({
@@ -83,6 +88,8 @@ const $appIcon: ThemedStyle<ViewStyle> = () => ({
 
 const $appNameWrapper: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "center",
+  flex: 1,
+  marginRight: 16,
 })
 
 const $appName: ThemedStyle<TextStyle> = () => ({
