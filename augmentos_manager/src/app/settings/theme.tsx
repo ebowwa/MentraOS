@@ -1,0 +1,87 @@
+import React, {useState, useEffect} from "react"
+import {View, Text, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {Screen, Header} from "@/components/ignite"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {ThemedStyle} from "@/theme"
+import {MaterialCommunityIcons} from "@expo/vector-icons"
+import {translate} from "@/i18n"
+import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import {router} from "expo-router"
+
+export default function ThemeSettingsPage() {
+  const {theme, themed, setThemeContextOverride} = useAppTheme()
+  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark" | "system">("system")
+
+  useEffect(() => {
+    // Load saved theme preference
+    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
+      setSelectedTheme(savedTheme as "light" | "dark" | "system")
+    })
+  }, [])
+
+  const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
+    setSelectedTheme(newTheme)
+    await saveSetting(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
+
+    // Apply theme immediately
+    if (newTheme === "system") {
+      setThemeContextOverride(undefined)
+    } else {
+      setThemeContextOverride(newTheme)
+    }
+  }
+
+  const renderThemeOption = (
+    themeKey: "light" | "dark" | "system",
+    label: string,
+    subtitle?: string,
+    isLast: boolean = false,
+  ) => (
+    <>
+      <TouchableOpacity
+        style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+        onPress={() => handleThemeChange(themeKey)}>
+        <View style={{flexDirection: "column", gap: 4}}>
+          <Text style={{color: theme.colors.text}}>{label}</Text>
+          {subtitle && <Text style={themed($subtitle)}>{subtitle}</Text>}
+        </View>
+        <MaterialCommunityIcons
+          name="check"
+          size={24}
+          color={selectedTheme === themeKey ? theme.colors.palette.primary300 : "transparent"}
+        />
+      </TouchableOpacity>
+      {!isLast && <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />}
+    </>
+  )
+
+  return (
+    <Screen preset="scroll" style={{paddingHorizontal: 20}}>
+      <Header
+        title="Theme Settings"
+        leftIcon="caretLeft"
+        onLeftPress={() => router.replace("/(tabs)/settings")}
+      />
+
+      <View style={themed($settingsGroup)}>
+        {renderThemeOption("light", "Light Theme", undefined, false)}
+        {renderThemeOption("dark", "Dark Theme", undefined, false)}
+        {renderThemeOption("system", "System Default", undefined, true)}
+      </View>
+    </Screen>
+  )
+}
+
+const $settingsGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.background,
+  paddingVertical: 12,
+  paddingHorizontal: 16,
+  borderRadius: 12,
+  marginTop: 16,
+})
+
+const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  color: colors.textDim,
+  fontSize: spacing.sm,
+})

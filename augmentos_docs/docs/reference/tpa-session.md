@@ -6,7 +6,7 @@ title: TpaSession
 
 # TpaSession
 
-`TpaSession` (also known as `TpaClient` in older documentation) manages an active WebSocket connection (session) between a TPA instance and AugmentOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
+`TpaSession` (also known as `TpaClient` in older documentation) manages an active WebSocket connection (session) between an app instance and AugmentOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
 
 ```typescript
 import { TpaSession } from '@augmentos/sdk';
@@ -19,7 +19,7 @@ constructor(config: TpaSessionConfig)
 ```
 
 **Parameters:**
-- `config`: [Configuration](#configuration) options for the TPA session
+- `config`: [Configuration](#configuration) options for the app session
 
 ## Properties
 
@@ -37,6 +37,14 @@ Provides access to the [`LayoutManager`](/reference/managers/layout-manager) for
 
 ```typescript
 readonly layouts: LayoutManager
+```
+
+### settings
+
+Provides access to the [`SettingsManager`](/reference/managers/settings-manager) for reading and monitoring app settings.
+
+```typescript
+readonly settings: SettingsManager
 ```
 
 ## Event Handling Methods
@@ -97,7 +105,7 @@ onPhoneNotifications(handler: (data: PhoneNotification) => void): () => void
 
 ### subscribe()
 
-Informs the AugmentOS Cloud that this TPA session wants to receive events of the specified type.
+Informs the AugmentOS Cloud that this app session wants to receive events of the specified type.
 
 ```typescript
 subscribe(type: StreamType): void
@@ -112,7 +120,7 @@ Generic method to subscribe to any data stream type. Use specific `on<EventType>
 
 ```typescript
 on<T extends StreamType>(
-  event: T, 
+  event: T,
   handler: (data: StreamDataTypes[T]) => void
 ): () => void
 ```
@@ -173,7 +181,7 @@ getSetting<T>(key: string): T | undefined
 
 ### setSubscriptionSettings()
 
-Configures the TPA session to automatically manage subscriptions based on changes to specific settings.
+Configures the app session to automatically manage subscriptions based on changes to specific settings.
 
 ```typescript
 setSubscriptionSettings(options: {
@@ -191,22 +199,22 @@ setSubscriptionSettings(options: {
 
 ```typescript
 interface TpaSessionConfig {
-  /** Your unique TPA identifier (e.g., 'org.company.appname'). */
+  /** Your unique app identifier (e.g., 'org.company.appname'). */
   packageName: string;
-  
+
   /** Your API key for authentication. */
   apiKey: string;
-  
+
   /** The WebSocket URL provided by AugmentOS Cloud. Defaults to 'ws://localhost:8002/tpa-ws'. */
   augmentOSWebsocketUrl?: string;
-  
+
   /** Whether the session should automatically attempt to reconnect if the connection drops. Defaults to `false`. */
   autoReconnect?: boolean;
-  
+
   /** Maximum number of reconnection attempts if `autoReconnect` is true. Default: 0 (no limit). */
   maxReconnectAttempts?: number;
-  
+
   /** Initial delay (in ms) before the first reconnection attempt. Delay increases exponentially. Defaults to 1000. */
   reconnectDelay?: number;
 }
-``` 
+```

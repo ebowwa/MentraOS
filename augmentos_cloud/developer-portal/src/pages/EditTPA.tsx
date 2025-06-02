@@ -915,10 +915,10 @@ const EditTPA: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-2xl">Edit App</CardTitle>
                 <CardDescription>
-                  Update your apps for AugmentOS.
+                  Update your app's configuration.
                 </CardDescription>
                 {currentOrg && (
-                  <div className="mt-2 mb-3 text-sm flex items-center justify-between">
+                  <div className="mt-2 mb-2 text-sm flex items-center justify-between">
                     <div>
                       <span className="text-gray-500">Organization: </span>
                       <span className="font-medium">{currentOrg.name}</span>
@@ -934,7 +934,7 @@ const EditTPA: React.FC = () => {
                         size="sm"
                       >
                         <MoveIcon className="h-4 w-4" />
-                        Move to Org
+                        Switch Organization
                       </Button>
                     )}
                   </div>

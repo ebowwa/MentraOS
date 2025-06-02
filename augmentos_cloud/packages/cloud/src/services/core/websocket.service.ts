@@ -7,9 +7,9 @@
  * - Handling real-time message routing
  * - Managing TPA session states
  * - Coordinating audio streaming and transcription
- * 
+ *
  * Typical usage:
- * const wsService = createWebSocketService(sessionService, subscriptionService, 
+ * const wsService = createWebSocketService(sessionService, subscriptionService,
  *                                        transcriptionService, appService);
  * wsService.setupWebSocketServers(httpServer);
  */
@@ -17,10 +17,12 @@
 // import { WebSocketServer, WebSocket } from 'ws';
 import WebSocket from 'ws';
 import { IncomingMessage, Server } from 'http';
+import crypto from 'crypto';
 import { ExtendedUserSession, IS_LC3, SequencedAudioChunk } from './session.service';
 import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
 import appService from './app.service';
+import streamTrackerService from './stream-tracker.service';
 import {
   AppStateChange,
   AuthError,
@@ -60,8 +62,9 @@ import {
   SettingsUpdate,
   RequestSettings,
   CoreStatusUpdate,
-  VideoStreamRequest,
-  VideoStreamRequestToGlasses
+  RtmpStreamStatus,
+  // VideoStreamRequest,
+  // VideoStreamRequestToGlasses
 } from '@augmentos/sdk';
 
 import jwt, { JwtPayload } from 'jsonwebtoken';
@@ -157,6 +160,12 @@ export class WebSocketService {
   public initialize() {
     try {
       this.sessionService = getSessionService();
+
+      // Set up stream tracker callback for sending keep-alive messages
+      streamTrackerService.onKeepAliveSent = (streamId: string, ackId: string) => {
+        this.sendKeepAliveToGlasses(streamId, ackId);
+      };
+
       logger.info('✅ WebSocket Service initialized');
     } catch (error) {
       logger.error('Failed to initialize WebSocket Service:', error);
@@ -610,7 +619,7 @@ export class WebSocketService {
     userSession.logger.debug({ loadingApps: userSession.loadingApps }, '[websocket.service]: Current Loading Apps');
 
     try {
-      // Trigger TPA webhook 
+      // Trigger TPA webhook
       const { packageName, name, publicUrl } = app;
       userSession.logger.debug({ packageName, name, publicUrl }, "[websocket.service]: ⚡️Triggering webhook for app⚡️");
 
@@ -708,7 +717,7 @@ export class WebSocketService {
 
       return userSession.sessionId + '-' + packageName;
     } catch (error) {
-      userSession.logger.error(`[websocket.service]: Error starting app ${packageName}:`, error);
+      userSession.logger.error(error , `[websocket.service]: Error starting app ${packageName}:`);
       userSession.loadingApps.delete(packageName);
       throw error;
     }
@@ -755,7 +764,7 @@ export class WebSocketService {
           }
         );
       } catch (error) {
-        userSession.logger.error(`Error calling stop webhook for ${packageName}:`, error);
+        userSession.logger.error(error, `Error calling stop webhook for ${packageName}:`);
         // Continue with cleanup even if webhook fails
       }
 
@@ -767,7 +776,7 @@ export class WebSocketService {
           userSession.appConnections.delete(packageName);
         }
       } catch (error) {
-        userSession.logger.error(`Error ending websocket for TPA ${packageName}:`, error);
+        userSession.logger.error(error, `Error ending websocket for TPA ${packageName}`);
         // Continue with cleanup even if webhook fails
       }
 
@@ -778,7 +787,7 @@ export class WebSocketService {
           await user.removeRunningApp(packageName);
         }
       } catch (error) {
-        userSession.logger.error(`Error updating user's running apps:`, error);
+        userSession.logger.error(error, `Error updating user's running apps`);
       }
 
       // Update the display
@@ -804,7 +813,7 @@ export class WebSocketService {
       userSession.logger.info(`Successfully stopped app ${packageName}`);
       return true;
     } catch (error) {
-      userSession.logger.error(`Error stopping app ${packageName}:`, error);
+      userSession.logger.error(error, `Error stopping app ${packageName}`);
       // Ensure app is removed from active sessions even if an error occurs
       userSession.activeAppSessions = userSession.activeAppSessions.filter(
         (appName) => appName !== packageName
@@ -887,34 +896,9 @@ export class WebSocketService {
   }
 
   /**
-   * Forward a video stream response to the requesting TPA
-   * @param appId The ID of the app requesting the stream
-   * @param streamUrl The URL of the video stream
-   * @param userSession The user session
-   * @returns True if the response was forwarded, false if TPA not found or connection closed
+   * REMOVED: Video streaming functionality has been replaced by RTMP streaming
    */
-  forwardVideoStreamResponse(appId: string, streamUrl: string, userSession: UserSession): boolean {
-    // Find the TPA connection
-    const tpaWebSocket = userSession.appConnections.get(appId);
-
-    if (!tpaWebSocket || tpaWebSocket.readyState !== WebSocket.OPEN) {
-      logger.warn(`[websocket.service]: Cannot forward video stream response, TPA ${appId} not connected`);
-      return false;
-    }
-
-    // Send the video stream response to the TPA
-    const videoStreamResponse = {
-      type: CloudToTpaMessageType.VIDEO_STREAM_RESPONSE,
-      streamUrl,
-      appId,
-      timestamp: new Date()
-    };
-
-    tpaWebSocket.send(JSON.stringify(videoStreamResponse));
-    logger.info(`[websocket.service]: Video stream response sent to TPA ${appId}`);
-
-    return true;
-  }
+  // forwardVideoStreamResponse method has been removed in favor of RTMP streaming
   /**
    * 🥳🤓 Handles new glasses client connections.
    * @param ws - WebSocket connection
@@ -946,7 +930,7 @@ export class WebSocketService {
         throw new Error('User ID is required');
       }
     } catch (error) {
-      logger.error('[websocket.service]: Error verifying core token:', error);
+      logger.error(error, '[websocket.service]: Error verifying core token');
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
         message: 'Invalid core token',
@@ -1012,7 +996,7 @@ export class WebSocketService {
         const parsedMessage = JSON.parse(message.toString()) as GlassesToCloudMessage;
         await this.handleGlassesMessage(userSession, ws, parsedMessage);
       } catch (error) {
-        userSession.logger.error(`[websocket.service]: Error handling glasses message:`, error);
+        userSession.logger.error(error, `[websocket.service]: Error handling glasses message`);
         this.sendError(ws, {
           type: CloudToGlassesMessageType.CONNECTION_ERROR,
           message: 'Error processing message'
@@ -1028,7 +1012,7 @@ export class WebSocketService {
       try {
         ws.pong();
       } catch (error) {
-        userSession.logger.error('[websocket.service]: Error sending pong:', error);
+        userSession.logger.error(error, '[websocket.service]: Error sending pong');
       }
     });
 
@@ -1038,6 +1022,9 @@ export class WebSocketService {
       const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
 
       userSession.logger.info(`[websocket.service]: Glasses WebSocket disconnected: ${userSession.sessionId}, reason: ${disconnectInfo?.reason || 'unknown'}`);
+
+      // Clean up any active streams for this session
+      streamTrackerService.cleanupSession(userSession.sessionId);
 
       // Mark the session as disconnected but do not remove it immediately
       this.getSessionService().markSessionDisconnected(userSession);
@@ -1068,7 +1055,7 @@ export class WebSocketService {
 
     // TODO(isaiahb): Investigate if we really need to destroy the session on an error.
     ws.on('error', (error) => {
-      userSession.logger.error(`[websocket.service]: Glasses WebSocket error:`, error);
+      userSession.logger.error(error, `[websocket.service]: Glasses WebSocket error`);
 
       // Unregister from heartbeat manager
       userSession.heartbeatManager.unregisterConnection(ws);
@@ -1104,7 +1091,7 @@ export class WebSocketService {
             await this.startAppSession(userSession, systemApps.dashboard.packageName);
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service]: Error starting dashboard app:`, error);
+            userSession.logger.error(error, `[websocket.service]: Error starting dashboard app`);
           }
 
           // Start all the apps that the user has running.
@@ -1118,21 +1105,21 @@ export class WebSocketService {
                 userSession.logger.info(`[websocket.service]: ✅ Starting app ${packageName}`);
               }
               catch (error) {
-                userSession.logger.error(`[websocket.service]: Error starting user apps:`, error);
+                userSession.logger.error(error, `[websocket.service]: Error starting user apps`);
                 // Remove the app from the user's running apps if it fails to start. and save the user.
                 try {
                   await user.removeRunningApp(packageName);
                   userSession.logger.info(`[websocket.service]: Removed app ${packageName} from user running apps because it failed to start`);
                 }
                 catch (error) {
-                  userSession.logger.error(`[websocket.service]: Error Removing app ${packageName} from user running apps:`, error);
+                  userSession.logger.error(error, `[websocket.service]: Error Removing app ${packageName} from user running apps`);
                 }
               }
             }
             userSession.logger.info(`[websocket.service]: 🗿🗿✅🗿🗿 Starting app ${systemApps.dashboard.packageName}`);
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service] Error starting user apps:`, error);
+            userSession.logger.error(error, `[websocket.service] Error starting user apps`);
           }
 
           // Start transcription
@@ -1176,7 +1163,7 @@ export class WebSocketService {
             ws.send(JSON.stringify(settingsMessage));
             userSession.logger.info('Sent settings update');
           } catch (error) {
-            userSession.logger.error('Error sending settings:', error);
+            userSession.logger.error(error, 'Error sending settings');
             const errorMessage: ConnectionError = {
               type: CloudToGlassesMessageType.CONNECTION_ERROR,
               message: 'Error retrieving settings',
@@ -1208,7 +1195,7 @@ export class WebSocketService {
               timestamp: new Date().toISOString()
             });
           } catch (error) {
-            userSession.logger.error(`Error starting app ${startMessage.packageName}:`, error);
+            userSession.logger.error(error, `Error starting app ${startMessage.packageName}`);
           }
           break;
         }
@@ -1240,7 +1227,7 @@ export class WebSocketService {
             const appStateChange = await this.generateAppStateStatus(userSession);
             ws.send(JSON.stringify(appStateChange));
           } catch (error) {
-            userSession.logger.error(`Error stopping app ${stopMessage.packageName}:`, error);
+            userSession.logger.error(error, `Error stopping app ${stopMessage.packageName}`);
             // Ensure app is removed from active sessions even if an error occurs
             userSession.activeAppSessions = userSession.activeAppSessions.filter(
               (packageName) => packageName !== stopMessage.packageName
@@ -1295,7 +1282,7 @@ export class WebSocketService {
               transcriptionService.stopTranscription(userSession);
             }
           } catch (error) {
-            userSession.logger.error('❌ Error handling VAD state change:', error);
+            userSession.logger.error(error, '❌ Error handling VAD state change:');
             userSession.isTranscribing = false;
             transcriptionService.stopTranscription(userSession);
           }
@@ -1321,7 +1308,7 @@ export class WebSocketService {
             }
           }
           catch (error) {
-            userSession.logger.error(`[websocket.service]: Error updating user location:`, error);
+            userSession.logger.error(error, `[websocket.service]: Error updating user location`);
           }
           this.broadcastToTpa(userSession.sessionId, message.type as any, message as any);
           console.warn(`[Session ${userSession.sessionId}] Catching and Sending message type:`, message.type);
@@ -1357,28 +1344,86 @@ export class WebSocketService {
           break;
         }
 
-        // case 'video_stream_response': {
-        case 'video_stream_response': {
-          const videoStreamResponse = message as any;
-          userSession.logger.info(`[websocket.service]: Received video stream response from glasses, appId: ${videoStreamResponse.appId}`);
+        case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
+          const rtmpStatusMessage = message as RtmpStreamStatus;
+          userSession.logger.info(`[websocket.service]: Received RTMP stream status update from glasses: ${rtmpStatusMessage.status}`);
 
-          // Get the appId from the response
-          const appId = videoStreamResponse.appId;
-          const streamUrl = videoStreamResponse.streamUrl;
+          // Get the appId and streamId from the message
+          const appId = rtmpStatusMessage.appId;
+          const streamId = rtmpStatusMessage.streamId;
 
-          if (!appId || !streamUrl) {
-            userSession.logger.warn(`[websocket.service]: Invalid video stream response, missing appId or streamUrl`);
-            return;
+          // Update stream tracker with new status
+          if (streamId) {
+            // Map status strings to our internal status types
+            let trackerStatus: 'initializing' | 'active' | 'stopping' | 'stopped' | 'timeout';
+            switch (rtmpStatusMessage.status) {
+              case 'connecting':
+              case 'initializing':
+                trackerStatus = 'initializing';
+                break;
+              case 'active':
+              case 'streaming':
+                trackerStatus = 'active';
+                break;
+              case 'stopping':
+                trackerStatus = 'stopping';
+                break;
+              case 'stopped':
+              case 'disconnected':
+                trackerStatus = 'stopped';
+                break;
+              case 'timeout':
+              case 'error':
+                trackerStatus = 'timeout';
+                break;
+              default:
+                trackerStatus = 'active'; // Default to active for unknown statuses
+            }
+            streamTrackerService.updateStatus(streamId, trackerStatus);
           }
 
-          // Forward the video stream response to the requesting TPA
-          const success = this.forwardVideoStreamResponse(appId, streamUrl, userSession);
+          // Create the response to send to TPAs
+          const rtmpStreamStatus = {
+            type: message.type,
+            status: rtmpStatusMessage.status,
+            appId: appId, // Include the app ID in the response
+            streamId: streamId, // Include the stream ID for tracking
+            sessionId: userSession.sessionId, // Include the session ID
+            timestamp: new Date()
+          };
 
-          if (!success) {
-            userSession.logger.warn(`[websocket.service]: Failed to forward video stream response to TPA ${appId}`);
+          // Copy error details if present
+          if (rtmpStatusMessage.errorDetails) {
+            // rtmpResponse['errorDetails'] = rtmpStatusMessage.errorDetails;
           }
+
+          // Copy stats if present
+          if (rtmpStatusMessage.stats) {
+            // rtmpResponse['stats'] = rtmpStatusMessage.stats;
+          }
+
+          // Use broadcastToTpa to send the response, ensuring sessionId is included
+          // and all subscribed TPAs receive the update
+          this.broadcastToTpa(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
+          userSession.logger.info(`[websocket.service]: Broadcast RTMP status update to subscribed TPAs: ${rtmpStatusMessage.status}`);
+
           break;
         }
+
+        case GlassesToCloudMessageType.KEEP_ALIVE_ACK: {
+          const ackMessage = message as any;
+          const streamId = ackMessage.streamId;
+          const ackId = ackMessage.ackId;
+
+          userSession.logger.debug(`[websocket.service]: Received keep-alive ACK for stream ${streamId}, ackId: ${ackId}`);
+
+          // Process the ACK in stream tracker
+          streamTrackerService.processKeepAliveAck(streamId, ackId);
+
+          break;
+        }
+
+        // video_stream_response case has been removed in favor of rtmp_stream_status
 
         case "settings_update_request": {
           const settingsUpdate = message as AugmentosSettingsUpdateRequest;
@@ -1403,7 +1448,7 @@ export class WebSocketService {
 
             ws.send(JSON.stringify(responseMessage));
           } catch (error) {
-            userSession.logger.error('Error retrieving AugmentOS settings:', error);
+            userSession.logger.error(error, 'Error retrieving AugmentOS settings');
 
             // Send error back to client
             const errorMessage = {
@@ -1476,7 +1521,7 @@ export class WebSocketService {
                 await user.updateAugmentosSettings(newSettings);
                 userSession.logger.info('Updated AugmentOS settings in the database.');
               } catch (dbError) {
-                userSession.logger.error('Failed to update AugmentOS settings in the database:', dbError);
+                userSession.logger.error(dbError, 'Failed to update AugmentOS settings in the database:');
                 return; // Do not broadcast if DB update fails
               }
               // Only notify for changed keys
@@ -1506,7 +1551,7 @@ export class WebSocketService {
               }
             }
           } catch (error) {
-            userSession.logger.error('Error updating settings from core status:', error);
+            userSession.logger.error(error, 'Error updating settings from core status:');
           }
           break;
         }
@@ -1518,7 +1563,7 @@ export class WebSocketService {
         }
       }
     } catch (error) {
-      userSession.logger.error(`[Session ${userSession.sessionId}] Error handling message:`, error);
+      userSession.logger.error(error, `[Session ${userSession.sessionId}] Error handling message`);
       // Optionally send error to client
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
@@ -1563,16 +1608,7 @@ export class WebSocketService {
 
     // Add error handler to catch WebSocket errors
     ws.on('error', (wsError) => {
-      logger.error({
-        msg: 'WebSocket error in TPA connection',
-        error: {
-          name: wsError.name,
-          message: wsError.message,
-          stack: wsError.stack
-        },
-        sessionId: currentAppSession,
-        userSessionId
-      });
+      logger.error(wsError, `[websocket.service]: TPA WebSocket error`);
     });
 
     // Add close handler to track connection closures
@@ -1659,12 +1695,7 @@ export class WebSocketService {
                   sessionId: initMessage.sessionId
                 });
               } catch (initError) {
-                logger.error({
-                  msg: 'Failed to initialize TPA connection',
-                  error: initError,
-                  packageName: initMessage.packageName,
-                  sessionId: initMessage.sessionId
-                });
+                logger.error(initError, `[websocket.service]: Error initializing TPA connection for ${initMessage.packageName}`);
                 throw initError; // Re-throw to propagate to client
               }
               break;
@@ -1723,7 +1754,7 @@ export class WebSocketService {
 
                 // Check if we need to update microphone state based on media subscriptions
                 const mediaSubscriptions = subscriptionService.hasMediaSubscriptions(userSessionId);
-                userSession.logger.info({mediaSubscriptions}, 'Media subscriptions after update for user session: ' + userSessionId);
+                userSession.logger.info({ mediaSubscriptions }, 'Media subscriptions after update for user session: ' + userSessionId);
 
                 if (mediaSubscriptions) {
                   userSession.logger.info('Media subscriptions exist, ensuring microphone is enabled');
@@ -1854,7 +1885,7 @@ export class WebSocketService {
                   userSession.logger.warn(`Dashboard message ${message.type} not handled`, message);
                 }
               } catch (error) {
-                userSession.logger.error(`Error handling dashboard message ${message.type}:`, error);
+                userSession.logger.error(error, `Error handling dashboard message ${message.type}`);
               }
               break;
             }
@@ -1920,15 +1951,28 @@ export class WebSocketService {
               break;
             }
 
-            case 'video_stream_request': {
+            case 'rtmp_stream_request': {
               if (!userSession) {
                 ws.close(1008, 'No active session');
                 return;
               }
 
-              // Check if app has permission to request video stream
-              const videoStreamRequestMessage = message as VideoStreamRequest;
-              const appId = videoStreamRequestMessage.packageName;
+              // Check if app has permission to request RTMP streaming
+              const rtmpStreamRequestMessage = message as any;
+              const appId = rtmpStreamRequestMessage.packageName;
+              const rtmpUrl = rtmpStreamRequestMessage.rtmpUrl;
+              const video = rtmpStreamRequestMessage.video || {};
+              const audio = rtmpStreamRequestMessage.audio || {};
+              const stream = rtmpStreamRequestMessage.stream || {};
+
+              // Validate required parameters
+              if (!rtmpUrl) {
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'Missing RTMP URL in request'
+                });
+                return;
+              }
 
               // Check if the app is currently running
               if (!userSession.activeAppSessions) {
@@ -1942,7 +1986,7 @@ export class WebSocketService {
               // Check if app is in the active sessions array (it's an array, not an object)
               const isAppActive = userSession.activeAppSessions.includes(appId);
               if (!isAppActive) {
-                userSession.logger.warn(`[websocket.service]: App ${appId} tried to request photo but is not in active sessions: ${JSON.stringify(userSession.activeAppSessions)}`);
+                userSession.logger.warn(`[websocket.service]: App ${appId} tried to request RTMP streaming but is not in active sessions: ${JSON.stringify(userSession.activeAppSessions)}`);
                 this.sendError(ws, {
                   type: CloudToTpaMessageType.CONNECTION_ERROR,
                   message: 'App not currently running'
@@ -1950,20 +1994,82 @@ export class WebSocketService {
                 return;
               }
 
-              // Build request to glasses
-              const videoStreamRequestToGlasses: VideoStreamRequestToGlasses = {
-                type: CloudToGlassesMessageType.VIDEO_STREAM_REQUEST,
-                userSession: {
-                  sessionId: userSession.sessionId,
-                  userId: userSession.userId
-                },
-                appId,
-                timestamp: new Date()
-              };
+              // Generate unique stream ID for tracking
+              const streamId = crypto.randomUUID();
+
+              // Start tracking the stream
+              streamTrackerService.startTracking(streamId, userSession.sessionId, appId, rtmpUrl);
 
               // Send request to glasses
-              userSession.websocket.send(JSON.stringify(videoStreamRequestToGlasses));
-              userSession.logger.info(`[websocket.service]: Video stream request sent to glasses for app: ${appId}`);
+              userSession.websocket.send(JSON.stringify({
+                type: CloudToGlassesMessageType.START_RTMP_STREAM,
+                rtmpUrl,
+                appId,
+                video,
+                audio,
+                stream,
+                streamId,
+                timestamp: new Date()
+              }));
+
+              // Send initial status to the TPA
+              const initialResponse = {
+                type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
+                status: "initializing",
+                streamId,
+                timestamp: new Date()
+              };
+              ws.send(JSON.stringify(initialResponse));
+
+              userSession.logger.info(`[websocket.service]: RTMP stream request sent to glasses for app ${appId} with URL ${rtmpUrl}`);
+
+              break;
+            }
+
+            case 'rtmp_stream_stop': {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+
+              const rtmpStreamStopMessage = message as any;
+              const appId = rtmpStreamStopMessage.packageName;
+              const streamId = rtmpStreamStopMessage.streamId;
+
+              // Check if app is in the active sessions array
+              const isAppActive = userSession.activeAppSessions.includes(appId);
+              if (!isAppActive) {
+                userSession.logger.warn(`[websocket.service]: App ${appId} tried to stop RTMP streaming but is not in active sessions`);
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'App not currently running'
+                });
+                return;
+              }
+
+              // Immediately stop keep-alive tracking to prevent missed ACK warnings
+              if (streamId) {
+                streamTrackerService.stopTracking(streamId);
+              }
+
+              // Send stop command to glasses
+              userSession.websocket.send(JSON.stringify({
+                type: CloudToGlassesMessageType.STOP_RTMP_STREAM,
+                appId,
+                streamId,
+                timestamp: new Date()
+              }));
+
+              // Send initial status update to TPA
+              const stoppingResponse = {
+                type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
+                status: "stopped",
+                streamId,
+                timestamp: new Date()
+              };
+              ws.send(JSON.stringify(stoppingResponse));
+
+              userSession.logger.info(`[websocket.service]: RTMP stream stop request sent to glasses for app ${appId}`);
 
               break;
             }
@@ -2018,7 +2124,7 @@ export class WebSocketService {
       try {
         ws.pong();
       } catch (error) {
-        logger.error('[websocket.service]: Error sending pong to TPA:', error);
+        logger.error(error, '[websocket.service]: Error sending pong to TPA');
       }
     });
 
@@ -2036,7 +2142,7 @@ export class WebSocketService {
         // Capture detailed disconnect information
         const disconnectInfo = userSession.heartbeatManager.captureDisconnect(ws, code, reason);
 
-        // Clean up the connection 
+        // Clean up the connection
         if (userSession.appConnections.has(packageName)) {
           userSession.appConnections.delete(packageName);
           subscriptionService.removeSubscriptions(userSession, packageName);
@@ -2092,7 +2198,7 @@ export class WebSocketService {
                     await user.removeRunningApp(packageName);
                   }
                 } catch (dbError) {
-                  userSession.logger.error(`Error updating user's running apps:`, dbError);
+                  userSession.logger.error(dbError, `Error updating user's running apps`);
                 }
 
                 // Update the glasses client with new app state to ensure UI correctness
@@ -2103,14 +2209,14 @@ export class WebSocketService {
                     userSession.logger.info(`Sent updated app state to glasses after grace period for ${packageName}`);
                   }
                 } catch (updateError) {
-                  userSession.logger.error(`Error updating glasses client app state:`, updateError);
+                  userSession.logger.error(updateError, `Error updating glasses client app state`);
                 }
 
                 // Update the display to reflect the app's removal
                 try {
                   userSession.displayManager.handleAppStop(packageName, userSession);
                 } catch (displayError) {
-                  userSession.logger.error(`Error updating display after grace period:`, displayError);
+                  userSession.logger.error(displayError, `Error updating display after grace period`);
                 }
 
                 // Clean up the timer reference
@@ -2130,6 +2236,7 @@ export class WebSocketService {
                       userSession.logger.info(`[websocket.service]: Successfully auto-restarted ${packageName}`);
                     } catch (restartError) {
                       userSession.logger.error(
+                        restartError,
                         `[websocket.service]: Failed to auto-restart ${packageName}: ${restartError instanceof Error ? restartError.message : String(restartError)}`
                       );
                     }
@@ -2155,13 +2262,13 @@ export class WebSocketService {
           // Pass both the packageName and the userSession
           dashboardService.handleTpaDisconnected(packageName, userSession);
         } catch (error) {
-          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, error);
+          userSession.logger.error(error, `Error cleaning up dashboard content for TPA ${packageName}`);
         }
       }
     });
 
     ws.on('error', async (error) => {
-      logger.error('[websocket.service]: TPA WebSocket error:', error);
+      logger.error(error, '[websocket.service]: TPA WebSocket error');
       if (currentAppSession) {
         const userSessionId = currentAppSession.split('-')[0];
         const packageName = currentAppSession.split('-')[1];
@@ -2192,7 +2299,8 @@ export class WebSocketService {
             clearTimeout(userSession._reconnectionTimers.get(packageName));
           }
 
-          userSession.logger.info(
+          userSession.logger.warn(
+            error,
             `[websocket.service]: Starting 5-second reconnection grace period for ${packageName} after error. ` +
             `Error: ${error.message || 'unknown error'}`
           );
@@ -2220,7 +2328,7 @@ export class WebSocketService {
                   await user.removeRunningApp(packageName);
                 }
               } catch (dbError) {
-                userSession.logger.error(`Error updating user's running apps:`, dbError);
+                userSession.logger.error(dbError, `Error updating user's running apps`);
               }
 
               // Update glasses client with new app state
@@ -2231,14 +2339,14 @@ export class WebSocketService {
                   userSession.logger.info(`Sent updated app state to glasses after grace period for ${packageName}`);
                 }
               } catch (updateError) {
-                userSession.logger.error(`Error updating glasses client app state:`, updateError);
+                userSession.logger.error(updateError, `Error updating glasses client app state`);
               }
 
               // Update display
               try {
                 userSession.displayManager.handleAppStop(packageName, userSession);
               } catch (displayError) {
-                userSession.logger.error(`Error updating display after grace period:`, displayError);
+                userSession.logger.error(displayError, `Error updating display after grace period`);
               }
 
               // Clean up the timer reference
@@ -2258,6 +2366,7 @@ export class WebSocketService {
                     userSession.logger.info(`[websocket.service]: Successfully auto-restarted ${packageName}`);
                   } catch (restartError) {
                     userSession.logger.error(
+                      restartError,
                       `[websocket.service]: Failed to auto-restart ${packageName}: ${restartError instanceof Error ? restartError.message : String(restartError)}`
                     );
                   }
@@ -2282,7 +2391,7 @@ export class WebSocketService {
           // Pass both the packageName and the userSession
           dashboardService.handleTpaDisconnected(packageName, userSession);
         } catch (dashboardError) {
-          userSession.logger.error(`Error cleaning up dashboard content for TPA ${packageName}:`, dashboardError);
+          userSession.logger.error(dashboardError, `Error cleaning up dashboard content for TPA ${packageName}`);
         }
 
         userSession.logger.error(`[websocket.service]: TPA session ${currentAppSession} disconnected due to error: ${error.message || 'unknown error'}`);
@@ -2403,11 +2512,11 @@ export class WebSocketService {
             }
           }
         } catch (error) {
-          userSession.logger.error(`Error fetching TPA config for default settings: ${error}`);
+          userSession.logger.error(error, `Error fetching TPA config for default settings: ${error}`);
         }
       }
     } catch (error) {
-      userSession.logger.error(`Error retrieving settings for ${initMessage.packageName}: ${error}`);
+      userSession.logger.error(error, `Error retrieving settings for ${initMessage.packageName}: ${error}`);
     }
 
     // Send acknowledgment with settings
@@ -2461,7 +2570,43 @@ export class WebSocketService {
         }
       }
     } catch (error) {
-      userSession.logger.error(`[websocket.service] Error sending location to dashboard:`, error);
+      userSession.logger.error(error, `[websocket.service] Error sending location to dashboard`);
+    }
+  }
+
+  /**
+   * Send keep-alive message to glasses for a specific stream
+   * @param streamId - The stream ID to send keep-alive for
+   * @param ackId - The ACK ID to track
+   * @private
+   */
+  private sendKeepAliveToGlasses(streamId: string, ackId: string): void {
+    const stream = streamTrackerService.getStream(streamId);
+    if (!stream) {
+      logger.warn(`[websocket.service]: Cannot send keep-alive for unknown stream: ${streamId}`);
+      return;
+    }
+
+    const userSession = this.getSessionService().getSession(stream.sessionId);
+    if (!userSession || !userSession.websocket || userSession.websocket.readyState !== WebSocket.OPEN) {
+      logger.warn(`[websocket.service]: Cannot send keep-alive for stream ${streamId} - no active session`);
+      streamTrackerService.stopTracking(streamId);
+      return;
+    }
+
+    try {
+      const keepAliveMessage = {
+        type: CloudToGlassesMessageType.KEEP_RTMP_STREAM_ALIVE,
+        streamId,
+        ackId,
+        timestamp: new Date()
+      };
+
+      userSession.websocket.send(JSON.stringify(keepAliveMessage));
+      logger.debug(`[websocket.service]: Sent keep-alive for stream ${streamId}`);
+    } catch (error) {
+      logger.error(`[websocket.service]: Failed to send keep-alive for stream ${streamId}:`, error);
+      streamTrackerService.stopTracking(streamId);
     }
   }
 
