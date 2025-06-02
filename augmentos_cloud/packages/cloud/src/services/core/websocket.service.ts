@@ -1420,10 +1420,12 @@ export class WebSocketService {
           // userSession.logger.info('Received core status update:', coreStatusUpdate);
 
           try {
+            logger.debug({coreStatusUpdate, service: SERVICE_NAME, userId: userSession.userId}, `Received core status update from user ${userSession.userId}`);
+            
             // The status is already an object, no need to parse
             const statusObj = coreStatusUpdate.status as any;
-            const coreInfo = statusObj.status.core_info;
-            const connectedGlasses = statusObj.status.connected_glasses;
+            const coreInfo = statusObj.core_info;
+            const connectedGlasses = statusObj.connected_glasses;
 
             if (!coreInfo || !connectedGlasses) {
               userSession.logger.error('Invalid core status update format - missing required fields');
@@ -1436,7 +1438,7 @@ export class WebSocketService {
               contextualDashboard: coreInfo.contextual_dashboard_enabled,
               metricSystemEnabled: coreInfo.metric_system_enabled,
               headUpAngle: connectedGlasses.head_up_angle,
-              brightness: parseInt(connectedGlasses.brightness),
+              // brightness: parseInt(connectedGlasses.brightness),
               autoBrightness: connectedGlasses.auto_brightness,
               sensingEnabled: coreInfo.sensing_enabled,
               alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,

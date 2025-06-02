@@ -4,7 +4,7 @@
  * Provides dashboard functionality for TPAs, allowing them to write content
  * to the dashboard and respond to dashboard mode changes.
  */
-import { systemApps } from '../../constants';
+// import { systemApps } from '../../constants';
 import { 
   DashboardAPI, 
   DashboardContentAPI, 
@@ -21,6 +21,11 @@ import { EventManager } from './events';
 // Import TpaSession interface for typing
 import type { TpaSession } from './index';
 import { TpaToCloudMessage } from 'src/types';
+import dotenv from 'dotenv';
+// Load environment variables from .env file
+dotenv.config();
+
+const SYSTEM_DASHBOARD_PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'dev.augmentos.dashboard';
 
 /**
  * Implementation of DashboardSystemAPI interface for system dashboard TPA
@@ -168,7 +173,7 @@ export class DashboardManager implements DashboardAPI {
     this.content = new DashboardContentManager(session, packageName, send, events);
     
     // Add system API if this is the system dashboard TPA
-    if (packageName === systemApps.dashboard.packageName) {
+    if (packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
       this.system = new DashboardSystemManager(session, packageName, send);
     }
   }
