@@ -40,7 +40,7 @@ export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress}: App
           >
             {app.name}
           </Text>
-          {app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />}
+          {/*app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />*/}
         </View>
       </View>
 
