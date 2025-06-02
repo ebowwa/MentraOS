@@ -8,7 +8,7 @@ import {getGlassesClosedImage, getGlassesImage, getGlassesOpenImage} from "@/uti
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {spacing, ThemedStyle} from "@/theme"
+import {colors, spacing, ThemedStyle} from "@/theme"
 import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/component/ChevronRight"
@@ -83,8 +83,8 @@ export const ConnectDeviceButton = () => {
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <SolarLineIconsSet4 />}
-        RightAccessory={() => <ChevronRight />}
+        LeftAccessory={() => <SolarLineIconsSet4  color={colors.icon}/>}
+        RightAccessory={() => <ChevronRight   color={colors.icon}/>}
         onPress={() => {
           router.push("/pairing/select-glasses-model")
         }}
