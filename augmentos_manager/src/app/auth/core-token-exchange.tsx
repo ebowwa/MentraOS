@@ -114,7 +114,7 @@ export default function CoreTokenExchange() {
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
           <View style={styles.authLoadingLogoPlaceholder} />
-          <ActivityIndicator size="large" color="#2196F3" style={styles.authLoadingIndicator} />
+          <ActivityIndicator size="large" color={theme.colors.loadingIndicator} style={styles.authLoadingIndicator} />
           <Text style={themed($authLoadingText)}>{translate("login:connectingToAugmentOS")}</Text>
         </View>
       </Screen>
@@ -127,12 +127,12 @@ export default function CoreTokenExchange() {
       <View style={styles.mainContainer}>
         <View style={styles.infoContainer}>
           <View style={styles.iconContainer}>
-            <Icon name="wifi-off" size={80} color={theme.isDark ? "#ff6b6b" : "#ff0000"} />
+            <Icon name="wifi-off" size={80} color={theme.colors.error} />
           </View>
 
-          <Text style={[styles.title, theme.isDark ? styles.lightText : styles.darkText]}>Connection Error</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Connection Error</Text>
 
-          <Text style={[styles.description, theme.isDark ? styles.lightSubtext : styles.darkSubtext]}>
+          <Text style={[styles.description, { color: theme.colors.textDim }]}>
             {errorMessage}
           </Text>
         </View>
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   authLoadingText: {
     fontSize: 16,
     fontFamily: "Montserrat-Medium",
-    color: "#333",
+    // color moved to themed style
     textAlign: "center",
   },
   mainContainer: {
@@ -225,22 +225,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: 40,
   },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  lightBackground: {
-    backgroundColor: "#f8f9fa",
-  },
-  darkText: {
-    color: "#1a1a1a",
-  },
-  lightText: {
-    color: "#FFFFFF",
-  },
-  darkSubtext: {
-    color: "#4a4a4a",
-  },
-  lightSubtext: {
-    color: "#e0e0e0",
-  },
+  // Removed hardcoded color styles - now using theme dynamic colors
 })

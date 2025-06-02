@@ -97,11 +97,11 @@ export default function ScreenSettingsScreen() {
   // Switch track colors
   const switchColors = {
     trackColor: {
-      false: "#666666",
-      true: "#2196F3",
+      false: theme.colors.switchTrackOff,
+      true: theme.colors.switchTrackOn,
     },
-    thumbColor: Platform.OS === "ios" ? undefined : "#FFFFFF",
-    ios_backgroundColor: "#666666",
+    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
+    ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
   // Fixed slider props to avoid warning
@@ -112,9 +112,9 @@ export default function ScreenSettingsScreen() {
     step: 1,
     onSlidingComplete: (value: number) => changeBrightness(value),
     value: brightness ?? 50,
-    minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: styles.maximumTrackTintColorDark.color,
-    thumbTintColor: styles.thumbTintColor.color,
+    minimumTrackTintColor: theme.colors.buttonPrimary,
+    maximumTrackTintColor: theme.colors.switchTrackOff,
+    thumbTintColor: theme.colors.icon,
     // Using inline objects instead of defaultProps
     thumbTouchSize: {width: 40, height: 40},
     trackStyle: {height: 5},
@@ -128,9 +128,9 @@ export default function ScreenSettingsScreen() {
     step: 1,
     onSlidingComplete: (value: number) => changeDepth(value),
     value: depth ?? 5,
-    minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: styles.maximumTrackTintColorDark.color,
-    thumbTintColor: styles.thumbTintColor.color,
+    minimumTrackTintColor: theme.colors.buttonPrimary,
+    maximumTrackTintColor: theme.colors.switchTrackOff,
+    thumbTintColor: theme.colors.icon,
     // Using inline objects instead of defaultProps
     thumbTouchSize: {width: 40, height: 40},
     trackStyle: {height: 5},
@@ -144,9 +144,9 @@ export default function ScreenSettingsScreen() {
     step: 1,
     onSlidingComplete: (value: number) => changeHeight(value),
     value: height ?? 4,
-    minimumTrackTintColor: styles.minimumTrackTintColor.color,
-    maximumTrackTintColor: styles.maximumTrackTintColorDark.color,
-    thumbTintColor: styles.thumbTintColor.color,
+    minimumTrackTintColor: theme.colors.buttonPrimary,
+    maximumTrackTintColor: theme.colors.switchTrackOff,
+    thumbTintColor: theme.colors.icon,
     // Using inline objects instead of defaultProps
     thumbTouchSize: {width: 40, height: 40},
     trackStyle: {height: 5},
@@ -169,10 +169,10 @@ export default function ScreenSettingsScreen() {
 
         {/* Brightness Slider */}
         {!isAutoBrightnessEnabled && (
-          <View style={styles.settingItem}>
+          <View style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
             <View style={styles.settingTextContainer}>
               <Text style={themed($label)}>Brightness</Text>
-              <Text style={[styles.value, styles.darkSubtext]}>
+              <Text style={[styles.value, { color: theme.colors.textDim }]}>
                 {"Adjust the brightness level of your smart glasses."}
               </Text>
               <Slider {...sliderProps} />
@@ -180,18 +180,18 @@ export default function ScreenSettingsScreen() {
           </View>
         )}
 
-        <View style={styles.settingItem}>
+        <View style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
           <View style={styles.settingTextContainer}>
             <Text style={themed($label)}>Depth</Text>
-            <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the depth of the contextual dashboard."}</Text>
+            <Text style={[styles.value, { color: theme.colors.textDim }]}>{"Adjust the depth of the contextual dashboard."}</Text>
             <Slider {...depthSliderProps} />
           </View>
         </View>
 
-        <View style={styles.settingItem}>
+        <View style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
           <View style={styles.settingTextContainer}>
             <Text style={themed($label)}>Dashboard Height</Text>
-            <Text style={[styles.value, styles.darkSubtext]}>{"Adjust the height of the contextual dashboard."}</Text>
+            <Text style={[styles.value, { color: theme.colors.textDim }]}>{"Adjust the height of the contextual dashboard."}</Text>
             <Slider {...heightSliderProps} />
           </View>
         </View>
@@ -225,51 +225,14 @@ const styles = StyleSheet.create({
     marginTop: -20,
     marginBottom: 10,
   },
-  titleContainerDark: {
-    backgroundColor: "#333333",
-  },
-  titleContainerLight: {
-    backgroundColor: "#ffffff",
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    textAlign: "left",
-    color: "#FFFFFF",
-    marginBottom: 5,
-  },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
-  darkText: {
-    color: "black",
-  },
-  lightText: {
-    color: "white",
-  },
-  darkSubtext: {
-    color: "#666666",
-  },
-  lightSubtext: {
-    color: "#999999",
-  },
-  darkIcon: {
-    color: "#333333",
-  },
-  lightIcon: {
-    color: "#666666",
-  },
+  // Removed hardcoded theme colors - using dynamic styling
   settingItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingVertical: 20,
-    borderBottomColor: "#333",
     borderBottomWidth: 1,
+    // borderBottomColor moved to dynamic styling
   },
   settingTextContainer: {
     flex: 1,
@@ -298,16 +261,6 @@ const styles = StyleSheet.create({
     height: 20,
     width: 20,
   },
-  minimumTrackTintColor: {
-    color: "#2196F3",
-  },
-  maximumTrackTintColorDark: {
-    color: "#666666",
-  },
-  maximumTrackTintColorLight: {
-    color: "#D1D1D6",
-  },
-  thumbTintColor: {
-    color: "#FFFFFF",
-  },
+  // Removed hardcoded slider colors - using dynamic styling
+  // minimumTrackTintColor, maximumTrackTintColor, thumbTintColor moved to inline props
 })

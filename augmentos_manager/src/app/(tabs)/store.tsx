@@ -29,16 +29,16 @@ export default function AppStoreWeb() {
   const {theme, themed} = useAppTheme()
   const isDarkTheme = theme.isDark
 
-  // Theme colors
+  // Theme colors - using theme system instead of hardcoded values
   const theme2 = {
-    backgroundColor: isDarkTheme ? "#1c1c1c" : "#f9f9f9",
-    headerBg: isDarkTheme ? "#333333" : "#fff",
-    textColor: isDarkTheme ? "#FFFFFF" : "#333333",
-    secondaryTextColor: isDarkTheme ? "#aaaaaa" : "#777777",
-    borderColor: isDarkTheme ? "#444444" : "#e0e0e0",
-    buttonBg: isDarkTheme ? "#444444" : "#eeeeee",
-    buttonTextColor: isDarkTheme ? "#ffffff" : "#333333",
-    primaryColor: "#0088FF",
+    backgroundColor: theme.colors.background,
+    headerBg: theme.colors.background,
+    textColor: theme.colors.text,
+    secondaryTextColor: theme.colors.textDim,
+    borderColor: theme.colors.border,
+    buttonBg: theme.colors.palette.gray200,
+    buttonTextColor: theme.colors.text,
+    primaryColor: theme.colors.palette.blue500,
   }
 
   // Handle WebView loading events
@@ -78,7 +78,7 @@ export default function AppStoreWeb() {
   // Show loading state while getting the URL
   if (!appStoreUrl) {
     return (
-      <View style={[styles.loadingOverlay, {backgroundColor: "#fff"}]}>
+      <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
         <ActivityIndicator size="large" color={theme2.primaryColor} />
         <Text style={[styles.loadingText, {color: theme2.textColor}]}>Preparing App Store...</Text>
       </View>
@@ -105,7 +105,7 @@ export default function AppStoreWeb() {
             domStorageEnabled={true}
             startInLoadingState={true}
             renderLoading={() => (
-              <View style={[styles.loadingOverlay, {backgroundColor: "#fff"}]}>
+              <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
                 <ActivityIndicator size="large" color={theme2.primaryColor} />
                 <Text style={[styles.loadingText, {color: theme2.textColor}]}>Loading App Store...</Text>
               </View>
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    backgroundColor: "rgba(0, 0, 0, 0.3)", // Keep this overlay as is since it's theme-neutral
   },
   loadingText: {
     marginTop: 10,

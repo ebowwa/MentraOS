@@ -1,8 +1,8 @@
 import type { StyleProp } from "react-native"
 import { colors as colorsLight } from "./colors"
 import { colors as colorsDark } from "./colorsDark"
-import { spacing as spacingLight } from "./spacing"
-import { spacing as spacingDark } from "./spacingDark"
+import { spacing as spacingLight, borderRadius as borderRadiusLight } from "./spacing"
+import { spacing as spacingDark, borderRadius as borderRadiusDark } from "./spacingDark"
 import { timing } from "./timing"
 import { typography } from "./typography"
 
@@ -14,6 +14,7 @@ export type ThemeContexts = "light" | "dark" | undefined
 export type Colors = typeof colorsLight | typeof colorsDark
 // The spacing type needs to take into account the different spacing values for light and dark themes.
 export type Spacing = typeof spacingLight | typeof spacingDark
+export type BorderRadius = typeof borderRadiusLight | typeof borderRadiusDark
 
 // These two are consistent across themes.
 export type Timing = typeof timing
@@ -23,6 +24,7 @@ export type Typography = typeof typography
 export interface Theme {
   colors: Colors
   spacing: Spacing
+  borderRadius: BorderRadius
   typography: Typography
   timing: Timing
   isDark: boolean
@@ -32,6 +34,7 @@ export interface Theme {
 export const lightTheme: Theme = {
   colors: colorsLight,
   spacing: spacingLight,
+  borderRadius: borderRadiusLight,
   typography,
   timing,
   isDark: false,
@@ -39,6 +42,7 @@ export const lightTheme: Theme = {
 export const darkTheme: Theme = {
   colors: colorsDark,
   spacing: spacingDark,
+  borderRadius: borderRadiusDark,
   typography,
   timing,
   isDark: true,

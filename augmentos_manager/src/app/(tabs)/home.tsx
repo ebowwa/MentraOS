@@ -19,6 +19,7 @@ import MicIcon from "assets/icons/component/MicIcon"
 import NotificationOff from "assets/icons/component/NotificationOff"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
+import Divider from "@/components/misc/Divider"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -186,6 +187,9 @@ export default function Homepage() {
         <DeviceToolbar />
         <Spacer height={theme.spacing.md} />
         <ConnectDeviceButton />
+        <Spacer height={theme.spacing.lg} />
+        <Divider variant="full" />
+        <Spacer height={theme.spacing.md} />
 
         <AppsActiveList />
         <AppsInactiveList key={`apps-list-${appStatus.length}`} />

@@ -12,6 +12,8 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import TempActivateAppWindow from "./TempActivateAppWindow"
 import {AppListItem} from "./AppListItem"
+import Divider from "./Divider"
+import {Spacer} from "./Spacer"
 
 export default function AppsActiveList() {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
@@ -54,29 +56,41 @@ export default function AppsActiveList() {
   function getNewRow() {
     return (
       <View style={themed($appsContainer)}>
-        {runningApps.length > 0 ? (
-          <>
-            <ListHeaderActiveApps />
-            {runningApps.map((app, index) => (
-              <AppListItem
-                key={app.packageName}
-                app={app}
-                is_foreground={app.is_foreground}
-                isActive={true}
-                onTogglePress={() => stopApp(app.packageName)}
-                onSettingsPress={() => openAppSettings(app)}
+        <View style={themed($headerContainer)}>
+          {runningApps.length > 0 ? <ListHeaderActiveApps /> : null}
+        </View>
+        <View style={themed($contentContainer)}>
+          {runningApps.length > 0 ? (
+            <>
+              {runningApps.map((app, index) => (
+                <React.Fragment key={app.packageName}>
+                  <AppListItem
+                    app={app}
+                    is_foreground={app.is_foreground}
+                    isActive={true}
+                    onTogglePress={() => stopApp(app.packageName)}
+                    onSettingsPress={() => openAppSettings(app)}
+                  />
+                  {index < runningApps.length - 1 && (
+                    <>
+                      <Spacer height={8} />
+                      <Divider variant="inset" />
+                      <Spacer height={8} />
+                    </>
+                  )}
+                </React.Fragment>
+              ))}
+            </>
+          ) : (
+            <>
+              <TempActivateAppWindow />
+              <EmptyAppsView
+                statusMessageKey={"home:noActiveApps"}
+                activeAppsMessageKey={"home:emptyActiveAppListInfo"}
               />
-            ))}
-          </>
-        ) : (
-          <>
-            <TempActivateAppWindow />
-            <EmptyAppsView
-              statusMessageKey={"home:noActiveApps"}
-              activeAppsMessageKey={"home:emptyActiveAppListInfo"}
-            />
-          </>
-        )}
+            </>
+          )}
+        </View>
       </View>
     )
   }
@@ -87,4 +101,13 @@ export default function AppsActiveList() {
 const $appsContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
   marginTop: 8,
+  minHeight: 72,
+})
+
+const $headerContainer: ThemedStyle<ViewStyle> = () => ({
+  minHeight: 32,
+})
+
+const $contentContainer: ThemedStyle<ViewStyle> = () => ({
+  minHeight: 48,
 })

@@ -183,20 +183,7 @@ export default function SelectGlassesBluetoothScreen() {
     })
   }
 
-  const isDarkTheme = theme.isDark
-  const theme2 = {
-    backgroundColor: isDarkTheme ? "#1c1c1c" : "#f9f9f9",
-    headerBg: isDarkTheme ? "#333333" : "#fff",
-    textColor: isDarkTheme ? "#FFFFFF" : "#333333",
-    subTextColor: isDarkTheme ? "#999999" : "#666666",
-    cardBg: isDarkTheme ? "#333333" : "#fff",
-    borderColor: isDarkTheme ? "#444444" : "#e0e0e0",
-    searchBg: isDarkTheme ? "#2c2c2c" : "#f5f5f5",
-    categoryChipBg: isDarkTheme ? "#444444" : "#e9e9e9",
-    categoryChipText: isDarkTheme ? "#FFFFFF" : "#555555",
-    selectedChipBg: isDarkTheme ? "#666666" : "#333333",
-    selectedChipText: isDarkTheme ? "#FFFFFF" : "#FFFFFF",
-  }
+  // Removed hardcoded theme2 object - using semantic theme colors instead
 
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
@@ -284,44 +271,18 @@ const styles = StyleSheet.create({
     marginTop: -20,
     marginBottom: 10,
   },
-  titleContainerDark: {
-    backgroundColor: "#333333",
-  },
-  titleContainerLight: {
-    backgroundColor: "#ffffff",
-  },
+  // Removed hardcoded theme colors - using dynamic styling
+  // titleContainerDark and titleContainerLight removed
   title: {
     fontSize: 24,
     fontWeight: "bold",
     fontFamily: "Montserrat-Bold",
     textAlign: "left",
-    color: "#FFFFFF",
     marginBottom: 5,
+    // color moved to dynamic styling
   },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
-  darkText: {
-    color: "black",
-  },
-  lightText: {
-    color: "white",
-  },
-  darkSubtext: {
-    color: "#666666",
-  },
-  lightSubtext: {
-    color: "#999999",
-  },
-  darkIcon: {
-    color: "#333333",
-  },
-  lightIcon: {
-    color: "#666666",
-  },
+  // Removed hardcoded theme colors - using dynamic styling
+  // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
   backButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -347,16 +308,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   headerContainer: {
-    backgroundColor: "#fff",
     paddingVertical: 15,
     paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    // backgroundColor and borderBottomColor moved to dynamic styling
   },
   header: {
     fontSize: 24,
     fontWeight: "600",
-    color: "#333",
+    // color moved to dynamic styling
   },
   /**
    * BIGGER, SEXIER IMAGES

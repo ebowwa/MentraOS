@@ -1,6 +1,7 @@
 // src/AppSettings.tsx
 import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, ViewStyle, TextStyle} from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import TextSettingNoSave from "@/components/settings/TextSettingNoSave"
@@ -30,6 +31,7 @@ export default function AppSettings() {
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
+  const insets = useSafeAreaInsets()
   if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
     console.error("No packageName or appName found in params")
     return null
@@ -415,9 +417,12 @@ export default function AppSettings() {
     <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       {isUninstalling && <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} />}
 
-      <Header leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header title={appInfo?.name || appName || "App Settings"} leftIcon="caretLeft" onLeftPress={() => router.back()} />
 
-      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
+      <ScrollView 
+        style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
+        contentInsetAdjustmentBehavior="automatic"
+        showsVerticalScrollIndicator={false}>
         <View style={{gap: 24}}>
           <View style={themed($appInfoHeader)}>
             <View style={themed($appIconRow)}>
@@ -488,8 +493,8 @@ export default function AppSettings() {
             </View>
           </View>
 
-          {/* gives extra scroll height */}
-          <View style={{height: 40}} />
+          {/* Bottom safe area padding */}
+          <View style={{height: Math.max(40, insets.bottom + 20)}} />
         </View>
       </ScrollView>
     </Screen>

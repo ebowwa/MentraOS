@@ -81,32 +81,18 @@ export default function SelectGlassesModelScreen() {
     router.push({pathname: "/pairing/prep", params: {glassesModelName: glassesModelName}})
   }
 
-  // Theme colors
-  const theme2 = {
-    backgroundColor: isDarkTheme ? "#1c1c1c" : "#f9f9f9",
-    headerBg: isDarkTheme ? "#333333" : "#fff",
-    textColor: isDarkTheme ? "#FFFFFF" : "#333333",
-    subTextColor: isDarkTheme ? "#999999" : "#666666",
-    cardBg: isDarkTheme ? "#333333" : "#fff",
-    borderColor: isDarkTheme ? "#444444" : "#e0e0e0",
-    searchBg: isDarkTheme ? "#2c2c2c" : "#f5f5f5",
-    categoryChipBg: isDarkTheme ? "#444444" : "#e9e9e9",
-    categoryChipText: isDarkTheme ? "#FFFFFF" : "#555555",
-    selectedChipBg: isDarkTheme ? "#666666" : "#333333",
-    selectedChipText: isDarkTheme ? "#FFFFFF" : "#FFFFFF",
-  }
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
       <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {isOnboarding && (
-          <View style={[styles.onboardingBanner, {backgroundColor: isDarkTheme ? "#1e88e5" : "#bbdefb"}]}>
-            <Icon name="info-circle" size={20} color={isDarkTheme ? "#ffffff" : "#0d47a1"} style={{marginRight: 8}} />
+          <View style={[styles.onboardingBanner, {backgroundColor: theme.colors.statusInfo, borderColor: theme.colors.buttonPrimary}]}>
+            <Icon name="info-circle" size={20} color={theme.colors.icon} style={{marginRight: 8}} />
 
             <Text
               style={{
-                color: isDarkTheme ? "#ffffff" : "#0d47a1",
+                color: theme.colors.icon,
                 fontWeight: "bold",
                 textAlign: "center",
                 fontSize: 16,
@@ -132,7 +118,7 @@ export default function SelectGlassesModelScreen() {
                 style={[
                   styles.label,
                   {
-                    color: isOnboarding && glasses.modelName === "Simulated Glasses" ? "#2196F3" : theme.colors.text,
+                    color: isOnboarding && glasses.modelName === "Simulated Glasses" ? theme.colors.buttonPrimary : theme.colors.text,
                     fontWeight: isOnboarding && glasses.modelName === "Simulated Glasses" ? "800" : "600",
                   },
                 ]}>
@@ -141,8 +127,8 @@ export default function SelectGlassesModelScreen() {
             </View>
             {isOnboarding && glasses.modelName === "Simulated Glasses" ? (
               <View style={{flexDirection: "row", alignItems: "center"}}>
-                <Text style={{color: "#2196F3", marginRight: 5, fontWeight: "bold"}}>Select</Text>
-                <Icon name="angle-right" size={24} color="#2196F3" />
+                <Text style={{color: theme.colors.buttonPrimary, marginRight: 5, fontWeight: "bold"}}>Select</Text>
+                <Icon name="angle-right" size={24} color={theme.colors.buttonPrimary} />
               </View>
             ) : (
               <Icon name="angle-right" size={24} color={theme.colors.text} />
@@ -193,14 +179,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     borderRadius: 8,
     elevation: 5,
-    shadowColor: "#000",
+    shadowColor: "#000", // Universal shadow color
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 4,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#1976D2",
+    // backgroundColor and borderColor moved to dynamic styling
   },
   titleContainer: {
     paddingVertical: 15,
@@ -209,44 +195,18 @@ const styles = StyleSheet.create({
     marginTop: -20,
     marginBottom: 10,
   },
-  titleContainerDark: {
-    backgroundColor: "#333333",
-  },
-  titleContainerLight: {
-    backgroundColor: "#ffffff",
-  },
+  // Removed hardcoded theme colors - using dynamic styling
+  // titleContainerDark and titleContainerLight removed - use dynamic styling
   title: {
     fontSize: 24,
     fontWeight: "bold",
     fontFamily: "Montserrat-Bold",
     textAlign: "left",
-    color: "#FFFFFF",
     marginBottom: 5,
+    // color moved to dynamic styling
   },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
-  darkText: {
-    color: "black",
-  },
-  lightText: {
-    color: "white",
-  },
-  darkSubtext: {
-    color: "#666666",
-  },
-  lightSubtext: {
-    color: "#999999",
-  },
-  darkIcon: {
-    color: "#333333",
-  },
-  lightIcon: {
-    color: "#666666",
-  },
+  // Removed hardcoded theme colors - using dynamic styling
+  // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
   backButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -272,16 +232,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   headerContainer: {
-    backgroundColor: "#fff",
     paddingVertical: 15,
     paddingHorizontal: 15,
     borderBottomWidth: 1,
-    borderBottomColor: "#e0e0e0",
+    // backgroundColor and borderBottomColor moved to dynamic styling
   },
   header: {
     fontSize: 24,
     fontWeight: "600",
-    color: "#333",
+    // color moved to dynamic styling
   },
   /**
    * BIGGER, SEXIER IMAGES

@@ -32,8 +32,8 @@ export default function Layout() {
             paddingBottom: bottom + 48,
           },
         ],
-        // tabBarActiveTintColor: themed(({ colors }) => colors.text),
-        // tabBarInactiveTintColor: themed(({ colors }) => "#000"),
+        tabBarActiveTintColor: theme.isDark ? "#FFFFFF" : theme.colors.text,
+        tabBarInactiveTintColor: theme.colors.textDim,
         tabBarLabelStyle: themed($tabBarLabel),
         tabBarItemStyle: themed($tabBarItem),
         tabBarLabelPosition: "below-icon",
@@ -42,7 +42,7 @@ export default function Layout() {
         // tabBarBackground: () => <View />,
         tabBarBackground: () => (
           <LinearGradient
-            colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
+            colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
             style={{
               position: "absolute",
               left: 0,
@@ -60,7 +60,7 @@ export default function Layout() {
         options={{
           href: "/home",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={focused ? color : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
           tabBarLabel: translate("navigation:home"),
         }}
       />
@@ -69,7 +69,7 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <SolarLineIconsSet4 size={28} color={focused ? color : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <SolarLineIconsSet4 size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
           tabBarLabel: translate("navigation:glasses"),
         }}
       />
@@ -78,7 +78,7 @@ export default function Layout() {
         options={{
           href: "/mirror",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={focused ? color : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
           tabBarLabel: translate("navigation:mirror"),
         }}
       />
@@ -87,7 +87,7 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={focused ? color : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
           tabBarLabel: translate("navigation:store"),
         }}
       />
@@ -96,7 +96,7 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={focused ? color : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
           tabBarLabel: translate("navigation:account"),
         }}
       />
@@ -106,15 +106,14 @@ export default function Layout() {
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
-  // borderTopColor: colors.transparent,
-  // borderTopWidth: 1,
-  paddingTop: 4,
+  borderTopColor: "#3C3836",
+  borderTopWidth: 1,
+  paddingTop: 8,
   height: 64,
-  borderTopWidth: 0,
 })
 
 const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingTop: spacing.md,
+  paddingTop: spacing.xl, // More padding above icons
 })
 
 const $tabBarLabel: ThemedStyle<TextStyle> = ({colors, typography}) => ({

@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   Pressable,
 } from 'react-native';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 export type PickerItem = {
   label: string;
@@ -47,6 +48,7 @@ const PickerSelect: React.FC<PickerSelectProps> = ({
   modalAnimationType = 'none', // default: no animation
 }) => {
   const [modalVisible, setModalVisible] = useState(false);
+  const { theme } = useAppTheme();
 
   // Find the currently selected item.
   const selectedItem = items.find((item) => item.value === value);
@@ -64,10 +66,10 @@ const PickerSelect: React.FC<PickerSelectProps> = ({
     <View>
       {/* The main touchable that shows the selected value and opens the modal */}
       <TouchableOpacity
-        style={[styles.touchable, style.touchable]}
+        style={[styles.touchable, { backgroundColor: theme.colors.background, borderColor: theme.colors.border }, style.touchable]}
         onPress={() => setModalVisible(true)}
       >
-        <Text style={[styles.touchableText, style.touchableText]}>
+        <Text style={[styles.touchableText, { color: theme.colors.text }, style.touchableText]}>
           {selectedItem ? selectedItem.label : placeholder?.label ?? 'Select...'}
         </Text>
       </TouchableOpacity>
@@ -81,11 +83,11 @@ const PickerSelect: React.FC<PickerSelectProps> = ({
       >
         {/* A semi-transparent background so tapping outside also closes the menu */}
         <Pressable
-          style={[styles.modalContainer, style.modalContainer]}
+          style={[styles.modalContainer, { backgroundColor: theme.colors.modalOverlay }, style.modalContainer]}
           onPress={() => setModalVisible(false)}
         >
           {/* Use SafeAreaView or another container to prevent touches from closing the modal */}
-          <SafeAreaView style={{ backgroundColor: '#fff', borderRadius: 8 }}>
+          <SafeAreaView style={{ backgroundColor: theme.colors.background, borderRadius: 8 }}>
             <FlatList
               data={data}
               keyExtractor={(item, index) => `${item.value}-${index}`}
@@ -93,14 +95,15 @@ const PickerSelect: React.FC<PickerSelectProps> = ({
                 const isSelected = item.value === value;
                 return (
                   <TouchableOpacity
-                    style={[styles.itemTouchable, style.itemTouchable]}
+                    style={[styles.itemTouchable, { borderBottomColor: theme.colors.border }, style.itemTouchable]}
                     onPress={() => handleItemPress(item.value)}
                   >
                     <Text
                       style={[
                         styles.itemText,
+                        { color: theme.colors.text },
                         style.itemText,
-                        isSelected && (style.selectedItemText || styles.selectedItemText),
+                        isSelected && [{ color: theme.colors.buttonPrimary, fontWeight: 'bold' }, style.selectedItemText],
                       ]}
                     >
                       {item.label}
@@ -123,30 +126,23 @@ const styles = StyleSheet.create({
     padding: 12,
    // borderWidth: 1,
    // borderRadius: 4,
-    borderColor: '#888',
-    backgroundColor: '#fff',
   },
   touchableText: {
     fontSize: 16,
-    color: '#333',
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     padding: 16,
   },
   itemTouchable: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
   },
   itemText: {
     fontSize: 16,
-    color: '#333',
   },
   selectedItemText: {
-    fontWeight: 'bold',
-    color: '#007AFF', // highlight color for selected
+    // Colors handled dynamically with theme
   },
 });

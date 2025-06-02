@@ -119,7 +119,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
             zIndex: 10,
             justifyContent: "center",
             alignItems: "center",
-            backgroundColor: "rgba(0,0,0,0.5)",
+            backgroundColor: theme.colors.modalOverlay,
             paddingHorizontal: 24,
           }}
         >

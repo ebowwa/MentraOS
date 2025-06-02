@@ -12,3 +12,11 @@ export const spacing = {
   xxl: 48 * SPACING_MULTIPLIER,
   xxxl: 64 * SPACING_MULTIPLIER,
 } as const
+
+export const borderRadius = {
+  xs: 4 * SPACING_MULTIPLIER,
+  sm: 8 * SPACING_MULTIPLIER,
+  md: 12 * SPACING_MULTIPLIER,
+  lg: 16 * SPACING_MULTIPLIER,
+  xl: 24 * SPACING_MULTIPLIER,
+} as const

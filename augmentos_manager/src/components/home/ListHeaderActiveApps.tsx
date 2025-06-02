@@ -1,7 +1,6 @@
 import SearchIcon from "assets/icons/component/SearchIcon"
 import * as React from "react"
 import {Text, View, Pressable, TextStyle, ViewStyle} from "react-native"
-import {SafeAreaView} from "react-native-safe-area-context"
 import {translate} from "@/i18n"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -10,11 +9,11 @@ const ListHeaderIcon = () => {
   const {themed, theme} = useAppTheme()
 
   return (
-    <SafeAreaView style={themed($listHeaderIcon)}>
+    <View style={themed($listHeaderIcon)}>
       <View style={themed($tableHeader)}>
         <Text style={themed($activeApps)}>{translate("home:activeApps")}</Text>
       </View>
-    </SafeAreaView>
+    </View>
   )
 }
 

@@ -93,7 +93,16 @@ export default function SettingsPage() {
         }}
       />
 
-      <Spacer height={theme.spacing.md} />
+      {/* Comment this out until the light theme looks acceptable */}
+      {/* <Spacer height={theme.spacing.md} />
+
+      <RouteButton
+        label="Theme Settings"
+        subtitle="Customize your app appearance"
+        onPress={() => router.push("/settings/theme")}
+      />*/}
+
+      <Spacer height={theme.spacing.md} /> 
 
       <RouteButton
         label={translate("settings:developerSettings")}

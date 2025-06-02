@@ -12,3 +12,11 @@ export const spacing = {
   xxl: 48,
   xxxl: 64,
 } as const
+
+export const borderRadius = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+} as const

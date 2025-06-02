@@ -49,7 +49,7 @@ export default function OnboardingWelcome() {
   };
 
   return (
-    <View style={[styles.container, isDarkTheme ? styles.darkBackground : styles.lightBackground]}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.mainContainer}>
         {/* <View style={styles.logoContainer}>
           <Icon
@@ -60,9 +60,9 @@ export default function OnboardingWelcome() {
         </View> */}
 
         <View style={styles.infoContainer}>
-          <Text style={[styles.title, isDarkTheme ? styles.lightText : styles.darkText]}>Welcome to AugmentOS</Text>
+          <Text style={[styles.title, { color: theme.colors.text }]}>Welcome to AugmentOS</Text>
 
-          <Text style={[styles.description, isDarkTheme ? styles.lightSubtext : styles.darkSubtext]}>
+          <Text style={[styles.description, { color: theme.colors.textDim }]}>
             Let's go through a quick tutorial to get you started with AugmentOS.
           </Text>
         </View>

@@ -1,15 +1,10 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react"
-import { StyleProp, useColorScheme } from "react-native"
-import { DarkTheme, DefaultTheme, useTheme as useNavTheme } from "@react-navigation/native"
-import {
-  type Theme,
-  type ThemeContexts,
-  type ThemedStyle,
-  type ThemedStyleArray,
-  lightTheme,
-  darkTheme,
-} from "@/theme"
+import {createContext, useCallback, useContext, useEffect, useMemo, useState} from "react"
+import {StyleProp, useColorScheme} from "react-native"
+import {DarkTheme, DefaultTheme, useTheme as useNavTheme} from "@react-navigation/native"
+import {type Theme, type ThemeContexts, type ThemedStyle, type ThemedStyleArray, lightTheme, darkTheme} from "@/theme"
 import * as SystemUI from "expo-system-ui"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 
 type ThemeContextType = {
   themeScheme: ThemeContexts
@@ -24,8 +19,7 @@ export const ThemeContext = createContext<ThemeContextType>({
   },
 })
 
-const themeContextToTheme = (themeContext: ThemeContexts): Theme =>
-  themeContext === "dark" ? darkTheme : lightTheme
+const themeContextToTheme = (themeContext: ThemeContexts): Theme => (themeContext === "dark" ? darkTheme : lightTheme)
 
 const setImperativeTheming = (theme: Theme) => {
   SystemUI.setBackgroundColorAsync(theme.colors.background)
@@ -34,17 +28,40 @@ const setImperativeTheming = (theme: Theme) => {
 export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   const colorScheme = useColorScheme()
   const [overrideTheme, setTheme] = useState<ThemeContexts>(initialTheme)
+  const [isLoaded, setIsLoaded] = useState(false)
 
   const setThemeContextOverride = useCallback((newTheme: ThemeContexts) => {
     setTheme(newTheme)
+  }, [])
+
+  // Load saved theme preference on mount
+  useEffect(() => {
+    const loadThemePreference = async () => {
+      try {
+        const savedTheme = (await loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system")) as "light" | "dark" | "system"
+        if (savedTheme === "system") {
+          setTheme(undefined)
+        } else {
+          setTheme(savedTheme)
+        }
+      } catch (error) {
+        console.error("Error loading theme preference:", error)
+      } finally {
+        setIsLoaded(true)
+      }
+    }
+
+    loadThemePreference()
   }, [])
 
   const themeScheme = overrideTheme || colorScheme || "light"
   const navigationTheme = themeScheme === "dark" ? DarkTheme : DefaultTheme
 
   useEffect(() => {
-    setImperativeTheming(themeContextToTheme(themeScheme))
-  }, [themeScheme])
+    if (isLoaded) {
+      setImperativeTheming(themeContextToTheme(themeScheme))
+    }
+  }, [themeScheme, isLoaded])
 
   return {
     themeScheme,
@@ -82,7 +99,7 @@ export const useAppTheme = (): UseAppThemeValue => {
     throw new Error("useTheme must be used within a ThemeProvider")
   }
 
-  const { themeScheme: overrideTheme, setThemeContextOverride } = context
+  const {themeScheme: overrideTheme, setThemeContextOverride} = context
 
   const themeContext: ThemeContexts = useMemo(
     () => overrideTheme || (navTheme.dark ? "dark" : "light"),
@@ -94,7 +111,7 @@ export const useAppTheme = (): UseAppThemeValue => {
   const themed = useCallback(
     <T>(styleOrStyleFn: ThemedStyle<T> | StyleProp<T> | ThemedStyleArray<T>) => {
       const flatStyles = [styleOrStyleFn].flat(3)
-      const stylesArray = flatStyles.map((f) => {
+      const stylesArray = flatStyles.map(f => {
         if (typeof f === "function") {
           return (f as ThemedStyle<T>)(themeVariant)
         } else {

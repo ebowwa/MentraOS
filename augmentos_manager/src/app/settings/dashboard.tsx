@@ -133,11 +133,11 @@ export default function DashboardSettingsScreen() {
   // Switch track colors
   const switchColors = {
     trackColor: {
-      false: "#D1D1D6",
-      true: "#2196F3",
+      false: theme.colors.switchTrackOff,
+      true: theme.colors.switchTrackOn,
     },
-    thumbColor: Platform.OS === "ios" ? undefined : "#FFFFFF",
-    ios_backgroundColor: "#D1D1D6",
+    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
+    ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
   // ContentPicker Modal
@@ -155,7 +155,7 @@ export default function DashboardSettingsScreen() {
               onPress={() => !isUpdating && setShowContentPicker(false)}
               style={[styles.closeButton, isUpdating && styles.disabledButton]}
               disabled={isUpdating}>
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>✕</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -276,18 +276,33 @@ const $sectionTitle: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $modalOverlay: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: colors.modalOverlay,
 })
 
 const $pickerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
+  width: "90%",
+  maxHeight: "80%",
+  borderRadius: 16,
+  overflow: "hidden",
+  backgroundColor: colors.modalBackground,
 })
 
 const $pickerHeader: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.background,
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: 16,
+  borderBottomWidth: 1,
+  borderBottomColor: colors.borderLight,
+  backgroundColor: colors.modalBackground,
 })
 
 const $pickerTitle: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 20,
+  fontWeight: "600",
   color: colors.text,
 })
 
@@ -331,19 +346,19 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    backgroundColor: "#f9f9f9",
+    // backgroundColor moved to dynamic styling
   },
   header: {
     padding: 20,
     paddingTop: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.1)",
+    // borderBottomColor moved to dynamic styling
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: "bold",
     fontFamily: "Montserrat-Bold",
-    color: "#333333",
+    // color moved to dynamic styling
   },
   scrollViewContainer: {
     flex: 1,
@@ -357,15 +372,15 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     marginBottom: 12,
     marginLeft: 4,
-    color: "#333333",
+    // color moved to dynamic styling
   },
   elevatedCard: {
     borderRadius: 12,
     marginBottom: 12,
-    backgroundColor: "#FFFFFF",
+    // backgroundColor moved to dynamic styling
     ...Platform.select({
       ios: {
-        shadowColor: "#000",
+        shadowColor: "#000", // Shadow color is universal
         shadowOffset: {width: 0, height: 2},
         shadowOpacity: 0.1,
         shadowRadius: 4,
@@ -389,12 +404,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
     marginBottom: 4,
-    color: "#333333",
+    // color moved to dynamic styling
   },
   value: {
     fontSize: 14,
     lineHeight: 20,
-    color: "#666666",
+    // color moved to dynamic styling
   },
   selectedValueContainer: {
     flexDirection: "row",
@@ -403,36 +418,17 @@ const styles = StyleSheet.create({
   selectedValue: {
     fontSize: 16,
     marginRight: 4,
-    color: "#333333",
+    // color moved to dynamic styling
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-  },
-  pickerContainer: {
-    width: "90%",
-    maxHeight: "80%",
-    borderRadius: 16,
-    overflow: "hidden",
-    backgroundColor: "#FFFFFF",
-  },
-  pickerHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.1)",
-  },
+  // modalOverlay, pickerContainer, pickerHeader moved to ThemedStyle
+  
   closeButton: {
     padding: 8,
   },
   closeButtonText: {
     fontSize: 20,
     fontWeight: "bold",
-    color: "#333333",
+    // color moved to dynamic styling
   },
   pickerOptionsContainer: {
     maxHeight: 400,
@@ -440,7 +436,7 @@ const styles = StyleSheet.create({
   pickerOption: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0, 0, 0, 0.1)",
+    // borderBottomColor moved to dynamic styling
   },
   optionContent: {
     flexDirection: "row",
@@ -450,13 +446,13 @@ const styles = StyleSheet.create({
   pickerOptionText: {
     fontSize: 16,
     flex: 1,
-    color: "#333333",
+    // color moved to dynamic styling
   },
   selectedOption: {
-    backgroundColor: "#007AFF",
+    // backgroundColor moved to dynamic styling
   },
   selectedOptionText: {
-    color: "#FFFFFF",
+    // color moved to dynamic styling
   },
   disabledItem: {
     opacity: 0.5,
@@ -470,13 +466,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     borderRadius: 12,
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    // backgroundColor moved to dynamic styling
   },
-  pickerTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#333333",
-  },
+  // pickerTitle moved to ThemedStyle
   disabledButton: {
     opacity: 0.5,
   },

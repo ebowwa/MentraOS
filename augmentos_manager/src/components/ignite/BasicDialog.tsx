@@ -4,6 +4,7 @@ import {StyleSheet, Text, View} from "react-native";
 import {SafeAreaView} from "react-native-safe-area-context";
 import { Spacer } from "../misc/Spacer";
 import { spacing } from "@/theme";
+import { PillButton } from "./PillButton";
 interface BasicDialogProps {
   title: string;
   description?: string | React.ReactNode;
@@ -38,21 +39,19 @@ const BasicDialog = ({
       <View style={styles.actions}>
         <View style={[styles.actions1, styles.actions1FlexBox]}>
           {leftButtonText && (
-            <View style={[styles.secondaryButton, styles.actions1FlexBox]}>
-              <View style={[styles.content, styles.contentFlexBox]}>
-                <View style={[styles.stateLayer, styles.actions1FlexBox]}>
-                  <Text style={[styles.label, styles.labelTypo]} onPress={onLeftPress}>{leftButtonText}</Text>
-                </View>
-              </View>
-            </View>
+            <PillButton
+              text={leftButtonText}
+              variant="secondary"
+              onPress={onLeftPress}
+              buttonStyle={styles.leftButtonStyle}
+            />
           )}
-          <View style={[styles.secondaryButton, styles.actions1FlexBox]}>
-            <View style={[styles.content1, styles.contentFlexBox]}>
-              <View style={[styles.stateLayer, styles.actions1FlexBox]}>
-                <Text style={[styles.label1, styles.labelTypo]} onPress={onRightPress}>{rightButtonText}</Text>
-              </View>
-            </View>
-          </View>
+          <PillButton
+            text={rightButtonText}
+            variant="primary"
+            onPress={onRightPress}
+            buttonStyle={styles.rightButtonStyle}
+          />
         </View>
       </View>
     </View>
@@ -78,12 +77,6 @@ const styles = StyleSheet.create({
   	actions1FlexBox: {
     		flexDirection: "row",
     		alignItems: "center"
-  	},
-  	contentFlexBox: {
-    		borderRadius: 100,
-    		justifyContent: "center",
-    		alignItems: "center",
-    		overflow: "hidden"
   	},
   
   	headline: {
@@ -111,36 +104,6 @@ const styles = StyleSheet.create({
     		alignSelf: "stretch",
     		justifyContent: "center"
   	},
-  	label: {
-    		color: "#f9f8fe",
-    		fontWeight: "500",
-    		letterSpacing: 1.7,
-    		fontSize: 17
-  	},
-  	stateLayer: {
-    		paddingHorizontal: 16,
-    		paddingVertical: 10,
-    		justifyContent: "center"
-  	},
-  	content: {
-    		borderStyle: "solid",
-    		borderColor: "#747cab",
-    		borderWidth: 1
-  	},
-  	secondaryButton: {
-    		height: 48,
-    		justifyContent: "center"
-  	},
-  	label1: {
-    		color: "#141434",
-    		fontWeight: "500",
-    		letterSpacing: 1.7,
-    		fontSize: 17,
-    		textAlign: "left"
-  	},
-  	content1: {
-    		backgroundColor: "#b0b9ff"
-  	},
   	actions1: {
     		paddingLeft: 8,
     		paddingTop: 20,
@@ -148,6 +111,12 @@ const styles = StyleSheet.create({
     		paddingBottom: 20,
     		gap: 8,
     		overflow: "hidden"
+  	},
+  	leftButtonStyle: {
+    		marginRight: 8,
+  	},
+  	rightButtonStyle: {
+    		// Right button takes remaining space
   	},
   	actions: {
     		alignItems: "flex-end",

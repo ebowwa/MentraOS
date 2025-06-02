@@ -1,6 +1,7 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, GestureResponderEvent, ViewStyle } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 interface ButtonProps {
   onPress: (event: GestureResponderEvent) => void;
@@ -24,13 +25,16 @@ const Button: React.FC<ButtonProps> = ({
   style,
   ...props 
 }) => {
+  const { theme } = useAppTheme();
+  
   return (
     <TouchableOpacity
       style={[
         styles.button, 
-        isDarkTheme && styles.buttonDark,
-        type === 'secondary' && styles.buttonSecondary,
-        disabled && styles.buttonDisabled,
+        { backgroundColor: theme.colors.buttonPrimary },
+        isDarkTheme && { backgroundColor: theme.colors.blue600 },
+        type === 'secondary' && [styles.buttonSecondary, { borderColor: theme.colors.buttonPrimary }],
+        disabled && [styles.buttonDisabled, { backgroundColor: theme.colors.buttonDisabled, borderColor: theme.colors.buttonDisabled }],
         style
       ]}
       onPress={onPress}
@@ -40,15 +44,16 @@ const Button: React.FC<ButtonProps> = ({
         <Icon 
           name={iconName} 
           size={16}           
-          color={disabled ? '#999' : (type === 'secondary' ? '#2196F3' : 'white')} 
+          color={disabled ? theme.colors.palette.mediumGray : (type === 'secondary' ? theme.colors.buttonPrimary : theme.colors.palette.neutral100)} 
           style={styles.buttonIcon} 
         />
       )}
       <Text 
         style={[
           styles.buttonText, 
-          disabled && styles.buttonTextDisabled,
-          type === 'secondary' && styles.buttonTextSecondary
+          { color: theme.colors.palette.neutral100 },
+          disabled && [styles.buttonTextDisabled, { color: theme.colors.palette.mediumGray }],
+          type === 'secondary' && [styles.buttonTextSecondary, { color: theme.colors.buttonPrimary }]
         ]}
       >
         {title || children}
@@ -62,24 +67,19 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 300,
     height: 44,
-    backgroundColor: '#2196F3',
     borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: '#000', // Keep shadow colors as they're universal
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
   },
-  buttonDark: {
-    backgroundColor: '#1976D2',
-  },
   buttonSecondary: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#2196F3',
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -87,22 +87,19 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   buttonText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
     fontFamily: 'Montserrat-Bold',
   },
   buttonTextSecondary: {
-    color: '#2196F3',
+    // Color handled inline with theme
   },
   buttonDisabled: {
-    backgroundColor: '#cccccc',
-    borderColor: '#cccccc',
     elevation: 0,
     shadowOpacity: 0,
   },
   buttonTextDisabled: {
-    color: '#999',
+    // Color handled inline with theme
   },
 });
 

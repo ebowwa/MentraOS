@@ -396,7 +396,7 @@ export default function LoginScreen() {
       safeAreaEdges={["top"]}
       contentContainerStyle={themed($container)}>
       <LinearGradient
-        colors={theme.isDark ? [theme.colors.background, theme.colors.background] : ["#EFF6FF", "#FFFFFF"]}
+        colors={[theme.colors.loginGradientStart, theme.colors.loginGradientEnd]}
         style={themed($gradientContainer)}>
           <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
             <View style={themed($card)}>
@@ -483,7 +483,7 @@ export default function LoginScreen() {
                         isFormLoading && (
                           <ActivityIndicator
                             size="small"
-                            color={theme.colors.palette.neutral100}
+                            color={theme.colors.icon}
                             style={{marginRight: 8}}
                           />
                         )
@@ -556,7 +556,7 @@ export default function LoginScreen() {
                         <FontAwesome
                           name="envelope"
                           size={16}
-                          color="white"
+                          color={theme.colors.icon}
                           // style={themed($emailIcon)}
                         />
                       )}
@@ -722,9 +722,9 @@ const $googleButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   // backgroundColor: colors.,
 })
 
-const $appleButton: ThemedStyle<ViewStyle> = () => ({
-  backgroundColor: "black",
-  borderColor: "black",
+const $appleButton: ThemedStyle<ViewStyle> = ({colors}) => ({
+  backgroundColor: colors.text, // Use semantic text color (which is dark)
+  borderColor: colors.text,
 })
 
 const $socialIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -742,8 +742,8 @@ const $socialButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   textAlign: "center",
 })
 
-const $appleButtonText: ThemedStyle<TextStyle> = () => ({
-  color: "white",
+const $appleButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.background, // White text on dark Apple button
 })
 
 const $primaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
@@ -755,18 +755,18 @@ const $secondaryButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 })
 
 const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: colors.palette.neutral700,
+  backgroundColor: colors.buttonPressed,
   opacity: 0.9,
 })
 
-const $buttonText: ThemedStyle<TextStyle> = () => ({
-  color: "white",
+const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.icon, // White text for buttons
   fontSize: 16,
   fontWeight: "bold",
 })
 
-const $ghostButton: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  backgroundColor: "transparent",
+const $ghostButton: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
+  backgroundColor: colors.transparent,
   height: 48,
   borderRadius: 8,
   justifyContent: "center",

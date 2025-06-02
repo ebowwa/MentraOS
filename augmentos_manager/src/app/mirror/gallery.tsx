@@ -25,6 +25,7 @@ import PhotoItem from '@/components/misc/PhotoItem';
 import BackendServerComms from '@/backend_comms/BackendServerComms';
 import { router } from 'expo-router';
 import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 interface GlassesRecordingsGalleryProps {
   isDarkTheme: boolean;
@@ -60,6 +61,7 @@ type GalleryTab = 'device' | 'cloud';
 const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
   isDarkTheme,
 }) => {
+  const { theme } = useAppTheme();
   // State variables
   const [activeTab, setActiveTab] = useState<GalleryTab>('device');
   const [recordedVideos, setRecordedVideos] = useState<string[]>([]);
@@ -78,7 +80,7 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
     // Ensure status bar is visible
     StatusBar.setHidden(false);
     // Set appropriate styling for the status bar based on theme
-    StatusBar.setBarStyle(isDarkTheme ? 'light-content' : 'dark-content');
+    StatusBar.setBarStyle(theme.isDark ? 'light-content' : 'dark-content');
     
     return () => {
       // No cleanup needed for status bar, let the next screen handle it
@@ -452,21 +454,21 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
       <View style={styles.emptyContainer}>
         <Text style={[
           styles.emptyText,
-          isDarkTheme ? styles.lightText : styles.darkText
+          { color: theme.colors.text }
         ]}>
           No media found
         </Text>
         <Text style={[
           styles.emptySubtext,
-          isDarkTheme ? styles.lightText : styles.darkText
+          { color: theme.colors.textDim }
         ]}>
           Create a recording from the glasses mirror screen or use apps that save to gallery
         </Text>
         <TouchableOpacity
-          style={styles.recordButton}
+          style={[styles.recordButton, { backgroundColor: theme.colors.galleryLoadingIndicator }]}
           onPress={() => router.push('/mirror/fullscreen')}
         >
-          <Text style={styles.recordButtonText}>
+          <Text style={[styles.recordButtonText, { color: theme.colors.icon }]}>
             Go to Camera
           </Text>
         </TouchableOpacity>
@@ -478,21 +480,21 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
   return (
     <SafeAreaView style={[
       styles.container,
-      isDarkTheme ? styles.darkBackground : styles.lightBackground
+      { backgroundColor: theme.colors.galleryBackground }
     ]}>
       {/* Explicitly show status bar with appropriate styling */}
       <StatusBar 
         hidden={false}
-        barStyle={isDarkTheme ? 'light-content' : 'dark-content'}
-        backgroundColor={isDarkTheme ? '#121212' : '#f0f0f0'}
+        barStyle={theme.isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={theme.colors.galleryBackground}
         translucent={false}
       />
       
       {/* Title header */}
-      <View style={styles.titleContainer}>
+      <View style={[styles.titleContainer, { borderBottomColor: theme.colors.border }]}>
         <Text style={[
           styles.titleText,
-          isDarkTheme ? styles.lightText : styles.darkText
+          { color: theme.colors.text }
         ]}>
           Media Gallery
         </Text>
@@ -501,10 +503,10 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
       {/* Loading indicator */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#4c8bf5" />
+          <ActivityIndicator size="large" color={theme.colors.galleryLoadingIndicator} />
           <Text style={[
             styles.loadingText,
-            isDarkTheme ? styles.lightText : styles.darkText
+            { color: theme.colors.text }
           ]}>
             Loading media...
           </Text>
@@ -520,8 +522,8 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
               <RefreshControl 
                 refreshing={refreshing} 
                 onRefresh={onRefresh}
-                colors={['#4c8bf5']}
-                tintColor={isDarkTheme ? '#ffffff' : '#000000'}
+                colors={[theme.colors.galleryLoadingIndicator]}
+                tintColor={theme.colors.text}
               />
             }>
             {/* Unified media content */}
@@ -563,12 +565,12 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
         animationType="fade"
         onRequestClose={() => setPhotoModalVisible(false)}
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.colors.modalOverlay }]}>
           <TouchableOpacity
-            style={styles.closeButton}
+            style={[styles.closeButton, { backgroundColor: theme.colors.fullscreenOverlay }]}
             onPress={() => setPhotoModalVisible(false)}
           >
-            <Icon name="close" size={24} color="white" />
+            <Icon name="close" size={24} color={theme.colors.icon} />
           </TouchableOpacity>
           
           {selectedPhoto && (
@@ -578,11 +580,11 @@ const GlassesRecordingsGallery: React.FC<GlassesRecordingsGalleryProps> = ({
                 style={styles.fullscreenImage}
                 resizeMode="contain"
               />
-              <View style={styles.photoDetails}>
-                <Text style={styles.photoDetailText}>
+              <View style={[styles.photoDetails, { backgroundColor: theme.colors.fullscreenOverlay }]}>
+                <Text style={[styles.photoDetailText, { color: theme.colors.icon }]}>
                   {new Date(selectedPhoto.uploadDate).toLocaleString()}
                 </Text>
-                <Text style={styles.photoDetailText}>
+                <Text style={[styles.photoDetailText, { color: theme.colors.icon }]}>
                   From app: {selectedPhoto.appId}
                 </Text>
               </View>
@@ -598,30 +600,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingTop: 0, // No extra padding at top since we're using the React Navigation header
+    // backgroundColor moved to dynamic styling
   },
-  darkBackground: {
-    backgroundColor: '#121212',
-  },
-  lightBackground: {
-    backgroundColor: '#f0f0f0',
-  },
-  darkText: {
-    color: '#000000',
-  },
-  lightText: {
-    color: '#ffffff',
-  },
+  // Removed darkBackground, lightBackground, darkText, lightText - using dynamic styling
   // Title styles
   titleContainer: {
     paddingHorizontal: 20,
     paddingVertical: 15,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+    // borderBottomColor moved to dynamic styling
   },
   titleText: {
     fontSize: 20,
     fontFamily: 'Montserrat-Bold',
     textAlign: 'center',
+    // color moved to dynamic styling
   },
   // Loading state
   loadingContainer: {
@@ -633,6 +626,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     fontSize: 16,
     fontFamily: 'Montserrat-Regular',
+    // color moved to dynamic styling
   },
   // Empty state
   emptyContainer: {
@@ -646,6 +640,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     marginBottom: 10,
     textAlign: 'center',
+    // color moved to dynamic styling
   },
   emptySubtext: {
     fontSize: 16,
@@ -653,29 +648,30 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlign: 'center',
     opacity: 0.7,
+    // color moved to dynamic styling
   },
   recordButton: {
-    backgroundColor: '#4c8bf5',
+    // backgroundColor moved to dynamic styling
     paddingVertical: 12,
     paddingHorizontal: 30,
     borderRadius: 8,
     marginTop: 20,
   },
   recordButtonText: {
-    color: 'white',
+    // color moved to dynamic styling
     fontSize: 16,
     fontFamily: 'Montserrat-Bold',
   },
   // Content list
   contentList: {
     flex: 1,
-    padding: 15,
-    paddingTop: 10, // Reduced top padding since we have the native header now
+    paddingHorizontal: 20, // Match homepage padding
+    paddingVertical: 10, // Reduced top padding since we have the native header now
   },
   // Modal styles
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    // backgroundColor moved to dynamic styling
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -686,7 +682,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    // backgroundColor moved to dynamic styling
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -708,11 +704,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     padding: 16,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    // backgroundColor moved to dynamic styling
     alignItems: 'center',
   },
   photoDetailText: {
-    color: 'white',
+    // color moved to dynamic styling
     fontSize: 14,
     fontFamily: 'Montserrat-Medium',
     marginBottom: 4,
@@ -777,12 +773,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
-  shareButton: {
-    backgroundColor: '#2196F3', // Blue
-  },
-  deleteButton: {
-    backgroundColor: '#FF5252', // Red
-  },
+  // Removed shareButton and deleteButton hardcoded colors - using VideoItem/PhotoItem components with theme support
 });
 
 export default GlassesRecordingsGallery;

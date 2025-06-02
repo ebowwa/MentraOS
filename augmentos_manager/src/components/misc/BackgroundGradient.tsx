@@ -5,7 +5,7 @@ export default function BackgroundGradient({children}: {children: React.ReactNod
   const {themed, theme} = useAppTheme()
   return (
     <LinearGradient
-      colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
+      colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
       style={{
         position: "absolute",
         left: 0,
