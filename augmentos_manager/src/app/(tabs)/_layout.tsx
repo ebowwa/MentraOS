@@ -30,6 +30,9 @@ export default function Layout() {
           themed($tabBar),
           {
             paddingBottom: bottom + 48,
+            borderTopColor: theme.colors.separator,
+            borderTopWidth: 1,
+            backgroundColor: 'transparent',
           },
         ],
         tabBarActiveTintColor: theme.isDark ? "#FFFFFF" : theme.colors.text,
@@ -106,7 +109,7 @@ export default function Layout() {
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
-  borderTopColor: "#3C3836",
+  borderTopColor: colors.separator,
   borderTopWidth: 1,
   paddingTop: 8,
   height: 64,

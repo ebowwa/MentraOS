@@ -21,6 +21,7 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
+import SliderSetting from "@/components/settings/SliderSetting"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -169,32 +170,41 @@ export default function ScreenSettingsScreen() {
 
         {/* Brightness Slider */}
         {!isAutoBrightnessEnabled && (
-          <View style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-            <View style={styles.settingTextContainer}>
-              <Text style={themed($label)}>Brightness</Text>
-              <Text style={[styles.value, { color: theme.colors.textDim }]}>
-                {"Adjust the brightness level of your smart glasses."}
-              </Text>
-              <Slider {...sliderProps} />
-            </View>
-          </View>
+          <>
+            <SliderSetting
+              label="Brightness"
+              subtitle="Adjust the brightness level of your smart glasses."
+              value={brightness ?? 50}
+              min={0}
+              max={100}
+              onValueChange={(value) => setBrightness(value)}
+              onValueSet={changeBrightness}
+            />
+            <Spacer height={theme.spacing.md} />
+          </>
         )}
 
-        <View style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-          <View style={styles.settingTextContainer}>
-            <Text style={themed($label)}>Depth</Text>
-            <Text style={[styles.value, { color: theme.colors.textDim }]}>{"Adjust the depth of the contextual dashboard."}</Text>
-            <Slider {...depthSliderProps} />
-          </View>
-        </View>
+        <SliderSetting
+          label="Depth"
+          subtitle="Adjust the depth of the contextual dashboard."
+          value={depth ?? 5}
+          min={1}
+          max={5}
+          onValueChange={(value) => setDepth(value)}
+          onValueSet={changeDepth}
+        />
 
-        <View style={[styles.settingItem, { borderBottomColor: theme.colors.border }]}>
-          <View style={styles.settingTextContainer}>
-            <Text style={themed($label)}>Dashboard Height</Text>
-            <Text style={[styles.value, { color: theme.colors.textDim }]}>{"Adjust the height of the contextual dashboard."}</Text>
-            <Slider {...heightSliderProps} />
-          </View>
-        </View>
+        <Spacer height={theme.spacing.md} />
+
+        <SliderSetting
+          label="Dashboard Height"
+          subtitle="Adjust the height of the contextual dashboard."
+          value={height ?? 4}
+          min={1}
+          max={8}
+          onValueChange={(value) => setHeight(value)}
+          onValueSet={changeHeight}
+        />
       </ScrollView>
     </Screen>
   )

@@ -23,6 +23,7 @@ import {ThemedStyle} from "@/theme"
 import {router} from "expo-router"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import ActionButton from "@/components/ui/ActionButton"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -149,13 +150,13 @@ export default function ProfileSettingsPage() {
               <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
                 {userData.provider === "google" && (
                   <>
-                    <Icon name="google" size={18} />
+                    <Icon name="google" size={18} color={theme.colors.text} />
                     <View style={{width: 6}} />
                   </>
                 )}
                 {userData.provider === "apple" && (
                   <>
-                    <Icon name="apple" size={18} />
+                    <Icon name="apple" size={18} color={theme.colors.text} />
                     <View style={{width: 6}} />
                   </>
                 )}
@@ -167,7 +168,7 @@ export default function ProfileSettingsPage() {
                 )}
                 {userData.provider === "email" && (
                   <>
-                    <Icon name="envelope" size={18} />
+                    <Icon name="envelope" size={18} color={theme.colors.text} />
                     <View style={{width: 6}} />
                   </>
                 )}
@@ -251,13 +252,18 @@ export default function ProfileSettingsPage() {
               </View>
             )}
 
-            <Button style={themed($requestDataExportButton)} onPress={handleRequestDataExport}>
-              <Text style={themed($requestDataExportButtonText)}>{translate("profileSettings:requestDataExport")}</Text>
-            </Button>
-            <View style={{height: 10}} />
-            <Button style={themed($deleteAccountButton)} onPress={handleDeleteAccount}>
-              <Text style={themed($deleteAccountButtonText)}>{translate("profileSettings:deleteAccount")}</Text>
-            </Button>
+            <ActionButton
+              label={translate("profileSettings:requestDataExport")}
+              variant="default"
+              onPress={handleRequestDataExport}
+              containerStyle={{ marginBottom: theme.spacing.xs }}
+            />
+            
+            <ActionButton
+              label={translate("profileSettings:deleteAccount")}
+              variant="destructive"
+              onPress={handleDeleteAccount}
+            />
           </>
         ) : (
           <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
@@ -333,6 +339,7 @@ const $profilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
 
 const $profilePlaceholderText: ThemedStyle<TextStyle> = ({colors}) => ({
   textAlign: "center",
+  color: colors.text,
 })
 
 const $infoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -342,6 +349,7 @@ const $infoContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
 const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 16,
   marginTop: 4,
+  color: colors.text,
 })
 
 const $changePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
