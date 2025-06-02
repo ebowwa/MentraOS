@@ -50,7 +50,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({label,
     <View style={styles.container}>
       <Text style={[styles.label, {color: theme.colors.text}]}>{label}</Text>
       <TouchableOpacity
-        style={[styles.selectField, {borderColor: theme.colors.text, backgroundColor: theme.colors.background}]}
+        style={[styles.selectField, {borderColor: theme.colors.border, backgroundColor: theme.colors.background}]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.7}>
         <Text style={[styles.selectText, {color: theme.colors.text}]}>{selectedLabel}</Text>
@@ -78,7 +78,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({label,
                     styles.searchInput,
                     {
                       color: theme.colors.text,
-                      borderColor: theme.colors.text,
+                      borderColor: theme.colors.border,
                       backgroundColor: theme.colors.background,
                     },
                   ]}

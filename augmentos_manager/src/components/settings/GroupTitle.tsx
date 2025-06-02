@@ -9,7 +9,7 @@ type GroupTitleProps = {
 const GroupTitle: React.FC<GroupTitleProps> = ({title}) => {
   const {theme, themed} = useAppTheme()
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, {borderBottomColor: theme.colors.border}]}>
       <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
     </View>
   )
@@ -20,7 +20,6 @@ const styles = StyleSheet.create({
     marginVertical: 15,
     width: "100%",
     borderBottomWidth: 1,
-    borderBottomColor: "#ccc",
   },
   title: {
     fontSize: 18,

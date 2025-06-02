@@ -1,6 +1,5 @@
 import {ComponentType} from "react"
 import {LinearGradient} from "expo-linear-gradient"
-const gradientColors = ["#4340D3", "#06114D"]
 
 const gradientBorderStyle: ViewStyle = {
   borderRadius: 30,
@@ -132,9 +131,10 @@ export function Button(props: ButtonProps) {
     ...rest
   } = props
 
-  const {themed} = useAppTheme()
+  const {themed, theme} = useAppTheme()
 
   const preset: Presets = props.preset ?? "default"
+  const gradientColors = [theme.colors.buttonGradientStart, theme.colors.buttonGradientEnd]
   /**
    * @param {PressableStateCallbackType} root0 - The root object containing the pressed state.
    * @param {boolean} root0.pressed - The pressed state.
@@ -240,7 +240,7 @@ const $viewPresets: Record<Presets, ThemedStyleArray<ViewStyle>> = {
   reversed: [
     $styles.row,
     $baseViewStyle,
-    ({colors}) => ({backgroundColor: colors.palette.neutral800, borderColor: "black"}),
+    ({colors}) => ({backgroundColor: colors.palette.neutral800, borderColor: colors.palette.neutral900}),
   ],
 }
 

@@ -69,6 +69,11 @@ export default function CloudConnection() {
 
 const lightThemeStyles = StyleSheet.create({
   outerContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 999,
     borderRadius: 6,
     padding: 2,
     margin: 4,

@@ -47,7 +47,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
       <Text style={[styles.label, {color: theme.colors.text}]}>{label}</Text>
 
       <Pressable
-        style={({pressed}) => [styles.button, {borderColor: theme.colors.text}, pressed && styles.buttonPressed]}
+        style={({pressed}) => [styles.button, {borderColor: theme.colors.border}, pressed && styles.buttonPressed]}
         onPress={handleOpenModal}
         android_ripple={{color: "rgba(0, 0, 0, 0.1)"}}>
         <Text style={[styles.buttonText, {color: theme.colors.text}]} numberOfLines={2} ellipsizeMode="tail">
@@ -60,7 +60,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
           <KeyboardAvoidingView
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={styles.keyboardAvoidingView}>
-            <View style={styles.modalHeader}>
+            <View style={[styles.modalHeader, {borderBottomColor: theme.colors.border}]}>
               <Pressable
                 onPress={handleCancel}
                 style={({pressed}) => [
@@ -108,6 +108,7 @@ const $modalInput: ThemedStyle<TextStyle> = ({colors}) => ({
   flexShrink: 1,
   fontSize: 16,
   borderWidth: Platform.OS === "ios" ? 0.5 : 1,
+  borderColor: colors.border,
   borderRadius: Platform.OS === "ios" ? 10 : 4,
   padding: 16,
   margin: 16,
@@ -152,7 +153,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: Platform.OS === "ios" ? 8 : 16,
     borderBottomWidth: Platform.OS === "ios" ? 0.5 : 1,
-    borderBottomColor: "#e0e0e0",
     height: Platform.OS === "ios" ? 44 : 56,
   },
   headerButton: {

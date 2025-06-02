@@ -22,6 +22,7 @@ import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import RNFS from "react-native-fs"
 import {router} from "expo-router"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -31,6 +32,7 @@ const requestMicrophonePermission = async () => {
 export default function GlassesMirrorFullscreen() {
   const {status} = useStatus()
   const {events} = useGlassesMirror() // From context
+  const {theme} = useAppTheme()
   const [permission, requestPermission] = useCameraPermissions()
   const [hasMicrophonePermission, setHasMicrophonePermission] = useState(false)
   const [cameraType, setCameraType] = useState<CameraType>("front")
@@ -310,7 +312,7 @@ export default function GlassesMirrorFullscreen() {
   }
 
   return (
-    <View style={styles.fullscreenContainer}>
+    <View style={[styles.fullscreenContainer, { backgroundColor: theme.colors.fullscreenBackground }]}>
       {isGlassesConnected && lastEvent ? (
         <>
           {/* Camera feed */}
@@ -323,10 +325,10 @@ export default function GlassesMirrorFullscreen() {
               enableTorch={false}
             />
           ) : (
-            <View style={styles.fullscreenBackground}>
-              <Text style={styles.cameraPermissionText}>Camera permission needed for fullscreen mode</Text>
-              <TouchableOpacity style={styles.permissionButton} onPress={handleRequestPermission}>
-                <Text style={styles.permissionButtonText}>Grant Permission</Text>
+            <View style={[styles.fullscreenBackground, { backgroundColor: theme.colors.galleryBackground }]}>
+              <Text style={[styles.cameraPermissionText, { color: theme.colors.icon }]}>Camera permission needed for fullscreen mode</Text>
+              <TouchableOpacity style={[styles.permissionButton, { backgroundColor: theme.colors.permissionButton }]} onPress={handleRequestPermission}>
+                <Text style={[styles.permissionButtonText, { color: theme.colors.icon }]}>Grant Permission</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -337,14 +339,14 @@ export default function GlassesMirrorFullscreen() {
           </View>
 
           {/* Fullscreen exit button */}
-          <TouchableOpacity style={styles.exitFullscreenButton} onPress={handleExitFullscreen}>
-            <Text style={styles.exitFullscreenText}>Exit</Text>
+          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={handleExitFullscreen}>
+            <Text style={[styles.exitFullscreenText, { color: theme.colors.icon }]}>Exit</Text>
           </TouchableOpacity>
 
           {/* Camera flip button */}
           {permission?.granted && (
-            <TouchableOpacity style={styles.flipCameraButton} onPress={toggleCamera}>
-              <Icon name="flip-camera-ios" size={28} color="white" />
+            <TouchableOpacity style={[styles.flipCameraButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={toggleCamera}>
+              <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
             </TouchableOpacity>
           )}
 
@@ -376,23 +378,23 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (
-            <TouchableOpacity style={styles.videosButton} onPress={() => router.back()}>
-              <Icon name="photo-library" size={24} color="white" />
+            <TouchableOpacity style={[styles.videosButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={() => router.back()}>
+              <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
-                <View style={styles.badgeContainer}>
-                  <Text style={styles.badgeText}>{recordingCount}</Text>
+                <View style={[styles.badgeContainer, { backgroundColor: theme.colors.badgeBackground, borderColor: theme.colors.fullscreenOverlay }]}>
+                  <Text style={[styles.badgeText, { color: theme.colors.icon }]}>{recordingCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
           )}
         </>
       ) : (
-        <View style={styles.fallbackContainer}>
-          <Text style={styles.fallbackText}>
+        <View style={[styles.fallbackContainer, { backgroundColor: theme.colors.galleryBackground }]}>
+          <Text style={[styles.fallbackText, { color: theme.colors.icon }]}>
             {!isGlassesConnected ? "Connect glasses to use the Glasses Mirror" : "No display events available"}
           </Text>
-          <TouchableOpacity style={styles.exitFullscreenButton} onPress={handleExitFullscreen}>
-            <Text style={styles.exitFullscreenText}>Back</Text>
+          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={handleExitFullscreen}>
+            <Text style={[styles.exitFullscreenText, { color: theme.colors.icon }]}>Back</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -404,7 +406,7 @@ const styles = StyleSheet.create({
   fullscreenContainer: {
     flex: 1,
     padding: 0,
-    backgroundColor: "black",
+    // backgroundColor moved to dynamic styling
     position: "absolute",
     top: 0,
     left: 0,
@@ -423,25 +425,25 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: "100%",
-    backgroundColor: "#1a1a1a", // Dark background for contrast with green text
+    // backgroundColor moved to dynamic styling
     justifyContent: "center",
     alignItems: "center",
   },
   cameraPermissionText: {
-    color: "white",
+    // color moved to dynamic styling
     fontSize: 16,
     fontFamily: "Montserrat-Regular",
     textAlign: "center",
     marginBottom: 20,
   },
   permissionButton: {
-    backgroundColor: "#007AFF",
+    // backgroundColor moved to dynamic styling
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
   },
   permissionButtonText: {
-    color: "white",
+    // color moved to dynamic styling
     fontSize: 16,
     fontFamily: "Montserrat-Bold",
   },
@@ -463,14 +465,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 40,
     right: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    // backgroundColor moved to dynamic styling
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 30,
     zIndex: 20,
   },
   exitFullscreenText: {
-    color: "white",
+    // color moved to dynamic styling
     fontSize: 16,
     fontFamily: "Montserrat-Bold",
   },
@@ -478,7 +480,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 40,
     left: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    // backgroundColor moved to dynamic styling
     padding: 12,
     borderRadius: 50,
     zIndex: 20,
@@ -524,7 +526,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 40,
     right: 20,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    // backgroundColor moved to dynamic styling
     padding: 12,
     borderRadius: 50,
     zIndex: 20,
@@ -533,17 +535,17 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -5,
     right: -5,
-    backgroundColor: "#FF4444",
+    // backgroundColor moved to dynamic styling
     borderRadius: 12,
     minWidth: 24,
     height: 24,
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "rgba(0, 0, 0, 0.6)",
+    // borderColor moved to dynamic styling
   },
   badgeText: {
-    color: "white",
+    // color moved to dynamic styling
     fontSize: 12,
     fontFamily: "Montserrat-Bold",
     fontWeight: "bold",
@@ -552,10 +554,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#121212",
+    // backgroundColor moved to dynamic styling
   },
   fallbackText: {
-    color: "white",
+    // color moved to dynamic styling
     fontSize: 18,
     fontFamily: "Montserrat-Regular",
     textAlign: "center",

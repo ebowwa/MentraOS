@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#2196F3",
+    // backgroundColor moved to dynamic styling with theme
     padding: 10,
     borderRadius: 8,
     width: "80%",
@@ -368,7 +368,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFC107", // Yellow when enabled & searching
+    // backgroundColor moved to dynamic styling with theme
     padding: 10,
     borderRadius: 8,
     width: "80%",
@@ -377,13 +377,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#A9A9A9", // Grey when disabled
+    // backgroundColor moved to dynamic styling with theme
     padding: 10,
     borderRadius: 8,
     width: "80%",
   },
   disabledDisconnectButton: {
-    backgroundColor: "#A9A9A9",
+    // backgroundColor moved to dynamic styling with theme
   },
   icon: {
     marginRight: 4,
@@ -396,7 +396,7 @@ const styles = StyleSheet.create({
   },
   disconnectButton: {
     flexDirection: "row",
-    backgroundColor: "#E24A24",
+    // backgroundColor moved to dynamic styling with theme
     alignItems: "center",
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     width: "40%",
   },
   disconnectText: {
-    color: "#fff",
+    // color moved to dynamic styling with theme
     fontSize: 12,
     fontWeight: "500",
     fontFamily: "Montserrat-Regular",
@@ -419,7 +419,7 @@ const styles = StyleSheet.create({
     //height: 30,
   },
   iconContainer: {
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    // backgroundColor moved to dynamic styling with theme
     width: 30,
     height: 30,
     borderRadius: 15,
@@ -436,7 +436,7 @@ const styles = StyleSheet.create({
   },
   wifiSsidText: {
     fontSize: 12,
-    color: "#4CAF50",
+    // color moved to dynamic styling with theme
     fontWeight: "bold",
     marginRight: 5,
     maxWidth: 120,

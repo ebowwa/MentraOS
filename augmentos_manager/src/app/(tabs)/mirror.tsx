@@ -544,15 +544,15 @@ export default function GlassesMirror() {
           transparent={true}
           animationType="fade"
           onRequestClose={() => setPhotoModalVisible(false)}>
-          <View style={$modalContainer}>
-            <TouchableOpacity style={$closeButton} onPress={() => setPhotoModalVisible(false)}>
+          <View style={getModalStyles(theme).modalContainer}>
+            <TouchableOpacity style={getModalStyles(theme).closeButton} onPress={() => setPhotoModalVisible(false)}>
               <Icon name="close" size={24} color="white" />
             </TouchableOpacity>
 
             {selectedPhoto && (
               <View style={$modalImageContainer}>
                 <Image source={{uri: selectedPhoto.photoUrl}} style={$fullscreenImage} resizeMode="contain" />
-                <View style={$photoDetails}>
+                <View style={getPhotoDetailsStyle(theme)}>
                   <Text style={$photoDetailText} preset="default">
                     {new Date(selectedPhoto.uploadDate).toLocaleString()}
                   </Text>
@@ -614,7 +614,6 @@ const $fallbackText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const $gallerySection: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  paddingHorizontal: spacing.lg,
   paddingBottom: spacing.lg,
 })
 
@@ -664,26 +663,28 @@ const $contentList: ThemedStyle<ViewStyle> = () => ({
   padding: 0,
 })
 
-// Non-themed styles (for modal)
-const $modalContainer: ViewStyle = {
-  flex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.9)",
-  justifyContent: "center",
-  alignItems: "center",
-}
-
-const $closeButton: ViewStyle = {
-  position: "absolute",
-  top: 40,
-  right: 20,
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
-  justifyContent: "center",
-  alignItems: "center",
-  zIndex: 10,
-}
+// Modal styles that need theme access
+const getModalStyles = (theme: any) => ({
+  modalContainer: {
+    flex: 1,
+    backgroundColor: theme.colors.palette.overlay90 || "rgba(0, 0, 0, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+  } as ViewStyle,
+  
+  closeButton: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.palette.overlay50 || "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  } as ViewStyle,
+})
 
 const $modalImageContainer: ViewStyle = {
   width: "100%",
@@ -698,15 +699,15 @@ const $fullscreenImage: ImageStyle = {
   borderRadius: 8,
 }
 
-const $photoDetails: ViewStyle = {
+const getPhotoDetailsStyle = (theme: any): ViewStyle => ({
   position: "absolute",
   bottom: 40,
   left: 0,
   right: 0,
   padding: 16,
-  backgroundColor: "rgba(0, 0, 0, 0.5)",
+  backgroundColor: theme.colors.palette.overlay50,
   alignItems: "center",
-}
+})
 
 const $photoDetailText: TextStyle = {
   color: "white",

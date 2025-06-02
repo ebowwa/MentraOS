@@ -55,20 +55,20 @@ const MessageModal: React.FC<MessageModalProps> = ({
       // Fallback to default button
       return (
         <TouchableOpacity
-          style={[styles.modalButton, styles.singleButton]}
+          style={[styles.modalButton, styles.singleButton, { backgroundColor: theme.colors.buttonPrimary }]}
           onPress={() => handleButtonPress(undefined)}
         >
-          <Text style={styles.modalButtonText}>OK</Text>
+          <Text style={[styles.modalButtonText, { color: theme.colors.palette.neutral100 }]}>OK</Text>
         </TouchableOpacity>
       );
     } else if (buttons.length === 1) {
       // Single button - full width with minimum width
       return (
         <TouchableOpacity
-          style={[styles.modalButton, styles.singleButton]}
+          style={[styles.modalButton, styles.singleButton, { backgroundColor: theme.colors.buttonPrimary }]}
           onPress={() => handleButtonPress(buttons[0].onPress)}
         >
-          <Text style={styles.modalButtonText}>{buttons[0].text}</Text>
+          <Text style={[styles.modalButtonText, { color: theme.colors.palette.neutral100 }]}>{buttons[0].text}</Text>
         </TouchableOpacity>
       );
     } else {
@@ -84,9 +84,8 @@ const MessageModal: React.FC<MessageModalProps> = ({
                 key={index}
                 style={[
                   styles.modalButton,
+                  { backgroundColor: isDestructive ? theme.colors.buttonDanger : isCancel ? theme.colors.palette.gray500 : theme.colors.buttonPrimary },
                   buttons.length > 2 ? styles.buttonFullWidth : styles.buttonHalfWidth,
-                  isDestructive && styles.destructiveButton,
-                  isCancel && styles.cancelButton,
                   index < buttons.length - 1 && buttons.length > 2 && styles.buttonMarginBottom,
                   index === 0 && buttons.length === 2 && styles.buttonMarginRight,
                 ]}
@@ -94,8 +93,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
               >
                 <Text style={[
                   styles.modalButtonText,
-                  isDestructive && styles.destructiveButtonText,
-                  isCancel && styles.cancelButtonText,
+                  { color: theme.colors.palette.neutral100 }
                 ]}>
                   {button.text}
                 </Text>
@@ -114,10 +112,10 @@ const MessageModal: React.FC<MessageModalProps> = ({
       animationType="fade"
       onRequestClose={onDismiss}
     >
-      <View style={styles.modalOverlay}>
+      <View style={[styles.modalOverlay, { backgroundColor: theme.colors.modalOverlay }]}>
         <View style={[
           styles.modalContent,
-          isDarkTheme ? styles.modalContentDark : styles.modalContentLight
+          { backgroundColor: theme.isDark ? theme.colors.modalBackground : theme.colors.palette.neutral100 }
         ]}>
           {iconName && (
             <Icon 
@@ -148,7 +146,7 @@ const MessageModal: React.FC<MessageModalProps> = ({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    // backgroundColor moved to dynamic styling with theme
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -159,10 +157,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalContentLight: {
-    backgroundColor: '#FFFFFF',
+    // backgroundColor moved to dynamic styling with theme
   },
   modalContentDark: {
-    backgroundColor: '#1c1c1c',
+    // backgroundColor moved to dynamic styling with theme
   },
   modalTitle: {
     fontSize: 20,
@@ -188,7 +186,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   modalButton: {
-    backgroundColor: '#2196F3',
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 8,
@@ -212,36 +209,22 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   modalButtonText: {
-    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
     textAlign: 'center',
   },
-  // Button type styles
-  destructiveButton: {
-    backgroundColor: '#F44336', // Red
-  },
-  destructiveButtonText: {
-    color: '#FFFFFF',
-  },
-  cancelButton: {
-    backgroundColor: '#9E9E9E', // Gray
-  },
-  cancelButtonText: {
-    color: '#FFFFFF',
-  },
-  // Text styles
+  // Text styles - colors moved to dynamic styling
   lightText: {
-    color: '#FFFFFF',
+    // Color handled dynamically with theme
   },
   darkText: {
-    color: '#1a1a1a',
+    // Color handled dynamically with theme
   },
   lightSubtext: {
-    color: '#e0e0e0',
+    // Color handled dynamically with theme
   },
   darkSubtext: {
-    color: '#4a4a4a',
+    // Color handled dynamically with theme
   },
 });
 

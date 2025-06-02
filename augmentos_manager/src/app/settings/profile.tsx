@@ -161,7 +161,7 @@ export default function ProfileSettingsPage() {
                 )}
                 {userData.provider === "facebook" && (
                   <>
-                    <Icon name="facebook" size={18} color="#4267B2" />
+                    <Icon name="facebook" size={18} color={theme.colors.palette.facebookBlue} />
                     <View style={{width: 6}} />
                   </>
                 )}
@@ -187,7 +187,7 @@ export default function ProfileSettingsPage() {
                 <View style={themed($inputGroup)}>
                   <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
                   <View style={themed($enhancedInputContainer)}>
-                    <Icon name="lock" size={16} color="#6B7280" />
+                    <Icon name="lock" size={16} color={theme.colors.textDim} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -199,12 +199,12 @@ export default function ProfileSettingsPage() {
                         setPasswordMatched(text === confirmPassword)
                       }}
                       secureTextEntry={!showNewPassword}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={theme.colors.textDim}
                     />
                     <TouchableOpacity
                       hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                       onPress={() => setShowNewPassword(!showNewPassword)}>
-                      <Icon name={showNewPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
+                      <Icon name={showNewPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -212,7 +212,7 @@ export default function ProfileSettingsPage() {
                 <View style={themed($inputGroup)}>
                   <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
                   <View style={themed($enhancedInputContainer)}>
-                    <Icon name="lock" size={16} color="#6B7280" />
+                    <Icon name="lock" size={16} color={theme.colors.textDim} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -224,12 +224,12 @@ export default function ProfileSettingsPage() {
                         setPasswordMatched(text === newPassword)
                       }}
                       secureTextEntry={!showConfirmPassword}
-                      placeholderTextColor="#9CA3AF"
+                      placeholderTextColor={theme.colors.textDim}
                     />
                     <TouchableOpacity
                       hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                      <Icon name={showConfirmPassword ? "eye" : "eye-slash"} size={18} color="#6B7280" />
+                      <Icon name={showConfirmPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -412,11 +412,11 @@ const $title: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $lightProfilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: "#cccccc",
+  backgroundColor: colors.palette.lightGray,
 })
 
 const $darkProfilePlaceholder: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: "#444444",
+  backgroundColor: colors.palette.gray800,
 })
 
 const $navigationBarContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -431,7 +431,7 @@ const $activeUpdatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $disabledUpdatePasswordButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  backgroundColor: "#cccccc",
+  backgroundColor: colors.palette.lightGray,
 })
 
 const $updatePasswordButtonText: ThemedStyle<TextStyle> = ({colors}) => ({

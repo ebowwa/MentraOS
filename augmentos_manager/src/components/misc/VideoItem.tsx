@@ -7,10 +7,10 @@ import {
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import VideoThumbnail from './VideoThumbnail';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 interface VideoItemProps {
   videoPath: string;
-  isDarkTheme: boolean;
   onPlayVideo: (filePath: string) => void;
   onShareVideo: (filePath: string) => void;
   onDeleteVideo: (filePath: string) => void;
@@ -19,12 +19,12 @@ interface VideoItemProps {
 
 const VideoItem: React.FC<VideoItemProps> = ({
   videoPath,
-  isDarkTheme,
   onPlayVideo,
   onShareVideo,
   onDeleteVideo,
   showSourceBadge = false,
 }) => {
+  const { theme } = useAppTheme();
   // Extract filename from path
   const filename = videoPath.split('/').pop() || '';
   // Convert timestamp in filename to readable date
@@ -40,7 +40,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
     <TouchableOpacity
       style={[
         styles.videoItem,
-        isDarkTheme ? styles.videoItemDark : styles.videoItemLight
+        { backgroundColor: theme.colors.background, borderColor: theme.colors.border }
       ]}
       onPress={() => onPlayVideo(videoPath)}
       activeOpacity={0.7}
@@ -50,7 +50,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
         <View style={styles.thumbnailContainer}>
           <VideoThumbnail
             videoPath={videoPath}
-            isDarkTheme={isDarkTheme}
+            isDarkTheme={theme.isDark}
           />
         </View>
         
@@ -59,7 +59,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
           {/* Date and Time */}
           <Text style={[
             styles.videoDate,
-            isDarkTheme ? styles.lightText : styles.darkText
+            { color: theme.colors.text }
           ]}>
             {timestamp ? new Date(timestamp).toLocaleString(undefined, {
               month: 'short',
@@ -70,7 +70,7 @@ const VideoItem: React.FC<VideoItemProps> = ({
           
           <Text style={[
             styles.videoTime,
-            isDarkTheme ? styles.lightText : styles.darkText
+            { color: theme.colors.text }
           ]}>
             {timestamp ? new Date(timestamp).toLocaleTimeString(undefined, {
               hour: '2-digit',
@@ -81,29 +81,29 @@ const VideoItem: React.FC<VideoItemProps> = ({
           {/* Action Buttons */}
           <View style={styles.videoActions}>
             <TouchableOpacity 
-              style={[styles.videoActionButton, styles.shareButton]}
+              style={[styles.videoActionButton, { backgroundColor: theme.colors.buttonPrimary }]}
               onPress={(e) => {
                 e.stopPropagation(); // Prevent triggering the card's onPress
                 onShareVideo(videoPath);
               }}
             >
-              <Icon name="share" size={16} color="white" />
+              <Icon name="share" size={16} color={theme.colors.palette.neutral100} />
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.videoActionButton, styles.deleteButton]}
+              style={[styles.videoActionButton, { backgroundColor: theme.colors.buttonDanger }]}
               onPress={(e) => {
                 e.stopPropagation(); // Prevent triggering the card's onPress
                 onDeleteVideo(videoPath);
               }}
             >
-              <Icon name="delete" size={16} color="white" />
+              <Icon name="delete" size={16} color={theme.colors.palette.neutral100} />
             </TouchableOpacity>
           </View>
           
           {/* Source badge */}
           {showSourceBadge && (
-            <View style={styles.sourceBadge}>
-              <Text style={styles.sourceBadgeText}>
+            <View style={[styles.sourceBadge, { backgroundColor: theme.colors.overlay60 }]}>
+              <Text style={[styles.sourceBadgeText, { color: theme.colors.palette.neutral100 }]}>
                 Local
               </Text>
             </View>
@@ -115,12 +115,6 @@ const VideoItem: React.FC<VideoItemProps> = ({
 };
 
 const styles = StyleSheet.create({
-  darkText: {
-    color: '#000000',
-  },
-  lightText: {
-    color: '#ffffff',
-  },
   videoItem: {
     marginBottom: 12,
     borderRadius: 12,
@@ -130,14 +124,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
     overflow: 'hidden',
-  },
-  videoItemDark: {
-    backgroundColor: '#2a2a2a',
-  },
-  videoItemLight: {
-    backgroundColor: '#ffffff',
   },
   videoItemContent: {
     flexDirection: 'row',
@@ -180,23 +167,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
-  shareButton: {
-    backgroundColor: '#2196F3', // Blue
-  },
-  deleteButton: {
-    backgroundColor: '#FF5252', // Red
-  },
   sourceBadge: {
     position: 'absolute',
     top: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   sourceBadgeText: {
-    color: 'white',
     fontSize: 10,
     fontFamily: 'Montserrat-Medium',
   },

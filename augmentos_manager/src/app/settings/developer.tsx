@@ -1,5 +1,6 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput, Alert} from "react-native"
+import {View, Text, StyleSheet, Switch, TouchableOpacity, Platform, ScrollView, TextInput} from "react-native"
+import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
@@ -8,7 +9,7 @@ import axios from "axios"
 import showAlert from "@/utils/AlertUtils"
 import TestFlightDetector from "@/bridge/TestFlightDetector"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {Header, Screen} from "@/components/ignite"
+import {Header, Screen, PillButton} from "@/components/ignite"
 import {router} from "expo-router"
 import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -151,21 +152,31 @@ export default function DeveloperSettingsScreen() {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
     setSavedCustomUrl(null)
     setCustomUrlInput("")
-    Alert.alert("Success", "Backend URL reset to default.")
+    showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
   }
 
   const switchColors = {
     trackColor: {
-      false: theme.isDark ? "#666666" : "#D1D1D6",
-      true: "#2196F3",
+      false: theme.colors.switchTrackOff,
+      true: theme.colors.switchTrackOn,
     },
-    thumbColor: Platform.OS === "ios" ? undefined : theme.isDark ? "#FFFFFF" : "#FFFFFF",
-    ios_backgroundColor: theme.isDark ? "#666666" : "#D1D1D6",
+    thumbColor: Platform.OS === "ios" ? undefined : theme.colors.switchThumb,
+    ios_backgroundColor: theme.colors.switchTrackOff,
   }
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
+
+      <View style={[styles.warningContainer, { backgroundColor: theme.colors.warningBackground }]}>
+        <View style={styles.warningContent}>
+          <Icon name="alert" size={16} color={theme.colors.text} />
+          <Text style={[styles.warningTitle, { color: theme.colors.text }]}>Warning</Text>
+        </View>
+        <Text style={[styles.warningSubtitle, { color: theme.colors.text }]}>These may break the app. Use at your own risk.</Text>
+      </View>
+
+      <Spacer height={theme.spacing.md} />
 
       <ScrollView>
         <ToggleSetting
@@ -184,83 +195,75 @@ export default function DeveloperSettingsScreen() {
           onValueChange={toggleReconnectOnAppForeground}
         />
 
-        {isTestFlightOrDev && (
-          <>
-            <View style={styles.warningContainer}>
-              <Text style={styles.warningText}>Warning: These settings may break the app. Use at your own risk.</Text>
-            </View>
+        <Spacer height={theme.spacing.md} />
 
-            <View style={styles.settingItem}>
-              <View style={styles.settingTextContainer}>
-                <Text style={[styles.label, theme.isDark ? styles.lightText : styles.darkText]}>
-                  Custom Backend URL
-                </Text>
-                <Text style={[styles.value, theme.isDark ? styles.lightSubtext : styles.darkSubtext]}>
-                  Override the default backend server URL. Leave blank to use default.
-                  {savedCustomUrl && `\nCurrently using: ${savedCustomUrl}`}
-                </Text>
-                <TextInput
-                  style={[
-                    styles.urlInput,
-                    {
-                      backgroundColor: theme.isDark ? "#333333" : "#FFFFFF",
-                      borderColor: theme.isDark ? "#555555" : "#CCCCCC",
-                      color: theme.isDark ? "#FFFFFF" : "#000000",
-                    },
-                  ]}
-                  placeholder="e.g., http://192.168.1.100:7002"
-                  placeholderTextColor={theme.isDark ? "#999999" : "#666666"}
-                  value={customUrlInput}
-                  onChangeText={setCustomUrlInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  keyboardType="url"
-                  editable={!isSavingUrl}
-                />
-                <View style={styles.buttonRow}>
-                  <TouchableOpacity
-                    style={[
-                      styles.saveButton,
-                      {backgroundColor: theme.isDark ? "#3b82f6" : "#007BFF"},
-                      isSavingUrl && styles.disabledItem,
-                    ]}
-                    onPress={handleSaveUrl}
-                    disabled={isSavingUrl}>
-                    <Text style={styles.buttonText}>{isSavingUrl ? "Testing..." : "Save & Test URL"}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.resetButton,
-                      {backgroundColor: theme.isDark ? "#555555" : "#AAAAAA"},
-                      isSavingUrl && styles.disabledItem,
-                    ]}
-                    onPress={handleResetUrl}
-                    disabled={isSavingUrl}>
-                    <Text style={styles.buttonText}>Reset</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+        <View style={[styles.settingContainer, { backgroundColor: theme.colors.background }]}>
+          <View style={styles.settingTextContainer}>
+            <Text style={[styles.label, { color: theme.colors.text }]}>
+              Custom Backend URL
+            </Text>
+            <Text style={[styles.value, { color: theme.colors.textDim }]}>
+              Override the default backend server URL. Leave blank to use default.
+              {savedCustomUrl && `\nCurrently using: ${savedCustomUrl}`}
+            </Text>
+            <TextInput
+              style={[
+                styles.urlInput,
+                {
+                  backgroundColor: theme.colors.background,
+                  borderColor: theme.colors.inputBorderHighlight,
+                  color: theme.colors.text,
+                },
+              ]}
+              placeholder="e.g., http://192.168.1.100:7002"
+              placeholderTextColor={theme.colors.textDim}
+              value={customUrlInput}
+              onChangeText={setCustomUrlInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              editable={!isSavingUrl}
+            />
+            <View style={styles.buttonRow}>
+              <PillButton
+                text={isSavingUrl ? "Testing..." : "Save & Test URL"}
+                variant="primary"
+                onPress={handleSaveUrl}
+                disabled={isSavingUrl}
+                buttonStyle={styles.saveButton}
+              />
+              <PillButton
+                text="Reset"
+                variant="secondary"
+                onPress={handleResetUrl}
+                disabled={isSavingUrl}
+                buttonStyle={styles.resetButton}
+              />
             </View>
-
             <View style={styles.buttonColumn}>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setCustomUrlInput("https://prod.augmentos.cloud:443")}>
-                <Text style={styles.buttonText}>Production</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}>
-                <Text style={styles.buttonText}>Debug</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setCustomUrlInput("https://global.augmentos.cloud:443")}>
-                <Text style={styles.buttonText}>Global</Text>
-              </TouchableOpacity>
+              <PillButton
+                text="Production"
+                variant="secondary"
+                onPress={() => setCustomUrlInput("https://prod.augmentos.cloud:443")}
+                buttonStyle={styles.button}
+              />
+              <PillButton
+                text="Debug"
+                variant="secondary"
+                onPress={() => setCustomUrlInput("https://debug.augmentos.cloud:443")}
+                buttonStyle={styles.button}
+              />
+              <PillButton
+                text="Global"
+                variant="secondary"
+                onPress={() => setCustomUrlInput("https://global.augmentos.cloud:443")}
+                buttonStyle={styles.button}
+              />
             </View>
-          </>
-        )}
+          </View>
+        </View>
+
+        {isTestFlightOrDev && <Spacer height={theme.spacing.md} />}
 
         {/* Bypass Audio Encoding for Debugging Toggle
         <View style={styles.settingItem}>
@@ -295,22 +298,31 @@ export default function DeveloperSettingsScreen() {
 
 const styles = StyleSheet.create({
   warningContainer: {
-    backgroundColor: "#f00",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 24, // Match ToggleSetting borderRadius (spacing.lg)
   },
-  warningText: {
-    color: "#fff",
+  warningContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  warningTitle: {
     fontSize: 16,
     fontWeight: "bold",
+    marginLeft: 6,
+  },
+  warningSubtitle: {
+    fontSize: 14,
+    marginLeft: 22,
+  },
+  settingContainer: {
+    paddingVertical: 16,
+    paddingHorizontal: 24, // Match ToggleSetting padding (spacing.lg)
+    borderRadius: 24, // Match ToggleSetting borderRadius (spacing.lg)
   },
   button: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
     flexShrink: 1,
-    backgroundColor: "#333333",
   },
   buttonColumn: {
     marginTop: 12,
@@ -318,35 +330,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  darkBackground: {
-    backgroundColor: "#1c1c1c",
-  },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
-  darkText: {
-    color: "black",
-  },
-  lightText: {
-    color: "white",
-  },
-  darkSubtext: {
-    color: "#666666",
-  },
-  lightSubtext: {
-    color: "#999999",
-  },
-  settingItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 20,
-    borderBottomColor: "#333",
-    borderBottomWidth: 1,
-  },
   settingTextContainer: {
     flex: 1,
-    paddingRight: 10,
   },
   label: {
     fontSize: 16,
@@ -357,13 +342,10 @@ const styles = StyleSheet.create({
     marginTop: 5,
     flexWrap: "wrap",
   },
-  disabledItem: {
-    opacity: 0.4,
-  },
   // New styles for custom URL section
   urlInput: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 12, // Consistent border radius
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 14,
@@ -376,22 +358,10 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   saveButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
     flex: 1,
     marginRight: 10,
   },
   resetButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
     flex: 1,
-  },
-  buttonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "bold",
-    textAlign: "center",
   },
 })
