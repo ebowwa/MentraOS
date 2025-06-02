@@ -162,6 +162,7 @@ const en = {
     readyForLaunch: "Your app, almost ready for launch!",
     exciting: "(ohh, this is exciting!)",
     letsGo: "Let's go!",
+    skipOnboarding: "Skip Onboarding"
   },
   errorScreen: {
     title: "Something went wrong!",
