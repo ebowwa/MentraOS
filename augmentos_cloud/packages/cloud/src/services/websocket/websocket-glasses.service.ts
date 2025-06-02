@@ -116,10 +116,10 @@ export class GlassesWebSocketService {
       });
 
       // Handle incoming messages
-      ws.on('message', async (data: WebSocket.Data) => {
+      ws.on('message', async (data: WebSocket.Data, isBinary) => {
         try {
           // Handle binary message (audio data)
-          if (data instanceof Buffer || data instanceof ArrayBuffer) {
+          if (isBinary) {
             await this.handleBinaryMessage(userSession, data);
             return;
           }
@@ -177,6 +177,7 @@ export class GlassesWebSocketService {
   private async handleGlassesMessage(userSession: UserSession, message: GlassesToCloudMessage): Promise<void> {
     try {
       const userId = userSession.userId;
+      userSession.logger.debug({ service: SERVICE_NAME, message, type: message.type }, `Handling glasses message for user: ${userId}`);
 
       // Process message based on type
       switch (message.type) {
