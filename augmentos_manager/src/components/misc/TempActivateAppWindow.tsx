@@ -1,15 +1,16 @@
 import * as React from "react"
 import {Text, View, ViewStyle, TextStyle, TouchableOpacity} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"
-import {spacing, ThemedStyle} from "@/theme"
-import {useAppTheme} from "@/utils/useAppTheme"
+import {colors, spacing, ThemedStyle} from "@/theme"
 import {Icon} from "../ignite"
 import {translate} from "@/i18n"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 const TempActivateAppWindow = () => {
-  const {themed} = useAppTheme()
+  const {themed, theme} = useAppTheme()
+
   const [visible, setVisible] = React.useState(true)
   const [shouldShow, setShouldShow] = React.useState(false)
 
@@ -53,6 +54,7 @@ const TempActivateAppWindow = () => {
 }
 
 const $appFlexBox: ThemedStyle<TextStyle> = () => ({
+  color: colors.text,
   overflow: "hidden",
   textAlign: "left",
   fontFamily: "SF Pro Rounded",
@@ -122,7 +124,7 @@ const $xIcon: ThemedStyle<ViewStyle> = () => ({
 
 const $tempWindow: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 16,
-  backgroundColor: "#141434",
+  backgroundColor: colors.background + "E6",
   flex: 1,
   width: "100%",
   flexDirection: "row",
