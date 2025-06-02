@@ -24,6 +24,7 @@ import {router} from "expo-router"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
+import showAlert from "@/utils/AlertUtils"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -83,12 +84,26 @@ export default function ProfileSettingsPage() {
   }, [])
 
   const handleRequestDataExport = () => {
-    console.log("Requesting data export")
-    // BackendServerComms.getInstance().requestDataExport();
-    // show an alert saying the user will receive an email with a link to download the data
-    Alert.alert(translate("profileSettings:dataExportTitle"), translate("profileSettings:dataExportMessage"), [
-      {text: translate("common:ok"), style: "default"},
-    ])
+    showAlert(
+      translate("profileSettings:dataExportTitle"),
+      translate("profileSettings:dataExportMessage"),
+      [
+        { text: translate("common:cancel"), style: "cancel" },
+        {
+          text: translate("common:yes"),
+          onPress: async () => {
+            try {
+              console.log("Not implemented yet!!!");
+              // BackendServerComms.getInstance().requestDataExport();
+              // show an alert saying the user will receive an email with a link to download the data
+            } catch (error) {
+              console.error("Error requesting data export:", error)
+            }
+          },
+        },
+      ],
+      { cancelable: false }
+    )
   }
 
   const handleDeleteAccount = () => {

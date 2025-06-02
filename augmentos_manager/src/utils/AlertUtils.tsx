@@ -4,6 +4,8 @@ import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import { StyleSheet, View } from "react-native"
 import { useAppTheme } from './useAppTheme';
+import { BackHandler } from "react-native";
+
 
 // Type for button style options
 type ButtonStyle = 'default' | 'cancel' | 'destructive';
@@ -73,6 +75,19 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
     iconColor?: string;
     icon?: React.ReactNode;
   }>({});
+
+  React.useEffect(() => {
+    const backHandler = () => {
+      if (visible) {
+        return true; // prevent default back behavior
+      }
+      return false;
+    };
+
+    const subscription = BackHandler.addEventListener("hardwareBackPress", backHandler);
+
+    return () => subscription.remove();
+  }, [visible]);
 
   React.useEffect(() => {
     // Register the modal functions for global access
