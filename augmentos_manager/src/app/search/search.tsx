@@ -37,7 +37,7 @@ export default function SearchAppsPage() {
         }}
       >
         <Pressable onPress={() => router.back()}>
-          <ArrowLeftIcon color={theme.colors.icon} size={16} />
+          <ArrowLeftIcon color={theme.colors.icon} size={24} />
         </Pressable>
 
         <TextInput
