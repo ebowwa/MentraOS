@@ -36,7 +36,7 @@ import {Spacer} from "./Spacer"
 import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
 
-export default function InactiveAppList() {
+export default function InactiveAppList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {
     appStatus,
     refreshAppStatus,
@@ -503,10 +503,16 @@ export default function InactiveAppList() {
   // alphabetically sort the available apps
   availableApps.sort((a, b) => a.name.localeCompare(b.name))
 
+  if (searchQuery) {
+    availableApps = availableApps.filter(app =>
+      app.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }
+
   return (
     <View>
       {renderOnboardingArrow()}
-      <ListHeaderInactiveApps />
+      { !isSearchPage && <ListHeaderInactiveApps /> }
 
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app

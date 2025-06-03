@@ -15,7 +15,7 @@ import {AppListItem} from "./AppListItem"
 import Divider from "./Divider"
 import {Spacer} from "./Spacer"
 
-export default function AppsActiveList() {
+export default function AppsActiveList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
   const backendComms = BackendServerComms.getInstance()
   const [isLoading, setIsLoading] = useState(false)
@@ -51,13 +51,19 @@ export default function AppsActiveList() {
     })
   }
 
-  const runningApps = useMemo(() => appStatus.filter(app => app.is_running), [appStatus])
+  const runningApps = useMemo(() => {
+    let apps = appStatus.filter(app => app.is_running)
+    if (searchQuery) {
+      apps = apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    }
+    return apps
+  }, [appStatus, searchQuery])
 
   function getNewRow() {
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($headerContainer)}>
-          {runningApps.length > 0 ? <ListHeaderActiveApps /> : null}
+          {runningApps.length > 0 && !isSearchPage ? <ListHeaderActiveApps /> : null}
         </View>
         <View style={themed($contentContainer)}>
           {runningApps.length > 0 ? (
@@ -81,7 +87,7 @@ export default function AppsActiveList() {
                 </React.Fragment>
               ))}
             </>
-          ) : (
+          ) : !isSearchPage ? (
             <>
               <TempActivateAppWindow />
               <EmptyAppsView
@@ -89,7 +95,7 @@ export default function AppsActiveList() {
                 activeAppsMessageKey={"home:emptyActiveAppListInfo"}
               />
             </>
-          )}
+          ) : null}
         </View>
       </View>
     )

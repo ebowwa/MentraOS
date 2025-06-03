@@ -2,6 +2,7 @@ import {translate} from "@/i18n"
 import {colors, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/component/SearchIcon"
+import { router } from "expo-router"
 import * as React from "react"
 import {Text, View, TextStyle, ViewStyle, Pressable} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"
@@ -17,8 +18,7 @@ const ListHeaderInactiveApps = () => {
       <Pressable
         style={themed($wrapper)}
         onPress={() => {
-          //TODO implement search
-          console.log("SearchButton: Not implemented yet")
+          router.push('/search/search');
         }}>
         <SearchIcon color={theme.colors.text} />
       </Pressable>
