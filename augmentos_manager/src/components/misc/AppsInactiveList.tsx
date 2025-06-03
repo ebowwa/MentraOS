@@ -509,6 +509,22 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     )
   }
 
+  // Create a ref for all app opacities, keyed by packageName
+  const opacities = useRef<Record<string, Animated.Value>>(
+    Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)]))
+  ).current;
+
+  // Animate all availableApps' opacities to 1 on mount or change
+  useEffect(() => {
+    availableApps.forEach(app => {
+      Animated.timing(opacities[app.packageName], {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [availableApps]);
+
   return (
     <View>
       {renderOnboardingArrow()}
@@ -531,15 +547,27 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
           }, 0)
         }
 
+        // Get the shared opacity Animated.Value for this app
+        const itemOpacity = opacities[app.packageName];
+
         return (
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
               is_foreground={app.is_foreground}
               isActive={false}
-              onTogglePress={() => startApp(app.packageName)}
+              onTogglePress={() => {
+                setTimeout(() => {
+                  Animated.timing(itemOpacity, {
+                    toValue: 0,
+                    duration: 450,
+                    useNativeDriver: true,
+                  }).start(() => startApp(app.packageName));
+                }, 100);
+              }}
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
+              opacity={itemOpacity}
             />
             {index < availableApps.length - 1 && (
               <>
