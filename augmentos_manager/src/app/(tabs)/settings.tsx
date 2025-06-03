@@ -49,7 +49,7 @@ export default function SettingsPage() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
-      <Header titleTx="settings:title" />
+      <Header leftTx="settings:title" />
 
       <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
 
