@@ -304,11 +304,19 @@ public class RtmpStreamingService extends Service {
                         public void onError(StreamPackError error) {
                             Log.e(TAG, "Streaming error: " + error.getMessage());
                             EventBus.getDefault().post(new StreamingEvent.Error("Streaming error: " + error.getMessage()));
-                            if (sStatusCallback != null) {
-                                sStatusCallback.onStreamError("Streaming error: " + error.getMessage());
+                            
+                            // Classify the error to determine if we should retry or fail immediately
+                            if (isRetryableError(error)) {
+                                Log.d(TAG, "Retryable error - scheduling reconnection");
+                                scheduleReconnect("stream_error");
+                            } else {
+                                Log.e(TAG, "Fatal error - sending immediate error status");
+                                if (sStatusCallback != null) {
+                                    sStatusCallback.onStreamError("Fatal streaming error: " + error.getMessage());
+                                }
+                                // Stop streaming immediately for fatal errors
+                                stopStreaming();
                             }
-                            // Don't stop streaming on errors - let the reconnect logic handle it
-                            scheduleReconnect("stream_error");
                         }
                     },
                     new OnConnectionListener() {
@@ -317,9 +325,16 @@ public class RtmpStreamingService extends Service {
                             Log.i(TAG, "RTMP connection successful");
                             // Reset reconnect attempts when we get a successful connection
                             mReconnectAttempts = 0;
+                            boolean wasReconnecting = mReconnecting;
                             mReconnecting = false;
                             updateNotification();
                             EventBus.getDefault().post(new StreamingEvent.Connected());
+                            
+                            // Only send streaming status for initial connections, not reconnections
+                            // Reconnections will be handled by the startStream continuation callback
+                            if (!wasReconnecting && sStatusCallback != null) {
+                                sStatusCallback.onStreamStarted(mRtmpUrl);
+                            }
                         }
 
                         @Override
@@ -690,6 +705,7 @@ public class RtmpStreamingService extends Service {
             Log.w(TAG, "Maximum reconnection attempts reached, giving up.");
             EventBus.getDefault().post(new StreamingEvent.Error("Maximum reconnection attempts reached"));
             if (sStatusCallback != null) {
+                // Only use onReconnectFailed to avoid duplicate error messages
                 sStatusCallback.onReconnectFailed(MAX_RECONNECT_ATTEMPTS);
             }
 
@@ -961,6 +977,65 @@ public class RtmpStreamingService extends Service {
                       " (current: " + sInstance.mCurrentStreamId + ", active: " + sInstance.mIsStreamingActive + ")");
             }
         }
+    }
+
+    /**
+     * Determine if an error is retryable (network/connection) or fatal (config/permission)
+     * @param error The StreamPackError to classify
+     * @return true if the error should trigger reconnection attempts, false if it's fatal
+     */
+    private boolean isRetryableError(StreamPackError error) {
+        String message = error.getMessage();
+        if (message == null) {
+            // Unknown error, default to retry
+            return true;
+        }
+        
+        // Log the error for debugging
+        Log.d(TAG, "Classifying error: " + message);
+        
+        // Network/connection errors that should trigger reconnection
+        if (message.contains("SocketException") ||
+            message.contains("Connection") ||
+            message.contains("Timeout") ||
+            message.contains("Network") ||
+            message.contains("UnknownHostException") ||
+            message.contains("IOException") ||
+            message.contains("ECONNREFUSED") ||
+            message.contains("ETIMEDOUT")) {
+            Log.d(TAG, "Error classified as RETRYABLE (network issue)");
+            return true;
+        }
+        
+        // Fatal errors that shouldn't retry
+        if (message.contains("Permission") ||
+            message.contains("permission") ||
+            message.contains("Invalid URL") ||
+            message.contains("invalid url") ||
+            message.contains("Authentication") ||
+            message.contains("authentication") ||
+            message.contains("Unauthorized") ||
+            message.contains("Codec") ||
+            message.contains("codec") ||
+            message.contains("Not supported") ||
+            message.contains("Illegal") ||
+            message.contains("Invalid parameter")) {
+            Log.d(TAG, "Error classified as FATAL (configuration/permission issue)");
+            return false;
+        }
+        
+        // Camera-specific errors that are usually fatal
+        if (message.contains("Camera") && 
+            (message.contains("busy") || 
+             message.contains("in use") || 
+             message.contains("failed to connect"))) {
+            Log.d(TAG, "Error classified as FATAL (camera unavailable)");
+            return false;
+        }
+        
+        // Default to retry for unknown errors
+        Log.d(TAG, "Error classified as RETRYABLE (unknown error, defaulting to retry)");
+        return true;
     }
 
     /**
