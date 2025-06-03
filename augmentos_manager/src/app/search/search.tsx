@@ -20,7 +20,6 @@ export default function SearchAppsPage() {
   const { themed, theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState("")
-  const AnimatedTextInput = Animated.createAnimatedComponent(TextInput)
 
   return (
     <Screen preset="fixed" style={themed($screen)}>
@@ -41,7 +40,7 @@ export default function SearchAppsPage() {
           <ArrowLeftIcon color={theme.colors.icon} size={16} />
         </Pressable>
 
-        <AnimatedTextInput
+        <TextInput
           placeholder= {translate("home:search")}
           placeholderTextColor="#aaa"
           value={searchQuery}
@@ -58,12 +57,8 @@ export default function SearchAppsPage() {
 
 
         <Divider variant="full" />
-
         <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
-
-        <Spacer height={8} />
         <Divider variant="inset" />
-        <Spacer height={8} />
 
         <AppsInactiveList isSearchPage={true} searchQuery={searchQuery} />
         <Spacer height={40} />
