@@ -98,7 +98,7 @@ export class TokenService {
    */
   async issueUserToken(aosUserId: string): Promise<string> {
     // Algorithm used for signing
-    const alg = 'EdDSA';
+    const alg = 'RS256';
 
     try {
       // Import the private key from the environment
@@ -108,7 +108,7 @@ export class TokenService {
       const privateKey = await importPKCS8(TPA_AUTH_JWT_PRIVATE_KEY, alg);
 
       // Generate a frontend token as a secure hash of the user ID and a secret
-      const frontendTokenSecret = process.env.FRONTEND_TOKEN_SECRET || 'default-frontend-secret';
+      const frontendTokenSecret = process.env.AUGMENTOS_AUTH_JWT_SECRET || 'default-frontend-secret';
       const frontendToken = crypto
         .createHash('sha256')
         .update(aosUserId + frontendTokenSecret)

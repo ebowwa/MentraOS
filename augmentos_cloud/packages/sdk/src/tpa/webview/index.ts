@@ -5,12 +5,10 @@ import { AuthenticatedRequest } from 'src/types';
 // Note: Your Express app needs to use cookie-parser middleware for this to work
 // Example: app.use(require('cookie-parser')());
 import * as crypto from 'crypto';
-import { jwtVerify, createRemoteJWKSet, importSPKI } from 'jose';
+import { KEYUTIL, KJUR, RSAKey } from "jsrsasign";
 
-const userTokenPublicKey = process.env.AUGMENTOS_CLOUD_USER_TOKEN_PUBLIC_KEY || "-----BEGIN PUBLIC KEY-----MCowBQYDK2VwAyEA5iUkngqc3LhFDcPi94q1PWcjXY9oj6fzATqiRKDtR8M=-----END PUBLIC KEY-----";
-const JWKS_URI = 'https://prod.augmentos.cloud/.well-known/jwks.json';
-const jwks = createRemoteJWKSet(new URL(JWKS_URI));
 
+const userTokenPublicKey = process.env.AUGMENTOS_CLOUD_USER_TOKEN_PUBLIC_KEY || "-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA0Yt2RtNOdeKQxWMY0c84\nADpY1Jy58YWZhaEgP2A5tBwFUKgy/TH9gQLWZjQ3dQ/6XXO8qq0kluoYFqM7ZDRF\nzJ0E4Yi0WQncioLRcCx4q8pDmqY9vPKgv6PruJdFWca0l0s3gZ3BqSeWum/C23xK\nFPHPwi8gvRdc6ALrkcHeciM+7NykU8c0EY8PSitNL+Tchti95kGu+j6APr5vNewi\nzRpQGOdqaLWe+ahHmtj6KtUZjm8o6lan4f/o08C6litizguZXuw2Nn/Kd9fFI1xF\nIVNJYMy9jgGaOi71+LpGw+vIpwAawp/7IvULDppvY3DdX5nt05P1+jvVJXPxMKzD\nTQIDAQAB\n-----END PUBLIC KEY-----";
 
 
 /**
@@ -143,14 +141,25 @@ function verifySession(token: string, secret: string, maxAge?: number): string |
  * @returns The user ID (subject) from the token, or null if invalid
  */
 async function verifySignedUserToken(signedUserToken: string): Promise<string | null> {
-  // Import the PEM-encoded public key
-  const publicKey = await importSPKI(userTokenPublicKey, 'EdDSA');
+  try {
+    // 1. Parse the PEM public key into a jsrsasign key object
+    const publicKeyObj = KEYUTIL.getKey(userTokenPublicKey) as RSAKey;
+    // 2. Verify JWT signature + claims (issuer, exp, iat) with 2-min tolerance
+    const isValid = KJUR.jws.JWS.verifyJWT(signedUserToken, publicKeyObj, {
+      alg: ["RS256"],
+      iss: ["https://prod.augmentos.cloud"],
+      verifyAt: KJUR.jws.IntDate.get("now"),
+      gracePeriod: 120,
+    });
+    if (!isValid) return null;
 
-  const { payload } = await jwtVerify(signedUserToken, publicKey, {
-    issuer: 'https://prod.augmentos.cloud',
-    clockTolerance: '2 min',
-  });
-  return payload.sub || null;
+    // 3. Decode payload and return the subject (user ID)
+    const parsed = KJUR.jws.JWS.parse(signedUserToken);
+    return (parsed.payloadObj as { sub: string }).sub || null;
+  } catch (e) {
+    console.error("[verifySignedUserToken] Error verifying token:", e);
+    return null;
+  }
 }
 
 /**
@@ -250,8 +259,10 @@ export function createAuthMiddleware(options: {
 
     // first check for signed user token
     if (signedUserToken) {
+      console.log('[auth.middleware] Verifying signed user token: ', signedUserToken);
       const userId = await verifySignedUserToken(signedUserToken);
       if (userId) {
+        console.log('[auth.middleware] Signed user token verified as valid.  User ID: ', userId);
         // Set the user ID on the request
         req.authUserId = userId;
 
@@ -261,7 +272,11 @@ export function createAuthMiddleware(options: {
 
         console.log('[auth.middleware] User ID verified from signed user token: ', userId);
         return next();
+      } else {
+        console.log('[auth.middleware] Signed user token invalid');
       }
+    } else {
+      console.log('[auth.middleware] No signed user token found');
     }
     // If temporary token exists, authenticate with it
     if (tempToken) {
