@@ -3,7 +3,7 @@
  * and own applications (TPAs). Users can be members of multiple organizations.
  */
 
-import { Schema, model, Document, Types, Model } from 'mongoose';
+import mongoose, { Schema, model, Document, Types, Model } from 'mongoose';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 
 const logger = rootLogger.child({ module: 'organization.model' });
@@ -18,6 +18,28 @@ export interface OrgMember {
   role: 'admin' | 'member';
   /** Date when user joined the organization */
   joinedAt: Date;
+}
+
+/**
+ * Interface representing a pending invitation
+ */
+export interface PendingInvite {
+  /** Email address of the invitee */
+  email: string;
+  /** Role to assign when invitation is accepted */
+  role: 'admin' | 'member';
+  /** JWT token for accepting the invitation */
+  token: string;
+  /** User who sent the invitation */
+  invitedBy: Types.ObjectId;
+  /** Date when invitation was sent */
+  invitedAt: Date;
+  /** Date when invitation expires */
+  expiresAt: Date;
+  /** Number of times invitation email was sent */
+  emailSentCount: number;
+  /** Last time invitation email was sent */
+  lastEmailSentAt?: Date;
 }
 
 /**
@@ -41,6 +63,8 @@ export interface OrganizationDocument extends Document {
   };
   /** List of organization members with their roles */
   members: OrgMember[];
+  /** List of pending invitations */
+  pendingInvites: PendingInvite[];
   /** Creation timestamp */
   createdAt: Date;
   /** Last update timestamp */
@@ -108,6 +132,47 @@ const OrganizationSchema = new Schema<OrganizationDocument>({
     joinedAt: {
       type: Date,
       default: Date.now
+    }
+  }],
+  pendingInvites: [{
+    email: {
+      type: String,
+      required: true,
+      trim: true,
+      lowercase: true,
+      validate: {
+        validator: (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email),
+        message: 'Email must be a valid email address'
+      }
+    },
+    role: {
+      type: String,
+      enum: ['admin', 'member'],
+      required: true
+    },
+    token: {
+      type: String,
+      required: true
+    },
+    invitedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true
+    },
+    invitedAt: {
+      type: Date,
+      default: Date.now
+    },
+    expiresAt: {
+      type: Date,
+      required: true
+    },
+    emailSentCount: {
+      type: Number,
+      default: 1
+    },
+    lastEmailSentAt: {
+      type: Date
     }
   }]
 }, {
@@ -194,9 +259,9 @@ interface OrganizationModel extends Model<OrganizationDocument> {
 }
 
 // Create and export the model
-export const Organization = model<OrganizationDocument, OrganizationModel>(
+export const Organization = (mongoose.models.Organization || model<OrganizationDocument, OrganizationModel>(
   'Organization',
   OrganizationSchema
-);
+)) as OrganizationModel;
 
 export default Organization;

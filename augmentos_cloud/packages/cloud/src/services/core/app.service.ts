@@ -7,7 +7,8 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType } from '@augmentos/sdk';
+import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
+// TODO(isaiah): Consider splitting this into multiple services (appstore.service, developer.service, tools.service)
 import axios, { AxiosError } from 'axios';
 import { systemApps } from './system-apps';
 import App from '../../models/app.model';
@@ -91,9 +92,6 @@ export class AppService {
     let usersApps: AppI[] = [];
 
     if (APPSTORE_ENABLED && userId) {
-      // Find apps the developer made.
-      const _madeByUser = await App.find({ developerId: userId }) as AppI[];
-
       // Find apps the user installed.
       const user = await User.findOne({ email: userId });
       const _installedApps = user?.installedApps?.map((installedApp: { packageName: string; installedDate: Date; }) => {
@@ -103,11 +101,8 @@ export class AppService {
       // Fetch the apps from the appstore.
       const _appstoreApps = await App.find({ packageName: { $in: _installedApps } }) as AppI[];
 
-      // Fetch apps shared with this user by email
-      const _sharedWithUser = await App.find({ sharedWithEmails: userId }) as AppI[];
-
       // remove duplicates.
-      const _allApps = [..._madeByUser, ..._appstoreApps, ..._sharedWithUser];
+      const _allApps = _appstoreApps;
       const _appMap = new Map<string, AppI>();
       _allApps.forEach(app => {
         _appMap.set(app.packageName, app);
@@ -201,6 +196,7 @@ export class AppService {
     }
   }
 
+  // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   /**
  * Triggers the stop webhook for a TPA app session.
  * @param url - Stop Webhook URL
@@ -220,6 +216,7 @@ export class AppService {
     };
   }
 
+  // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   async triggerStopByPackageName(packageName: string, userId: string): Promise<void> {
     // Look up the TPA by packageName
     const app = await this.getApp(packageName);
@@ -324,18 +321,6 @@ export class AppService {
     return hashedKey === appDoc.hashedApiKey;
   }
 
-  /**
-   * Gets the current state of a TPA for a user.
-   * @param packageName - TPA identifier
-   * @param userId - User identifier
-   * @returns Promise resolving to app state
-   */
-  async getAppState(packageName: string, userId: string): Promise<AppState> {
-    const userStates = this.appStates.get(userId) || new Map<string, AppState>();
-
-    // Return existing state or default to not_installed
-    return userStates.get(packageName) || AppState.NOT_INSTALLED;
-  }
 
   /**
    * Validates tool definitions against the schema requirements
@@ -400,6 +385,170 @@ export class AppService {
   }
 
   /**
+   * Validates setting definitions against the schema requirements
+   * @param settings Array of setting definitions to validate
+   * @returns Validated and sanitized settings array or throws error if invalid
+   */
+  private validateSettingDefinitions(settings: any[]): AppSetting[] {
+    logger.debug('Validating setting definitions:', settings);
+    if (!Array.isArray(settings)) {
+      throw new Error('Settings must be an array');
+    }
+
+    return settings.map(setting => {
+      // Validate required type field
+      if (!setting.type || typeof setting.type !== 'string') {
+        throw new Error('Setting type is required and must be a string');
+      }
+
+      // Group settings validation
+      if (setting.type === 'group') {
+        if (!setting.title || typeof setting.title !== 'string') {
+          throw new Error('Group setting requires a title');
+        }
+        return {
+          type: AppSettingType.GROUP,
+          title: setting.title,
+          key: '', // Groups don't need keys but BaseAppSetting requires it
+          label: '' // Groups don't need labels but BaseAppSetting requires it
+        } as AppSetting;
+      }
+
+      // Title/Value settings validation (display-only, no key required)
+      if (setting.type === 'titleValue') {
+        if (!setting.label || typeof setting.label !== 'string') {
+          throw new Error('Title/Value setting requires a label');
+        }
+        return {
+          type: 'titleValue' as any,
+          label: setting.label,
+          value: setting.value || ''
+        } as AppSetting;
+      }
+
+      // Regular settings validation (require key and label)
+      if (!setting.key || typeof setting.key !== 'string') {
+        throw new Error('Setting key is required and must be a string');
+      }
+
+      if (!setting.label || typeof setting.label !== 'string') {
+        throw new Error('Setting label is required and must be a string');
+      }
+
+      // Type-specific validation
+      switch (setting.type) {
+        case 'toggle':
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'boolean') {
+            throw new Error('Toggle setting requires a boolean defaultValue');
+          }
+          return {
+            type: AppSettingType.TOGGLE,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : false,
+            value: setting.value
+          } as AppSetting;
+
+        case 'text':
+          return {
+            type: AppSettingType.TEXT,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue || '',
+            value: setting.value
+          } as AppSetting;
+
+        case 'text_no_save_button':
+          return {
+            type: 'text_no_save_button' as any,
+            key: setting.key,
+            label: setting.label,
+            defaultValue: setting.defaultValue || '',
+            value: setting.value,
+            maxLines: setting.maxLines
+          } as AppSetting;
+
+        case 'select':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Select setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Select options must have label and value properties');
+          }
+          return {
+            type: AppSettingType.SELECT,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          } as AppSetting;
+
+        case 'select_with_search':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Select with search setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Select with search options must have label and value properties');
+          }
+          return {
+            type: 'select_with_search' as any,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: setting.defaultValue,
+            value: setting.value
+          } as AppSetting;
+
+        case 'multiselect':
+          if (!Array.isArray(setting.options)) {
+            throw new Error('Multiselect setting requires an options array');
+          }
+          if (!setting.options.every((opt: any) =>
+            typeof opt.label === 'string' && 'value' in opt)) {
+            throw new Error('Multiselect options must have label and value properties');
+          }
+          // Ensure defaultValue is an array for multiselect
+          const defaultValue = Array.isArray(setting.defaultValue) ? setting.defaultValue : [];
+          const value = Array.isArray(setting.value) ? setting.value : undefined;
+          return {
+            type: 'multiselect' as any,
+            key: setting.key,
+            label: setting.label,
+            options: setting.options,
+            defaultValue: defaultValue,
+            value: value
+          } as AppSetting;
+
+        case 'slider':
+          if (typeof setting.min !== 'number' || typeof setting.max !== 'number') {
+            throw new Error('Slider setting requires numeric min and max values');
+          }
+          if (setting.defaultValue !== undefined && typeof setting.defaultValue !== 'number') {
+            throw new Error('Slider setting requires a numeric defaultValue');
+          }
+          if (setting.min > setting.max) {
+            throw new Error('Slider min value cannot be greater than max value');
+          }
+          return {
+            type: AppSettingType.SLIDER,
+            key: setting.key,
+            label: setting.label,
+            min: setting.min,
+            max: setting.max,
+            defaultValue: setting.defaultValue !== undefined ? setting.defaultValue : setting.min,
+            value: setting.value
+          } as AppSetting;
+
+        default:
+          throw new Error(`Unsupported setting type: ${setting.type}`);
+      }
+    });
+  }
+
+  /**
    * Create a new app
    */
   async createApp(appData: any, developerId: string): Promise<{ app: AppI, apiKey: string }> {
@@ -416,6 +565,15 @@ export class AppService {
       }
     }
 
+    // Parse and validate settings if present
+    if (appData.settings) {
+      try {
+        appData.settings = this.validateSettingDefinitions(appData.settings);
+      } catch (error: any) {
+        throw new Error(`Invalid setting definitions: ${error.message}`);
+      }
+    }
+
     // Create app with organization ownership
     const app = await App.create({
       ...appData,
@@ -427,6 +585,7 @@ export class AppService {
   }
 
 
+  // TODO(isaiah): Move this to the new developer service to declutter the app service.
   /**
    * Update an app
    */
@@ -465,6 +624,15 @@ export class AppService {
       }
     }
 
+    // Parse and validate settings if present
+    if (appData.settings) {
+      try {
+        appData.settings = this.validateSettingDefinitions(appData.settings);
+      } catch (error: any) {
+        throw new Error(`Invalid setting definitions: ${error.message}`);
+      }
+    }
+
     // If developerInfo is provided, ensure it's properly structured
     if (appData.developerInfo) {
       // Make sure only valid fields are included
@@ -491,6 +659,7 @@ export class AppService {
     return updatedApp!;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Publish an app to the app store
    */
@@ -558,6 +727,7 @@ export class AppService {
     return updatedApp!;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Delete an app
    */
@@ -589,6 +759,7 @@ export class AppService {
     await App.findOneAndDelete({ packageName });
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Regenerate API key for an app
    */
@@ -631,6 +802,7 @@ export class AppService {
     return apiKey;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Hash API key
    */
@@ -675,28 +847,6 @@ export class AppService {
 
     // Use lean() to get a plain JavaScript object instead of a Mongoose document
     return App.findOne(query).lean();
-  }
-
-  /**
-   * Get public apps
-   * TODO: DELETE THIS?
-   */
-  // export async function getPublicApps(developerEmail?: string): Promise<AppI[]> {
-  async getPublicApps(): Promise<AppI[]> {
-    // logger.debug('Getting public apps - developerEmail', developerEmail);
-    // if (developerEmail) {
-    //   const developer
-    //     = await User.findOne({ email: developerEmail }).lean();
-    //   if (!developer) {
-    //     return App.find({ isPublic: true }).lean();
-    //   }
-    //   else {
-    //     // Find all public apps, or apps by the developer.
-    //     return App.find({ $or: [{ isPublic: true }, { developerId: developer.email}] }).lean();
-    //   }
-    // }
-    return App.find({ isPublic: true }).lean();
-    // return App.find();
   }
 
   /**
@@ -833,36 +983,17 @@ export class AppService {
       throw new Error(`App ${packageName} not found`);
     }
 
-    if (!app.publicUrl) {
-      throw new Error(`App ${packageName} does not have a public URL`);
-    }
-
     logger.debug('Getting TPA tools for:', packageName);
 
-    try {
-      // Fetch the tpa_config.json from the app's publicUrl
-      const configUrl = `${app.publicUrl}/tpa_config.json`;
-      const response = await axios.get(configUrl, { timeout: 5000 });
-
-      // Check if the response contains a tools array
-      const config = response.data;
-      if (config && Array.isArray(config.tools)) {
-        // Validate the tools before returning them
-        logger.debug(`Found ${config.tools.length} tools in ${packageName}, validating...`);
-        return this.validateToolDefinitions(config.tools);
-      }
-
-      // If no tools found, return empty array
-      return [];
-    } catch (error) {
-      // Check if error is a 404 (file not found) and silently ignore
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        // Config file doesn't exist, silently return empty array
-        logger.debug(`No tpa_config.json found for app ${packageName} (404)`);
-        return [];
-      }
-      return [];
+    // Get tools from the database instead of fetching tpa_config.json
+    if (app.tools && Array.isArray(app.tools)) {
+      logger.debug(`Found ${app.tools.length} tools in ${packageName} database`);
+      return app.tools;
     }
+
+    // If no tools found in database, return empty array
+    logger.debug(`No tools found in database for app ${packageName}`);
+    return [];
   }
 
   // Add a method to update app visibility
@@ -891,6 +1022,7 @@ export class AppService {
     return app;
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   async updateSharedWithEmails(packageName: string, emails: string[], developerId: string): Promise<AppI> {
     // Ensure developer owns the app or is in the org if shared
     const app = await App.findOne({ packageName });
@@ -916,6 +1048,7 @@ export class AppService {
     return app.toObject();
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Get apps by organization ID
    */
@@ -923,16 +1056,19 @@ export class AppService {
     return App.find({ organizationId: orgId }).lean();
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   // Replace getAppsByDeveloperId with getAppsByOrgId, but keep for backward compatibility
   async getAppsByDeveloperId(developerId: string): Promise<AppI[]> {
     return App.find({ developerId }).lean();
   }
 
+  // TODO(isaiah): delete this or Move this logic to a new developer service to declutter the app service.
   // These are no longer needed with the organization model, but keep for backward compatibility
   async getAppsSharedWithEmail(email: string): Promise<AppI[]> {
     return [];
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Get apps created by or shared with a user (deduplicated)
    */
@@ -941,6 +1077,7 @@ export class AppService {
     return this.getAppsByDeveloperId(email);
   }
 
+  // TODO(isaiah): Move this logic to a new developer service to declutter the app service.
   /**
    * Move an app from one organization to another
    * @param packageName - The package name of the app to move

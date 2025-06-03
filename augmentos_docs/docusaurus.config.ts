@@ -5,7 +5,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'AugmentOS SDK Docs (Beta)',
+  title: 'AugmentOS SDK Docs',
   tagline: 'Build your AugmentOS smart glasses app.',
   favicon: 'img/favicon.ico',
 
@@ -94,7 +94,7 @@ const config: Config = {
               to: '/quickstart',
             },
             {
-              label: '🚧 Build From Scratch',
+              label: 'Build From Scratch',
               to: '/getting-started',
             },
           ],
@@ -105,15 +105,11 @@ const config: Config = {
             {
               label: 'Discord',
               href: 'https://discord.gg/5ukNvkEAqT',
-            },
-            {
-              label: 'X',
-              href: 'https://x.com/mentra',
-            },
+            }
           ],
         },
         {
-          title: 'More',
+          title: 'Source',
           items: [
             {
               label: 'GitHub',
@@ -122,7 +118,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} AugmentOS Community. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Mentra. Built with Docusaurus.`,
     },
     prism: {
       theme: prismThemes.github,

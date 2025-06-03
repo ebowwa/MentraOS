@@ -1,4 +1,4 @@
-import { TpaType } from '@augmentos/sdk';
+import { TpaType, ToolSchema, AppSetting, AppSettingType } from '@augmentos/sdk';
 
 // Define permission types
 export enum PermissionType {
@@ -13,6 +13,13 @@ export interface Permission {
   type: PermissionType;
   description?: string;
 }
+
+// Re-export SDK types for convenience
+export type Tool = ToolSchema;
+export type Setting = AppSetting;
+
+// Export AppSettingType for use in components
+export { AppSettingType };
 
 export interface TPA {
   id: string;
@@ -31,4 +38,6 @@ export interface TPA {
   reviewedBy?: string; // Admin who reviewed the app
   reviewedAt?: string; // When the app was reviewed
   permissions?: Permission[]; // Permissions required by the app
+  settings?: Setting[]; // App configuration settings
+  tools?: Tool[]; // AI tools provided by the app
 }

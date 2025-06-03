@@ -6,6 +6,31 @@ import { User } from '../models/user.model';
 import { Types } from 'mongoose';
 import { OrganizationService } from '../services/core/organization.service';
 import App from '../models/app.model';
+import sessionService from '../services/core/session.service';
+import { logger as rootLogger } from '../services/logging/pino-logger';
+import multer from 'multer';
+import FormData from 'form-data';
+import axios from 'axios';
+
+const logger = rootLogger.child({ service: 'developer.routes' });
+// TODO(isaiah): refactor this code to use this logger instead of console.log, console.error, etc.
+
+// Configure multer for memory storage (files stored in memory as Buffer)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept only image files
+    const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif', 'image/webp'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only PNG, JPEG, GIF, and WebP images are allowed.'));
+    }
+  }
+});
 
 // Define request with user and organization info
 interface DevPortalRequest extends Request {
@@ -23,6 +48,9 @@ const router = Router();
 import jwt from 'jsonwebtoken';
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 
+// TODO(isaiah): This is called validateSupabaseToken, but i'm pretty sure this is using an AugmentOS JWT(coreToken), not a Supabase token.
+// TODO(isaiah): Investigate how currentOrgId is used, the DevPortalRequest claims it's optional yet this middleware fails if it's not provided.
+// Also the middleware doesn't validate the currentOrgId, only injects it into the request object, maybe it should just be a query param instead of a header?
 const validateSupabaseToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   // Extract token from Authorization header
   const authHeader = req.headers.authorization;
@@ -82,6 +110,46 @@ const validateSupabaseToken = async (req: Request, res: Response, next: NextFunc
 // ------------- HANDLER FUNCTIONS -------------
 
 /**
+ * Helper function to automatically install an app for the developer who created it
+ * @param packageName - The package name of the app to install
+ * @param developerEmail - The email of the developer who created the app
+ */
+const autoInstallAppForDeveloper = async (packageName: string, developerEmail: string): Promise<void> => {
+  try {
+    logger.info(`Auto-installing app ${packageName} for developer ${developerEmail}`);
+
+    // Find the user (do not create if not found)
+    const user = await User.findOne({ email: developerEmail.toLowerCase() });
+    if (!user) {
+      logger.error(`User not found for auto-install: ${developerEmail}`);
+      return;
+    }
+
+    // Check if app is already installed (safety check)
+    if (user.isAppInstalled(packageName)) {
+      logger.info(`App ${packageName} is already installed for developer ${developerEmail}`);
+      return;
+    }
+
+    // Install the app using the user model method
+    await user.installApp(packageName);
+
+    logger.info(`Successfully auto-installed app ${packageName} for developer ${developerEmail}`);
+
+    // Trigger app state change notification for any active sessions
+    try {
+      sessionService.triggerAppStateChange(developerEmail);
+    } catch (error) {
+      logger.warn({ error, email: developerEmail, packageName }, 'Error sending app state notification after auto-install');
+      // Non-critical error, installation succeeded
+    }
+  } catch (error) {
+    logger.error({ error, packageName, developerEmail }, 'Error auto-installing app for developer');
+    // Don't throw the error - we don't want app creation to fail if auto-install fails
+  }
+};
+
+/**
  * Get authenticated developer user
  */
 const getAuthenticatedUser = async (req: Request, res: Response): Promise<void> => {
@@ -129,7 +197,7 @@ const getDeveloperApps = async (req: Request, res: Response): Promise<void> => {
 /**
  * Get a specific TPA by package name
  */
-const getAppByPackageName = async (req: Request, res: Response): Promise<void> => {
+const getAppByPackageName = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -144,14 +212,14 @@ const getAppByPackageName = async (req: Request, res: Response): Promise<void> =
     res.json(tpa);
   } catch (error) {
     console.error('Error fetching TPA:', error);
-    res.status(500).json({ error: 'Failed to fetch TPA' });
+    return res.status(500).json({ error: 'Failed to fetch TPA' });
   }
 };
 
 /**
  * Create a new TPA
  */
-const createApp = async (req: Request, res: Response): Promise<void> => {
+const createApp = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -171,6 +239,9 @@ const createApp = async (req: Request, res: Response): Promise<void> => {
       organizationId: orgId
     }, email);
 
+    // Auto-install the app for the developer who created it
+    autoInstallAppForDeveloper(tpaData.packageName, email);
+
     res.status(201).json(result);
   } catch (error: any) {
     console.error('Error creating TPA:', error);
@@ -182,14 +253,14 @@ const createApp = async (req: Request, res: Response): Promise<void> => {
       });
     }
 
-    res.status(500).json({ error: error.message || 'Failed to create app' });
+    return res.status(500).json({ error: error.message || 'Failed to create app' });
   }
 };
 
 /**
  * Update an existing TPA
  */
-const updateApp = async (req: Request, res: Response): Promise<void> => {
+const updateApp = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -211,14 +282,20 @@ const updateApp = async (req: Request, res: Response): Promise<void> => {
       return res.status(403).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to update TPA' });
+    // For validation errors (like tool/setting validation), return the specific error message
+    if (error.message.includes('Invalid tool definitions') || error.message.includes('Invalid setting definitions')) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    // Return the actual error message instead of a generic one
+    res.status(500).json({ error: error.message || 'Failed to update TPA' });
   }
 };
 
 /**
  * Delete a TPA
  */
-const deleteApp = async (req: Request, res: Response): Promise<void> => {
+const deleteApp = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -226,7 +303,7 @@ const deleteApp = async (req: Request, res: Response): Promise<void> => {
 
     await appService.deleteApp(packageName, email, orgId);
 
-    res.status(200).json({ message: `TPA ${packageName} deleted successfully` });
+    return res.status(200).json({ message: `TPA ${packageName} deleted successfully` });
   } catch (error: any) {
     console.error('Error deleting TPA:', error);
 
@@ -239,14 +316,14 @@ const deleteApp = async (req: Request, res: Response): Promise<void> => {
       return res.status(403).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to delete TPA' });
+    return res.status(500).json({ error: 'Failed to delete TPA' });
   }
 };
 
 /**
  * Regenerate API Key for a TPA
  */
-const regenerateApiKey = async (req: Request, res: Response): Promise<void> => {
+const regenerateApiKey = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -277,7 +354,7 @@ const regenerateApiKey = async (req: Request, res: Response): Promise<void> => {
 /**
  * Get shareable installation link
  */
-const getShareableLink = async (req: Request, res: Response): Promise<void> => {
+const getShareableLink = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -290,7 +367,7 @@ const getShareableLink = async (req: Request, res: Response): Promise<void> => {
     }
 
     // Generate a shareable URL directly to the app's page on the app store
-    const installUrl = `${process.env.APP_STORE_URL || 'https://appstore.augmentos.org'}/package/${packageName}`;
+    const installUrl = `${process.env.APP_STORE_URL || 'https://store.augmentos.org'}/package/${packageName}`;
 
     res.json({ installUrl });
   } catch (error) {
@@ -302,7 +379,7 @@ const getShareableLink = async (req: Request, res: Response): Promise<void> => {
 /**
  * Track app sharing
  */
-const trackSharing = async (req: Request, res: Response): Promise<void> => {
+const trackSharing = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -322,17 +399,17 @@ const trackSharing = async (req: Request, res: Response): Promise<void> => {
     // In a real implementation, you would track who the app was shared with
     // For MVP, just acknowledge the request
 
-    res.json({ success: true, sharedWith: emails.length });
+    return res.json({ success: true, sharedWith: emails.length });
   } catch (error) {
     console.error('Error tracking app sharing:', error);
-    res.status(500).json({ error: 'Failed to track app sharing' });
+    return res.status(500).json({ error: 'Failed to track app sharing' });
   }
 };
 
 /**
  * Publish app to the app store
  */
-const publishApp = async (req: Request, res: Response): Promise<void> => {
+const publishApp = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
@@ -341,7 +418,7 @@ const publishApp = async (req: Request, res: Response): Promise<void> => {
     // Call service to publish app
     const updatedApp = await appService.publishApp(packageName, email, orgId);
 
-    res.json(updatedApp);
+    return res.json(updatedApp);
   } catch (error: any) {
     console.error('Error publishing app:', error);
 
@@ -358,14 +435,14 @@ const publishApp = async (req: Request, res: Response): Promise<void> => {
       return res.status(400).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to publish app' });
+    return res.status(500).json({ error: 'Failed to publish app' });
   }
 };
 
 /**
  * Update developer profile - redirects to organization profile update
  */
-const updateDeveloperProfile = async (req: Request, res: Response): Promise<void> => {
+const updateDeveloperProfile = async (req: Request, res: Response) => {
   try {
     return res.status(410).json({
       error: 'This endpoint is deprecated',
@@ -373,12 +450,12 @@ const updateDeveloperProfile = async (req: Request, res: Response): Promise<void
     });
   } catch (error) {
     console.error('Error updating developer profile:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
+    return res.status(500).json({ error: 'Failed to update profile' });
   }
 };
 
 // No longer needed - visibility is now based on organization membership
-const updateAppVisibility = async (req: Request, res: Response): Promise<void> => {
+const updateAppVisibility = async (req: Request, res: Response) => {
   return res.status(410).json({
     error: 'This endpoint is deprecated',
     message: 'App visibility is now managed through organization membership'
@@ -388,8 +465,8 @@ const updateAppVisibility = async (req: Request, res: Response): Promise<void> =
 /**
  * Update sharedWithEmails - deprecated
  */
-const updateSharedEmails = async (req: Request, res: Response): Promise<void> => {
-  res.status(410).json({
+const updateSharedEmails = async (req: Request, res: Response) => {
+  return res.status(410).json({
     error: 'This endpoint is deprecated',
     message: 'App sharing is now managed through organization membership'
   });
@@ -398,7 +475,7 @@ const updateSharedEmails = async (req: Request, res: Response): Promise<void> =>
 /**
  * Move a TPA to a different organization
  */
-const moveToOrg = async (req: Request, res: Response): Promise<void> => {
+const moveToOrg = async (req: Request, res: Response) => {
   console.log('moveToOrg handler called with:', {
     packageName: req.params.packageName,
     targetOrgId: req.body.targetOrgId,
@@ -444,7 +521,7 @@ const moveToOrg = async (req: Request, res: Response): Promise<void> => {
     );
 
     // Return updated app
-    res.json(updatedApp);
+    return res.json(updatedApp);
   } catch (error: any) {
     console.error('Error moving TPA to new organization:', error);
 
@@ -457,7 +534,171 @@ const moveToOrg = async (req: Request, res: Response): Promise<void> => {
       return res.status(403).json({ error: error.message });
     }
 
-    res.status(500).json({ error: 'Failed to move TPA to new organization' });
+    return res.status(500).json({ error: 'Failed to move TPA to new organization' });
+  }
+};
+
+/**
+ * Upload an image to Cloudflare Images
+ */
+const uploadImage = async (req: Request, res: Response) => {
+  try {
+    const email = (req as DevPortalRequest).developerEmail;
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Get Cloudflare credentials from environment
+    const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+    if (!cloudflareAccountId || !cloudflareApiToken) {
+      logger.error('Cloudflare credentials not configured');
+      return res.status(500).json({ error: 'Image upload service not configured' });
+    }
+
+    // Parse metadata if provided
+    let metadata: any = {};
+    if (req.body.metadata) {
+      try {
+        metadata = JSON.parse(req.body.metadata);
+      } catch (e) {
+        logger.warn('Failed to parse metadata:', e);
+      }
+    }
+
+    // Check if we're replacing an existing image
+    const replaceImageId = req.body.replaceImageId;
+
+    // Create form data for Cloudflare API
+    const formData = new FormData();
+    formData.append('file', req.file.buffer, {
+      filename: req.file.originalname,
+      contentType: req.file.mimetype,
+    });
+
+    // Add metadata to help identify the image
+    const cfMetadata = {
+      uploadedBy: email,
+      uploadedAt: new Date().toISOString(),
+      ...(metadata.appPackageName && { appPackageName: metadata.appPackageName }),
+      ...(replaceImageId && { replacedImageId: replaceImageId }),
+    };
+
+    formData.append('metadata', JSON.stringify(cfMetadata));
+
+    // Make request to Cloudflare Images API
+    const cloudflareUrl = `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/images/v1`;
+
+    try {
+      const response = await axios.post(cloudflareUrl, formData, {
+        headers: {
+          'Authorization': `Bearer ${cloudflareApiToken}`,
+          ...formData.getHeaders(),
+        },
+      });
+
+      if (!response.data.success) {
+        logger.error('Cloudflare API error:', response.data.errors);
+        return res.status(500).json({ error: 'Failed to upload image to Cloudflare' });
+      }
+
+      const imageData = response.data.result;
+
+      // Construct the delivery URL
+      // Cloudflare Images uses the format: https://imagedelivery.net/{account_hash}/{image_id}/{variant_name}
+      // The 'public' variant is typically available by default
+      const deliveryUrl = imageData.variants?.[0] || `https://imagedelivery.net/${cloudflareAccountId}/${imageData.id}/public`;
+
+      // If we were replacing an image, delete the old one
+      if (replaceImageId) {
+        try {
+          await axios.delete(
+            `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/images/v1/${replaceImageId}`,
+            {
+              headers: {
+                'Authorization': `Bearer ${cloudflareApiToken}`,
+              },
+            }
+          );
+          logger.info(`Deleted old image: ${replaceImageId}`);
+        } catch (deleteError) {
+          // Log but don't fail the request if delete fails
+          logger.warn(`Failed to delete old image ${replaceImageId}:`, deleteError);
+        }
+      }
+
+      // Return the image URL and ID
+      res.json({
+        url: deliveryUrl,
+        imageId: imageData.id,
+      });
+
+    } catch (cfError: any) {
+      logger.error('Cloudflare API request failed:', cfError.response?.data || cfError.message);
+      return res.status(500).json({
+        error: 'Failed to upload image',
+        details: cfError.response?.data?.errors?.[0]?.message || 'Unknown error'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error in image upload handler:', error);
+    return res.status(500).json({ error: 'Internal server error during image upload' });
+  }
+};
+
+/**
+ * Delete an image from Cloudflare Images
+ */
+const deleteImage = async (req: Request, res: Response) => {
+  try {
+    const email = (req as DevPortalRequest).developerEmail;
+    const { imageId } = req.params;
+
+    if (!imageId) {
+      return res.status(400).json({ error: 'Image ID is required' });
+    }
+
+    // Get Cloudflare credentials from environment
+    const cloudflareAccountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const cloudflareApiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+    if (!cloudflareAccountId || !cloudflareApiToken) {
+      logger.error('Cloudflare credentials not configured');
+      return res.status(500).json({ error: 'Image delete service not configured' });
+    }
+
+    // Delete from Cloudflare
+    try {
+      await axios.delete(
+        `https://api.cloudflare.com/client/v4/accounts/${cloudflareAccountId}/images/v1/${imageId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${cloudflareApiToken}`,
+          },
+        }
+      );
+
+      logger.info(`Image ${imageId} deleted by ${email}`);
+      res.json({ success: true, message: 'Image deleted successfully' });
+
+    } catch (cfError: any) {
+      if (cfError.response?.status === 404) {
+        return res.status(404).json({ error: 'Image not found' });
+      }
+
+      logger.error('Cloudflare API delete request failed:', cfError.response?.data || cfError.message);
+      return res.status(500).json({
+        error: 'Failed to delete image',
+        details: cfError.response?.data?.errors?.[0]?.message || 'Unknown error'
+      });
+    }
+
+  } catch (error) {
+    logger.error('Error in image delete handler:', error);
+    return res.status(500).json({ error: 'Internal server error during image deletion' });
   }
 };
 
@@ -494,5 +735,9 @@ router.post('/apps/:packageName/publish', validateSupabaseToken, publishApp);
 router.patch('/apps/:packageName/visibility', validateSupabaseToken, updateAppVisibility);
 router.patch('/apps/:packageName/share-emails', validateSupabaseToken, updateSharedEmails);
 router.post('/apps/:packageName/move-org', validateSupabaseToken, moveToOrg);
+
+// Image upload routes
+router.post('/images/upload', validateSupabaseToken, upload.single('file'), uploadImage);
+router.delete('/images/:imageId', validateSupabaseToken, deleteImage);
 
 export default router;

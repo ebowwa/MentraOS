@@ -4,6 +4,8 @@ import App from '../models/app.model';
 import { PermissionType } from '../models/app.model';
 import { logger } from '@augmentos/utils';
 import { Types } from 'mongoose';
+import { User } from '../models/user.model';
+import { OrganizationService } from '../services/core/organization.service';
 
 const router = Router();
 
@@ -12,6 +14,8 @@ interface OrgUserRequest extends UserRequest {
   currentOrgId?: Types.ObjectId;
 }
 
+// TODO(isaiah): Instead of trusting the org ID from the header,
+// we should make an orgMiddleware that populates the orgs the authenticated user is a member of.
 /**
  * Get permissions for an app
  * GET /api/permissions/:packageName
@@ -37,13 +41,23 @@ router.get('/:packageName', validateCoreToken, async (req: Request, res) => {
     // Check if the organization owns this app or if the app is published
     let hasPermission = false;
 
+    console.log('app.organizationId', app.organizationId);
+    console.log('req.currentOrgId', (req as OrgUserRequest).currentOrgId);
+
     if (app.appStoreStatus === 'PUBLISHED') {
       hasPermission = true;
     } else if ((req as OrgUserRequest).currentOrgId && app.organizationId) {
-      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId.toString();
+      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId?.toString();
+      console.log('hasPermission', hasPermission);
     } else if (app.developerId === userEmail) {
       // For backward compatibility
       hasPermission = true;
+    } else if (userEmail && app.organizationId) {
+      // Check if the user is in the org that owns the app
+      const user = await User.findOne({ email: userEmail });
+      if (user) {
+        hasPermission = await OrganizationService.isOrgMember(user, app.organizationId);
+      }
     }
 
     if (!hasPermission) {
@@ -94,10 +108,16 @@ router.patch('/:packageName', validateCoreToken, async (req: Request, res) => {
     let hasPermission = false;
 
     if ((req as OrgUserRequest).currentOrgId && app.organizationId) {
-      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId.toString();
+      hasPermission = app.organizationId.toString() === (req as OrgUserRequest).currentOrgId?.toString();
     } else if (app.developerId === userEmail) {
       // For backward compatibility
       hasPermission = true;
+    } else if (userEmail && app.organizationId) {
+      // Check if the user is in the org that owns the app
+      const user = await User.findOne({ email: userEmail });
+      if (user) {
+        hasPermission = await OrganizationService.isOrgMember(user, app.organizationId);
+      }
     }
 
     if (!hasPermission) {

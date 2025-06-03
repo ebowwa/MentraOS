@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, AlertCircle, CheckCircle } from "lucide-react";
+import { ArrowLeftIcon, AlertCircle, CheckCircle, Upload } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
@@ -21,9 +21,10 @@ import PermissionsForm from '../components/forms/PermissionsForm';
 import { Permission } from '@/types/tpa';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
+import ImageUpload from '../components/forms/ImageUpload';
 // import { TPA } from '@/types/tpa';
 // Import the public email provider list
-import publicEmailDomains from 'email-providers/all.json';
+// import publicEmailDomains from 'email-providers/all.json';
 
 /**
  * Page for creating a new TPA (Third Party Application)
@@ -59,13 +60,13 @@ const CreateTPA: React.FC = () => {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
 
   // Helper to get org domain from user email
-  const orgDomain = user?.email?.split('@')[1] || '';
+  // const orgDomain = user?.email?.split('@')[1] || '';
   // Check if orgDomain is a public email provider
-  const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
+  // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target as any;
     setFormData((prev: Partial<AppI>) => ({
       ...prev,
       [name]: value
@@ -83,7 +84,7 @@ const CreateTPA: React.FC = () => {
 
   // Handle URL field blur event to normalize URLs
   const handleUrlBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name, value } = e.target as any;
 
     // Only normalize URL fields
     if (name === 'publicUrl' || name === 'logoURL' || name === 'webviewURL') {
@@ -118,6 +119,8 @@ const CreateTPA: React.FC = () => {
       permissions
     }));
   };
+
+
 
   // Validate form
   const validateForm = (): boolean => {
@@ -162,22 +165,7 @@ const CreateTPA: React.FC = () => {
 
     // Logo URL validation
     if (!formData.logoURL) {
-      newErrors.logoURL = 'Logo URL is required';
-    } else {
-      try {
-        // Apply normalizeUrl to handle missing protocols before validation
-        const normalizedUrl = normalizeUrl(formData.logoURL);
-        new URL(normalizedUrl);
-
-        // Update the form data with the normalized URL
-        setFormData(prev => ({
-          ...prev,
-          logoURL: normalizedUrl
-        }));
-      } catch (e) {
-        console.error(e);
-        newErrors.logoURL = 'Please enter a valid URL';
-      }
+      newErrors.logoURL = 'Logo is required';
     }
 
     // Webview URL validation (optional)
@@ -236,7 +224,7 @@ const CreateTPA: React.FC = () => {
         publicUrl: formData.publicUrl,
         logoURL: formData.logoURL,
         webviewURL: formData.webviewURL,
-        tpaType: 'standard', // Using the default type
+        // tpaType: TpaType.STANDARD, // Using the default type
         permissions: formData.permissions
       };
 
@@ -430,21 +418,30 @@ const CreateTPA: React.FC = () => {
                 <Label htmlFor="logoURL">
                   Logo URL <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="logoURL"
-                  name="logoURL"
-                  value={formData.logoURL}
-                  onChange={handleChange}
-                  onBlur={handleUrlBlur}
-                  placeholder="yourserver.com/logo.png"
-                  className={errors.logoURL ? "border-red-500" : ""}
+                <ImageUpload
+                  currentImageUrl={formData.logoURL}
+                  onImageUploaded={(url) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      logoURL: url
+                    }));
+                    // Clear error when image is uploaded
+                    if (errors.logoURL) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.logoURL;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  packageName={formData.packageName}
+                  disabled={isLoading}
+                  hasError={!!errors.logoURL}
+                  errorMessage={errors.logoURL}
                 />
-                {errors.logoURL && (
-                  <p className="text-xs text-red-500 mt-1">{errors.logoURL}</p>
-                )}
+                {/* Note: The actual Cloudflare URL is stored in logoURL but not displayed to the user */}
                 <p className="text-xs text-gray-500">
-                  URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
-                  HTTPS is required and will be added automatically if not specified.
+                  Upload an image that will be used as your app's icon (recommended: 512x512 PNG).
                 </p>
               </div>
 
@@ -468,9 +465,12 @@ const CreateTPA: React.FC = () => {
                 </p>
               </div>
 
+
+
+
+
               {/* Permissions Section */}
               <div className="mt-6">
-                <h3 className="text-lg font-medium mb-4">Required Permissions</h3>
                 <PermissionsForm
                   permissions={formData.permissions || []}
                   onChange={handlePermissionsChange}

@@ -1,13 +1,14 @@
 /**
  * 🎯 TPA Session Module
- * 
+ *
  * Manages an active Third Party App session with AugmentOS Cloud.
  * Handles real-time communication, event subscriptions, and display management.
  */
-import WebSocket from 'ws';
+import { WebSocket } from 'ws';
 import { EventManager, EventData, StreamDataTypes } from './events';
 import { LayoutManager } from './layouts';
 import { SettingsManager } from './settings';
+import { StreamingModule } from './modules/streaming';
 import { ResourceTracker } from '../../utils/resource-tracker';
 import {
   // Message types
@@ -34,7 +35,6 @@ import {
   isDataStream,
   isAppStopped,
   isSettingsUpdate,
-  isPhotoResponse,
   isDashboardModeChanged,
   isDashboardAlwaysOnChanged,
 
@@ -46,23 +46,28 @@ import {
   AudioChunk,
   isAudioChunk,
   createTranscriptionStream,
-  createTranslationStream
+  createTranslationStream,
+  GlassesToCloudMessage,
+  PhotoResponse
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
 import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
 import { Logger } from 'pino';
 import { TpaServer } from '../server';
 
+// Import the cloud-to-tpa specific type guards
+import { isPhotoResponse, isRtmpStreamStatus } from '../../types/messages/cloud-to-tpa';
+
 /**
  * ⚙️ Configuration options for TPA Session
- * 
+ *
  * @example
  * ```typescript
  * const config: TpaSessionConfig = {
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key',
  *   // Auto-reconnection is enabled by default
- *   // autoReconnect: true 
+ *   // autoReconnect: true
  * };
  * ```
  */
@@ -86,26 +91,26 @@ export interface TpaSessionConfig {
 
 /**
  * 🚀 TPA Session Implementation
- * 
+ *
  * Manages a live connection between your TPA and AugmentOS Cloud.
  * Provides interfaces for:
  * - 🎮 Event handling (transcription, head position, etc.)
  * - 📱 Display management in AR view
  * - 🔌 Connection lifecycle
  * - 🔄 Automatic reconnection
- * 
+ *
  * @example
  * ```typescript
  * const session = new TpaSession({
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key'
  * });
- * 
+ *
  * // Handle events
  * session.onTranscription((data) => {
  *   session.layouts.showTextWall(data.text);
  * });
- * 
+ *
  * // Connect to cloud
  * await session.connect('session_123');
  * ```
@@ -145,6 +150,8 @@ export class TpaSession {
   public readonly settings: SettingsManager;
   /** 📊 Dashboard management interface */
   public readonly dashboard: DashboardAPI;
+  /** 📹 RTMP streaming interface */
+  public readonly streaming: StreamingModule;
 
   public readonly tpaServer: TpaServer;
   public readonly logger: Logger;
@@ -232,6 +239,14 @@ export class TpaSession {
     // Import DashboardManager dynamically to avoid circular dependency
     const { DashboardManager } = require('./dashboard');
     this.dashboard = new DashboardManager(this, this.send.bind(this));
+
+    // Initialize streaming module with session reference
+    this.streaming = new StreamingModule(
+      this.config.packageName,
+      this.sessionId || 'unknown-session-id',
+      this.send.bind(this),
+      this // Pass session reference
+    );
   }
 
   /**
@@ -367,6 +382,11 @@ export class TpaSession {
       this.config.augmentOSWebsocketUrl || '',
       sessionId
     );
+
+    // Update the sessionId in the streaming module
+    if (this.streaming) {
+      Object.defineProperty(this.streaming, 'sessionId', { value: sessionId });
+    }
 
     return new Promise((resolve, reject) => {
       try {
@@ -909,11 +929,20 @@ export class TpaSession {
         }
         else if (isPhotoResponse(message)) {
           // Handle photo response by resolving the pending promise
-          if (this.pendingPhotoRequests.has(message.requestId)) {
-            const { resolve } = this.pendingPhotoRequests.get(message.requestId)!;
-            resolve(message.photoUrl);
-            this.pendingPhotoRequests.delete(message.requestId);
+          if (this.pendingPhotoRequests.has((message as PhotoResponse).requestId)) {
+            const { resolve } = this.pendingPhotoRequests.get((message as PhotoResponse).requestId)!;
+            resolve((message as PhotoResponse).photoUrl);
+            this.pendingPhotoRequests.delete((message as PhotoResponse).requestId);
           }
+        }
+        else if (isRtmpStreamStatus(message)) {
+          // Emit as a standard stream event if subscribed
+          if (this.subscriptions.has(StreamType.RTMP_STREAM_STATUS)) {
+            this.events.emit(StreamType.RTMP_STREAM_STATUS, message);
+          }
+
+          // Update streaming module's internal state
+          this.streaming.updateStreamState(message);
         }
         else if (isSettingsUpdate(message)) {
           // Store previous settings to check for changes
@@ -1018,9 +1047,46 @@ export class TpaSession {
           this.logger.warn(`Received 'connection_error' type directly. Consider aligning cloud to send 'tpa_connection_error'. Message: ${errorMessage}`);
           this.events.emit('error', new Error(errorMessage));
         }
+        else if (message.type === 'permission_error') {
+          // Handle permission errors from cloud
+          this.logger.warn('Permission error received:', {
+            message: message.message,
+            details: message.details,
+            detailsCount: message.details?.length || 0,
+            rejectedStreams: message.details?.map(d => d.stream) || []
+          });
+
+          // Emit permission error event for application handling
+          this.events.emit('permission_error', {
+            message: message.message,
+            details: message.details,
+            timestamp: message.timestamp
+          });
+
+          // Optionally emit individual permission denied events for each stream
+          message.details?.forEach(detail => {
+            this.events.emit('permission_denied', {
+              stream: detail.stream,
+              requiredPermission: detail.requiredPermission,
+              message: detail.message
+            });
+          });
+        }
         // Handle unrecognized message types gracefully
         else {
-          this.logger.warn(`((())) Unrecognized message type: ${(message as any).type}`);
+          console.log(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
+            messageType: (message as any).type,
+            fullMessage: message,
+            messageKeys: Object.keys(message || {}),
+            messageStringified: JSON.stringify(message, null, 2)
+          });
+          // Log all message object details for debugging
+          this.logger.warn(`Unrecognized message type: ${(message as any).type}. Full message details:`, {
+            messageType: (message as any).type,
+            fullMessage: message,
+            messageKeys: Object.keys(message || {}),
+            messageStringified: JSON.stringify(message, null, 2)
+          });
           this.events.emit('error', new Error(`Unrecognized message type: ${(message as any).type}`));
         }
       } catch (processingError: unknown) {

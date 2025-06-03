@@ -98,6 +98,24 @@ export interface OrgMember {
 }
 
 /**
+ * Pending invitation interface
+ */
+export interface PendingInvite {
+  email: string;
+  role: OrgRole;
+  token: string;
+  invitedBy: {
+    id: string;
+    email: string;
+    displayName?: string;
+  };
+  invitedAt: string;
+  expiresAt: string;
+  emailSentCount: number;
+  lastEmailSentAt?: string;
+}
+
+/**
  * Organization interface
  */
 export interface Organization {
@@ -111,6 +129,7 @@ export interface Organization {
     logo?: string;
   };
   members: OrgMember[];
+  pendingInvites?: PendingInvite[];
   createdAt: string;
   updatedAt: string;
 }
@@ -219,6 +238,26 @@ const api = {
     },
 
     /**
+     * Resend an invitation email
+     * @param orgId - The organization ID
+     * @param email - The email address of the pending invite
+     */
+    resendInvite: async (orgId: string, email: string): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/invites/resend`, { email });
+      return response.data;
+    },
+
+    /**
+     * Rescind (cancel) a pending invitation
+     * @param orgId - The organization ID
+     * @param email - The email address of the pending invite
+     */
+    rescindInvite: async (orgId: string, email: string): Promise<{ success: boolean; message: string }> => {
+      const response = await axios.post(`/api/orgs/${orgId}/invites/rescind`, { email });
+      return response.data;
+    },
+
+    /**
      * Delete an organization
      * @param orgId - The organization ID
      */
@@ -319,6 +358,60 @@ const api = {
     updateSharedEmails: async (packageName: string, emails: string[]): Promise<AppResponse> => {
       const response = await axios.patch(`/api/dev/apps/${packageName}/share-emails`, { emails });
       return response.data;
+    },
+  },
+
+  // Image upload endpoints for Cloudflare Images
+  images: {
+    /**
+     * Upload an image to Cloudflare Images
+     * @param file - The image file to upload
+     * @param metadata - Optional metadata for the image
+     * @returns The Cloudflare image URL
+     */
+    upload: async (file: File, metadata?: { appPackageName?: string }): Promise<{ url: string; imageId: string }> => {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      if (metadata?.appPackageName) {
+        formData.append('metadata', JSON.stringify({ appPackageName: metadata.appPackageName }));
+      }
+
+      const response = await axios.post('/api/dev/images/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    },
+
+    /**
+     * Replace an existing image
+     * @param imageId - The ID of the image to replace
+     * @param file - The new image file
+     * @returns The new Cloudflare image URL
+     */
+    replace: async (imageId: string, file: File): Promise<{ url: string; imageId: string }> => {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('replaceImageId', imageId);
+
+      const response = await axios.post('/api/dev/images/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    },
+
+    /**
+     * Delete an image from Cloudflare Images
+     * @param imageId - The ID of the image to delete
+     */
+    delete: async (imageId: string): Promise<void> => {
+      await axios.delete(`/api/dev/images/${imageId}`);
     },
   },
 
