@@ -116,3 +116,6 @@ ios/credentials/*
 
 # testing
 /coverage
+
+# Expo
+expo-env.d.ts

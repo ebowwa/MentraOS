@@ -409,6 +409,7 @@ export class VideoManager {
     switch (status) {
       case 'initializing':
       case 'connecting':
+      case 'reconnecting':
         mappedStatus = 'initializing';
         break;
       case 'active':
@@ -427,7 +428,10 @@ export class VideoManager {
         mappedStatus = 'timeout';
         break;
       default:
-        mappedStatus = 'timeout';
+        this.logger.error({ streamId, status }, 'Received unknown status from glasses');
+        return; // Ignore unknown statuses
+        break;
+        // mappedStatus = 'timeout';
     }
     
     // Update status based on glasses feedback

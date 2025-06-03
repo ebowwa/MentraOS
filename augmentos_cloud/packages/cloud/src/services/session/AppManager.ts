@@ -308,6 +308,9 @@ export class AppManager {
       // Remove from app connections
       this.userSession.appWebsockets.delete(packageName);
 
+      // Clean up display state for stopped app
+      this.userSession.displayManager.handleAppStop(packageName);
+
     } catch (error) {
       this.logger.error(`Error stopping app ${packageName}:`, error);
     }

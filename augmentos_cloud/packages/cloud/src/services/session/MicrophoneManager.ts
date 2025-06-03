@@ -11,7 +11,7 @@ import {
   CloudToGlassesMessageType,
   MicrophoneStateChange,
 } from '@augmentos/sdk';
-import subscriptionService from '../core/subscription.service';
+import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
 import { Logger } from 'pino';
 import UserSession from './UserSession';
