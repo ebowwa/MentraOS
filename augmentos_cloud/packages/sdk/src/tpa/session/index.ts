@@ -96,7 +96,6 @@ const TPA_TO_TPA_EVENT_TYPES = [
   'tpa_user_joined',
   'tpa_user_left',
   'tpa_room_updated',
-  'tpa_user_list',
   'tpa_direct_message_response'
 ];
 
@@ -1059,14 +1058,6 @@ export class TpaSession {
         else if ((message as any).type === 'tpa_message_received') {
           this.tpaEvents.emit('tpa_message_received', message as any);
         }
-        else if ((message as any).type === 'tpa_user_list') {
-          const userListMessage = message as any;
-          if (userListMessage.requestId && this.pendingUserDiscoveryRequests.has(userListMessage.requestId)) {
-            const { resolve } = this.pendingUserDiscoveryRequests.get(userListMessage.requestId)!;
-            resolve(userListMessage);
-            this.pendingUserDiscoveryRequests.delete(userListMessage.requestId);
-          }
-        }
         else if ((message as any).type === 'tpa_user_joined') {
           this.tpaEvents.emit('tpa_user_joined', message as any);
         }
@@ -1430,41 +1421,34 @@ export class TpaSession {
    * @param includeProfiles - Whether to include user profile information
    * @returns Promise that resolves with list of active users
    */
-  async discoverTpaUsers(includeProfiles = false): Promise<any> {
-    return new Promise((resolve, reject) => {
-      try {
-        // Generate unique request ID
-        const requestId = `discovery_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-        
-        // Store promise resolvers for when we get the response
-        this.pendingUserDiscoveryRequests.set(requestId, { resolve, reject });
-
-        // Create user discovery message
-        const message = {
-          type: 'tpa_user_discovery',
-          packageName: this.config.packageName,
-          sessionId: this.sessionId!,
-          includeUserProfiles: includeProfiles,
-          requestId,
-          timestamp: new Date()
-        };
-
-        // Send request to cloud
-        this.send(message as any);
-
-        // Set timeout to avoid hanging promises
-        const timeoutMs = 10000; // 10 seconds
-        this.resources.setTimeout(() => {
-          if (this.pendingUserDiscoveryRequests.has(requestId)) {
-            this.pendingUserDiscoveryRequests.get(requestId)!.reject(new Error('User discovery request timed out'));
-            this.pendingUserDiscoveryRequests.delete(requestId);
-          }
-        }, timeoutMs);
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        reject(new Error(`Failed to request user discovery: ${errorMessage}`));
-      }
+  async discoverTpaUsers(domain: string, includeProfiles = false): Promise<any> {
+    // Use the domain argument as the base URL if provided
+    if (!domain) {
+      throw new Error('Domain (API base URL) is required for user discovery');
+    }
+    const url = `${domain}/api/tpa-communication/discover-users`;
+    // Use the user's core token for authentication
+    const coreToken = this.config.apiKey; // This may need to be updated if you store the core token elsewhere
+    if (!coreToken) {
+      throw new Error('Core token (apiKey) is required for user discovery');
+    }
+    const body = {
+      packageName: this.config.packageName,
+      includeUserProfiles: includeProfiles
+    };
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${coreToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
     });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to discover users: ${response.status} ${response.statusText} - ${errorText}`);
+    }
+    return await response.json();
   }
 
   /**
@@ -1474,7 +1458,7 @@ export class TpaSession {
    */
   async isUserActive(userId: string): Promise<boolean> {
     try {
-      const userList = await this.discoverTpaUsers(false);
+      const userList = await this.discoverTpaUsers('', false);
       return userList.users.some((user: any) => user.userId === userId);
     } catch (error) {
       this.logger.error({ error, userId }, 'Error checking if user is active');
@@ -1486,9 +1470,9 @@ export class TpaSession {
    * 📊 Get user count for this TPA
    * @returns Promise that resolves with number of active users
    */
-  async getUserCount(): Promise<number> {
+  async getUserCount(domain: string): Promise<number> {
     try {
-      const userList = await this.discoverTpaUsers(false);
+      const userList = await this.discoverTpaUsers(domain, false);
       return userList.totalUsers;
     } catch (error) {
       this.logger.error({ error }, 'Error getting user count');

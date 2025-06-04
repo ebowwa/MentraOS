@@ -296,7 +296,7 @@ export class WebSocketService {
 
   //             // If we have processed audio data, broadcast it to TPAs
   //             if (processedData) {
-  //               this.broadcastToTpaAudio(userSession, processedData);
+  //               this.broadcastToTpaAudio(userSession, _arrayBuffer);
   //             }
   //           } else {
   //             // Wait for the next chunk in sequence
@@ -2144,25 +2144,11 @@ export class WebSocketService {
             }
 
             case 'tpa_user_discovery': {
-              if (!userSession) {
-                ws.close(1008, 'No active session');
-                return;
-              }
-
-              try {
-                const discoveryMessage = message as TpaUserDiscovery;
-                await multiUserTpaService.handleUserDiscovery(userSession, discoveryMessage);
-                userSession.logger.info({
-                  packageName: discoveryMessage.packageName,
-                  includeProfiles: discoveryMessage.includeUserProfiles
-                }, 'TPA user discovery processed');
-              } catch (error) {
-                userSession.logger.error(error, 'Error handling TPA user discovery');
-                this.sendError(ws, {
-                  type: CloudToTpaMessageType.CONNECTION_ERROR,
-                  message: 'Failed to discover users'
-                });
-              }
+              // This functionality is now only available via the HTTP API endpoint
+              this.sendError(ws, {
+                type: CloudToTpaMessageType.CONNECTION_ERROR,
+                message: 'User discovery is now only available via the HTTP API endpoint /api/tpa-communication/discover-users.'
+              });
               break;
             }
 

@@ -224,47 +224,6 @@ export class MultiUserTpaService {
   }
 
   /**
-   * Handle user discovery request
-   */
-  async handleUserDiscovery(
-    senderSession: UserSession,
-    message: TpaUserDiscovery
-  ): Promise<void> {
-    const packageName = message.packageName;
-    const activeUsers = this.getActiveTpaUsers(packageName);
-    
-    const users = activeUsers
-      .filter(userId => userId !== senderSession.userId) // Exclude sender
-      .map(userId => {
-        const userSession = sessionService.getSessionByUserId(userId);
-        return {
-          userId,
-          sessionId: userSession?.sessionId || 'unknown',
-          joinedAt: new Date(), // TODO: Track actual join time
-          userProfile: message.includeUserProfiles ? this.getUserProfile(userId) : undefined
-        };
-      });
-
-    const senderTpaConnection = senderSession.appConnections.get(packageName);
-    if (senderTpaConnection && senderTpaConnection.readyState === WebSocket.OPEN) {
-      const userListMessage: TpaUserList = {
-        type: CloudToTpaMessageType.TPA_USER_LIST,
-        users,
-        totalUsers: users.length,
-        timestamp: new Date()
-      };
-
-      senderTpaConnection.send(JSON.stringify(userListMessage));
-    }
-
-    logger.info({
-      packageName,
-      requestorUserId: senderSession.userId,
-      activeUserCount: users.length
-    }, 'User discovery request processed');
-  }
-
-  /**
    * Handle user joining TPA session
    */
   addTpaUser(packageName: string, userId: string): void {

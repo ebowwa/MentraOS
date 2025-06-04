@@ -140,7 +140,6 @@ export enum CloudToTpaMessageType {
   
   // TPA-to-TPA Communication Responses
   TPA_MESSAGE_RECEIVED = 'tpa_message_received',
-  TPA_USER_LIST = 'tpa_user_list',
   TPA_USER_JOINED = 'tpa_user_joined',
   TPA_USER_LEFT = 'tpa_user_left',
   TPA_ROOM_UPDATED = 'tpa_room_updated',

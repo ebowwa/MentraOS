@@ -275,10 +275,6 @@ export function isTpaMessageReceived(message: CloudToTpaMessage): message is Tpa
   return message.type === CloudToTpaMessageType.TPA_MESSAGE_RECEIVED;
 }
 
-export function isTpaUserList(message: CloudToTpaMessage): message is TpaUserList {
-  return message.type === CloudToTpaMessageType.TPA_USER_LIST;
-}
-
 export function isTpaUserJoined(message: CloudToTpaMessage): message is TpaUserJoined {
   return message.type === CloudToTpaMessageType.TPA_USER_JOINED;
 }
@@ -302,21 +298,6 @@ export interface TpaMessageReceived extends BaseMessage {
   senderSessionId: string;
   messageType: 'broadcast' | 'direct';
   roomId?: string;
-}
-
-/**
- * List of active users for this TPA package
- */
-export interface TpaUserList extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_USER_LIST;
-  users: Array<{
-    userId: string;
-    sessionId: string;
-    joinedAt: Date;
-    userProfile?: any;
-    roomId?: string;
-  }>;
-  totalUsers: number;
 }
 
 /**

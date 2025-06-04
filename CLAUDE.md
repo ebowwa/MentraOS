@@ -175,7 +175,6 @@ interface TpaRoomJoin extends BaseMessage {
 export enum CloudToTpaMessageType {
   // ... existing types
   TPA_MESSAGE_RECEIVED = 'tpa_message_received',
-  TPA_USER_LIST = 'tpa_user_list',
   TPA_USER_JOINED = 'tpa_user_joined',
   TPA_USER_LEFT = 'tpa_user_left',
   TPA_ROOM_UPDATED = 'tpa_room_updated'
@@ -191,19 +190,6 @@ interface TpaMessageReceived extends BaseMessage {
   messageType: 'broadcast' | 'direct';
   roomId?: string;
   timestamp: Date;
-}
-
-// List of active users for this TPA
-interface TpaUserList extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_USER_LIST;
-  users: Array<{
-    userId: string;
-    sessionId: string;
-    joinedAt: Date;
-    userProfile?: any;
-    roomId?: string;
-  }>;
-  totalUsers: number;
 }
 ```
 
