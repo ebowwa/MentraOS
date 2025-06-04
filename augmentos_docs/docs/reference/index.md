@@ -26,7 +26,6 @@ This reference is organized by component category. If you're looking for:
 - Event handling functionality, see the [`EventManager`](/reference/managers/event-manager)
 - UI display capabilities, see the [`LayoutManager`](/reference/managers/layout-manager)
 - Settings management, see the [`SettingsManager`](/reference/managers/settings-manager)
-- User authentication in webviews, see the [Webview Authentication](/reference/webview-auth)
 - Available event types, see the [Event Types](/reference/interfaces/event-types)
 - Layout options, see the [Layout Types](/reference/interfaces/layout-types)
 - Setting types and interfaces, see the [Setting Types](/reference/interfaces/setting-types)
