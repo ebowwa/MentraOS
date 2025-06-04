@@ -365,13 +365,6 @@ public class RtmpStreamingService extends Service {
                             mReconnectAttempts = 0;
                             boolean wasReconnecting = mReconnecting;
                             mReconnecting = false;
-                            
-                            // Reset consecutive failure counter on successful connection
-                            if (mConsecutiveFailures > 0) {
-                                Log.d(TAG, "Connection successful, resetting consecutive failure count (was " + mConsecutiveFailures + ")");
-                                mConsecutiveFailures = 0;
-                            }
-                            
                             updateNotificationIfImportant();
                             EventBus.getDefault().post(new StreamingEvent.Connected());
                             
@@ -395,20 +388,20 @@ public class RtmpStreamingService extends Service {
                             Log.e(TAG, "RTMP connection failed: " + message);
                             EventBus.getDefault().post(new StreamingEvent.ConnectionFailed(message));
                             
-                            // Track consecutive failures to avoid interfering with library's internal recovery
-                            mConsecutiveFailures++;
-                            mLastFailureTime = currentTime;
-                            
-                            Log.d(TAG, "Consecutive failure count: " + mConsecutiveFailures + " (need " + MIN_CONSECUTIVE_FAILURES + " before external reconnection)");
-                            
-                            // Only take over after multiple consecutive failures
-                            // This allows the library's internal recovery to work for brief hiccups
-                            if (mConsecutiveFailures >= MIN_CONSECUTIVE_FAILURES) {
-                                Log.d(TAG, "Multiple consecutive failures detected, taking over with external reconnection");
-                                scheduleReconnect("connection_failed");
-                            } else {
-                                Log.d(TAG, "Allowing library internal recovery (failure " + mConsecutiveFailures + " of " + MIN_CONSECUTIVE_FAILURES + ")");
-                            }
+                            // Give the StreamPack library time to recover internally before we take over
+                            // The library often recovers from brief network hiccups in 17-100ms
+                            Log.d(TAG, "Waiting 1 second for library internal recovery before external reconnection");
+                            mReconnectHandler.postDelayed(() -> {
+                                synchronized (mStateLock) {
+                                    // Only schedule our reconnection if the library didn't recover on its own
+                                    if (mStreamState != StreamState.STREAMING && !mIsStreaming) {
+                                        Log.d(TAG, "Library did not recover internally, proceeding with external reconnection");
+                                        scheduleReconnect("connection_failed");
+                                    } else {
+                                        Log.d(TAG, "Library recovered internally, canceling external reconnection");
+                                    }
+                                }
+                            }, 1000); // Wait 1 second for library internal recovery
                         }
 
                         @Override
@@ -426,19 +419,19 @@ public class RtmpStreamingService extends Service {
                             Log.i(TAG, "RTMP connection lost: " + message);
                             EventBus.getDefault().post(new StreamingEvent.Disconnected());
                             
-                            // Track consecutive failures to avoid interfering with library's internal recovery
-                            mConsecutiveFailures++;
-                            mLastFailureTime = currentTime;
-                            
-                            Log.d(TAG, "Consecutive failure count: " + mConsecutiveFailures + " (need " + MIN_CONSECUTIVE_FAILURES + " before external reconnection)");
-                            
-                            // Only take over after multiple consecutive failures
-                            if (mConsecutiveFailures >= MIN_CONSECUTIVE_FAILURES) {
-                                Log.d(TAG, "Multiple consecutive failures detected, taking over with external reconnection");
-                                scheduleReconnect("connection_lost");
-                            } else {
-                                Log.d(TAG, "Allowing library internal recovery (failure " + mConsecutiveFailures + " of " + MIN_CONSECUTIVE_FAILURES + ")");
-                            }
+                            // Give the StreamPack library time to recover internally before we take over
+                            Log.d(TAG, "Waiting 1 second for library internal recovery before external reconnection");
+                            mReconnectHandler.postDelayed(() -> {
+                                synchronized (mStateLock) {
+                                    // Only schedule our reconnection if the library didn't recover on its own
+                                    if (mStreamState != StreamState.STREAMING && !mIsStreaming) {
+                                        Log.d(TAG, "Library did not recover internally, proceeding with external reconnection");
+                                        scheduleReconnect("connection_lost");
+                                    } else {
+                                        Log.d(TAG, "Library recovered internally, canceling external reconnection");
+                                    }
+                                }
+                            }, 1000); // Wait 1 second for library internal recovery
                         }
                     }
             );
