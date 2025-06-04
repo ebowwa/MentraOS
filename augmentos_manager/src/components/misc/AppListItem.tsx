@@ -145,8 +145,6 @@ const Tag = ({ isActive, isForeground = false }: { isActive: boolean; isForegrou
 
             })
           }}>
-
-          <TooltipIcon size={16} color={mColor} />
         </Pressable>
 
       </View>
