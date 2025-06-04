@@ -48,6 +48,8 @@ export const AZURE_SPEECH_KEY = process.env.AZURE_SPEECH_KEY || "";
 export interface ASRStreamInstance {
   recognizer: ConversationTranscriber | azureSpeechSDK.TranslationRecognizer;
   pushStream: AudioInputStream;
+  isReady?: boolean;
+  startTime?: number;
 }
 
 export class TranscriptionService {
@@ -61,7 +63,12 @@ export class TranscriptionService {
     logger.info('Initializing TranscriptionService');
 
     if (!AZURE_SPEECH_KEY || !AZURE_SPEECH_REGION) {
-      logger.error('Missing Azure credentials');
+      logger.error({
+        hasKey: !!AZURE_SPEECH_KEY,
+        hasRegion: !!AZURE_SPEECH_REGION,
+        keyLength: AZURE_SPEECH_KEY?.length || 0,
+        region: AZURE_SPEECH_REGION || 'undefined'
+      }, 'Missing Azure credentials');
       throw new Error('Azure Speech key and region are required');
     }
 
@@ -196,8 +203,14 @@ export class TranscriptionService {
       );
     }
 
-    const streamInstance: ASRStreamInstance = { recognizer, pushStream };
+    const streamInstance: ASRStreamInstance = { 
+      recognizer, 
+      pushStream, 
+      isReady: false,
+      startTime: Date.now()
+    };
     this.setupRecognitionHandlersForInstance(streamInstance, userSession, subscription, languageInfo);
+    
     return streamInstance;
   }
 
@@ -317,7 +330,9 @@ export class TranscriptionService {
       (instance.recognizer as azureSpeechSDK.TranslationRecognizer).recognized = (_sender: any, event: any) => {
         if (!event.result.translations) return;
 
-        const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
+        // const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage?.split('-')[0];
+        // Note(isaiah): without splitting, it was breaking translation. Need to investigate why.
+        const translateLanguage = languageInfo.translateLanguage == "zh-CN" ? "zh-Hans" : languageInfo.translateLanguage;//?.split('-')[0]; 
         const translatedText = languageInfo.transcribeLanguage === languageInfo.translateLanguage ? event.result.text : event.result.translations.get(translateLanguage);
         // Compare normalized text to determine if translation occurred
         const didTranslate = translatedText.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim() !== event.result.text.toLowerCase().replace(/[^\p{L}\p{N}_]/gu, '').trim();
@@ -410,20 +425,27 @@ export class TranscriptionService {
 
     // Common event handlers.
     instance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEventArgs) => {
+      const isInvalidOperation = event.errorCode === 7;
+      
       sessionLogger.error({
         subscription,
         reason: event.reason,
         errorCode: event.errorCode,
-        errorDetails: event.errorDetails
-      }, 'Recognition canceled');
+        errorDetails: event.errorDetails,
+        isInvalidOperation,
+        streamAge: Date.now() - (instance.startTime || 0),
+        wasReady: instance.isReady,
+        azureErrorMapping: isInvalidOperation ? 'SPXERR_INVALID_OPERATION' : 'UNKNOWN'
+      }, isInvalidOperation ? 'Recognition canceled with InvalidOperation (error 7)' : 'Recognition canceled');
+      sessionLogger.debug({ event }, 'Detailed cancellation event');
 
       this.stopIndividualTranscriptionStream(instance, subscription, userSession);
       
       // Remove the failed stream from the map
       userSession.transcriptionStreams?.delete(subscription);
       
-      // If the error is a temporary issue (not authentication), schedule a retry
-      if (event.errorCode !== 1 && event.errorCode !== 2) { // Not authentication or authorization errors
+      // If the error is a temporary issue (not authentication or invalid operation), schedule a retry
+      if (event.errorCode !== 1 && event.errorCode !== 2 && event.errorCode !== 7) { // Not authentication, authorization, or invalid operation errors
         sessionLogger.info({ subscription }, 'Scheduling retry for canceled recognition stream');
         setTimeout(() => {
           // Check if the subscription is still needed and stream doesn't exist
@@ -444,6 +466,7 @@ export class TranscriptionService {
 
     instance.recognizer.sessionStarted = (_sender: any, _event: SessionEventArgs) => {
       sessionLogger.info({ subscription }, 'Recognition session started');
+      instance.isReady = true;
     };
 
     instance.recognizer.sessionStopped = (_sender: any, _event: SessionEventArgs) => {
@@ -562,6 +585,21 @@ export class TranscriptionService {
       
       userSession.transcriptionStreams.forEach((instance, key) => {
         try {
+          // Check if stream is ready for audio data
+          if (!instance.isReady) {
+            // Only warn if stream has been initializing for more than 5 seconds
+            const streamAge = Date.now() - (instance.startTime || 0);
+            if (streamAge > 5000) {
+              const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
+              sessionLogger.warn({ 
+                streamKey: key, 
+                streamAge,
+                startTime: instance.startTime
+              }, 'Stream not ready after 5 seconds, skipping audio data');
+            }
+            return;
+          }
+
           // Check if stream is closed before writing
           if ((instance.pushStream as any)?._readableState?.destroyed || 
               (instance.pushStream as any)?._readableState?.ended) {
@@ -614,12 +652,10 @@ export class TranscriptionService {
           
           // Enrich the error object if it's an Error instance
           if (error instanceof Error) {
-            const enrichedError = Object.assign(error, errorDetails);
-            sessionLogger.error(enrichedError, 'Error writing to push stream');
-          } else {
-            sessionLogger.error({ error, ...errorDetails }, 'Error writing to push stream');
+            sessionLogger.error(error, 'Error writing to push stream');
+            sessionLogger.debug({ errorDetails }, 'push stream Error Detailed error information');
           }
-          
+
           // Remove dead streams to prevent repeated errors
           if ((error as any)?.message === "Stream closed" || 
               (error as any)?.name === "InvalidOperation") {

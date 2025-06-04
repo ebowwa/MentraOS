@@ -105,13 +105,14 @@ export class AppManager {
       return { success: true };
     }
 
+    // TODO(isaiah): instead of polling, we can optionally store list of other promises, or maybe just fail gracefully.
     // Check if already loading - return existing pending promise
     if (this.userSession.loadingApps.has(packageName)) {
       const existing = this.pendingConnections.get(packageName);
       if (existing) {
         this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' },
           `App ${packageName} already loading, waiting for existing attempt`);
-        
+
         // Create a new promise that waits for the existing attempt to complete
         return new Promise<AppStartResult>((resolve) => {
           // Set up a listener for when the existing attempt completes
@@ -121,9 +122,9 @@ export class AppManager {
               if (this.userSession.runningApps.has(packageName)) {
                 resolve({ success: true });
               } else {
-                resolve({ 
-                  success: false, 
-                  error: { stage: 'CONNECTION', message: 'Existing connection attempt failed' } 
+                resolve({
+                  success: false,
+                  error: { stage: 'CONNECTION', message: 'Existing connection attempt failed' }
                 });
               }
             } else {
@@ -131,7 +132,7 @@ export class AppManager {
               setTimeout(checkCompletion, 100);
             }
           };
-          
+
           checkCompletion();
         });
       }
@@ -140,34 +141,48 @@ export class AppManager {
     // TODO(isaiah): Test if we can use the installedApps cache instead of fetching from DB
     const app = await appService.getApp(packageName);
     if (!app) {
-      this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+      this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
         `App ${packageName} not found`);
-      return { 
-        success: false, 
-        error: { stage: 'WEBHOOK', message: `App ${packageName} not found` } 
+      return {
+        success: false,
+        error: { stage: 'WEBHOOK', message: `App ${packageName} not found` }
       };
     }
 
     // Create Promise for tracking this connection attempt
     return new Promise<AppStartResult>((resolve, reject) => {
       const startTime = Date.now();
-      
+
       // Set up timeout
-      const timeout = setTimeout(() => {
-        this.logger.error({ 
-          userId: this.userSession.userId, 
-          packageName, 
+      const timeout = setTimeout(async () => {
+        this.logger.error({
+          userId: this.userSession.userId,
+          packageName,
           service: 'AppManager',
-          duration: Date.now() - startTime 
+          duration: Date.now() - startTime
         }, `App ${packageName} connection timeout after ${TPA_SESSION_TIMEOUT_MS}ms`);
-        
+
         // Clean up
         this.pendingConnections.delete(packageName);
         this.userSession.loadingApps.delete(packageName);
-        
-        resolve({ 
-          success: false, 
-          error: { stage: 'TIMEOUT', message: `Connection timeout after ${TPA_SESSION_TIMEOUT_MS}ms` } 
+        // remove from user.runningApps.
+        try {
+          // TODO(isaiah): See if we can speed this up by using the cached user in UserSession instead of fetching from DB.
+          const user = await User.findByEmail(this.userSession.userId);
+          if (user) {
+            this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' },
+              `Removing app ${packageName} from user's running apps due to timeout`);
+            user.removeRunningApp(packageName).catch(err => {
+              this.logger.error({ error: err }, `Error removing app ${packageName} from user's running apps`);
+            });
+          }
+        } catch (error) {
+          this.logger.error({ error }, `Error finding user ${this.userSession.userId} to remove running app ${packageName}`);
+        }
+
+        resolve({
+          success: false,
+          error: { stage: 'TIMEOUT', message: `Connection timeout after ${TPA_SESSION_TIMEOUT_MS}ms` }
         });
       }, TPA_SESSION_TIMEOUT_MS);
 
@@ -180,7 +195,7 @@ export class AppManager {
         startTime
       });
 
-      this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+      this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' },
         `⚡️ Starting app ${packageName} - creating pending connection`);
       this.userSession.loadingApps.add(packageName);
 
@@ -193,8 +208,8 @@ export class AppManager {
    * Internal method to handle webhook triggering and error handling
    */
   private async triggerAppWebhookInternal(
-    app: AppI, 
-    resolve: (result: AppStartResult) => void, 
+    app: AppI,
+    resolve: (result: AppStartResult) => void,
     reject: (error: Error) => void,
     startTime: number
   ): Promise<void> {
@@ -236,9 +251,12 @@ export class AppManager {
       this.logger.info(`Server WebSocket URL: ${augmentOSWebsocketUrl}`);
       // Construct the webhook URL from the app's public URL
       const webhookURL = `${app.publicUrl}/webhook`;
-      this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+      this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' },
         `Triggering webhook for ${packageName}: ${webhookURL}`);
-        
+
+      // Trigger boot screen.
+      this.userSession.displayManager.handleAppStart(app.packageName);
+
       await this.triggerWebhook(webhookURL, {
         type: WebhookRequestType.SESSION_REQUEST,
         sessionId: this.userSession.userId + '-' + packageName,
@@ -247,47 +265,45 @@ export class AppManager {
         augmentOSWebsocketUrl,
       });
 
-      // Trigger boot screen.
-      this.userSession.displayManager.handleAppStart(app.packageName);
 
-      this.logger.info({ 
-        userId: this.userSession.userId, 
-        packageName, 
+      this.logger.info({
+        userId: this.userSession.userId,
+        packageName,
         service: 'AppManager',
-        duration: Date.now() - startTime 
+        duration: Date.now() - startTime
       }, `Webhook sent successfully for app ${packageName}, waiting for TPA connection`);
 
       // Note: Database will be updated when TPA actually connects in handleTpaInit()
       // Note: App start message to glasses will be sent when TPA connects
-      
+
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({ 
-        userId: this.userSession.userId, 
-        packageName: app.packageName, 
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName: app.packageName,
         service: 'AppManager',
         error: errorMessage,
-        duration: Date.now() - startTime 
+        duration: Date.now() - startTime
       }, `Error triggering webhook for app ${app.packageName}`);
-      
+
       // Clean up pending connection
       const pending = this.pendingConnections.get(app.packageName);
       if (pending) {
         clearTimeout(pending.timeout);
         this.pendingConnections.delete(app.packageName);
       }
-      
+
       this.userSession.loadingApps.delete(app.packageName);
       this.userSession.displayManager.handleAppStop(app.packageName);
-      
+
       // Resolve with error instead of throwing
-      resolve({ 
-        success: false, 
-        error: { 
-          stage: 'WEBHOOK', 
+      resolve({
+        success: false,
+        error: {
+          stage: 'WEBHOOK',
           message: `Webhook failed: ${errorMessage}`,
-          details: error 
-        } 
+          details: error
+        }
       });
     }
   }
@@ -296,27 +312,27 @@ export class AppManager {
    * Helper method to resolve pending connections with errors
    */
   private resolvePendingConnectionWithError(
-    packageName: string, 
-    stage: 'WEBHOOK' | 'CONNECTION' | 'AUTHENTICATION' | 'TIMEOUT', 
+    packageName: string,
+    stage: 'WEBHOOK' | 'CONNECTION' | 'AUTHENTICATION' | 'TIMEOUT',
     message: string
   ): void {
     const pending = this.pendingConnections.get(packageName);
     if (pending) {
       clearTimeout(pending.timeout);
       this.pendingConnections.delete(packageName);
-      
+
       const duration = Date.now() - pending.startTime;
-      this.logger.error({ 
-        userId: this.userSession.userId, 
-        packageName, 
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName,
         service: 'AppManager',
         duration,
-        stage 
+        stage
       }, `TPA ${packageName} connection failed at ${stage} stage after ${duration}ms: ${message}`);
-      
-      pending.resolve({ 
-        success: false, 
-        error: { stage, message } 
+
+      pending.resolve({
+        success: false,
+        error: { stage, message }
       });
     }
   }
@@ -466,7 +482,7 @@ export class AppManager {
       const isValidApiKey = await developerService.validateApiKey(packageName, apiKey, this.userSession);
 
       if (!isValidApiKey) {
-        this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+        this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
           `Invalid API key for TPA ${packageName}`);
 
         // Resolve pending connection with auth error
@@ -490,12 +506,12 @@ export class AppManager {
 
       // Check if app is in loading state
       if (!this.userSession.loadingApps.has(packageName) && !this.userSession.runningApps.has(packageName)) {
-        this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+        this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
           `App ${packageName} not in loading or active state for session ${this.userSession.userId}`);
-        
+
         // Resolve pending connection with connection error
         this.resolvePendingConnectionWithError(packageName, 'CONNECTION', 'App not started for this session');
-        
+
         try {
           ws.send(JSON.stringify({
             type: CloudToTpaMessageType.CONNECTION_ERROR,
@@ -521,7 +537,7 @@ export class AppManager {
 
       // Get app settings with proper fallback hierarchy
       const app = this.userSession.installedApps.get(packageName);
-      
+
       // Get user's settings with fallback to app defaults
       const user = await User.findOrCreateUser(this.userSession.userId);
       const userSettings = user.getAppSettings(packageName) || app?.settings || [];
@@ -536,29 +552,39 @@ export class AppManager {
 
       ws.send(JSON.stringify(ackMessage));
 
+      // update user.runningApps in database.
+      try {
+        if (user) {
+          await user.addRunningApp(packageName);
+        }
+      } catch (error) {
+        this.logger.error(error, `Error updating user's running apps for ${this.userSession.userId} for app ${packageName}`);
+        this.logger.debug({ packageName, userId: this.userSession.userId }, `Failed to update user's running apps for ${this.userSession.userId}`);
+      }
+
       // Resolve pending connection if it exists
       const pending = this.pendingConnections.get(packageName);
       if (pending) {
         clearTimeout(pending.timeout);
         this.pendingConnections.delete(packageName);
-        
+
         const duration = Date.now() - pending.startTime;
-        this.logger.info({ 
-          userId: this.userSession.userId, 
-          packageName, 
+        this.logger.info({
+          userId: this.userSession.userId,
+          packageName,
           sessionId: this.userSession.sessionId,
           service: 'AppManager',
-          duration 
+          duration
         }, `TPA ${packageName} successfully connected and authenticated in ${duration}ms`);
-        
+
         pending.resolve({ success: true });
       } else {
         // Log for existing connection (not from startApp)
-        this.logger.info({ 
-          userId: this.userSession.userId, 
-          packageName, 
+        this.logger.info({
+          userId: this.userSession.userId,
+          packageName,
           sessionId: this.userSession.sessionId,
-          service: 'AppManager' 
+          service: 'AppManager'
         }, `TPA ${packageName} connected (not from startApp) - moved to runningApps`);
       }
 
@@ -574,13 +600,13 @@ export class AppManager {
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({ 
-        userId: this.userSession.userId, 
-        packageName: initMessage.packageName, 
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName: initMessage.packageName,
         service: 'AppManager',
-        error: errorMessage 
+        error: errorMessage
       }, `Error handling TPA init for ${initMessage.packageName}`);
-      
+
       // Resolve pending connection with general error
       this.resolvePendingConnectionWithError(initMessage.packageName, 'CONNECTION', `Internal error: ${errorMessage}`);
 
@@ -677,7 +703,11 @@ export class AppManager {
 
       await Promise.all(previouslyRunningApps.map(async (packageName) => {
         try {
-          await this.startApp(packageName);
+          const appStartResult: AppStartResult = await this.startApp(packageName);
+          if (!appStartResult.success) {
+            this.logger.warn({ packageName, userId: this.userSession.userId }, `Failed to start previously running app ${packageName}: ${appStartResult.error?.message}`);
+            return; // Skip to next app
+          }
           startedApps.push(packageName);
         }
         catch (error) {
@@ -751,29 +781,29 @@ export class AppManager {
   async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageResult> {
     try {
       const websocket = this.userSession.appWebsockets.get(packageName);
-      
+
       // Check if websocket exists and is ready
       if (websocket && websocket.readyState === WebSocket.OPEN) {
         try {
           // Send message successfully
           websocket.send(JSON.stringify(message));
-          this.logger.debug({ 
-            userId: this.userSession.userId, 
-            packageName, 
+          this.logger.debug({
+            userId: this.userSession.userId,
+            packageName,
             service: 'AppManager',
             messageType: message.type || 'unknown'
           }, `Message sent to TPA ${packageName}`);
-          
+
           return { sent: true, resurrectionTriggered: false };
         } catch (sendError) {
           // Send failed even though websocket appeared ready
-          this.logger.warn({ 
-            userId: this.userSession.userId, 
-            packageName, 
+          this.logger.warn({
+            userId: this.userSession.userId,
+            packageName,
             service: 'AppManager',
             error: sendError instanceof Error ? sendError.message : String(sendError)
           }, `Failed to send message to TPA ${packageName}, triggering resurrection`);
-          
+
           // Remove failed connection and trigger resurrection
           this.userSession.appWebsockets.delete(packageName);
           return await this.resurrectTpaAndRetry(packageName, message);
@@ -781,28 +811,28 @@ export class AppManager {
       } else {
         // No connection or connection not ready
         const connectionState = websocket ? `readyState=${websocket.readyState}` : 'no connection';
-        this.logger.info({ 
-          userId: this.userSession.userId, 
-          packageName, 
+        this.logger.info({
+          userId: this.userSession.userId,
+          packageName,
           service: 'AppManager',
           connectionState
         }, `TPA ${packageName} not connected (${connectionState}), triggering resurrection`);
-        
+
         return await this.resurrectTpaAndRetry(packageName, message);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({ 
-        userId: this.userSession.userId, 
-        packageName, 
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName,
         service: 'AppManager',
         error: errorMessage
       }, `Error in sendMessageToTpa for ${packageName}`);
-      
-      return { 
-        sent: false, 
-        resurrectionTriggered: false, 
-        error: errorMessage 
+
+      return {
+        sent: false,
+        resurrectionTriggered: false,
+        error: errorMessage
       };
     }
   }
@@ -815,56 +845,56 @@ export class AppManager {
    */
   private async resurrectTpaAndRetry(packageName: string, originalMessage?: any): Promise<TpaMessageResult> {
     try {
-      this.logger.info({ 
-        userId: this.userSession.userId, 
-        packageName, 
+      this.logger.info({
+        userId: this.userSession.userId,
+        packageName,
         service: 'AppManager'
       }, `Attempting to resurrect TPA ${packageName}`);
 
       // Attempt resurrection using the new Promise-based startApp
       const result = await this.startApp(packageName);
-      
+
       if (result.success) {
-        this.logger.info({ 
-          userId: this.userSession.userId, 
-          packageName, 
+        this.logger.info({
+          userId: this.userSession.userId,
+          packageName,
           service: 'AppManager'
         }, `Successfully resurrected TPA ${packageName}`);
-        
+
         // If resurrection succeeded and we have an original message, try to send it
         if (originalMessage) {
           const websocket = this.userSession.appWebsockets.get(packageName);
           if (websocket && websocket.readyState === WebSocket.OPEN) {
             try {
               websocket.send(JSON.stringify(originalMessage));
-              this.logger.info({ 
-                userId: this.userSession.userId, 
-                packageName, 
+              this.logger.info({
+                userId: this.userSession.userId,
+                packageName,
                 service: 'AppManager',
                 messageType: originalMessage.type || 'unknown'
               }, `Retried message after resurrection for TPA ${packageName}`);
-              
+
               return { sent: true, resurrectionTriggered: true };
             } catch (retryError) {
               const errorMessage = retryError instanceof Error ? retryError.message : String(retryError);
-              this.logger.error({ 
-                userId: this.userSession.userId, 
-                packageName, 
+              this.logger.error({
+                userId: this.userSession.userId,
+                packageName,
                 service: 'AppManager',
                 error: errorMessage
               }, `Failed to retry message after resurrection for TPA ${packageName}`);
-              
-              return { 
-                sent: false, 
-                resurrectionTriggered: true, 
-                error: `Retry failed: ${errorMessage}` 
+
+              return {
+                sent: false,
+                resurrectionTriggered: true,
+                error: `Retry failed: ${errorMessage}`
               };
             }
           } else {
-            return { 
-              sent: false, 
-              resurrectionTriggered: true, 
-              error: 'TPA resurrected but connection not ready' 
+            return {
+              sent: false,
+              resurrectionTriggered: true,
+              error: 'TPA resurrected but connection not ready'
             };
           }
         } else {
@@ -874,33 +904,33 @@ export class AppManager {
       } else {
         // Resurrection failed
         const errorMsg = result.error?.message || 'Unknown resurrection error';
-        this.logger.error({ 
-          userId: this.userSession.userId, 
-          packageName, 
+        this.logger.error({
+          userId: this.userSession.userId,
+          packageName,
           service: 'AppManager',
           error: errorMsg,
           stage: result.error?.stage
         }, `Failed to resurrect TPA ${packageName}`);
-        
-        return { 
-          sent: false, 
-          resurrectionTriggered: true, 
-          error: `Resurrection failed: ${errorMsg}` 
+
+        return {
+          sent: false,
+          resurrectionTriggered: true,
+          error: `Resurrection failed: ${errorMsg}`
         };
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({ 
-        userId: this.userSession.userId, 
-        packageName, 
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName,
         service: 'AppManager',
         error: errorMessage
       }, `Error during TPA resurrection for ${packageName}`);
-      
-      return { 
-        sent: false, 
-        resurrectionTriggered: true, 
-        error: `Resurrection error: ${errorMessage}` 
+
+      return {
+        sent: false,
+        resurrectionTriggered: true,
+        error: `Resurrection error: ${errorMessage}`
       };
     }
   }
@@ -915,9 +945,9 @@ export class AppManager {
       // Clear pending connections
       for (const [packageName, pending] of this.pendingConnections.entries()) {
         clearTimeout(pending.timeout);
-        pending.resolve({ 
-          success: false, 
-          error: { stage: 'CONNECTION', message: 'Session ended' } 
+        pending.resolve({
+          success: false,
+          error: { stage: 'CONNECTION', message: 'Session ended' }
         });
       }
       this.pendingConnections.clear();
@@ -943,12 +973,12 @@ export class AppManager {
 
             // Close the connection
             connection.close(1000, 'User session ended');
-            this.logger.debug({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+            this.logger.debug({ userId: this.userSession.userId, packageName, service: 'AppManager' },
               `Closed connection for ${packageName} during dispose`);
           } catch (error) {
-            this.logger.error({ 
-              userId: this.userSession.userId, 
-              packageName, 
+            this.logger.error({
+              userId: this.userSession.userId,
+              packageName,
               service: 'AppManager',
               error: error instanceof Error ? error.message : String(error)
             }, `Error closing connection for ${packageName}`);
