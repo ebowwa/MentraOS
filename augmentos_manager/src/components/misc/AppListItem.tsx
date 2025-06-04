@@ -1,5 +1,5 @@
 import React from "react"
-import {View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated} from "react-native"
+import {View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated, Pressable} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {colors, ThemedStyle} from "@/theme"
 import AppIcon from "./AppIcon"
@@ -8,6 +8,8 @@ import SunIcon from "assets/icons/component/SunIcon"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
 import {translate} from "@/i18n"
 import {Switch} from "@/components/ignite"
+import { TooltipIcon } from "assets/icons/component/TooltipIcon"
+import Toast from "react-native-toast-message"
 
 interface AppModel {
   name: string
@@ -23,15 +25,28 @@ interface AppListItemProps {
   refProp?: React.Ref<any>
   is_foreground?: boolean
   opacity?: Animated.AnimatedValue
+  height?: Animated.AnimatedValue
   isDisabled?: boolean
 }
 
-export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, opacity, isDisabled, is_foreground}: AppListItemProps) => {
+export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, opacity, isDisabled, is_foreground, height}: AppListItemProps) => {
   const {themed, theme} = useAppTheme()
 
 
   return (
-    <Animated.View style={[themed($everything), themed($everythingFlexBox), opacity ? { opacity } : {}]}>
+    <Animated.View 
+    style={[themed($everything), themed($everythingFlexBox), 
+    opacity ? { opacity } : {},
+    height
+      ? {
+          height: height.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 72],
+          }),
+          overflow: "hidden",
+        }
+      : {},
+    ]}>
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
@@ -116,11 +131,25 @@ const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?
   const mColor = isActive ? "#7674FB" : "#CECED0"
   if(isForeground){
     return (
-        <View style={themed($tag)}>
+        <View style={themed(isActive ? $tagActive : $tag)}>
           <TreeIcon size={16} color={mColor}/>
           <Text style={[themed($disconnect), {color: mColor}]} numberOfLines={1}>
             {isForeground ? translate("home:foreground") : ""}
           </Text>
+          <Pressable 
+          onPress={() => {
+            Toast.show({
+                type: "baseToast",
+                text1: "Not implemented",
+                position: "bottom",
+                
+              }) 
+          }}>
+          
+          
+            <TooltipIcon size={16} color={mColor}/>
+          </Pressable>
+          
         </View>
       )
   }else {
@@ -130,6 +159,18 @@ const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?
 
   
 }
+const $tagActive: ThemedStyle<ViewStyle> = () => ({
+  borderRadius: 15,
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 4,
+  height: 24,
+  backgroundColor: "navy",
+  alignSelf: "flex-start",
+})
 
 const $tag: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 15,
