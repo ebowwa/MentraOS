@@ -142,7 +142,6 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
 
 const $appsContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
-  marginTop: 8,
   minHeight: 72,
 })
 
