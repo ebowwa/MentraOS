@@ -838,6 +838,23 @@ export class TpaSession {
     return this.config.augmentOSWebsocketUrl;
   }
 
+  getHttpsServerUrl(): string | undefined {
+    if (!this.config.augmentOSWebsocketUrl) {
+      return undefined;
+    }
+    return this.convertToHttps(this.config.augmentOSWebsocketUrl);
+  }
+
+  convertToHttps(rawUrl: string | undefined): string {
+    if (!rawUrl) return '';
+    // Remove ws:// or wss://
+    let url = rawUrl.replace(/^wss?:\/\//, '');
+    // Remove trailing /tpa-ws
+    url = url.replace(/\/tpa-ws$/, '');
+    // Prepend https://
+    return `https://${url}`;
+  }
+
   /**
    * 🔍 Get default settings from the TPA configuration
    * @returns Array of settings with default values
