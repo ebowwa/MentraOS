@@ -177,8 +177,14 @@ function verifyFrontendToken(frontendToken: string, apiKey: string): string | nu
     if (tokenParts.length === 2) {
       // Format: userId:hash
       const [tokenUserId, tokenHash] = tokenParts;
+
+      // Align the hashing algorithm with server-side `hashWithApiKey`
+      // 1. Hash the API key first (server only stores the hashed version)
+      const hashedApiKey = crypto.createHash('sha256').update(apiKey).digest('hex');
+      // 2. Create the expected hash using userId + hashedApiKey (same order & update calls)
       const expectedHash = crypto.createHash('sha256')
-        .update(tokenUserId + apiKey)
+        .update(tokenUserId)
+        .update(hashedApiKey)
         .digest('hex');
 
       if (tokenHash === expectedHash) {
@@ -253,8 +259,15 @@ export function createAuthMiddleware(options: {
 
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First check for temporary token in the query string
+
+    console.log('[auth.middleware] Request debug: ', req);
+    console.log('[auth.middleware] Request headers: ', req.headers);
+    console.log('[auth.middleware] Request cookies: ', req.cookies);
+    console.log('[auth.middleware] Request query: ', req.query);
+    console.log('[auth.middleware] Request body: ', req.body);
+
     const tempToken = req.query['aos_temp_token'] as string;
-    const frontendToken = req.headers.authorization?.replace('Bearer ', '') as string;
+    const frontendToken = req.headers.authorization?.replace('Bearer ', '') as string || req.query['aos_frontend_token'] as string;
     const signedUserToken = req.query['aos_signed_user_token'] as string;
 
     // first check for signed user token
@@ -312,7 +325,9 @@ export function createAuthMiddleware(options: {
       }
     }
 
+    console.log('[auth.middleware] Frontend token: ', frontendToken);
     if (frontendToken) {
+      console.log('[auth.middleware] Verifying frontend token: ', frontendToken);
       // Check for user ID in headers if not embedded in token
       const userId = verifyFrontendToken(frontendToken, apiKey);
 
@@ -323,7 +338,11 @@ export function createAuthMiddleware(options: {
         res.cookie(cookieName, signedSession, cookieOptions);
         console.log('[auth.middleware] User ID verified from frontend user token: ', userId);
         return next();
+      } else {
+        console.log('[auth.middleware] Frontend token invalid');
       }
+    } else {
+      console.log('[auth.middleware] No frontend token found');
     }
 
     // No valid temporary token, check for existing session cookie
