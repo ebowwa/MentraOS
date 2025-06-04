@@ -96,7 +96,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
                   <React.Fragment key={app.packageName}>
                     <AppListItem
                       app={app}
-                      is_foreground={app.is_foreground}
+                      is_foreground={app.tpaType ==  "standard"}
                       isActive={true}
                       onTogglePress={() => {
                         const pkg = app.packageName;
