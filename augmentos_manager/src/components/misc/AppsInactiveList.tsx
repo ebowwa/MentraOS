@@ -555,7 +555,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     availableApps.forEach(app => {
       Animated.timing(opacities[app.packageName], {
         toValue: 1,
-        duration: 400,
+        duration: 300,
         easing: Easing.in(Easing.ease),
         useNativeDriver: true,
       }).start();
@@ -604,13 +604,13 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
                 const res = await checkIsForegroundAppStart(app.packageName,app.tpaType ==  "standard")
                 if(res){
                   setTimeout(() => {
-                  Animated.timing(itemOpacity, {
-                    toValue: 0,
-                    duration: 450,
-                    useNativeDriver: true,
-                  }).start(() => startApp(app.packageName));
-                  }, 100);
-
+                    Animated.timing(itemOpacity, {
+                      toValue: 0,
+                      duration: 300,
+                      easing: Easing.out(Easing.ease),
+                      useNativeDriver: true,
+                    }).start(() => startApp(app.packageName));
+                  }, 200);
                 }
                 
               }}

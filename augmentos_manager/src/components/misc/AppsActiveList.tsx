@@ -49,7 +49,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
       if (app.is_running) {
         Animated.timing(opacities[app.packageName], {
           toValue: 1,
-          duration: 400,
+          duration: 300,
           easing: Easing.in(Easing.ease),
           useNativeDriver: true,
         }).start();
@@ -62,7 +62,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
     if (newCount !== previousCount.current) {
       Animated.timing(containerHeight, {
         toValue: newCount * 88, // estimate item + spacing height
-        duration: 400,
+        duration: 300,
         useNativeDriver: false,
       }).start();
       previousCount.current = newCount;
@@ -122,14 +122,18 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
                       is_foreground={app.tpaType ==  "standard"}
                       isActive={true}
                       onTogglePress={() => {
-                        const pkg = app.packageName;
-                        stopApp(pkg).then(() => {
-                          Animated.timing(itemOpacity, {
+                        Animated.timing(itemOpacity, {
                             toValue: 0,
-                            duration: 450,
+                            duration: 300,
                             useNativeDriver: true,
                           }).start();
-                        });
+
+                        setTimeout(() => {
+                          const pkg = app.packageName;
+                          stopApp(pkg).then(() => {
+                        }); 
+                        }, 300);
+
                       }}
                       onSettingsPress={() => openAppSettings(app)}
                       opacity={itemOpacity}
