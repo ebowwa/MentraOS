@@ -1,5 +1,5 @@
 import React, {useMemo, useState, useRef, useEffect} from "react"
-import {View, ScrollView, ViewStyle, TextStyle, Animated, Platform, ToastAndroid} from "react-native"
+import {View, ScrollView, ViewStyle, TextStyle, Animated, Platform, ToastAndroid, Easing} from "react-native"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import {useNavigation} from "@react-navigation/native"
 import {NavigationProps} from "./types"
@@ -41,17 +41,21 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
   const previousCount = useRef(0);
 
   useEffect(() => {
-    Object.entries(opacities).forEach(([packageName, opacity]) => {
-      const appIsRunning = appStatus.find(a => a.packageName === packageName)?.is_running
-      if (appIsRunning) {
-        Animated.timing(opacity, {
+    appStatus.forEach(app => {
+      if (!(app.packageName in opacities)) {
+        opacities[app.packageName] = new Animated.Value(0);
+      }
+
+      if (app.is_running) {
+        Animated.timing(opacities[app.packageName], {
           toValue: 1,
           duration: 400,
+          easing: Easing.in(Easing.ease),
           useNativeDriver: true,
-        }).start()
+        }).start();
       }
-    })
-  }, [appStatus])
+    });
+  }, [appStatus]);
 
   useEffect(() => {
     const newCount = runningApps.length;

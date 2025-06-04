@@ -10,6 +10,7 @@ import {
   Platform,
   ViewStyle,
   ActivityIndicator,
+  Easing,
 } from "react-native"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -555,6 +556,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
       Animated.timing(opacities[app.packageName], {
         toValue: 1,
         duration: 400,
+        easing: Easing.in(Easing.ease),
         useNativeDriver: true,
       }).start();
     });
