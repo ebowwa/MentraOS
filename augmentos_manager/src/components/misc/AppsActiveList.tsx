@@ -147,7 +147,6 @@ const $appsContainer: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $headerContainer: ThemedStyle<ViewStyle> = () => ({
-  minHeight: 32,
 })
 
 const $contentContainer: ThemedStyle<ViewStyle> = () => ({

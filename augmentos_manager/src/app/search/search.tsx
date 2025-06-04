@@ -17,9 +17,12 @@ import { translate } from "@/i18n"
 
 
 export default function SearchAppsPage() {
+  const { appStatus } = useAppStatus()
+
   const { themed, theme } = useAppTheme()
   const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState("")
+  let activeApps = appStatus.filter(app => app.is_running)
 
   return (
     <Screen preset="fixed" style={themed($screen)}>
@@ -41,7 +44,7 @@ export default function SearchAppsPage() {
         </Pressable>
 
         <TextInput
-          placeholder= {translate("home:search")}
+          placeholder={translate("home:search")}
           placeholderTextColor="#aaa"
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -53,12 +56,14 @@ export default function SearchAppsPage() {
 
       </View>
 
+
       <ScrollView style={{ marginRight: -theme.spacing.md, paddingRight: theme.spacing.md }}>
-
-
-        <Divider variant="full" />
-        <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
-        <Divider variant="inset" />
+      {activeApps.length > 0 && (
+        <>
+          <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
+          <Divider variant="inset" />
+        </>
+      )}
 
         <AppsInactiveList isSearchPage={true} searchQuery={searchQuery} />
         <Spacer height={40} />
