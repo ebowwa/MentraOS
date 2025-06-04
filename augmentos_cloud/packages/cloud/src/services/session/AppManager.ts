@@ -519,15 +519,18 @@ export class AppManager {
       // Remove from loading apps if present. // TODO(isaiah): make sure this is the right place to do this.
       this.userSession.loadingApps.delete(packageName);
 
-      // Get app settings
-      // const app = this.userSession.installedApps.find(app => app.packageName === packageName);
+      // Get app settings with proper fallback hierarchy
       const app = this.userSession.installedApps.get(packageName);
+      
+      // Get user's settings with fallback to app defaults
+      const user = await User.findOrCreateUser(this.userSession.userId);
+      const userSettings = user.getAppSettings(packageName) || app?.settings || [];
 
       // Send connection acknowledgment
       const ackMessage = {
         type: CloudToTpaMessageType.CONNECTION_ACK,
         sessionId: sessionId,
-        settings: app?.settings || [],
+        settings: userSettings,
         timestamp: new Date()
       };
 
