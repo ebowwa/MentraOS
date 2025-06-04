@@ -54,7 +54,7 @@ export class PhotoManager {
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
-    this.logger = userSession.logger.child({ component: 'PhotoManager' });
+    this.logger = userSession.logger.child({ service: 'PhotoManager' });
     this.logger.info('PhotoManager initialized');
   }
 

@@ -12,7 +12,7 @@ import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-import { HeartbeatManager } from './HeartbeatManager';
+// import { HeartbeatManager } from './HeartbeatManager';
 import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
@@ -64,7 +64,7 @@ export class UserSession {
   public microphoneManager: MicrophoneManager;
   public appManager: AppManager;
   public audioManager: AudioManager;
-  public heartbeatManager: HeartbeatManager;
+  // public heartbeatManager: HeartbeatManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
@@ -81,7 +81,7 @@ export class UserSession {
   constructor(userId: string, websocket: WebSocket) {
     this.userId = userId;
     this.websocket = websocket;
-    this.logger = rootLogger.child({ userId, component: 'UserSession' });
+    this.logger = rootLogger.child({ userId, service: 'UserSession' });
 
     // Initialize managers
     this.displayManager = new DisplayManager(this);
@@ -89,7 +89,7 @@ export class UserSession {
     this.microphoneManager = new MicrophoneManager(this);
     this.appManager = new AppManager(this);
     this.audioManager = new AudioManager(this);
-    this.heartbeatManager = new HeartbeatManager(this);
+    // this.heartbeatManager = new HeartbeatManager(this);
     this.videoManager = new VideoManager(this);
     this.photoManager = new PhotoManager(this);
 
@@ -169,7 +169,7 @@ export class UserSession {
     if (this.microphoneManager) this.microphoneManager.dispose();
     if (this.displayManager) this.displayManager.dispose();
     if (this.dashboardManager) this.dashboardManager.dispose();
-    if (this.heartbeatManager) this.heartbeatManager.dispose();
+    // if (this.heartbeatManager) this.heartbeatManager.dispose();
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
 

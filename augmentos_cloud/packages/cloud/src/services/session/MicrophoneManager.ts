@@ -36,7 +36,7 @@ export class MicrophoneManager {
 
   constructor(session: UserSession) {
     this.session = session;
-    this.logger = session.logger.child({ component: 'MicrophoneManager' });
+    this.logger = session.logger.child({ service: 'MicrophoneManager' });
     this.logger.info('MicrophoneManager initialized');
   }
 

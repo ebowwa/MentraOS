@@ -68,7 +68,7 @@ export class AudioManager {
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
-    this.logger = userSession.logger.child({ component: 'AudioManager' });
+    this.logger = userSession.logger.child({ service: 'AudioManager' });
 
     // Initialize ordered buffer
     this.orderedBuffer = {

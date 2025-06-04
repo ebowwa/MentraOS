@@ -57,7 +57,7 @@ export class VideoManager {
 
   constructor(userSession: UserSession) {
     this.userSession = userSession;
-    this.logger = userSession.logger.child({ component: 'VideoManager' });
+    this.logger = userSession.logger.child({ service: 'VideoManager' });
     this.logger.info('VideoManager initialized');
   }
 
