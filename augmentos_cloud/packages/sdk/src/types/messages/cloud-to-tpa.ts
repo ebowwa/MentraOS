@@ -217,7 +217,6 @@ export type CloudToTpaMessage =
   | AugmentosSettingsUpdate
   // New TPA-to-TPA communication response messages
   | TpaMessageReceived
-  | TpaUserList
   | TpaUserJoined
   | TpaUserLeft
   | TpaRoomUpdated
