@@ -12,6 +12,7 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
+import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -94,13 +95,13 @@ export default function SettingsPage() {
       />
 
       {/* Comment this out until the light theme looks acceptable */}
-      {/* <Spacer height={theme.spacing.md} />
+      <Spacer height={theme.spacing.md} />
 
       <RouteButton
         label="Theme Settings"
         subtitle="Customize your app appearance"
         onPress={() => router.push("/settings/theme")}
-      />*/}
+      />
 
       <Spacer height={theme.spacing.md} /> 
 
@@ -112,7 +113,11 @@ export default function SettingsPage() {
 
       <Spacer height={theme.spacing.md} />
 
-      <RouteButton label={translate("settings:signOut")} onPress={confirmSignOut} />
+      <ActionButton
+        label={translate("settings:signOut")}
+        variant="destructive"
+        onPress={confirmSignOut}
+      />
     </Screen>
   )
 }

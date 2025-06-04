@@ -53,7 +53,11 @@ const en = {
     activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
     search: "Search",
     movedToActive: "Moved to Active",
-    movedToInactive: "Moved to Inactive"
+    movedToInactive: "Moved to Inactive",
+    foreground: "Foreground",
+    thereCanOnlyBeOne: "There Can Only Be One",
+    thereCanOnlyBeOneMessage: "You can only run one foreground app at a time.",
+
   },
   glasses: {
     title: "Glasses",

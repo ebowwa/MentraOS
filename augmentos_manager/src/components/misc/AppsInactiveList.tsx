@@ -35,6 +35,7 @@ import {AppListItem} from "./AppListItem"
 import {Spacer} from "./Spacer"
 import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
+import { TreeIcon } from "assets/icons/component/TreeIcon"
 
 export default function InactiveAppList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {
@@ -254,6 +255,36 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     }
   }
 
+  function checkIsForegroundAppStart(packageName: string, isForeground: boolean): Promise<boolean> {
+    if(!isForeground){
+      return Promise.resolve(true)
+    }
+
+  const runningStndAppList = getRunningStandardApps(packageName)
+    if (runningStndAppList.length === 0) {
+      return Promise.resolve(true)
+    }
+
+    return new Promise((resolve) => {
+      showAlert(
+        translate("home:thereCanOnlyBeOne"),
+        translate("home:thereCanOnlyBeOneMessage"),
+        [
+          {
+            text: translate("common:cancel"),
+            onPress: () => resolve(false),
+            style: "cancel",
+          },
+          {
+            text: translate("common:continue"),
+            onPress: () => resolve(true),
+          },
+        ],
+        { icon: <TreeIcon size={24}/> }
+
+      )
+    })
+  }
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
       if (packageName !== "com.augmentos.livecaptions" && packageName !== "cloud.augmentos.live-captions") {
@@ -277,6 +308,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
       console.error("App not found:", packageName)
       return
     }
+    
 
     // check perms:
     const neededPermissions = await checkPermissions(appToStart)
@@ -317,9 +349,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     if (appToStart?.tpaType === "standard") {
       console.log("% appToStart", appToStart)
       // Find any running standard apps
-      const runningStandardApps = appStatus.filter(
-        app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName,
-      )
+      const runningStandardApps = getRunningStandardApps(packageName);
 
       console.log("%%% runningStandardApps", runningStandardApps)
 
@@ -378,6 +408,11 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     }
   }
 
+  const getRunningStandardApps = (packageName: string) => {
+    return appStatus.filter(
+      app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName
+    )
+  }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
     router.push({
@@ -554,16 +589,21 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              is_foreground={app.is_foreground}
+              is_foreground={app.tpaType ==  "standard"}
               isActive={false}
-              onTogglePress={() => {
-                setTimeout(() => {
+              onTogglePress={async () => {
+                const res = await checkIsForegroundAppStart(app.packageName,app.tpaType ==  "standard")
+                if(res){
+                  setTimeout(() => {
                   Animated.timing(itemOpacity, {
                     toValue: 0,
                     duration: 450,
                     useNativeDriver: true,
                   }).start(() => startApp(app.packageName));
-                }, 100);
+                  }, 100);
+
+                }
+                
               }}
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
