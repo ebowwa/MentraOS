@@ -41,6 +41,7 @@ const sidebars: SidebarsConfig = {
         'settings',
         'tools',
         'webview-auth-overview',
+        'react-webviews',
         {
           type: 'doc',
           id: 'tpa-lifecycle',
