@@ -66,7 +66,7 @@ const en = {
     title: "Store",
   },
   settings: {
-    title: "Settings",
+    title: "Account",
     phoneHeadset: "Phone / Headset",
     glasses: "Glasses",
     bypassVAD: "Bypass VAD for Debugging",

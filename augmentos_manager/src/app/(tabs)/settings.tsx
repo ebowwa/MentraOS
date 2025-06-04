@@ -52,6 +52,8 @@ export default function SettingsPage() {
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
       <Header leftTx="settings:title" />
 
+      <Spacer height={theme.spacing.xl} />
+
       <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
 
       <Spacer height={theme.spacing.md} />
