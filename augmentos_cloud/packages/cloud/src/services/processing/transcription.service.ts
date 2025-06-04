@@ -483,22 +483,42 @@ export class TranscriptionService {
 
     const subscribedApps = subscriptionService.getSubscribedApps(userSession, effectiveSubscription);
 
-    subscribedApps.forEach(packageName => {
+    // Send to all subscribed apps using centralized messaging with automatic resurrection
+    subscribedApps.forEach(async (packageName) => {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
-      const websocket = userSession.appWebsockets.get(packageName);
-      if (websocket && websocket.readyState === 1) {
-        // CloudDataStreamMessage
-        const dataStream: DataStream = {
-          type: CloudToTpaMessageType.DATA_STREAM,
-          sessionId: tpaSessionId,
-          streamType, // Base type remains the same in the message.
-          data,      // The data now may contain language info.
-          timestamp: new Date()
-        };
+      
+      // CloudDataStreamMessage
+      const dataStream: DataStream = {
+        type: CloudToTpaMessageType.DATA_STREAM,
+        sessionId: tpaSessionId,
+        streamType, // Base type remains the same in the message.
+        data,      // The data now may contain language info.
+        timestamp: new Date()
+      };
 
-        websocket.send(JSON.stringify(dataStream));
-      } else {
-        userSession.logger.error({ service: SERVICE_NAME, packageName }, `[transcription.service]: TPA ${packageName} not connected`);
+      try {
+        // Use centralized messaging with automatic resurrection
+        const result = await userSession.appManager.sendMessageToTpa(packageName, dataStream);
+        
+        if (!result.sent) {
+          userSession.logger.warn({ 
+            service: SERVICE_NAME, 
+            packageName,
+            resurrectionTriggered: result.resurrectionTriggered,
+            error: result.error
+          }, `Failed to send transcription data to TPA ${packageName}`);
+        } else if (result.resurrectionTriggered) {
+          userSession.logger.info({ 
+            service: SERVICE_NAME, 
+            packageName 
+          }, `Transcription data sent to TPA ${packageName} after resurrection`);
+        }
+      } catch (error) {
+        userSession.logger.error({ 
+          service: SERVICE_NAME, 
+          packageName,
+          error: error instanceof Error ? error.message : String(error)
+        }, `Error sending transcription data to TPA ${packageName}`);
       }
     });
   }

@@ -69,6 +69,12 @@ interface PendingConnection {
   startTime: number;
 }
 
+interface TpaMessageResult {
+  sent: boolean;
+  resurrectionTriggered: boolean;
+  error?: string;
+}
+
 export class AppManager {
   private userSession: UserSession;
   private logger: Logger;
@@ -105,18 +111,28 @@ export class AppManager {
       if (existing) {
         this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' },
           `App ${packageName} already loading, waiting for existing attempt`);
-        return new Promise((resolve, reject) => {
-          // Piggyback on existing attempt
-          const originalResolve = existing.resolve;
-          const originalReject = existing.reject;
-          existing.resolve = (result) => {
-            originalResolve(result);
-            resolve(result);
+        
+        // Create a new promise that waits for the existing attempt to complete
+        return new Promise<AppStartResult>((resolve) => {
+          // Set up a listener for when the existing attempt completes
+          const checkCompletion = () => {
+            if (!this.pendingConnections.has(packageName)) {
+              // Existing attempt completed, check final state
+              if (this.userSession.runningApps.has(packageName)) {
+                resolve({ success: true });
+              } else {
+                resolve({ 
+                  success: false, 
+                  error: { stage: 'CONNECTION', message: 'Existing connection attempt failed' } 
+                });
+              }
+            } else {
+              // Still pending, check again in 100ms
+              setTimeout(checkCompletion, 100);
+            }
           };
-          existing.reject = (error) => {
-            originalReject(error);
-            reject(error);
-          };
+          
+          checkCompletion();
         });
       }
     }
@@ -724,6 +740,169 @@ export class AppManager {
   }
 
   /**
+   * Send a message to a TPA with automatic resurrection if connection is dead
+   * @param packageName - TPA package name
+   * @param message - Message to send (will be JSON.stringify'd)
+   * @returns Promise with send result and resurrection info
+   */
+  async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageResult> {
+    try {
+      const websocket = this.userSession.appWebsockets.get(packageName);
+      
+      // Check if websocket exists and is ready
+      if (websocket && websocket.readyState === WebSocket.OPEN) {
+        try {
+          // Send message successfully
+          websocket.send(JSON.stringify(message));
+          this.logger.debug({ 
+            userId: this.userSession.userId, 
+            packageName, 
+            service: 'AppManager',
+            messageType: message.type || 'unknown'
+          }, `Message sent to TPA ${packageName}`);
+          
+          return { sent: true, resurrectionTriggered: false };
+        } catch (sendError) {
+          // Send failed even though websocket appeared ready
+          this.logger.warn({ 
+            userId: this.userSession.userId, 
+            packageName, 
+            service: 'AppManager',
+            error: sendError instanceof Error ? sendError.message : String(sendError)
+          }, `Failed to send message to TPA ${packageName}, triggering resurrection`);
+          
+          // Remove failed connection and trigger resurrection
+          this.userSession.appWebsockets.delete(packageName);
+          return await this.resurrectTpaAndRetry(packageName, message);
+        }
+      } else {
+        // No connection or connection not ready
+        const connectionState = websocket ? `readyState=${websocket.readyState}` : 'no connection';
+        this.logger.info({ 
+          userId: this.userSession.userId, 
+          packageName, 
+          service: 'AppManager',
+          connectionState
+        }, `TPA ${packageName} not connected (${connectionState}), triggering resurrection`);
+        
+        return await this.resurrectTpaAndRetry(packageName, message);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error({ 
+        userId: this.userSession.userId, 
+        packageName, 
+        service: 'AppManager',
+        error: errorMessage
+      }, `Error in sendMessageToTpa for ${packageName}`);
+      
+      return { 
+        sent: false, 
+        resurrectionTriggered: false, 
+        error: errorMessage 
+      };
+    }
+  }
+
+  /**
+   * Attempt to resurrect a TPA and retry sending the original message
+   * @param packageName - TPA to resurrect
+   * @param originalMessage - Message to retry after resurrection
+   * @returns Promise with resurrection and send result
+   */
+  private async resurrectTpaAndRetry(packageName: string, originalMessage?: any): Promise<TpaMessageResult> {
+    try {
+      this.logger.info({ 
+        userId: this.userSession.userId, 
+        packageName, 
+        service: 'AppManager'
+      }, `Attempting to resurrect TPA ${packageName}`);
+
+      // Attempt resurrection using the new Promise-based startApp
+      const result = await this.startApp(packageName);
+      
+      if (result.success) {
+        this.logger.info({ 
+          userId: this.userSession.userId, 
+          packageName, 
+          service: 'AppManager'
+        }, `Successfully resurrected TPA ${packageName}`);
+        
+        // If resurrection succeeded and we have an original message, try to send it
+        if (originalMessage) {
+          const websocket = this.userSession.appWebsockets.get(packageName);
+          if (websocket && websocket.readyState === WebSocket.OPEN) {
+            try {
+              websocket.send(JSON.stringify(originalMessage));
+              this.logger.info({ 
+                userId: this.userSession.userId, 
+                packageName, 
+                service: 'AppManager',
+                messageType: originalMessage.type || 'unknown'
+              }, `Retried message after resurrection for TPA ${packageName}`);
+              
+              return { sent: true, resurrectionTriggered: true };
+            } catch (retryError) {
+              const errorMessage = retryError instanceof Error ? retryError.message : String(retryError);
+              this.logger.error({ 
+                userId: this.userSession.userId, 
+                packageName, 
+                service: 'AppManager',
+                error: errorMessage
+              }, `Failed to retry message after resurrection for TPA ${packageName}`);
+              
+              return { 
+                sent: false, 
+                resurrectionTriggered: true, 
+                error: `Retry failed: ${errorMessage}` 
+              };
+            }
+          } else {
+            return { 
+              sent: false, 
+              resurrectionTriggered: true, 
+              error: 'TPA resurrected but connection not ready' 
+            };
+          }
+        } else {
+          // No original message to retry, just report successful resurrection
+          return { sent: false, resurrectionTriggered: true };
+        }
+      } else {
+        // Resurrection failed
+        const errorMsg = result.error?.message || 'Unknown resurrection error';
+        this.logger.error({ 
+          userId: this.userSession.userId, 
+          packageName, 
+          service: 'AppManager',
+          error: errorMsg,
+          stage: result.error?.stage
+        }, `Failed to resurrect TPA ${packageName}`);
+        
+        return { 
+          sent: false, 
+          resurrectionTriggered: true, 
+          error: `Resurrection failed: ${errorMsg}` 
+        };
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error({ 
+        userId: this.userSession.userId, 
+        packageName, 
+        service: 'AppManager',
+        error: errorMessage
+      }, `Error during TPA resurrection for ${packageName}`);
+      
+      return { 
+        sent: false, 
+        resurrectionTriggered: true, 
+        error: `Resurrection error: ${errorMessage}` 
+      };
+    }
+  }
+
+  /**
    * Clean up all resources
    */
   dispose(): void {
@@ -752,7 +931,7 @@ export class AppManager {
       for (const [packageName, connection] of this.userSession.appWebsockets.entries()) {
         if (connection && connection.readyState === WebSocket.OPEN) {
           try {
-            // Send app stopped message
+            // Send app stopped message using direct connection (no resurrection needed during dispose)
             const message = {
               type: CloudToTpaMessageType.APP_STOPPED,
               timestamp: new Date()
@@ -761,8 +940,15 @@ export class AppManager {
 
             // Close the connection
             connection.close(1000, 'User session ended');
+            this.logger.debug({ userId: this.userSession.userId, packageName, service: 'AppManager' }, 
+              `Closed connection for ${packageName} during dispose`);
           } catch (error) {
-            this.logger.error(`Error closing connection for ${packageName}:`, error);
+            this.logger.error({ 
+              userId: this.userSession.userId, 
+              packageName, 
+              service: 'AppManager',
+              error: error instanceof Error ? error.message : String(error)
+            }, `Error closing connection for ${packageName}`);
           }
         }
       }

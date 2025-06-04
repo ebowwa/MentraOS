@@ -28,7 +28,7 @@ interface PendingPhotoRequest {
   timestamp: number;
   // origin: 'tpa'; // All requests via PhotoManager are TPA initiated for now
   packageName: string;    // Renamed from appId for consistency with TPA messages
-  tpaWebSocket: WebSocket; // WebSocket connection for the TPA
+  tpaWebSocket?: WebSocket; // WebSocket connection for the TPA (optional since centralized messaging handles this)
   saveToGallery: boolean;
   timeoutId: NodeJS.Timeout;
 }
@@ -67,15 +67,9 @@ export class PhotoManager {
 
     this.logger.info({ packageName, saveToGallery }, 'Processing TPA photo request.');
 
-    if (!this.userSession.appManager.isAppRunning(packageName)) {
-      this.logger.warn({ packageName }, 'App not running for photo request.');
-      throw new Error(`App ${packageName} is not running.`);
-    }
+    // Get TPA websocket for storing in pending request (but don't validate connection - 
+    // centralized messaging will handle resurrection when we send the response)
     const tpaWebSocket = this.userSession.appWebsockets.get(packageName);
-    if (!tpaWebSocket || tpaWebSocket.readyState !== WebSocket.OPEN) {
-      this.logger.error({ packageName }, "TPA WebSocket not available or not open for photo request.");
-      throw new Error(`TPA ${packageName} WebSocket is not connected.`);
-    }
 
     if (!this.userSession.websocket || this.userSession.websocket.readyState !== WebSocket.OPEN) {
       this.logger.error('Glasses WebSocket not connected, cannot send photo request to glasses.');
@@ -125,7 +119,7 @@ export class PhotoManager {
    * Handles a photo response from glasses.
    * Adapts logic from photoRequestService.processPhotoResponse.
    */
-  handlePhotoResponse(glassesResponse: PhotoResponse): void {
+  async handlePhotoResponse(glassesResponse: PhotoResponse): Promise<void> {
     const { requestId, photoUrl, savedToGallery } = glassesResponse; // `savedToGallery` from glasses confirms actual status
     const pendingPhotoRequest = this.pendingPhotoRequests.get(requestId);
 
@@ -138,7 +132,7 @@ export class PhotoManager {
     clearTimeout(pendingPhotoRequest.timeoutId);
     this.pendingPhotoRequests.delete(requestId);
 
-    this._sendPhotoResultToTpa(pendingPhotoRequest, glassesResponse);
+    await this._sendPhotoResultToTpa(pendingPhotoRequest, glassesResponse);
   }
 
   private _handlePhotoRequestTimeout(requestId: string): void {
@@ -157,21 +151,36 @@ export class PhotoManager {
 
   }
 
-  private _sendPhotoResultToTpa(
+  private async _sendPhotoResultToTpa(
     pendingPhotoRequest: PendingPhotoRequest,
     photoResponse: PhotoResponse
-  ): void {
-    const { requestId, packageName, tpaWebSocket } = pendingPhotoRequest;
+  ): Promise<void> {
+    const { requestId, packageName } = pendingPhotoRequest;
 
-    if (tpaWebSocket && tpaWebSocket.readyState === WebSocket.OPEN) {
-      try {
-        tpaWebSocket.send(JSON.stringify(photoResponse));
-        this.logger.info({ requestId, packageName }, 'Sent photo result to TPA.');
-      } catch (error) {
-        this.logger.error(error, `Failed to send photo result to TPA ${packageName}.`);
+    try {
+      // Use centralized messaging with automatic resurrection
+      const result = await this.userSession.appManager.sendMessageToTpa(packageName, photoResponse);
+      
+      if (result.sent) {
+        this.logger.info({ 
+          requestId, 
+          packageName,
+          resurrectionTriggered: result.resurrectionTriggered 
+        }, `Sent photo result to TPA ${packageName}${result.resurrectionTriggered ? ' after resurrection' : ''}`);
+      } else {
+        this.logger.warn({ 
+          requestId, 
+          packageName,
+          resurrectionTriggered: result.resurrectionTriggered,
+          error: result.error
+        }, `Failed to send photo result to TPA ${packageName}`);
       }
-    } else {
-      this.logger.warn({ requestId, packageName }, 'TPA WebSocket not open for photo result, message dropped.');
+    } catch (error) {
+      this.logger.error({ 
+        error: error instanceof Error ? error.message : String(error),
+        requestId, 
+        packageName 
+      }, `Error sending photo result to TPA ${packageName}`);
     }
   }
 

@@ -149,7 +149,7 @@ export class VideoManager {
         streamId,
         sessionId: this.userSession.sessionId
       }, 'RTMP_STREAM_NOTIFY_TPA_INIT: VideoManager notifying TPA that stream is initializing');
-      this.sendStreamStatusToTpa(streamId, 'initializing');
+      await this.sendStreamStatusToTpa(streamId, 'initializing');
     } catch (error) {
       this.logger.error({ 
         debugKey: 'RTMP_STREAM_START_CMD_FAIL',
@@ -175,7 +175,7 @@ export class VideoManager {
   /**
    * Update stream status (simplified from original)
    */
-  updateStatus(streamId: string, status: SessionStreamInfo['status']): void {
+  async updateStatus(streamId: string, status: SessionStreamInfo['status']): Promise<void> {
     const stream = this.activeSessionStreams.get(streamId);
     if (stream) {
       this.logger.info({ streamId, oldStatus: stream.status, newStatus: status }, 'Updating stream status');
@@ -183,7 +183,7 @@ export class VideoManager {
       stream.lastKeepAlive = new Date();
       
       // Tell TPA about status change
-      this.sendStreamStatusToTpa(streamId, status);
+      await this.sendStreamStatusToTpa(streamId, status);
       
       // If stream becomes active, ensure keep-alive is running
       if (status === 'active' && !stream.keepAliveTimer) {
@@ -482,12 +482,12 @@ export class VideoManager {
   /**
    * Sends stream status to the owning TPA and broadcasts to other subscribers.
    */
-  private sendStreamStatusToTpa(
+  private async sendStreamStatusToTpa(
     streamId: string,
     status: RtmpStreamStatus['status'], // This is the status string from SDK
     errorDetails?: string,
     stats?: RtmpStreamStatus['stats']
-  ): void {
+  ): Promise<void> {
     const streamInfo = this.activeSessionStreams.get(streamId);
     // It's possible streamInfo is gone if cleanup happened due to rapid events.
     const packageName = streamInfo ? streamInfo.packageName : "unknown_package_owner";
@@ -504,14 +504,32 @@ export class VideoManager {
       timestamp: new Date(),
     };
 
-    const ownerWebsocket = this.userSession.appWebsockets.get(packageName);
-    if (ownerWebsocket && ownerWebsocket.readyState === WebSocket.OPEN) {
-      try {
-        ownerWebsocket.send(JSON.stringify(tpaOwnerMessage));
-        this.logger.debug({ streamId, status, target: packageName }, 'Sent RTMP status to owning TPA');
-      } catch (e) {
-        this.logger.error({ e, streamId, target: packageName }, 'Error sending status to owning TPA');
+    // Send status to owning TPA using centralized messaging
+    try {
+      const result = await this.userSession.appManager.sendMessageToTpa(packageName, tpaOwnerMessage);
+      
+      if (result.sent) {
+        this.logger.debug({ 
+          streamId, 
+          status, 
+          target: packageName,
+          resurrectionTriggered: result.resurrectionTriggered
+        }, `Sent RTMP status to owning TPA ${packageName}${result.resurrectionTriggered ? ' after resurrection' : ''}`);
+      } else {
+        this.logger.warn({ 
+          streamId, 
+          status, 
+          target: packageName,
+          resurrectionTriggered: result.resurrectionTriggered,
+          error: result.error
+        }, `Failed to send RTMP status to owning TPA ${packageName}`);
       }
+    } catch (error) {
+      this.logger.error({ 
+        error: error instanceof Error ? error.message : String(error),
+        streamId, 
+        target: packageName 
+      }, `Error sending RTMP status to owning TPA ${packageName}`);
     }
 
     // Broadcast DataStream to other subscribed TPAs
