@@ -26,7 +26,6 @@ import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import ChevronRight from "assets/icons/component/ChevronRight"
-import ListHeaderInactiveApps from "../home/ListHeaderInactiveApps"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -36,6 +35,7 @@ import {Spacer} from "./Spacer"
 import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
 import { TreeIcon } from "assets/icons/component/TreeIcon"
+import AppsHeader from "./AppsHeader"
 
 export default function InactiveAppList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {
@@ -563,7 +563,14 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
   return (
     <View>
       {renderOnboardingArrow()}
-      { !isSearchPage && <ListHeaderInactiveApps /> }
+      {
+        !isSearchPage && (
+          <AppsHeader
+            title="home:inactiveApps"
+            showSearchIcon={appStatus.filter(app => app.is_running).length === 0}
+          />
+        )
+      }
 
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app

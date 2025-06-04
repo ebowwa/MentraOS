@@ -6,7 +6,6 @@ import {NavigationProps} from "./types"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import EmptyAppsView from "../home/EmptyAppsView"
-import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
 import {colors, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -18,6 +17,7 @@ import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import { TruckIcon } from "assets/icons/component/TruckIcon"
 import { translate } from "@/i18n"
+import AppsHeader from "./AppsHeader"
 
 export default function AppsActiveList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
@@ -85,7 +85,11 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($headerContainer)}>
-          {runningApps.length > 0 && !isSearchPage ? <ListHeaderActiveApps /> : null}
+          {runningApps.length > 0 && 
+          !isSearchPage ? 
+          <AppsHeader title="home:activeApps"  showSearchIcon = {true}/> 
+          : null}
+        
         </View>
         <View style={themed($contentContainer)}>
           {runningApps.length > 0 ? (
