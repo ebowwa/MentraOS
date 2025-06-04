@@ -1,7 +1,8 @@
 import express, { Request, Response } from 'express';
-import { validateCoreToken } from '../middleware/supabaseMiddleware';
+import { validateTpaApiKey } from '../middleware/validateApiKey';
 import sessionService from '../services/core/session.service';
 import multiUserTpaService from '../services/core/multi-user-tpa.service';
+import appService from '../services/core/app.service';
 
 const router = express.Router();
 
@@ -11,13 +12,29 @@ const router = express.Router();
  * @access Private (requires core token)
  * @body { packageName: string, includeUserProfiles?: boolean }
  */
-router.post('/discover-users', validateCoreToken, async (req: Request, res: Response) => {
+router.post('/discover-users', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).email;
+    // Parse API key from Authorization header (Bearer token)
+    const authHeader = req.headers['authorization'];
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid Authorization header' });
+    }
+    const tpaApiKey = authHeader.replace('Bearer ', '').trim();
     const { packageName, includeUserProfiles = false } = req.body;
     if (!packageName) {
       return res.status(400).json({ error: 'packageName is required' });
     }
+    // Retrieve the app by packageName
+    const app = await appService.getApp(packageName);
+    if (!app) {
+      return res.status(401).json({ error: 'Invalid packageName' });
+    }
+    // Validate the API key
+    const isValid = await appService.validateApiKey(packageName, tpaApiKey, req.ip);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    const userId = app.developerId || 'unknown'; // fallback if developerId is not present
     // Find the user's active session
     const userSession = sessionService.getSessionByUserId(userId);
     if (!userSession) {

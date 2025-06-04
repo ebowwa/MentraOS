@@ -842,10 +842,10 @@ export class TpaSession {
     if (!this.config.augmentOSWebsocketUrl) {
       return undefined;
     }
-    return this.convertToHttps(this.config.augmentOSWebsocketUrl);
+    return TpaSession.convertToHttps(this.config.augmentOSWebsocketUrl);
   }
 
-  convertToHttps(rawUrl: string | undefined): string {
+  private static convertToHttps(rawUrl: string | undefined): string {
     if (!rawUrl) return '';
     // Remove ws:// or wss://
     let url = rawUrl.replace(/^wss?:\/\//, '');
@@ -1445,8 +1445,9 @@ export class TpaSession {
     }
     const url = `${domain}/api/tpa-communication/discover-users`;
     // Use the user's core token for authentication
-    const coreToken = this.config.apiKey; // This may need to be updated if you store the core token elsewhere
-    if (!coreToken) {
+    const tpaApiKey = this.config.apiKey; // This may need to be updated if you store the core token elsewhere
+
+    if (!tpaApiKey) {
       throw new Error('Core token (apiKey) is required for user discovery');
     }
     const body = {
@@ -1456,7 +1457,7 @@ export class TpaSession {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${coreToken}`,
+        'Authorization': `Bearer ${tpaApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(body)
