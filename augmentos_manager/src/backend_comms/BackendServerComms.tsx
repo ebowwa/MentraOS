@@ -5,6 +5,10 @@ import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 import {loadSetting} from '@/utils/SettingsHelper';
 import {SETTINGS_KEYS} from '@/consts';
 import {AppInterface} from '@/contexts/AppStatusProvider';
+import Toast from 'react-native-toast-message';
+import { translate } from '@/i18n';
+import { colors } from '@/theme';
+import { TruckIcon } from 'assets/icons/component/TruckIcon';
 
 interface Callback {
   onSuccess: (data: any) => void;
@@ -315,6 +319,7 @@ export default class BackendServerComms {
       const response = await axios(config);
       if (response.status === 200 && response.data) {
         console.log('App started successfully:', packageName);
+        showToast();
         return response.data;
       } else {
         throw new Error(`Bad response: ${response.statusText}`);
@@ -708,3 +713,14 @@ export default class BackendServerComms {
   }
 
 }
+function showToast() {
+  Toast.show({
+    type: "baseToast",
+    text1: translate("home:movedToActive"),
+    position: "bottom",
+    props: {
+      icon: <TruckIcon  color={colors.icon}/>,
+    },
+  })
+}
+

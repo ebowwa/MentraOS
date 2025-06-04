@@ -165,8 +165,9 @@ export default function Homepage() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header title={pageTitle} />
-
+      <Header
+        leftText={pageTitle}
+      />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
