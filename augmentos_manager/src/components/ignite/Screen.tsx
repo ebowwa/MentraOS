@@ -251,7 +251,7 @@ export function Screen(props: ScreenProps) {
   return (
     <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background}/*, $containerInsets*/]}>
       <LinearGradient
-        colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
+        colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFDB99", "#FFF5E6"]}
         style={{
           position: "absolute",
           left: 0,

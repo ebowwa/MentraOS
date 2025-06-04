@@ -30,6 +30,7 @@ import SunIcon from "assets/icons/component/SunIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import RouteButton from "../ui/RouteButton"
+import ActionButton from "../ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function DeviceSettings() {
@@ -229,7 +230,7 @@ export default function DeviceSettings() {
           />
         </TouchableOpacity>
         {/* divider */}
-        <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />
+        <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
         <TouchableOpacity
           style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
           onPress={() => setMic("glasses")}>
@@ -254,23 +255,21 @@ export default function DeviceSettings() {
       />
 
       {status.glasses_info?.model_name && (
-        <View style={themed($settingsGroup)}>
-          <TouchableOpacity
-            style={{backgroundColor: "transparent", paddingVertical: 8}}
-            onPress={() => {
-              coreCommunicator.sendDisconnectWearable()
-            }}>
-            <Text style={{color: theme.colors.palette.accent100}}>{translate("settings:disconnectGlasses")}</Text>
-          </TouchableOpacity>
-        </View>
+        <ActionButton
+          label={translate("settings:disconnectGlasses")}
+          variant="destructive"
+          onPress={() => {
+            coreCommunicator.sendDisconnectWearable()
+          }}
+        />
       )}
 
       {status.core_info.default_wearable && (
-        <View style={themed($settingsGroup)}>
-          <TouchableOpacity style={{backgroundColor: "transparent", paddingVertical: 8}} onPress={confirmForgetGlasses}>
-            <Text style={{color: theme.colors.palette.angry500}}>{translate("settings:forgetGlasses")}</Text>
-          </TouchableOpacity>
-        </View>
+        <ActionButton
+          label={translate("settings:forgetGlasses")}
+          variant="destructive"
+          onPress={confirmForgetGlasses}
+        />
       )}
 
       <View style={{height: 30}}>{/* this just gives the user a bit more space to scroll */}</View>

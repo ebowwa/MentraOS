@@ -51,6 +51,9 @@ const en = {
     permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
     activateAnApp: "Activate an app",
     activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
+    search: "Search",
+    movedToActive: "Moved to Active",
+    movedToInactive: "Moved to Inactive"
   },
   glasses: {
     title: "Glasses",
@@ -114,6 +117,7 @@ const en = {
       confirmNewPassword: "Confirm your new password",
       updatePassword: "Update Password",
       requestDataExport: "Request Data Export",
+      requestDataExportMessage: "Would you like to receive a copy of your data via email?",
       deleteAccount: "Delete Account",
       errorGettingUserInfo: "Error getting user info.",
       dataExportTitle: "Data Export Requested",
@@ -161,6 +165,7 @@ const en = {
     readyForLaunch: "Your app, almost ready for launch!",
     exciting: "(ohh, this is exciting!)",
     letsGo: "Let's go!",
+    skipOnboarding: "Skip Onboarding"
   },
   errorScreen: {
     title: "Something went wrong!",

@@ -84,7 +84,9 @@ export default function SelectGlassesModelScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={goBack} />
+      <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={() => {
+          router.replace({ pathname: "/home" });
+        }} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {isOnboarding && (
           <View style={[styles.onboardingBanner, {backgroundColor: theme.colors.statusInfo, borderColor: theme.colors.buttonPrimary}]}>
@@ -92,7 +94,7 @@ export default function SelectGlassesModelScreen() {
 
             <Text
               style={{
-                color: theme.colors.icon,
+                color: "white",
                 fontWeight: "bold",
                 textAlign: "center",
                 fontSize: 16,

@@ -7,7 +7,7 @@ const palette = {
   neutral400: "#564E4A",
   neutral300: "#3C3836",
   neutral200: "#141434",
-  neutral100: "#000000",
+  neutral100: "#FFFFFF",
 
   primary600: "#F4E0D9",
   primary500: "#B0B9FF",
@@ -114,6 +114,7 @@ const palette = {
 
   // Warning background colors
   warningBackground: "rgba(254, 152, 235, 0.2)", // Light pink/magenta warning background with 20% opacity
+  warningPink: "#FE98EB", // Solid pink/magenta for destructive actions
 
   // Input border colors
   inputBorderHighlight: "#B0B9FF", // Light blue border for input fields
@@ -190,6 +191,7 @@ export const colors = {
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
+  destructiveAction: palette.warningPink, // Pink for destructive actions
   
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
@@ -214,6 +216,7 @@ export const colors = {
 
   // Warning background
   warningBackground: palette.warningBackground,
+  warningBackgroundDestructive: "rgba(254, 152, 235, 0.4)", // Pink warning background with 40% opacity
 
   // Input border highlight
   inputBorderHighlight: palette.inputBorderHighlight,

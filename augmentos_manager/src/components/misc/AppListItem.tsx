@@ -1,5 +1,5 @@
 import React from "react"
-import {View, Text, TouchableOpacity, ViewStyle, TextStyle} from "react-native"
+import {View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {colors, ThemedStyle} from "@/theme"
 import AppIcon from "./AppIcon"
@@ -22,31 +22,39 @@ interface AppListItemProps {
   onSettingsPress: () => void
   refProp?: React.Ref<any>
   is_foreground?: boolean
+  opacity?: Animated.AnimatedValue
+  isDisabled?: boolean
 }
 
-export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress}: AppListItemProps) => {
+export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, opacity, isDisabled}: AppListItemProps) => {
   const {themed, theme} = useAppTheme()
 
 
   return (
-    <View style={[themed($everything), themed($everythingFlexBox)]}>
+    <Animated.View style={[themed($everything), themed($everythingFlexBox), opacity ? { opacity } : {}]}>
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
-          <Text style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]} numberOfLines={1}>
+          <Text 
+            style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]} 
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
             {app.name}
           </Text>
-          {app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />}
+          {/*app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />*/}
         </View>
       </View>
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
-        <Switch value={isActive} onValueChange={onTogglePress} />
+        <View pointerEvents={isDisabled ? "none" : "auto"}>
+          <Switch value={isActive} onValueChange={onTogglePress} />
+        </View>
         <TouchableOpacity onPress={onSettingsPress} hitSlop={10}>
           <ChevronRight color={theme.colors.text} />
         </TouchableOpacity>
       </View>
-    </View>
+    </Animated.View>
   )
 }
 
@@ -74,6 +82,7 @@ const $everythingFlexBox: ThemedStyle<ViewStyle> = () => ({
 const $appDescription: ThemedStyle<ViewStyle> = () => ({
   gap: 17,
   justifyContent: "center",
+  flex: 1,
 })
 
 const $appIcon: ThemedStyle<ViewStyle> = () => ({
@@ -83,6 +92,8 @@ const $appIcon: ThemedStyle<ViewStyle> = () => ({
 
 const $appNameWrapper: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "center",
+  flex: 1,
+  marginRight: 16,
 })
 
 const $appName: ThemedStyle<TextStyle> = () => ({

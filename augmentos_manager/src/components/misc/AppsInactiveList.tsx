@@ -36,7 +36,7 @@ import {Spacer} from "./Spacer"
 import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
 
-export default function InactiveAppList() {
+export default function InactiveAppList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {
     appStatus,
     refreshAppStatus,
@@ -291,16 +291,17 @@ export default function InactiveAppList() {
         // neededPermissions.map(permission => ({text: permission})),
         [
           {
-            text: translate("common:ok"),
+            text: translate("common:cancel"),
+            style: "cancel",
+          },
+          {
+            text: translate("common:continue"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
               startApp(packageName)
             },
           },
-          {
-            text: translate("common:cancel"),
-            style: "cancel",
-          },
+          
         ],
         {
           iconName: "information-outline",
@@ -502,10 +503,32 @@ export default function InactiveAppList() {
   // alphabetically sort the available apps
   availableApps.sort((a, b) => a.name.localeCompare(b.name))
 
+  if (searchQuery) {
+    availableApps = availableApps.filter(app =>
+      app.name.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }
+
+  // Create a ref for all app opacities, keyed by packageName
+  const opacities = useRef<Record<string, Animated.Value>>(
+    Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)]))
+  ).current;
+
+  // Animate all availableApps' opacities to 1 on mount or change
+  useEffect(() => {
+    availableApps.forEach(app => {
+      Animated.timing(opacities[app.packageName], {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    });
+  }, [availableApps]);
+
   return (
     <View>
       {renderOnboardingArrow()}
-      <ListHeaderInactiveApps />
+      { !isSearchPage && <ListHeaderInactiveApps /> }
 
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app
@@ -524,15 +547,27 @@ export default function InactiveAppList() {
           }, 0)
         }
 
+        // Get the shared opacity Animated.Value for this app
+        const itemOpacity = opacities[app.packageName];
+
         return (
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
               is_foreground={app.is_foreground}
               isActive={false}
-              onTogglePress={() => startApp(app.packageName)}
+              onTogglePress={() => {
+                setTimeout(() => {
+                  Animated.timing(itemOpacity, {
+                    toValue: 0,
+                    duration: 450,
+                    useNativeDriver: true,
+                  }).start(() => startApp(app.packageName));
+                }, 100);
+              }}
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
+              opacity={itemOpacity}
             />
             {index < availableApps.length - 1 && (
               <>

@@ -15,6 +15,7 @@ import {Spacer} from "@/components/misc/Spacer"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import { translate } from "@/i18n"
 import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import { spacing } from "@/theme"
 
 export default function DeveloperSettingsScreen() {
   const {status} = useStatus()
@@ -168,7 +169,7 @@ export default function DeveloperSettingsScreen() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
 
-      <View style={[styles.warningContainer, { backgroundColor: theme.colors.warningBackground }]}>
+      <View style={[styles.warningContainer, { backgroundColor: theme.colors.warningBackgroundDestructive }]}>
         <View style={styles.warningContent}>
           <Icon name="alert" size={16} color={theme.colors.text} />
           <Text style={[styles.warningTitle, { color: theme.colors.text }]}>Warning</Text>
@@ -298,9 +299,9 @@ export default function DeveloperSettingsScreen() {
 
 const styles = StyleSheet.create({
   warningContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 24, // Match ToggleSetting borderRadius (spacing.lg)
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: spacing.sm,
   },
   warningContent: {
     flexDirection: "row",
@@ -317,9 +318,9 @@ const styles = StyleSheet.create({
     marginLeft: 22,
   },
   settingContainer: {
-    paddingVertical: 16,
-    paddingHorizontal: 24, // Match ToggleSetting padding (spacing.lg)
-    borderRadius: 24, // Match ToggleSetting borderRadius (spacing.lg)
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg, 
+    borderRadius: spacing.sm,
   },
   button: {
     flexShrink: 1,
