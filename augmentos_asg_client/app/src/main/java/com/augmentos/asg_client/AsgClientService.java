@@ -1200,7 +1200,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         // Start timeout tracking if streamId is provided
                         if (!streamId.isEmpty()) {
                             com.augmentos.asg_client.streaming.RtmpStreamingService.startStreamTimeout(streamId);
-                            Log.d(TAG, "Started timeout tracking for stream: " + streamId);
                         }
 
                         Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl);
@@ -1251,13 +1250,32 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String ackId = dataToProcess.optString("ackId", "");
 
                     if (!streamId.isEmpty() && !ackId.isEmpty()) {
-                        // Reset the timeout for this stream
-                        com.augmentos.asg_client.streaming.RtmpStreamingService.resetStreamTimeout(streamId);
-
-                        // Send ACK response back to cloud
-                        sendKeepAliveAck(streamId, ackId);
-
-                        Log.d(TAG, "Processed keep-alive for stream: " + streamId + ", ackId: " + ackId);
+                        // Try to reset the timeout for this stream
+                        boolean streamIdValid = com.augmentos.asg_client.streaming.RtmpStreamingService.resetStreamTimeout(streamId);
+                        
+                        if (streamIdValid) {
+                            // Send ACK response back to cloud
+                            sendKeepAliveAck(streamId, ackId);
+                            Log.d(TAG, "Processed keep-alive for stream: " + streamId + ", ackId: " + ackId);
+                        } else {
+                            // Unknown stream ID - kill current stream and request restart
+                            Log.e(TAG, "Received keep-alive for unknown stream ID: " + streamId + " - terminating current stream");
+                            com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
+                            
+                            // Send error status to cloud to request proper restart
+                            try {
+                                JSONObject errorStatus = new JSONObject();
+                                errorStatus.put("type", "rtmp_stream_status");
+                                errorStatus.put("status", "error");
+                                errorStatus.put("error", "Unknown stream ID - please send start_rtmp_stream command");
+                                errorStatus.put("receivedStreamId", streamId);
+                                String statusString = errorStatus.toString();
+                                sendBluetoothData(statusString.getBytes(StandardCharsets.UTF_8));
+                                Log.d(TAG, "Sent stream error status for unknown stream ID");
+                            } catch (JSONException e) {
+                                Log.e(TAG, "Error creating stream error status", e);
+                            }
+                        }
                     } else {
                         Log.w(TAG, "Keep-alive message missing streamId or ackId");
                     }
