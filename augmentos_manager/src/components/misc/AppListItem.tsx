@@ -26,14 +26,14 @@ interface AppListItemProps {
   isDisabled?: boolean
 }
 
-export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, opacity, isDisabled}: AppListItemProps) => {
+export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, opacity, isDisabled, is_foreground}: AppListItemProps) => {
   const {themed, theme} = useAppTheme()
 
 
   return (
     <Animated.View style={[themed($everything), themed($everythingFlexBox), opacity ? { opacity } : {}]}>
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
-        <AppIcon app={app} isForegroundApp={app.is_foreground} style={themed($appIcon)} />
+        <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text 
             style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]} 
@@ -42,7 +42,7 @@ export const AppListItem = ({app, isActive, onTogglePress, onSettingsPress, opac
           >
             {app.name}
           </Text>
-          {/*app.is_foreground && <Tag isActive={isActive} isForeground={app.is_foreground} />*/}
+          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
         </View>
       </View>
 
@@ -114,15 +114,21 @@ const $toggleParent: ThemedStyle<ViewStyle> = () => ({
 const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
   const {themed} = useAppTheme()
   const mColor = isActive ? "#7674FB" : "#CECED0"
+  if(isForeground){
+    return (
+        <View style={themed($tag)}>
+          <TreeIcon size={16} color={mColor}/>
+          <Text style={[themed($disconnect), {color: mColor}]} numberOfLines={1}>
+            {isForeground ? translate("home:foreground") : ""}
+          </Text>
+        </View>
+      )
+  }else {
 
-  return (
-    <View style={themed($tag)}>
-      {isForeground ?? <TreeIcon size={16} color={mColor} />}
-      <Text style={[themed($disconnect), {color: mColor}]} numberOfLines={1}>
-        {isForeground ? translate("home:foreground") : ""}
-      </Text>
-    </View>
-  )
+    return;
+  }
+
+  
 }
 
 const $tag: ThemedStyle<ViewStyle> = () => ({
