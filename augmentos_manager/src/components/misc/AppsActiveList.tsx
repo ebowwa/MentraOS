@@ -37,6 +37,9 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
     Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)]))
   ).current;
 
+  const containerHeight = useRef(new Animated.Value(0)).current;
+  const previousCount = useRef(0);
+
   useEffect(() => {
     Object.entries(opacities).forEach(([packageName, opacity]) => {
       const appIsRunning = appStatus.find(a => a.packageName === packageName)?.is_running
@@ -49,6 +52,18 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
       }
     })
   }, [appStatus])
+
+  useEffect(() => {
+    const newCount = runningApps.length;
+    if (newCount !== previousCount.current) {
+      Animated.timing(containerHeight, {
+        toValue: newCount * 88, // estimate item + spacing height
+        duration: 400,
+        useNativeDriver: false,
+      }).start();
+      previousCount.current = newCount;
+    }
+  }, [runningApps.length]);
 
   const stopApp = async (packageName: string) => {
     console.log("STOP APP")
@@ -91,7 +106,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
           : null}
         
         </View>
-        <View style={themed($contentContainer)}>
+        <Animated.View style={[themed($contentContainer), { height: containerHeight }]}>
           {runningApps.length > 0 ? (
             <>
               {runningApps.map((app, index) => {
@@ -136,7 +151,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
               />
             </>
           ) : null}
-        </View>
+        </Animated.View>
       </View>
     )
   }
@@ -165,4 +180,3 @@ function showToast() {
     },
   })
 }
-
