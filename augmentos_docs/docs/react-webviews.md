@@ -458,7 +458,7 @@ const Content = () => {
 
 ## Next Steps
 
-- **[Webview Authentication Overview](webview-auth-overview)**: Learn about the broader authentication system
-- **[Settings](settings)**: Add user-configurable options to your webview
-- **[Tools](tools)**: Integrate with Mira AI for natural language interactions
-- **[Core Concepts](core-concepts)**: Understand the full AugmentOS ecosystem
+- **[Webview Authentication Overview](/webview-auth-overview)**: Learn about the broader authentication system
+- **[Settings](/settings)**: Add user-configurable options to your webview
+- **[Tools](/tools)**: Integrate with Mira AI for natural language interactions
+- **[Core Concepts](/core-concepts)**: Understand the full AugmentOS ecosystem
