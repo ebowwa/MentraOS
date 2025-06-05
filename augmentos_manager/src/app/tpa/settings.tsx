@@ -436,7 +436,7 @@ export default function AppSettings() {
   }
 
   return (
-    <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="auto" safeAreaEdges={[]} style={{paddingHorizontal: theme.spacing.md}}>
       {isUninstalling && <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} />}
 
       <View>
@@ -444,6 +444,28 @@ export default function AppSettings() {
           title="" 
           leftIcon="caretLeft" 
           onLeftPress={() => router.back()}
+          RightActionComponent={serverAppInfo?.webviewURL ? (
+            <TouchableOpacity
+              style={{ marginRight: 8 }}
+              onPress={() => {
+                router.replace({
+                  pathname: "/tpa/webview",
+                  params: {
+                    webviewURL: serverAppInfo.webviewURL,
+                    appName: appName as string,
+                    packageName: packageName as string,
+                    fromSettings: "true"
+                  }
+                })
+              }}
+            >
+              <FontAwesome
+                name="globe"
+                size={22}
+                color={theme.colors.text}
+              />
+            </TouchableOpacity>
+          ) : undefined}
         />
         <Animated.View 
           style={{ 
