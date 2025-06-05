@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, Alert, AppState } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { checkNotificationAccessSpecialPermission } from '../utils/NotificationServiceUtils';
-import { checkFeaturePermissions, PermissionFeatures } from '../logic/PermissionsUtils';
-import { showAlert } from '../utils/AlertUtils';
+import { checkNotificationAccessSpecialPermission } from '@/utils/NotificationServiceUtils';
+import { checkFeaturePermissions, PermissionFeatures } from '@/utils/PermissionsUtils';
+import { showAlert } from '@/utils/AlertUtils';
 import { useRoute } from '@react-navigation/native';
 import { router } from 'expo-router';
 
@@ -29,8 +29,6 @@ const Header: React.FC<HeaderProps> = ({ isDarkTheme, navigation }) => {
         const hasNotificationPermission = await checkNotificationAccessSpecialPermission();
         setHasNotificationListenerPermission(hasNotificationPermission);
       } else {
-        // const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
-        // setHasNotificationListenerPermission(hasNotificationPermission);
         // TODO: ios (there's no way to get the notification permission on ios so just set to true to disable the warning)
         setHasNotificationListenerPermission(true);
       }
