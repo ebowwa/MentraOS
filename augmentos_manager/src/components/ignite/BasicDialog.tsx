@@ -5,6 +5,8 @@ import {SafeAreaView} from "react-native-safe-area-context";
 import { Spacer } from "../misc/Spacer";
 import { spacing } from "@/theme";
 import { PillButton } from "./PillButton";
+import { useAppTheme } from "@/utils/useAppTheme";
+import { color } from "react-native-elements/dist/helpers";
 interface BasicDialogProps {
   title: string;
   description?: string | React.ReactNode;
@@ -13,6 +15,7 @@ interface BasicDialogProps {
   rightButtonText: string;
   onLeftPress?: () => void;
   onRightPress: () => void;
+  
 }
 
 const BasicDialog = ({
@@ -24,13 +27,14 @@ const BasicDialog = ({
   onLeftPress,
   onRightPress
 }: BasicDialogProps) => {
+	const { theme: { isDark }, } = useAppTheme();
   return (
-    <View style={[styles.basicDialog, styles.basicDialogFlexBox]}>
+    <View style={[styles.basicDialog, styles.basicDialogFlexBox, { backgroundColor: isDark ? "#141834" : "white" }]}>
       <View style={[styles.titleDescription, styles.basicDialogFlexBox]}>
         {icon}
-        {title && <Text style={[styles.headline, styles.labelTypo1]}>{title}</Text>}
+        {title && <Text style={[styles.headline, styles.labelTypo1, {color: isDark ? "#d5d8f5": "black"}]}>{title}</Text>}
         {description && (
-          <Text style={[styles.defaulttext, styles.labelTypo]}>
+          <Text style={[styles.labelTypo, {color: isDark ? "#d5d8f5": "black"} ]}>
             {description}
           </Text>
         )}
@@ -85,9 +89,6 @@ const styles = StyleSheet.create({
     		color: "#f9f8fe",
     		alignSelf: "stretch"
   	},
-  	defaulttext: {
-    		color: "#d5d8f5"
-  	},
   	oneForeground: {
     		color: "#abaaff"
   	},
@@ -133,7 +134,6 @@ const styles = StyleSheet.create({
     		elevation: 4,
     		shadowOpacity: 1,
     		borderRadius: 28,
-    		backgroundColor: "#141834",
     		width: "100%",
     		minWidth: "50%",
     		maxWidth: "100%",

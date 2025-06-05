@@ -49,7 +49,7 @@ function SwitchInput(props: SwitchInputProps) {
   } = props
 
   const {
-    theme: {colors},
+    theme: {colors, isDark},
     themed,
   } = useAppTheme()
 
@@ -98,7 +98,7 @@ function SwitchInput(props: SwitchInputProps) {
     if (on) {
       return [
         // $detailStyleOverride?.backgroundColor,
-        "white",
+        isDark ? "white" :colors.palette.blue400,
         status === "error" && colors.error,
         disabled && colors.palette.neutral600,
         colors.palette.neutral100,
@@ -106,7 +106,7 @@ function SwitchInput(props: SwitchInputProps) {
     } else {
       return [
         // $innerStyleOverride?.backgroundColor,
-        "#d6d8f3",
+        "#D6D8F3",
         disabled && colors.palette.neutral600,
         status === "error" && colors.error,
         colors.palette.neutral200,
@@ -150,7 +150,7 @@ function SwitchInput(props: SwitchInputProps) {
       <View
         style={[
           $inputOuter,
-          {backgroundColor: on ? "blue": "#575e89"  },
+          {backgroundColor: "#575e89"  },
           $outerStyleOverride,
           // {transform: [{translateX: -12}]},
         ]}>
