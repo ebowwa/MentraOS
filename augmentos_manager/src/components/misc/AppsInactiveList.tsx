@@ -35,10 +35,20 @@ import {AppListItem} from "./AppListItem"
 import {Spacer} from "./Spacer"
 import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
-import { TreeIcon } from "assets/icons/component/TreeIcon"
+import {TreeIcon} from "assets/icons/component/TreeIcon"
 import AppsHeader from "./AppsHeader"
+import {
+  checkAndRequestNotificationAccessSpecialPermission,
+  checkNotificationAccessSpecialPermission,
+} from "@/utils/NotificationServiceUtils"
 
-export default function InactiveAppList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
+export default function InactiveAppList({
+  isSearchPage = false,
+  searchQuery,
+}: {
+  isSearchPage?: boolean
+  searchQuery?: string
+}) {
   const {
     appStatus,
     refreshAppStatus,
@@ -209,6 +219,10 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
       ] as TPAPermission[]
     }
 
+    if (app.packageName == "cloud.augmentos.notify") {
+      permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
+    }
+
     for (const permission of permissions) {
       if (!(permission["required"] ?? true)) {
         continue
@@ -234,7 +248,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
           break
         case "NOTIFICATIONS":
           const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
-          if (!hasNotifications && Platform.OS !== "ios") {
+          if (!hasNotifications) {
             neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
           }
           break
@@ -242,6 +256,15 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
           const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
           if (!hasLocation) {
             neededPermissions.push(PermissionFeatures.LOCATION)
+          }
+          break
+        case "READ_NOTIFICATIONS":
+          if (Platform.OS == "ios") {
+            break
+          }
+          const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
+          if (!hasNotificationAccess) {
+            neededPermissions.push(PermissionFeatures.READ_NOTIFICATIONS)
           }
           break
       }
@@ -254,19 +277,23 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     for (const permission of permissions) {
       await requestFeaturePermissions(permission)
     }
+
+    if (permissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+      await checkAndRequestNotificationAccessSpecialPermission()
+    }
   }
 
   function checkIsForegroundAppStart(packageName: string, isForeground: boolean): Promise<boolean> {
-    if(!isForeground){
+    if (!isForeground) {
       return Promise.resolve(true)
     }
 
-  const runningStndAppList = getRunningStandardApps(packageName)
+    const runningStndAppList = getRunningStandardApps(packageName)
     if (runningStndAppList.length === 0) {
       return Promise.resolve(true)
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       showAlert(
         translate("home:thereCanOnlyBeOne"),
         translate("home:thereCanOnlyBeOneMessage"),
@@ -281,8 +308,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
             onPress: () => resolve(true),
           },
         ],
-        { icon: <TreeIcon size={24}/> }
-
+        {icon: <TreeIcon size={24} />},
       )
     })
   }
@@ -309,7 +335,6 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
       console.error("App not found:", packageName)
       return
     }
-    
 
     // check perms:
     const neededPermissions = await checkPermissions(appToStart)
@@ -334,7 +359,6 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
               startApp(packageName)
             },
           },
-          
         ],
         {
           iconName: "information-outline",
@@ -350,7 +374,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
     if (appToStart?.tpaType === "standard") {
       console.log("% appToStart", appToStart)
       // Find any running standard apps
-      const runningStandardApps = getRunningStandardApps(packageName);
+      const runningStandardApps = getRunningStandardApps(packageName)
 
       console.log("%%% runningStandardApps", runningStandardApps)
 
@@ -410,9 +434,7 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(
-      app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName
-    )
+    return appStatus.filter(app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -540,15 +562,13 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
   availableApps.sort((a, b) => a.name.localeCompare(b.name))
 
   if (searchQuery) {
-    availableApps = availableApps.filter(app =>
-      app.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    availableApps = availableApps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
   }
 
   // Create a ref for all app opacities, keyed by packageName
   const opacities = useRef<Record<string, Animated.Value>>(
-    Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)]))
-  ).current;
+    Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
+  ).current
 
   // Animate all availableApps' opacities to 1 on mount or change
   useEffect(() => {
@@ -558,21 +578,16 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
         duration: 300,
         easing: Easing.in(Easing.ease),
         useNativeDriver: true,
-      }).start();
-    });
-  }, [availableApps]);
+      }).start()
+    })
+  }, [availableApps])
 
   return (
     <View>
       {renderOnboardingArrow()}
-      {
-        !isSearchPage && (
-          <AppsHeader
-            title="home:inactiveApps"
-            showSearchIcon={appStatus.filter(app => app.is_running).length === 0}
-          />
-        )
-      }
+      {!isSearchPage && (
+        <AppsHeader title="home:inactiveApps" showSearchIcon={appStatus.filter(app => app.is_running).length === 0} />
+      )}
 
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app
@@ -592,27 +607,26 @@ export default function InactiveAppList({ isSearchPage = false, searchQuery }: {
         }
 
         // Get the shared opacity Animated.Value for this app
-        const itemOpacity = opacities[app.packageName];
+        const itemOpacity = opacities[app.packageName]
 
         return (
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              is_foreground={app.tpaType ==  "standard"}
+              is_foreground={app.tpaType == "standard"}
               isActive={false}
               onTogglePress={async () => {
-                const res = await checkIsForegroundAppStart(app.packageName,app.tpaType ==  "standard")
-                if(res){
+                const res = await checkIsForegroundAppStart(app.packageName, app.tpaType == "standard")
+                if (res) {
                   setTimeout(() => {
                     Animated.timing(itemOpacity, {
                       toValue: 0,
                       duration: 300,
                       easing: Easing.out(Easing.ease),
                       useNativeDriver: true,
-                    }).start(() => startApp(app.packageName));
-                  }, 200);
+                    }).start(() => startApp(app.packageName))
+                  }, 200)
                 }
-                
               }}
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
