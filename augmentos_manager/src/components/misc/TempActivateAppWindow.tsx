@@ -29,7 +29,7 @@ const TempActivateAppWindow = () => {
   if (!visible || !shouldShow) return null
 
   return (
-    <View style={{marginTop: 16}}>
+    <View>
       <View style={themed($tempWindow)}>
         <View style={themed($appNameParent)}>
           <Text style={[themed($appName), themed($appFlexBox)]} numberOfLines={1}>

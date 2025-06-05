@@ -191,9 +191,11 @@ export default function Homepage() {
         <Divider variant="full" />
         <Spacer height={theme.spacing.md} />
 
-        <AppsActiveList />
-        <Spacer height={spacing.xl} />
-        <AppsInactiveList key={`apps-list-${appStatus.length}`} />
+        <View>
+          <AppsActiveList />
+          <Spacer height={spacing.xl} />
+          <AppsInactiveList key={`apps-list-${appStatus.length}`} />
+        </View>
       </ScrollView>
     </Screen>
   )
