@@ -81,13 +81,14 @@ const styles = StyleSheet.create({
     container: {
         width: 50,
         height: 50,
-        borderRadius: 12,
+        borderRadius: 25, // Half of width/height for perfect circle
         overflow: 'hidden',
     },
     icon: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
+        borderRadius: 25, // Also make the image circular
     },
     appName: {
         marginTop: 5,

@@ -64,7 +64,7 @@ export default function Homepage() {
   // Get local version from env file
   const getLocalVersion = () => {
     try {
-      const version = Constants.expoConfig?.extra?.EXPO_PUBLIC_AUGMENTOS_VERSION
+      const version = Constants.expoConfig?.version
       console.log("Local version from env:", version)
       return version || null
     } catch (error) {

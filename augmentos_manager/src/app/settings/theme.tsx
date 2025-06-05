@@ -8,19 +8,20 @@ import {translate} from "@/i18n"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {router} from "expo-router"
+import { type ThemeType } from "@/utils/useAppTheme"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
-  const [selectedTheme, setSelectedTheme] = useState<"light" | "dark" | "system">("system")
+  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("system")
 
   useEffect(() => {
     // Load saved theme preference
     loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
-      setSelectedTheme(savedTheme as "light" | "dark" | "system")
+      setSelectedTheme(savedTheme as ThemeType)
     })
   }, [])
 
-  const handleThemeChange = async (newTheme: "light" | "dark" | "system") => {
+  const handleThemeChange = async (newTheme: ThemeType) => {
     setSelectedTheme(newTheme)
     await saveSetting(SETTINGS_KEYS.THEME_PREFERENCE, newTheme)
 
@@ -33,7 +34,7 @@ export default function ThemeSettingsPage() {
   }
 
   const renderThemeOption = (
-    themeKey: "light" | "dark" | "system",
+    themeKey: ThemeType,
     label: string,
     subtitle?: string,
     isLast: boolean = false,

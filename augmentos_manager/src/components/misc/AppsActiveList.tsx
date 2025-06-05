@@ -1,12 +1,11 @@
 import React, {useMemo, useState, useRef, useEffect} from "react"
-import {View, ScrollView, ViewStyle, TextStyle, Animated, Platform, ToastAndroid} from "react-native"
+import {View, ScrollView, ViewStyle, TextStyle, Animated, Platform, ToastAndroid, Easing} from "react-native"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import {useNavigation} from "@react-navigation/native"
 import {NavigationProps} from "./types"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import EmptyAppsView from "../home/EmptyAppsView"
-import ListHeaderActiveApps from "@/components/home/ListHeaderActiveApps"
 import {colors, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -18,6 +17,7 @@ import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
 import { TruckIcon } from "assets/icons/component/TruckIcon"
 import { translate } from "@/i18n"
+import AppsHeader from "./AppsHeader"
 
 export default function AppsActiveList({ isSearchPage = false, searchQuery }: { isSearchPage?: boolean; searchQuery?: string }) {
   const {appStatus, refreshAppStatus, optimisticallyStopApp, clearPendingOperation} = useAppStatus()
@@ -37,18 +37,37 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
     Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)]))
   ).current;
 
+  const containerHeight = useRef(new Animated.Value(0)).current;
+  const previousCount = useRef(0);
+
   useEffect(() => {
-    Object.entries(opacities).forEach(([packageName, opacity]) => {
-      const appIsRunning = appStatus.find(a => a.packageName === packageName)?.is_running
-      if (appIsRunning) {
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 400,
-          useNativeDriver: true,
-        }).start()
+    appStatus.forEach(app => {
+      if (!(app.packageName in opacities)) {
+        opacities[app.packageName] = new Animated.Value(0);
       }
-    })
-  }, [appStatus])
+
+      if (app.is_running) {
+        Animated.timing(opacities[app.packageName], {
+          toValue: 1,
+          duration: 300,
+          easing: Easing.in(Easing.ease),
+          useNativeDriver: true,
+        }).start();
+      }
+    });
+  }, [appStatus]);
+
+  useEffect(() => {
+    const newCount = runningApps.length;
+    if (newCount !== previousCount.current) {
+      Animated.timing(containerHeight, {
+        toValue: newCount * 88, // estimate item + spacing height
+        duration: 300,
+        useNativeDriver: false,
+      }).start();
+      previousCount.current = newCount;
+    }
+  }, [runningApps.length]);
 
   const stopApp = async (packageName: string) => {
     console.log("STOP APP")
@@ -85,9 +104,13 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($headerContainer)}>
-          {runningApps.length > 0 && !isSearchPage ? <ListHeaderActiveApps /> : null}
+          {runningApps.length > 0 && 
+          !isSearchPage ? 
+          <AppsHeader title="home:activeApps"  showSearchIcon = {true}/> 
+          : null}
+        
         </View>
-        <View style={themed($contentContainer)}>
+        <Animated.View style={[themed($contentContainer), { height: containerHeight }]}>
           {runningApps.length > 0 ? (
             <>
               {runningApps.map((app, index) => {
@@ -96,17 +119,21 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
                   <React.Fragment key={app.packageName}>
                     <AppListItem
                       app={app}
-                      is_foreground={app.is_foreground}
+                      is_foreground={app.tpaType ==  "standard"}
                       isActive={true}
                       onTogglePress={() => {
-                        const pkg = app.packageName;
-                        stopApp(pkg).then(() => {
-                          Animated.timing(itemOpacity, {
+                        Animated.timing(itemOpacity, {
                             toValue: 0,
-                            duration: 450,
+                            duration: 300,
                             useNativeDriver: true,
                           }).start();
-                        });
+
+                        setTimeout(() => {
+                          const pkg = app.packageName;
+                          stopApp(pkg).then(() => {
+                        }); 
+                        }, 300);
+
                       }}
                       onSettingsPress={() => openAppSettings(app)}
                       opacity={itemOpacity}
@@ -132,7 +159,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
               />
             </>
           ) : null}
-        </View>
+        </Animated.View>
       </View>
     )
   }
@@ -161,4 +188,3 @@ function showToast() {
     },
   })
 }
-

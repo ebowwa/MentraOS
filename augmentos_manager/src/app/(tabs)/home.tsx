@@ -13,7 +13,7 @@ import CloudConnection from "@/components/misc/CloudConnection"
 import {loadSetting} from "@/utils/SettingsHelper"
 import SensingDisabledWarning from "@/components/misc/SensingDisabledWarning"
 import NonProdWarning from "@/components/misc/NonProdWarning"
-import {ThemedStyle} from "@/theme"
+import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/component/MicIcon"
 import NotificationOff from "assets/icons/component/NotificationOff"
@@ -57,7 +57,7 @@ export default function Homepage() {
   // Get local version from env file
   const getLocalVersion = () => {
     try {
-      const version = Constants.expoConfig?.extra?.EXPO_PUBLIC_AUGMENTOS_VERSION
+      const version = Constants.expoConfig?.version
       console.log("Local version from env:", version)
       return version || null
     } catch (error) {
@@ -192,6 +192,7 @@ export default function Homepage() {
         <Spacer height={theme.spacing.md} />
 
         <AppsActiveList />
+        <Spacer height={spacing.xl}/>
         <AppsInactiveList key={`apps-list-${appStatus.length}`} />
       </ScrollView>
     </Screen>

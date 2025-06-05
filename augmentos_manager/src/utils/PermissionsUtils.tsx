@@ -9,6 +9,7 @@ import { checkNotificationAccessSpecialPermission } from "../utils/NotificationS
 export const PermissionFeatures: Record<string, string> = {
   BASIC: 'basic',             // Basic permissions needed for the app to function
   NOTIFICATIONS: 'notifications',
+  READ_NOTIFICATIONS: 'read_notifications',
   CAMERA: 'camera',
   MICROPHONE: 'microphone',
   CALENDAR: 'calendar',
@@ -39,6 +40,15 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     critical: true, // App can't function without these
   },
   [PermissionFeatures.NOTIFICATIONS]: {
+    name: 'Notifications',
+    description: 'Allow AugmentOS to send you notifications',
+    ios: [],
+    android: typeof Platform.Version === 'number' && Platform.Version >= 33 ? 
+      [PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS] : 
+      [],
+    critical: false,
+  },
+  [PermissionFeatures.READ_NOTIFICATIONS]: {
     name: 'Notification Access',
     description: 'Allow AugmentOS to forward notifications to your glasses',
     ios: [], // iOS notification permission
@@ -452,7 +462,7 @@ export const requestFeaturePermissions = async (featureKey: string): Promise<boo
   }
   
   // For special case of Android notification access
-  if (featureKey === PermissionFeatures.NOTIFICATIONS && Platform.OS === 'android') {
+  if (featureKey === PermissionFeatures.READ_NOTIFICATIONS && Platform.OS === 'android') {
     const notificationAccess = await checkNotificationAccessSpecialPermission();
     if (!notificationAccess) {
       allGranted = false;
@@ -633,7 +643,7 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
   }
   
   // Special case for notifications on Android
-  if (featureKey === PermissionFeatures.NOTIFICATIONS && Platform.OS === 'android') {
+  if (featureKey === PermissionFeatures.READ_NOTIFICATIONS && Platform.OS === 'android') {
     return await checkNotificationAccessSpecialPermission();
   }
   
@@ -647,7 +657,7 @@ export const requestAugmentOSPermissions = async (): Promise<boolean> => {
   if (!hasBasicPermissions) return false;
   
   // Request notification permissions (important for app functionality)
-  const hasNotifications = await requestFeaturePermissions(PermissionFeatures.NOTIFICATIONS);
+  const hasNotifications = await requestFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS);
   if (!hasNotifications) {
     console.log('Notification permissions not granted. Some features may be limited.');
     // We continue even if notification permissions are denied
@@ -685,13 +695,4 @@ export const doesHaveAllPermissions = async (): Promise<boolean> => {
   
   // If we reach here, we have basic permissions or they've been requested already
   return true;
-};
-
-// For backwards compatibility
-export const getIOSPermissions = () => {
-  return []; // This should no longer be used
-};
-
-export const getAndroidPermissions = () => {
-  return []; // This should no longer be used
 };

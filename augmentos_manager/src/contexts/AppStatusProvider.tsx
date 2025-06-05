@@ -9,9 +9,10 @@ import { loadSetting } from "@/utils/SettingsHelper"
 import { SETTINGS_KEYS } from "@/consts"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 
+export type TPAPermissionType = "MICROPHONE" | "CAMERA" | "CALENDAR" | "NOTIFICATIONS" | "LOCATION" | "ALL" | "READ_NOTIFICATIONS"
 export interface TPAPermission {
   description: string
-  type: "MICROPHONE" | "CAMERA" | "CALENDAR" | "NOTIFICATIONS" | "LOCATION" | "ALL"
+  type: TPAPermissionType
   required?: boolean
 }
 
