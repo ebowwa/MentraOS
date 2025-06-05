@@ -678,7 +678,7 @@ const $inputLabel: ThemedStyle<TextStyle> = ({colors}) => ({
   marginBottom: 8,
 })
 
-const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
   flexDirection: "row",
   alignItems: "center",
   height: 48,
@@ -686,15 +686,17 @@ const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => (
   borderColor: colors.border,
   borderRadius: 8,
   paddingHorizontal: spacing.sm,
-  // backgroundColor: colors.card,
-  // shadowColor: colors.shadowColor,
-  shadowOffset: {
-    width: 0,
-    height: 1,
-  },
-  shadowOpacity: 0.1,
-  shadowRadius: 2,
-  elevation: 2,
+  backgroundColor: isDark ? colors.transparent : colors.background,
+  // Remove shadows for light theme
+  ...(isDark ? {
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  } : {}),
 })
 
 const $inputIcon: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -711,7 +713,7 @@ const $signInOptions: ThemedStyle<ViewStyle> = ({spacing}) => ({
   gap: spacing.xs,
 })
 
-const $socialButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $socialButton: ThemedStyle<ViewStyle> = ({colors, spacing, isDark}) => ({
   flexDirection: "row",
   alignItems: "center",
   height: 44,
@@ -720,17 +722,21 @@ const $socialButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: 8,
   paddingHorizontal: spacing.sm,
   marginBottom: spacing.xs,
-  shadowOffset: {
-    width: 0,
-    height: 1,
-  },
-  shadowOpacity: 0.1,
-  shadowRadius: 1,
-  elevation: 1,
+  backgroundColor: isDark ? colors.transparent : colors.background,
+  // Remove shadows for light theme to avoid thick border appearance
+  ...(isDark ? {
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
+    elevation: 1,
+  } : {}),
 })
 
-const $googleButton: ThemedStyle<ViewStyle> = ({colors}) => ({
-  // backgroundColor: colors.,
+const $googleButton: ThemedStyle<ViewStyle> = ({colors, isDark}) => ({
+  backgroundColor: isDark ? colors.transparent : colors.background,
 })
 
 const $appleButton: ThemedStyle<ViewStyle> = ({colors}) => ({

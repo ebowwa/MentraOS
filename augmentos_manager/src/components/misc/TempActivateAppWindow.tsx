@@ -3,30 +3,14 @@ import {Text, View, ViewStyle, TextStyle, TouchableOpacity} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {Icon} from "../ignite"
 import {translate} from "@/i18n"
-import {loadSetting} from "@/utils/SettingsHelper"
-import {SETTINGS_KEYS} from "@/consts"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useEffect} from "react"
 
 const TempActivateAppWindow = () => {
   const {themed, theme} = useAppTheme()
 
   const [visible, setVisible] = React.useState(true)
-  const [shouldShow, setShouldShow] = React.useState(false)
 
-  useEffect(() => {
-    const checkIfShouldShow = async () => {
-      const hasEverActivatedApp = await loadSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
-      // Only update state if we should actually show the window
-      if (!hasEverActivatedApp) {
-        setShouldShow(true)
-      }
-    }
-
-    checkIfShouldShow()
-  }, [])
-
-  if (!visible || !shouldShow) return null
+  if (!visible) return null
 
   return (
     <View>

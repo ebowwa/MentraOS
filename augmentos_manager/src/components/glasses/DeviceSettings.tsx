@@ -190,7 +190,7 @@ export default function DeviceSettings() {
       {/* Show helper text if glasses are paired but not connected */}
       {!status.glasses_info?.model_name && status.core_info.default_wearable && (
         <View style={themed($infoContainer)}>
-          <Text style={themed($infoText)}>Changes to glasses settings will take effect when glasses are connected</Text>
+          <Text style={themed($infoText)}>Changes to glasses settings will take effect when glasses are connected.</Text>
         </View>
       )}
 
