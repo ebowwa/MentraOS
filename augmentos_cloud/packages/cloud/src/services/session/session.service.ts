@@ -59,7 +59,7 @@ export class SessionService {
    * @param userId User ID
    * @returns User session
    */
-  async createSession(ws: WebSocket, userId: string): Promise<UserSession> {
+  async createSession(ws: WebSocket, userId: string): Promise<{ userSession: UserSession, reconnection: boolean }> {
     try {
       // Check if user already has an active session
       const existingSession = UserSession.getById(userId);
@@ -83,7 +83,7 @@ export class SessionService {
         // existingSession.heartbeatManager.updateHeartbeat();
 
         // Return the existing session
-        return existingSession;
+        return { userSession: existingSession, reconnection: true };
       }
 
       // Create a new session
@@ -92,6 +92,7 @@ export class SessionService {
       // Create new session with WebSocket
       const userSession = new UserSession(userId, ws);
 
+      // TODO(isaiah): Create a init method in UserSession to handle initialization logic.
       // Fetch installed apps
       try {
         const installedApps = await appService.getAllApps(userId);
@@ -107,7 +108,7 @@ export class SessionService {
       }
 
       // Return the new session
-      return userSession;
+      return { userSession: userSession, reconnection: false };
     } catch (error) {
       logger.error(`Error creating session for user ${userId}:`, error);
       throw error;

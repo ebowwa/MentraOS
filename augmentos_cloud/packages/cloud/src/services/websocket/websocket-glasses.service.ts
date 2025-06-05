@@ -101,19 +101,9 @@ export class GlassesWebSocketService {
         return;
       }
 
-      logger.info({ userId }, `Glasses WebSocket connection from user: ${userId}`);
-
       // Create or retrieve user session
-      const userSession = await sessionService.createSession(ws, userId);
-
-      // Handle connection initialization
-      this.handleConnectionInit(userSession);
-
-      // Track connection in analytics
-      PosthogService.trackEvent('glasses_connection', userId, {
-        sessionId: userSession.userId,
-        timestamp: new Date().toISOString()
-      });
+      const { userSession, reconnection } = await sessionService.createSession(ws, userId);
+      userSession.logger.info(`Glasses WebSocket connection from user: ${userId}`);
 
       // Handle incoming messages
       ws.on('message', async (data: WebSocket.Data, isBinary) => {
@@ -127,10 +117,19 @@ export class GlassesWebSocketService {
           // Parse text message
           const message = JSON.parse(data.toString()) as GlassesToCloudMessage;
 
+          if (message.type === GlassesToCloudMessageType.CONNECTION_INIT) {
+            // Handle connection initialization message
+            const connectionInitMessage = message as ConnectionInit;
+            userSession.logger.info(`Received connection init message from glasses: ${JSON.stringify(connectionInitMessage)}`);
+            // If this is a reconnection, we can skip the initialization logic
+              await this.handleConnectionInit(userSession, reconnection);
+            return;
+          }
+
           // Process the message
           await this.handleGlassesMessage(userSession, message);
         } catch (error) {
-          userSession.logger.error('Error processing glasses message:', error);
+          userSession.logger.error(error, 'Error processing glasses message:');
         }
       });
 
@@ -141,7 +140,16 @@ export class GlassesWebSocketService {
 
       // Handle connection errors
       ws.on('error', (error: Error) => {
-        userSession.logger.error('Glasses WebSocket error:', error);
+        userSession.logger.error(error, 'Glasses WebSocket error:');
+      });
+
+      // Handle connection initialization
+      this.handleConnectionInit(userSession, reconnection);
+
+      // Track connection in analytics
+      PosthogService.trackEvent('glasses_connection', userId, {
+        sessionId: userSession.userId,
+        timestamp: new Date().toISOString()
       });
     } catch (error) {
       logger.error(error, 'Error handling glasses connection');
@@ -181,9 +189,9 @@ export class GlassesWebSocketService {
 
       // Process message based on type
       switch (message.type) {
-        case GlassesToCloudMessageType.CONNECTION_INIT:
-          await this.handleConnectionInit(userSession);
-          break;
+        // case GlassesToCloudMessageType.CONNECTION_INIT:
+        //   await this.handleConnectionInit(userSession);
+        //   break;
 
         // Looks Good.
         case GlassesToCloudMessageType.START_APP:
@@ -263,29 +271,37 @@ export class GlassesWebSocketService {
    * 
    * @param userSession User session
    */
-  private async handleConnectionInit(userSession: UserSession): Promise<void> {
-    // Start all the apps that the user has running.
-    try {
-      // Start the dashboard app, but let's not add to the user's running apps since it's a system app.
-      // honestly there should be no annyomous users so if it's an anonymous user we should just not start the dashboard
-      await userSession.appManager.startApp(systemApps.dashboard.packageName);
-    }
-    catch (error) {
-      userSession.logger.error({ error }, `Error starting dashboard app`);
-    }
+  private async handleConnectionInit(userSession: UserSession, reconnection: boolean): Promise<void> {
+    if (!reconnection) {
+      // Start all the apps that the user has running.
+      try {
+        // Start the dashboard app, but let's not add to the user's running apps since it's a system app.
+        // honestly there should be no annyomous users so if it's an anonymous user we should just not start the dashboard
+        await userSession.appManager.startApp(systemApps.dashboard.packageName);
+      }
+      catch (error) {
+        userSession.logger.error({ error }, `Error starting dashboard app`);
+      }
 
-    // Start all the apps that the user has running.
-    try {
-      await userSession.appManager.startPreviouslyRunningApps();
-    }
-    catch (error) {
-      userSession.logger.error({ error }, `Error starting user apps`);
-    }
+      // Start all the apps that the user has running.
+      try {
+        await userSession.appManager.startPreviouslyRunningApps();
+      }
+      catch (error) {
+        userSession.logger.error({ error }, `Error starting user apps`);
+      }
 
-    // TODO(isaiah): Check if we really need to start the transcription service here.
-    // or if instead we should be checkig if the user has any media subscriptions and starting the transcription service if they do.
-    // Start transcription
-    transcriptionService.startTranscription(userSession);
+      // TODO(isaiah): Check if we really need to start the transcription service here.
+      // or if instead we should be checkig if the user has any media subscriptions and starting the transcription service if they do.
+      // Start transcription
+      transcriptionService.startTranscription(userSession);
+
+      // Track connection event.
+      PosthogService.trackEvent('connected', userSession.userId, {
+        sessionId: userSession.sessionId,
+        timestamp: new Date().toISOString()
+      });
+    }
 
     // const ackMessage: CloudConnectionAckMessage = {
     const ackMessage: ConnectionAck = {
@@ -296,12 +312,6 @@ export class GlassesWebSocketService {
     };
 
     userSession.websocket.send(JSON.stringify(ackMessage));
-
-    // Track connection event.
-    PosthogService.trackEvent('connected', userSession.userId, {
-      sessionId: userSession.sessionId,
-      timestamp: new Date().toISOString()
-    });
   }
 
 
