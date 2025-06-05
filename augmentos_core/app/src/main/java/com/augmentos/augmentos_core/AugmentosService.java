@@ -103,6 +103,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneMan
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.VpsCoordinatesEvent;
+
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
 
@@ -243,6 +245,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // Handler and Runnable for periodic datetime sending
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
+
+    private VpsCoordinatesEvent latestVpsCoordinates;
 
     public AugmentosService() {
     }
@@ -2302,6 +2306,40 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         ServerComms.getInstance().disconnectWebSocket();
         if (authHandler != null && authHandler.getCoreToken() != null) {
             ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
+        }
+    }
+
+    @Subscribe
+    public void onVpsCoordinatesEvent(VpsCoordinatesEvent event) {
+        Log.d(TAG, "Received VPS coordinates: " +
+                "deviceModel=" + event.deviceModel +
+                ", requestId=" + event.requestId +
+                ", x=" + event.x +
+                ", y=" + event.y +
+                ", z=" + event.z +
+                ", qx=" + event.qx +
+                ", qy=" + event.qy +
+                ", qz=" + event.qz +
+                ", qw=" + event.qw +
+                ", confidence=" + event.confidence);
+        latestVpsCoordinates = event;
+        try {
+            JSONObject vpsJson = new JSONObject();
+            vpsJson.put("type", "vps_coordinates");
+            vpsJson.put("deviceModel", event.deviceModel);
+            vpsJson.put("requestId", event.requestId);
+            vpsJson.put("x", event.x);
+            vpsJson.put("y", event.y);
+            vpsJson.put("z", event.z);
+            vpsJson.put("qx", event.qx);
+            vpsJson.put("qy", event.qy);
+            vpsJson.put("qz", event.qz);
+            vpsJson.put("qw", event.qw);
+            vpsJson.put("confidence", event.confidence);
+            vpsJson.put("timestamp", System.currentTimeMillis());
+            ServerComms.getInstance().sendVpsCoordinates(vpsJson);
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send VPS coordinates via websocket", e);
         }
     }
 }
