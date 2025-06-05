@@ -37,6 +37,14 @@ export default function AppSettings() {
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
   const insets = useSafeAreaInsets()
+  
+  // Animation values for collapsing header
+  const scrollY = useRef(new Animated.Value(0)).current
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 50, 100],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp',
+  })
   if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
     console.error("No packageName or appName found in params")
     return null
@@ -431,12 +439,49 @@ export default function AppSettings() {
     <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
       {isUninstalling && <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} />}
 
-      <Header title="" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <View>
+        <Header 
+          title="" 
+          leftIcon="caretLeft" 
+          onLeftPress={() => router.back()}
+        />
+        <Animated.View 
+          style={{ 
+            opacity: headerOpacity, 
+            position: 'absolute',
+            top: insets.top,
+            left: 0,
+            right: 0,
+            height: 56,
+            justifyContent: 'center',
+            alignItems: 'center',
+            pointerEvents: 'none',
+          }}
+        >
+          <Text 
+            style={{
+              fontSize: 17,
+              fontWeight: '600',
+              fontFamily: "SF Pro Rounded",
+              color: theme.colors.text,
+            }}
+            numberOfLines={1}
+            ellipsizeMode="tail"
+          >
+            {appInfo?.name || appName}
+          </Text>
+        </Animated.View>
+      </View>
 
-      <ScrollView 
+      <Animated.ScrollView 
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}>
+        showsVerticalScrollIndicator={false}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+        scrollEventThrottle={16}>
         <View style={{gap: theme.spacing.lg}}>
           {/* Combined App Info and Action Section */}
           <View style={themed($topSection)}>
@@ -548,7 +593,7 @@ export default function AppSettings() {
           {/* Bottom safe area padding */}
           <View style={{height: Math.max(40, insets.bottom + 20)}} />
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
     </Screen>
   )
 }
