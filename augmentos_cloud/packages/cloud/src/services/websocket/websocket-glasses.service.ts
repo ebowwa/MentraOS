@@ -482,6 +482,15 @@ export class GlassesWebSocketService {
       userSession.cleanupTimerId = setTimeout(() => {
         userSession.logger.info({ service: SERVICE_NAME }, `Cleanup grace period expired for user session: ${userSession.userId}`);
 
+        // Check to see if the session has reconnected / if the user is still active.
+        if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
+          userSession.logger.info({ service: SERVICE_NAME }, `User session ${userSession.userId} has reconnected, skipping cleanup.`);
+          clearTimeout(userSession.cleanupTimerId!);
+          userSession.cleanupTimerId = undefined;
+          return;
+        }
+
+        userSession.logger.info({ service: SERVICE_NAME }, `User session ${userSession.userId} has not reconnected, cleaning up session.`);
         // End the session
         sessionService.endSession(userSession);
       }, RECONNECT_GRACE_PERIOD_MS);
