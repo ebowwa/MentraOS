@@ -8,7 +8,6 @@ import {
   Image,
   ActivityIndicator,
   ScrollView,
-  Alert,
   ImageStyle,
   TextStyle,
   ViewStyle,
@@ -88,9 +87,8 @@ export default function ProfileSettingsPage() {
       translate("profileSettings:dataExportTitle"),
       translate("profileSettings:dataExportMessage"),
       [
-        { text: translate("common:cancel"), style: "cancel" },
         {
-          text: translate("common:yes"),
+          text: translate("common:ok"),
           onPress: async () => {
             try {
               console.log("Not implemented yet!!!");
@@ -108,21 +106,26 @@ export default function ProfileSettingsPage() {
 
   const handleDeleteAccount = () => {
     console.log("Deleting account")
-    Alert.alert(translate("profileSettings:deleteAccountTitle"), translate("profileSettings:deleteAccountMessage"), [
-      {text: translate("common:cancel"), style: "cancel"},
-      {
-        text: translate("common:delete"),
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await BackendServerComms.getInstance().requestAccountDeletion()
-          } catch (error) {
-            console.error(error)
-          }
-          await logout()
+    showAlert(
+      translate("profileSettings:deleteAccountTitle"), 
+      translate("profileSettings:deleteAccountMessage"), 
+      [
+        {text: translate("common:cancel"), style: "cancel"},
+        {
+          text: translate("common:delete"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await BackendServerComms.getInstance().requestAccountDeletion()
+            } catch (error) {
+              console.error(error)
+            }
+            await logout()
+          },
         },
-      },
-    ])
+      ],
+      { cancelable: false }
+    )
   }
 
   const {theme, themed} = useAppTheme()

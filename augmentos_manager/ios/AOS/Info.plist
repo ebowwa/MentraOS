@@ -61,6 +61,8 @@
     <array>
       <string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
     </array>
+    <key>NSUserNotificationUsageDescription</key>
+    <string>This app needs access to your notifications to provide you with notifications.</string>
     <key>UIBackgroundModes</key>
     <array>
       <string>bluetooth-central</string>

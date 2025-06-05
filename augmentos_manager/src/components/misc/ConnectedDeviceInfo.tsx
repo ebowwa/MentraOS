@@ -195,14 +195,18 @@ export function SplitDeviceInfo() {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
 
-  if (!status.glasses_info?.model_name) {
+  // Show image if we have either connected glasses or a default wearable
+  const wearable = status.glasses_info?.model_name || status.core_info.default_wearable
+  
+  if (!wearable) {
     return null
   }
 
-  let wearable = status.core_info.default_wearable
   let glassesImage = getGlassesImage(wearable)
   let caseImage = null
-  if (!status.glasses_info?.case_removed) {
+  
+  // Only show case image if glasses are actually connected (not just paired)
+  if (status.glasses_info?.model_name && !status.glasses_info?.case_removed) {
     if (status.glasses_info?.case_open) {
       caseImage = getGlassesOpenImage(wearable)
     } else {
@@ -211,9 +215,11 @@ export function SplitDeviceInfo() {
   }
 
   return (
-    <View style={{flexDirection: "row", alignItems: "center", gap: 10}}>
-      <Animated.Image source={glassesImage} style={[styles.glassesImage, {width: caseImage ? "50%" : "100%"}]} />
-      {caseImage && <Animated.Image source={caseImage} style={[styles.glassesImage, {width: "50%"}]} />}
+    <View style={styles.connectedContent}>
+      <View style={{flexDirection: "row", alignItems: "center", gap: 10}}>
+        <Animated.Image source={glassesImage} style={[styles.glassesImage, {width: caseImage ? "50%" : "80%"}]} />
+        {caseImage && <Animated.Image source={caseImage} style={[styles.glassesImage, {width: "50%"}]} />}
+      </View>
     </View>
   )
 }

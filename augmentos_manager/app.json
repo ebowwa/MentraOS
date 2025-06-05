@@ -36,6 +36,7 @@
         "NSLocationWhenInUseUsageDescription": "This app needs access to your location to provide you with locatioin based information.",
         "NSBluetoothPeripheralUsageDescription": "This app needs access to your Bluetooth to connect to your glasses.",
         "NSCalendarsFullAccessUsageDescription": "This app needs access to your calendar to provide you with calendar based information.",
+        "NSUserNotificationUsageDescription": "This app needs access to your notifications to provide you with notifications.",
         "UIBackgroundModes": ["bluetooth-central"]
       }
     },

@@ -215,6 +215,7 @@ export default function InactiveAppList({
         {type: "MICROPHONE", required: true},
         {type: "CALENDAR", required: true},
         {type: "NOTIFICATIONS", required: true},
+        {type: "READ_NOTIFICATIONS", required: true},
         {type: "LOCATION", required: true},
       ] as TPAPermission[]
     }
@@ -258,6 +259,12 @@ export default function InactiveAppList({
             neededPermissions.push(PermissionFeatures.LOCATION)
           }
           break
+          case "NOTIFICATIONS":
+            const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
+            if (!hasNotificationPermission) {
+              neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
+            }
+            break
         case "READ_NOTIFICATIONS":
           if (Platform.OS == "ios") {
             break
@@ -346,14 +353,9 @@ export default function InactiveAppList({
         translate("home:permissionMessage", {
           permissions: neededPermissions.join(", "),
         }),
-        // neededPermissions.map(permission => ({text: permission})),
         [
           {
-            text: translate("common:cancel"),
-            style: "cancel",
-          },
-          {
-            text: translate("common:continue"),
+            text: translate("common:next"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
               startApp(packageName)
