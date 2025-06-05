@@ -8,6 +8,7 @@ import {Button} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {showAlert} from "@/utils/AlertUtils"
 import {Spacer} from "./Spacer"
+import {GlassesFeatureList} from "@/components/glasses/GlassesFeatureList"
 
 // 2) Declare each guide component with the correct prop type
 export function EvenRealitiesG1PairingGuide() {
@@ -75,7 +76,7 @@ export function MentraLivePairingGuide() {
     <View style={styles.guideContainer}>
       <View style={{flex: 1, justifyContent: "space-between", flexDirection: "column"}}>
         {/* <ScrollView style={{}} nestedScrollEnabled={true}> */}
-        <Text style={[styles.guideTitle, {color: theme.colors.text}]}>Mentra Live [Beta]</Text>
+        <Text style={[styles.guideTitle, {color: theme.colors.text}]}>Mentra Live Beta</Text>
 
         {/* <Text style={[styles.guideStep, {color: theme.colors.text}]}>
         1. Make sure your Mentra Live is fully charged and turned on.
@@ -91,29 +92,9 @@ export function MentraLivePairingGuide() {
           // Fallback if image doesn't exist
           onError={e => console.log("Image failed to load")}
         />
-        {/* Feature highlights */}
-        <View style={styles.featuresContainer}>
-          <View style={[styles.featuresRow]}>
-            <View style={styles.featureItem}>
-              <FontAwesome name="camera" size={24} color={theme.colors.text} />
-              <Text style={[styles.featureText, {color: theme.colors.text}]}>Camera</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <FontAwesome name="microphone" size={24} color={theme.colors.text} />
-              <Text style={[styles.featureText, {color: theme.colors.text}]}>Microphone</Text>
-            </View>
-          </View>
-          <View style={[styles.featuresRow]}>
-            <View style={styles.featureItem}>
-              <FontAwesome name="volume-up" size={24} color={theme.colors.text} />
-              <Text style={[styles.featureText, {color: theme.colors.text}]}>Speakers</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <FontAwesome name="bluetooth" size={24} color={theme.colors.text} />
-              <Text style={[styles.featureText, {color: theme.colors.text}]}>Bluetooth</Text>
-            </View>
-          </View>
-        </View>
+        
+        {/* Feature list */}
+        <GlassesFeatureList glassesModel="Mentra Live" />
 
         {/* Marketing description */}
         <Text style={[styles.guideDescription, {color: theme.colors.text}]}>
