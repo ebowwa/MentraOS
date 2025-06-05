@@ -40,6 +40,8 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
   const containerHeight = useRef(new Animated.Value(0)).current;
   const previousCount = useRef(0);
 
+  const emptyViewOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     appStatus.forEach(app => {
       if (!(app.packageName in opacities)) {
@@ -65,6 +67,19 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
         duration: 300,
         useNativeDriver: false,
       }).start();
+      if (newCount === 0) {
+        Animated.timing(emptyViewOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      } else if (previousCount.current === 0 && newCount > 0) {
+        Animated.timing(emptyViewOpacity, {
+          toValue: 0,
+          duration: 400,
+          useNativeDriver: true,
+        }).start();
+      }
       previousCount.current = newCount;
     }
   }, [runningApps.length]);
@@ -151,13 +166,13 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
               })}
             </>
           ) : !isSearchPage ? (
-            <>
+            <Animated.View style={{ opacity: emptyViewOpacity }}>
               <TempActivateAppWindow />
               <EmptyAppsView
                 statusMessageKey={"home:noActiveApps"}
                 activeAppsMessageKey={"home:emptyActiveAppListInfo"}
               />
-            </>
+            </Animated.View>
           ) : null}
         </Animated.View>
       </View>
@@ -169,7 +184,7 @@ export default function AppsActiveList({ isSearchPage = false, searchQuery }: { 
 
 const $appsContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
-  minHeight: 72,
+  minHeight: 119,
 })
 
 const $headerContainer: ThemedStyle<ViewStyle> = () => ({
