@@ -9,21 +9,27 @@ type GroupTitleProps = {
 const GroupTitle: React.FC<GroupTitleProps> = ({title}) => {
   const {theme, themed} = useAppTheme()
   return (
-    <View style={[styles.container, {borderBottomColor: theme.colors.border}]}>
-      <Text style={[styles.title, {color: theme.colors.text}]}>{title}</Text>
+    <View style={[
+      styles.container, 
+      {
+        marginTop: theme.spacing.md,
+        marginBottom: theme.spacing.xs,
+        paddingHorizontal: theme.spacing.md,
+      }
+    ]}>
+      <Text style={[styles.title, {color: theme.colors.textDim}]}>{title}</Text>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 15,
     width: "100%",
-    borderBottomWidth: 1,
   },
   title: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "normal",
+    fontFamily: "Montserrat-Regular",
   },
 })
 

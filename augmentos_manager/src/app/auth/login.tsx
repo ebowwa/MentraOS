@@ -556,7 +556,7 @@ export default function LoginScreen() {
                         <FontAwesome
                           name="envelope"
                           size={16}
-                          color={theme.colors.icon}
+                          color={theme.colors.text}
                           // style={themed($emailIcon)}
                         />
                       )}
@@ -760,7 +760,7 @@ const $pressedButton: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.icon, // White text for buttons
+  color: colors.text,
   fontSize: 16,
   fontWeight: "bold",
 })

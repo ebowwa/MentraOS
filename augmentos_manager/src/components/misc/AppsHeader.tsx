@@ -1,34 +1,36 @@
-import {translate} from "@/i18n"
+import {translate, TxKeyPath} from "@/i18n"
 import {colors, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/component/SearchIcon"
+import { router } from "expo-router"
 import * as React from "react"
 import {Text, View, TextStyle, ViewStyle, Pressable} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"
 
-const ListHeaderInactiveApps = () => {
-  const {themed, theme} = useAppTheme()
+
+const AppsHeader = ({ showSearchIcon = true, title }: { showSearchIcon?: boolean, title: TxKeyPath }) => {  const {themed, theme} = useAppTheme()
 
   return (
-    <SafeAreaView style={themed($listHeaderIcon)}>
+    <View style={themed($listHeaderIcon)}>
       <View style={themed($tableHeader)}>
-        <Text style={themed($inactiveApps)}>{translate("home:inactiveApps")}</Text>
+        <Text style={themed($appsHeader)}>{translate(title)}</Text>
       </View>
-      <Pressable
-        style={themed($wrapper)}
-        onPress={() => {
-          //TODO implement search
-          console.log("SearchButton: Not implemented yet")
-        }}>
-        <SearchIcon color={theme.colors.text} />
-      </Pressable>
-    </SafeAreaView>
+      {showSearchIcon && (
+        <Pressable
+          style={themed($wrapper)}
+          onPress={() => {
+            router.push('/search/search');
+          }}>
+          <SearchIcon color={theme.colors.text} />
+        </Pressable>
+      )}
+    </View>
   )
 }
 
-export default ListHeaderInactiveApps
+export default AppsHeader
 
-const $inactiveApps: ThemedStyle<TextStyle> = ({colors}) => ({
+const $appsHeader: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   letterSpacing: 0.6,
   lineHeight: 20,

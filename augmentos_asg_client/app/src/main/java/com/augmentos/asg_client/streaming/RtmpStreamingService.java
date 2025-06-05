@@ -75,6 +75,12 @@ public class RtmpStreamingService extends Service {
     private static final float BACKOFF_MULTIPLIER = 1.5f;
     private Handler mReconnectHandler;
     private boolean mReconnecting = false;
+    
+    // Consecutive failure tracking to avoid interfering with library internal recovery
+    private int mConsecutiveFailures = 0;
+    private static final int MIN_CONSECUTIVE_FAILURES = 3; // Only take over after 3 consecutive failures
+    private long mLastFailureTime = 0;
+    private int mTotalFailures = 0; // Track total failures for debugging
 
     // Keep-alive timeout parameters
     private Timer mRtmpStreamTimeoutTimer;
@@ -82,6 +88,9 @@ public class RtmpStreamingService extends Service {
     private boolean mIsStreamingActive = false;
     private static final long STREAM_TIMEOUT_MS = 60000; // 60 seconds timeout
     private Handler mTimeoutHandler;
+    
+    // Notification management
+    private boolean mHasShownReconnectingNotification = false;
     
     // Stream state management
     private enum StreamState {
@@ -92,6 +101,10 @@ public class RtmpStreamingService extends Service {
     }
     private volatile StreamState mStreamState = StreamState.IDLE;
     private final Object mStateLock = new Object();
+    
+    // Stream duration tracking
+    private long mStreamStartTime = 0;
+    private long mLastReconnectionTime = 0;
 
     public class LocalBinder extends Binder {
         public RtmpStreamingService getService() {
@@ -230,6 +243,31 @@ public class RtmpStreamingService extends Service {
             manager.notify(NOTIFICATION_ID, createNotification());
         }
     }
+    
+    private void updateNotificationIfImportant() {
+        // Only update notifications for important state changes:
+        // - Stream starting/stopping
+        // - First reconnection attempt (not subsequent ones)
+        boolean shouldUpdate = false;
+        
+        if (mStreamState == StreamState.STREAMING && !mReconnecting) {
+            // Stream successfully started/resumed
+            shouldUpdate = true;
+            mHasShownReconnectingNotification = false; // Reset for next time
+        } else if (mStreamState == StreamState.IDLE && !mReconnecting) {
+            // Stream stopped
+            shouldUpdate = true;
+            mHasShownReconnectingNotification = false; // Reset for next time
+        } else if (mReconnecting && !mHasShownReconnectingNotification) {
+            // First reconnection attempt only
+            shouldUpdate = true;
+            mHasShownReconnectingNotification = true;
+        }
+        
+        if (shouldUpdate) {
+            updateNotification();
+        }
+    }
 
     /**
      * Creates a SurfaceTexture and Surface for the camera preview
@@ -304,11 +342,19 @@ public class RtmpStreamingService extends Service {
                         public void onError(StreamPackError error) {
                             Log.e(TAG, "Streaming error: " + error.getMessage());
                             EventBus.getDefault().post(new StreamingEvent.Error("Streaming error: " + error.getMessage()));
-                            if (sStatusCallback != null) {
-                                sStatusCallback.onStreamError("Streaming error: " + error.getMessage());
+                            
+                            // Classify the error to determine if we should retry or fail immediately
+                            if (isRetryableError(error)) {
+                                Log.d(TAG, "Retryable error - scheduling reconnection");
+                                scheduleReconnect("stream_error");
+                            } else {
+                                Log.e(TAG, "Fatal error - sending immediate error status");
+                                if (sStatusCallback != null) {
+                                    sStatusCallback.onStreamError("Fatal streaming error: " + error.getMessage());
+                                }
+                                // Stop streaming immediately for fatal errors
+                                stopStreaming();
                             }
-                            // Don't stop streaming on errors - let the reconnect logic handle it
-                            scheduleReconnect("stream_error");
                         }
                     },
                     new OnConnectionListener() {
@@ -317,25 +363,75 @@ public class RtmpStreamingService extends Service {
                             Log.i(TAG, "RTMP connection successful");
                             // Reset reconnect attempts when we get a successful connection
                             mReconnectAttempts = 0;
+                            boolean wasReconnecting = mReconnecting;
                             mReconnecting = false;
-                            updateNotification();
+                            updateNotificationIfImportant();
                             EventBus.getDefault().post(new StreamingEvent.Connected());
+                            
+                            // Only send streaming status for initial connections, not reconnections
+                            // Reconnections will be handled by the startStream continuation callback
+                            if (!wasReconnecting && sStatusCallback != null) {
+                                sStatusCallback.onStreamStarted(mRtmpUrl);
+                            }
                         }
 
                         @Override
                         public void onFailed(String message) {
+                            // Calculate and log stream duration if this was during active streaming
+                            long currentTime = System.currentTimeMillis();
+                            if (mStreamStartTime > 0 && mStreamState == StreamState.STREAMING) {
+                                long streamDuration = currentTime - mStreamStartTime;
+                                Log.e(TAG, "🔴 STREAM FAILED after " + formatDuration(streamDuration) + " of streaming");
+                            }
+                            mLastReconnectionTime = currentTime;
+                            
                             Log.e(TAG, "RTMP connection failed: " + message);
                             EventBus.getDefault().post(new StreamingEvent.ConnectionFailed(message));
-                            // Schedule reconnect on connection failure
-                            scheduleReconnect("connection_failed");
+                            
+                            // Give the StreamPack library time to recover internally before we take over
+                            // The library often recovers from brief network hiccups in 17-100ms
+                            Log.d(TAG, "Waiting 1 second for library internal recovery before external reconnection");
+                            mReconnectHandler.postDelayed(() -> {
+                                synchronized (mStateLock) {
+                                    // Only schedule our reconnection if the library didn't recover on its own
+                                    if (mStreamState != StreamState.STREAMING && !mIsStreaming) {
+                                        Log.d(TAG, "Library did not recover internally, proceeding with external reconnection");
+                                        scheduleReconnect("connection_failed");
+                                    } else {
+                                        Log.d(TAG, "Library recovered internally, canceling external reconnection");
+                                    }
+                                }
+                            }, 1000); // Wait 1 second for library internal recovery
                         }
 
                         @Override
                         public void onLost(String message) {
+                            // Calculate and log stream duration
+                            long currentTime = System.currentTimeMillis();
+                            if (mStreamStartTime > 0) {
+                                long streamDuration = currentTime - mStreamStartTime;
+                                Log.e(TAG, "🔴 STREAM DISCONNECTED after " + formatDuration(streamDuration) + " of streaming");
+                                Log.e(TAG, "🔴 Stream started at: " + new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date(mStreamStartTime)));
+                                Log.e(TAG, "🔴 Stream lost at: " + new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date(currentTime)));
+                            }
+                            mLastReconnectionTime = currentTime;
+                            
                             Log.i(TAG, "RTMP connection lost: " + message);
                             EventBus.getDefault().post(new StreamingEvent.Disconnected());
-                            // Schedule reconnect on connection loss
-                            scheduleReconnect("connection_lost");
+                            
+                            // Give the StreamPack library time to recover internally before we take over
+                            Log.d(TAG, "Waiting 1 second for library internal recovery before external reconnection");
+                            mReconnectHandler.postDelayed(() -> {
+                                synchronized (mStateLock) {
+                                    // Only schedule our reconnection if the library didn't recover on its own
+                                    if (mStreamState != StreamState.STREAMING && !mIsStreaming) {
+                                        Log.d(TAG, "Library did not recover internally, proceeding with external reconnection");
+                                        scheduleReconnect("connection_lost");
+                                    } else {
+                                        Log.d(TAG, "Library recovered internally, canceling external reconnection");
+                                    }
+                                }
+                            }, 1000); // Wait 1 second for library internal recovery
                         }
                     }
             );
@@ -541,14 +637,23 @@ public class RtmpStreamingService extends Service {
                         } else {
                             mStreamState = StreamState.STREAMING;
                             mIsStreaming = true;
-                            updateNotification();
+                            updateNotificationIfImportant();
+                            
+                            // Track stream timing
+                            long currentTime = System.currentTimeMillis();
                             if (mReconnecting) {
+                                // Calculate downtime during reconnection
+                                long downtime = mLastReconnectionTime > 0 ? currentTime - mLastReconnectionTime : 0;
+                                Log.e(TAG, "🟢 STREAM RECONNECTED after " + formatDuration(downtime) + " downtime");
                                 Log.i(TAG, "Successfully reconnected to " + mRtmpUrl);
                                 if (sStatusCallback != null) {
                                     sStatusCallback.onReconnected(mRtmpUrl, mReconnectAttempts);
                                 }
                                 mReconnecting = false;
                             } else {
+                                // Fresh stream start
+                                mStreamStartTime = currentTime;
+                                Log.e(TAG, "🟢 STREAM STARTED at " + new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date(currentTime)));
                                 Log.i(TAG, "Streaming started to " + mRtmpUrl);
                                 if (sStatusCallback != null) {
                                     sStatusCallback.onStreamStarted(mRtmpUrl);
@@ -668,10 +773,14 @@ public class RtmpStreamingService extends Service {
             mIsStreaming = false;
             mIsStreamingActive = false;
             mCurrentStreamId = null;
+            
+            // Reset stream timing
+            mStreamStartTime = 0;
+            mLastReconnectionTime = 0;
         }
         
         // Notify listeners
-        updateNotification();
+        updateNotificationIfImportant();
         if (sStatusCallback != null) {
             sStatusCallback.onStreamStopped();
         }
@@ -690,6 +799,7 @@ public class RtmpStreamingService extends Service {
             Log.w(TAG, "Maximum reconnection attempts reached, giving up.");
             EventBus.getDefault().post(new StreamingEvent.Error("Maximum reconnection attempts reached"));
             if (sStatusCallback != null) {
+                // Only use onReconnectFailed to avoid duplicate error messages
                 sStatusCallback.onReconnectFailed(MAX_RECONNECT_ATTEMPTS);
             }
 
@@ -715,7 +825,7 @@ public class RtmpStreamingService extends Service {
         }
 
         mReconnecting = true;
-        updateNotification();
+        updateNotificationIfImportant();
 
         // Schedule the reconnection
         mReconnectHandler.postDelayed(() -> {
@@ -816,8 +926,6 @@ public class RtmpStreamingService extends Service {
 
         mCurrentStreamId = streamId;
         mIsStreamingActive = true;
-
-        Log.d(TAG, "Scheduling stream timeout for streamId: " + streamId + " (" + STREAM_TIMEOUT_MS + "ms)");
 
         mRtmpStreamTimeoutTimer = new Timer("RtmpStreamTimeout-" + streamId);
         mRtmpStreamTimeoutTimer.schedule(new TimerTask() {
@@ -944,23 +1052,88 @@ public class RtmpStreamingService extends Service {
     public static void startStreamTimeout(String streamId) {
         if (sInstance != null) {
             sInstance.scheduleStreamTimeout(streamId);
+        } else {
+            Log.e(TAG, "Cannot start timeout tracking, sInstance is null");
         }
     }
 
     /**
      * Reset timeout for a stream (static convenience method)
      * @param streamId The stream ID that sent keep-alive
+     * @return true if stream ID was valid and timeout was reset, false if unknown stream ID
      */
-    public static void resetStreamTimeout(String streamId) {
+    public static boolean resetStreamTimeout(String streamId) {
         if (sInstance != null) {
             if (sInstance.mCurrentStreamId != null && sInstance.mCurrentStreamId.equals(streamId) && sInstance.mIsStreamingActive) {
                 Log.d(TAG, "Resetting stream timeout for streamId: " + streamId);
                 sInstance.scheduleStreamTimeout(streamId); // Reschedule with fresh timeout
+                return true;
             } else {
                 Log.w(TAG, "Received keep-alive for unknown or inactive stream: " + streamId +
                       " (current: " + sInstance.mCurrentStreamId + ", active: " + sInstance.mIsStreamingActive + ")");
+                return false;
             }
         }
+        return false;
+    }
+
+    /**
+     * Determine if an error is retryable (network/connection) or fatal (config/permission)
+     * @param error The StreamPackError to classify
+     * @return true if the error should trigger reconnection attempts, false if it's fatal
+     */
+    private boolean isRetryableError(StreamPackError error) {
+        String message = error.getMessage();
+        if (message == null) {
+            // Unknown error, default to retry
+            return true;
+        }
+        
+        // Log the error for debugging
+        Log.d(TAG, "Classifying error: " + message);
+        
+        // Network/connection errors that should trigger reconnection
+        if (message.contains("SocketException") ||
+            message.contains("Connection") ||
+            message.contains("Timeout") ||
+            message.contains("Network") ||
+            message.contains("UnknownHostException") ||
+            message.contains("IOException") ||
+            message.contains("ECONNREFUSED") ||
+            message.contains("ETIMEDOUT")) {
+            Log.d(TAG, "Error classified as RETRYABLE (network issue)");
+            return true;
+        }
+        
+        // Fatal errors that shouldn't retry
+        if (message.contains("Permission") ||
+            message.contains("permission") ||
+            message.contains("Invalid URL") ||
+            message.contains("invalid url") ||
+            message.contains("Authentication") ||
+            message.contains("authentication") ||
+            message.contains("Unauthorized") ||
+            message.contains("Codec") ||
+            message.contains("codec") ||
+            message.contains("Not supported") ||
+            message.contains("Illegal") ||
+            message.contains("Invalid parameter")) {
+            Log.d(TAG, "Error classified as FATAL (configuration/permission issue)");
+            return false;
+        }
+        
+        // Camera-specific errors that are usually fatal
+        if (message.contains("Camera") && 
+            (message.contains("busy") || 
+             message.contains("in use") || 
+             message.contains("failed to connect"))) {
+            Log.d(TAG, "Error classified as FATAL (camera unavailable)");
+            return false;
+        }
+        
+        // Default to retry for unknown errors
+        Log.d(TAG, "Error classified as RETRYABLE (unknown error, defaulting to retry)");
+        return true;
     }
 
     /**
@@ -1023,5 +1196,29 @@ public class RtmpStreamingService extends Service {
      */
     public static String getCurrentStreamId() {
         return sInstance != null ? sInstance.mCurrentStreamId : null;
+    }
+    
+    /**
+     * Format duration in milliseconds to human-readable format
+     * @param durationMs Duration in milliseconds
+     * @return Formatted duration string (e.g., "5m 23s", "1h 15m 30s")
+     */
+    private static String formatDuration(long durationMs) {
+        if (durationMs < 0) return "0s";
+        
+        long seconds = durationMs / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        
+        seconds = seconds % 60;
+        minutes = minutes % 60;
+        
+        if (hours > 0) {
+            return String.format("%dh %dm %ds", hours, minutes, seconds);
+        } else if (minutes > 0) {
+            return String.format("%dm %ds", minutes, seconds);
+        } else {
+            return String.format("%ds", seconds);
+        }
     }
 }

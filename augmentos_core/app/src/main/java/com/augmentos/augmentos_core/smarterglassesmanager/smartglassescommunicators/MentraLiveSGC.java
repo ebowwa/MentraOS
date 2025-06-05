@@ -1142,20 +1142,16 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         String type = json.optString("type", "");
         
         switch (type) {
-            case "rtmp_status":
+            case "rtmp_stream_status":
                 // Process RTMP streaming status update from ASG client
                 Log.d(TAG, "Received RTMP status update from glasses: " + json.toString());
-                
-                try {
-                    // Convert rtmp_status to rtmp_stream_status for cloud compatibility
-                    JSONObject rtmpStatusMsg = new JSONObject(json.toString());
-                    rtmpStatusMsg.put("type", "rtmp_stream_status");
-                    
-                    // Forward via EventBus for cloud communication (consistent with battery/WiFi)
-                    EventBus.getDefault().post(new RtmpStreamStatusEvent(rtmpStatusMsg));
-                } catch (JSONException e) {
-                    Log.e(TAG, "Error processing RTMP status update", e);
-                }
+
+                // Convert rtmp_status to rtmp_stream_status for cloud compatibility
+                //JSONObject rtmpStatusMsg = new JSONObject(json.toString());
+                //rtmpStatusMsg.put("type", "rtmp_stream_status");
+
+                // Forward via EventBus for cloud communication (consistent with battery/WiFi)
+                EventBus.getDefault().post(new RtmpStreamStatusEvent(json));
                 break;
                 
             case "battery_status":
@@ -1513,10 +1509,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     @Override
     public void requestRtmpStreamStart(JSONObject message) {
     //    try {
-            JSONObject json = new JSONObject();
+            JSONObject json = message;
+            json.remove("timestamp");
             //String rtmpUrl=json.getString("rtmpUrl");
             //Log.d(TAG, "Requesting RTMP stream to URL: " + rtmpUrl);
-            sendJson(message);
+            sendJson(json);
 //            json.put("type", "start_rtmp_stream");
 //            json.put("rtmpUrl", rtmpUrl);
 //

@@ -23,6 +23,7 @@ import {requestFeaturePermissions, PermissionFeatures} from "@/utils/Permissions
 import RNFS from "react-native-fs"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
+import { translate } from "@/i18n"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -163,7 +164,8 @@ export default function GlassesMirrorFullscreen() {
   // Handle exiting fullscreen mode
   const handleExitFullscreen = () => {
     StatusBar.setHidden(false)
-    router.back()
+    //router.back() commented bc it routing to home page. 
+    router.replace("/mirror")
   }
 
   // Toggle camera between front and back
@@ -308,6 +310,24 @@ export default function GlassesMirrorFullscreen() {
   // Request camera permission if not granted
   const handleRequestPermission = async () => {
     const result = await requestPermission()
+    if(!result.canAskAgain){
+      showAlert(
+                        translate("mirror:cameraPermissionRequired"),
+                        translate("mirror:cameraPermissionRequiredMessage"),
+                        [
+                          {
+                            text: translate("common:cancel"),
+                            style: "cancel",
+                          },
+                          {
+                            text: translate("mirror:openSettings"),
+                            onPress: () => Linking.openSettings(),
+                          },
+                          
+                        ],
+                      )
+    }
+
     return result.granted
   }
 
@@ -334,9 +354,11 @@ export default function GlassesMirrorFullscreen() {
           )}
 
           {/* Overlay the glasses display content */}
-          <View style={styles.fullscreenOverlay}>
-            <GlassesDisplayMirrorFullscreen layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
-          </View>
+          {permission?.granted && (
+            <View style={styles.fullscreenOverlay}>
+              <GlassesDisplayMirrorFullscreen layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
+            </View>
+          )}
 
           {/* Fullscreen exit button */}
           <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={handleExitFullscreen}>

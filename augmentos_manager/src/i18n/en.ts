@@ -29,6 +29,9 @@ const en = {
   },
   mirror: {
     title: "Glasses Mirror",
+    cameraPermissionRequired: "Camera Permission Required",
+    cameraPermissionRequiredMessage: "To open cameraview please give camera permission on the settings",
+    openSettings: "Open Settings",
   },
   home: {
     title: "Home",
@@ -51,6 +54,13 @@ const en = {
     permissionMessage: "Please grant the following permissions to continue: {{permissions}}",
     activateAnApp: "Activate an app",
     activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
+    search: "Search",
+    movedToActive: "Moved to Active",
+    movedToInactive: "Moved to Inactive",
+    foreground: "Foreground",
+    thereCanOnlyBeOne: "There Can Only Be One",
+    thereCanOnlyBeOneMessage: "You can only run one foreground app at a time.",
+
   },
   glasses: {
     title: "Glasses",
@@ -59,7 +69,7 @@ const en = {
     title: "Store",
   },
   settings: {
-    title: "Settings",
+    title: "Account",
     phoneHeadset: "Phone / Headset",
     glasses: "Glasses",
     bypassVAD: "Bypass VAD for Debugging",
@@ -101,26 +111,27 @@ const en = {
     reconnectOnAppForegroundSubtitle: "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
   },
   profileSettings: {
-      title: "Profile Settings",
-      noProfilePicture: "No profile picture available.",
-      name: "Name",
-      email: "Email",
-      createdAt: "Created At",
-      provider: "Provider",
-      changePassword: "Change Password",
-      newPassword: "New Password",
-      enterNewPassword: "Enter your new password",
-      confirmPassword: "Confirm Password",
-      confirmNewPassword: "Confirm your new password",
-      updatePassword: "Update Password",
-      requestDataExport: "Request Data Export",
-      deleteAccount: "Delete Account",
-      errorGettingUserInfo: "Error getting user info.",
-      dataExportTitle: "Data Export Requested",
-      dataExportMessage: "You will receive an email with your data export shortly.",
-      deleteAccountTitle: "Delete Account",
-      deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
-    },
+    title: "Profile Settings",
+    noProfilePicture: "No profile picture available.",
+    name: "Name",
+    email: "Email",
+    createdAt: "Created At",
+    provider: "Provider",
+    changePassword: "Change Password",
+    newPassword: "New Password",
+    enterNewPassword: "Enter your new password",
+    confirmPassword: "Confirm Password",
+    confirmNewPassword: "Confirm your new password",
+    updatePassword: "Update Password",
+    requestDataExport: "Request Data Export",
+    requestDataExportMessage: "Would you like to receive a copy of your data via email?",
+    deleteAccount: "Delete Account",
+    errorGettingUserInfo: "Error getting user info.",
+    dataExportTitle: "Data Export Requested",
+    dataExportMessage: "You will receive an email with your data export shortly.",
+    deleteAccountTitle: "Delete Account",
+    deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
+  },
   login: {
     title: "AugmentOS",
     subtitle: "The future of smart glasses starts here",
@@ -153,7 +164,7 @@ const en = {
     notAvailable: "Not Available",
     yes: "Yes",
     delete: "Delete",
-    continue:"Continue"
+    continue: "Continue"
   },
   welcomeScreen: {
     postscript:
@@ -161,6 +172,7 @@ const en = {
     readyForLaunch: "Your app, almost ready for launch!",
     exciting: "(ohh, this is exciting!)",
     letsGo: "Let's go!",
+    skipOnboarding: "Skip Onboarding"
   },
   errorScreen: {
     title: "Something went wrong!",
@@ -179,7 +191,7 @@ const en = {
   errors: {
     invalidEmail: "Invalid email address.",
   },
-  navigation:{
+  navigation: {
     home: "Home",
     glasses: "Glasses",
     mirror: "Mirror",

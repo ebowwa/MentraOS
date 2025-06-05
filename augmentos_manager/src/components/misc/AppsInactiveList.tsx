@@ -10,6 +10,7 @@ import {
   Platform,
   ViewStyle,
   ActivityIndicator,
+  Easing,
 } from "react-native"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -26,7 +27,6 @@ import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
 import ChevronRight from "assets/icons/component/ChevronRight"
-import ListHeaderInactiveApps from "../home/ListHeaderInactiveApps"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
@@ -35,8 +35,20 @@ import {AppListItem} from "./AppListItem"
 import {Spacer} from "./Spacer"
 import Divider from "./Divider"
 import {spacing, ThemedStyle} from "@/theme"
+import {TreeIcon} from "assets/icons/component/TreeIcon"
+import AppsHeader from "./AppsHeader"
+import {
+  checkAndRequestNotificationAccessSpecialPermission,
+  checkNotificationAccessSpecialPermission,
+} from "@/utils/NotificationServiceUtils"
 
-export default function InactiveAppList() {
+export default function InactiveAppList({
+  isSearchPage = false,
+  searchQuery,
+}: {
+  isSearchPage?: boolean
+  searchQuery?: string
+}) {
   const {
     appStatus,
     refreshAppStatus,
@@ -207,6 +219,10 @@ export default function InactiveAppList() {
       ] as TPAPermission[]
     }
 
+    if (app.packageName == "cloud.augmentos.notify") {
+      permissions.push({type: "READ_NOTIFICATIONS", required: true, description: "Read notifications"})
+    }
+
     for (const permission of permissions) {
       if (!(permission["required"] ?? true)) {
         continue
@@ -232,7 +248,7 @@ export default function InactiveAppList() {
           break
         case "NOTIFICATIONS":
           const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
-          if (!hasNotifications && Platform.OS !== "ios") {
+          if (!hasNotifications) {
             neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
           }
           break
@@ -240,6 +256,15 @@ export default function InactiveAppList() {
           const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
           if (!hasLocation) {
             neededPermissions.push(PermissionFeatures.LOCATION)
+          }
+          break
+        case "READ_NOTIFICATIONS":
+          if (Platform.OS == "ios") {
+            break
+          }
+          const hasNotificationAccess = await checkNotificationAccessSpecialPermission()
+          if (!hasNotificationAccess) {
+            neededPermissions.push(PermissionFeatures.READ_NOTIFICATIONS)
           }
           break
       }
@@ -252,8 +277,41 @@ export default function InactiveAppList() {
     for (const permission of permissions) {
       await requestFeaturePermissions(permission)
     }
+
+    if (permissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+      await checkAndRequestNotificationAccessSpecialPermission()
+    }
   }
 
+  function checkIsForegroundAppStart(packageName: string, isForeground: boolean): Promise<boolean> {
+    if (!isForeground) {
+      return Promise.resolve(true)
+    }
+
+    const runningStndAppList = getRunningStandardApps(packageName)
+    if (runningStndAppList.length === 0) {
+      return Promise.resolve(true)
+    }
+
+    return new Promise(resolve => {
+      showAlert(
+        translate("home:thereCanOnlyBeOne"),
+        translate("home:thereCanOnlyBeOneMessage"),
+        [
+          {
+            text: translate("common:cancel"),
+            onPress: () => resolve(false),
+            style: "cancel",
+          },
+          {
+            text: translate("common:continue"),
+            onPress: () => resolve(true),
+          },
+        ],
+        {icon: <TreeIcon size={24} />},
+      )
+    })
+  }
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
       if (packageName !== "com.augmentos.livecaptions" && packageName !== "cloud.augmentos.live-captions") {
@@ -291,15 +349,15 @@ export default function InactiveAppList() {
         // neededPermissions.map(permission => ({text: permission})),
         [
           {
-            text: translate("common:ok"),
+            text: translate("common:cancel"),
+            style: "cancel",
+          },
+          {
+            text: translate("common:continue"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
               startApp(packageName)
             },
-          },
-          {
-            text: translate("common:cancel"),
-            style: "cancel",
           },
         ],
         {
@@ -316,9 +374,7 @@ export default function InactiveAppList() {
     if (appToStart?.tpaType === "standard") {
       console.log("% appToStart", appToStart)
       // Find any running standard apps
-      const runningStandardApps = appStatus.filter(
-        app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName,
-      )
+      const runningStandardApps = getRunningStandardApps(packageName)
 
       console.log("%%% runningStandardApps", runningStandardApps)
 
@@ -377,6 +433,9 @@ export default function InactiveAppList() {
     }
   }
 
+  const getRunningStandardApps = (packageName: string) => {
+    return appStatus.filter(app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName)
+  }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
     router.push({
@@ -502,10 +561,33 @@ export default function InactiveAppList() {
   // alphabetically sort the available apps
   availableApps.sort((a, b) => a.name.localeCompare(b.name))
 
+  if (searchQuery) {
+    availableApps = availableApps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
+  }
+
+  // Create a ref for all app opacities, keyed by packageName
+  const opacities = useRef<Record<string, Animated.Value>>(
+    Object.fromEntries(appStatus.map(app => [app.packageName, new Animated.Value(0)])),
+  ).current
+
+  // Animate all availableApps' opacities to 1 on mount or change
+  useEffect(() => {
+    availableApps.forEach(app => {
+      Animated.timing(opacities[app.packageName], {
+        toValue: 1,
+        duration: 300,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }).start()
+    })
+  }, [availableApps])
+
   return (
     <View>
       {renderOnboardingArrow()}
-      <ListHeaderInactiveApps />
+      {!isSearchPage && (
+        <AppsHeader title="home:inactiveApps" showSearchIcon={appStatus.filter(app => app.is_running).length === 0} />
+      )}
 
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app
@@ -524,15 +606,31 @@ export default function InactiveAppList() {
           }, 0)
         }
 
+        // Get the shared opacity Animated.Value for this app
+        const itemOpacity = opacities[app.packageName]
+
         return (
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              is_foreground={app.is_foreground}
+              is_foreground={app.tpaType == "standard"}
               isActive={false}
-              onTogglePress={() => startApp(app.packageName)}
+              onTogglePress={async () => {
+                const res = await checkIsForegroundAppStart(app.packageName, app.tpaType == "standard")
+                if (res) {
+                  setTimeout(() => {
+                    Animated.timing(itemOpacity, {
+                      toValue: 0,
+                      duration: 300,
+                      easing: Easing.out(Easing.ease),
+                      useNativeDriver: true,
+                    }).start(() => startApp(app.packageName))
+                  }, 200)
+                }
+              }}
               onSettingsPress={() => openAppSettings(app)}
               refProp={ref}
+              opacity={itemOpacity}
             />
             {index < availableApps.length - 1 && (
               <>

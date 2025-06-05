@@ -30,6 +30,9 @@ export default function Layout() {
           themed($tabBar),
           {
             paddingBottom: bottom + 48,
+            // borderTopColor moved to View wrapping LinearGradient
+            borderTopWidth: 0,
+            backgroundColor: 'transparent',
           },
         ],
         tabBarActiveTintColor: theme.isDark ? "#FFFFFF" : theme.colors.text,
@@ -41,26 +44,39 @@ export default function Layout() {
         // animation: 'shift',
         // tabBarBackground: () => <View />,
         tabBarBackground: () => (
-          <LinearGradient
-            colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
+          <View
             style={{
               position: "absolute",
               left: 0,
               right: 0,
               top: 0,
               bottom: 0,
+              borderTopColor: theme.colors.separator,
+              borderTopWidth: 2,
+              overflow: "hidden",
             }}
-            start={{x: 0, y: 0}}
-            end={{x: 0, y: 2}}
-          />
+          >
+            <LinearGradient
+              colors={[theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+              }}
+              start={{x: 0, y: 0}}
+              end={{x: 0, y: 2}}
+            />
+          </View>
         ),
       }}>
       <Tabs.Screen
         name="home"
         options={{
-          href: "/home",
+          href: "/home",  
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : "#ABAAFF") : colors.textDim} />,
           tabBarLabel: translate("navigation:home"),
         }}
       />
@@ -69,7 +85,7 @@ export default function Layout() {
         options={{
           href: "/glasses",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <SolarLineIconsSet4 size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <SolarLineIconsSet4 size={28} color={focused ? (theme.isDark ? "#FFFFFF" : "#ABAAFF" ) : colors.textDim} />,
           tabBarLabel: translate("navigation:glasses"),
         }}
       />
@@ -78,7 +94,7 @@ export default function Layout() {
         options={{
           href: "/mirror",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <MirrorIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : "#ABAAFF" ) : colors.textDim} />,
           tabBarLabel: translate("navigation:mirror"),
         }}
       />
@@ -87,7 +103,7 @@ export default function Layout() {
         options={{
           href: "/store",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : "#ABAAFF" ) : colors.textDim} />,
           tabBarLabel: translate("navigation:store"),
         }}
       />
@@ -96,7 +112,7 @@ export default function Layout() {
         options={{
           href: "/settings",
           headerShown: false,
-          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : color) : colors.textDim} />,
+          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={focused ? (theme.isDark ? "#FFFFFF" : "#ABAAFF" ) : colors.textDim} />,
           tabBarLabel: translate("navigation:account"),
         }}
       />
@@ -106,7 +122,7 @@ export default function Layout() {
 
 const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
-  borderTopColor: "#3C3836",
+  borderTopColor: colors.separator,
   borderTopWidth: 1,
   paddingTop: 8,
   height: 64,
