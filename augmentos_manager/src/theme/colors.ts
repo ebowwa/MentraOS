@@ -8,13 +8,22 @@ const palette = {
   neutral700: "#3C3836",
   neutral800: "#191015",
   neutral900: "#000000",
-
+/*
   primary100: "#FEFAF8", // Much closer to white with subtle warm hint
   primary200: "#E8C1B4",
   primary300: "#DDA28E",
   primary400: "#D28468",
   primary500: "#C76542",
   primary600: "#A54F31",
+*/
+
+  primary100: "#DCDDE9",
+  primary200: "#BCC0D6",
+  primary300: "#9196B9",
+  primary400: "#626894",
+  primary500: "#41476E",
+  primary600: "#21476E",
+
 
   secondary100: "#DCDDE9",
   secondary200: "#BCC0D6",

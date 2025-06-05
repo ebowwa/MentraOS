@@ -57,7 +57,7 @@ export const AppListItem = ({ app, isActive, onTogglePress, onSettingsPress, opa
           >
             {app.name}
           </Text>
-          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
+          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} isDarkMode = {theme.isDark} />}
         </View>
       </View>
 
@@ -126,12 +126,14 @@ const $toggleParent: ThemedStyle<ViewStyle> = () => ({
 
 
 
-const Tag = ({ isActive, isForeground = false }: { isActive: boolean; isForeground?: boolean }) => {
+const Tag = ({ isActive, isForeground = false, isDarkMode }: { isActive: boolean, isForeground?: boolean, isDarkMode: boolean }) => {
   const { themed } = useAppTheme()
+  console.log("zxc isDark mode: ", isDarkMode);
   const mColor = isActive ? "#7674FB" : "#CECED0"
+  
   if (isForeground) {
     return (
-      <View style={themed(isActive ? $tagActive : $tag)}>
+      <View style={themed(isActive ? $tagActive({ isDarkMode }) : $tag)}>
         <TreeIcon size={16} color={mColor} />
         <Text style={[themed($disconnect), { color: mColor }]} numberOfLines={1}>
           {isForeground ? translate("home:foreground") : ""}
@@ -156,7 +158,7 @@ const Tag = ({ isActive, isForeground = false }: { isActive: boolean; isForegrou
 
 
 }
-const $tagActive: ThemedStyle<ViewStyle> = () => ({
+const $tagActive: ThemedStyle<ViewStyle> = ({ isDarkMode }) => ({
   borderRadius: 15,
   paddingHorizontal: 8,
   paddingVertical: 4,
@@ -165,7 +167,7 @@ const $tagActive: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
   gap: 4,
   height: 24,
-  backgroundColor: "navy",
+  backgroundColor: isDarkMode ? "navy" : "#E0E0E0",
   alignSelf: "flex-start",
 })
 
