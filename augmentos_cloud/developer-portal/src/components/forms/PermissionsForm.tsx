@@ -13,7 +13,7 @@ enum PermissionType {
   LOCATION = 'LOCATION',
   CALENDAR = 'CALENDAR',
   READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
-  NOTIFICATIONS = 'NOTIFICATIONS',
+  POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
   ALL = 'ALL'
 }
 
@@ -61,7 +61,7 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
         return 'Access to calendar events';
       case PermissionType.READ_NOTIFICATIONS:
         return 'Access to phones notifications';
-      case PermissionType.NOTIFICATIONS:
+      case PermissionType.POST_NOTIFICATIONS:
         return 'Send notifications to the phone';
       case PermissionType.ALL:
         return 'Access to all available permissions';

@@ -192,7 +192,7 @@ export default function Homepage() {
         <Spacer height={theme.spacing.md} />
 
         <AppsActiveList />
-        <Spacer height={spacing.xl}/>
+        <Spacer height={spacing.xl} />
         <AppsInactiveList key={`apps-list-${appStatus.length}`} />
       </ScrollView>
     </Screen>

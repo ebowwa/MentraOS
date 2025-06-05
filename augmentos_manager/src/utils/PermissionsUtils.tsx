@@ -8,7 +8,7 @@ import {checkNotificationAccessSpecialPermission} from "../utils/NotificationSer
 // Define permission features with their required permissions
 export const PermissionFeatures: Record<string, string> = {
   BASIC: "basic", // Basic permissions needed for the app to function
-  NOTIFICATIONS: "notifications",
+  POST_NOTIFICATIONS: "post_notifications",
   READ_NOTIFICATIONS: "read_notifications",
   CAMERA: "camera",
   MICROPHONE: "microphone",
@@ -39,10 +39,10 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
     android: [], // Will be set dynamically based on Android version, excluding Bluetooth which is handled in pairing flow
     critical: true, // App can't function without these
   },
-  [PermissionFeatures.NOTIFICATIONS]: {
+  [PermissionFeatures.POST_NOTIFICATIONS]: {
     name: "Notifications",
     description: "Allow AugmentOS to send you notifications",
-    ios: ["notifications"],
+    ios: ["post_notifications"],
     android:
       typeof Platform.Version === "number" && Platform.Version >= 33
         ? [PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS]
@@ -621,7 +621,7 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
   if (Platform.OS === "ios" && config.ios.length > 0) {
     for (const permission of config.ios) {
       try {
-        if (permission === "notifications") {
+        if (permission === "post_notifications" || permission === "notifications") {
           // const result = await checkNotifications();
           // if (result.status === RESULTS.GRANTED) {
           //   return true

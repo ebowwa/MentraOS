@@ -214,7 +214,7 @@ export default function InactiveAppList({
       permissions = [
         {type: "MICROPHONE", required: true},
         {type: "CALENDAR", required: true},
-        {type: "NOTIFICATIONS", required: true},
+        {type: "POST_NOTIFICATIONS", required: true},
         {type: "READ_NOTIFICATIONS", required: true},
         {type: "LOCATION", required: true},
       ] as TPAPermission[]
@@ -247,24 +247,18 @@ export default function InactiveAppList({
             neededPermissions.push(PermissionFeatures.CALENDAR)
           }
           break
-        case "NOTIFICATIONS":
-          const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
-          if (!hasNotifications) {
-            neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
-          }
-          break
         case "LOCATION":
           const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
           if (!hasLocation) {
             neededPermissions.push(PermissionFeatures.LOCATION)
           }
           break
-          case "NOTIFICATIONS":
-            const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
-            if (!hasNotificationPermission) {
-              neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
-            }
-            break
+        case "POST_NOTIFICATIONS":
+          const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.POST_NOTIFICATIONS)
+          if (!hasNotificationPermission) {
+            neededPermissions.push(PermissionFeatures.POST_NOTIFICATIONS)
+          }
+          break
         case "READ_NOTIFICATIONS":
           if (Platform.OS == "ios") {
             break
@@ -354,6 +348,11 @@ export default function InactiveAppList({
           permissions: neededPermissions.join(", "),
         }),
         [
+          {
+            text: translate("common:cancel"),
+            onPress: () => {},
+            style: "cancel",
+          },
           {
             text: translate("common:next"),
             onPress: async () => {
