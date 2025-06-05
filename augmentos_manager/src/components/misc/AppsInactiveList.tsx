@@ -355,11 +355,7 @@ export default function InactiveAppList({
         }),
         [
           {
-            text: translate("common:cancel"),
-            style: "cancel",
-          },
-          {
-            text: translate("common:continue"),
+            text: translate("common:next"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
               startApp(packageName)
