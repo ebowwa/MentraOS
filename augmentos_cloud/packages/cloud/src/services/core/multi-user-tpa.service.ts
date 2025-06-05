@@ -10,17 +10,14 @@ import { CloudToTpaMessageType, UserSession } from '@augmentos/sdk';
 import { 
   TpaBroadcastMessage, 
   TpaDirectMessage, 
-  TpaUserDiscovery,
   TpaRoomJoin,
   TpaRoomLeave
 } from '@augmentos/sdk/src/types/messages/tpa-to-cloud';
 import {
   TpaMessageReceived,
-  TpaUserList,
   TpaUserJoined,
   TpaUserLeft,
   TpaRoomUpdated,
-  TpaDirectMessageResponse
 } from '@augmentos/sdk/src/types/messages/cloud-to-tpa';
 import { logger as rootLogger } from '../logging';
 import sessionService from './session.service';
@@ -71,6 +68,7 @@ export class MultiUserTpaService {
    * Get all active users for a specific TPA package
    */
   getActiveTpaUsers(packageName: string): string[] {
+
     return Array.from(this.activeTpaSessions.get(packageName) || []);
   }
 
@@ -83,47 +81,46 @@ export class MultiUserTpaService {
   ): Promise<void> {
     const packageName = message.packageName;
     const activeUsers = this.getActiveTpaUsers(packageName);
+
+    // console.log("432activeUsers", activeUsers)
     
-    logger.info({
-      packageName,
-      senderUserId: message.senderUserId,
-      targetUserCount: activeUsers.length - 1, // Exclude sender
-      roomId: message.roomId
-    }, 'Broadcasting message to TPA users');
+    // logger.info({
+    //   packageName,
+    //   senderUserId: message.senderUserId,
+    //   targetUserCount: activeUsers.length - 1, // Exclude sender
+    // }, 'Broadcasting message to TPA users');
 
     let successCount = 0;
     
     for (const userId of activeUsers) {
+      // console.log("userId")
+      // console.log("senderSession.userId")
       // Skip sender
       if (userId === senderSession.userId) continue;
       
-      // If room-based messaging, check if user is in the room
-      if (message.roomId) {
-        const roomData = this.tpaRooms.get(message.roomId);
-        if (!roomData || !roomData.members.has(userId)) {
-          continue;
-        }
-      }
-      
       const targetSession = sessionService.getSessionByUserId(userId);
       if (!targetSession) continue;
+
+      // console.log("432432targetSession")
       
       const targetTpaConnection = targetSession.appConnections.get(packageName);
       if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
         continue;
       }
 
+      // console.log("432432targetTpaConnection")
+
       try {
         const receivedMessage: TpaMessageReceived = {
-          type: 'tpa_message_received' as any,
+          type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED,
           payload: message.payload,
           messageId: message.messageId,
           senderUserId: message.senderUserId,
           senderSessionId: message.sessionId,
-          messageType: 'broadcast',
-          roomId: message.roomId,
           timestamp: message.timestamp
         };
+
+        // console.log("@#$%^&*432432receivedMessage");
 
         targetTpaConnection.send(JSON.stringify(receivedMessage));
         successCount++;
@@ -134,11 +131,9 @@ export class MultiUserTpaService {
 
     // Store in message history
     this.addToMessageHistory(packageName, {
-      type: 'broadcast',
       messageId: message.messageId,
       senderUserId: message.senderUserId,
       payload: message.payload,
-      roomId: message.roomId,
       timestamp: message.timestamp,
       deliveredToCount: successCount
     });
@@ -190,7 +185,6 @@ export class MultiUserTpaService {
         messageId: message.messageId,
         senderUserId: message.senderUserId,
         senderSessionId: message.sessionId,
-        messageType: 'direct',
         timestamp: message.timestamp
       };
 
@@ -198,7 +192,6 @@ export class MultiUserTpaService {
 
       // Store in message history
       this.addToMessageHistory(message.packageName, {
-        type: 'direct',
         messageId: message.messageId,
         senderUserId: message.senderUserId,
         targetUserId: message.targetUserId,

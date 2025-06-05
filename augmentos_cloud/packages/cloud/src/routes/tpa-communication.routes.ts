@@ -34,21 +34,22 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid API key' });
     }
-    const userId = app.developerId || 'unknown'; // fallback if developerId is not present
+
+    const body = req.body as any;
+
+    const userId = body.userId as string;
+
+    // console.log('4324 userId', userId);
+
     // Find the user's active session
     const userSession = sessionService.getSessionByUserId(userId);
     if (!userSession) {
       return res.status(404).json({ error: 'No active session found for user' });
     }
-    // Build a discovery message object
-    const discoveryMessage = {
-      type: 'tpa_user_discovery',
-      packageName,
-      sessionId: userSession.sessionId + '-' + packageName,
-      includeUserProfiles,
-      requestId: `discovery_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      timestamp: new Date()
-    };
+
+    multiUserTpaService.addTpaUser(packageName, userId);
+
+    // console.log("users$#%#",  multiUserTpaService.getActiveTpaUsers(packageName))
     // Use the service to get the user list (adapted from websocket handler)
     const users = multiUserTpaService.getActiveTpaUsers(packageName)
       .filter((otherUserId: string) => otherUserId !== userId)

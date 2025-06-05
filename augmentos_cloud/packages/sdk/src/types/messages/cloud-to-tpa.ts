@@ -295,7 +295,6 @@ export interface TpaMessageReceived extends BaseMessage {
   messageId: string;
   senderUserId: string;
   senderSessionId: string;
-  messageType: 'broadcast' | 'direct';
   roomId?: string;
 }
 

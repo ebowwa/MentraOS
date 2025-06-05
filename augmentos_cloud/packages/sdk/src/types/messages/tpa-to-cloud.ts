@@ -142,7 +142,6 @@ export interface TpaBroadcastMessage extends BaseMessage {
   payload: any;
   messageId: string;
   senderUserId: string;
-  roomId?: string; // Optional room-based messaging
 }
 
 /**

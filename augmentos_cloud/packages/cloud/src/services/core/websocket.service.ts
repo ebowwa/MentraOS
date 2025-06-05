@@ -2084,10 +2084,13 @@ export class WebSocketService {
 
             // TPA-to-TPA Communication message handling
             case 'tpa_broadcast_message': {
+              console.log("tpa_broadcast_message", message)
               if (!userSession) {
                 ws.close(1008, 'No active session');
                 return;
               }
+
+              console.log("432432userSession")
 
               try {
                 const broadcastMessage = message as TpaBroadcastMessage;
@@ -2095,7 +2098,6 @@ export class WebSocketService {
                 userSession.logger.info({
                   packageName: broadcastMessage.packageName,
                   messageId: broadcastMessage.messageId,
-                  roomId: broadcastMessage.roomId
                 }, 'TPA broadcast message processed');
               } catch (error) {
                 userSession.logger.error(error, 'Error handling TPA broadcast message');
@@ -2163,7 +2165,6 @@ export class WebSocketService {
                 await multiUserTpaService.handleRoomJoin(userSession, roomJoinMessage);
                 userSession.logger.info({
                   packageName: roomJoinMessage.packageName,
-                  roomId: roomJoinMessage.roomId
                 }, 'TPA room join processed');
               } catch (error) {
                 userSession.logger.error(error, 'Error handling TPA room join');
@@ -2186,7 +2187,6 @@ export class WebSocketService {
                 await multiUserTpaService.handleRoomLeave(userSession, roomLeaveMessage);
                 userSession.logger.info({
                   packageName: roomLeaveMessage.packageName,
-                  roomId: roomLeaveMessage.roomId
                 }, 'TPA room leave processed');
               } catch (error) {
                 userSession.logger.error(error, 'Error handling TPA room leave');
