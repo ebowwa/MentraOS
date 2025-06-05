@@ -2311,17 +2311,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Subscribe
     public void onVpsCoordinatesEvent(VpsCoordinatesEvent event) {
-        Log.d(TAG, "Received VPS coordinates: " +
-                "deviceModel=" + event.deviceModel +
-                ", requestId=" + event.requestId +
-                ", x=" + event.x +
-                ", y=" + event.y +
-                ", z=" + event.z +
-                ", qx=" + event.qx +
-                ", qy=" + event.qy +
-                ", qz=" + event.qz +
-                ", qw=" + event.qw +
-                ", confidence=" + event.confidence);
+        Log.d(TAG, "Received VPS coordinates");
+
         latestVpsCoordinates = event;
         try {
             JSONObject vpsJson = new JSONObject();

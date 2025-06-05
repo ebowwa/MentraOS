@@ -2217,7 +2217,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             coordMsg.put("qz", qz);
                             coordMsg.put("qw", qw);
                             coordMsg.put("confidence", confidence);
+                            Log.e(TAG, "Sending VPS coordinates via BLE: " + coordMsg.toString());
                             if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                                Log.e(TAG, "!@#$ Sending VPS coordinates via BLE: ");
                                 bluetoothManager.sendData(coordMsg.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
                             }
                         } catch (Exception e) {
