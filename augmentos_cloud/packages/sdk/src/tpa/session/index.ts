@@ -1452,6 +1452,7 @@ export class TpaSession {
     }
     const body = {
       packageName: this.config.packageName,
+      userId: this.userId,
       includeUserProfiles: includeProfiles
     };
     const response = await fetch(url, {
@@ -1515,7 +1516,6 @@ export class TpaSession {
         payload,
         messageId,
         senderUserId: this.userId,
-        roomId,
         timestamp: new Date()
       };
       
