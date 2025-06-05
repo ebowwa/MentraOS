@@ -349,11 +349,7 @@ export default function InactiveAppList({
         // neededPermissions.map(permission => ({text: permission})),
         [
           {
-            text: translate("common:cancel"),
-            style: "cancel",
-          },
-          {
-            text: translate("common:continue"),
+            text: translate("common:next"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
               startApp(packageName)

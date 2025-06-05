@@ -5,7 +5,7 @@ const en = {
     glassesMic: "Glasses Microphone",
   },
   screenSettings: {
-    title: "Screen Settings",
+    title: "Display Position Settings",
   },
   pairing: {
     selectModel: "Select Model",
@@ -88,11 +88,11 @@ const en = {
     privacySettings: "Permissions and Privacy",
     dashboardSettings: "Dashboard Settings",
     dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
-    screenSettings: "Screen Settings",
-    screenDescription: "Adjust brightness, auto-brightness, and other display settings.",
+    screenSettings: "Display Position Settings",
+    screenDescription: "Adjust depth and height of the display content.",
     glassesWifiSettings: "Glasses WiFi Settings",
     glassesWifiDescription: "Configure WiFi settings for your smart glasses.",
-    wifiUnavailable: "WiFi configuration is only available for glasses that support WiFi connectivity.",
+    wifiUnavailable: "Connect a pair of glasses that support WiFi to access WiFi settings.",
     developerSettings: "Developer Settings",
     forgetGlasses: "Forget Glasses",
     disconnectGlasses: "Disconnect Glasses",
@@ -164,7 +164,8 @@ const en = {
     notAvailable: "Not Available",
     yes: "Yes",
     delete: "Delete",
-    continue: "Continue"
+    continue: "Continue",
+    next: "Next"
   },
   welcomeScreen: {
     postscript:
