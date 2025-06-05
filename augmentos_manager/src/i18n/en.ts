@@ -149,6 +149,8 @@ const en = {
     createAccount: "Create Account",
     login: "Login",
     connectingToAugmentOS: "Connecting to AugmentOS...",
+    userCanceledAppleLogin: "Apple sign-in was canceled.",
+    userCanceledGoogleLogin: "Google sign-in was canceled.",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",

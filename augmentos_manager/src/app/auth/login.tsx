@@ -18,7 +18,7 @@ import LinearGradient from "react-native-linear-gradient"
 import {supabase} from "@/supabase/supabaseClient"
 import {Linking} from "react-native"
 import {Screen, Text, Button, Icon} from "@/components/ignite"
-import {translate} from "@/i18n"
+import {translate, TxKeyPath} from "@/i18n"
 import {spacing, ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -31,6 +31,7 @@ import { Pressable } from "react-native-gesture-handler"
 import { Spacer } from "@/components/misc/Spacer"
 import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
 import * as WebBrowser from 'expo-web-browser';
+import Toast from "react-native-toast-message"
 
 export default function LoginScreen() {
   const [isSigningUp, setIsSigningUp] = useState(false)
@@ -232,6 +233,13 @@ export default function LoginScreen() {
     console.log("signInWithOAuth call finished")
   }
 
+  const showToastMessage = (txPath: TxKeyPath) => {
+    Toast.show({
+      type: "error",
+      text1: translate(txPath),
+      position: "bottom",
+    })
+  }
   const handleAppleSignIn = async () => {
     try {
       setIsAuthLoading(true)
@@ -269,6 +277,9 @@ export default function LoginScreen() {
       // After returning from the browser, check the session
       const {data: sessionData} = await supabase.auth.getSession()
       console.log("Current session after Apple sign-in:", sessionData.session)
+      if(sessionData.session == null){
+       showToastMessage("login:userCanceledAppleLogin");
+      }
 
       // Note: The actual navigation to SplashScreen will be handled by
       // the onAuthStateChange listener you already have in place
