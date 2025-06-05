@@ -129,7 +129,7 @@ const palette = {
 
   // Button colors for pill-shaped buttons (light theme)
   buttonPillPrimary: "#4A90E2", // Medium blue for primary pill buttons
-  buttonPillSecondary: "#F0F0F0", // Light gray for secondary pill buttons
+  buttonPillSecondary: "#E0E0E0", // Medium gray for secondary pill buttons (darker than before)
   buttonPillPrimaryText: "#FFFFFF", // White text for primary buttons
   buttonPillSecondaryText: "#333333", // Dark text for secondary buttons
 } as const
@@ -152,7 +152,7 @@ export const colors = {
   /**
    * Secondary text information.
    */
-  textDim: palette.neutral600,
+  textDim: palette.neutral700,
   /**
    * The default color of the screen background.
    */
@@ -205,8 +205,9 @@ export const colors = {
 
   // Switch/toggle colors
   switchTrackOff: palette.iosSwitchTrack,
-  switchTrackOn: palette.blue500,
+  switchTrackOn: palette.primary500,
   switchThumb: palette.neutral100,
+  switchThumbOn: palette.primary300, // Use lighter blue-gray for ON state in light theme
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
@@ -237,7 +238,7 @@ export const colors = {
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
-  destructiveAction: palette.warningPink, // Pink for destructive actions
+  destructiveAction: palette.errorRed, // Red for destructive actions in light theme
   
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
@@ -272,4 +273,10 @@ export const colors = {
   buttonPillSecondary: palette.buttonPillSecondary,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
+  
+  // Checkmark color
+  checkmark: palette.blue500, // Bright blue for checkmarks in light theme
+  
+  // Slider thumb color
+  sliderThumb: "#D6D8F3", // Match toggle switch knob color
 } as const

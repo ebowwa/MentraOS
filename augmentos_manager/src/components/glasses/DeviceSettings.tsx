@@ -233,7 +233,7 @@ export default function DeviceSettings() {
           <MaterialCommunityIcons
             name="check"
             size={24}
-            color={preferredMic === "phone" ? theme.colors.palette.primary300 : "transparent"}
+            color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
           />
         </TouchableOpacity>
         {/* divider */}
@@ -250,7 +250,7 @@ export default function DeviceSettings() {
           <MaterialCommunityIcons
             name="check"
             size={24}
-            color={preferredMic === "glasses" ? theme.colors.palette.primary300 : "transparent"}
+            color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
           />
         </TouchableOpacity>
       </View>
@@ -316,11 +316,11 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   gap: 16,
 })
 
-const $settingsGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   paddingVertical: 12,
   paddingHorizontal: 16,
-  borderRadius: 12,
+  borderRadius: spacing.md,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({

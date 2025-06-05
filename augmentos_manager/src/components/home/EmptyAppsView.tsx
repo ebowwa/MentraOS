@@ -40,7 +40,7 @@ const $statusMessage: ThemedStyle<TextStyle> = ({colors}) => ({
   letterSpacing: 1.7,
   textTransform: "capitalize",
   fontFamily: "SF Pro Rounded",
-  color: "#b0b9ff", // optionally use colors.primary if appropriate
+  color: colors.text, // Use semantic color for better theme support
   overflow: "hidden",
   textAlign: "left",
 })
@@ -50,7 +50,7 @@ const $activeAppsMessage: ThemedStyle<TextStyle> = ({colors}) => ({
   letterSpacing: 0.4,
   lineHeight: 18,
   fontFamily: "Inter-Regular",
-  color: "#898fb2", // optionally use colors.textDim if appropriate
+  color: colors.textDim, // Use semantic color for dimmed text
   overflow: "hidden",
   textAlign: "left",
 })

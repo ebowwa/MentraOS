@@ -127,9 +127,9 @@ const $toggleParent: ThemedStyle<ViewStyle> = () => ({
 
 
 const Tag = ({ isActive, isForeground = false, isDarkMode }: { isActive: boolean, isForeground?: boolean, isDarkMode: boolean }) => {
-  const { themed } = useAppTheme()
+  const { themed, theme } = useAppTheme()
   console.log("zxc isDark mode: ", isDarkMode);
-  const mColor = isActive ? "#7674FB" : "#CECED0"
+  const mColor = isActive ? "#7674FB" : theme.colors.textDim
   
   if (isForeground) {
     return (

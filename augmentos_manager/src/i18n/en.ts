@@ -60,7 +60,8 @@ const en = {
     foreground: "Foreground",
     thereCanOnlyBeOne: "There Can Only Be One",
     thereCanOnlyBeOneMessage: "You can only run one foreground app at a time.",
-
+    glassesNotConnected: "Glasses Not Connected",
+    appWillRunWhenConnected: "This app will start running once your glasses are connected.",
   },
   glasses: {
     title: "Glasses",
@@ -157,7 +158,7 @@ const en = {
     sensingDisabled: "Sensing is disabled. Microphone and sensors won't work in apps.",
   },
   common: {
-    ok: "OK!",
+    ok: "OK",
     cancel: "Cancel",
     back: "Back",
     or: "OR",

@@ -57,6 +57,7 @@ export default function InactiveAppList({
     clearPendingOperation,
     isSensingEnabled,
   } = useAppStatus()
+  const { status } = useStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
@@ -368,7 +369,52 @@ export default function InactiveAppList({
       return
     }
 
-    // Optimistically update UI
+    // Check if glasses are connected and this is the first app being activated
+    const glassesConnected = status.glasses_info?.model_name != null
+    const activeApps = appStatus.filter(app => app.is_running)
+    
+    if (!glassesConnected && activeApps.length === 0) {
+      // Show alert for first app activation when glasses aren't connected
+      const shouldContinue = await new Promise<boolean>(resolve => {
+        showAlert(
+          translate("home:glassesNotConnected"),
+          translate("home:appWillRunWhenConnected"),
+          [
+            {
+              text: translate("common:cancel"),
+              style: "cancel",
+              onPress: () => resolve(false),
+            },
+            {
+              text: translate("common:ok"),
+              onPress: () => resolve(true),
+            },
+          ],
+        )
+      })
+      
+      if (!shouldContinue) {
+        return
+      }
+    }
+
+    // Find the opacity value for this app
+    const itemOpacity = opacities[packageName]
+    
+    // Animate the app disappearing
+    if (itemOpacity) {
+      Animated.timing(itemOpacity, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start()
+    }
+    
+    // Wait a bit for animation to complete
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
@@ -619,14 +665,8 @@ export default function InactiveAppList({
               onTogglePress={async () => {
                 const res = await checkIsForegroundAppStart(app.packageName, app.tpaType == "standard")
                 if (res) {
-                  setTimeout(() => {
-                    Animated.timing(itemOpacity, {
-                      toValue: 0,
-                      duration: 300,
-                      easing: Easing.out(Easing.ease),
-                      useNativeDriver: true,
-                    }).start(() => startApp(app.packageName))
-                  }, 200)
+                  // Don't animate here - let startApp handle all UI updates
+                  startApp(app.packageName)
                 }
               }}
               onSettingsPress={() => openAppSettings(app)}

@@ -98,7 +98,7 @@ function SwitchInput(props: SwitchInputProps) {
     if (on) {
       return [
         // $detailStyleOverride?.backgroundColor,
-        isDark ? "white" :colors.palette.blue400,
+        isDark ? "white" : colors.switchThumbOn,
         status === "error" && colors.error,
         disabled && colors.palette.neutral600,
         colors.palette.neutral100,

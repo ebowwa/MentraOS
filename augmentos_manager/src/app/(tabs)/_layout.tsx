@@ -19,7 +19,7 @@ export default function Layout() {
   const {theme, themed} = useAppTheme()
 
   const showLabel = false
-  const iconFocusedColor = theme.isDark ? "white": "blue";
+  const iconFocusedColor = theme.isDark ? "white": theme.colors.palette.primary300;
   const whiteColor = "#fff"
   return (
     <Tabs

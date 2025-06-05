@@ -69,7 +69,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
             thumbStyle={{
               width: 24,
               height: 24,
-              backgroundColor: theme.colors.text,
+              backgroundColor: theme.colors.sliderThumb,
             }}
           />
         </View>

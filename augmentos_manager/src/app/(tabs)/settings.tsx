@@ -96,7 +96,7 @@ export default function SettingsPage() {
 
       <ActionButton
         label={translate("settings:signOut")}
-        variant={theme.isDark ? "destructive":"default"}
+        variant="destructive"
         onPress={confirmSignOut}
       />
     </Screen>
