@@ -47,6 +47,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConn
 import com.google.gson.Gson;
 import com.augmentos.smartglassesmanager.cpp.L3cCpp;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
@@ -560,24 +561,29 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                         //CASE REMOVED
                         else if (data.length > 1 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x07) {
                             caseRemoved = true;
+                            EventBus.getDefault().post(new CaseEvent(caseBatteryLevel, caseCharging, caseOpen, caseRemoved));
                         }
                         //CASE OPEN
                         else if (data.length > 1 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x08) {
                             caseOpen = true;
                             caseRemoved = false;
+                            EventBus.getDefault().post(new CaseEvent(caseBatteryLevel, caseCharging, caseOpen, caseRemoved));
                         }
                         //CASE CLOSED
                         else if (data.length > 1 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x0B) {
                             caseOpen = false;
                             caseRemoved = false;
+                            EventBus.getDefault().post(new CaseEvent(caseBatteryLevel, caseCharging, caseOpen, caseRemoved));
                         }
                         //CASE CHARGING STATUS
                         else if (data.length > 3 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x0E) {
                             caseCharging = (data[2] & 0xFF) == 0x01;// TODO: verify this is correct
+                            EventBus.getDefault().post(new CaseEvent(caseBatteryLevel, caseCharging, caseOpen, caseRemoved));
                         }
                         //CASE CHARGING INFO
                         else if (data.length > 3 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x0F) {
                             caseBatteryLevel = (data[2] & 0xFF);// TODO: verify this is correct
+                            EventBus.getDefault().post(new CaseEvent(caseBatteryLevel, caseCharging, caseOpen, caseRemoved));
                         }
     //   case .CASE_REMOVED:
     //     print("REMOVED FROM CASE")
