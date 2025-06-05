@@ -486,12 +486,12 @@ export class TranscriptionService {
   //    * @param streamType - Type of data stream
   //    * @param data - Data to broadcast
   //    */
-  private broadcastToTpa(userSessionId: string, streamType: StreamType, data: CloudToTpaMessage): void {
-    const userSession = sessionService.getSession(userSessionId);
-    if (!userSession) {
-      logger.error(`[transcription.service]: User session not found for ${userSessionId}`);
-      return;
-    }
+  private broadcastToTpa(userSession: UserSession, streamType: StreamType, data: CloudToTpaMessage): void {
+    // const userSession = sessionService.getSession(userSessionId);
+    // if (!userSession) {
+    //   logger.error(`[transcription.service]: User session not found for ${userSessionId}`);
+    //   return;
+    // }
 
     // If the stream is transcription or translation and data has language info,
     // construct an effective subscription string.
@@ -532,7 +532,7 @@ export class TranscriptionService {
             error: result.error
           }, `Failed to send transcription data to TPA ${packageName}`);
         } else if (result.resurrectionTriggered) {
-          userSession.logger.info({ 
+          userSession.logger.warn({ 
             service: SERVICE_NAME, 
             packageName 
           }, `Transcription data sent to TPA ${packageName} after resurrection`);
@@ -557,7 +557,7 @@ export class TranscriptionService {
 
     try {
       const streamType = data.type === StreamType.TRANSLATION ? StreamType.TRANSLATION : StreamType.TRANSCRIPTION;
-      this.broadcastToTpa(userSession.sessionId, streamType, data);
+      this.broadcastToTpa(userSession, streamType, data);
     } catch (error) {
       sessionLogger.error({
         error,
