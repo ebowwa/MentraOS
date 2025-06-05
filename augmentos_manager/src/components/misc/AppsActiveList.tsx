@@ -63,8 +63,6 @@ export default function AppsActiveList({
 
   useEffect(() => {
     const newCount = runningApps.length
-    console.log("newCount", newCount)
-    console.log("previousCount", previousCount.current)
     if (newCount !== previousCount.current) {
       Animated.timing(containerHeight, {
         toValue: newCount * 88, // estimate item + spacing height
@@ -171,52 +169,45 @@ export default function AppsActiveList({
       </>
     )
   }
-
-  function getNewRow() {
-    if (isSearchPage) {
-      return (
-        <View style={themed($appsContainer)}>
-          <View style={themed($headerContainer)}></View>
-          <Animated.View style={[themed($contentContainer), {height: containerHeight}]}></Animated.View>
-        </View>
-      )
-    }
-
+  if (isSearchPage) {
     return (
       <View style={themed($appsContainer)}>
-        <View style={themed($headerContainer)}>
-          {runningApps.length > 0 && <AppsHeader title="home:activeApps" showSearchIcon={true} />}
-        </View>
-        <Animated.View style={[themed($contentContainer), {height: containerHeight}]}>
-          {getAppsList()}
-
-          {runningApps.length === 0 && (
-            <Animated.View style={{opacity: emptyViewOpacity}}>
-              <TempActivateAppWindow />
-              <EmptyAppsView
-                statusMessageKey={"home:noActiveApps"}
-                activeAppsMessageKey={"home:emptyActiveAppListInfo"}
-              />
-            </Animated.View>
-          )}
-        </Animated.View>
+        <View style={themed($headerContainer)}></View>
+        <Animated.View style={[themed($contentContainer), {minHeight: containerHeight}]}></Animated.View>
       </View>
     )
   }
 
-  return getNewRow()
+  return (
+    <View style={themed($appsContainer)}>
+      <View style={themed($headerContainer)}>
+        {runningApps.length > 0 && <AppsHeader title="home:activeApps" showSearchIcon={true} />}
+      </View>
+      <Animated.View style={[themed($contentContainer), {minHeight: containerHeight}]}>
+        {getAppsList()}
+
+        {runningApps.length === 0 && (
+          <Animated.View style={{opacity: emptyViewOpacity}}>
+            <TempActivateAppWindow />
+            <EmptyAppsView
+              statusMessageKey={"home:noActiveApps"}
+              activeAppsMessageKey={"home:emptyActiveAppListInfo"}
+            />
+          </Animated.View>
+        )}
+      </Animated.View>
+    </View>
+  )
 }
 
 const $appsContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "flex-start",
-  minHeight: 119,
 })
 
 const $headerContainer: ThemedStyle<ViewStyle> = () => ({})
 
-const $contentContainer: ThemedStyle<ViewStyle> = () => ({
-  minHeight: 48,
-})
+const $contentContainer: ThemedStyle<ViewStyle> = () => ({})
+
 function showToast() {
   Toast.show({
     type: "baseToast",

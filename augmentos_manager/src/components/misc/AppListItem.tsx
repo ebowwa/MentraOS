@@ -1,14 +1,14 @@
 import React from "react"
-import { View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated, Pressable } from "react-native"
-import { useAppTheme } from "@/utils/useAppTheme"
-import { colors, ThemedStyle } from "@/theme"
+import {View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated, Pressable} from "react-native"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {colors, ThemedStyle} from "@/theme"
 import AppIcon from "./AppIcon"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import SunIcon from "assets/icons/component/SunIcon"
-import { TreeIcon } from "assets/icons/component/TreeIcon"
-import { translate } from "@/i18n"
-import { Switch } from "@/components/ignite"
-import { TooltipIcon } from "assets/icons/component/TooltipIcon"
+import {TreeIcon} from "assets/icons/component/TreeIcon"
+import {translate} from "@/i18n"
+import {Switch} from "@/components/ignite"
+import {TooltipIcon} from "assets/icons/component/TooltipIcon"
 import Toast from "react-native-toast-message"
 
 interface AppModel {
@@ -29,23 +29,33 @@ interface AppListItemProps {
   isDisabled?: boolean
 }
 
-export const AppListItem = ({ app, isActive, onTogglePress, onSettingsPress, opacity, isDisabled, is_foreground, height }: AppListItemProps) => {
-  const { themed, theme } = useAppTheme()
-
+export const AppListItem = ({
+  app,
+  isActive,
+  onTogglePress,
+  onSettingsPress,
+  opacity,
+  isDisabled,
+  is_foreground,
+  height,
+}: AppListItemProps) => {
+  const {themed, theme} = useAppTheme()
 
   return (
     <Animated.View
-      style={[themed($everything), themed($everythingFlexBox),
-      opacity ? { opacity } : {},
-      height
-        ? {
-          height: height.interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 72],
-          }),
-          overflow: "hidden",
-        }
-        : {},
+      style={[
+        themed($everything),
+        themed($everythingFlexBox),
+        opacity ? {opacity} : {},
+        height
+          ? {
+              height: height.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 72],
+              }),
+              overflow: "hidden",
+            }
+          : {},
       ]}>
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
@@ -53,11 +63,10 @@ export const AppListItem = ({ app, isActive, onTogglePress, onSettingsPress, opa
           <Text
             style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]}
             numberOfLines={1}
-            ellipsizeMode="tail"
-          >
+            ellipsizeMode="tail">
             {app.name}
           </Text>
-          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} isDarkMode = {theme.isDark} />}
+          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
         </View>
       </View>
 
@@ -73,12 +82,12 @@ export const AppListItem = ({ app, isActive, onTogglePress, onSettingsPress, opa
   )
 }
 
-const $activeApp: ThemedStyle<TextStyle> = ({ colors }) => ({
+const $activeApp: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   // "#F7F7F7" : "#CED2ED"
 })
 
-const $inactiveApp: ThemedStyle<TextStyle> = ({ colors }) => ({
+const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
 })
 
@@ -124,18 +133,15 @@ const $toggleParent: ThemedStyle<ViewStyle> = () => ({
   gap: 12,
 })
 
-
-
-const Tag = ({ isActive, isForeground = false, isDarkMode }: { isActive: boolean, isForeground?: boolean, isDarkMode: boolean }) => {
-  const { themed, theme } = useAppTheme()
-  console.log("zxc isDark mode: ", isDarkMode);
+const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
+  const {themed, theme} = useAppTheme()
   const mColor = isActive ? "#7674FB" : theme.colors.textDim
-  
+
   if (isForeground) {
     return (
-      <View style={themed(isActive ? $tagActive({ isDarkMode }) : $tag)}>
+      <View style={themed(isActive ? $tagActive : $tag)}>
         <TreeIcon size={16} color={mColor} />
-        <Text style={[themed($disconnect), { color: mColor }]} numberOfLines={1}>
+        <Text style={[themed($disconnect), {color: mColor}]} numberOfLines={1}>
           {isForeground ? translate("home:foreground") : ""}
         </Text>
         <Pressable
@@ -144,32 +150,28 @@ const Tag = ({ isActive, isForeground = false, isDarkMode }: { isActive: boolean
               type: "baseToast",
               text1: "Not implemented",
               position: "bottom",
-
             })
-          }}>
-        </Pressable>
-
+          }}></Pressable>
       </View>
     )
   } else {
-
-    return;
+    return
   }
-
-
 }
-const $tagActive: ThemedStyle<ViewStyle> = ({ isDarkMode }) => ({
-  borderRadius: 15,
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "flex-start",
-  gap: 4,
-  height: 24,
-  backgroundColor: isDarkMode ? "navy" : "#E0E0E0",
-  alignSelf: "flex-start",
-})
+const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
+  return {
+    borderRadius: 15,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-start",
+    gap: 4,
+    height: 24,
+    backgroundColor: colors.palette.primary200,
+    alignSelf: "flex-start",
+  }
+}
 
 const $tag: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 15,
