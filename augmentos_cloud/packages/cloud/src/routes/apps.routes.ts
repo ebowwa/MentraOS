@@ -577,7 +577,7 @@ async function startApp(req: Request, res: Response) {
       runningAppsCount: userSession.runningApps.size,
       loadingAppsCount: userSession.loadingApps.size
     }
-  }, `Starting app ${packageName}`);
+  }, `Starting app ${packageName} for user ${userSession.userId}`);
 
   // DEBUG: Detailed context
   routeLogger.debug({
@@ -734,7 +734,7 @@ async function stopApp(req: Request, res: Response) {
   routeLogger.info({
     isCurrentlyRunning: userSession?.runningApps?.has(packageName),
     runningAppsCount: userSession?.runningApps?.size || 0
-  }, `Stopping app ${packageName}`);
+  }, `Stopping app ${packageName} for user ${userSession?.userId || 'unknown'}`);
 
   // ERROR: Missing user session (shouldn't happen due to middleware)
   if (!userSession || !userSession.userId) {

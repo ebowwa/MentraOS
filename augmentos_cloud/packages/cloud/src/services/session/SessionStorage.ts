@@ -36,7 +36,7 @@ class SessionStorage {
     }
     
     this.sessions.set(userId, session);
-    rootLogger.info({
+    rootLogger.debug({
       service: 'SessionStorage',
       userId,
       totalSessions: this.sessions.size,
@@ -47,7 +47,7 @@ class SessionStorage {
   get(userId: string): UserSession | undefined {
     const session = this.sessions.get(userId);
     const allUserIds = Array.from(this.sessions.keys());
-    
+
     // Debug logging to track session lookups
     rootLogger.debug({
       service: 'SessionStorage.get',
@@ -69,7 +69,7 @@ class SessionStorage {
     const wasInMap = this.sessions.has(userId);
     const result = this.sessions.delete(userId);
     
-    rootLogger.info({
+    rootLogger.debug({
       service: 'SessionStorage',
       userId,
       wasInMap,
@@ -99,7 +99,7 @@ class SessionStorage {
   clear(): void {
     const count = this.sessions.size;
     this.sessions.clear();
-    rootLogger.info({
+    rootLogger.debug({
       service: 'SessionStorage',
       clearedSessions: count
     }, 'All sessions cleared from storage');
@@ -111,7 +111,7 @@ class SessionStorage {
   getAllSessions(): UserSession[] {
     return Array.from(this.sessions.values());
   }
-  
+
   /**
    * Debug method to log current storage state
    */
