@@ -243,10 +243,10 @@ export function DeviceToolbar() {
     <View style={themed($deviceToolbar)}>
       {/* battery */}
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
-        {status.glasses_info?.battery_life != -1 ? (
+        {status.glasses_info?.battery_level != -1 ? (
           <>
             <Icon icon="battery" size={18} color={theme.colors.text} />
-            <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_life}%</Text>
+            <Text style={{color: theme.colors.text}}>{status.glasses_info?.battery_level}%</Text>
           </>
         ) : (
           // <Text style={{color: theme.colors.text}}>No battery</Text>
@@ -351,19 +351,19 @@ export function ConnectedDeviceInfo() {
   return (
     <View style={themed($statusBar)}>
       {/* <View style={styles.statusInfo}>
-            {status.glasses_info?.battery_life != null && typeof status.glasses_info?.battery_life === "number" && (
+            {status.glasses_info?.battery_level != null && typeof status.glasses_info?.battery_level === "number" && (
               <>
                 <Text style={themed($statusLabel)}>Battery</Text>
                 <View style={styles.batteryContainer}>
-                  {status.glasses_info?.battery_life >= 0 && (
+                  {status.glasses_info?.battery_level >= 0 && (
                     <Icon
-                      name={getBatteryIcon(status.glasses_info?.battery_life ?? 0)}
+                      name={getBatteryIcon(status.glasses_info?.battery_level ?? 0)}
                       size={16}
-                      color={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+                      color={getBatteryColor(status.glasses_info?.battery_level ?? 0)}
                     />
                   )}
                   <Text style={themed($batteryValue)}>
-                    {status.glasses_info.battery_life == -1 ? "-" : `${status.glasses_info.battery_life}%`}
+                    {status.glasses_info.battery_level == -1 ? "-" : `${status.glasses_info.battery_level}%`}
                   </Text>
                 </View>
               </>
@@ -371,17 +371,17 @@ export function ConnectedDeviceInfo() {
           </View> */}
 
       {/* battery circular progress bar */}
-      {status.glasses_info?.battery_life != -1 ? (
+      {status.glasses_info?.battery_level != -1 ? (
         <AnimatedCircularProgress
           size={36}
           width={3}
           lineCap="round"
           fillLineCap="round"
-          fill={status.glasses_info?.battery_life}
-          // tintColor={getBatteryColor(status.glasses_info?.battery_life ?? 0)}
+          fill={status.glasses_info?.battery_level}
+          // tintColor={getBatteryColor(status.glasses_info?.battery_level ?? 0)}
           tintColor={theme.colors.palette.primary500}
           backgroundColor={theme.colors.palette.neutral300}
-          children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_life}</Text>}
+          children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_level}</Text>}
           rotation={0}
         />
       ) : (

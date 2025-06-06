@@ -411,6 +411,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         caseCharging = event.caseCharging;
         caseOpen = event.caseOpen;
         caseRemoved = event.caseRemoved;
+
+        Log.d("AugmentOsService", "Case event: " + event.caseBatteryLevel + " " + event.caseCharging + " " + event.caseOpen + " " + event.caseRemoved);
         
         sendStatusToAugmentOsManager();
     }
@@ -1308,8 +1310,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             JSONObject connectedGlasses = new JSONObject();
             if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
                 connectedGlasses.put("model_name", smartGlassesManager.getConnectedSmartGlasses().deviceModelName);
-                connectedGlasses.put("battery_life", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
-                connectedGlasses.put("case_battery_life", (caseBatteryLevel == null) ? -1: caseBatteryLevel); //-1 if unknown
+                connectedGlasses.put("battery_level", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
+                connectedGlasses.put("case_battery_level", (caseBatteryLevel == null) ? -1: caseBatteryLevel); //-1 if unknown
                 connectedGlasses.put("case_charging", (caseCharging == null) ? false: caseCharging);
                 connectedGlasses.put("case_open", (caseOpen == null) ? false: caseOpen);
                 connectedGlasses.put("case_removed", (caseRemoved == null) ? true: caseRemoved);

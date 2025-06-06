@@ -559,8 +559,9 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                             }
                         }
                         //CASE REMOVED
-                        else if (data.length > 1 && (data[0] & 0xFF) == 0xF5 && (data[1] & 0xFF) == 0x07) {
+                        else if (data.length > 1 && (data[0] & 0xFF) == 0xF5 && ((data[1] & 0xFF) == 0x07 || (data[1] & 0xFF) == 0x06)) {
                             caseRemoved = true;
+                            Log.d("AugmentOsService", "CASE REMOVED");
                             EventBus.getDefault().post(new CaseEvent(caseBatteryLevel, caseCharging, caseOpen, caseRemoved));
                         }
                         //CASE OPEN
