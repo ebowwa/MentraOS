@@ -489,11 +489,7 @@ export default function GlassesMirror() {
 
         {/* Gallery Section */}
         <View style={themed($gallerySection)}>
-          <View style={{marginLeft: theme.spacing.md}}>
-            <Text style={themed($sectionTitle)}>
-              Gallery
-            </Text>
-          </View>
+          <Header leftText="Gallery" />
 
           {/* Gallery Content */}
           <View style={themed($galleryContent)}>

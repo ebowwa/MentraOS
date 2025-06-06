@@ -235,8 +235,8 @@ export default function Homepage() {
   )
 }
 
-const $screen: ThemedStyle<ViewStyle> = () => ({
-  paddingHorizontal: 20,
+const $screen: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.lg,
 })
 
 const $headerRight: ThemedStyle<ViewStyle> = ({spacing}) => ({

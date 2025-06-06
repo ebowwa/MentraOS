@@ -72,13 +72,12 @@ export default function SettingsPage() {
       <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
       {/* Comment this out until the light theme looks acceptable */}
-      <Spacer height={theme.spacing.md} />
+      {/* <Spacer height={theme.spacing.md} /> */}
 
-      <RouteButton
+      {/* <RouteButton
         label="Theme Settings"
-        subtitle="Customize your app appearance"
         onPress={() => router.push("/settings/theme")}
-      />
+      /> */}
 
       {showDeveloperSettings && (
         <>

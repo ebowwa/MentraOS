@@ -70,6 +70,7 @@ const palette = {
   gray100: "#F5F5F5",
   gray200: "#EEEEEE", 
   gray300: "#E0E0E0",
+  gray350: "#CECECE",
   gray400: "#BDBDBD",
   gray500: "#9E9E9E",
   gray600: "#757575",
@@ -206,9 +207,9 @@ export const colors = {
   // Switch/toggle colors
   switchTrackOff: "#9E9E9E", // Darker gray for OFF track
   switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
-  switchThumb: palette.neutral100,
+  switchThumb: palette.gray350,
   switchThumbOn: palette.neutral100, // White thumb for ON state
-  switchThumbOff: "#E0E0E0", // More noticeable gray handle for OFF state
+  switchThumbOff: palette.gray350, // More noticeable gray handle for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
@@ -225,7 +226,7 @@ export const colors = {
   iconSecondary: palette.neutral700, // darker secondary icons for light theme
 
   // Button states
-  buttonPressed: palette.neutral700, // Darker state for pressed buttons
+  buttonPressed: palette.gray200, // Light gray state for pressed buttons
 
   // Tab bar gradients
   tabBarBackground1: palette.tabBarGradientStart,
@@ -279,5 +280,5 @@ export const colors = {
   checkmark: palette.blue500, // Bright blue for checkmarks in light theme
   
   // Slider thumb color
-  sliderThumb: "#D6D8F3", // Match toggle switch knob color
+  sliderThumb: palette.gray350, // Match toggle switch knob color
 } as const

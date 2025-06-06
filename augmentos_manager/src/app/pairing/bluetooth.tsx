@@ -194,7 +194,6 @@ export default function SelectGlassesBluetoothScreen() {
           await coreCommunicator.sendDisconnectWearable();
           await coreCommunicator.sendForgetSmartGlasses()
           router.replace('/pairing/select-glasses-model');
-          //goBack();
         }}
          />
       <View style={styles.contentContainer}>

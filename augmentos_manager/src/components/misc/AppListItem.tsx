@@ -87,7 +87,7 @@ const $activeApp: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.textDim,
+  color: colors.text,
 })
 
 const $everything: ThemedStyle<ViewStyle> = () => ({

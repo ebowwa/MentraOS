@@ -84,6 +84,9 @@ export default function AppsActiveList({
   }, [appStatus])
 
   useEffect(() => {
+    // Skip animation logic when on search page
+    if (isSearchPage) return
+    
     const newCount = runningApps.length
     if (newCount !== previousCount.current) {
       Animated.timing(containerHeight, {
@@ -114,7 +117,7 @@ export default function AppsActiveList({
         useNativeDriver: true,
       }).start()
     }
-  }, [runningApps.length])
+  }, [runningApps.length, isSearchPage])
 
   const stopApp = async (packageName: string) => {
     console.log("STOP APP")
@@ -195,7 +198,9 @@ export default function AppsActiveList({
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($headerContainer)}></View>
-        <Animated.View style={[themed($contentContainer), {minHeight: containerHeight}]}></Animated.View>
+        <View style={themed($contentContainer)}>
+          {getAppsList()}
+        </View>
       </View>
     )
   }

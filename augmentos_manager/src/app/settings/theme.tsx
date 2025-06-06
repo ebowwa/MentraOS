@@ -12,11 +12,11 @@ import { type ThemeType } from "@/utils/useAppTheme"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
-  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("system")
+  const [selectedTheme, setSelectedTheme] = useState<ThemeType>("light")
 
   useEffect(() => {
     // Load saved theme preference
-    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system").then(savedTheme => {
+    loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "light").then(savedTheme => {
       setSelectedTheme(savedTheme as ThemeType)
     })
   }, [])

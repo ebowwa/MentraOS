@@ -30,7 +30,7 @@ export default function Layout() {
         tabBarStyle: [
           themed($tabBar),
           {
-            paddingBottom: bottom + 48,
+            paddingBottom: bottom + 16,
             // borderTopColor moved to View wrapping LinearGradient
             borderTopWidth: 0,
             backgroundColor: 'transparent',
@@ -126,11 +126,12 @@ const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderTopColor: colors.separator,
   borderTopWidth: 1,
   paddingTop: 8,
-  height: 64,
+  height: 80,
 })
 
 const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingTop: spacing.xl, // More padding above icons
+  paddingTop: spacing.md, // Center icons vertically
+  paddingBottom: spacing.md,
 })
 
 const $tabBarLabel: ThemedStyle<TextStyle> = ({colors, typography}) => ({
