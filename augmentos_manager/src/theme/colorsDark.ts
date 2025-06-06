@@ -6,7 +6,7 @@ const palette = {
   neutral500: "#978F8A",
   neutral400: "#564E4A",
   neutral300: "#3C3836",
-  neutral200: "#141434",
+  neutral200: "#2d2d58",
   neutral100: "#FFFFFF",
 
   primary600: "#F4E0D9",
@@ -121,7 +121,7 @@ const palette = {
 
   // Button colors for pill-shaped buttons
   buttonPillPrimary: "#B0B9FF", // Light blue for primary pill buttons
-  buttonPillSecondary: "#242454", // Dark blue for secondary pill buttons
+  buttonPillSecondary: "#474794", // Dark blue for secondary pill buttons
   buttonPillPrimaryText: "#141434", // Dark text for light primary buttons
   buttonPillSecondaryText: "#FFFFFF", // Light text for dark secondary buttons
 } as const
@@ -158,9 +158,10 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: palette.iosSwitchTrack,
-  switchTrackOn: palette.blue500,
+  switchTrackOff: "#9E9E9E", // Darker gray for OFF track
+  switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
   switchThumb: palette.neutral100,
+  switchThumbOff: "#E0E0E0", // More noticeable gray handle for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.darkGalleryBg,
@@ -226,4 +227,7 @@ export const colors = {
   buttonPillSecondary: palette.buttonPillSecondary,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
+  
+  // Checkmark color
+  checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
 } as const

@@ -134,7 +134,7 @@ export function Button(props: ButtonProps) {
   const {themed, theme} = useAppTheme()
 
   const preset: Presets = props.preset ?? "default"
-  const gradientColors = theme.isDark ? [theme.colors.buttonGradientStart, theme.colors.buttonGradientEnd] : [theme.colors.transparent, theme.colors.transparent]
+  const gradientColors = theme.isDark ? [theme.colors.buttonGradientEnd, theme.colors.buttonGradientEnd] : [theme.colors.transparent, theme.colors.transparent]
   /**
    * @param {PressableStateCallbackType} root0 - The root object containing the pressed state.
    * @param {boolean} root0.pressed - The pressed state.
@@ -215,7 +215,6 @@ const $baseViewStyle: ThemedStyle<ViewStyle> = ({spacing, colors, isDark}) => ({
 const $baseTextStyle: ThemedStyle<TextStyle> = ({typography}) => ({
   fontSize: 16,
   lineHeight: 20,
-  fontFamily: "SF Pro Rounded",
   textAlign: "center",
   flexShrink: 1,
   flexGrow: 0,

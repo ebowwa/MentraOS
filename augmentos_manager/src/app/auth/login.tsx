@@ -406,10 +406,7 @@ export default function LoginScreen() {
       preset="fixed"
       safeAreaEdges={["top"]}
       contentContainerStyle={themed($container)}>
-      <LinearGradient
-        colors={[theme.colors.loginGradientStart, theme.colors.loginGradientEnd]}
-        style={themed($gradientContainer)}>
-          <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
             <View style={themed($card)}>
               {/* Auth Loading Overlay */}
               {isAuthLoading && (
@@ -531,7 +528,7 @@ export default function LoginScreen() {
                     <TouchableOpacity
                       style={[themed($socialButton), themed($googleButton)]}
                       onPress={handleGoogleSignIn}>
-                      <View style={themed($socialIconContainer)}>
+                      <View style={[themed($socialIconContainer), {position: 'absolute', left: 12}]}>
                         <GoogleIcon />
                       </View>
                       <Text style={themed($socialButtonText)} tx="login:continueWithGoogle" />
@@ -541,7 +538,7 @@ export default function LoginScreen() {
                       <TouchableOpacity
                         style={[themed($socialButton), themed($appleButton)]}
                         onPress={handleAppleSignIn}>
-                        <View style={themed($socialIconContainer)}>
+                        <View style={[themed($socialIconContainer), {position: 'absolute', left: 12}]}>
                           <AppleIcon />
                         </View>
                         <Text
@@ -581,15 +578,13 @@ export default function LoginScreen() {
               </Animated.View>
             </View>
           </ScrollView>
-      </LinearGradient>
     </Screen>
   )
 }
 
 // Themed Styles
-const $container: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $container: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
-  backgroundColor: colors.background,
 })
 
 const $gradientContainer: ThemedStyle<ViewStyle> = () => ({
@@ -744,12 +739,11 @@ const $appleButton: ThemedStyle<ViewStyle> = ({colors}) => ({
   borderColor: colors.text,
 })
 
-const $socialIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+const $socialIconContainer: ThemedStyle<ViewStyle> = () => ({
   width: 24,
   height: 24,
   justifyContent: "center",
   alignItems: "center",
-  marginRight: spacing.xs,
 })
 
 const $socialButtonText: ThemedStyle<TextStyle> = ({colors}) => ({

@@ -1,8 +1,9 @@
 import { ThemedStyle } from '@/theme';
 import { useAppTheme } from '@/utils/useAppTheme';
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { View, StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Slider } from 'react-native-elements';
+import { Text } from '@/components/ignite';
 
 type Theme = {
   backgroundColor: string;
@@ -47,15 +48,13 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
     <View style={[themed($container), containerStyle]}>
       <View style={themed($textContainer)}>
         <View style={themed($labelRow)}>
-          <Text style={themed($label)}>
-            {label}
-          </Text>
-          <Text style={themed($valueText)}>{value || 0}</Text>
+          <Text text={label} style={themed($label)} />
+          <Text text={String(value || 0)} style={themed($valueText)} />
         </View>
-        {subtitle && <Text style={themed($subtitle)}>{subtitle}</Text>}
+        {subtitle && <Text text={subtitle} style={themed($subtitle)} />}
       </View>
       <View style={themed($sliderRow)}>
-        <Text style={themed($minMaxText)}>{min}</Text>
+        <Text text={String(min)} style={themed($minMaxText)} />
         <View style={themed($sliderContainer)}>
           <Slider
             style={themed($slider)}
@@ -73,7 +72,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
             }}
           />
         </View>
-        <Text style={themed($minMaxText)}>{max}</Text>
+        <Text text={String(max)} style={themed($minMaxText)} />
       </View>
     </View>
   );

@@ -489,9 +489,11 @@ export default function GlassesMirror() {
 
         {/* Gallery Section */}
         <View style={themed($gallerySection)}>
-          <Text preset="heading" style={themed($sectionTitle)}>
-            Gallery
-          </Text>
+          <View style={{marginLeft: theme.spacing.md}}>
+            <Text style={themed($sectionTitle)}>
+              Gallery
+            </Text>
+          </View>
 
           {/* Gallery Content */}
           <View style={themed($galleryContent)}>
@@ -617,8 +619,13 @@ const $gallerySection: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingBottom: spacing.lg,
 })
 
-const $sectionTitle: ThemedStyle<TextStyle> = ({spacing}) => ({
+const $sectionTitle: ThemedStyle<TextStyle> = ({spacing, colors}) => ({
   marginBottom: spacing.md,
+  fontSize: 16,
+  fontWeight: "500",
+  color: colors.text,
+  fontFamily: undefined, // Ensure it uses the default system font
+  marginLeft: 0, // Align with header text
 })
 
 const $galleryContent: ThemedStyle<ViewStyle> = () => ({

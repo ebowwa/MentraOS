@@ -1,7 +1,7 @@
 import * as React from "react"
-import {Text, View, ViewStyle, TextStyle, TouchableOpacity} from "react-native"
+import {View, ViewStyle, TextStyle, TouchableOpacity} from "react-native"
 import {ThemedStyle} from "@/theme"
-import {Icon} from "../ignite"
+import {Icon, Text} from "../ignite"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
 
@@ -16,12 +16,14 @@ const TempActivateAppWindow = () => {
     <View>
       <View style={themed($tempWindow)}>
         <View style={themed($appNameParent)}>
-          <Text style={[themed($appName), themed($appFlexBox)]} numberOfLines={1}>
-            {translate("home:activateAnApp")}
-          </Text>
-          <Text style={[themed($appName1), themed($appFlexBox)]} numberOfLines={2}>
-            {translate("home:activateAnAppMessage")}
-          </Text>
+          <Text 
+            tx="home:activateAnApp"
+            style={[themed($appName), themed($appFlexBox)]} 
+            numberOfLines={1} />
+          <Text 
+            tx="home:activateAnAppMessage"
+            style={[themed($appName1), themed($appFlexBox)]} 
+            numberOfLines={2} />
         </View>
         <View style={themed($animatedToggle)}>
           <View style={[themed($toggleBarIcon), themed($toggleIconLayout)]} />
@@ -41,7 +43,6 @@ const $appFlexBox: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   overflow: "hidden",
   textAlign: "left",
-  fontFamily: "SF Pro Rounded",
   alignSelf: "stretch",
 })
 

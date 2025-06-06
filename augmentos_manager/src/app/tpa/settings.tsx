@@ -481,17 +481,15 @@ export default function AppSettings() {
           }}
         >
           <Text 
+            text={appInfo?.name || appName}
             style={{
               fontSize: 17,
               fontWeight: '600',
-              fontFamily: "SF Pro Rounded",
               color: theme.colors.text,
             }}
             numberOfLines={1}
             ellipsizeMode="tail"
-          >
-            {appInfo?.name || appName}
-          </Text>
+          />
         </Animated.View>
       </View>
 

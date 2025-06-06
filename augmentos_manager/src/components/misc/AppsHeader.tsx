@@ -4,8 +4,9 @@ import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/component/SearchIcon"
 import { router } from "expo-router"
 import * as React from "react"
-import {Text, View, TextStyle, ViewStyle, Pressable} from "react-native"
+import {View, TextStyle, ViewStyle, Pressable} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"
+import { Text } from "@/components/ignite"
 
 
 const AppsHeader = ({ showSearchIcon = true, title }: { showSearchIcon?: boolean, title: TxKeyPath }) => {  const {themed, theme} = useAppTheme()
@@ -13,7 +14,7 @@ const AppsHeader = ({ showSearchIcon = true, title }: { showSearchIcon?: boolean
   return (
     <View style={themed($listHeaderIcon)}>
       <View style={themed($tableHeader)}>
-        <Text style={themed($appsHeader)}>{translate(title)}</Text>
+        <Text text={translate(title)} style={themed($appsHeader)} />
       </View>
       {showSearchIcon && (
         <Pressable
@@ -35,7 +36,6 @@ const $appsHeader: ThemedStyle<TextStyle> = ({colors}) => ({
   letterSpacing: 0.6,
   lineHeight: 20,
   fontWeight: "500",
-  fontFamily: "SF Pro Rounded",
   color: colors.text,
   textAlign: "left",
 })

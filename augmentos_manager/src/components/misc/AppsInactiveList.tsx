@@ -2,7 +2,6 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   ActivityIndicator,
   Easing,
 } from "react-native"
+import { Text } from "@/components/ignite"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -530,6 +530,7 @@ export default function InactiveAppList({
               },
             ]}>
             <Text
+              tx="home:tapToStart"
               style={[
                 styles.arrowBubbleText,
                 {
@@ -537,9 +538,7 @@ export default function InactiveAppList({
                   textShadowOffset: {width: 0, height: 1},
                   textShadowRadius: 2,
                 },
-              ]}>
-              {translate("home:tapToStart")}
-            </Text>
+              ]} />
             <Icon
               name="gesture-tap"
               size={20}

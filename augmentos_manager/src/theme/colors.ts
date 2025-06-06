@@ -204,10 +204,11 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: palette.iosSwitchTrack,
-  switchTrackOn: palette.primary500,
+  switchTrackOff: "#9E9E9E", // Darker gray for OFF track
+  switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
   switchThumb: palette.neutral100,
-  switchThumbOn: palette.primary300, // Use lighter blue-gray for ON state in light theme
+  switchThumbOn: palette.neutral100, // White thumb for ON state
+  switchThumbOff: "#E0E0E0", // More noticeable gray handle for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
