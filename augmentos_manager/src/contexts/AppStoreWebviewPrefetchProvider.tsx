@@ -31,13 +31,23 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
   // Prefetch logic
   const prefetchWebview = async () => {
     setWebviewLoading(true);
-    
+
     try {
       const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL
       const backendComms = BackendServerComms.getInstance();
       const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME);
+      let signedUserToken: string | undefined;
+      try {
+        signedUserToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME, "generate-webview-signed-user-token");
+      } catch (error) {
+        console.warn('Failed to generate signed user token:', error);
+        signedUserToken = undefined;
+      }
       const urlWithToken = new URL(baseUrl);
       urlWithToken.searchParams.append('aos_temp_token', tempToken);
+      if (signedUserToken) {
+        urlWithToken.searchParams.append('aos_signed_user_token', signedUserToken);
+      }
       urlWithToken.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
       setAppStoreUrl(urlWithToken.toString());
     } catch (error) {
@@ -81,4 +91,4 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
       {children}
     </AppStoreWebviewPrefetchContext.Provider>
   );
-}; 
+};
