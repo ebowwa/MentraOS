@@ -461,7 +461,7 @@ public class MediaCaptureService {
     /**
      * Takes a photo locally when offline or when server communication fails
      */
-    private void takePhotoLocally() {
+    public void takePhotoLocally() {
         // Check storage availability before taking photo
         if (!isExternalStorageAvailable()) {
             Log.e(TAG, "External storage is not available for photo capture");
@@ -473,6 +473,8 @@ public class MediaCaptureService {
 
         // Generate a temporary requestId
         String requestId = "local_" + timeStamp;
+
+        // Log.d(TAG, "Taking photo locally in offline mode");
 
         // For offline mode, take photo and queue it for later upload
         CameraNeo.takePictureWithCallback(
@@ -575,8 +577,31 @@ public class MediaCaptureService {
      * This is for debugging purposes only
      */
     public void takeDebugVpsPhotoAndUpload(VpsCoordinateCallback vpsCallback) {
-        Log.d(TAG, "DEBUG: Taking photo for VPS debug upload");
+        Log.d(TAG, "DEBUG: Returning dummy VPS coordinates");
 
+        // Generate a dummy request ID
+//        String requestId = "debug_vps_" + System.currentTimeMillis();
+//
+//        // Return dummy coordinates
+//        if (vpsCallback != null) {
+//            // Dummy position (x, y, z)
+//            float x = 1.0f;
+//            float y = 2.0f;
+//            float z = 3.0f;
+//
+//            // Dummy orientation (quaternion)
+//            float qx = 0.0f;
+//            float qy = 0.0f;
+//            float qz = 0.0f;
+//            float qw = 1.0f;
+//
+//            // Dummy confidence
+//            float confidence = 0.95f;
+//
+//            vpsCallback.onVpsCoordinates(requestId, x, y, z, qx, qy, qz, qw, confidence);
+//        }
+
+        // Original implementation commented out
         // Generate a timestamp for the photo filename
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(new Date());
         String photoFilePath = mContext.getExternalFilesDir(null) + File.separator + "DEBUG_VPS_" + timeStamp + ".jpg";
@@ -604,7 +629,7 @@ public class MediaCaptureService {
                             }
 
                             // Upload the photo to VPS debug server
-                            uploadPhotoToVpsServer(filePath, requestId, vpsCallback);   
+                            uploadPhotoToVpsServer(filePath, requestId, vpsCallback);
                         }
 
                         @Override

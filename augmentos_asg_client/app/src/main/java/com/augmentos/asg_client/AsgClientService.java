@@ -116,7 +116,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     // 2. Add a field to store the current mode
-    private PhotoCaptureMode currentPhotoMode = PhotoCaptureMode.SAVE_LOCALLY;
+    private PhotoCaptureMode currentPhotoMode = PhotoCaptureMode.VPS;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -1522,7 +1522,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // Call the VPS photo upload method directly
         // This bypasses the backend communication and directly calls the VPS service
-        mMediaCaptureService.takeDebugVpsPhotoAndUpload();
+//        mMediaCaptureService.takeDebugVpsPhotoAndUpload();
     }
 
     /**
@@ -2021,7 +2021,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             public void run() {
                 // Take a photo and upload it to the VPS server
                 if (mMediaCaptureService != null && networkManager != null && networkManager.isConnectedToWifi()) {
-                    mMediaCaptureService.takeDebugVpsPhotoAndUpload();
+//                    mMediaCaptureService.takeDebugVpsPhotoAndUpload();
                 } else {
                     Log.d(TAG, "Skipping VPS photo upload - no WiFi connection or capture service unavailable");
                 }
@@ -2196,6 +2196,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // In the method that handles photo capture (e.g., handlePhotoButtonPress or similar):
     private void handlePhotoCaptureWithMode() {
+        Log.d(TAG, "Handling photo capture with current mode: " + currentPhotoMode);
         switch (currentPhotoMode) {
             case SAVE_LOCALLY:
                 if (mMediaCaptureService != null) {

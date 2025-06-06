@@ -1283,10 +1283,11 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Forward via EventBus for cloud communication (consistent with other message types)
                 EventBus.getDefault().post(new KeepAliveAckEvent(json));
                 break;
+
             case "vps_coordinates": {
                 // Handle VPS coordinates message from ASG client
                 try {
-                    String requestId = json.optString("requestId", "");
+                    String vpsRequestId = json.optString("requestId", "");
                     double x = json.optDouble("x", Double.NaN);
                     double y = json.optDouble("y", Double.NaN);
                     double z = json.optDouble("z", Double.NaN);
@@ -1298,7 +1299,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                     // Post event to EventBus
                     EventBus.getDefault().post(new VpsCoordinatesEvent(
                         smartGlassesDevice.deviceModelName,
-                        requestId, x, y, z, qx, qy, qz, qw, confidence
+                            vpsRequestId, x, y, z, qx, qy, qz, qw, confidence
                     ));
                     Log.d(TAG, "Posted VpsCoordinatesEvent: " + json.toString());
                 } catch (Exception e) {
