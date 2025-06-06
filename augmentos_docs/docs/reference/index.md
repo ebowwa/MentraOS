@@ -13,7 +13,6 @@ The AugmentOS SDK is organized into several main components:
 
 - **Primary Classes**: Core classes like [`TpaServer`](/reference/tpa-server) and [`TpaSession`](/reference/tpa-session) that serve as the main entry points for app development
 - **Manager Classes**: Component classes like [`EventManager`](/reference/managers/event-manager), [`LayoutManager`](/reference/managers/layout-manager), and [`SettingsManager`](/reference/managers/settings-manager) that handle specific functionalities
-- **Authentication**: Features for user authentication like [`Webview Authentication`](/reference/webview-auth) for in-app webviews
 - **Enums**: Enumeration types that define constants and options throughout the SDK
 - **Interfaces**: Type definitions for configuration objects, events, layouts, settings, and messages
 - **Utilities**: Helper functions and utility classes
