@@ -117,7 +117,24 @@ export class UserSession {
    * Get a user session by ID
    */
   static getById(userId: string): UserSession | undefined {
-    return globalSessions.get(userId);
+    const session = globalSessions.get(userId);
+    const allUserIds = Array.from(globalSessions.keys());
+    
+    // Debug logging to track session lookups
+    rootLogger.debug({
+      service: 'UserSession.getById',
+      lookupUserId: userId,
+      sessionFound: !!session,
+      totalSessions: globalSessions.size,
+      allSessionUserIds: allUserIds,
+      userIdType: typeof userId,
+      userIdLength: userId?.length || 0,
+      exactMatches: allUserIds.filter(id => id === userId),
+      similarMatches: allUserIds.filter(id => id.toLowerCase() === userId.toLowerCase()),
+      containsMatches: allUserIds.filter(id => id.includes(userId) || userId.includes(id))
+    }, `Session lookup: ${userId} -> ${session ? 'FOUND' : 'NOT FOUND'}`);
+    
+    return session;
   }
 
   /**

@@ -181,6 +181,14 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
       // DEBUG: Log detailed session lookup info with race condition detection
       const userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
       const tokenUserId = (userData as JwtPayload).email;
+      
+      // Debug JWT contents
+      middlewareLogger.debug({
+        jwtPayload: userData,
+        extractedUserId: tokenUserId,
+        userIdFromSub: (userData as JwtPayload).sub,
+        userIdFromEmail: (userData as JwtPayload).email
+      }, 'JWT verification details');
       const allSessions = UserSession.getAllSessions();
       
       // Check if user had a session recently but it's now missing
