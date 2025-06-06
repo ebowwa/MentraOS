@@ -11,6 +11,7 @@ import { Server } from 'http';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
+import pinoHttp from 'pino-http';
 
 // Import services
 // import { photoRequestService } from './services/core/photo-request.service';
@@ -142,6 +143,30 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(cookieParser());
+
+// Add pino-http middleware for request logging
+app.use(pinoHttp({
+  logger: rootLogger,
+  genReqId: (req) => {
+    // Generate correlation ID for each request
+    return `${req.method}-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  },
+  customLogLevel: (req, res, err) => {
+    if (res.statusCode >= 400 && res.statusCode < 500) return 'warn';
+    if (res.statusCode >= 500 || err) return 'error';
+    return 'info';
+  },
+  customSuccessMessage: (req, res) => {
+    return `${req.method} ${req.url} - ${res.statusCode}`;
+  },
+  customErrorMessage: (req, res, err) => {
+    return `${req.method} ${req.url} - ${res.statusCode} - ${err.message}`;
+  },
+  // Don't log health check requests to reduce noise
+  autoLogging: {
+    ignore: (req) => req.url === '/health'
+  }
+}));
 
 // Routes
 app.use('/api/apps', appRoutes);

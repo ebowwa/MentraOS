@@ -152,7 +152,8 @@ export class GlassesWebSocketService {
         timestamp: new Date().toISOString()
       });
     } catch (error) {
-      logger.error(error, 'Error handling glasses connection');
+      logger.error(error, 'Error handling glasses connection for user:' + (request as any).userId);
+      logger.debug({ service: SERVICE_NAME, request, userId: (request as any).userId }, 'Request details');
       this.sendError(ws, GlassesErrorCode.SESSION_ERROR, 'Failed to create session');
     }
   }
