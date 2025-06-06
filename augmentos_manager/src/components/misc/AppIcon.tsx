@@ -1,6 +1,6 @@
 // AppIcon.tsx
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import { saveSetting, loadSetting } from '../logic/SettingsHelper';
@@ -8,6 +8,7 @@ import { SETTINGS_KEYS } from '../consts';
 import { AppInterface } from '../providers/AppStatusProvider';
 import { router } from 'expo-router';
 import { useAppTheme } from '@/utils/useAppTheme';
+import { Text } from '@/components/ignite';
 
 interface AppIconProps {
     app: AppInterface;
@@ -64,14 +65,13 @@ const AppIcon: React.FC<AppIconProps> = ({
 
             {showLabel && (
                 <Text
+                    text={app.name}
                     style={[
                         styles.appName,
                         theme.isDark ? styles.appNameDark : styles.appNameLight,
                     ]}
                     numberOfLines={2}
-                >
-                    {app.name}
-                </Text>
+                />
             )}
         </TouchableOpacity>
     );
@@ -81,21 +81,21 @@ const styles = StyleSheet.create({
     container: {
         width: 50,
         height: 50,
-        borderRadius: 12,
+        borderRadius: 25, // Half of width/height for perfect circle
         overflow: 'hidden',
     },
     icon: {
         width: '100%',
         height: '100%',
         resizeMode: 'cover',
+        borderRadius: 25, // Also make the image circular
     },
     appName: {
         marginTop: 5,
         fontSize: 11,
         fontWeight: '600',
-    	fontFamily: "SF Pro Rounded",
         lineHeight: 12,
-    		textAlign: "left",
+        textAlign: "left",
     },
     appNameLight: {
         color: '#000000',

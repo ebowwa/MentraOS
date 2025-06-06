@@ -3,6 +3,7 @@ import { WebView } from 'react-native-webview';
 import Constants from 'expo-constants'
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { View } from 'react-native';
+import { useAppTheme } from '@/utils/useAppTheme';
 
 const STORE_PACKAGE_NAME = 'org.augmentos.store';
 
@@ -25,10 +26,12 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
   const [appStoreUrl, setAppStoreUrl] = useState('');
   const [webviewLoading, setWebviewLoading] = useState(true);
   const webViewRef = useRef<WebView>(null);
+  const {theme} = useAppTheme()
 
   // Prefetch logic
   const prefetchWebview = async () => {
     setWebviewLoading(true);
+
     try {
       const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL
       const backendComms = BackendServerComms.getInstance();
@@ -45,10 +48,13 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
       if (signedUserToken) {
         urlWithToken.searchParams.append('aos_signed_user_token', signedUserToken);
       }
+      urlWithToken.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
       setAppStoreUrl(urlWithToken.toString());
     } catch (error) {
       // fallback to base URL
       const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL;
+      const urlWithToken = new URL(baseUrl);
+      urlWithToken.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
       setAppStoreUrl(baseUrl);
     } finally {
       setWebviewLoading(false);

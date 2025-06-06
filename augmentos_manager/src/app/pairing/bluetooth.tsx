@@ -1,7 +1,7 @@
 // SelectGlassesBluetoothScreen.tsx
 
 import React, {useEffect, useMemo, useRef, useState} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle} from "react-native"
+import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -16,7 +16,7 @@ import {requestFeaturePermissions, PermissionFeatures} from "@/utils/Permissions
 import showAlert from "@/utils/AlertUtils"
 import {router, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {Header, Screen} from "@/components/ignite"
+import {Header, Screen, Text} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -194,7 +194,6 @@ export default function SelectGlassesBluetoothScreen() {
           await coreCommunicator.sendDisconnectWearable();
           await coreCommunicator.sendForgetSmartGlasses()
           router.replace('/pairing/select-glasses-model');
-          //goBack();
         }}
          />
       <View style={styles.contentContainer}>
@@ -215,14 +214,13 @@ export default function SelectGlassesBluetoothScreen() {
                 <Image source={glassesImage} style={styles.glassesImage} />
                 <View style={styles.settingTextContainer}>
                   <Text
+                    text={deviceName}
                     style={[
                       styles.label,
                       {
                         color: theme.colors.text,
                       },
-                    ]}>
-                    {deviceName}
-                  </Text>
+                    ]} />
                 </View>
                 <Icon name="angle-right" size={24} color={theme.colors.text} />
               </TouchableOpacity>
@@ -283,7 +281,6 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
     textAlign: "left",
     marginBottom: 5,
     // color moved to dynamic styling

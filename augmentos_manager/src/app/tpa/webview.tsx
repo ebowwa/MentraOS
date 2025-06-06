@@ -202,7 +202,24 @@ export default function AppWebView() {
   return (
     // <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
     <View style={{flex: 1}}>
-      <Header leftIcon="caretLeft" style={{paddingLeft: 16}} onLeftPress={() => router.back()} />
+      <Header 
+        title={appName}
+        titleMode="center"
+        leftIcon="caretLeft" 
+        style={{paddingLeft: 16}} 
+        onLeftPress={() => router.back()}
+        rightIcon="settings"
+        onRightPress={() => {
+          router.replace({
+            pathname: "/tpa/settings",
+            params: {
+              packageName: packageName as string,
+              appName: appName as string,
+              fromWebView: "true"
+            }
+          })
+        }}
+      />
       <View style={styles.container}>
         {finalUrl ? (
           <WebView

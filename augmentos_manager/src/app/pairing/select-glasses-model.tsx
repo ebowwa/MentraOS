@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Image, ViewStyle} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView, Image, ViewStyle, BackHandler} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
@@ -68,7 +68,18 @@ export default function SelectGlassesModelScreen() {
       }
 
       checkOnboardingStatus()
-    }, []),
+      
+      // Handle Android back button
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+        // If in onboarding, prevent going back
+        if (isOnboarding) {
+          return true // This prevents the default back action
+        }
+        return false // Allow default back action
+      })
+
+      return () => backHandler.remove()
+    }, [isOnboarding]),
   )
 
   useEffect(() => {}, [status])
@@ -84,9 +95,13 @@ export default function SelectGlassesModelScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:selectModel" leftIcon="caretLeft" onLeftPress={() => {
+      <Header 
+        titleTx="pairing:selectModel" 
+        leftIcon={isOnboarding ? undefined : "caretLeft"} 
+        onLeftPress={isOnboarding ? undefined : () => {
           router.replace({ pathname: "/home" });
-        }} />
+        }} 
+      />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {isOnboarding && (
           <View style={[styles.onboardingBanner, {backgroundColor: theme.colors.statusInfo, borderColor: theme.colors.buttonPrimary}]}>

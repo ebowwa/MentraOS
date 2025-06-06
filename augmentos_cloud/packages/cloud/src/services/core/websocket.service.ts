@@ -78,6 +78,14 @@ import axios from 'axios';
 import { SessionService } from './session.service';
 import { getSessionService } from './session.service';
 import { DisconnectInfo } from './HeartbeatManager';
+import multiUserTpaService from './multi-user-tpa.service';
+import { 
+  TpaBroadcastMessage, 
+  TpaDirectMessage, 
+  TpaUserDiscovery,
+  TpaRoomJoin,
+  TpaRoomLeave
+} from '@augmentos/sdk/src/types/messages/tpa-to-cloud';
 
 const SERVICE_NAME = 'websocket.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -288,7 +296,7 @@ export class WebSocketService {
 
   //             // If we have processed audio data, broadcast it to TPAs
   //             if (processedData) {
-  //               this.broadcastToTpaAudio(userSession, processedData);
+  //               this.broadcastToTpaAudio(userSession, _arrayBuffer);
   //             }
   //           } else {
   //             // Wait for the next chunk in sequence
@@ -2071,6 +2079,122 @@ export class WebSocketService {
 
               userSession.logger.info(`[websocket.service]: RTMP stream stop request sent to glasses for app ${appId}`);
 
+              break;
+            }
+
+            // TPA-to-TPA Communication message handling
+            case 'tpa_broadcast_message': {
+              console.log("tpa_broadcast_message", message)
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+
+              console.log("432432userSession")
+
+              try {
+                const broadcastMessage = message as TpaBroadcastMessage;
+                await multiUserTpaService.broadcastToTpaUsers(userSession, broadcastMessage);
+                userSession.logger.info({
+                  packageName: broadcastMessage.packageName,
+                  messageId: broadcastMessage.messageId,
+                }, 'TPA broadcast message processed');
+              } catch (error) {
+                userSession.logger.error(error, 'Error handling TPA broadcast message');
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'Failed to broadcast message'
+                });
+              }
+              break;
+            }
+
+            case 'tpa_direct_message': {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+
+              try {
+                const directMessage = message as TpaDirectMessage;
+                const success = await multiUserTpaService.sendDirectMessage(userSession, directMessage);
+                
+                // Send response back to sender
+                const response = {
+                  type: 'tpa_direct_message_response',
+                  messageId: directMessage.messageId,
+                  success,
+                  targetUserId: directMessage.targetUserId,
+                  timestamp: new Date()
+                };
+                ws.send(JSON.stringify(response));
+
+                userSession.logger.info({
+                  packageName: directMessage.packageName,
+                  messageId: directMessage.messageId,
+                  targetUserId: directMessage.targetUserId,
+                  success
+                }, 'TPA direct message processed');
+              } catch (error) {
+                userSession.logger.error(error, 'Error handling TPA direct message');
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'Failed to send direct message'
+                });
+              }
+              break;
+            }
+
+            case 'tpa_user_discovery': {
+              // This functionality is now only available via the HTTP API endpoint
+              this.sendError(ws, {
+                type: CloudToTpaMessageType.CONNECTION_ERROR,
+                message: 'User discovery is now only available via the HTTP API endpoint /api/tpa-communication/discover-users.'
+              });
+              break;
+            }
+
+            case 'tpa_room_join': {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+
+              try {
+                const roomJoinMessage = message as TpaRoomJoin;
+                await multiUserTpaService.handleRoomJoin(userSession, roomJoinMessage);
+                userSession.logger.info({
+                  packageName: roomJoinMessage.packageName,
+                }, 'TPA room join processed');
+              } catch (error) {
+                userSession.logger.error(error, 'Error handling TPA room join');
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'Failed to join room'
+                });
+              }
+              break;
+            }
+
+            case 'tpa_room_leave': {
+              if (!userSession) {
+                ws.close(1008, 'No active session');
+                return;
+              }
+
+              try {
+                const roomLeaveMessage = message as TpaRoomLeave;
+                await multiUserTpaService.handleRoomLeave(userSession, roomLeaveMessage);
+                userSession.logger.info({
+                  packageName: roomLeaveMessage.packageName,
+                }, 'TPA room leave processed');
+              } catch (error) {
+                userSession.logger.error(error, 'Error handling TPA room leave');
+                this.sendError(ws, {
+                  type: CloudToTpaMessageType.CONNECTION_ERROR,
+                  message: 'Failed to leave room'
+                });
+              }
               break;
             }
           }

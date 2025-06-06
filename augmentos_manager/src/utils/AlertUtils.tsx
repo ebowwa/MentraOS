@@ -185,13 +185,12 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
   );
 };
 
-// Custom alert function that can be used as a drop-in replacement for Alert.alert
 export const showAlert = (
   title: string,
   message: string,
   buttons: AlertButton[] = [{ text: 'OK' }],
-  options?: { 
-    cancelable?: boolean; 
+  options?: {
+    cancelable?: boolean;
     onDismiss?: () => void;
     useNativeAlert?: boolean;
     iconName?: string;
@@ -199,21 +198,37 @@ export const showAlert = (
     iconColor?: string;
     icon?: React.ReactNode;
   }
-) => {
-  // Fall back to native Alert if modalRef is not set or if explicitly requested
-  if (!modalRef || options?.useNativeAlert) {
-    return Alert.alert(title, message, buttons, {
-      cancelable: options?.cancelable ?? true,
-      onDismiss: options?.onDismiss,
-    });
-  }
+): Promise<void> => {
+  return new Promise((resolve) => {
+    
+    const handleDismiss = () => {
+      options?.onDismiss?.();
+      resolve();
+    };
 
-  // Use custom modal implementation
-  modalRef.showModal(title, message, buttons, {
-    iconName: options?.iconName,
-    iconSize: options?.iconSize,
-    iconColor: options?.iconColor,
-    icon: options?.icon,
+    // Fall back to native Alert if modalRef is not set or if explicitly requested
+    if (!modalRef || options?.useNativeAlert) {
+      return Alert.alert(title, message, buttons, {
+        cancelable: options?.cancelable ?? true,
+        onDismiss: handleDismiss,
+      });
+    }
+
+    const wrappedButtons = buttons.map(button => ({
+      ...button,
+      onPress: () => {
+        button.onPress?.();
+        resolve();
+      }
+    }));
+
+    // Use custom modal implementation
+    modalRef.showModal(title, message, wrappedButtons, {
+      iconName: options?.iconName,
+      iconSize: options?.iconSize,
+      iconColor: options?.iconColor,
+      icon: options?.icon,
+    });
   });
 };
 
