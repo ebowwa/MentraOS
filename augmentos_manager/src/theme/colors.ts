@@ -70,6 +70,7 @@ const palette = {
   gray100: "#F5F5F5",
   gray200: "#EEEEEE", 
   gray300: "#E0E0E0",
+  gray350: "#CECECE",
   gray400: "#BDBDBD",
   gray500: "#9E9E9E",
   gray600: "#757575",
@@ -129,7 +130,7 @@ const palette = {
 
   // Button colors for pill-shaped buttons (light theme)
   buttonPillPrimary: "#4A90E2", // Medium blue for primary pill buttons
-  buttonPillSecondary: "#F0F0F0", // Light gray for secondary pill buttons
+  buttonPillSecondary: "#E0E0E0", // Medium gray for secondary pill buttons (darker than before)
   buttonPillPrimaryText: "#FFFFFF", // White text for primary buttons
   buttonPillSecondaryText: "#333333", // Dark text for secondary buttons
 } as const
@@ -152,7 +153,7 @@ export const colors = {
   /**
    * Secondary text information.
    */
-  textDim: palette.neutral600,
+  textDim: palette.neutral700,
   /**
    * The default color of the screen background.
    */
@@ -204,9 +205,11 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: palette.iosSwitchTrack,
-  switchTrackOn: palette.blue500,
-  switchThumb: palette.neutral100,
+  switchTrackOff: "#9E9E9E", // Darker gray for OFF track
+  switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
+  switchThumb: palette.gray350,
+  switchThumbOn: palette.neutral100, // White thumb for ON state
+  switchThumbOff: palette.gray350, // More noticeable gray handle for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
@@ -223,7 +226,7 @@ export const colors = {
   iconSecondary: palette.neutral700, // darker secondary icons for light theme
 
   // Button states
-  buttonPressed: palette.neutral700, // Darker state for pressed buttons
+  buttonPressed: palette.gray200, // Light gray state for pressed buttons
 
   // Tab bar gradients
   tabBarBackground1: palette.tabBarGradientStart,
@@ -237,7 +240,7 @@ export const colors = {
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
-  destructiveAction: palette.warningPink, // Pink for destructive actions
+  destructiveAction: palette.errorRed, // Red for destructive actions in light theme
   
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
@@ -272,4 +275,10 @@ export const colors = {
   buttonPillSecondary: palette.buttonPillSecondary,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
+  
+  // Checkmark color
+  checkmark: palette.blue500, // Bright blue for checkmarks in light theme
+  
+  // Slider thumb color
+  sliderThumb: palette.gray350, // Match toggle switch knob color
 } as const

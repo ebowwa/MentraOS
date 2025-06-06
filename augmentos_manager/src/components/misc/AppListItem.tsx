@@ -1,5 +1,5 @@
 import React from "react"
-import {View, Text, TouchableOpacity, ViewStyle, TextStyle, Animated, Pressable} from "react-native"
+import {View, TouchableOpacity, ViewStyle, TextStyle, Animated, Pressable} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {colors, ThemedStyle} from "@/theme"
 import AppIcon from "./AppIcon"
@@ -7,7 +7,7 @@ import ChevronRight from "assets/icons/component/ChevronRight"
 import SunIcon from "assets/icons/component/SunIcon"
 import {TreeIcon} from "assets/icons/component/TreeIcon"
 import {translate} from "@/i18n"
-import {Switch} from "@/components/ignite"
+import {Switch, Text} from "@/components/ignite"
 import {TooltipIcon} from "assets/icons/component/TooltipIcon"
 import Toast from "react-native-toast-message"
 
@@ -61,11 +61,10 @@ export const AppListItem = ({
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
+            text={app.name}
             style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]}
             numberOfLines={1}
-            ellipsizeMode="tail">
-            {app.name}
-          </Text>
+            ellipsizeMode="tail" />
           {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
         </View>
       </View>
@@ -88,7 +87,7 @@ const $activeApp: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const $inactiveApp: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.textDim,
+  color: colors.text,
 })
 
 const $everything: ThemedStyle<ViewStyle> = () => ({
@@ -124,7 +123,6 @@ const $appName: ThemedStyle<TextStyle> = () => ({
   fontSize: 15,
   letterSpacing: 0.6,
   lineHeight: 20,
-  fontFamily: "SF Pro Rounded",
   textAlign: "left",
   overflow: "hidden",
 })
@@ -134,16 +132,17 @@ const $toggleParent: ThemedStyle<ViewStyle> = () => ({
 })
 
 const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
-  const {themed} = useAppTheme()
-  const mColor = isActive ? "#7674FB" : "#CECED0"
+  const {themed, theme} = useAppTheme()
+  const mColor = isActive ? "#7674FB" : theme.colors.textDim
 
   if (isForeground) {
     return (
       <View style={themed(isActive ? $tagActive : $tag)}>
         <TreeIcon size={16} color={mColor} />
-        <Text style={[themed($disconnect), {color: mColor}]} numberOfLines={1}>
-          {isForeground ? translate("home:foreground") : ""}
-        </Text>
+        <Text 
+          text={isForeground ? translate("home:foreground") : ""}
+          style={[themed($disconnect), {color: mColor}]} 
+          numberOfLines={1} />
         <Pressable
           onPress={() => {
             Toast.show({
@@ -189,7 +188,6 @@ const $disconnect: ThemedStyle<TextStyle> = () => ({
   letterSpacing: 0.4,
   lineHeight: 18,
   fontWeight: "700",
-  fontFamily: "Inter-Bold",
   color: "#ceced0",
   textAlign: "left",
   overflow: "hidden",

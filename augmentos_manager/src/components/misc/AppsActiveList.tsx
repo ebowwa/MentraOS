@@ -14,6 +14,8 @@ import Toast from "react-native-toast-message"
 import {TruckIcon} from "assets/icons/component/TruckIcon"
 import {translate} from "@/i18n"
 import AppsHeader from "./AppsHeader"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 
 export default function AppsActiveList({
   isSearchPage = false,
@@ -26,6 +28,7 @@ export default function AppsActiveList({
   const backendComms = BackendServerComms.getInstance()
   const [isLoading, setIsLoading] = useState(false)
   const {themed, theme} = useAppTheme()
+  const [hasEverActivatedApp, setHasEverActivatedApp] = useState(true)
 
   const runningApps = useMemo(() => {
     let apps = appStatus.filter(app => app.is_running)
@@ -43,6 +46,25 @@ export default function AppsActiveList({
   const previousCount = useRef(0)
 
   const emptyViewOpacity = useRef(new Animated.Value(0)).current
+
+  // Check if user has ever activated an app
+  useEffect(() => {
+    const checkHasActivatedApp = async () => {
+      const hasActivated = await loadSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
+      setHasEverActivatedApp(hasActivated)
+    }
+    checkHasActivatedApp()
+  }, [])
+
+  // Update hasEverActivatedApp when apps change
+  useEffect(() => {
+    const checkHasActivatedApp = async () => {
+      const hasActivated = await loadSetting(SETTINGS_KEYS.HAS_EVER_ACTIVATED_APP, false)
+      setHasEverActivatedApp(hasActivated)
+    }
+    // Re-check when app status changes (e.g., after activating first app)
+    checkHasActivatedApp()
+  }, [appStatus])
 
   useEffect(() => {
     appStatus.forEach(app => {
@@ -62,6 +84,9 @@ export default function AppsActiveList({
   }, [appStatus])
 
   useEffect(() => {
+    // Skip animation logic when on search page
+    if (isSearchPage) return
+    
     const newCount = runningApps.length
     if (newCount !== previousCount.current) {
       Animated.timing(containerHeight, {
@@ -92,7 +117,7 @@ export default function AppsActiveList({
         useNativeDriver: true,
       }).start()
     }
-  }, [runningApps.length])
+  }, [runningApps.length, isSearchPage])
 
   const stopApp = async (packageName: string) => {
     console.log("STOP APP")
@@ -173,7 +198,9 @@ export default function AppsActiveList({
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($headerContainer)}></View>
-        <Animated.View style={[themed($contentContainer), {minHeight: containerHeight}]}></Animated.View>
+        <View style={themed($contentContainer)}>
+          {getAppsList()}
+        </View>
       </View>
     )
   }
@@ -188,11 +215,14 @@ export default function AppsActiveList({
 
         {runningApps.length === 0 && (
           <Animated.View style={{opacity: emptyViewOpacity}}>
-            <TempActivateAppWindow />
-            <EmptyAppsView
-              statusMessageKey={"home:noActiveApps"}
-              activeAppsMessageKey={"home:emptyActiveAppListInfo"}
-            />
+            {!hasEverActivatedApp ? (
+              <TempActivateAppWindow />
+            ) : (
+              <EmptyAppsView
+                statusMessageKey={"home:noActiveApps"}
+                activeAppsMessageKey={"home:emptyActiveAppListInfo"}
+              />
+            )}
           </Animated.View>
         )}
       </Animated.View>

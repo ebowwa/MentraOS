@@ -103,8 +103,10 @@ export default function GlassesPairingGuideScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header leftIcon="caretLeft" onLeftPress={() => {
+      <Header leftIcon="caretLeft" onLeftPress={async () => {
           setPairingInProgress(false);
+          await coreCommunicator.sendDisconnectWearable();
+          await coreCommunicator.sendForgetSmartGlasses();
           router.replace('/pairing/select-glasses-model');
         }} />
       {pairingInProgress ? (

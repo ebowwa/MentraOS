@@ -190,7 +190,7 @@ export default function DeviceSettings() {
       {/* Show helper text if glasses are paired but not connected */}
       {!status.glasses_info?.model_name && status.core_info.default_wearable && (
         <View style={themed($infoContainer)}>
-          <Text style={themed($infoText)}>Changes to glasses settings will take effect when glasses are connected</Text>
+          <Text style={themed($infoText)}>Changes to glasses settings will take effect when glasses are connected.</Text>
         </View>
       )}
 
@@ -233,7 +233,7 @@ export default function DeviceSettings() {
           <MaterialCommunityIcons
             name="check"
             size={24}
-            color={preferredMic === "phone" ? theme.colors.palette.primary300 : "transparent"}
+            color={preferredMic === "phone" ? theme.colors.checkmark : "transparent"}
           />
         </TouchableOpacity>
         {/* divider */}
@@ -250,7 +250,7 @@ export default function DeviceSettings() {
           <MaterialCommunityIcons
             name="check"
             size={24}
-            color={preferredMic === "glasses" ? theme.colors.palette.primary300 : "transparent"}
+            color={preferredMic === "glasses" ? theme.colors.checkmark : "transparent"}
           />
         </TouchableOpacity>
       </View>
@@ -316,11 +316,11 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   gap: 16,
 })
 
-const $settingsGroup: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   paddingVertical: 12,
   paddingHorizontal: 16,
-  borderRadius: 12,
+  borderRadius: spacing.md,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({

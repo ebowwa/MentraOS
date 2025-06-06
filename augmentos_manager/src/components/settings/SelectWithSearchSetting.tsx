@@ -155,7 +155,7 @@ const SelectWithSearchSetting: React.FC<SelectWithSearchSettingProps> = ({label,
                       <MaterialCommunityIcons
                         name="check"
                         size={24}
-                        color={item.value === value ? theme.colors.palette.primary300 : "transparent"}
+                        color={item.value === value ? (theme.colors.checkmark || theme.colors.palette.primary300) : "transparent"}
                       />
                       <Text style={[styles.optionText, {color: theme.colors.text, flex: 1, marginLeft: theme.spacing.xs}]}>{item.label}</Text>
                     </Pressable>

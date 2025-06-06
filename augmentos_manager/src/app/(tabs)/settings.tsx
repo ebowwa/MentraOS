@@ -1,7 +1,7 @@
 import React, {useState, useEffect} from "react"
-import {View, Text, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Platform} from "react-native"
+import {View, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Platform} from "react-native"
 import {FontAwesome} from "@expo/vector-icons"
-import {Screen, Header, Icon} from "@/components/ignite"
+import {Screen, Header, Icon, Text} from "@/components/ignite"
 import {router} from "expo-router"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -60,7 +60,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 20}}>
+    <Screen preset="scroll" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="settings:title" />
 
       <Spacer height={theme.spacing.xl} />
@@ -72,13 +72,12 @@ export default function SettingsPage() {
       <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
       {/* Comment this out until the light theme looks acceptable */}
-      <Spacer height={theme.spacing.md} />
+      {/* <Spacer height={theme.spacing.md} /> */}
 
-      <RouteButton
+      {/* <RouteButton
         label="Theme Settings"
-        subtitle="Customize your app appearance"
         onPress={() => router.push("/settings/theme")}
-      />
+      /> */}
 
       {showDeveloperSettings && (
         <>
@@ -96,7 +95,7 @@ export default function SettingsPage() {
 
       <ActionButton
         label={translate("settings:signOut")}
-        variant={theme.isDark ? "destructive":"default"}
+        variant="destructive"
         onPress={confirmSignOut}
       />
     </Screen>

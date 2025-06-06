@@ -1,5 +1,5 @@
 import React, {useRef, useCallback, PropsWithChildren, useState, useEffect} from "react"
-import {View, Animated, Platform, ViewStyle, ScrollView} from "react-native"
+import {View, Animated, Platform, ViewStyle, ScrollView, TouchableOpacity} from "react-native"
 import {useFocusEffect} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
@@ -16,10 +16,12 @@ import NonProdWarning from "@/components/misc/NonProdWarning"
 import {spacing, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import MicIcon from "assets/icons/component/MicIcon"
-import NotificationOff from "assets/icons/component/NotificationOff"
+import NotificationOn from "assets/icons/component/NotificationOn"
 import {ConnectDeviceButton, ConnectedGlasses, DeviceToolbar} from "@/components/misc/ConnectedDeviceInfo"
 import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
+import {checkFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
+import {router} from "expo-router"
 
 interface AnimatedSectionProps extends PropsWithChildren {
   delay?: number
@@ -31,8 +33,10 @@ export default function Homepage() {
   const [isSimulatedPuck, setIsSimulatedPuck] = React.useState(false)
   const [isCheckingVersion, setIsCheckingVersion] = useState(false)
   const [isInitialLoading, setIsInitialLoading] = useState(true)
+  const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
 
   const fadeAnim = useRef(new Animated.Value(0)).current
+  const bellFadeAnim = useRef(new Animated.Value(0)).current
   const {themed, theme} = useAppTheme()
 
   // Reset loading state when connection status changes
@@ -140,6 +144,32 @@ export default function Homepage() {
     }
   }, [])
 
+  // Check for missing permissions
+  useEffect(() => {
+    const checkPermissions = async () => {
+      const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
+      const hasNotifications = Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
+      
+      const shouldShowBell = !hasCalendar || !hasNotifications
+      setHasMissingPermissions(shouldShowBell)
+      
+      // Animate bell in if needed
+      if (shouldShowBell) {
+        Animated.timing(bellFadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }).start()
+      }
+    }
+    
+    checkPermissions()
+  }, [])
+
+  const handleBellPress = () => {
+    router.push("/settings/privacy")
+  }
+
   // Simple animated wrapper so we do not duplicate logic
 
   useFocusEffect(
@@ -171,7 +201,13 @@ export default function Homepage() {
         leftTx="home:title"
         RightActionComponent={
           <View style={themed($headerRight)}>
-            <NotificationOff />
+            {hasMissingPermissions && (
+              <Animated.View style={{ opacity: bellFadeAnim }}>
+                <TouchableOpacity onPress={handleBellPress}>
+                  <NotificationOn />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
             <MicIcon withBackground />
           </View>
         }
@@ -199,10 +235,12 @@ export default function Homepage() {
   )
 }
 
-const $screen: ThemedStyle<ViewStyle> = () => ({
-  paddingHorizontal: 20,
+const $screen: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  paddingHorizontal: spacing.lg,
 })
 
-const $headerRight: ThemedStyle<ViewStyle> = () => ({
+const $headerRight: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flexDirection: "row",
+  alignItems: "center",
+  gap: spacing.sm,
 })
