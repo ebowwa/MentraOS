@@ -18,13 +18,14 @@ import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 
+// Global session storage (moved from static class property for better debugging)
+const globalSessions: Map<string, UserSession> = new Map();
+
 /**
  * Complete user session class that encapsulates all session-related
  * functionality and state for the server.
  */
 export class UserSession {
-  // Static session tracking
-  private static sessions: Map<string, UserSession> = new Map();
 
   // Core identification
   public readonly userId: string;
@@ -95,23 +96,35 @@ export class UserSession {
 
     this._reconnectionTimers = new Map();
 
-    // Register in static sessions map
-    UserSession.sessions.set(userId, this);
-    this.logger.info(`User session created for ${userId}`);
+    // Register in global sessions map
+    const existingSession = globalSessions.get(userId);
+    if (existingSession) {
+      this.logger.warn({
+        existingSessionStartTime: existingSession.startTime,
+        existingSessionDisconnectedAt: existingSession.disconnectedAt,
+        newSessionStartTime: this.startTime
+      }, `⚠️ RACE CONDITION: Overwriting existing session for ${userId}`);
+    }
+    
+    globalSessions.set(userId, this);
+    this.logger.info({
+      totalSessions: globalSessions.size,
+      allUserIds: Array.from(globalSessions.keys())
+    }, `✅ User session created and registered for ${userId}`);
   }
 
   /**
    * Get a user session by ID
    */
   static getById(userId: string): UserSession | undefined {
-    return this.sessions.get(userId);
+    return globalSessions.get(userId);
   }
 
   /**
    * Get all active user sessions
    */
   static getAllSessions(): UserSession[] {
-    return Array.from(this.sessions.values());
+    return Array.from(globalSessions.values());
   }
 
   /**
@@ -193,8 +206,16 @@ export class UserSession {
     this.bufferedAudio = [];
     this.recentAudioBuffer = [];
 
-    // Remove from sessions map
-    UserSession.sessions.delete(this.userId);
+    // Remove from global sessions map
+    const wasInMap = globalSessions.has(this.userId);
+    globalSessions.delete(this.userId);
+    
+    this.logger.info({
+      wasInMap,
+      totalSessionsAfter: globalSessions.size,
+      remainingUserIds: Array.from(globalSessions.keys()),
+      disposalReason: this.disconnectedAt ? 'grace_period_timeout' : 'explicit_disposal'
+    }, `🗑️ Session disposed and removed from map for ${this.userId}`);
   }
 
   /**

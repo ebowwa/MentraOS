@@ -484,14 +484,55 @@ export class GlassesWebSocketService {
         userSession.logger.info({ service: SERVICE_NAME }, `Cleanup grace period expired for user session: ${userSession.userId}`);
 
         // Check to see if the session has reconnected / if the user is still active.
+        const wsState = userSession.websocket?.readyState;
+        const wsExists = !!userSession.websocket;
+        const wsOpen = wsState === WebSocket.OPEN;
+        const wsConnecting = wsState === WebSocket.CONNECTING;
+        
+        userSession.logger.info({
+          service: SERVICE_NAME,
+          websocketExists: wsExists,
+          websocketState: wsState,
+          websocketStateNames: {
+            0: 'CONNECTING',
+            1: 'OPEN', 
+            2: 'CLOSING',
+            3: 'CLOSED'
+          }[wsState] || 'UNKNOWN',
+          isOpen: wsOpen,
+          isConnecting: wsConnecting,
+          disconnectedAt: userSession.disconnectedAt,
+          timeSinceDisconnect: userSession.disconnectedAt ? Date.now() - userSession.disconnectedAt.getTime() : null
+        }, `Grace period check: WebSocket state analysis for ${userSession.userId}`);
+        
+        // Check if user reconnected by looking at disconnectedAt (more reliable than WebSocket state)
+        if (!userSession.disconnectedAt) {
+          userSession.logger.info({ 
+            service: SERVICE_NAME,
+            reason: 'disconnectedAt_cleared'
+          }, `User session ${userSession.userId} has reconnected (disconnectedAt cleared), skipping cleanup.`);
+          clearTimeout(userSession.cleanupTimerId!);
+          userSession.cleanupTimerId = undefined;
+          return;
+        }
+        
+        // Fallback: also check WebSocket state for backward compatibility
         if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
-          userSession.logger.info({ service: SERVICE_NAME }, `User session ${userSession.userId} has reconnected, skipping cleanup.`);
+          userSession.logger.info({ 
+            service: SERVICE_NAME,
+            reason: 'websocket_open'
+          }, `User session ${userSession.userId} has reconnected (WebSocket open), skipping cleanup.`);
           clearTimeout(userSession.cleanupTimerId!);
           userSession.cleanupTimerId = undefined;
           return;
         }
 
-        userSession.logger.info({ service: SERVICE_NAME }, `User session ${userSession.userId} has not reconnected, cleaning up session.`);
+        userSession.logger.info({
+          service: SERVICE_NAME,
+          finalWebsocketState: wsState,
+          websocketExists: wsExists,
+          reason: !wsExists ? 'no_websocket' : !wsOpen ? 'websocket_not_open' : 'unknown'
+        }, `User session ${userSession.userId} determined not reconnected, cleaning up session.`);
         // End the session
         sessionService.endSession(userSession);
       }, RECONNECT_GRACE_PERIOD_MS);

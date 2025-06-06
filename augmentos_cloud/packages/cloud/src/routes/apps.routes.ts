@@ -20,6 +20,8 @@ import { DeveloperProfile, TpaType } from '@augmentos/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import UserSession from 'src/services/session/UserSession';
 import { authWithOptionalSession, OptionalUserSessionRequest } from '../middleware/client/client-auth-middleware';
+import dotenv from 'dotenv';
+dotenv.config(); // Load environment variables from .env file
 
 const SERVICE_NAME = 'apps.routes';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -52,6 +54,9 @@ if (!CLOUD_VERSION) {
 const ALLOWED_API_KEY_PACKAGES = ['test.augmentos.mira', 'cloud.augmentos.mira', 'com.augmentos.mira'];
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
+if (!AUGMENTOS_AUTH_JWT_SECRET) {
+  logger.error('AUGMENTOS_AUTH_JWT_SECRET is not set');
+}
 
 /** 
  * TODO(isaiah): Instead of having a unifiedAuthMiddleware, I would prefer to cleanly separate routes that are called 
@@ -172,6 +177,32 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
     try {
       const session = await getSessionFromToken(token);
       const tokenDuration = Date.now() - tokenStartTime;
+      
+      // DEBUG: Log detailed session lookup info with race condition detection
+      const userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
+      const tokenUserId = (userData as JwtPayload).email;
+      const allSessions = UserSession.getAllSessions();
+      
+      // Check if user had a session recently but it's now missing
+      const userSession = allSessions.find(s => s.userId === tokenUserId);
+      const sessionFoundDirectly = !!UserSession.getById(tokenUserId);
+      
+      middlewareLogger.debug({
+        tokenUserId,
+        sessionFound: !!session,
+        sessionFoundDirectly,
+        sessionInAllSessions: !!userSession,
+        totalActiveSessions: allSessions.length,
+        allSessionUserIds: allSessions.map(s => s.userId),
+        userSessionDetails: userSession ? {
+          websocketState: userSession.websocket?.readyState,
+          disconnectedAt: userSession.disconnectedAt,
+          hasCleanupTimer: !!(userSession as any).cleanupTimerId,
+          startTime: userSession.startTime
+        } : null,
+        tokenDuration,
+        raceConditionSuspected: sessionFoundDirectly !== !!session
+      }, 'Session lookup details with race condition check');
       
       if (session) {
         const duration = Date.now() - startTime;
