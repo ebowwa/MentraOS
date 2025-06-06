@@ -171,7 +171,7 @@ export default function GlassesMirrorFullscreen() {
   // Toggle camera between front and back
   const toggleCamera = () => {
     if (!isRecording) {
-      setCameraType(cameraType === CameraType.front ? CameraType.back : CameraType.front)
+      setCameraType(cameraType === "front" ? "back" : "front")    
     } else {
       // Don't allow camera switching during recording
       if (Platform.OS === "android") {
