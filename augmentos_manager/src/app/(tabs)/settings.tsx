@@ -60,7 +60,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <Screen preset="scroll" style={{paddingHorizontal: 20}}>
+    <Screen preset="scroll" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header leftTx="settings:title" />
 
       <Spacer height={theme.spacing.xl} />

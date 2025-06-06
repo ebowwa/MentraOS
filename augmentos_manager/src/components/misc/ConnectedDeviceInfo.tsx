@@ -100,7 +100,7 @@ export const ConnectDeviceButton = () => {
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <ActivityIndicator size="small" color="#fff" style={{marginLeft: 5}} />}
+        LeftAccessory={() => <ActivityIndicator size="small" color={theme.colors.text} style={{marginLeft: 5}} />}
         onPress={handleConnectOrDisconnect}
         tx="home:connectingGlasses"
       />
@@ -112,8 +112,8 @@ export const ConnectDeviceButton = () => {
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <SolarLineIconsSet4 />}
-        RightAccessory={() => <ChevronRight />}
+        LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.text} />}
+        RightAccessory={() => <ChevronRight color={theme.colors.text} />}
         onPress={handleConnectOrDisconnect}
         tx="home:connectGlasses"
       />

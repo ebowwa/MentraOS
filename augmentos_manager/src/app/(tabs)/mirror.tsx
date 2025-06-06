@@ -444,7 +444,7 @@ export default function GlassesMirror() {
   }
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
       <Header
         leftTx="mirror:title"
         RightActionComponent={
