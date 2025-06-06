@@ -19,10 +19,13 @@ import TestFlightDetector from "@/bridge/TestFlightDetector"
 
 export default function SettingsPage() {
   const {status} = useStatus()
-  const {logout} = useAuth()
+  const {logout, user} = useAuth()
   const {theme} = useAppTheme()
   const {push, replace} = useNavigationHistory()
   const [showDeveloperSettings, setShowDeveloperSettings] = useState(false)
+  
+  // Check if user is from Mentra to show theme settings
+  const isMentraUser = user?.email?.endsWith('@mentra.glass') || false
 
   useEffect(() => {
     // Show developer settings on Android, or on iOS if it's TestFlight/Dev build
@@ -71,13 +74,16 @@ export default function SettingsPage() {
 
       <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
-      {/* Comment this out until the light theme looks acceptable */}
-      {/* <Spacer height={theme.spacing.md} /> */}
-
-      {/* <RouteButton
-        label="Theme Settings"
-        onPress={() => router.push("/settings/theme")}
-      /> */}
+      {isMentraUser && (
+        <>
+          <Spacer height={theme.spacing.md} />
+          
+          <RouteButton
+            label="Theme Settings"
+            onPress={() => push("/settings/theme")}
+          />
+        </>
+      )}
 
       {showDeveloperSettings && (
         <>
