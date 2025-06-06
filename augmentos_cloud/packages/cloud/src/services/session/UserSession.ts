@@ -17,9 +17,7 @@ import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
-
-// Global session storage (moved from static class property for better debugging)
-const globalSessions: Map<string, UserSession> = new Map();
+import SessionStorage from './SessionStorage';
 
 /**
  * Complete user session class that encapsulates all session-related
@@ -96,52 +94,23 @@ export class UserSession {
 
     this._reconnectionTimers = new Map();
 
-    // Register in global sessions map
-    const existingSession = globalSessions.get(userId);
-    if (existingSession) {
-      this.logger.warn({
-        existingSessionStartTime: existingSession.startTime,
-        existingSessionDisconnectedAt: existingSession.disconnectedAt,
-        newSessionStartTime: this.startTime
-      }, `⚠️ RACE CONDITION: Overwriting existing session for ${userId}`);
-    }
-    
-    globalSessions.set(userId, this);
-    this.logger.info({
-      totalSessions: globalSessions.size,
-      allUserIds: Array.from(globalSessions.keys())
-    }, `✅ User session created and registered for ${userId}`);
+    // Register in session storage
+    SessionStorage.getInstance().set(userId, this);
+    this.logger.info(`✅ User session created and registered for ${userId}`);
   }
 
   /**
    * Get a user session by ID
    */
   static getById(userId: string): UserSession | undefined {
-    const session = globalSessions.get(userId);
-    const allUserIds = Array.from(globalSessions.keys());
-    
-    // Debug logging to track session lookups
-    rootLogger.debug({
-      service: 'UserSession.getById',
-      lookupUserId: userId,
-      sessionFound: !!session,
-      totalSessions: globalSessions.size,
-      allSessionUserIds: allUserIds,
-      userIdType: typeof userId,
-      userIdLength: userId?.length || 0,
-      exactMatches: allUserIds.filter(id => id === userId),
-      similarMatches: allUserIds.filter(id => id.toLowerCase() === userId.toLowerCase()),
-      containsMatches: allUserIds.filter(id => id.includes(userId) || userId.includes(id))
-    }, `Session lookup: ${userId} -> ${session ? 'FOUND' : 'NOT FOUND'}`);
-    
-    return session;
+    return SessionStorage.getInstance().get(userId);
   }
 
   /**
    * Get all active user sessions
    */
   static getAllSessions(): UserSession[] {
-    return Array.from(globalSessions.values());
+    return SessionStorage.getInstance().getAllSessions();
   }
 
   /**
@@ -223,16 +192,12 @@ export class UserSession {
     this.bufferedAudio = [];
     this.recentAudioBuffer = [];
 
-    // Remove from global sessions map
-    const wasInMap = globalSessions.has(this.userId);
-    globalSessions.delete(this.userId);
+    // Remove from session storage
+    SessionStorage.getInstance().delete(this.userId);
     
     this.logger.info({
-      wasInMap,
-      totalSessionsAfter: globalSessions.size,
-      remainingUserIds: Array.from(globalSessions.keys()),
       disposalReason: this.disconnectedAt ? 'grace_period_timeout' : 'explicit_disposal'
-    }, `🗑️ Session disposed and removed from map for ${this.userId}`);
+    }, `🗑️ Session disposed and removed from storage for ${this.userId}`);
   }
 
   /**

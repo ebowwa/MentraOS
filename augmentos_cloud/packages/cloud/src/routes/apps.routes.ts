@@ -18,7 +18,7 @@ import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { DeveloperProfile, TpaType } from '@augmentos/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
-import UserSession from 'src/services/session/UserSession';
+import UserSession from '../services/session/UserSession';
 import { authWithOptionalSession, OptionalUserSessionRequest } from '../middleware/client/client-auth-middleware';
 import dotenv from 'dotenv';
 dotenv.config(); // Load environment variables from .env file
