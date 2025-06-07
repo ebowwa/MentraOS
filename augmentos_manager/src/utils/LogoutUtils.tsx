@@ -202,6 +202,9 @@ export class LogoutUtils {
       // Emit an event to reset app status
       GlobalEventEmitter.emit('RESET_APP_STATUS');
       
+      // Emit event to clear WebView data and cache
+      GlobalEventEmitter.emit('CLEAR_WEBVIEW_DATA');
+      
       console.log(`${this.TAG}: Reset status providers and event listeners`);
     } catch (error) {
       console.error(`${this.TAG}: Error resetting status providers:`, error);

@@ -4,6 +4,7 @@ import Constants from 'expo-constants'
 import BackendServerComms from '../backend_comms/BackendServerComms';
 import { View } from 'react-native';
 import { useAppTheme } from '@/utils/useAppTheme';
+import GlobalEventEmitter from '@/utils/GlobalEventEmitter';
 
 const STORE_PACKAGE_NAME = 'org.augmentos.store';
 
@@ -64,6 +65,34 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
   useEffect(() => {
     prefetchWebview();
     // Optionally, refresh on login/logout or token change
+  }, []);
+
+  // Listen for logout events to clear WebView data
+  useEffect(() => {
+    const handleClearWebViewData = () => {
+      console.log('AppStoreWebviewPrefetchProvider: Clearing WebView data on logout');
+      
+      // Clear WebView cache and data
+      if (webViewRef.current) {
+        webViewRef.current.clearCache?.(true);
+        webViewRef.current.clearFormData?.();
+        webViewRef.current.clearHistory?.();
+      }
+      
+      // Reset the URL state to force fresh token generation
+      setAppStoreUrl('');
+      
+      // Reload with fresh tokens after clearing
+      setTimeout(() => {
+        prefetchWebview();
+      }, 100);
+    };
+
+    GlobalEventEmitter.on('CLEAR_WEBVIEW_DATA', handleClearWebViewData);
+    
+    return () => {
+      GlobalEventEmitter.removeListener('CLEAR_WEBVIEW_DATA', handleClearWebViewData);
+    };
   }, []);
 
   // Expose a reload method (e.g., for logout/login)
