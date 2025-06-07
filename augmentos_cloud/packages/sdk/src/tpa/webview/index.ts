@@ -1,7 +1,7 @@
 // src/tpa/webview/index.ts
 import axios from 'axios';
 import { Response, NextFunction } from 'express';
-import { AuthenticatedRequest } from 'src/types';
+import { AuthenticatedRequest } from '../../types';
 // Note: Your Express app needs to use cookie-parser middleware for this to work
 // Example: app.use(require('cookie-parser')());
 import * as crypto from 'crypto';

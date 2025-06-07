@@ -81,6 +81,27 @@ describe('SimplePermissionChecker', () => {
       const app = createTestApp([]);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.MICROPHONE)).toBe(false);
     });
+
+    // Legacy permission compatibility tests
+    it('should allow READ_NOTIFICATIONS when app has legacy NOTIFICATIONS permission', () => {
+      const app = createTestApp([{ type: PermissionType.NOTIFICATIONS }]);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.READ_NOTIFICATIONS)).toBe(true);
+    });
+
+    it('should NOT allow POST_NOTIFICATIONS when app has legacy NOTIFICATIONS permission', () => {
+      const app = createTestApp([{ type: PermissionType.NOTIFICATIONS }]);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.POST_NOTIFICATIONS)).toBe(false);
+    });
+
+    it('should allow direct READ permission with new READ_notifications', () => {
+      const app = createTestApp([{ type: PermissionType.READ_NOTIFICATIONS }]);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.READ_NOTIFICATIONS)).toBe(true);
+    });
+
+    it('should allow direct post permission with new post_notifications', () => {
+      const app = createTestApp([{ type: PermissionType.POST_NOTIFICATIONS }]);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.POST_NOTIFICATIONS)).toBe(true);
+    });
   });
 
   describe('filterSubscriptions', () => {
@@ -143,6 +164,58 @@ describe('SimplePermissionChecker', () => {
       expect(allowed).toEqual([StreamType.LOCATION_UPDATE]);
       expect(rejected.length).toBe(1);
       expect(rejected[0].requiredPermission).toBe(PermissionType.MICROPHONE);
+    });
+
+    it('should allow notification streams for apps with legacy NOTIFICATIONS permission', () => {
+      const app = createTestApp([{ type: PermissionType.NOTIFICATIONS }]);
+      const subscriptions = [
+        StreamType.PHONE_NOTIFICATION,
+        StreamType.NOTIFICATION_DISMISSED
+      ];
+
+      const { allowed, rejected } = SimplePermissionChecker.filterSubscriptions(app, subscriptions);
+      expect(allowed).toEqual(subscriptions);
+      expect(rejected).toEqual([]);
+    });
+  });
+
+  describe('normalizePermissions', () => {
+    it('should convert legacy NOTIFICATIONS to READ_NOTIFICATIONS', () => {
+      const legacyPermissions = [
+        { type: PermissionType.NOTIFICATIONS, description: 'Legacy notification access' },
+        { type: PermissionType.MICROPHONE, description: 'Microphone access' }
+      ];
+
+      const normalized = SimplePermissionChecker.normalizePermissions(legacyPermissions);
+      
+      expect(normalized).toHaveLength(2);
+      expect(normalized[0].type).toBe(PermissionType.READ_NOTIFICATIONS);
+      expect(normalized[0].description).toBe('Legacy notification access');
+      expect(normalized[1].type).toBe(PermissionType.MICROPHONE);
+    });
+
+    it('should not duplicate permissions when normalizing', () => {
+      const mixedPermissions = [
+        { type: PermissionType.NOTIFICATIONS, description: 'Legacy' },
+        { type: PermissionType.READ_NOTIFICATIONS, description: 'Direct' },
+        { type: PermissionType.MICROPHONE }
+      ];
+
+      const normalized = SimplePermissionChecker.normalizePermissions(mixedPermissions);
+      
+      expect(normalized).toHaveLength(2);
+      expect(normalized.map(p => p.type)).toContain(PermissionType.READ_NOTIFICATIONS);
+      expect(normalized.map(p => p.type)).toContain(PermissionType.MICROPHONE);
+    });
+
+    it('should add default description for legacy permissions without description', () => {
+      const legacyPermissions = [
+        { type: PermissionType.NOTIFICATIONS }
+      ];
+
+      const normalized = SimplePermissionChecker.normalizePermissions(legacyPermissions);
+      
+      expect(normalized[0].description).toBe('Read phone notifications');
     });
   });
 });
