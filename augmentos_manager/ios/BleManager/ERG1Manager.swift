@@ -854,6 +854,12 @@ extension ERG1Manager {
     let initDataArray = initData.map { UInt8($0) }
     queueChunks([initDataArray])
   }
+
+  func RN_exit() {
+    let exitData = Data([Commands.BLE_EXIT_ALL_FUNCTIONS.rawValue])
+    let exitDataArray = exitData.map { UInt8($0) }
+    queueChunks([exitDataArray])
+  }
   
   // don't call semaphore signals here as it's handled elswhere:
   private func handleInitResponse(from peripheral: CBPeripheral, success: Bool) {

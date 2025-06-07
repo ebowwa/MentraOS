@@ -2196,15 +2196,13 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     }
 
     @Override
-    public void updateGlassesDashboardHeight(int height) {
-        // TODO: get depth from settings!
-        sendDashboardPositionCommand(height, 0);
+    public void updateGlassesDepthHeight(int depth, int height) {
+        sendDashboardPositionCommand(height, depth);
     }
 
     @Override
-    public void updateGlassesDepth(int depth) {
-        // TODO: get height from settings!
-        sendDashboardPositionCommand(0, depth);
+    public void sendExitCommand() {
+        sendDataSequentially(new byte[]{(byte) 0x18}, false, 100);
     }
     
 

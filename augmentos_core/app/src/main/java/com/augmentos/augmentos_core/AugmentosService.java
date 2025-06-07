@@ -245,6 +245,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     private boolean metricSystemEnabled;
 
+    private boolean updatingScreen = false;
+
     // Handler and Runnable for periodic datetime sending
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
@@ -483,6 +485,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         contextualDashboardEnabled = true;
         metricSystemEnabled = false;
+        updatingScreen = false;
 
         alwaysOnStatusBarEnabled = false;
 
@@ -1602,14 +1605,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         smartGlassesManager.updateGlassesHeadUpAngle(headUpAngle);
                     }
 
-                    if (settings.has("dashboardHeight")) {
+                    if (settings.has("dashboardHeight") && settings.has("dashboardDepth")) {
                         dashboardHeight = settings.getInt("dashboardHeight");
-                        smartGlassesManager.updateGlassesDashboardHeight(dashboardHeight);
-                    }
-
-                    if (settings.has("dashboardDepth")) {
                         dashboardDepth = settings.getInt("dashboardDepth");
-                        smartGlassesManager.updateGlassesDepth(dashboardDepth);
+                        smartGlassesManager.updateGlassesDepthHeight(dashboardDepth, dashboardHeight);
                     }
                     
                     // if (settings.has("useOnboardMic")) {
@@ -1907,6 +1906,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
     }
 
+    @Override
+    public void setUpdatingScreen(boolean updatingScreen) {
+        this.updatingScreen = updatingScreen;
+        if (smartGlassesManager != null && updatingScreen) {
+            smartGlassesManager.sendExitCommand();
+        }
+    }
+
     // TODO: Can remove this?
     @Override
     public void installAppFromRepository(String repository, String packageName) throws JSONException {
@@ -1998,11 +2005,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     @Override
-    public void updateGlassesDashboardHeight(int dashboardHeight) {
+    public void updateGlassesHeight(int dashboardHeight) {
         Log.d("AugmentOsService", "Updating glasses dashboard height: " + dashboardHeight);
         if (smartGlassesManager != null) {
-            smartGlassesManager.updateGlassesDashboardHeight(dashboardHeight);
             this.dashboardHeight = dashboardHeight;
+            smartGlassesManager.updateGlassesDepthHeight(this.dashboardDepth, this.dashboardHeight);
             sendStatusToBackend();
             sendStatusToAugmentOsManager();
         } else {
@@ -2015,8 +2022,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void updateGlassesDepth(int depth) {
         Log.d("AugmentOsService", "Updating glasses depth: " + depth);
         if (smartGlassesManager != null) {
-            smartGlassesManager.updateGlassesDepth(depth);
             this.dashboardDepth = depth;
+            smartGlassesManager.updateGlassesDepthHeight(this.dashboardDepth, this.dashboardHeight);
             sendStatusToBackend();
             sendStatusToAugmentOsManager();
         } else {
