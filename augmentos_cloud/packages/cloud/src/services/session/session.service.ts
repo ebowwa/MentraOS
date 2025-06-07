@@ -66,8 +66,8 @@ export class SessionService {
       if (existingSession) {
         logger.info(`User ${userId} already has a session, updating WebSocket`);
 
-        // Update the WebSocket connection
-        existingSession.websocket = ws;
+        // Update the WebSocket connection and restart heartbeat
+        existingSession.updateWebSocket(ws);
 
         // Update disconnected state
         existingSession.disconnectedAt = null;
@@ -77,9 +77,6 @@ export class SessionService {
           clearTimeout(existingSession.cleanupTimerId);
           existingSession.cleanupTimerId = undefined;
         }
-
-        // Update heartbeat // TODO(isaiah): Uncomment this when heartbeat manager is implemented
-        // existingSession.heartbeatManager.updateHeartbeat();
 
         // Return the existing session
         return { userSession: existingSession, reconnection: true };
@@ -175,41 +172,6 @@ export class SessionService {
     }
   }
 
-  /**
-   * Trigger app state change for a user
-   * 
-   * @param userId User ID
-   */
-  // async triggerAppStateChange(userId: string): Promise<void> {
-  //   const userSession = UserSession.getById(userId);
-  //   if (!userSession) {
-  //     logger.error(`No userSession found for client app state change: ${userId}`);
-  //     return;
-  //   }
-
-  //   return userSession.appManager.broadcastAppState();
-  // }
-
-  /**
-   * Update display for a user session
-   * 
-   * @param userSessionId User session ID
-   * @param displayRequest Display request
-   */
-  // updateDisplay(userSessionId: string, displayRequest: DisplayRequest): void {
-  //   try {
-  //     const userSession = UserSession.getById(userSessionId);
-
-  //     if (!userSession) {
-  //       logger.error(`No session found for display update: ${userSessionId}`);
-  //       return;
-  //     }
-
-  //     userSession.displayManager.handleDisplayRequest(displayRequest);
-  //   } catch (error) {
-  //     logger.error(`Error updating display:`, error);
-  //   }
-  // }
 
   /**
    * Add a transcript segment to a user session
@@ -260,44 +222,6 @@ export class SessionService {
   }
 
   /**
-   * Handle audio data for a user session
-   * 
-   * @param userSession User session
-   * @param audioData Audio data
-   * @param isLC3 Whether the audio is LC3 encoded
-   * @returns Processed audio data
-   */
-  // async handleAudioData(
-  //   userSession: UserSession,
-  //   audioData: ArrayBuffer | any,
-  //   isLC3 = IS_LC3
-  // ): Promise<ArrayBuffer | void> {
-  //   try {
-  //     // Delegate to audio manager
-  //     return userSession.audioManager.processAudioData(audioData, isLC3);
-  //   } catch (error) {
-  //     logger.error(`Error handling audio data:`, error);
-  //     return undefined;
-  //   }
-  // }
-
-  /**
-   * End a user session
-   * 
-   * @param userSession User session to end
-   */
-  endSession(userSession: UserSession): void {
-    try {
-      // Call dispose to clean up resources
-      userSession.dispose();
-
-      userSession.logger.info(`Session for ${userSession.userId} ended`);
-    } catch (error) {
-      logger.error(`Error ending session ${userSession.userId}:`, error);
-    }
-  }
-
-  /**
    * Get all active sessions
    * 
    * @returns Array of active user sessions
@@ -315,45 +239,6 @@ export class SessionService {
   getSessionByUserId(userId: string): UserSession | null {
     return UserSession.getById(userId) || null;
   }
-
-  /**
-   * Get all sessions for a user
-   * 
-   * @param userId User ID
-   * @returns Array of user sessions
-   */
-  // getSessionsForUser(userId: string): UserSession[] {
-  //   // Since we now have a 1:1 mapping of userId to session,
-  //   // this just returns a single-item array or empty array
-  //   const session = UserSession.getById(userId);
-  //   return session ? [session] : [];
-  // }
-
-  /**
-   * Mark a session as disconnected
-   * 
-   * @param userSession User session
-   */
-  // markSessionDisconnected(userSession: UserSession): void {
-  //   userSession.logger.debug(`[SessionService:markSessionDisconnected] Marking UserSession as disconnected - ${userSession.userId}`);
-  //   try {
-  //     // Clear any existing cleanup timer
-  //     if (userSession.cleanupTimerId) {
-  //       clearTimeout(userSession.cleanupTimerId);
-  //     }
-
-  //     // Stop transcription
-  //     if (userSession.isTranscribing) {
-  //       userSession.isTranscribing = false;
-  //       transcriptionService.stopTranscription(userSession);
-  //     }
-
-  //     // Mark as disconnected
-  //     userSession.markDisconnected();
-  //   } catch (error) {
-  //     logger.error(`Error marking session as disconnected:`, error);
-  //   }
-  // }
 
 
   /**
@@ -520,96 +405,6 @@ export class SessionService {
     }
   }
 
-  /**
-   * Start an app session
-   * 
-   * @param userSession User session
-   * @param packageName Package name
-   */
-  // async startAppSession(userSession: UserSession, packageName: string): Promise<void> {
-  //   try {
-  //     // Delegate to app manager
-  //     return userSession.appManager.startApp(packageName);
-  //   } catch (error) {
-  //     userSession.logger.error(`Error starting app ${packageName}:`, error);
-  //   }
-  // }
-
-  /**
-   * Stop an app session
-   * 
-   * @param userSession User session
-   * @param packageName Package name
-   */
-  // async stopAppSession(userSession: UserSession, packageName: string): Promise<void> {
-  //   try {
-  //     // Delegate to app manager
-  //     return userSession.appManager.stopApp(packageName);
-  //   } catch (error) {
-  //     userSession.logger.error(`Error stopping app ${packageName}:`, error);
-  //   }
-  // }
-
-  /**
-   * Check if an app is running
-   * 
-   * @param userSession User session
-   * @param packageName Package name
-   * @returns Whether the app is running
-   */
-  // isAppRunning(userSession: UserSession, packageName: string): boolean {
-  //   try {
-  //     // Delegate to app manager
-  //     return userSession.appManager.isAppRunning(packageName);
-  //   } catch (error) {
-  //     userSession.logger.error(`Error checking if app ${packageName} is running:`, error);
-  //     return false;
-  //   }
-  // }
-
-  /**
-   * Handle TPA initialization
-   * 
-   * @param ws WebSocket connection
-   * @param initMessage Initialization message
-   * @param setCurrentSessionId Function to set current session ID
-   */
-  // async handleTpaInit(
-  //   ws: WebSocket,
-  //   initMessage: TpaConnectionInit,
-  //   setCurrentSessionId: (sessionId: string) => void
-  // ): Promise<void> {
-  //   try {
-  //     // Set current session ID
-  //     setCurrentSessionId(initMessage.sessionId);
-
-  //     // Get user session
-  //     const userSession = UserSession.getById(initMessage.sessionId);
-  //     if (!userSession) {
-  //       throw new Error(`Session ${initMessage.sessionId} not found`);
-  //     }
-
-  //     // Delegate to app manager
-  // return userSession.appManager.handleTpaInit(ws, initMessage);
-  //   } catch (error) {
-  //     logger.error({ error }, `Error handling TPA init`);
-
-  //     // Close the connection with an error
-  //     try {
-  //       ws.send(JSON.stringify({
-  //         type: 'connection_error',
-  //         message: (error as Error).message || 'Internal server error',
-  //         timestamp: new Date()
-  //       }));
-
-  //       ws.close(1011, (error as Error).message || 'Internal server error');
-  //     } catch (error) {
-  //       logger.error({ error }, `Error sending error to TPA` );
-  //     }
-
-  //     throw error;
-  //   }
-  // }
 }
 
 // We'll initialize this in index.ts after creating the debug service

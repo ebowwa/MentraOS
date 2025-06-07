@@ -19,6 +19,7 @@ import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 import SessionStorage from './SessionStorage';
 
+export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
  * Complete user session class that encapsulates all session-related
  * functionality and state for the server.
@@ -74,6 +75,9 @@ export class UserSession {
   // Reconnection
   public _reconnectionTimers: Map<string, NodeJS.Timeout>;
 
+  // Heartbeat for glasses connection
+  private glassesHeartbeatInterval?: NodeJS.Timeout;
+
   // Other state
   public userDatetime?: string;
 
@@ -94,9 +98,74 @@ export class UserSession {
 
     this._reconnectionTimers = new Map();
 
+    // Set up heartbeat for glasses connection
+    this.setupGlassesHeartbeat();
+
     // Register in session storage
     SessionStorage.getInstance().set(userId, this);
     this.logger.info(`✅ User session created and registered for ${userId}`);
+  }
+
+  /**
+   * Set up heartbeat for glasses WebSocket connection
+   */
+  private setupGlassesHeartbeat(): void {
+    const HEARTBEAT_INTERVAL = 10000; // 10 seconds
+
+    // Clear any existing heartbeat
+    this.clearGlassesHeartbeat();
+
+    // Set up new heartbeat
+    this.glassesHeartbeatInterval = setInterval(() => {
+      if (this.websocket && this.websocket.readyState === WebSocket.OPEN) {
+        this.websocket.ping();
+        if (LOG_PING_PONG) {
+          this.logger.debug({ ping: true }, `[UserSession:heartbeat:ping] Sent ping to glasses for user ${this.userId}`);
+        }
+      } else {
+        // WebSocket is not open, clear the interval
+        this.clearGlassesHeartbeat();
+      }
+    }, HEARTBEAT_INTERVAL);
+
+    // Set up pong handler
+    this.websocket.on('pong', () => {
+      if (LOG_PING_PONG) {
+        this.logger.debug({ pong: true }, `[UserSession:heartbeat:pong] Received pong from glasses for user ${this.userId}`);
+      }
+    });
+
+    this.logger.debug(`[UserSession:setupGlassesHeartbeat] Heartbeat established for glasses connection`);
+  }
+
+  /**
+   * Clear heartbeat for glasses connection
+   */
+  private clearGlassesHeartbeat(): void {
+    if (this.glassesHeartbeatInterval) {
+      clearInterval(this.glassesHeartbeatInterval);
+      this.glassesHeartbeatInterval = undefined;
+      this.logger.debug(`[UserSession:clearGlassesHeartbeat] Heartbeat cleared for glasses connection`);
+    }
+  }
+
+  /**
+   * Update WebSocket connection and restart heartbeat
+   * Called when glasses reconnect with a new WebSocket
+   */
+  updateWebSocket(newWebSocket: WebSocket): void {
+    this.logger.info(`[UserSession:updateWebSocket] Updating WebSocket connection for user ${this.userId}`);
+
+    // Clear old heartbeat
+    this.clearGlassesHeartbeat();
+
+    // Update WebSocket reference
+    this.websocket = newWebSocket;
+
+    // Set up new heartbeat with the new WebSocket
+    this.setupGlassesHeartbeat();
+
+    this.logger.debug(`[UserSession:updateWebSocket] WebSocket and heartbeat updated for user ${this.userId}`);
   }
 
   /**
@@ -134,7 +203,7 @@ export class UserSession {
    * @param message Error message
    * @param code Error code
    */
-  public sendError(message: string, code: GlassesErrorCode, ): void {
+  public sendError(message: string, code: GlassesErrorCode,): void {
     try {
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
@@ -172,6 +241,9 @@ export class UserSession {
     if (this.videoManager) this.videoManager.dispose();
     if (this.photoManager) this.photoManager.dispose();
 
+    // Clear glasses heartbeat
+    this.clearGlassesHeartbeat();
+
     // Clear any timers
     if (this.cleanupTimerId) {
       clearTimeout(this.cleanupTimerId);
@@ -194,7 +266,7 @@ export class UserSession {
 
     // Remove from session storage
     SessionStorage.getInstance().delete(this.userId);
-    
+
     this.logger.info({
       disposalReason: this.disconnectedAt ? 'grace_period_timeout' : 'explicit_disposal'
     }, `🗑️ Session disposed and removed from storage for ${this.userId}`);

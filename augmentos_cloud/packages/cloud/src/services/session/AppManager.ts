@@ -21,13 +21,11 @@ import subscriptionService from './subscription.service';
 import appService from '../core/app.service';
 import * as developerService from '../core/developer.service';
 import { PosthogService } from '../logging/posthog.service';
-import UserSession from './UserSession';
+import UserSession, { LOG_PING_PONG } from './UserSession';
 import { User } from '../../models/user.model';
 import { logger as rootLogger } from '../logging/pino-logger';
 import sessionService from './session.service';
 import axios, { AxiosError } from 'axios';
-import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
-
 const logger = rootLogger.child({ service: 'AppManager' });
 
 const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
@@ -96,6 +94,9 @@ export class AppManager {
   // Track connection states for TPAs
   private connectionStates = new Map<string, AppConnectionState>();
 
+  // Track heartbeat intervals for TPA connections
+  private heartbeatIntervals = new Map<string, NodeJS.Timeout>();
+
   // Cache of installed apps
   // private installedApps: AppI[] = [];
 
@@ -103,6 +104,56 @@ export class AppManager {
     this.userSession = userSession;
     this.logger = userSession.logger.child({ service: 'AppManager' });
     this.logger.info('AppManager initialized');
+  }
+
+  /**
+   * Set up heartbeat for TPA WebSocket connection
+   */
+  private setupTpaHeartbeat(packageName: string, ws: WebSocket): void {
+    const HEARTBEAT_INTERVAL = 10000; // 10 seconds
+
+    // Clear any existing heartbeat for this package
+    this.clearTpaHeartbeat(packageName);
+
+    // Set up new heartbeat
+    const heartbeatInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
+        if (LOG_PING_PONG) {
+          // Log ping if enabled
+          this.logger.debug({ packageName, ping: true }, `[AppManager:heartbeat:ping] Sent ping to TPA ${packageName}`);
+        }
+      } else {
+        // WebSocket is not open, clear the interval
+        this.logger.warn({ packageName }, `[WARNING][AppManager:heartbeat] WebSocket for TPA ${packageName} is not open, clearing heartbeat`);
+        this.clearTpaHeartbeat(packageName);
+      }
+    }, HEARTBEAT_INTERVAL);
+
+    // Store the interval for cleanup
+    this.heartbeatIntervals.set(packageName, heartbeatInterval);
+
+    // Set up pong handler
+    ws.on('pong', () => {
+      if (LOG_PING_PONG) {
+        // Log pong if enabled
+        this.logger.debug({ packageName, pong: true }, `[AppManager:heartbeat:pong] Received pong from TPA ${packageName}`);
+      }
+    });
+
+    this.logger.debug({ packageName, HEARTBEAT_INTERVAL }, `[AppManager:setupTpaHeartbeat] Heartbeat established for TPA ${packageName}`);
+  }
+
+  /**
+   * Clear heartbeat for TPA connection
+   */
+  private clearTpaHeartbeat(packageName: string): void {
+    const existingInterval = this.heartbeatIntervals.get(packageName);
+    if (existingInterval) {
+      clearInterval(existingInterval);
+      this.heartbeatIntervals.delete(packageName);
+      this.logger.debug({ packageName }, `[AppManager:clearTpaHeartbeat] Heartbeat cleared for TPA ${packageName}`);
+    }
   }
 
   /**
@@ -588,6 +639,9 @@ export class AppManager {
         this.handleAppConnectionClosed(packageName, code, reason.toString());
       });
 
+      // Set up heartbeat to prevent proxy timeouts
+      this.setupTpaHeartbeat(packageName, ws);
+
       // Set connection state to RUNNING
       this.setAppConnectionState(packageName, AppConnectionState.RUNNING);
 
@@ -799,6 +853,9 @@ export class AppManager {
       // Remove from app connections
       this.userSession.appWebsockets.delete(packageName);
 
+      // Clear heartbeat for this TPA connection
+      this.clearTpaHeartbeat(packageName);
+
       // Check current connection state
       const currentState = this.getAppConnectionState(packageName);
 
@@ -973,6 +1030,13 @@ export class AppManager {
         }
         this.userSession._reconnectionTimers.clear();
       }
+
+      // Clear all heartbeat intervals
+      for (const [packageName, interval] of this.heartbeatIntervals.entries()) {
+        clearInterval(interval);
+        this.logger.debug({ packageName }, `[AppManager:dispose] Cleared heartbeat for ${packageName}`);
+      }
+      this.heartbeatIntervals.clear();
 
       // Close all app connections
       for (const [packageName, connection] of this.userSession.appWebsockets.entries()) {
