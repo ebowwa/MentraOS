@@ -45,7 +45,8 @@ export enum StreamType {
   
   // New stream type
   AUGMENTOS_SETTINGS_UPDATE_REQUEST = 'settings_update_request',
-  CUSTOM_MESSAGE = 'custom_message'
+  CUSTOM_MESSAGE = 'custom_message',
+  PHOTO_TAKEN = 'photo_taken',
 }
 
 /**
@@ -106,6 +107,7 @@ export const STREAM_CATEGORIES: Record<StreamType, StreamCategory> = {
   
   [StreamType.AUGMENTOS_SETTINGS_UPDATE_REQUEST]: StreamCategory.SYSTEM,
   [StreamType.CUSTOM_MESSAGE]: StreamCategory.SYSTEM,
+  [StreamType.PHOTO_TAKEN]: StreamCategory.HARDWARE,
 };
 
 /**

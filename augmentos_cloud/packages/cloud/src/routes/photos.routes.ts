@@ -10,7 +10,9 @@ import fs from 'fs';
 import { logger } from '@augmentos/utils';
 import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
 import photoRequestService from '../services/core/photo-request.service';
+import photoTakenService from '../services/core/photo-taken.service';
 import { GalleryPhoto } from '../models/gallery-photo.model';
+import { getSessionService } from '../services/core/session.service';
 
 const router = express.Router();
 
@@ -65,6 +67,20 @@ router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: 
     if (!file) {
       return res.status(400).json({ error: 'No photo uploaded' });
     }
+
+    // Read the file data
+    const photoData = await fs.promises.readFile(file.path);
+
+    // Get the user session
+    const sessionService = getSessionService();
+    const userSession = sessionService.getSessionByUserId(req.headers['x-user-id'] as string);
+    if (!userSession) {
+      logger.error(`[photos.routes] User session not found for ${req.headers['x-user-id']}`);
+      return res.status(404).json({ error: 'User session not found' });
+    }
+
+    // Broadcast to TPAs subscribed to PHOTO_TAKEN
+    photoTakenService.broadcastPhotoTaken(userSession, photoData.buffer, file.mimetype);
 
     // In a production environment, you would upload this to a CDN
     // For now, we'll just use a local URL
