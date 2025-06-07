@@ -132,6 +132,10 @@ const en = {
     dataExportMessage: "You will receive an email with your data export shortly.",
     deleteAccountTitle: "Delete Account",
     deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
+    deleteAccountSuccessTitle: "Account Deleted",
+    deleteAccountSuccessMessage: "Your account has been successfully deleted.",
+    deleteAccountPendingTitle: "Account Deletion Requested",
+    deleteAccountPendingMessage: "Your account deletion request has been received and will be processed within 2-3 business days.",
   },
   login: {
     title: "AugmentOS",

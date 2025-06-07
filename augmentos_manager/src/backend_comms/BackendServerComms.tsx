@@ -124,7 +124,13 @@ export default class BackendServerComms {
 
   public setCoreToken(token: string | null): void {
     this.coreToken = token;
-    console.log(`${this.TAG}: Core token ${token ? 'set' : 'cleared'}`);
+    console.log(`${this.TAG}: Core token ${token ? 'set' : 'cleared'} - Length: ${token?.length || 0} - First 20 chars: ${token?.substring(0, 20) || 'null'}`);
+    
+    // When a core token is set, trigger app refresh via global event
+    if (token) {
+      console.log(`${this.TAG}: Core token set, emitting CORE_TOKEN_SET event`);
+      GlobalEventEmitter.emit('CORE_TOKEN_SET');
+    }
   }
 
   public getCoreToken(): string | null {
@@ -414,12 +420,14 @@ export default class BackendServerComms {
    * @returns Promise with the apps data
    */
   public async getApps(): Promise<AppInterface[]> {
+    console.log(`${this.TAG}: getApps() called`);
     if (!this.coreToken) {
       throw new Error('No core token available for authentication');
     }
 
     const baseUrl = await this.getServerUrl();
     const url = `${baseUrl}/api/apps/`;
+    console.log(`${this.TAG}: Fetching apps from URL: ${url}`);
 
     const config: AxiosRequestConfig = {
       method: 'GET',
@@ -429,21 +437,29 @@ export default class BackendServerComms {
         'Authorization': `Bearer ${this.coreToken}`,
       },
     };
+    
+    // console.log(`${this.TAG}: Authorization header: Bearer ${this.coreToken?.substring(0, 20)}...`);
 
     try {
+      // console.log(`${this.TAG}: Making axios request to ${url}`);
       const response = await axios(config);
+      console.log(`${this.TAG}: Received response with status: ${response.status}`);
 
       if (response.status === 200 && response.data) {
+        // console.log(`${this.TAG}: Response data:`, response.data);
         if (response.data.success && response.data.data) {
+          // console.log(`${this.TAG}: Successfully fetched ${response.data.data.length} apps`);
           return response.data.data;
         } else {
+          // console.error(`${this.TAG}: Invalid response format:`, response.data);
           throw new Error('Invalid response format');
         }
       } else {
+        // console.error(`${this.TAG}: Bad response status: ${response.status} - ${response.statusText}`);
         throw new Error(`Bad response: ${response.statusText}`);
       }
     } catch (error: any) {
-      // console.error('Error fetching apps:', error.message || error);
+      // console.error(`${this.TAG}: Error fetching apps:`, error.message || error);
       throw error;
     }
   }

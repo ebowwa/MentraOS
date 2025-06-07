@@ -38,15 +38,29 @@ export default function SettingsPage() {
 
   const handleSignOut = async () => {
     try {
+      console.log("Settings: Starting sign-out process")
+      
       await logout()
 
+      console.log("Settings: Logout completed, navigating to login")
+      
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
       replace("/")
     } catch (err) {
-      console.error("Error during sign-out:", err)
-      // Even if there's an error, still try to navigate away to login
-      replace("/")
+      console.error("Settings: Error during sign-out:", err)
+      
+      // Show user-friendly error but still navigate to login to prevent stuck state
+      showAlert(
+        translate("common:error"),
+        translate("settings:signOutError"),
+        [
+          {
+            text: translate("common:ok"),
+            onPress: () => replace("/")
+          }
+        ]
+      )
     }
   }
 
