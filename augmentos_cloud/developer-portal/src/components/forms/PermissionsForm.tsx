@@ -12,7 +12,8 @@ enum PermissionType {
   MICROPHONE = 'MICROPHONE',
   LOCATION = 'LOCATION',
   CALENDAR = 'CALENDAR',
-  NOTIFICATIONS = 'NOTIFICATIONS',
+  READ_NOTIFICATIONS = 'READ_NOTIFICATIONS',
+  POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
   ALL = 'ALL'
 }
 
@@ -58,8 +59,10 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
         return 'Access to device location information';
       case PermissionType.CALENDAR:
         return 'Access to calendar events';
-      case PermissionType.NOTIFICATIONS:
-        return 'Access to phone notifications';
+      case PermissionType.READ_NOTIFICATIONS:
+        return 'Access to phones notifications';
+      case PermissionType.POST_NOTIFICATIONS:
+        return 'Send notifications to the phone';
       case PermissionType.ALL:
         return 'Access to all available permissions';
       default:

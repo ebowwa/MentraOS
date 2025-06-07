@@ -2,7 +2,6 @@
 import React, {useCallback, useEffect, useRef, useState} from "react"
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
@@ -12,6 +11,7 @@ import {
   ActivityIndicator,
   Easing,
 } from "react-native"
+import { Text } from "@/components/ignite"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -57,6 +57,7 @@ export default function InactiveAppList({
     clearPendingOperation,
     isSensingEnabled,
   } = useAppStatus()
+  const { status } = useStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
@@ -214,7 +215,8 @@ export default function InactiveAppList({
       permissions = [
         {type: "MICROPHONE", required: true},
         {type: "CALENDAR", required: true},
-        {type: "NOTIFICATIONS", required: true},
+        {type: "POST_NOTIFICATIONS", required: true},
+        {type: "READ_NOTIFICATIONS", required: true},
         {type: "LOCATION", required: true},
       ] as TPAPermission[]
     }
@@ -246,16 +248,16 @@ export default function InactiveAppList({
             neededPermissions.push(PermissionFeatures.CALENDAR)
           }
           break
-        case "NOTIFICATIONS":
-          const hasNotifications = await checkFeaturePermissions(PermissionFeatures.NOTIFICATIONS)
-          if (!hasNotifications) {
-            neededPermissions.push(PermissionFeatures.NOTIFICATIONS)
-          }
-          break
         case "LOCATION":
           const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
           if (!hasLocation) {
             neededPermissions.push(PermissionFeatures.LOCATION)
+          }
+          break
+        case "POST_NOTIFICATIONS":
+          const hasNotificationPermission = await checkFeaturePermissions(PermissionFeatures.POST_NOTIFICATIONS)
+          if (!hasNotificationPermission) {
+            neededPermissions.push(PermissionFeatures.POST_NOTIFICATIONS)
           }
           break
         case "READ_NOTIFICATIONS":
@@ -346,14 +348,14 @@ export default function InactiveAppList({
         translate("home:permissionMessage", {
           permissions: neededPermissions.join(", "),
         }),
-        // neededPermissions.map(permission => ({text: permission})),
         [
           {
             text: translate("common:cancel"),
+            onPress: () => {},
             style: "cancel",
           },
           {
-            text: translate("common:continue"),
+            text: translate("common:next"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
               startApp(packageName)
@@ -367,7 +369,52 @@ export default function InactiveAppList({
       return
     }
 
-    // Optimistically update UI
+    // Check if glasses are connected and this is the first app being activated
+    const glassesConnected = status.glasses_info?.model_name != null
+    const activeApps = appStatus.filter(app => app.is_running)
+    
+    if (!glassesConnected && activeApps.length === 0) {
+      // Show alert for first app activation when glasses aren't connected
+      const shouldContinue = await new Promise<boolean>(resolve => {
+        showAlert(
+          translate("home:glassesNotConnected"),
+          translate("home:appWillRunWhenConnected"),
+          [
+            {
+              text: translate("common:cancel"),
+              style: "cancel",
+              onPress: () => resolve(false),
+            },
+            {
+              text: translate("common:ok"),
+              onPress: () => resolve(true),
+            },
+          ],
+        )
+      })
+      
+      if (!shouldContinue) {
+        return
+      }
+    }
+
+    // Find the opacity value for this app
+    const itemOpacity = opacities[packageName]
+    
+    // Animate the app disappearing
+    if (itemOpacity) {
+      Animated.timing(itemOpacity, {
+        toValue: 0,
+        duration: 300,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start()
+    }
+    
+    // Wait a bit for animation to complete
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
+    // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
@@ -483,6 +530,7 @@ export default function InactiveAppList({
               },
             ]}>
             <Text
+              tx="home:tapToStart"
               style={[
                 styles.arrowBubbleText,
                 {
@@ -490,9 +538,7 @@ export default function InactiveAppList({
                   textShadowOffset: {width: 0, height: 1},
                   textShadowRadius: 2,
                 },
-              ]}>
-              {translate("home:tapToStart")}
-            </Text>
+              ]} />
             <Icon
               name="gesture-tap"
               size={20}
@@ -618,14 +664,8 @@ export default function InactiveAppList({
               onTogglePress={async () => {
                 const res = await checkIsForegroundAppStart(app.packageName, app.tpaType == "standard")
                 if (res) {
-                  setTimeout(() => {
-                    Animated.timing(itemOpacity, {
-                      toValue: 0,
-                      duration: 300,
-                      easing: Easing.out(Easing.ease),
-                      useNativeDriver: true,
-                    }).start(() => startApp(app.packageName))
-                  }, 200)
+                  // Don't animate here - let startApp handle all UI updates
+                  startApp(app.packageName)
                 }
               }}
               onSettingsPress={() => openAppSettings(app)}

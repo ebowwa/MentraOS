@@ -171,7 +171,7 @@ export default function GlassesMirrorFullscreen() {
   // Toggle camera between front and back
   const toggleCamera = () => {
     if (!isRecording) {
-      setCameraType(cameraType === CameraType.front ? CameraType.back : CameraType.front)
+      setCameraType(cameraType === "front" ? "back" : "front")    
     } else {
       // Don't allow camera switching during recording
       if (Platform.OS === "android") {
@@ -361,13 +361,13 @@ export default function GlassesMirrorFullscreen() {
           )}
 
           {/* Fullscreen exit button */}
-          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={handleExitFullscreen}>
+          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={handleExitFullscreen}>
             <Text style={[styles.exitFullscreenText, { color: theme.colors.icon }]}>Exit</Text>
           </TouchableOpacity>
 
           {/* Camera flip button */}
           {permission?.granted && (
-            <TouchableOpacity style={[styles.flipCameraButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={toggleCamera}>
+            <TouchableOpacity style={[styles.flipCameraButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={toggleCamera}>
               <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
             </TouchableOpacity>
           )}
@@ -400,7 +400,7 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (
-            <TouchableOpacity style={[styles.videosButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={() => router.back()}>
+            <TouchableOpacity style={[styles.videosButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={() => router.back()}>
               <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
                 <View style={[styles.badgeContainer, { backgroundColor: theme.colors.badgeBackground, borderColor: theme.colors.fullscreenOverlay }]}>
@@ -415,7 +415,7 @@ export default function GlassesMirrorFullscreen() {
           <Text style={[styles.fallbackText, { color: theme.colors.icon }]}>
             {!isGlassesConnected ? "Connect glasses to use the Glasses Mirror" : "No display events available"}
           </Text>
-          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.fullscreenOverlay }]} onPress={handleExitFullscreen}>
+          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={handleExitFullscreen}>
             <Text style={[styles.exitFullscreenText, { color: theme.colors.icon }]}>Back</Text>
           </TouchableOpacity>
         </View>

@@ -2,7 +2,6 @@
 import React, {useState} from "react"
 import {
   View,
-  Text,
   StyleSheet,
   TouchableOpacity,
   Modal,
@@ -13,7 +12,7 @@ import {
   TouchableWithoutFeedback,
 } from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {Icon} from "@/components/ignite"
+import {Icon, Text} from "@/components/ignite"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 type Option = {
@@ -54,13 +53,13 @@ const SelectSetting: React.FC<SelectSettingProps> = ({label, value, options, onV
         ]}
         onPress={() => setModalVisible(true)}
         activeOpacity={0.7}>
-        <Text style={[styles.label, {color: theme.colors.text}]}>{label}</Text>
+        <Text text={label} style={[styles.label, {color: theme.colors.text}]} />
         <View style={styles.valueContainer}>
-          <Text style={[styles.selectText, {color: theme.colors.textDim}]}>{selectedLabel}</Text>
+          <Text text={selectedLabel} style={[styles.selectText, {color: theme.colors.textDim}]} />
           <Icon icon="caretRight" size={16} color={theme.colors.textDim} style={styles.chevron} />
         </View>
       </TouchableOpacity>
-      {description && <Text style={[styles.description, {color: theme.colors.textDim}]}>{description}</Text>}
+      {description && <Text text={description} style={[styles.description, {color: theme.colors.textDim}]} />}
       <Modal
         visible={modalVisible}
         animationType="fade"
@@ -83,7 +82,7 @@ const SelectSetting: React.FC<SelectSettingProps> = ({label, value, options, onV
                   }
                 ]}>
                   <View style={[styles.modalHeader, {marginBottom: theme.spacing.sm}]}>
-                    <Text style={[styles.modalLabel, {color: theme.colors.textDim}]}>{label}</Text>
+                    <Text text={label} style={[styles.modalLabel, {color: theme.colors.textDim}]} />
                   </View>
                 <FlatList
                   data={options}
@@ -107,9 +106,9 @@ const SelectSetting: React.FC<SelectSettingProps> = ({label, value, options, onV
                       <MaterialCommunityIcons
                         name="check"
                         size={24}
-                        color={item.value === value ? theme.colors.palette.primary300 : "transparent"}
+                        color={item.value === value ? (theme.colors.checkmark || theme.colors.palette.primary300) : "transparent"}
                       />
-                      <Text style={[styles.optionText, {color: theme.colors.text, flex: 1, marginLeft: theme.spacing.xs}]}>{item.label}</Text>
+                      <Text text={item.label} style={[styles.optionText, {color: theme.colors.text, flex: 1, marginLeft: theme.spacing.xs}]} />
                     </Pressable>
                   )}
                 />

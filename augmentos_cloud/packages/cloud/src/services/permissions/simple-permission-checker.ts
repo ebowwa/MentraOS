@@ -25,8 +25,8 @@ export class SimplePermissionChecker {
     [StreamType.CALENDAR_EVENT, PermissionType.CALENDAR],
     
     // Notification streams
-    [StreamType.PHONE_NOTIFICATION, PermissionType.NOTIFICATIONS],
-    [StreamType.NOTIFICATION_DISMISSED, PermissionType.NOTIFICATIONS],
+    [StreamType.PHONE_NOTIFICATION, PermissionType.READ_NOTIFICATIONS],
+    [StreamType.NOTIFICATION_DISMISSED, PermissionType.READ_NOTIFICATIONS],
   ]);
 
   /**

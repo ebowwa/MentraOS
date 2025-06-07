@@ -1065,11 +1065,11 @@ struct ViewState {
     if isGlassesConnected {
       connectedGlasses = [
         "model_name": self.defaultWearable,
-        "battery_life": self.batteryLevel,
+        "battery_level": self.batteryLevel,
         "case_removed": self.g1Manager?.caseRemoved ?? true,
         "case_open": self.g1Manager?.caseOpen ?? true,
         "case_charging": self.g1Manager?.caseCharging ?? false,
-        "case_battery_level": self.g1Manager?.caseBatteryLevel ?? 0,
+        "case_battery_level": self.g1Manager?.caseBatteryLevel ?? -1,
       ]
       self.somethingConnected = true
     }

@@ -261,6 +261,20 @@ export default function DeveloperSettingsScreen() {
                 buttonStyle={styles.button}
               />
             </View>
+            <View style={styles.buttonColumnCentered}>
+              <PillButton
+                text="Dev"
+                variant="secondary"
+                onPress={() => setCustomUrlInput("https://dev.augmentos.org:443")}
+                buttonStyle={styles.button}
+              />
+              <PillButton
+                text="Dev Cloud"
+                variant="secondary"
+                onPress={() => setCustomUrlInput("https://dev.augmentos.cloud:443")}
+                buttonStyle={styles.button}
+              />
+            </View>
           </View>
         </View>
 
@@ -330,6 +344,12 @@ const styles = StyleSheet.create({
     gap: 12,
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  buttonColumnCentered: {
+    marginTop: 12,
+    gap: 12,
+    flexDirection: "row",
+    justifyContent: "center",
   },
   settingTextContainer: {
     flex: 1,

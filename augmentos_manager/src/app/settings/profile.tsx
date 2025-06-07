@@ -1,14 +1,12 @@
 import React, {useState, useEffect} from "react"
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   Image,
   ActivityIndicator,
   ScrollView,
-  Alert,
   ImageStyle,
   TextStyle,
   ViewStyle,
@@ -17,7 +15,7 @@ import {supabase} from "@/supabase/supabaseClient"
 import Icon from "react-native-vector-icons/FontAwesome"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {useAuth} from "@/contexts/AuthContext"
-import {Button, Header, Screen} from "@/components/ignite"
+import {Button, Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {ThemedStyle} from "@/theme"
 import {router} from "expo-router"
@@ -88,9 +86,8 @@ export default function ProfileSettingsPage() {
       translate("profileSettings:dataExportTitle"),
       translate("profileSettings:dataExportMessage"),
       [
-        { text: translate("common:cancel"), style: "cancel" },
         {
-          text: translate("common:yes"),
+          text: translate("common:ok"),
           onPress: async () => {
             try {
               console.log("Not implemented yet!!!");
@@ -108,21 +105,26 @@ export default function ProfileSettingsPage() {
 
   const handleDeleteAccount = () => {
     console.log("Deleting account")
-    Alert.alert(translate("profileSettings:deleteAccountTitle"), translate("profileSettings:deleteAccountMessage"), [
-      {text: translate("common:cancel"), style: "cancel"},
-      {
-        text: translate("common:delete"),
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await BackendServerComms.getInstance().requestAccountDeletion()
-          } catch (error) {
-            console.error(error)
-          }
-          await logout()
+    showAlert(
+      translate("profileSettings:deleteAccountTitle"), 
+      translate("profileSettings:deleteAccountMessage"), 
+      [
+        {text: translate("common:cancel"), style: "cancel"},
+        {
+          text: translate("common:delete"),
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await BackendServerComms.getInstance().requestAccountDeletion()
+            } catch (error) {
+              console.error(error)
+            }
+            await logout()
+          },
         },
-      },
-    ])
+      ],
+      { cancelable: false }
+    )
   }
 
   const {theme, themed} = useAppTheme()
@@ -139,29 +141,29 @@ export default function ProfileSettingsPage() {
               <Image source={{uri: userData.avatarUrl}} style={themed($profileImage)} />
             ) : (
               <View style={themed($profilePlaceholder)}>
-                <Text style={themed($profilePlaceholderText)}>{translate("profileSettings:noProfilePicture")}</Text>
+                <Text tx="profileSettings:noProfilePicture" style={themed($profilePlaceholderText)} />
               </View>
             )}
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:name")}</Text>
-              <Text style={themed($infoText)}>{userData.fullName || "N/A"}</Text>
+              <Text tx="profileSettings:name" style={themed($label)} />
+              <Text text={userData.fullName || "N/A"} style={themed($infoText)} />
             </View>
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:email")}</Text>
-              <Text style={themed($infoText)}>{userData.email || "N/A"}</Text>
+              <Text tx="profileSettings:email" style={themed($label)} />
+              <Text text={userData.email || "N/A"} style={themed($infoText)} />
             </View>
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:createdAt")}</Text>
-              <Text style={themed($infoText)}>
-                {userData.createdAt ? new Date(userData.createdAt).toLocaleString() : "N/A"}
-              </Text>
+              <Text tx="profileSettings:createdAt" style={themed($label)} />
+              <Text 
+                text={userData.createdAt ? new Date(userData.createdAt).toLocaleString() : "N/A"}
+                style={themed($infoText)} />
             </View>
 
             <View style={themed($infoContainer)}>
-              <Text style={themed($label)}>{translate("profileSettings:provider")}</Text>
+              <Text tx="profileSettings:provider" style={themed($label)} />
               <View style={{flexDirection: "row", alignItems: "center", marginTop: 4}}>
                 {userData.provider === "google" && (
                   <>
@@ -194,14 +196,14 @@ export default function ProfileSettingsPage() {
               <TouchableOpacity
                 onPress={() => setShowChangePassword(!showChangePassword)}
                 style={themed($changePasswordButton)}>
-                <Text style={themed($changePasswordButtonText)}>{translate("profileSettings:changePassword")}</Text>
+                <Text tx="profileSettings:changePassword" style={themed($changePasswordButtonText)} />
               </TouchableOpacity>
             )}
 
             {showChangePassword && (
               <View style={themed($passwordChangeContainer)}>
                 <View style={themed($inputGroup)}>
-                  <Text style={themed($inputLabel)}>{translate("profileSettings:newPassword")}</Text>
+                  <Text tx="profileSettings:newPassword" style={themed($inputLabel)} />
                   <View style={themed($enhancedInputContainer)}>
                     <Icon name="lock" size={16} color={theme.colors.textDim} />
                     <TextInput
@@ -226,7 +228,7 @@ export default function ProfileSettingsPage() {
                 </View>
 
                 <View style={themed($inputGroup)}>
-                  <Text style={themed($inputLabel)}>{translate("profileSettings:confirmPassword")}</Text>
+                  <Text tx="profileSettings:confirmPassword" style={themed($inputLabel)} />
                   <View style={themed($enhancedInputContainer)}>
                     <Icon name="lock" size={16} color={theme.colors.textDim} />
                     <TextInput
@@ -262,7 +264,7 @@ export default function ProfileSettingsPage() {
                     setNewPassword("")
                     setConfirmPassword("")
                   }}>
-                  <Text style={themed($updatePasswordButtonText)}>{translate("profileSettings:updatePassword")}</Text>
+                  <Text tx="profileSettings:updatePassword" style={themed($updatePasswordButtonText)} />
                 </TouchableOpacity>
               </View>
             )}
@@ -281,7 +283,7 @@ export default function ProfileSettingsPage() {
             />
           </>
         ) : (
-          <Text>{translate("profileSettings:errorGettingUserInfo")}</Text>
+          <Text tx="profileSettings:errorGettingUserInfo" />
         )}
       </ScrollView>
     </Screen>

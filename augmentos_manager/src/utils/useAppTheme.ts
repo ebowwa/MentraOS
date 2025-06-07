@@ -40,7 +40,7 @@ export const useThemeProvider = (initialTheme: ThemeContexts = undefined) => {
   useEffect(() => {
     const loadThemePreference = async () => {
       try {
-        const savedTheme = (await loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "system")) as ThemeType
+        const savedTheme = (await loadSetting(SETTINGS_KEYS.THEME_PREFERENCE, "light")) as ThemeType
         if (savedTheme === "system") {
           setTheme(undefined)
         } else {

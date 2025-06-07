@@ -46,6 +46,7 @@ import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchStopEvent;
@@ -195,6 +196,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private CalendarSystem calendarSystem;
 
     private Integer batteryLevel;
+    private Integer caseBatteryLevel;
+    private Boolean caseCharging;
+    private Boolean caseOpen;
+    private Boolean caseRemoved;
     private Integer brightnessLevel;
     private Boolean autoBrightness;
     private Integer headUpAngle;
@@ -398,6 +403,21 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (batteryLevel != null && event.batteryLevel == batteryLevel) return;
         batteryLevel = event.batteryLevel;
         ServerComms.getInstance().sendGlassesBatteryUpdate(event.batteryLevel, false, -1);
+        sendStatusToAugmentOsManager();
+    }
+
+    @Subscribe
+    public void onGlassCaseEvent(CaseEvent event) {
+        // if (batteryLevel != null && event.batteryLevel == batteryLevel) return;
+        // batteryLevel = event.batteryLevel;
+        // ServerComms.getInstance().sendGlassesBatteryUpdate(event.batteryLevel, false, -1);
+        caseBatteryLevel = event.caseBatteryLevel;
+        caseCharging = event.caseCharging;
+        caseOpen = event.caseOpen;
+        caseRemoved = event.caseRemoved;
+
+        Log.d("AugmentOsService", "Case event: " + event.caseBatteryLevel + " " + event.caseCharging + " " + event.caseOpen + " " + event.caseRemoved);
+        
         sendStatusToAugmentOsManager();
     }
 
@@ -1294,7 +1314,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             JSONObject connectedGlasses = new JSONObject();
             if(smartGlassesManager != null && smartGlassesManager.getConnectedSmartGlasses() != null) {
                 connectedGlasses.put("model_name", smartGlassesManager.getConnectedSmartGlasses().deviceModelName);
-                connectedGlasses.put("battery_life", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
+                connectedGlasses.put("battery_level", (batteryLevel == null) ? -1: batteryLevel); //-1 if unknown
+                connectedGlasses.put("case_battery_level", (caseBatteryLevel == null) ? -1: caseBatteryLevel); //-1 if unknown
+                connectedGlasses.put("case_charging", (caseCharging == null) ? false: caseCharging);
+                connectedGlasses.put("case_open", (caseOpen == null) ? false: caseOpen);
+                connectedGlasses.put("case_removed", (caseRemoved == null) ? true: caseRemoved);
                 
                 // Add WiFi status information for glasses that need WiFi
                 String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;

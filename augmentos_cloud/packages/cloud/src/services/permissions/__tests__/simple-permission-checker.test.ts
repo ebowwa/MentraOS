@@ -37,8 +37,8 @@ describe('SimplePermissionChecker', () => {
     });
 
     it('should return the correct permission for notification streams', () => {
-      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHONE_NOTIFICATION)).toBe(PermissionType.NOTIFICATIONS);
-      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.NOTIFICATION_DISMISSED)).toBe(PermissionType.NOTIFICATIONS);
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.PHONE_NOTIFICATION)).toBe(PermissionType.READ_NOTIFICATIONS);
+      expect(SimplePermissionChecker.getRequiredPermissionForStream(StreamType.NOTIFICATION_DISMISSED)).toBe(PermissionType.READ_NOTIFICATIONS);
     });
 
     it('should return null for streams that do not require permissions', () => {
@@ -74,7 +74,7 @@ describe('SimplePermissionChecker', () => {
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.MICROPHONE)).toBe(true);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.LOCATION)).toBe(true);
       expect(SimplePermissionChecker.hasPermission(app, PermissionType.CALENDAR)).toBe(true);
-      expect(SimplePermissionChecker.hasPermission(app, PermissionType.NOTIFICATIONS)).toBe(true);
+      expect(SimplePermissionChecker.hasPermission(app, PermissionType.READ_NOTIFICATIONS)).toBe(true);
     });
 
     it('should return false when app has no permissions defined', () => {

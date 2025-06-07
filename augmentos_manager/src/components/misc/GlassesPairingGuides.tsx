@@ -2,9 +2,9 @@
 
 import {useAppTheme} from "@/utils/useAppTheme"
 import React from "react"
-import {View, Text, StyleSheet, Image, TouchableOpacity, Linking} from "react-native"
+import {View, StyleSheet, Image, TouchableOpacity, Linking} from "react-native"
 import FontAwesome from "react-native-vector-icons/FontAwesome"
-import {Button} from "@/components/ignite"
+import {Button, Text} from "@/components/ignite"
 import {translate} from "@/i18n"
 import {showAlert} from "@/utils/AlertUtils"
 import {Spacer} from "./Spacer"
@@ -17,13 +17,13 @@ export function EvenRealitiesG1PairingGuide() {
 
   return (
     <View style={styles.guideContainer}>
-      <Text style={[styles.guideTitle, {color: textColor}]}>Even Realities G1</Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        1. Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app
-      </Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        2. Place your G1 in the charging case with the lid open.
-      </Text>
+      <Text text="Even Realities G1" style={[styles.guideTitle, {color: textColor}]} />
+      <Text 
+        text="1. Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app"
+        style={[styles.guideStep, {color: textColor}]} />
+      <Text 
+        text="2. Place your G1 in the charging case with the lid open."
+        style={[styles.guideStep, {color: textColor}]} />
 
       <Image
         source={require("../../../assets/glasses/g1.png")}
@@ -43,11 +43,11 @@ export function VuzixZ100PairingGuide() {
 
   return (
     <View style={styles.guideContainer}>
-      <Text style={[styles.guideTitle, {color: textColor}]}>Vuzix Z100</Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>1. Make sure your Z100 is fully charged and turned on.</Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        2. Pair your Z100 with your device using the Vuzix Connect app.
-      </Text>
+      <Text text="Vuzix Z100" style={[styles.guideTitle, {color: textColor}]} />
+      <Text text="1. Make sure your Z100 is fully charged and turned on." style={[styles.guideStep, {color: textColor}]} />
+      <Text 
+        text="2. Pair your Z100 with your device using the Vuzix Connect app."
+        style={[styles.guideStep, {color: textColor}]} />
     </View>
   )
 }
@@ -58,13 +58,13 @@ export function MentraMach1PairingGuide() {
 
   return (
     <View style={styles.guideContainer}>
-      <Text style={[styles.guideTitle, {color: textColor}]}>Mentra Mach1</Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        1. Make sure your Mach1 is fully charged and turned on.
-      </Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        2. Pair your Mach1 with your device using the Vuzix Connect app.
-      </Text>
+      <Text text="Mentra Mach1" style={[styles.guideTitle, {color: textColor}]} />
+      <Text 
+        text="1. Make sure your Mach1 is fully charged and turned on."
+        style={[styles.guideStep, {color: textColor}]} />
+      <Text 
+        text="2. Pair your Mach1 with your device using the Vuzix Connect app."
+        style={[styles.guideStep, {color: textColor}]} />
     </View>
   )
 }
@@ -76,7 +76,7 @@ export function MentraLivePairingGuide() {
     <View style={styles.guideContainer}>
       <View style={{flex: 1, justifyContent: "space-between", flexDirection: "column"}}>
         {/* <ScrollView style={{}} nestedScrollEnabled={true}> */}
-        <Text style={[styles.guideTitle, {color: theme.colors.text}]}>Mentra Live Beta</Text>
+        <Text text="Mentra Live Beta" style={[styles.guideTitle, {color: theme.colors.text}]} />
 
         {/* <Text style={[styles.guideStep, {color: theme.colors.text}]}>
         1. Make sure your Mentra Live is fully charged and turned on.
@@ -97,11 +97,9 @@ export function MentraLivePairingGuide() {
         <GlassesFeatureList glassesModel="Mentra Live" />
 
         {/* Marketing description */}
-        <Text style={[styles.guideDescription, {color: theme.colors.text}]}>
-          Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see,
-          you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for
-          developers creating the next generation of augmented reality experiences.
-        </Text>
+        <Text 
+          text="Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see, you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for developers creating the next generation of augmented reality experiences."
+          style={[styles.guideDescription, {color: theme.colors.text}]} />
         {/* </ScrollView> */}
 
         <View style={styles.buySection}>
@@ -121,8 +119,8 @@ export function MentraLivePairingGuide() {
               ])
             }}
           >
-            <Text style={[styles.buyButtonText, {color: theme.colors.background}]}>{translate("pairing:preorderNow")} · $219</Text>
-            <Text style={[styles.shippingText, {color: theme.colors.background, opacity: 0.8}]}>{translate("pairing:preorderNowShipMessage")}</Text>
+            <Text text={`${translate("pairing:preorderNow")} · $219`} style={[styles.buyButtonText, {color: theme.colors.background}]} />
+            <Text tx="pairing:preorderNowShipMessage" style={[styles.shippingText, {color: theme.colors.background, opacity: 0.8}]} />
           </TouchableOpacity>
           <Spacer height={theme.spacing.md} />
         </View>
@@ -137,21 +135,19 @@ export function AudioWearablePairingGuide() {
 
   return (
     <View style={styles.guideContainer}>
-      <Text style={[styles.guideTitle, {color: textColor}]}>Audio Wearable</Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        1. Make sure your Audio Wearable is fully charged and turned on.
-      </Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        2. Enable Bluetooth pairing mode on your Audio Wearable.
-      </Text>
-      <Text style={[styles.guideStep, {color: textColor}]}>
-        3. Note: Audio Wearables don't have displays. All visual information will be converted to speech.
-      </Text>
-      <Text style={[styles.guideDescription, {color: textColor}]}>
-        Audio Wearables are smart glasses without displays. They use text-to-speech to provide information that would
-        normally be shown visually. This makes them ideal for audio-only applications or for users who prefer auditory
-        feedback.
-      </Text>
+      <Text text="Audio Wearable" style={[styles.guideTitle, {color: textColor}]} />
+      <Text 
+        text="1. Make sure your Audio Wearable is fully charged and turned on."
+        style={[styles.guideStep, {color: textColor}]} />
+      <Text 
+        text="2. Enable Bluetooth pairing mode on your Audio Wearable."
+        style={[styles.guideStep, {color: textColor}]} />
+      <Text 
+        text="3. Note: Audio Wearables don't have displays. All visual information will be converted to speech."
+        style={[styles.guideStep, {color: textColor}]} />
+      <Text 
+        text="Audio Wearables are smart glasses without displays. They use text-to-speech to provide information that would normally be shown visually. This makes them ideal for audio-only applications or for users who prefer auditory feedback."
+        style={[styles.guideDescription, {color: textColor}]} />
     </View>
   )
 }
@@ -160,10 +156,10 @@ export function VirtualWearablePairingGuide() {
   const {theme} = useAppTheme()
   return (
     <View style={styles.guideContainer}>
-      <Text style={[styles.guideTitle, {color: theme.colors.text}]}>Simulated Glasses</Text>
-      <Text style={[styles.guideStep, {color: theme.colors.text}]}>
-        The Simulated Glasses allows you to run AugmentOS without physical smart glasses.
-      </Text>
+      <Text text="Simulated Glasses" style={[styles.guideTitle, {color: theme.colors.text}]} />
+      <Text 
+        text="The Simulated Glasses allows you to run AugmentOS without physical smart glasses."
+        style={[styles.guideStep, {color: theme.colors.text}]} />
     </View>
   )
 }

@@ -10,7 +10,8 @@ export enum PermissionType {
   LOCATION = 'LOCATION',
   CALENDAR = 'CALENDAR',
   NOTIFICATIONS = 'NOTIFICATIONS',
-  ALL = 'ALL'
+  ALL = 'ALL',
+  READ_NOTIFICATIONS = 'READ_NOTIFICATIONS'
 }
 
 // Permission interface

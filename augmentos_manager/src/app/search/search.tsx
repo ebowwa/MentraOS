@@ -1,13 +1,11 @@
-import React, { useState, useEffect } from "react"
-import { View, Platform, ViewStyle, ScrollView, TextInput, Pressable, Text } from "react-native"
+import React, { useState } from "react"
+import { View, ViewStyle, ScrollView, TextInput, Pressable } from "react-native"
 import { router } from "expo-router"
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
-import Animated from "react-native-reanimated"
-import { Header, Screen } from "@/components/ignite"
+import { Screen } from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
 import { useAppStatus } from "@/contexts/AppStatusProvider"
-import { colors, ThemedStyle } from "@/theme"
+import { ThemedStyle } from "@/theme"
 import { useAppTheme } from "@/utils/useAppTheme"
 import { Spacer } from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
@@ -18,26 +16,14 @@ import { translate } from "@/i18n"
 
 export default function SearchAppsPage() {
   const { appStatus } = useAppStatus()
-
   const { themed, theme } = useAppTheme()
-  const insets = useSafeAreaInsets()
   const [searchQuery, setSearchQuery] = useState("")
   let activeApps = appStatus.filter(app => app.is_running)
 
   return (
-    <Screen preset="fixed" style={themed($screen)}>
-      
+    <Screen preset="fixed" style={themed($screen)} safeAreaEdges={["top"]}>
       <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          borderRadius: 24,
-          borderWidth: 1,
-          borderColor: theme.colors.border,
-          paddingHorizontal: 16,
-          height: 48,
-          backgroundColor: theme.colors.background,
-        }}
+        style={themed($searchContainer)}
       >
         <Pressable onPress={() => router.back()}>
           <ArrowLeftIcon color={theme.colors.icon} size={24} />
@@ -48,22 +34,24 @@ export default function SearchAppsPage() {
           placeholderTextColor="#aaa"
           value={searchQuery}
           onChangeText={setSearchQuery}
-          style={{ flex: 1, marginLeft: 12, color: theme.colors.text, fontSize: 16 }}
+          style={themed($searchInput)}
         />
         <Pressable onPress={() => setSearchQuery("")}>
           <CloseXIcon color={theme.colors.icon} size={24} />
         </Pressable>
-
       </View>
 
-
-      <ScrollView style={{ marginRight: -theme.spacing.md, paddingRight: theme.spacing.md }}>
-      {activeApps.length > 0 && (
-        <>
-          <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
-          <Divider variant="inset" />
-        </>
-      )}
+      <ScrollView 
+        style={themed($scrollView)} 
+        contentContainerStyle={themed($scrollContent)}
+        showsVerticalScrollIndicator={false}
+      >
+        {activeApps.length > 0 && (
+          <>
+            <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
+            <Divider variant="inset" />
+          </>
+        )}
 
         <AppsInactiveList isSearchPage={true} searchQuery={searchQuery} />
         <Spacer height={40} />
@@ -72,15 +60,37 @@ export default function SearchAppsPage() {
   )
 }
 
-const $screen: ThemedStyle<ViewStyle> = () => {
-  const { theme } = useAppTheme()
-  const insets = useSafeAreaInsets()
-  return {
-    paddingHorizontal: 20,
-    paddingTop: insets.top + theme.spacing.md,
-  }
-}
+const $screen: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  paddingHorizontal: spacing.lg,
+  paddingTop: spacing.md,
+  flex: 1,
+})
 
-const $headerRight: ThemedStyle<ViewStyle> = () => ({
+const $searchContainer: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
   flexDirection: "row",
+  alignItems: "center",
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: colors.border,
+  paddingHorizontal: spacing.md,
+  height: 48,
+  backgroundColor: colors.background,
+  marginBottom: spacing.md,
+})
+
+const $searchInput: ThemedStyle<ViewStyle> = ({ colors }) => ({
+  flex: 1,
+  marginLeft: 12,
+  color: colors.text,
+  fontSize: 16,
+})
+
+const $scrollView: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+  flex: 1,
+  marginRight: -spacing.md,
+  paddingRight: spacing.md,
+})
+
+const $scrollContent: ThemedStyle<ViewStyle> = () => ({
+  flexGrow: 1,
 })

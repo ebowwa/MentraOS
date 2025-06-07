@@ -694,6 +694,9 @@ enum GlassesError: Error {
       case .CASE_REMOVED:
         print("REMOVED FROM CASE")
         self.caseRemoved = true
+      case .CASE_REMOVED2:
+        print("REMOVED FROM CASE2")
+        self.caseRemoved = true
       case .CASE_OPEN:
         self.caseOpen = true
         self.caseRemoved = false
