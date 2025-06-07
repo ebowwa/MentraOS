@@ -122,7 +122,7 @@ export class GlassesWebSocketService {
             const connectionInitMessage = message as ConnectionInit;
             userSession.logger.info(`Received connection init message from glasses: ${JSON.stringify(connectionInitMessage)}`);
             // If this is a reconnection, we can skip the initialization logic
-              await this.handleConnectionInit(userSession, reconnection);
+            await this.handleConnectionInit(userSession, reconnection);
             return;
           }
 
@@ -473,29 +473,45 @@ export class GlassesWebSocketService {
    * @param reason Close reason
    */
   private handleGlassesConnectionClose(userSession: UserSession, code: number, reason: string): void {
-    userSession.logger.info({ service: SERVICE_NAME, code, reason }, `Glasses connection closed for user: ${userSession.userId}  code: ${code}  reason: ${reason}`);
+    userSession.logger.warn(
+      { service: SERVICE_NAME, code, reason },
+      `[WebsocketGlassesService:handleGlassesConnectionClose]: (${userSession.userId}, ${code}, ${reason}) - Glasses connection closed`
+    );
 
     // Mark session as disconnected
-    sessionService.markSessionDisconnected(userSession);
+    // Clear any existing cleanup timer
+    if (userSession.cleanupTimerId) {
+      clearTimeout(userSession.cleanupTimerId);
+      userSession.cleanupTimerId = undefined;
+    }
+
+    // Stop transcription
+    if (userSession.isTranscribing) {
+      userSession.isTranscribing = false;
+      transcriptionService.stopTranscription(userSession);
+    }
+
+    // Mark as disconnected
+    userSession.disconnectedAt = new Date();
 
     // Set cleanup timer if not already set
     if (!userSession.cleanupTimerId) {
       userSession.cleanupTimerId = setTimeout(() => {
-        userSession.logger.info({ service: SERVICE_NAME }, `Cleanup grace period expired for user session: ${userSession.userId}`);
+        userSession.logger.debug({ service: SERVICE_NAME }, `Cleanup grace period expired for user session: ${userSession.userId}`);
 
         // Check to see if the session has reconnected / if the user is still active.
         const wsState = userSession.websocket?.readyState;
         const wsExists = !!userSession.websocket;
         const wsOpen = wsState === WebSocket.OPEN;
         const wsConnecting = wsState === WebSocket.CONNECTING;
-        
-        userSession.logger.info({
+
+        userSession.logger.debug({
           service: SERVICE_NAME,
           websocketExists: wsExists,
           websocketState: wsState,
           websocketStateNames: {
             0: 'CONNECTING',
-            1: 'OPEN', 
+            1: 'OPEN',
             2: 'CLOSING',
             3: 'CLOSED'
           }[wsState] || 'UNKNOWN',
@@ -504,10 +520,10 @@ export class GlassesWebSocketService {
           disconnectedAt: userSession.disconnectedAt,
           timeSinceDisconnect: userSession.disconnectedAt ? Date.now() - userSession.disconnectedAt.getTime() : null
         }, `Grace period check: WebSocket state analysis for ${userSession.userId}`);
-        
+
         // Check if user reconnected by looking at disconnectedAt (more reliable than WebSocket state)
         if (!userSession.disconnectedAt) {
-          userSession.logger.info({ 
+          userSession.logger.debug({
             service: SERVICE_NAME,
             reason: 'disconnectedAt_cleared'
           }, `User session ${userSession.userId} has reconnected (disconnectedAt cleared), skipping cleanup.`);
@@ -515,10 +531,10 @@ export class GlassesWebSocketService {
           userSession.cleanupTimerId = undefined;
           return;
         }
-        
+
         // Fallback: also check WebSocket state for backward compatibility
         if (userSession.websocket && userSession.websocket.readyState === WebSocket.OPEN) {
-          userSession.logger.info({ 
+          userSession.logger.debug({
             service: SERVICE_NAME,
             reason: 'websocket_open'
           }, `User session ${userSession.userId} has reconnected (WebSocket open), skipping cleanup.`);
@@ -527,14 +543,16 @@ export class GlassesWebSocketService {
           return;
         }
 
-        userSession.logger.info({
+        userSession.logger.debug({
           service: SERVICE_NAME,
           finalWebsocketState: wsState,
           websocketExists: wsExists,
           reason: !wsExists ? 'no_websocket' : !wsOpen ? 'websocket_not_open' : 'unknown'
         }, `User session ${userSession.userId} determined not reconnected, cleaning up session.`);
         // End the session
-        sessionService.endSession(userSession);
+        // sessionService.endSession(userSession);
+        userSession.dispose();
+
       }, RECONNECT_GRACE_PERIOD_MS);
     }
   }

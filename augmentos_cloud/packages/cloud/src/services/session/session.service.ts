@@ -25,7 +25,6 @@ import UserSession from './UserSession';
 
 // Constants
 const SERVICE_NAME = 'session.service';
-const IS_LC3 = false;
 const logger = rootLogger.child({ service: SERVICE_NAME });
 
 // Default settings
@@ -335,25 +334,26 @@ export class SessionService {
    * 
    * @param userSession User session
    */
-  markSessionDisconnected(userSession: UserSession): void {
-    try {
-      // Clear any existing cleanup timer
-      if (userSession.cleanupTimerId) {
-        clearTimeout(userSession.cleanupTimerId);
-      }
+  // markSessionDisconnected(userSession: UserSession): void {
+  //   userSession.logger.debug(`[SessionService:markSessionDisconnected] Marking UserSession as disconnected - ${userSession.userId}`);
+  //   try {
+  //     // Clear any existing cleanup timer
+  //     if (userSession.cleanupTimerId) {
+  //       clearTimeout(userSession.cleanupTimerId);
+  //     }
 
-      // Stop transcription
-      if (userSession.isTranscribing) {
-        userSession.isTranscribing = false;
-        transcriptionService.stopTranscription(userSession);
-      }
+  //     // Stop transcription
+  //     if (userSession.isTranscribing) {
+  //       userSession.isTranscribing = false;
+  //       transcriptionService.stopTranscription(userSession);
+  //     }
 
-      // Mark as disconnected
-      userSession.markDisconnected();
-    } catch (error) {
-      logger.error(`Error marking session as disconnected:`, error);
-    }
-  }
+  //     // Mark as disconnected
+  //     userSession.markDisconnected();
+  //   } catch (error) {
+  //     logger.error(`Error marking session as disconnected:`, error);
+  //   }
+  // }
 
 
   /**

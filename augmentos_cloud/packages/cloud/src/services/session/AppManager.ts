@@ -203,7 +203,7 @@ export class AppManager {
         // Safe to clean up - connection truly timed out
         this.pendingConnections.delete(packageName);
         this.userSession.loadingApps.delete(packageName);
-        
+
         // Reset connection state to prevent apps from being stuck in RESURRECTING
         this.setAppConnectionState(packageName, AppConnectionState.DISCONNECTED);
         // remove from user.runningApps.
@@ -339,7 +339,7 @@ export class AppManager {
 
       this.userSession.loadingApps.delete(app.packageName);
       this.userSession.displayManager.handleAppStop(app.packageName);
-      
+
       // Reset connection state to prevent apps from being stuck in RESURRECTING
       this.setAppConnectionState(app.packageName, AppConnectionState.DISCONNECTED);
 
@@ -794,7 +794,7 @@ export class AppManager {
    */
   async handleAppConnectionClosed(packageName: string, code: number, reason: string): Promise<void> {
     try {
-      this.logger.info(`App connection closed for ${packageName}: ${code} - ${reason}`);
+      this.logger.info({ packageName, code, reason }, `[AppManager:handleAppConnectionClosed]: (${packageName}, ${code}, ${reason})`);
 
       // Remove from app connections
       this.userSession.appWebsockets.delete(packageName);
@@ -803,34 +803,13 @@ export class AppManager {
       const currentState = this.getAppConnectionState(packageName);
 
       if (currentState === AppConnectionState.STOPPING) {
-        // Expected close - remove from all tracking. 
-        // This is only called when this.stopApp() is called. so we can assume the app is being stopped cleanly. 
-        // no need to do the below logic..
+        this.logger.debug({ packageName }, `[AppManager:handleAppConnectionClosed]: (currentState === AppConnectionState.STOPPING) - App ${packageName} stopped as expected, removing from tracking`);
         return;
-
-        // this.logger.info(`App ${packageName} stopped as expected`);
-        // this.userSession.runningApps.delete(packageName);
-        // this.userSession.loadingApps.delete(packageName);
-        // this.removeAppConnectionState(packageName);
-
-        // // Broadcast app state change
-        // this.broadcastAppState().catch(error => {
-        //   this.logger.error(`Error broadcasting app state after clean stop:`, error);
-        // });
-        // return;
       }
 
       // Check for normal close codes (intentional shutdown)
       if (code === 1000 || code === 1001) {
-        this.logger.debug(`App ${packageName} closed normally (code: ${code})`);
-        // this.userSession.runningApps.delete(packageName);
-        // this.userSession.loadingApps.delete(packageName);
-        // this.removeAppConnectionState(packageName);
-
-        // // Broadcast app state change
-        // this.broadcastAppState().catch(error => {
-        //   this.logger.error(`Error broadcasting app state after normal close:`, error);
-        // });
+        this.logger.debug({ packageName, code }, `[AppManager:handleAppConnectionClosed]: (code === 1000 || code === 1001) - App ${packageName} closed normally`);
 
         // Let's call stopApp to remove the app from runningApps and loadingApps.
         await this.stopApp(packageName, false);
@@ -850,7 +829,7 @@ export class AppManager {
 
       // Set new timer for grace period
       const reconnectionTimer = setTimeout(async () => {
-        this.logger.warn(`Reconnection grace period expired for ${packageName}`);
+        this.logger.warn(`Reconnection Grace period expired for ${packageName}, checking connection state`);
 
         // If not reconnected, move to disconnected state and attempt resurrection.
         if (!this.userSession.appWebsockets.has(packageName)) {
@@ -931,80 +910,35 @@ export class AppManager {
           // Send message successfully
           websocket.send(JSON.stringify(message));
           this.logger.debug({
-            userId: this.userSession.userId,
             packageName,
-            service: 'AppManager',
             messageType: message.type || 'unknown'
-          }, `Message sent to TPA ${packageName}`);
+          }, `[AppManager:sendMessageToTpa]: Message sent to TPA ${packageName} for user ${this.userSession.userId}`);
 
           return { sent: true, resurrectionTriggered: false };
         } catch (sendError) {
-          // Send failed even though websocket appeared ready
-          this.logger.error({
-            userId: this.userSession.userId,
-            packageName,
-            service: 'AppManager',
-            error: sendError instanceof Error ? sendError.message : String(sendError)
-          }, `Failed to send message to TPA ${packageName}, will attempt resurrection`);
+          const logger = this.logger.child({ packageName });
+          const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
+          logger.error(sendError, `[AppManager:sendMessageToTpa]: Failed to send message to TPA ${packageName}: ${errorMessage}`);
 
-          // Remove failed connection
-          // this.userSession.appWebsockets.delete(packageName);
           // Fall through to resurrection logic below
         }
       }
 
-      // If we reach here, it means the connection is not available, let's start the grace period.
-      this.logger.warn({
-        userId: this.userSession.userId,
-        packageName,
-        service: 'AppManager'
-      }, `TPA ${packageName} connection not available, starting resurrection process`);
+      // If we reach here, it means the connection is not available, let's call handleAppConnectionClosed
+      // to handle the grace period and resurrection logic.
+      this.logger.warn(
+        { packageName },
+        `[AppManager:sendMessageToTpa]: Triggering handleAppConnectionClosed for ${packageName}`
+      );
 
       // manually trigger handleAppConnectionClosed, which will handle the grace period and resurrection logic.
       await this.handleAppConnectionClosed(packageName, 1069, 'Connection not available for messaging');
       return { sent: false, resurrectionTriggered: true, error: 'Connection not available for messaging' };
 
-      // // No connection, connection not ready, or send failed
-      // // if (appState === AppConnectionState.DISCONNECTED) {
-      // // Trigger resurrection but DON'T retry the message
-      // this.logger.info({
-      //   userId: this.userSession.userId,
-      //   packageName,
-      //   service: 'AppManager'
-      // }, `TPA ${packageName} disconnected, triggering resurrection without message retry`);
-
-      // // Start resurrection process without retrying the message
-      // this.startApp(packageName).catch(error => {
-      //   this.logger.error({
-      //     userId: this.userSession.userId,
-      //     packageName,
-      //     service: 'AppManager',
-      //     error: error instanceof Error ? error.message : String(error)
-      //   }, `Failed to resurrect TPA ${packageName}`);
-      // });
-
-      // return { sent: false, resurrectionTriggered: true, error: 'App restarted, message not sent' };
-      // // } else {
-      // //   // Unknown state or no state - log and fail
-      // //   const connectionState = websocket ? `readyState=${websocket.readyState}` : 'no connection';
-      // //   this.logger.warn({
-      // //     userId: this.userSession.userId,
-      // //     packageName,
-      // //     service: 'AppManager',
-      // //     connectionState,
-      // //     appState
-      // //   }, `TPA ${packageName} not available for messaging (${connectionState}, state: ${appState})`);
-
-      // //   return { sent: false, resurrectionTriggered: false, error: 'Connection not available' };
-      // // }
     } catch (error) {
+      const logger = this.logger.child({ packageName });
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({
-        userId: this.userSession.userId,
-        packageName,
-        service: 'AppManager',
-        error: errorMessage
-      }, `Error in sendMessageToTpa for ${packageName}`);
+      logger.error(error, `[AppManager:sendMessageToTpa]: Internal Server Error in sendMessageToTpa: ${errorMessage} - ${this.userSession.userId} ${packageName}`);
 
       return {
         sent: false,
@@ -1020,7 +954,7 @@ export class AppManager {
    */
   dispose(): void {
     try {
-      this.logger.info({ userId: this.userSession.userId, service: 'AppManager' }, 'Disposing AppManager');
+      this.logger.info({ userId: this.userSession.userId, service: 'AppManager' }, `[AppManager:dispose]: Disposing AppManager for user ${this.userSession.userId}`);
 
       // Clear pending connections
       for (const [, pending] of this.pendingConnections.entries()) {

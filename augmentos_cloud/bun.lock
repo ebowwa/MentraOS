@@ -69,7 +69,7 @@
         "express": "^4.18.2",
         "helmet": "^4.6.0",
         "jsonwebtoken": "^9.0.1",
-        "microsoft-cognitiveservices-speech-sdk": "^1.40.0",
+        "microsoft-cognitiveservices-speech-sdk": "^1.44.1",
         "moment": "^2.29.4",
         "mongodb": "^6.13.0",
         "mongoose": "^6.5.2",
@@ -1397,7 +1397,7 @@
 
     "micromatch": ["micromatch@4.0.8", "", { "dependencies": { "braces": "^3.0.3", "picomatch": "^2.3.1" } }, "sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA=="],
 
-    "microsoft-cognitiveservices-speech-sdk": ["microsoft-cognitiveservices-speech-sdk@1.44.0", "", { "dependencies": { "@types/webrtc": "^0.0.37", "agent-base": "^6.0.1", "bent": "^7.3.12", "https-proxy-agent": "^4.0.0", "uuid": "^9.0.0", "ws": "^7.5.6" } }, "sha512-M6OdgrJ+2+OLg+Ow8CWV1+oKtaWFF0H+Jzpta/jp+3XLCv+LH42PisbCDTjYhtgRXlwd8sxaZrUa0HFIkl9BSw=="],
+    "microsoft-cognitiveservices-speech-sdk": ["microsoft-cognitiveservices-speech-sdk@1.44.1", "", { "dependencies": { "@types/webrtc": "^0.0.37", "agent-base": "^6.0.1", "bent": "^7.3.12", "https-proxy-agent": "^4.0.0", "uuid": "^9.0.0", "ws": "^7.5.6" } }, "sha512-D4U7G1iQ6za9RQoXYc9ed5KrnWe3q4XIcWQ4DMqAl60CvOSXxSEJqTmTcVjeWVLY2XM9bp+2KKKyWceByAec8A=="],
 
     "mime": ["mime@1.6.0", "", { "bin": { "mime": "cli.js" } }, "sha512-x0Vn8spI+wuJ1O6S7gnbaQg8Pxh4NNHb7KSINmEWKiPE4RKOplvijn+NkmYmmRgP68mc70j2EbeTFRsrswaQeg=="],
 

@@ -36,10 +36,6 @@ import e from 'express';
 const SERVICE_NAME = 'websocket-tpa.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
 
-// Constants
-const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
-const TPA_SESSION_TIMEOUT_MS = 5000;  // 5 seconds
-
 /**
  * Error codes for TPA connection issues
  */

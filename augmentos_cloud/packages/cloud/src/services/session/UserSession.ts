@@ -131,14 +131,14 @@ export class UserSession {
   /**
    * Send error message to glasses
    * 
-   * @param code Error code
    * @param message Error message
+   * @param code Error code
    */
-  public sendError(code: GlassesErrorCode, message: string): void {
+  public sendError(message: string, code: GlassesErrorCode, ): void {
     try {
       const errorMessage: ConnectionError = {
         type: CloudToGlassesMessageType.CONNECTION_ERROR,
-        code,
+        code: code,
         message,
         timestamp: new Date()
       };
@@ -160,7 +160,7 @@ export class UserSession {
    * Dispose of all resources and remove from sessions map
    */
   dispose(): void {
-    this.logger.info(`Disposing user session for ${this.userId}`);
+    this.logger.warn(`[UserSession:dispose]: Disposing UserSession: ${this.userId}`);
 
     // Clean up all resources
     if (this.appManager) this.appManager.dispose();
@@ -200,13 +200,6 @@ export class UserSession {
     }, `🗑️ Session disposed and removed from storage for ${this.userId}`);
   }
 
-  /**
-   * Mark session as disconnected
-   */
-  markDisconnected(): void {
-    this.disconnectedAt = new Date();
-    this.logger.info(`User session marked as disconnected for ${this.userId}`);
-  }
 
   /**
    * Get the session ID (for backward compatibility)

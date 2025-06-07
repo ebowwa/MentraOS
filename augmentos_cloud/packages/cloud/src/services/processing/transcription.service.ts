@@ -690,15 +690,14 @@ export class TranscriptionService {
   }
 
   stopTranscription(userSession: UserSession): void {
-    const extSession = userSession as UserSession;
-    const sessionLogger = extSession.logger.child({ service: SERVICE_NAME });
+    const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
 
     sessionLogger.info({
-      sessionId: extSession.sessionId,
+      sessionId: userSession.sessionId,
       operation: 'stopTranscription'
     }, 'Stopping all transcription streams (legacy method)');
 
-    this.updateTranscriptionStreams(extSession, []);
+    this.updateTranscriptionStreams(userSession, []);
   }
 
   handlePushStreamError(userSession: UserSession, error: any): void {
