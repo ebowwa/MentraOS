@@ -22,7 +22,30 @@ const logger = rootLogger.child({ service: 'app.service' });
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 const APPSTORE_ENABLED = true;
 export const PRE_INSTALLED = ["com.augmentos.livecaptions", "cloud.augmentos.notify", "cloud.augmentos.mira"];
+export const PRE_INSTALLED_DEBUG = [
+  "com.mentra.link",
+  "com.mentra.notes",
+  "com.mentra.soundy",
+  "com.mentra.cactusai",
+  "com.mentra.hive",
+
+  "com.augmentos.calendarreminder",
+  "com.augmentos.xstats",
+  "com.augmentos.tictactoe",
+  "com.augmentos.displaytext",
+  "com.augmentos.shazam",
+
+  "cloud.augmentos.aughog",
+  "cloud.augmentos.recorder",
+
+];
 // export const PRE_INSTALLED = ["cloud.augmentos.live-captions-global", "cloud.augmentos.notify", "cloud.augmentos.mira"];
+
+if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_APPS === 'true') {
+  // If we're in debug mode, add the debug apps to the preinstalled list.
+  PRE_INSTALLED.push(...PRE_INSTALLED_DEBUG);
+  logger.info('Debug mode enabled - adding debug apps to preinstalled list:', PRE_INSTALLED_DEBUG);
+}
 
 /**
  * System TPAs that are always available.
