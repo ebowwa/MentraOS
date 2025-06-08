@@ -261,10 +261,10 @@ export default function DeviceSettings() {
           label={translate("settings:glassesWifiSettings")}
           subtitle={translate("settings:glassesWifiDescription")}
           onPress={() => {
-            // push({
-            //   pathname: "/pairing/glasseswifisetup",
-            //   params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
-            // })
+            push({
+              pathname: "/pairing/glasseswifisetup",
+              params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
+            })
           }}
         />
       )}

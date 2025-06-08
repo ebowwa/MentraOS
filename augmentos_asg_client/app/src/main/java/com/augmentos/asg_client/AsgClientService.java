@@ -184,6 +184,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         // DEBUG: Start the debug photo upload timer for VPS
         //startDebugVpsPhotoUploadTimer();
+
+        SysControl.disablePackageViaAdb(getApplicationContext(), "com.xy.fakelauncher");
+        SysControl.disablePackage(getApplicationContext(), "com.xy.fakelauncher");
+        SysControl.uninstallPackage(getApplicationContext(), "com.lhs.btserver");
+        SysControl.uninstallPackageViaAdb(getApplicationContext(), "com.lhs.btserver");
     }
 
     /**
@@ -997,6 +1002,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         if (bluetoothManager != null && bluetoothManager.isConnected()) {
                             bluetoothManager.sendData(jsonResponse.getBytes());
                             Log.d(TAG, "✅ Sent glasses_ready response to phone");
+                            
+                            // Automatically send WiFi status after glasses_ready
+                            Log.d(TAG, "📶 Auto-sending WiFi status after glasses_ready");
+                            if (networkManager != null) {
+                                // Add a small delay to ensure glasses_ready is processed first
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    boolean wifiConnected = networkManager.isConnectedToWifi();
+                                    sendWifiStatusOverBle(wifiConnected);
+                                    Log.d(TAG, "✅ Auto-sent WiFi status: " + (wifiConnected ? "CONNECTED" : "DISCONNECTED"));
+                                }, 500); // 500ms delay to ensure glasses_ready is processed
+                            }
                         }
                     } catch (JSONException e) {
                         Log.e(TAG, "Error creating glasses_ready response", e);
