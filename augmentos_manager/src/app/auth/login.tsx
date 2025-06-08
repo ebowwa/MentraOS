@@ -558,7 +558,7 @@ export default function LoginScreen() {
                       tx="login:continueWithEmail"
                       style={themed($primaryButton)}
                       pressedStyle={themed($pressedButton)}
-                      textStyle={themed($buttonText)}
+                      textStyle={themed($emailButtonText)}
                       onPress={() => setIsSigningUp(true)}
                       LeftAccessory={() => (
                         <FontAwesome
@@ -774,6 +774,11 @@ const $buttonText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 16,
   fontWeight: "bold",
+})
+
+const $emailButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontSize: 16,
 })
 
 const $ghostButton: ThemedStyle<ViewStyle> = ({spacing, colors}) => ({
