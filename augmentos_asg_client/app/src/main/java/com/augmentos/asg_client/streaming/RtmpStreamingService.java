@@ -143,11 +143,19 @@ public class RtmpStreamingService extends Service {
         // Start as a foreground service with notification
         startForeground(NOTIFICATION_ID, createNotification());
 
-        // Get RTMP URL from intent if provided
+        // Get RTMP URL and stream ID from intent if provided
         if (intent != null) {
             String rtmpUrl = intent.getStringExtra("rtmp_url");
+            String streamId = intent.getStringExtra("stream_id");
+            
             if (rtmpUrl != null && !rtmpUrl.isEmpty()) {
                 setRtmpUrl(rtmpUrl);
+                
+                // Store the stream ID if provided
+                if (streamId != null && !streamId.isEmpty()) {
+                    mCurrentStreamId = streamId;
+                    Log.d(TAG, "Stream ID set: " + streamId);
+                }
 
                 // Reset reconnection attempts
                 mReconnectAttempts = 0;
@@ -361,17 +369,45 @@ public class RtmpStreamingService extends Service {
                         @Override
                         public void onSuccess() {
                             Log.i(TAG, "RTMP connection successful");
-                            // Reset reconnect attempts when we get a successful connection
-                            mReconnectAttempts = 0;
-                            boolean wasReconnecting = mReconnecting;
-                            mReconnecting = false;
-                            updateNotificationIfImportant();
-                            EventBus.getDefault().post(new StreamingEvent.Connected());
                             
-                            // Only send streaming status for initial connections, not reconnections
-                            // Reconnections will be handled by the startStream continuation callback
-                            if (!wasReconnecting && sStatusCallback != null) {
-                                sStatusCallback.onStreamStarted(mRtmpUrl);
+                            synchronized (mStateLock) {
+                                // NOW we're actually streaming
+                                mStreamState = StreamState.STREAMING;
+                                mIsStreaming = true;
+                                mIsStreamingActive = true; // Mark stream as active for timeout tracking
+                                
+                                // Reset reconnect attempts when we get a successful connection
+                                mReconnectAttempts = 0;
+                                boolean wasReconnecting = mReconnecting;
+                                mReconnecting = false;
+                                
+                                // Track stream timing
+                                long currentTime = System.currentTimeMillis();
+                                if (wasReconnecting) {
+                                    // Calculate downtime during reconnection
+                                    long downtime = mLastReconnectionTime > 0 ? currentTime - mLastReconnectionTime : 0;
+                                    Log.e(TAG, "🟢 STREAM RECONNECTED after " + formatDuration(downtime) + " downtime");
+                                    Log.i(TAG, "Successfully reconnected to " + mRtmpUrl);
+                                    if (sStatusCallback != null) {
+                                        sStatusCallback.onReconnected(mRtmpUrl, mReconnectAttempts);
+                                    }
+                                } else {
+                                    // Fresh stream start
+                                    Log.e(TAG, "🟢 STREAM STARTED at " + new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date(currentTime)));
+                                    if (sStatusCallback != null) {
+                                        sStatusCallback.onStreamStarted(mRtmpUrl);
+                                    }
+                                }
+                                
+                                // Start timeout tracking if we have a stream ID
+                                if (mCurrentStreamId != null && !mCurrentStreamId.isEmpty()) {
+                                    Log.d(TAG, "Starting timeout tracking for stream: " + mCurrentStreamId);
+                                    scheduleStreamTimeout(mCurrentStreamId);
+                                }
+                                
+                                updateNotificationIfImportant();
+                                EventBus.getDefault().post(new StreamingEvent.Connected());
+                                EventBus.getDefault().post(new StreamingEvent.Started());
                             }
                         }
 
@@ -388,17 +424,31 @@ public class RtmpStreamingService extends Service {
                             Log.e(TAG, "RTMP connection failed: " + message);
                             EventBus.getDefault().post(new StreamingEvent.ConnectionFailed(message));
                             
+                            // Only notify server immediately for fatal errors that won't be retried
+                            if (!isRetryableErrorString(message)) {
+                                Log.w(TAG, "Fatal error detected - notifying server to stop stream");
+                                if (sStatusCallback != null) {
+                                    sStatusCallback.onStreamError("RTMP connection failed: " + message);
+                                }
+                                return; // Don't attempt recovery for fatal errors
+                            }
+                            
                             // Give the StreamPack library time to recover internally before we take over
                             // The library often recovers from brief network hiccups in 17-100ms
                             Log.d(TAG, "Waiting 1 second for library internal recovery before external reconnection");
                             mReconnectHandler.postDelayed(() -> {
                                 synchronized (mStateLock) {
-                                    // Only schedule our reconnection if the library didn't recover on its own
-                                    if (mStreamState != StreamState.STREAMING && !mIsStreaming) {
-                                        Log.d(TAG, "Library did not recover internally, proceeding with external reconnection");
-                                        scheduleReconnect("connection_failed");
-                                    } else {
+                                    // Check if we're actually streaming (connected) or still trying to connect
+                                    if (mStreamState == StreamState.STREAMING && mIsStreaming) {
+                                        // We actually recovered (onSuccess was called)
                                         Log.d(TAG, "Library recovered internally, canceling external reconnection");
+                                    } else if (mStreamState == StreamState.STARTING) {
+                                        // Still trying to connect - library didn't recover
+                                        Log.d(TAG, "Library did not recover internally (still in STARTING state), proceeding with external reconnection");
+                                        scheduleReconnect("connection_failed");
+                                    } else if (mStreamState == StreamState.IDLE || mStreamState == StreamState.STOPPING) {
+                                        // Stream was stopped/cancelled
+                                        Log.d(TAG, "Stream was stopped/cancelled, not scheduling reconnection");
                                     }
                                 }
                             }, 1000); // Wait 1 second for library internal recovery
@@ -423,12 +473,17 @@ public class RtmpStreamingService extends Service {
                             Log.d(TAG, "Waiting 1 second for library internal recovery before external reconnection");
                             mReconnectHandler.postDelayed(() -> {
                                 synchronized (mStateLock) {
-                                    // Only schedule our reconnection if the library didn't recover on its own
-                                    if (mStreamState != StreamState.STREAMING && !mIsStreaming) {
-                                        Log.d(TAG, "Library did not recover internally, proceeding with external reconnection");
-                                        scheduleReconnect("connection_lost");
-                                    } else {
+                                    // Check if we're actually streaming (connected) or need to reconnect
+                                    if (mStreamState == StreamState.STREAMING && mIsStreaming) {
+                                        // We actually recovered (reconnected)
                                         Log.d(TAG, "Library recovered internally, canceling external reconnection");
+                                    } else if (mStreamState == StreamState.IDLE || mStreamState == StreamState.STOPPING) {
+                                        // Stream was stopped/cancelled
+                                        Log.d(TAG, "Stream was stopped/cancelled, not scheduling reconnection");
+                                    } else {
+                                        // Connection lost and not recovered
+                                        Log.d(TAG, "Library did not recover internally from connection loss, proceeding with external reconnection");
+                                        scheduleReconnect("connection_lost");
                                     }
                                 }
                             }, 1000); // Wait 1 second for library internal recovery
@@ -635,31 +690,24 @@ public class RtmpStreamingService extends Service {
                             // Schedule reconnect if we couldn't start the stream
                             scheduleReconnect("start_error");
                         } else {
-                            mStreamState = StreamState.STREAMING;
-                            mIsStreaming = true;
-                            updateNotificationIfImportant();
+                            // Don't set STREAMING state yet - wait for actual RTMP connection
+                            // Keep state as STARTING until OnConnectionListener.onSuccess() is called
+                            Log.d(TAG, "Stream initialization succeeded, waiting for RTMP connection...");
+                            mIsStreaming = false; // Not actually streaming until connected
                             
                             // Track stream timing
                             long currentTime = System.currentTimeMillis();
                             if (mReconnecting) {
-                                // Calculate downtime during reconnection
-                                long downtime = mLastReconnectionTime > 0 ? currentTime - mLastReconnectionTime : 0;
-                                Log.e(TAG, "🟢 STREAM RECONNECTED after " + formatDuration(downtime) + " downtime");
-                                Log.i(TAG, "Successfully reconnected to " + mRtmpUrl);
-                                if (sStatusCallback != null) {
-                                    sStatusCallback.onReconnected(mRtmpUrl, mReconnectAttempts);
-                                }
-                                mReconnecting = false;
+                                Log.d(TAG, "Stream initialization succeeded during reconnection attempt " + mReconnectAttempts);
                             } else {
-                                // Fresh stream start
+                                // Fresh stream start - but wait for actual RTMP connection before reporting success
                                 mStreamStartTime = currentTime;
-                                Log.e(TAG, "🟢 STREAM STARTED at " + new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date(currentTime)));
-                                Log.i(TAG, "Streaming started to " + mRtmpUrl);
-                                if (sStatusCallback != null) {
-                                    sStatusCallback.onStreamStarted(mRtmpUrl);
-                                }
+                                Log.d(TAG, "🔄 STREAM INITIALIZING at " + new java.text.SimpleDateFormat("HH:mm:ss.SSS").format(new java.util.Date(currentTime)));
+                                Log.i(TAG, "Stream initialization completed for " + mRtmpUrl + " - waiting for RTMP connection");
+                                // Note: onStreamStarted() is called from OnConnectionListener.onSuccess() when connection is actually established
                             }
-                            EventBus.getDefault().post(new StreamingEvent.Started());
+                            // Don't post Started event yet - wait for actual connection
+                            EventBus.getDefault().post(new StreamingEvent.Initializing());
                         }
                     }
                 }
@@ -772,6 +820,11 @@ public class RtmpStreamingService extends Service {
             mStreamState = StreamState.IDLE;
             mIsStreaming = false;
             mIsStreamingActive = false;
+            
+            // Log stream ID being cleared for debugging
+            if (mCurrentStreamId != null) {
+                Log.d(TAG, "Clearing stream ID: " + mCurrentStreamId);
+            }
             mCurrentStreamId = null;
             
             // Reset stream timing
@@ -830,13 +883,18 @@ public class RtmpStreamingService extends Service {
         // Schedule the reconnection
         mReconnectHandler.postDelayed(() -> {
             Log.d(TAG, "Executing reconnection attempt #" + mReconnectAttempts);
-            // Mark that we're reconnecting so startStreaming knows
+            // Reset state and mark that we're reconnecting
             synchronized (mStateLock) {
-                mStreamState = StreamState.IDLE;
-                mIsStreaming = false;
-                mReconnecting = true;
+                // Only proceed if we're not already stopped
+                if (mStreamState != StreamState.IDLE && mStreamState != StreamState.STOPPING) {
+                    mStreamState = StreamState.IDLE;
+                    mIsStreaming = false;
+                    mReconnecting = true;
+                    startStreaming();
+                } else {
+                    Log.d(TAG, "Stream was stopped during reconnection delay, cancelling reconnection");
+                }
             }
-            startStreaming();
         }, delay);
     }
 
@@ -984,18 +1042,32 @@ public class RtmpStreamingService extends Service {
      * Start streaming to the specified RTMP URL
      * @param context Context to use for starting the service
      * @param rtmpUrl RTMP URL to stream to
+     * @param streamId Stream ID for tracking (can be null)
      */
-    public static void startStreaming(Context context, String rtmpUrl) {
+    public static void startStreaming(Context context, String rtmpUrl, String streamId) {
         // If service is running, send direct command
         if (sInstance != null) {
             sInstance.setRtmpUrl(rtmpUrl);
+            sInstance.mCurrentStreamId = streamId; // Set the stream ID
             sInstance.startStreaming();
         } else {
-            // Start the service with the provided URL
+            // Start the service with the provided URL and stream ID
             Intent intent = new Intent(context, RtmpStreamingService.class);
             intent.putExtra("rtmp_url", rtmpUrl);
+            if (streamId != null && !streamId.isEmpty()) {
+                intent.putExtra("stream_id", streamId);
+            }
             context.startService(intent);
         }
+    }
+
+    /**
+     * Start streaming to the specified RTMP URL (legacy method without streamId)
+     * @param context Context to use for starting the service
+     * @param rtmpUrl RTMP URL to stream to
+     */
+    public static void startStreaming(Context context, String rtmpUrl) {
+        startStreaming(context, rtmpUrl, null);
     }
 
     /**
@@ -1091,6 +1163,64 @@ public class RtmpStreamingService extends Service {
         
         // Log the error for debugging
         Log.d(TAG, "Classifying error: " + message);
+        
+        // Network/connection errors that should trigger reconnection
+        if (message.contains("SocketException") ||
+            message.contains("Connection") ||
+            message.contains("Timeout") ||
+            message.contains("Network") ||
+            message.contains("UnknownHostException") ||
+            message.contains("IOException") ||
+            message.contains("ECONNREFUSED") ||
+            message.contains("ETIMEDOUT")) {
+            Log.d(TAG, "Error classified as RETRYABLE (network issue)");
+            return true;
+        }
+        
+        // Fatal errors that shouldn't retry
+        if (message.contains("Permission") ||
+            message.contains("permission") ||
+            message.contains("Invalid URL") ||
+            message.contains("invalid url") ||
+            message.contains("Authentication") ||
+            message.contains("authentication") ||
+            message.contains("Unauthorized") ||
+            message.contains("Codec") ||
+            message.contains("codec") ||
+            message.contains("Not supported") ||
+            message.contains("Illegal") ||
+            message.contains("Invalid parameter")) {
+            Log.d(TAG, "Error classified as FATAL (configuration/permission issue)");
+            return false;
+        }
+        
+        // Camera-specific errors that are usually fatal
+        if (message.contains("Camera") && 
+            (message.contains("busy") || 
+             message.contains("in use") || 
+             message.contains("failed to connect"))) {
+            Log.d(TAG, "Error classified as FATAL (camera unavailable)");
+            return false;
+        }
+        
+        // Default to retry for unknown errors
+        Log.d(TAG, "Error classified as RETRYABLE (unknown error, defaulting to retry)");
+        return true;
+    }
+
+    /**
+     * Determine if an error message string is retryable (network/connection) or fatal (config/permission)
+     * @param message The error message string to classify
+     * @return true if the error should trigger reconnection attempts, false if it's fatal
+     */
+    private boolean isRetryableErrorString(String message) {
+        if (message == null) {
+            // Unknown error, default to retry
+            return true;
+        }
+        
+        // Log the error for debugging
+        Log.d(TAG, "Classifying error message: " + message);
         
         // Network/connection errors that should trigger reconnection
         if (message.contains("SocketException") ||

@@ -1211,14 +1211,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         // Extract streamId if provided
                         String streamId = dataToProcess.optString("streamId", "");
 
-                        com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl);
+                        // Pass streamId to the service
+                        com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl, streamId);
 
-                        // Start timeout tracking if streamId is provided
-                        if (!streamId.isEmpty()) {
-                            com.augmentos.asg_client.streaming.RtmpStreamingService.startStreamTimeout(streamId);
-                        }
-
-                        Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl);
+                        Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl + 
+                               (streamId.isEmpty() ? "" : " and streamId: " + streamId));
                     } catch (Exception e) {
                         Log.e(TAG, "Error starting RTMP streaming", e);
                         sendRtmpStatusResponse(false, "exception", e.getMessage());
