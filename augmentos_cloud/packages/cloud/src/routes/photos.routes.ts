@@ -14,56 +14,112 @@ import photoTakenService from '../services/core/photo-taken.service';
 import { GalleryPhoto } from '../models/gallery-photo.model';
 import { getSessionService } from '../services/core/session.service';
 
+// Function to clean up old photos
+async function cleanupOldPhotos(uploadDir: string) {
+  try {
+    const files = await fs.promises.readdir(uploadDir);
+    const now = Date.now();
+    const fiveMinutesAgo = now - (5 * 60 * 1000);
+
+    for (const file of files) {
+      const filePath = path.join(uploadDir, file);
+      const stats = await fs.promises.stat(filePath);
+      
+      // Check if file is older than 5 minutes
+      if (stats.mtimeMs < fiveMinutesAgo) {
+        await fs.promises.unlink(filePath);
+        logger.info(`Deleted old photo: ${file}`);
+      }
+    }
+  } catch (error) {
+    logger.error('Error cleaning up old photos:', error);
+  }
+}
+
 const router = express.Router();
 
 // Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(__dirname, '../../uploads/photos');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+    fieldSize: 10 * 1024 * 1024, // 10MB limit for fields
   },
-  filename: (req, file, cb) => {
-    // Generate filename with timestamp, user ID, and request ID
-    const userId = req.headers['x-user-id'] || 'unknown';
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const uniqueFilename = `${timestamp}_${userId}_${uuidv4()}${path.extname(file.originalname)}`;
-    cb(null, uniqueFilename);
+  fileFilter: async (req, file, cb) => {
+    try {
+      // Log the raw request for debugging
+      logger.debug('Processing file upload:', {
+        headers: req.headers,
+        contentType: req.headers['content-type'],
+        body: req.body,
+        file: {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        }
+      });
+
+      if (!file) {
+        throw new Error('No file object received');
+      }
+
+      if (!file.mimetype) {
+        throw new Error('No mimetype on file object');
+      }
+
+      if (!file.mimetype.startsWith('image/')) {
+        throw new Error(`Invalid mimetype: ${file.mimetype}`);
+      }
+
+      return cb(null, true);
+    } catch (error) {
+      logger.error('File filter error:', error);
+      return cb(error instanceof Error ? error : new Error(String(error)));
+    }
   }
 });
 
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    // Accept only images
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
+// Add error handler for multer
+const uploadMiddleware = (req: Request, res: Response, next: Function) => {
+  upload.single('file')(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      logger.error('Multer error:', err);
+      return res.status(400).json({ 
+        error: 'File upload failed', 
+        details: err.message,
+        code: err.code
+      });
+    } else if (err) {
+      logger.error('Upload error:', err);
+      return res.status(500).json({ 
+        error: 'Internal server error during upload',
+        details: err.message
+      });
     }
-  }
-});
+    next();
+  });
+};
 
 /**
  * @route POST /api/photos/upload
  * @desc Upload a photo from smart glasses
  * @access Private (requires glasses auth)
  */
-router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: Request, res: Response) => {
-  console.log('4343 req.body', JSON.stringify(req.body, null, 2));
-
+router.post('/upload', validateGlassesAuth, uploadMiddleware, async (req: Request, res: Response) => {
   try {
-    // Get request ID from the request body
-    const { requestId } = req.body;
+    // Parse metadata from request body
+    let metadata;
+    try {
+      metadata = JSON.parse(req.body.metadata || '{}');
+    } catch (error) {
+      logger.error('Failed to parse metadata:', error);
+      return res.status(400).json({ error: 'Invalid metadata format' });
+    }
 
-    logger.info(`[for requestId: ${requestId}`);
-    console.log(`[photos.routes] Uploading photo for requestId: ${requestId}`);
+    const { requestId } = metadata;
+
+    logger.info(`Processing upload for requestId: ${requestId}`);
 
     if (!requestId) {
       return res.status(400).json({ error: 'Request ID is required' });
@@ -75,78 +131,64 @@ router.post('/upload', validateGlassesAuth, upload.single('photo'), async (req: 
       return res.status(400).json({ error: 'No photo uploaded' });
     }
 
-    // Read the file data
-    const photoData = await fs.promises.readFile(file.path);
-    
+    if (!file.buffer) {
+      logger.error('File buffer is missing:', {
+        file: {
+          fieldname: file.fieldname,
+          originalname: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        }
+      });
+      return res.status(400).json({ error: 'Invalid file data - no buffer' });
+    }
+
     // Get the user session
     const sessionService = getSessionService();
     const userSession = sessionService.getSessionByUserId("loriamistadi75@gmail.com");
     if (!userSession) {
-      logger.error(`[photos.routes] User session not found for ${req.headers['x-user-id']}`);
+      logger.error(`User session not found for ${req.headers['x-user-id']}`);
       return res.status(404).json({ error: 'User session not found' });
     }
 
-    // Broadcast to TPAs subscribed to PHOTO_TAKEN
-    photoTakenService.broadcastPhotoTaken(userSession, photoData.buffer, file.mimetype);
+    // Save the file to disk first
+    const uploadDir = path.join(__dirname, '../../uploads/photos');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
 
-    // In a production environment, you would upload this to a CDN
-    // For now, we'll just use a local URL
-    const baseUrl = process.env.CLOUD_PUBLIC_URL;
-    const photoUrl = `${baseUrl}/uploads/${file.filename}`;
+    // Clean up old photos before saving new one
+    await cleanupOldPhotos(uploadDir);
 
-    // Get the pending request from the centralized service
-    // const pendingRequest = photoRequestService.getPendingPhotoRequest(requestId);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const filename = `${timestamp}_${uuidv4()}${path.extname(file.originalname)}`;
+    const filepath = path.join(uploadDir, filename);
     
-    // if (!pendingRequest) {
-    //   logger.warn(`No pending photo request found for requestId: ${requestId}`);
-    //   // Clean up the file if no pending request
-    //   fs.unlinkSync(file.path);
-    //   return res.status(404).json({ error: 'Photo request not found or expired' });
-    // }
+    try {
+      await fs.promises.writeFile(filepath, file.buffer);
+      logger.info(`Photo saved to ${filepath}`);
+    } catch (error) {
+      logger.error('Failed to save photo:', error);
+      return res.status(500).json({ error: 'Failed to save photo' });
+    }
 
-    // Save photo to gallery if flag is set
-    // if (pendingRequest.saveToGallery) {
-    //   try {
-    //     // Save to gallery
-    //     await GalleryPhoto.create({
-    //       userId: pendingRequest.userId,
-    //       filename: file.filename,
-    //       photoUrl,
-    //       requestId,
-    //       appId: pendingRequest.appId,
-    //       metadata: {
-    //         originalFilename: file.originalname,
-    //         size: file.size,
-    //         mimeType: file.mimetype
-    //       }
-    //     });
-    //     logger.info(`[photos.routes] Photo saved to gallery for user ${pendingRequest.userId}, requestId: ${requestId}`);
-    //     console.log(`[photos.routes] Photo saved to gallery for user ${pendingRequest.userId}, requestId: ${requestId}`);
-    //   } catch (error) {
-    //     // Just log error but continue processing - don't fail the request
-    //     logger.error('Error saving photo to gallery:', error);
-    //   }
-    // }
+    // Broadcast to TPAs subscribed to PHOTO_TAKEN
+    try {
+      photoTakenService.broadcastPhotoTaken(userSession, file.buffer, file.mimetype);
+    } catch (error) {
+      logger.error('Failed to broadcast photo:', error);
+      // Continue processing even if broadcast fails
+    }
 
-    // Process the photo response through the centralized service
-    // const processed = photoRequestService.processPhotoResponse(requestId, photoUrl);
-
-    // if (!processed) {
-    //   logger.warn(`Failed to process photo response for requestId: ${requestId}`);
-    //   // We still keep the photo since it might be in the gallery
-    //   // Only delete if we didn't save to gallery
-    //   if (!pendingRequest.saveToGallery) {
-    //     fs.unlinkSync(file.path);
-    //   }
-    //   return res.status(404).json({ error: 'Error processing photo response' });
-    // }
+    // Generate URL for response
+    const baseUrl = process.env.CLOUD_PUBLIC_URL;
+    const photoUrl = `${baseUrl}/uploads/${filename}`;
 
     // Return success response
     res.status(200).json({
       success: true,
-      // requestId,
       photoUrl,
-      // savedToGallery: pendingRequest.saveToGallery || false
+      requestId
     });
   } catch (error) {
     logger.error('Error handling photo upload:', error);
