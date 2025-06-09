@@ -1325,29 +1325,6 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 EventBus.getDefault().post(new KeepAliveAckEvent(json));
                 break;
 
-            case "vps_coordinates": {
-                // Handle VPS coordinates message from ASG client
-                try {
-                    String vpsRequestId = json.optString("requestId", "");
-                    double x = json.optDouble("x", Double.NaN);
-                    double y = json.optDouble("y", Double.NaN);
-                    double z = json.optDouble("z", Double.NaN);
-                    double qx = json.optDouble("qx", Double.NaN);
-                    double qy = json.optDouble("qy", Double.NaN);
-                    double qz = json.optDouble("qz", Double.NaN);
-                    double qw = json.optDouble("qw", Double.NaN);
-                    double confidence = json.optDouble("confidence", Double.NaN);
-                    // Post event to EventBus
-                    EventBus.getDefault().post(new VpsCoordinatesEvent(
-                        smartGlassesDevice.deviceModelName,
-                            vpsRequestId, x, y, z, qx, qy, qz, qw, confidence
-                    ));
-                    Log.d(TAG, "Posted VpsCoordinatesEvent: " + json.toString());
-                } catch (Exception e) {
-                    Log.e(TAG, "Error handling vps_coordinates message", e);
-                }
-                break;
-            }
             default:
                 // Pass the data to the subscriber for custom processing
                 if (dataObservable != null) {
