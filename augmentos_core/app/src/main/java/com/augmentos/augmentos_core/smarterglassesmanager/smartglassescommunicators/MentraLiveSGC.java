@@ -36,7 +36,6 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepA
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.VpsCoordinatesEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
