@@ -1,8 +1,10 @@
 import { logger as rootLogger } from "../logging";
 import { ExtendedUserSession } from "./session.service";
 import { subscriptionService } from "./subscription.service";
-import { StreamType } from "@augmentos/sdk/src/types/streams";
-import { CloudToTpaMessageType } from "@augmentos/sdk/src/types/message-types";
+import { StreamType, CloudToTpaMessageType } from "@augmentos/sdk";
+import fs from 'fs';
+import path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 const logger = rootLogger.child({ service: 'photo-taken.service' });
 
@@ -10,6 +12,38 @@ const logger = rootLogger.child({ service: 'photo-taken.service' });
  * Service for handling photo taken subscriptions and broadcasting
  */
 class PhotoTakenService {
+  private getPhotoExtension(mimeType: string): string {
+    const mimeToExt: { [key: string]: string } = {
+      'image/jpeg': '.jpg',
+      'image/jpg': '.jpg',
+      'image/png': '.png',
+      'image/gif': '.gif',
+      'image/webp': '.webp',
+      'image/heic': '.heic',
+      'image/heif': '.heif'
+    };
+    return mimeToExt[mimeType] || '.jpg'; // Default to .jpg if mime type not recognized
+  }
+
+  private savePhoto(photoData: ArrayBuffer, mimeType: string): string {
+    const uploadDir = path.join(__dirname, '../../../uploads/photos');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const extension = this.getPhotoExtension(mimeType);
+    const filename = `${timestamp}_${uuidv4()}${extension}`;
+    const filepath = path.join(uploadDir, filename);
+
+    // Convert ArrayBuffer to Buffer and save
+    const buffer = Buffer.from(photoData);
+    fs.writeFileSync(filepath, buffer);
+
+    logger.info(`Photo saved to ${filepath}`);
+    return filename;
+  }
+
   /**
    * Broadcast a photo to all TPAs subscribed to PHOTO_TAKEN
    * @param userSession The user session
@@ -18,7 +52,7 @@ class PhotoTakenService {
    */
   broadcastPhotoTaken(userSession: ExtendedUserSession, photoData: ArrayBuffer, mimeType: string): void {
     // Get all TPAs subscribed to PHOTO_TAKEN
-    const subscribedApps = subscriptionService.getSubscribedApps(userSession, 'photo_taken');
+    const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.PHOTO_TAKEN);
 
     if (subscribedApps.length === 0) {
       logger.debug(`No TPAs subscribed to PHOTO_TAKEN for user ${userSession.userId}`);
@@ -27,14 +61,22 @@ class PhotoTakenService {
 
     logger.info(`Broadcasting photo to ${subscribedApps.length} TPAs for user ${userSession.userId}`);
 
+    // Save the photo first
+    const filename = this.savePhoto(photoData, mimeType);
+    logger.info(`Photo saved as ${filename}`);
+
+    // Convert ArrayBuffer to base64 string
+    const base64Data = Buffer.from(photoData).toString('base64');
+
     // Create the photo taken message
     const message = {
       type: CloudToTpaMessageType.DATA_STREAM,
-      streamType: 'photo_taken',
+      streamType: StreamType.PHOTO_TAKEN,
       data: {
-        photoData,
+        photoData: base64Data,
         mimeType,
-        timestamp: new Date()
+        timestamp: new Date(),
+        filename
       }
     };
 
@@ -53,4 +95,4 @@ class PhotoTakenService {
 
 // Create and export a singleton instance
 export const photoTakenService = new PhotoTakenService();
-export default photoTakenService; 
+export default photoTakenService;
