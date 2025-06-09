@@ -99,10 +99,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private com.augmentos.asg_client.audio.GlassesMicrophoneManager glassesMicrophoneManager;
     private boolean isK900Device = false;
 
-    // DEBUG: Timer and handler for VPS photo uploads
-    private Handler debugVpsPhotoHandler;
-    private Runnable debugVpsPhotoRunnable;
-
     // Photo queue manager for handling offline media uploads
     private MediaUploadQueueManager mMediaQueueManager;
 
@@ -112,7 +108,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // 1. Add enum for photo capture mode at the top of the class
     private enum PhotoCaptureMode {
         SAVE_LOCALLY,
-        VPS,
         CLOUD
     }
 
@@ -1385,9 +1380,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         case "save_locally":
                             currentPhotoMode = PhotoCaptureMode.SAVE_LOCALLY;
                             break;
-                        case "vps":
-                            currentPhotoMode = PhotoCaptureMode.VPS;
-                            break;
                         case "cloud":
                             currentPhotoMode = PhotoCaptureMode.CLOUD;
                             break;
@@ -1527,19 +1519,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } catch (JSONException e) {
             Log.e(TAG, "Error creating version info", e);
         }
-    }
-
-    public void handleButtonPressForVpsDemo() {
-        Log.d(TAG, "Handling button press for VPS demo");
-
-        // Initialize MediaCaptureService if needed
-        if (mMediaCaptureService == null) {
-            initializeMediaCaptureService();
-        }
-
-        // Call the VPS photo upload method directly
-        // This bypasses the backend communication and directly calls the VPS service
-//        mMediaCaptureService.takeDebugVpsPhotoAndUpload();
     }
 
     /**
@@ -2023,50 +2002,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     }
 
     /**
-     * DEBUG FUNCTION: Starts a timer to take photos and upload them to the VPS server every 10 seconds.
-     * This is only for debugging purposes and should not be enabled in production.
-     */
-    private void startDebugVpsPhotoUploadTimer() {
-        Log.d(TAG, "DEBUG: Starting VPS photo upload debug timer");
-
-        // Create a new Handler associated with the main thread
-        debugVpsPhotoHandler = new Handler(Looper.getMainLooper());
-
-        // Create a Runnable that will take and upload a photo
-        debugVpsPhotoRunnable = new Runnable() {
-            @Override
-            public void run() {
-                // Take a photo and upload it to the VPS server
-                if (mMediaCaptureService != null && networkManager != null && networkManager.isConnectedToWifi()) {
-//                    mMediaCaptureService.takeDebugVpsPhotoAndUpload();
-                } else {
-                    Log.d(TAG, "Skipping VPS photo upload - no WiFi connection or capture service unavailable");
-                }
-
-                // Schedule the next execution
-                debugVpsPhotoHandler.postDelayed(this, 10000); // 10 seconds
-            }
-        };
-
-        // Start the timer
-        debugVpsPhotoHandler.post(debugVpsPhotoRunnable);
-    }
-
-    /**
-     * Stop the debug VPS photo upload timer
-     */
-    private void stopDebugVpsPhotoUploadTimer() {
-        Log.d(TAG, "DEBUG: Stopping VPS photo upload debug timer");
-        if (debugVpsPhotoHandler != null && debugVpsPhotoRunnable != null) {
-            debugVpsPhotoHandler.removeCallbacks(debugVpsPhotoRunnable);
-            debugVpsPhotoRunnable = null;
-            debugVpsPhotoHandler = null;
-        }
-    }
-
-    // RTMP streaming functionality moved to startRtmpStreaming() method
-
-    /**
      * Track whether we've been initialized to avoid duplicate initialization
      */
     private boolean mIsInitialized = false;
@@ -2220,33 +2155,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     mMediaCaptureService.takePhotoLocally();
                 }
                 break;
-            case VPS:
-                if (mMediaCaptureService != null) {
-                    mMediaCaptureService.takeDebugVpsPhotoAndUpload((requestId, x, y, z, qx, qy, qz, qw, confidence) -> {
-                        try {
-                            org.json.JSONObject coordMsg = new org.json.JSONObject();
-                            coordMsg.put("type", "vps_coordinates");
-                            coordMsg.put("requestId", requestId);
-                            coordMsg.put("x", x);
-                            coordMsg.put("y", y);
-                            coordMsg.put("z", z);
-                            coordMsg.put("qx", qx);
-                            coordMsg.put("qy", qy);
-                            coordMsg.put("qz", qz);
-                            coordMsg.put("qw", qw);
-                            coordMsg.put("confidence", confidence);
-                            Log.e(TAG, "Sending VPS coordinates via BLE: " + coordMsg.toString());
-                            if (bluetoothManager != null && bluetoothManager.isConnected()) {
-                                Log.e(TAG, "!@#$ Sending VPS coordinates via BLE: ");
-                                bluetoothManager.sendData(coordMsg.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-                            }
-                        } catch (Exception e) {
-                            Log.e(TAG, "Failed to send VPS coordinates via BLE", e);
-                        }
-                    });
-                }
-                break;
-            case  CLOUD:
+            case CLOUD:
                 if (mMediaCaptureService != null) {
                     // Generate a temporary requestId and file path for the photo
                     String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
