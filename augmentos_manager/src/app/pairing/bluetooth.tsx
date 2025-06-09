@@ -1,8 +1,8 @@
 // SelectGlassesBluetoothScreen.tsx
 
-import React, {useEffect, useMemo, useRef, useState} from "react"
-import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle} from "react-native"
-import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
+import React, {useEffect, useMemo, useRef, useState, useCallback} from "react"
+import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle, BackHandler} from "react-native"
+import {useNavigation, useRoute, useFocusEffect} from "@react-navigation/native" // <<--- import useRoute
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -35,19 +35,25 @@ export default function SelectGlassesBluetoothScreen() {
     searchResultsRef.current = searchResults
   }, [searchResults])
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", e => {
-      const actionType = e.data?.action?.type
-      if (actionType === "GO_BACK" || actionType === "POP") {
-        coreCommunicator.sendForgetSmartGlasses()
-        coreCommunicator.sendDisconnectWearable()
-      } else {
-        console.log("Navigation triggered by", actionType, "so skipping disconnect logic.")
-      }
-    })
+  // Shared function to handle the forget glasses logic
+  const handleForgetGlasses = useCallback(async () => {
+    await coreCommunicator.sendDisconnectWearable()
+    await coreCommunicator.sendForgetSmartGlasses()
+    router.replace('/pairing/select-glasses-model')
+  }, [])
 
-    return unsubscribe
-  }, [navigation])
+  // Handle Android hardware back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        handleForgetGlasses()
+        return true // Prevent default back action
+      }
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+      return () => backHandler.remove()
+    }, [handleForgetGlasses])
+  )
 
   useEffect(() => {
     const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {
@@ -189,13 +195,7 @@ export default function SelectGlassesBluetoothScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress=
-      {async () => {
-          await coreCommunicator.sendDisconnectWearable();
-          await coreCommunicator.sendForgetSmartGlasses()
-          router.replace('/pairing/select-glasses-model');
-        }}
-         />
+      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={handleForgetGlasses} />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>

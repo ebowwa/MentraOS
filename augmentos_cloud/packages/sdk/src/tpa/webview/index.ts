@@ -259,23 +259,14 @@ export function createAuthMiddleware(options: {
 
   return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // First check for temporary token in the query string
-
-    console.log('[auth.middleware] Request debug: ', req);
-    console.log('[auth.middleware] Request headers: ', req.headers);
-    console.log('[auth.middleware] Request cookies: ', req.cookies);
-    console.log('[auth.middleware] Request query: ', req.query);
-    console.log('[auth.middleware] Request body: ', req.body);
-
     const tempToken = req.query['aos_temp_token'] as string;
     const frontendToken = req.headers.authorization?.replace('Bearer ', '') as string || req.query['aos_frontend_token'] as string;
     const signedUserToken = req.query['aos_signed_user_token'] as string;
 
     // first check for signed user token
     if (signedUserToken) {
-      console.log('[auth.middleware] Verifying signed user token: ', signedUserToken);
       const userId = await verifySignedUserToken(signedUserToken);
       if (userId) {
-        console.log('[auth.middleware] Signed user token verified as valid.  User ID: ', userId);
         // Set the user ID on the request
         req.authUserId = userId;
 
@@ -288,8 +279,6 @@ export function createAuthMiddleware(options: {
       } else {
         console.log('[auth.middleware] Signed user token invalid');
       }
-    } else {
-      console.log('[auth.middleware] No signed user token found');
     }
     // If temporary token exists, authenticate with it
     if (tempToken) {
@@ -325,9 +314,7 @@ export function createAuthMiddleware(options: {
       }
     }
 
-    console.log('[auth.middleware] Frontend token: ', frontendToken);
     if (frontendToken) {
-      console.log('[auth.middleware] Verifying frontend token: ', frontendToken);
       // Check for user ID in headers if not embedded in token
       const userId = verifyFrontendToken(frontendToken, apiKey);
 
@@ -341,8 +328,6 @@ export function createAuthMiddleware(options: {
       } else {
         console.log('[auth.middleware] Frontend token invalid');
       }
-    } else {
-      console.log('[auth.middleware] No frontend token found');
     }
 
     // No valid temporary token, check for existing session cookie
@@ -352,7 +337,7 @@ export function createAuthMiddleware(options: {
       try {
         // Verify the signed session cookie and extract the user ID
         const userId = verifySession(sessionCookie, cookieSecret, cookieOptions.maxAge);
-        console.log(`User ID verified: ${userId}`);
+        console.log(`User ID verified from session cookie: ${userId}`);
         if (userId) {
           req.authUserId = userId;
           return next();

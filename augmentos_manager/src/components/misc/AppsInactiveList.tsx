@@ -71,18 +71,9 @@ export default function InactiveAppList({
   const pulseAnim = React.useRef(new Animated.Value(0)).current
 
   const [containerWidth, setContainerWidth] = React.useState(0)
-  const arrowAnimation = React.useRef(new Animated.Value(0)).current
 
   // Reference for the Live Captions list item
   const liveCaptionsRef = useRef<any>(null)
-  // State to store Live Captions item position
-  const [liveCaptionsPosition, setLiveCaptionsPosition] = useState({
-    x: 0,
-    y: 0,
-    width: 0,
-    height: 0,
-    index: 0,
-  })
 
   // Constants for grid item sizing
   const GRID_MARGIN = 6 // Total horizontal margin per item (left + right)
@@ -122,11 +113,6 @@ export default function InactiveAppList({
     }, []),
   )
 
-  // Just set arrow to static position
-  useEffect(() => {
-    // Set static value
-    arrowAnimation.setValue(0)
-  }, [showOnboardingTip])
 
   // Check if onboarding is completed on initial load
   useEffect(() => {
@@ -151,46 +137,6 @@ export default function InactiveAppList({
     }
   }, [showOnboardingTip])
 
-  // Safely measure Live Captions position when onboarding tip should be shown
-  useEffect(() => {
-    // Only try to measure if the tip should be shown
-    if (!showOnboardingTip) return
-
-    // Track if component is mounted for safety
-    let isMounted = true
-
-    // Use timeout to ensure we measure after layout
-    const timeoutId = setTimeout(() => {
-      // Safety check that the component is still mounted and ref is valid
-      if (isMounted && liveCaptionsRef.current) {
-        try {
-          liveCaptionsRef.current.measure(
-            (x: number, y: number, width: number, height: number, pageX: number, pageY: number) => {
-              // Another safety check before state update
-              if (isMounted) {
-                setLiveCaptionsPosition(prev => ({
-                  ...prev, // Keep existing index if we have it
-                  x: pageX,
-                  y: pageY,
-                  width: width || prev.width, // Keep previous values if new ones are invalid
-                  height: height || prev.height,
-                }))
-              }
-            },
-          )
-        } catch (e) {
-          // Silently handle measurement errors
-          console.log("Could not measure Live Captions position")
-        }
-      }
-    }, 500) // Give more time for layout to settle
-
-    // Cleanup timeout on unmount and mark as unmounted
-    return () => {
-      clearTimeout(timeoutId)
-      isMounted = false
-    }
-  }, [showOnboardingTip])
 
   const completeOnboarding = () => {
     saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
@@ -494,101 +440,6 @@ export default function InactiveAppList({
     })
   }
 
-  const renderOnboardingArrow = () => {
-    if (!showOnboardingTip) {
-      return null
-    }
-
-    // Default to a reasonable position if we don't have valid measurements yet
-    const defaultPosition = 90 // Default Y position from top if we can't calculate
-    const calculatedPosition =
-      liveCaptionsPosition.height > 0 && liveCaptionsPosition.index >= 0
-        ? liveCaptionsPosition.index * (liveCaptionsPosition.height + 10) - 40
-        : defaultPosition
-
-    return (
-      <View
-        key={"arrow"}
-        style={[
-          styles.arrowContainer,
-          {
-            position: "absolute",
-            top: calculatedPosition,
-            // Make sure it's visible in the viewport
-            opacity: liveCaptionsPosition.height > 0 ? 1 : 0.9,
-          },
-        ]}>
-        <View style={styles.arrowWrapper}>
-          <View
-            style={[
-              styles.arrowBubble,
-              {
-                backgroundColor: "#00B0FF",
-                borderColor: "#0288D1",
-                shadowColor: "#0288D1",
-                shadowOpacity: 0.4,
-              },
-            ]}>
-            <Text
-              tx="home:tapToStart"
-              style={[
-                styles.arrowBubbleText,
-                {
-                  textShadowColor: "rgba(0, 0, 0, 0.2)",
-                  textShadowOffset: {width: 0, height: 1},
-                  textShadowRadius: 2,
-                },
-              ]} />
-            <Icon
-              name="gesture-tap"
-              size={20}
-              color="#FFFFFF"
-              style={[
-                styles.bubbleIcon,
-                {
-                  textShadowColor: "rgba(0, 0, 0, 0.2)",
-                  textShadowOffset: {width: 0, height: 1},
-                  textShadowRadius: 2,
-                },
-              ]}
-            />
-          </View>
-          <View
-            style={[
-              styles.arrowIconContainer,
-              theme.isDark ? styles.arrowIconContainerDark : styles.arrowIconContainerLight,
-              {
-                backgroundColor: "#00B0FF",
-                borderColor: "#0288D1",
-                marginTop: 5,
-                shadowColor: "#0288D1",
-                shadowOpacity: 0.4,
-              },
-            ]}>
-            <View
-              style={[
-                styles.glowEffect,
-                {
-                  opacity: 0.4,
-                  backgroundColor: "rgba(0, 176, 255, 0.3)",
-                },
-              ]}
-            />
-            <Icon
-              name="arrow-down-bold"
-              size={30}
-              color="#FFFFFF"
-              style={{
-                textShadowColor: "rgba(0, 0, 0, 0.3)",
-                textShadowOffset: {width: 0, height: 1},
-                textShadowRadius: 3,
-              }}
-            />
-          </View>
-        </View>
-      </View>
-    )
-  }
 
   // Filter out duplicate apps and running apps
   let availableApps = appStatus.filter(app => {
@@ -630,7 +481,6 @@ export default function InactiveAppList({
 
   return (
     <View>
-      {renderOnboardingArrow()}
       {!isSearchPage && (
         <AppsHeader title="home:inactiveApps" showSearchIcon={appStatus.filter(app => app.is_running).length === 0} />
       )}
@@ -643,14 +493,6 @@ export default function InactiveAppList({
         // Only set ref for LiveCaptions app
         const ref = isLiveCaptions ? liveCaptionsRef : null
 
-        // Update LiveCaptions index without causing rerender loops
-        // This is safer than updating state during render
-        if (isLiveCaptions && liveCaptionsPosition.index !== index) {
-          // Use setTimeout to defer the state update until after render
-          setTimeout(() => {
-            setLiveCaptionsPosition(prev => ({...prev, index}))
-          }, 0)
-        }
 
         // Get the shared opacity Animated.Value for this app
         const itemOpacity = opacities[app.packageName]
@@ -754,74 +596,6 @@ const styles = StyleSheet.create({
   //   width: 50, // Match RunningAppsList icon size
   //   height: 50, // Match RunningAppsList icon size
   // },
-  arrowContainer: {
-    alignItems: "center",
-    marginLeft: 20,
-    position: "absolute",
-    top: -90,
-    zIndex: 10,
-  },
-  arrowWrapper: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  arrowBubble: {
-    alignItems: "center",
-    backgroundColor: "#00B0FF",
-    borderColor: "#0288D1",
-    borderRadius: 16,
-    borderWidth: 1,
-    elevation: 10,
-    flexDirection: "row",
-    marginBottom: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    shadowColor: "#0288D1",
-    shadowOffset: {width: 0, height: 3},
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-  },
-  arrowBubbleText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "bold",
-    marginRight: 6,
-    textShadowColor: "rgba(0, 0, 0, 0.2)",
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 2,
-  },
-  bubbleIcon: {
-    marginLeft: 2,
-  },
-  arrowIconContainer: {
-    alignItems: "center",
-    borderColor: "#0288D1",
-    borderRadius: 23,
-    borderWidth: 2,
-    elevation: 12,
-    height: 45,
-    justifyContent: "center",
-    overflow: "hidden",
-    position: "relative",
-    shadowColor: "#0288D1",
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.6,
-    shadowRadius: 8,
-    width: 45,
-  },
-  arrowIconContainerLight: {
-    backgroundColor: "#00B0FF",
-  },
-  arrowIconContainerDark: {
-    backgroundColor: "#00B0FF",
-  },
-  glowEffect: {
-    backgroundColor: "rgba(0, 176, 255, 0.3)",
-    borderRadius: 23,
-    height: "100%",
-    position: "absolute",
-    width: "100%",
-  },
   // settingsHintContainer: {
   //   padding: 12,
   //   borderRadius: 8,

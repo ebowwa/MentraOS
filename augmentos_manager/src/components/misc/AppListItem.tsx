@@ -57,7 +57,12 @@ export const AppListItem = ({
             }
           : {},
       ]}>
-      <View style={[themed($appDescription), themed($everythingFlexBox)]}>
+      <TouchableOpacity 
+        style={[themed($appDescription), themed($everythingFlexBox)]}
+        onPress={onTogglePress}
+        disabled={isDisabled}
+        activeOpacity={0.7}
+      >
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
@@ -67,13 +72,13 @@ export const AppListItem = ({
             ellipsizeMode="tail" />
           {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
         </View>
-      </View>
+      </TouchableOpacity>
 
       <View style={[themed($toggleParent), themed($everythingFlexBox)]}>
         <View pointerEvents={isDisabled ? "none" : "auto"}>
           <Switch value={isActive} onValueChange={onTogglePress} />
         </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={10}>
+        <TouchableOpacity onPress={onSettingsPress} hitSlop={20} style={themed($chevronHitbox)}>
           <ChevronRight color={theme.colors.text} />
         </TouchableOpacity>
       </View>
@@ -129,6 +134,11 @@ const $appName: ThemedStyle<TextStyle> = () => ({
 
 const $toggleParent: ThemedStyle<ViewStyle> = () => ({
   gap: 12,
+})
+
+const $chevronHitbox: ThemedStyle<ViewStyle> = () => ({
+  padding: 8,
+  margin: -8,
 })
 
 const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {

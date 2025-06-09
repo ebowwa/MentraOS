@@ -23,6 +23,7 @@ import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import showAlert from "@/utils/AlertUtils"
+import {LogoutUtils} from "@/utils/LogoutUtils"
 
 export default function ProfileSettingsPage() {
   const [userData, setUserData] = useState<{
@@ -41,7 +42,6 @@ export default function ProfileSettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
-  const {logout} = useAuth()
   const {goBack, push} = useNavigationHistory()
 
   useEffect(() => {
@@ -82,29 +82,12 @@ export default function ProfileSettingsPage() {
   }, [])
 
   const handleRequestDataExport = () => {
-    showAlert(
-      translate("profileSettings:dataExportTitle"),
-      translate("profileSettings:dataExportMessage"),
-      [
-        {
-          text: translate("common:ok"),
-          onPress: async () => {
-            try {
-              console.log("Not implemented yet!!!");
-              // BackendServerComms.getInstance().requestDataExport();
-              // show an alert saying the user will receive an email with a link to download the data
-            } catch (error) {
-              console.error("Error requesting data export:", error)
-            }
-          },
-        },
-      ],
-      { cancelable: false }
-    )
+    console.log("Profile: Navigating to data export screen")
+    push("/settings/data-export")
   }
 
   const handleDeleteAccount = () => {
-    console.log("Deleting account")
+    console.log("Profile: Starting account deletion process")
     showAlert(
       translate("profileSettings:deleteAccountTitle"), 
       translate("profileSettings:deleteAccountMessage"), 
@@ -114,12 +97,60 @@ export default function ProfileSettingsPage() {
           text: translate("common:delete"),
           style: "destructive",
           onPress: async () => {
+            console.log("Profile: User confirmed account deletion")
+            
+            let deleteRequestSuccessful = false
+            let errorMessage = ""
+            
             try {
-              await BackendServerComms.getInstance().requestAccountDeletion()
+              console.log("Profile: Requesting account deletion from server")
+              const response = await BackendServerComms.getInstance().requestAccountDeletion()
+              
+              // Check if the response indicates success
+              deleteRequestSuccessful = response && (response.success === true || response.status === 'success')
+              console.log("Profile: Account deletion request successful:", deleteRequestSuccessful)
             } catch (error) {
-              console.error(error)
+              console.error("Profile: Error requesting account deletion:", error)
+              deleteRequestSuccessful = false
+              errorMessage = error instanceof Error ? error.message : String(error)
             }
-            await logout()
+            
+            // Always perform logout regardless of deletion request success
+            try {
+              console.log("Profile: Starting comprehensive logout")
+              await LogoutUtils.performCompleteLogout()
+              console.log("Profile: Logout completed successfully")
+            } catch (logoutError) {
+              console.error("Profile: Error during logout:", logoutError)
+              // Continue with navigation even if logout fails
+            }
+            
+            // Show appropriate message based on deletion request result
+            if (deleteRequestSuccessful) {
+              showAlert(
+                translate("profileSettings:deleteAccountSuccessTitle"),
+                translate("profileSettings:deleteAccountSuccessMessage"),
+                [
+                  {
+                    text: translate("common:ok"),
+                    onPress: () => router.replace("/")
+                  }
+                ],
+                { cancelable: false }
+              )
+            } else {
+              showAlert(
+                translate("profileSettings:deleteAccountPendingTitle"),
+                translate("profileSettings:deleteAccountPendingMessage"),
+                [
+                  {
+                    text: translate("common:ok"),
+                    onPress: () => router.replace("/")
+                  }
+                ],
+                { cancelable: false }
+              )
+            }
           },
         },
       ],
