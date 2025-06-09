@@ -21,12 +21,14 @@ import {
   NotificationDismissed,
   AudioChunk,
   CalendarEvent,
+  VpsCoordinates,
   // Language stream helpers
   createTranscriptionStream,
   isValidLanguageCode,
   createTranslationStream,
   CustomMessage,
-  RtmpStreamStatus
+  RtmpStreamStatus,
+  PhotoTaken
 } from '../../types';
 import { DashboardMode } from '../../types/dashboard';
 import { PermissionError, PermissionErrorDetail } from '../../types/messages/cloud-to-tpa';
@@ -81,6 +83,8 @@ export interface StreamDataTypes {
   [StreamType.AUDIO_CHUNK]: AudioChunk;
   [StreamType.VIDEO]: ArrayBuffer;
   [StreamType.RTMP_STREAM_STATUS]: RtmpStreamStatus; // Using any for now, should be StreamStatus
+  [StreamType.VPS_COORDINATES]: VpsCoordinates;
+  [StreamType.PHOTO_TAKEN]: PhotoTaken;
   [StreamType.OPEN_DASHBOARD]: never;
   [StreamType.START_APP]: never;
   [StreamType.STOP_APP]: never;
@@ -427,5 +431,18 @@ export class EventManager {
 
     this.emitter.on('custom_message', messageHandler);
     return () => this.emitter.off('custom_message', messageHandler);
+  }
+
+  onVpsCoordinates(handler: Handler<VpsCoordinates>) {
+    return this.addHandler(StreamType.VPS_COORDINATES, handler);
+  }
+
+  /**
+   * 📸 Listen for photo responses
+   * @param handler - Function to handle photo response data
+   * @returns Cleanup function to remove the handler
+   */
+  onPhotoTaken(handler: Handler<PhotoTaken>) {
+    return this.addHandler(StreamType.PHOTO_TAKEN, handler);
   }
 }

@@ -48,7 +48,9 @@ import {
   createTranscriptionStream,
   createTranslationStream,
   GlassesToCloudMessage,
-  PhotoResponse
+  PhotoResponse,
+  VpsCoordinates,
+  PhotoTaken
 } from '../../types';
 import { DashboardAPI } from '../../types/dashboard';
 import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
@@ -349,6 +351,26 @@ export class TpaSession {
    */
   onPhoneNotifications(handler: (data: PhoneNotification) => void): () => void {
     return this.events.onPhoneNotifications(handler);
+  }
+
+  /**
+   * 📡 Listen for VPS coordinates updates
+   * @param handler - Function to handle VPS coordinates
+   * @returns Cleanup function to remove the handler
+   */
+  onVpsCoordinates(handler: (data: VpsCoordinates) => void): () => void {
+    this.subscribe(StreamType.VPS_COORDINATES);
+    return this.events.onVpsCoordinates(handler);
+  }
+
+  /**
+   * 📸 Listen for photo responses
+   * @param handler - Function to handle photo response data
+   * @returns Cleanup function to remove the handler
+   */
+  onPhotoTaken(handler: (data: PhotoTaken) => void): () => void {
+    this.subscribe(StreamType.PHOTO_TAKEN);
+    return this.events.onPhotoTaken(handler);
   }
 
   // =====================================
