@@ -222,6 +222,16 @@ export interface KeepAliveAck extends BaseMessage {
 }
 
 /**
+ * Photo taken event from glasses
+ */
+export interface PhotoTaken extends BaseMessage {
+  type: GlassesToCloudMessageType.PHOTO_TAKEN;
+  photoData: ArrayBuffer;
+  mimeType: string;
+  timestamp: Date;
+}
+
+/**
  * Union type for all messages from glasses to cloud
  */
 export type GlassesToCloudMessage =
@@ -244,9 +254,10 @@ export type GlassesToCloudMessage =
   | NotificationDismissed
   | AugmentosSettingsUpdateRequest
   | CoreStatusUpdate
-  | PhotoResponse
   | RtmpStreamStatus
   | KeepAliveAck
+  | PhotoResponse
+  | PhotoTaken;
 
 //===========================================================
 // Type guards
@@ -327,4 +338,8 @@ export function isPhotoResponse(message: GlassesToCloudMessage): message is Phot
 
 export function isKeepAliveAck(message: GlassesToCloudMessage): message is KeepAliveAck {
   return message.type === GlassesToCloudMessageType.KEEP_ALIVE_ACK;
+}
+
+export function isPhotoTaken(message: GlassesToCloudMessage): message is PhotoTaken {
+  return message.type === GlassesToCloudMessageType.PHOTO_TAKEN;
 }

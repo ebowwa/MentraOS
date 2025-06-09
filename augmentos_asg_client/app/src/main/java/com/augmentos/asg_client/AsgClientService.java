@@ -112,11 +112,12 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // 1. Add enum for photo capture mode at the top of the class
     private enum PhotoCaptureMode {
         SAVE_LOCALLY,
-        VPS
+        VPS,
+        CLOUD
     }
 
     // 2. Add a field to store the current mode
-    private PhotoCaptureMode currentPhotoMode = PhotoCaptureMode.VPS;
+    private PhotoCaptureMode currentPhotoMode = PhotoCaptureMode.CLOUD;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -1374,6 +1375,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         case "vps":
                             currentPhotoMode = PhotoCaptureMode.VPS;
                             break;
+                        case "cloud":
+                            currentPhotoMode = PhotoCaptureMode.CLOUD;
+                            break;
                     }
                     // Optionally send an ACK back to the phone
                     JSONObject ack = new JSONObject();
@@ -2227,6 +2231,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             Log.e(TAG, "Failed to send VPS coordinates via BLE", e);
                         }
                     });
+                }
+                break;
+            case  CLOUD:
+                if (mMediaCaptureService != null) {
+                    // Generate a temporary requestId and file path for the photo
+                    String timeStamp = new java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(new java.util.Date());
+                    String requestId = "cloud_" + timeStamp;
+                    String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
+
+                    // Take photo and upload to cloud
+                    mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
                 }
                 break;
         }

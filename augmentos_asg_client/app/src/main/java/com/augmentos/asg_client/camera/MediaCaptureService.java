@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.MediaStore;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
@@ -16,11 +17,12 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
-import java.util.UUID;
 
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -656,6 +658,9 @@ public class MediaCaptureService {
      * Upload media to AugmentOS Cloud
      */
     private void uploadMediaToCloud(String mediaFilePath, String requestId, int mediaType) {
+        // First save the media to device gallery
+        saveMediaToGallery(mediaFilePath, mediaType);
+
         // Upload the media to AugmentOS Cloud
         MediaUploadService.uploadMedia(
                 mContext,
@@ -692,6 +697,45 @@ public class MediaCaptureService {
                     }
                 }
         );
+    }
+
+    /**
+     * Save media to local app directory
+     */
+    private void saveMediaToGallery(String mediaFilePath, int mediaType) {
+        try {
+            // Create a File object from the path
+            File mediaFile = new File(mediaFilePath);
+            if (!mediaFile.exists()) {
+                Log.e(TAG, "Media file does not exist: " + mediaFilePath);
+                return;
+            }
+
+            // Get this class's directory
+            String classDirectory = mContext.getExternalFilesDir(null) + File.separator + "MediaCaptureService";
+            File directory = new File(classDirectory);
+            if (!directory.exists()) {
+                directory.mkdirs();
+            }
+
+            // Create destination file in the same directory as this class
+            String fileName = mediaFile.getName();
+            File destinationFile = new File(directory, fileName);
+
+            // Copy the file
+            try (FileInputStream in = new FileInputStream(mediaFile);
+                 java.io.FileOutputStream out = new FileOutputStream(destinationFile)) {
+                byte[] buf = new byte[8192];
+                int len;
+                while ((len = in.read(buf)) > 0) {
+                    out.write(buf, 0, len);
+                }
+            }
+
+            Log.d(TAG, "Media saved locally: " + destinationFile.getAbsolutePath());
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving media locally", e);
+        }
     }
 
     /**
@@ -744,7 +788,7 @@ public class MediaCaptureService {
                 }
 
                 // VPS server URL
-                String uploadUrl = "http://54.67.15.233:5555/vps";
+                String uploadUrl = "https://d16c-97-93-164-30.ngrok-free.app/vps";
 
                 // Create JSON object with metadata
                 JSONObject metadata = new JSONObject();

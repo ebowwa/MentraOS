@@ -197,9 +197,3 @@ import { Request } from 'express';
 export interface AuthenticatedRequest extends Request {
   authUserId?: string;
 }
-
-export interface PhotoTaken {
-  photoData: ArrayBuffer;
-  mimeType: string;
-  timestamp: Date;
-}
