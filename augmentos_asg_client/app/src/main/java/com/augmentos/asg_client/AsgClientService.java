@@ -544,11 +544,6 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             isAugmentosBound = false;
         }
 
-        // No web server to stop
-
-        // Stop debug VPS photo timer
-        stopDebugVpsPhotoUploadTimer();
-
         // Unregister streaming callback
         com.augmentos.asg_client.streaming.RtmpStreamingService.setStreamingStatusCallback(null);
 
