@@ -15,14 +15,13 @@ import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
-import TestFlightDetector from "@/bridge/TestFlightDetector"
 
 export default function SettingsPage() {
   const {status} = useStatus()
   const {logout, user} = useAuth()
   const {theme} = useAppTheme()
   const {push, replace} = useNavigationHistory()
-  const [showDeveloperSettings, setShowDeveloperSettings] = useState(false)
+  const [showDeveloperSettings, setShowDeveloperSettings] = useState(true)
   
   // Check if user is from Mentra to show theme settings
   const isMentraUser = user?.email?.endsWith('@mentra.glass') || false
@@ -32,7 +31,7 @@ export default function SettingsPage() {
     if (Platform.OS === 'android') {
       setShowDeveloperSettings(true)
     } else {
-      TestFlightDetector.isTestFlightOrDev().then(setShowDeveloperSettings)
+      setShowDeveloperSettings(__DEV__)
     }
   }, [])
 
