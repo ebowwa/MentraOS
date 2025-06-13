@@ -2,7 +2,8 @@
 
 import React, {useEffect, useMemo, useRef, useState, useCallback} from "react"
 import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle, BackHandler} from "react-native"
-import {useNavigation, useRoute, useFocusEffect} from "@react-navigation/native" // <<--- import useRoute
+import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
+import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -43,17 +44,25 @@ export default function SelectGlassesBluetoothScreen() {
   }, [])
 
   // Handle Android hardware back button
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        handleForgetGlasses()
-        return true // Prevent default back action
-      }
+  useEffect(() => {
+    // Only handle on Android
+    if (Platform.OS !== 'android') return
 
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
-      return () => backHandler.remove()
-    }, [handleForgetGlasses])
-  )
+    const onBackPress = () => {
+      // Call our custom back handler
+      handleForgetGlasses()
+      // Return true to prevent default back behavior and stop propagation
+      return true
+    }
+
+    // Add the event listener - this will be on top of the stack
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+
+    // Cleanup function
+    return () => {
+      backHandler.remove()
+    }
+  }, [handleForgetGlasses])
 
   useEffect(() => {
     const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {

@@ -209,6 +209,7 @@ export default function AppWebView() {
         style={{paddingLeft: 16}} 
         onLeftPress={() => router.back()}
         rightIcon="settings"
+        rightIconColor={theme.colors.icon}
         onRightPress={() => {
           router.replace({
             pathname: "/tpa/settings",

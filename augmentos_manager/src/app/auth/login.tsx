@@ -121,6 +121,8 @@ export default function LoginScreen() {
             console.error("Error setting session:", error)
           } else {
             console.log("Session updated:", data.session)
+            // Dismiss the WebView after successful authentication
+            await WebBrowser.dismissBrowser()
           }
         } catch (err) {
           console.error("Exception during setSession:", err)

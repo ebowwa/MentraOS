@@ -1,6 +1,7 @@
-import React, {useState, useEffect, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ViewStyle} from "react-native"
+import React, {useState, useEffect, useRef, useCallback} from "react"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ViewStyle, BackHandler, Platform} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native"
+import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -25,6 +26,35 @@ export default function GlassesPairingGuideScreen() {
   const [pairingInProgress, setPairingInProgress] = useState(true)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasAlertShownRef = useRef(false)
+
+  // Shared function to handle the forget glasses logic
+  const handleForgetGlasses = useCallback(async () => {
+    setPairingInProgress(false)
+    await coreCommunicator.sendDisconnectWearable()
+    await coreCommunicator.sendForgetSmartGlasses()
+    router.replace('/pairing/select-glasses-model')
+  }, [])
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    // Only handle on Android
+    if (Platform.OS !== 'android') return
+
+    const onBackPress = () => {
+      // Call our custom back handler
+      handleForgetGlasses()
+      // Return true to prevent default back behavior and stop propagation
+      return true
+    }
+
+    // Add the event listener - this will be on top of the stack
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+
+    // Cleanup function
+    return () => {
+      backHandler.remove()
+    }
+  }, [handleForgetGlasses])
 
   // Timer to show help message after 30 seconds
   useEffect(() => {
@@ -70,22 +100,6 @@ export default function GlassesPairingGuideScreen() {
     }
   }, [showHelpAlert, glassesModelName])
 
-  // useEffect(() => {
-  //   const unsubscribe = navigation.addListener("beforeRemove", e => {
-  //     const actionType = e.data?.action?.type
-  //     if (actionType === "GO_BACK" || actionType === "POP") {
-  //       coreCommunicator.sendForgetSmartGlasses()
-  //       coreCommunicator.sendDisconnectWearable()
-  //       e.preventDefault()
-  //       router.push({pathname: "/pairing/select-glasses-model"})
-  //     } else {
-  //       console.log("Navigation triggered by", actionType, "so skipping disconnect logic.")
-  //     }
-  //   })
-
-  //   return unsubscribe
-  // }, [navigation])
-
   useEffect(() => {
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
@@ -103,12 +117,7 @@ export default function GlassesPairingGuideScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header leftIcon="caretLeft" onLeftPress={async () => {
-          setPairingInProgress(false);
-          await coreCommunicator.sendDisconnectWearable();
-          await coreCommunicator.sendForgetSmartGlasses();
-          router.replace('/pairing/select-glasses-model');
-        }} />
+      <Header leftIcon="caretLeft" onLeftPress={handleForgetGlasses} />
       {pairingInProgress ? (
         // Show the beautiful animated loader while pairing is in progress
         <GlassesPairingLoader glassesModelName={glassesModelName} />
@@ -167,7 +176,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   text: {
     fontSize: 16,
