@@ -1,10 +1,16 @@
 package com.augmentos.asg_client.utils;
 
+import android.app.ActivityManager;
 import android.content.Context;
+import android.content.Intent;
 import android.os.PowerManager;
 import android.util.Log;
 
 import androidx.annotation.NonNull;
+
+import com.augmentos.asg_client.MainActivity;
+
+import java.util.List;
 
 /**
  * Utility class for managing wake locks across the application.
@@ -215,5 +221,92 @@ public class WakeLockManager {
         boolean cpuSuccess = releaseCpuWakeLock();
         boolean screenSuccess = releaseScreenWakeLock();
         return cpuSuccess && screenSuccess;
+    }
+
+    /**
+     * Acquire both CPU and screen wake locks and bring the app to foreground if needed.
+     * This is specifically designed for camera operations that require the app to be
+     * in the foreground to avoid "Camera disabled by policy" errors.
+     *
+     * @param context Application context
+     * @param cpuTimeoutMs Timeout for CPU wake lock in milliseconds
+     * @param screenTimeoutMs Timeout for screen wake lock in milliseconds
+     * @return true if wake locks were acquired and app brought to foreground successfully
+     */
+    public static boolean acquireFullWakeLockAndBringToForeground(@NonNull Context context, long cpuTimeoutMs, long screenTimeoutMs) {
+        try {
+            // First, try to bring app to foreground if not already there
+            if (!isAppInForeground(context)) {
+                Log.d(TAG, "App not in foreground, attempting to bring to front");
+                if (!bringAppToForeground(context)) {
+                    Log.w(TAG, "Failed to bring app to foreground, continuing with wake locks");
+                }
+            } else {
+                Log.d(TAG, "App already in foreground");
+            }
+
+            // Then acquire the wake locks as usual
+            return acquireFullWakeLock(context, cpuTimeoutMs, screenTimeoutMs);
+        } catch (Exception e) {
+            Log.e(TAG, "Error in acquireFullWakeLockAndBringToForeground", e);
+            // Fallback to just acquiring wake locks
+            return acquireFullWakeLock(context, cpuTimeoutMs, screenTimeoutMs);
+        }
+    }
+
+    /**
+     * Check if the application is currently in the foreground.
+     *
+     * @param context Application context
+     * @return true if the app is in the foreground, false otherwise
+     */
+    private static boolean isAppInForeground(@NonNull Context context) {
+        try {
+            ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            if (activityManager == null) {
+                Log.w(TAG, "ActivityManager is null, assuming app not in foreground");
+                return false;
+            }
+
+            List<ActivityManager.RunningAppProcessInfo> processes = activityManager.getRunningAppProcesses();
+            if (processes == null) {
+                Log.w(TAG, "Running processes list is null");
+                return false;
+            }
+
+            String packageName = context.getPackageName();
+            for (ActivityManager.RunningAppProcessInfo process : processes) {
+                if (packageName.equals(process.processName)) {
+                    boolean isInForeground = process.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND;
+                    Log.d(TAG, "App foreground status: " + isInForeground + " (importance: " + process.importance + ")");
+                    return isInForeground;
+                }
+            }
+            Log.d(TAG, "App process not found in running processes");
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "Error checking if app is in foreground", e);
+            return false;
+        }
+    }
+
+    /**
+     * Bring the application to the foreground by starting the MainActivity.
+     *
+     * @param context Application context
+     * @return true if the intent was successfully started, false otherwise
+     */
+    private static boolean bringAppToForeground(@NonNull Context context) {
+        try {
+            Intent intent = new Intent(context, MainActivity.class);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            
+            context.startActivity(intent);
+            Log.d(TAG, "Started MainActivity to bring app to foreground");
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Error bringing app to foreground", e);
+            return false;
+        }
     }
 }

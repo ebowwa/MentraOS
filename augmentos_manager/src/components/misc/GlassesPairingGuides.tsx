@@ -74,7 +74,7 @@ export function MentraLivePairingGuide() {
 
   return (
     <View style={styles.guideContainer}>
-      <View style={{flex: 1, justifyContent: "space-between", flexDirection: "column"}}>
+      <View style={{justifyContent: "flex-start", flexDirection: "column"}}>
         {/* <ScrollView style={{}} nestedScrollEnabled={true}> */}
         <Text text="Mentra Live Beta" style={[styles.guideTitle, {color: theme.colors.text}]} />
 
@@ -88,7 +88,7 @@ export function MentraLivePairingGuide() {
         {/* Product image would go here */}
         <Image
           source={require("../../../assets/glasses/mentra_live.png")}
-          style={styles.guideImage}
+          style={[styles.guideImage, {marginVertical: 0}]}
           // Fallback if image doesn't exist
           onError={e => console.log("Image failed to load")}
         />

@@ -50,17 +50,17 @@
     <key>NSBluetoothPeripheralUsageDescription</key>
     <string>This app needs access to your Bluetooth to connect to your glasses.</string>
     <key>NSCalendarUsageDescription</key>
-    <string>This app needs access to your calendar to provide you with calendar based information on your glasses.</string>
+    <string>AugmentOS accesses your calendar to display upcoming events and reminders directly on your smart glasses. For example, the app can show 'Meeting with John at 3 PM in Conference Room A' or remind you '15 minutes until dentist appointment' on your glasses display.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>This app needs access to your calendar to provide you with calendar based information.</string>
+    <string>AugmentOS accesses your calendar to display upcoming events and reminders directly on your smart glasses. For example, the app can show 'Meeting with John at 3 PM in Conference Room A' or remind you '15 minutes until dentist appointment' on your glasses display.</string>
     <key>NSCalendarsUsageDescription</key>
-    <string>This app needs access to your calendar to provide you with calendar based information.</string>
+    <string>AugmentOS accesses your calendar to display upcoming events and reminders directly on your smart glasses. For example, the app can show 'Meeting with John at 3 PM in Conference Room A' or remind you '15 minutes until dentist appointment' on your glasses display.</string>
     <key>NSCameraUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your camera</string>
     <key>NSLocationWhenInUseUsageDescription</key>
-    <string>This app needs access to your location to provide you with locatioin based information.</string>
+    <string>AugmentOS uses your location to display nearby points of interest, weather updates, and navigation directions on your smart glasses. For example, when you're walking, the app can show restaurants within 100 meters or provide turn-by-turn directions to your destination on your glasses display.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>AugmentOS uses your microphone to enable the 'Hey Mira' AI assistant and provide live captions for deaf and hard-of-hearing users on smart glasses. For example, you can say 'Hey Mira, what's on my calendar today?' or the app can caption conversations in real-time on your glasses display.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app needs access to your photo library to provide you with photo based information on your glasses.</string>
     <key>NSUserActivityTypes</key>
@@ -72,6 +72,7 @@
     <key>UIBackgroundModes</key>
     <array>
       <string>bluetooth-central</string>
+      <string>audio</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
@@ -80,20 +81,13 @@
       <string>arm64</string>
     </array>
     <key>UIRequiresFullScreen</key>
-    <false/>
+    <true/>
     <key>UIStatusBarStyle</key>
     <string/>
     <key>UISupportedInterfaceOrientations</key>
     <array>
       <string>UIInterfaceOrientationPortrait</string>
       <string>UIInterfaceOrientationPortraitUpsideDown</string>
-    </array>
-    <key>UISupportedInterfaceOrientations~ipad</key>
-    <array>
-      <string>UIInterfaceOrientationPortrait</string>
-      <string>UIInterfaceOrientationPortraitUpsideDown</string>
-      <string>UIInterfaceOrientationLandscapeLeft</string>
-      <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
     <key>UIUserInterfaceStyle</key>
     <string>Automatic</string>
