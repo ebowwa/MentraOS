@@ -5,7 +5,7 @@ const en = {
     glassesMic: "Glasses Microphone",
   },
   screenSettings: {
-    title: "Screen Settings",
+    title: "Display Position Settings",
   },
   pairing: {
     selectModel: "Select Model",
@@ -60,7 +60,8 @@ const en = {
     foreground: "Foreground",
     thereCanOnlyBeOne: "There Can Only Be One",
     thereCanOnlyBeOneMessage: "You can only run one foreground app at a time.",
-
+    glassesNotConnected: "Glasses Not Connected",
+    appWillRunWhenConnected: "This app will start running once your glasses are connected.",
   },
   glasses: {
     title: "Glasses",
@@ -88,11 +89,11 @@ const en = {
     privacySettings: "Permissions and Privacy",
     dashboardSettings: "Dashboard Settings",
     dashboardDescription: "Configure the contextual dashboard and HeadUp settings",
-    screenSettings: "Screen Settings",
-    screenDescription: "Adjust brightness, auto-brightness, and other display settings.",
+    screenSettings: "Display Position Settings",
+    screenDescription: "Adjust depth and height of the display content.",
     glassesWifiSettings: "Glasses WiFi Settings",
     glassesWifiDescription: "Configure WiFi settings for your smart glasses.",
-    wifiUnavailable: "WiFi configuration is only available for glasses that support WiFi connectivity.",
+    wifiUnavailable: "Connect a pair of glasses that support WiFi to access WiFi settings.",
     developerSettings: "Developer Settings",
     forgetGlasses: "Forget Glasses",
     disconnectGlasses: "Disconnect Glasses",
@@ -131,6 +132,10 @@ const en = {
     dataExportMessage: "You will receive an email with your data export shortly.",
     deleteAccountTitle: "Delete Account",
     deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
+    deleteAccountSuccessTitle: "Account Deleted",
+    deleteAccountSuccessMessage: "Your account has been successfully deleted.",
+    deleteAccountPendingTitle: "Account Deletion Requested",
+    deleteAccountPendingMessage: "Your account deletion request has been received and will be processed within 2-3 business days.",
   },
   login: {
     title: "AugmentOS",
@@ -149,13 +154,15 @@ const en = {
     createAccount: "Create Account",
     login: "Login",
     connectingToAugmentOS: "Connecting to AugmentOS...",
+    userCanceledAppleLogin: "Apple sign-in was canceled.",
+    userCanceledGoogleLogin: "Google sign-in was canceled.",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
     sensingDisabled: "Sensing is disabled. Microphone and sensors won't work in apps.",
   },
   common: {
-    ok: "OK!",
+    ok: "OK",
     cancel: "Cancel",
     back: "Back",
     or: "OR",
@@ -164,7 +171,8 @@ const en = {
     notAvailable: "Not Available",
     yes: "Yes",
     delete: "Delete",
-    continue: "Continue"
+    continue: "Continue",
+    next: "Next"
   },
   welcomeScreen: {
     postscript:

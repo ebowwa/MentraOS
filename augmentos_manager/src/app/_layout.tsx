@@ -9,7 +9,8 @@ import { useThemeProvider } from "@/utils/useAppTheme"
 import { AllProviders } from "@/utils/AllProviders"
 import BackgroundGradient from "@/components/misc/BackgroundGradient"
 import Toast, { SuccessToast, BaseToast, ErrorToast } from 'react-native-toast-message';
-import { View, Text } from "react-native";
+import { View } from "react-native";
+import { Text } from "@/components/ignite";
 import { Ionicons } from '@expo/vector-icons'; // Replace with your project's icon import if different
 
 SplashScreen.preventAutoHideAsync()
@@ -55,14 +56,12 @@ export default function Root() {
           </View>
         )}
         <Text
+          text={text1}
           style={{
             fontSize: 15,
             color: colors.text,
-            fontFamily: "SF Pro Rounded",
           }}
-        >
-          {text1}
-        </Text>
+        />
       </View>
     )
   }
