@@ -473,6 +473,26 @@ public class ServerComms {
         }
     }
 
+    public void sendRtmpStreamStatus(JSONObject statusMessage) {
+        try {
+            // Send the status message directly since it's already in the correct format
+            wsManager.sendText(statusMessage.toString());
+            Log.d(TAG, "Sent RTMP stream status: " + statusMessage.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending RTMP stream status", e);
+        }
+    }
+
+    public void sendKeepAliveAck(JSONObject ackMessage) {
+        try {
+            // Send the ACK message directly since it's already in the correct format
+            wsManager.sendText(ackMessage.toString());
+            Log.d(TAG, "Sent keep-alive ACK: " + ackMessage.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending keep-alive ACK", e);
+        }
+    }
+
 
     public void sendPhoneBatteryUpdate(int level, boolean charging, Integer timeRemaining) {
         try {
@@ -928,6 +948,18 @@ public class ServerComms {
             });
         } catch (Exception e) {
             Log.e(TAG, "Exception while sending datetime to backend: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Sends VPS coordinates as a JSON message to the backend via WebSocket.
+     */
+    public void sendVpsCoordinates(JSONObject vpsJson) {
+        try {
+            wsManager.sendText(vpsJson.toString());
+            Log.d(TAG, "Sent VPS coordinates: " + vpsJson.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending VPS coordinates JSON", e);
         }
     }
 }

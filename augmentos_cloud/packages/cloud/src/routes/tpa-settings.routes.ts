@@ -10,7 +10,7 @@ import appService, { isUninstallable } from '../services/core/app.service';
 import { sessionService } from '../services/session/session.service';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import { CloudToTpaMessageType, UserSession, AppSetting } from '@augmentos/sdk';
-import { Permission } from '../models/app.model';
+import { Permission } from '@augmentos/sdk';
 
 const router = express.Router();
 

@@ -1,3 +1,5 @@
+// NOTE(isaiah): This file is deprecated and not used, any logic should be in services/session/PhotoManager.
+
 /**
  * @fileoverview Service for managing photo requests from both system actions and TPAs.
  * 

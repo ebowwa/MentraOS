@@ -4,13 +4,15 @@ AugmentOS provides a powerful settings system that allows apps to offer customiz
 
 ```typescript
 // Example of accessing settings in your app
-export class MyTpaSession extends TpaSession {
-  protected async onStart(): Promise<void> {
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class MyTpaServer extends TpaServer {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     // Get a specific setting value
-    const language = this.session.settings.get<string>('transcribe_language', 'English');
+    const language = session.settings.get<string>('transcribe_language', 'English');
 
     // Listen for setting changes
-    this.session.settings.onValueChange('line_width', (newValue, oldValue) => {
+    session.settings.onValueChange('line_width', (newValue, oldValue) => {
       console.log(`Line width changed from ${oldValue} to ${newValue}`);
       this.updateDisplay(newValue);
     });
@@ -174,20 +176,22 @@ For additional information on the types, see [Setting Types Reference](/referenc
 The app session provides a `settings` property with methods to access and monitor settings:
 
 ```typescript
-export class MyTpaSession extends TpaSession {
-  protected async onStart(): Promise<void> {
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class MyTpaServer extends TpaServer {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     // Get a setting value with type safety
-    const fontSize = this.session.settings.get<number>('font_size', 16);
-    const theme = this.session.settings.get<string>('theme', 'auto');
+    const fontSize = session.settings.get<number>('font_size', 16);
+    const theme = session.settings.get<string>('theme', 'auto');
 
     // Check if a setting exists
-    if (this.session.settings.has('show_subtitles')) {
-      const showSubtitles = this.session.settings.get<boolean>('show_subtitles');
+    if (session.settings.has('show_subtitles')) {
+      const showSubtitles = session.settings.get<boolean>('show_subtitles');
       this.toggleSubtitles(showSubtitles);
     }
 
     // Get all settings
-    const allSettings = this.session.settings.getAll();
+    const allSettings = session.settings.getAll();
     console.log('Current settings:', allSettings);
   }
 }
@@ -198,12 +202,14 @@ export class MyTpaSession extends TpaSession {
 React to setting changes in real-time:
 
 ```typescript
-export class MyTpaSession extends TpaSession {
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class MyTpaServer extends TpaServer {
   private cleanupHandlers: Array<() => void> = [];
 
-  protected async onStart(): Promise<void> {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     // Listen for any setting change
-    const cleanup1 = this.session.settings.onChange((changes) => {
+    const cleanup1 = session.settings.onChange((changes) => {
       console.log('Settings changed:', changes);
       // changes is a map of key -> { oldValue, newValue }
       for (const [key, change] of Object.entries(changes)) {
@@ -212,7 +218,7 @@ export class MyTpaSession extends TpaSession {
     });
 
     // Listen for specific setting changes
-    const cleanup2 = this.session.settings.onValueChange('theme', (newTheme, oldTheme) => {
+    const cleanup2 = session.settings.onValueChange('theme', (newTheme, oldTheme) => {
       console.log(`Theme changed from ${oldTheme} to ${newTheme}`);
       this.applyTheme(newTheme);
     });
@@ -221,7 +227,7 @@ export class MyTpaSession extends TpaSession {
     this.cleanupHandlers.push(cleanup1, cleanup2);
   }
 
-  protected async onStop(): Promise<void> {
+  protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
     // Clean up listeners
     this.cleanupHandlers.forEach(cleanup => cleanup());
   }
@@ -233,19 +239,21 @@ export class MyTpaSession extends TpaSession {
 ### Feature Toggles
 
 ```typescript
-export class FeatureToggleTpa extends TpaSession {
-  protected async onStart(): Promise<void> {
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class FeatureToggleServer extends TpaServer {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     // Check initial state
-    this.updateFeatures();
+    this.updateFeatures(session);
 
     // Listen for toggle changes
-    this.session.settings.onValueChange('enable_advanced_mode', (enabled) => {
-      this.updateFeatures();
+    session.settings.onValueChange('enable_advanced_mode', (enabled) => {
+      this.updateFeatures(session);
     });
   }
 
-  private updateFeatures(): void {
-    const advancedMode = this.session.settings.get<boolean>('enable_advanced_mode', false);
+  private updateFeatures(session: TpaSession): void {
+    const advancedMode = session.settings.get<boolean>('enable_advanced_mode', false);
 
     if (advancedMode) {
       this.enableAdvancedFeatures();
@@ -259,35 +267,36 @@ export class FeatureToggleTpa extends TpaSession {
 ### Language Selection
 
 ```typescript
-export class MultilingualTpa extends TpaSession {
-  protected async onStart(): Promise<void> {
-    const language = this.session.settings.get<string>('ui_language', 'en');
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class MultilingualServer extends TpaServer {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+    const language = session.settings.get<string>('ui_language', 'en');
     this.setLanguage(language);
 
     // Update subscriptions based on language
-    this.updateTranscriptionSubscription();
+    this.updateTranscriptionSubscription(session);
 
     // Listen for language changes
-    this.session.settings.onValueChange('ui_language', (newLang) => {
+    session.settings.onValueChange('ui_language', (newLang) => {
       this.setLanguage(newLang);
-      this.updateTranscriptionSubscription();
+      this.updateTranscriptionSubscription(session);
     });
   }
 
-  private updateTranscriptionSubscription(): void {
-    const transcribeLang = this.session.settings.get<string>('transcribe_language', 'en-US');
+  private updateTranscriptionSubscription(session: TpaSession): void {
+    const transcribeLang = session.settings.get<string>('transcribe_language', 'en-US');
 
     // Unsubscribe from all transcription streams
-    this.session.unsubscribe(StreamType.TRANSCRIPTION);
+    session.events.unsubscribe('transcription');
 
     // Subscribe to language-specific stream
-    this.session.onTranscriptionForLanguage(transcribeLang, (data) => {
+    session.onTranscriptionForLanguage(transcribeLang, (data) => {
       this.handleTranscription(data);
     });
   }
 }
 ```
-
 
 ## Best Practices
 
@@ -349,19 +358,21 @@ Make settings self-explanatory:
 Remove setting change listeners when your app stops:
 
 ```typescript
-export class CleanupExampleTpa extends TpaSession {
+import { TpaServer, TpaSession } from '@augmentos/sdk';
+
+export class CleanupExampleServer extends TpaServer {
   private settingsCleanup: Array<() => void> = [];
 
-  protected async onStart(): Promise<void> {
+  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
     // Store cleanup functions
     this.settingsCleanup.push(
-      this.session.settings.onValueChange('setting1', this.handleSetting1),
-      this.session.settings.onValueChange('setting2', this.handleSetting2),
-      this.session.settings.onChange(this.handleAnyChange)
+      session.settings.onValueChange('setting1', this.handleSetting1),
+      session.settings.onValueChange('setting2', this.handleSetting2),
+      session.settings.onChange(this.handleAnyChange)
     );
   }
 
-  protected async onStop(): Promise<void> {
+  protected async onStop(sessionId: string, userId: string, reason: string): Promise<void> {
     // Clean up all listeners
     this.settingsCleanup.forEach(cleanup => cleanup());
     this.settingsCleanup = [];
