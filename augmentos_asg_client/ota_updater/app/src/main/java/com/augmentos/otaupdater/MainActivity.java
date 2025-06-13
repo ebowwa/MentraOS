@@ -1,6 +1,7 @@
 package com.augmentos.otaupdater;
 
 import com.augmentos.otaupdater.helper.Constants;
+import com.augmentos.otaupdater.helper.OtaHelper;
 
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = MainActivity.TAG;
+    private OtaHelper otaHelper;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,20 +34,36 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        Constraints constraints = new Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build();
+        // Initialize OtaHelper
+        otaHelper = new OtaHelper(this);
 
-        PeriodicWorkRequest otaWork = new PeriodicWorkRequest.Builder(OtaCheckWorker.class, 15, TimeUnit.MINUTES)
-            .setConstraints(constraints)
-            .build();
+        // Set up periodic work request
+        setupPeriodicOtaCheck();
 
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            Constants.WORK_NAME_OTA_CHECK, ExistingPeriodicWorkPolicy.KEEP, otaWork);
-
-        // TODO Remove on Release TEMP: Enqueue a one-time OTA check to test immediately
-        androidx.work.OneTimeWorkRequest testOtaWork = new androidx.work.OneTimeWorkRequest.Builder(OtaCheckWorker.class).build();
-        WorkManager.getInstance(this).enqueue(testOtaWork);
+        // Register for WiFi connectivity changes
+        otaHelper.registerNetworkCallback(this);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        otaHelper.cleanup();
+    }
+
+    private void setupPeriodicOtaCheck() {
+        Constraints constraints = new Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build();
+
+        PeriodicWorkRequest otaWork = new PeriodicWorkRequest.Builder(OtaCheckWorker.class, 15, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build();
+
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                Constants.WORK_NAME_OTA_CHECK, ExistingPeriodicWorkPolicy.KEEP, otaWork);
+
+        // TODO Remove on Release TEMP: Enqueue a one-time OTA check to test immediately
+        // androidx.work.OneTimeWorkRequest testOtaWork = new androidx.work.OneTimeWorkRequest.Builder(OtaCheckWorker.class).build();
+        // WorkManager.getInstance(this).enqueue(testOtaWork);
+    }
 }
