@@ -197,7 +197,7 @@ const EditTPA: React.FC = () => {
     };
 
     fetchData();
-  }, [packageName, currentOrg, user?.email]);
+  }, [packageName, currentOrg?.id, user?.email]);
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
