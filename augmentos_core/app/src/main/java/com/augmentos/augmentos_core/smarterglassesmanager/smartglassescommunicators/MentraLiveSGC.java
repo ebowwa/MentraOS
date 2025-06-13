@@ -1323,7 +1323,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 // Forward via EventBus for cloud communication (consistent with other message types)
                 EventBus.getDefault().post(new KeepAliveAckEvent(json));
                 break;
-                
+
             default:
                 // Pass the data to the subscriber for custom processing
                 if (dataObservable != null) {
