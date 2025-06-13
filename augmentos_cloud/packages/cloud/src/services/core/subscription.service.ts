@@ -14,7 +14,7 @@ import { StreamType, ExtendedStreamType, isLanguageStream, UserSession, parseLan
 import { logger as rootLogger } from '../logging/pino-logger';
 import { SimplePermissionChecker } from '../permissions/simple-permission-checker';
 import App from '../../models/app.model';
-import { sessionService } from './session.service';
+import { sessionService } from '../session/session.service';
 
 const logger = rootLogger.child({ service: 'subscription.service' });
 
@@ -245,8 +245,9 @@ export class SubscriptionService {
         // Find the user session to get the app connection
         const userSession = sessionService.getSession(sessionId);
 
-        if (userSession && userSession.appConnections) {
-          const connection = userSession.appConnections.get(packageName);
+        // if (userSession && userSession.appConnections) {
+        if (userSession && userSession.runningApps.has(packageName)) {
+          const connection = userSession.appWebsockets.get(packageName);
 
           if (connection && connection.readyState === 1) {
             // Send a detailed error message to the TPA about the rejected subscriptions

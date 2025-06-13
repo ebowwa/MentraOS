@@ -12,7 +12,7 @@ import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
 import photoRequestService from '../services/core/photo-request.service';
 import photoTakenService from '../services/core/photo-taken.service';
 import { GalleryPhoto } from '../models/gallery-photo.model';
-import { getSessionService } from '../services/core/session.service';
+import { getSessionService } from '../services/session/session.service';
 
 // Function to clean up old photos
 async function cleanupOldPhotos(uploadDir: string) {
@@ -174,7 +174,8 @@ router.post('/upload', validateGlassesAuth, uploadMiddleware, async (req: Reques
 
     // Broadcast to TPAs subscribed to PHOTO_TAKEN
     try {
-      photoTakenService.broadcastPhotoTaken(userSession, file.buffer, file.mimetype);
+      // photoTakenService.broadcastPhotoTaken(userSession, file.buffer, file.mimetype);
+      photoTakenService.broadcastPhotoTaken(userSession, Buffer.from(file.buffer), file.mimetype);
     } catch (error) {
       logger.error('Failed to broadcast photo:', error);
       // Continue processing even if broadcast fails
