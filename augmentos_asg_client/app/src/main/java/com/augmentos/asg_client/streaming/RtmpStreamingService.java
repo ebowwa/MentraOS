@@ -65,8 +65,8 @@ public class RtmpStreamingService extends Service {
     private boolean mIsStreaming = false;
     private SurfaceTexture mSurfaceTexture;
     private Surface mSurface;
-    private static final int SURFACE_WIDTH = 640;
-    private static final int SURFACE_HEIGHT = 480;
+    private static final int SURFACE_WIDTH = 540;
+    private static final int SURFACE_HEIGHT = 960;
 
     // Reconnection logic parameters
     private int mReconnectAttempts = 0;
@@ -1333,9 +1333,10 @@ public class RtmpStreamingService extends Service {
      */
     private void wakeUpScreen() {
         Log.d(TAG, "Waking up screen for camera access");
-        // Use the WakeLockManager to acquire both CPU and screen wake locks
+        // Use the WakeLockManager to acquire both CPU and screen wake locks AND bring app to foreground
+        // This prevents "Camera disabled by policy" errors when app is backgrounded
         // For streaming we use longer timeout for CPU wake lock than for photo capture
-        WakeLockManager.acquireFullWakeLock(this, 180000, 5000); // 3 min CPU, 5 sec screen
+        WakeLockManager.acquireFullWakeLockAndBringToForeground(this, 180000, 5000); // 3 min CPU, 5 sec screen
     }
 
     /**
