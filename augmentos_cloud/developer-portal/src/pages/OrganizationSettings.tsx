@@ -81,7 +81,7 @@ const OrganizationSettings: React.FC = () => {
         setCurrentOrg(invitedOrg);
       }
     }
-  }, [invitedOrgId, orgs, orgLoading, currentOrg, setCurrentOrg]);
+  }, [invitedOrgId, orgs.length, orgLoading, currentOrg?.id, setCurrentOrg]);
 
   // Fetch organization data
   useEffect(() => {
@@ -117,7 +117,7 @@ const OrganizationSettings: React.FC = () => {
     };
 
     fetchOrgData();
-  }, [currentOrg]);
+  }, [currentOrg?.id]); // Use stable ID instead of object reference
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
