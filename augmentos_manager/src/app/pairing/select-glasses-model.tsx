@@ -93,7 +93,7 @@ export default function SelectGlassesModelScreen() {
           isOnboarding
             ? undefined
             : () => {
-                router.replace({pathname: "/home"})
+                router.replace({pathname: "/(tabs)/home"})
               }
         }
       />

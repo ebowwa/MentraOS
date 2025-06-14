@@ -27,7 +27,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, clearHistory} = useNavigationHistory()
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
 
@@ -40,8 +40,11 @@ export default function SelectGlassesBluetoothScreen() {
   const handleForgetGlasses = useCallback(async () => {
     await coreCommunicator.sendDisconnectWearable()
     await coreCommunicator.sendForgetSmartGlasses()
-    router.replace('/pairing/select-glasses-model')
-  }, [])
+    // Clear NavigationHistoryContext history to prevent issues with back navigation
+    clearHistory()
+    // Use dismissTo to properly go back to select-glasses-model and clear the stack
+    router.dismissTo('/pairing/select-glasses-model')
+  }, [clearHistory])
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -55,14 +58,27 @@ export default function SelectGlassesBluetoothScreen() {
       return true
     }
 
-    // Add the event listener - this will be on top of the stack
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+    // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
+    const timeout = setTimeout(() => {
+      // Add the event listener - this will be on top of the stack
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+
+      // Store the handler for cleanup
+      backHandlerRef.current = backHandler
+    }, 100)
 
     // Cleanup function
     return () => {
-      backHandler.remove()
+      clearTimeout(timeout)
+      if (backHandlerRef.current) {
+        backHandlerRef.current.remove()
+        backHandlerRef.current = null
+      }
     }
   }, [handleForgetGlasses])
+
+  // Ref to store the back handler for cleanup
+  const backHandlerRef = useRef<any>(null)
 
   useEffect(() => {
     const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {
@@ -142,12 +158,12 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     // If puck gets d/c'd here, return to home
     if (!status.core_info.puck_connected) {
-      router.navigate("/")
+      router.navigate("/(tabs)/home")
     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      router.navigate("/")
+      router.navigate("/(tabs)/home")
     }
   }, [status])
 

@@ -17,7 +17,7 @@ import {Header} from "@/components/ignite/Header"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function GlassesPairingGuideScreen() {
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, clearHistory} = useNavigationHistory()
   const {status} = useStatus()
   const route = useRoute()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -32,8 +32,11 @@ export default function GlassesPairingGuideScreen() {
     setPairingInProgress(false)
     await coreCommunicator.sendDisconnectWearable()
     await coreCommunicator.sendForgetSmartGlasses()
-    router.replace('/pairing/select-glasses-model')
-  }, [])
+    // Clear NavigationHistoryContext history to prevent issues with back navigation
+    clearHistory()
+    // Use dismissTo to properly go back to select-glasses-model and clear the stack
+    router.dismissTo('/pairing/select-glasses-model')
+  }, [clearHistory])
 
   // Handle Android hardware back button
   useEffect(() => {
@@ -47,14 +50,27 @@ export default function GlassesPairingGuideScreen() {
       return true
     }
 
-    // Add the event listener - this will be on top of the stack
-    const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+    // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
+    const timeout = setTimeout(() => {
+      // Add the event listener - this will be on top of the stack
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+
+      // Store the handler for cleanup
+      backHandlerRef.current = backHandler
+    }, 100)
 
     // Cleanup function
     return () => {
-      backHandler.remove()
+      clearTimeout(timeout)
+      if (backHandlerRef.current) {
+        backHandlerRef.current.remove()
+        backHandlerRef.current = null
+      }
     }
   }, [handleForgetGlasses])
+
+  // Ref to store the back handler for cleanup
+  const backHandlerRef = useRef<any>(null)
 
   // Timer to show help message after 30 seconds
   useEffect(() => {
@@ -108,7 +124,7 @@ export default function GlassesPairingGuideScreen() {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
       }
-      router.push({pathname: "/home"})
+      router.push({pathname: "/(tabs)/home"})
     }
   }, [status])
 

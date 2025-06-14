@@ -18,6 +18,7 @@
     "android": {
       "icon": "./assets/app-icons/ic_launcher.png",
       "package": "com.augmentos.augmentos",
+      "versionCode": 31,
       "adaptiveIcon": {
         "foregroundImage": "./assets/app-icons/ic_launcher_foreground.png",
         "backgroundImage": "./assets/app-icons/ic_launcher.png"
