@@ -746,13 +746,14 @@ export class AppManager {
    * Broadcast app state to connected clients
    */
   async broadcastAppState(): Promise<AppStateChange | null> {
+    this.logger.debug({ function: "broadcastAppState" }, `Broadcasting app state for user ${this.userSession.userId}`);
     try {
       // Refresh installed apps
       await this.refreshInstalledApps();
 
       // Transform session for client
       const clientSessionData = await sessionService.transformUserSessionForClient(this.userSession);
-
+      this.logger.debug({ clientSessionData }, `Transformed user session data for ${this.userSession.userId}`);
       // Create app state change message
       const appStateChange: AppStateChange = {
         type: CloudToGlassesMessageType.APP_STATE_CHANGE,
@@ -768,10 +769,10 @@ export class AppManager {
       }
 
       this.userSession.websocket.send(JSON.stringify(appStateChange));
-      this.logger.info({ appStateChange }, `Sent APP_STATE_CHANGE to ${this.userSession.userId}`);
+      this.logger.debug({ appStateChange }, `Sent APP_STATE_CHANGE to ${this.userSession.userId}`);
       return appStateChange;
     } catch (error) {
-      this.logger.error({ error }, `Error broadcasting app state for ${this.userSession.userId}`);
+      this.logger.error(error , `Error broadcasting app state for ${this.userSession.userId}`);
       return null;
     }
   }
@@ -802,17 +803,19 @@ export class AppManager {
    * Start all previously running apps
    */
   async startPreviouslyRunningApps(): Promise<void> {
+    const logger = this.logger.child({ function: 'startPreviouslyRunningApps' });
+    logger.debug(`Starting previously running apps for user ${this.userSession.userId}`);
     try {
       // Fetch previously running apps from database
       const user = await User.findOrCreateUser(this.userSession.userId);
       const previouslyRunningApps = user.runningApps;
 
       if (previouslyRunningApps.length === 0) {
-        this.logger.info(`No previously running apps for ${this.userSession.userId}`);
+        logger.debug(`No previously running apps for ${this.userSession.userId}`);
         return;
       }
 
-      this.logger.info(`Starting ${previouslyRunningApps.length} previously running apps for ${this.userSession.userId}`);
+      logger.debug(`Starting ${previouslyRunningApps.length} previously running apps for ${this.userSession.userId}`);
 
       // Start each app
       // Use Promise.all to start all apps concurrently
@@ -822,20 +825,20 @@ export class AppManager {
         try {
           const appStartResult: AppStartResult = await this.startApp(packageName);
           if (!appStartResult.success) {
-            this.logger.warn({ packageName, userId: this.userSession.userId }, `Failed to start previously running app ${packageName}: ${appStartResult.error?.message}`);
+            logger.warn({ packageName, userId: this.userSession.userId }, `Failed to start previously running app ${packageName}: ${appStartResult.error?.message}`);
             return; // Skip to next app
           }
           startedApps.push(packageName);
         }
         catch (error) {
-          this.logger.error(`Error starting previously running app ${packageName}:`, error);
+          logger.error(`Error starting previously running app ${packageName}:`, error);
           // Continue with other apps
         }
       }));
-      this.logger.info({ previouslyRunningApps, startedApps }, `Started ${startedApps.length}/${previouslyRunningApps.length} previously running apps for ${this.userSession.userId}`);
+      logger.info({ previouslyRunningApps, startedApps }, `Started ${startedApps.length}/${previouslyRunningApps.length} previously running apps for ${this.userSession.userId}`);
 
     } catch (error) {
-      this.logger.error(`Error starting previously running apps:`, error);
+      logger.error(`Error starting previously running apps:`, error);
     }
   }
 
@@ -1011,7 +1014,7 @@ export class AppManager {
    */
   dispose(): void {
     try {
-      this.logger.info({ userId: this.userSession.userId, service: 'AppManager' }, `[AppManager:dispose]: Disposing AppManager for user ${this.userSession.userId}`);
+      this.logger.debug({ userId: this.userSession.userId, service: 'AppManager' }, `[AppManager:dispose]: Disposing AppManager for user ${this.userSession.userId}`);
 
       // Clear pending connections
       for (const [, pending] of this.pendingConnections.entries()) {
