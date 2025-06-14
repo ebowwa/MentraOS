@@ -20,7 +20,7 @@ import {
   TpaRoomUpdated,
 } from '@augmentos/sdk/src/types/messages/cloud-to-tpa';
 import { logger as rootLogger } from '../logging';
-import sessionService from './session.service';
+import sessionService from '../session/session.service';
 
 const logger = rootLogger.child({ service: 'multi-user-tpa.service' });
 
@@ -103,7 +103,7 @@ export class MultiUserTpaService {
 
       // console.log("432432targetSession")
       
-      const targetTpaConnection = targetSession.appConnections.get(packageName);
+      const targetTpaConnection = targetSession.appWebsockets.get(packageName);
       if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
         continue;
       }
@@ -168,7 +168,7 @@ export class MultiUserTpaService {
       return false;
     }
 
-    const targetTpaConnection = targetSession.appConnections.get(message.packageName);
+    const targetTpaConnection = targetSession.appWebsockets.get(message.packageName);
     if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
       logger.warn({
         targetUserId: message.targetUserId,
@@ -403,7 +403,7 @@ export class MultiUserTpaService {
       const userSession = sessionService.getSessionByUserId(otherUserId);
       if (!userSession) continue;
       
-      const tpaConnection = userSession.appConnections.get(packageName);
+      const tpaConnection = userSession.appWebsockets.get(packageName);
       if (!tpaConnection || tpaConnection.readyState !== WebSocket.OPEN) continue;
 
       try {
@@ -432,7 +432,7 @@ export class MultiUserTpaService {
       const userSession = sessionService.getSessionByUserId(otherUserId);
       if (!userSession) continue;
       
-      const tpaConnection = userSession.appConnections.get(packageName);
+      const tpaConnection = userSession.appWebsockets.get(packageName);
       if (!tpaConnection || tpaConnection.readyState !== WebSocket.OPEN) continue;
 
       try {
@@ -459,7 +459,7 @@ export class MultiUserTpaService {
       const userSession = sessionService.getSessionByUserId(userId);
       if (!userSession) continue;
       
-      const tpaConnection = userSession.appConnections.get(roomData.packageName);
+      const tpaConnection = userSession.appWebsockets.get(roomData.packageName);
       if (!tpaConnection || tpaConnection.readyState !== WebSocket.OPEN) continue;
 
       try {

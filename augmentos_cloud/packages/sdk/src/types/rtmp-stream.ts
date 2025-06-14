@@ -69,31 +69,6 @@ export interface StreamConfig {
 }
 
 /**
- * Status information for RTMP stream
- */
-// export interface StreamStatus {
-//   /** Current state of the stream */
-//   status: "initializing" | "active" | "busy" | "error" | "stopped";
-//   /** Error details if status is "error" */
-//   errorDetails?: string;
-//   /** ID of app that owns the current stream (if busy) */
-//   appId?: string;
-//   /** Stream performance statistics */
-//   stats?: {
-//     /** Current bitrate in bits per second */
-//     bitrate: number;
-//     /** Current frames per second */
-//     fps: number;
-//     /** Number of dropped frames */
-//     droppedFrames: number;
-//     /** Stream duration in seconds */
-//     duration: number;
-//   };
-//   /** Timestamp of the status update */
-//   timestamp: Date;
-// }
-
-/**
  * Type for stream status event handler
  */
 export type StreamStatusHandler = (status: RtmpStreamStatus) => void;

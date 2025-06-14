@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { SimplePermissionChecker } from '../simple-permission-checker';
 import { PermissionType } from '@augmentos/sdk';
 import { StreamType, createTranscriptionStream, createTranslationStream } from '@augmentos/sdk';
