@@ -36,36 +36,69 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
     try {
       const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL
       const backendComms = BackendServerComms.getInstance();
+      
+      // Check if core token exists before trying to generate webview tokens
+      if (!backendComms.getCoreToken()) {
+        console.log('AppStoreWebviewPrefetchProvider: No core token available, skipping token generation');
+        const urlWithTheme = new URL(baseUrl);
+        urlWithTheme.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
+        setAppStoreUrl(urlWithTheme.toString());
+        return;
+      }
+      
+      console.log('AppStoreWebviewPrefetchProvider: Generating webview tokens');
       const tempToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME);
+      console.log('AppStoreWebviewPrefetchProvider: Temp token generated successfully');
+      
       let signedUserToken: string | undefined;
       try {
         signedUserToken = await backendComms.generateWebviewToken(STORE_PACKAGE_NAME, "generate-webview-signed-user-token");
+        console.log('AppStoreWebviewPrefetchProvider: Signed user token generated successfully');
       } catch (error) {
-        console.warn('Failed to generate signed user token:', error);
+        console.warn('AppStoreWebviewPrefetchProvider: Failed to generate signed user token:', error);
         signedUserToken = undefined;
       }
+      
       const urlWithToken = new URL(baseUrl);
       urlWithToken.searchParams.append('aos_temp_token', tempToken);
       if (signedUserToken) {
         urlWithToken.searchParams.append('aos_signed_user_token', signedUserToken);
       }
       urlWithToken.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
+      
+      console.log('AppStoreWebviewPrefetchProvider: Final URL ready with tokens');
       setAppStoreUrl(urlWithToken.toString());
     } catch (error) {
+      console.error('AppStoreWebviewPrefetchProvider: Error during prefetch:', error);
       // fallback to base URL
       const baseUrl = Constants.expoConfig?.extra?.AUGMENTOS_APPSTORE_URL;
-      const urlWithToken = new URL(baseUrl);
-      urlWithToken.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
-      setAppStoreUrl(baseUrl);
+      const urlWithTheme = new URL(baseUrl);
+      urlWithTheme.searchParams.append('theme', theme.isDark ? 'dark' : 'light');
+      setAppStoreUrl(urlWithTheme.toString());
     } finally {
       setWebviewLoading(false);
     }
   };
 
   useEffect(() => {
-    prefetchWebview();
-    // Optionally, refresh on login/logout or token change
-  }, []);
+    // Check if we already have a core token
+    const backendComms = BackendServerComms.getInstance();
+    if (backendComms.getCoreToken()) {
+      prefetchWebview();
+    }
+    
+    // Listen for when core token is set
+    const handleCoreTokenSet = () => {
+      console.log('AppStoreWebviewPrefetchProvider: Core token set, prefetching webview');
+      prefetchWebview();
+    };
+    
+    GlobalEventEmitter.on('CORE_TOKEN_SET', handleCoreTokenSet);
+    
+    return () => {
+      GlobalEventEmitter.removeListener('CORE_TOKEN_SET', handleCoreTokenSet);
+    };
+  }, [theme.isDark]); // Re-run when theme changes
 
   // Listen for logout events to clear WebView data
   useEffect(() => {

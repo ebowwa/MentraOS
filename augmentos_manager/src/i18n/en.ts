@@ -136,6 +136,10 @@ const en = {
     deleteAccountSuccessMessage: "Your account has been successfully deleted.",
     deleteAccountPendingTitle: "Account Deletion Requested",
     deleteAccountPendingMessage: "Your account deletion request has been received and will be processed within 2-3 business days.",
+    changePasswordSubtitle: "Enter your new password below. Make sure it's at least 6 characters long.",
+    passwordsDoNotMatch: "Passwords do not match",
+    passwordTooShort: "Password must be at least 6 characters long",
+    passwordUpdatedSuccess: "Password updated successfully",
   },
   login: {
     title: "AugmentOS",
