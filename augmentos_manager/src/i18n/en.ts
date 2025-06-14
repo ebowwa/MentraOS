@@ -24,6 +24,14 @@ const en = {
     preorderNow: "PREORDER NOW",
     preorderNowShipMessage: "Ships September 2025"
   },
+  connectivity: {
+    bluetoothRequiredTitle: "Bluetooth Required",
+    bluetoothRequiredMessage: "Bluetooth is required to connect to glasses. Please enable Bluetooth in your device settings and try again.",
+    locationPermissionRequiredTitle: "Location Permission Required", 
+    locationPermissionRequiredMessage: "Location permission is required to scan for glasses on Android. Please grant location permission in your device settings and try again.",
+    locationServicesRequiredTitle: "Location Services Required",
+    locationServicesRequiredMessage: "Location services are disabled. Please enable location services in your device settings and try again."
+  },
   privacySettings: {
     title: "Privacy Settings",
   },
