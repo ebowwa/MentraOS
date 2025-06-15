@@ -15,6 +15,7 @@ import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {isMentraUser} from "@/utils/isMentraUser"
 
 export default function SettingsPage() {
   const {status} = useStatus()
@@ -24,7 +25,7 @@ export default function SettingsPage() {
   const [showDeveloperSettings, setShowDeveloperSettings] = useState(true)
   
   // Check if user is from Mentra to show theme settings
-  const isMentraUser = user?.email?.endsWith('@mentra.glass') || false
+  const isUserFromMentra = isMentraUser(user?.email)
 
   useEffect(() => {
     // Show developer settings on Android, or on iOS if it's TestFlight/Dev build
@@ -87,7 +88,7 @@ export default function SettingsPage() {
 
       <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
-      {isMentraUser && (
+      {isUserFromMentra && (
         <>
           <Spacer height={theme.spacing.md} />
           

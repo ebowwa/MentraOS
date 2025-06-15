@@ -33,6 +33,8 @@ import RouteButton from "../ui/RouteButton"
 import ActionButton from "../ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures} from "@/config/glassesFeatures"
+import {useAuth} from "@/contexts/AuthContext"
+import {isMentraUser} from "@/utils/isMentraUser"
 
 export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -46,6 +48,10 @@ export default function DeviceSettings() {
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
   const {push} = useNavigationHistory()
+  const {user} = useAuth()
+  
+  // Check if user is from Mentra to show display position settings
+  const isUserFromMentra = isMentraUser(user?.email)
 
   const {model_name} = status.glasses_info ?? {}
   const {default_wearable} = status.core_info ?? {}
@@ -276,11 +282,13 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      <RouteButton
-        label={translate("settings:screenSettings")}
-        subtitle={translate("settings:screenDescription")}
-        onPress={() => push("/settings/screen")}
-      />
+      {isUserFromMentra && (
+        <RouteButton
+          label={translate("settings:screenSettings")}
+          subtitle={translate("settings:screenDescription")}
+          onPress={() => push("/settings/screen")}
+        />
+      )}
 
       {status.glasses_info?.model_name && (
         <ActionButton

@@ -35,7 +35,15 @@ export default function AppsActiveList({
     if (searchQuery) {
       apps = apps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
     }
-    return apps
+    // Sort to put foreground apps (tpaType === "standard") at the top
+    return apps.sort((a, b) => {
+      const aIsForeground = a.tpaType === "standard"
+      const bIsForeground = b.tpaType === "standard"
+      
+      if (aIsForeground && !bIsForeground) return -1
+      if (!aIsForeground && bIsForeground) return 1
+      return 0
+    })
   }, [appStatus, searchQuery])
 
   const opacities = useRef<Record<string, Animated.Value>>(
@@ -130,7 +138,7 @@ export default function AppsActiveList({
       await backendComms.stopApp(packageName)
       // Clear the pending operation since it completed successfully
       clearPendingOperation(packageName)
-      showToast()
+      // showToast()
     } catch (error) {
       // On error, refresh from the server to get the accurate state
       refreshAppStatus()
@@ -238,13 +246,13 @@ const $headerContainer: ThemedStyle<ViewStyle> = () => ({})
 
 const $contentContainer: ThemedStyle<ViewStyle> = () => ({})
 
-function showToast() {
-  Toast.show({
-    type: "baseToast",
-    text1: translate("home:movedToInactive"),
-    position: "bottom",
-    props: {
-      icon: <TruckIcon color={colors.icon} />,
-    },
-  })
-}
+// function showToast() {
+//   Toast.show({
+//     type: "baseToast",
+//     text1: translate("home:movedToInactive"),
+//     position: "bottom",
+//     props: {
+//       icon: <TruckIcon color={colors.icon} />,
+//     },
+//   })
+// }

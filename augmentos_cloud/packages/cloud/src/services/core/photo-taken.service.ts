@@ -1,6 +1,9 @@
+// NOTE(isaiah): This file is deprecated and not used, any logic should be in services/session/PhotoManager.
+
 import { logger as rootLogger } from "../logging";
-import { ExtendedUserSession } from "./session.service";
-import { subscriptionService } from "./subscription.service";
+// import { ExtendedUserSession } from "./session.service";
+import { UserSession } from "../session/UserSession";
+import { subscriptionService } from "../session/subscription.service";
 import { StreamType, CloudToTpaMessageType } from "@augmentos/sdk";
 import fs from 'fs';
 import path from 'path';
@@ -25,7 +28,8 @@ class PhotoTakenService {
     return mimeToExt[mimeType] || '.jpg'; // Default to .jpg if mime type not recognized
   }
 
-  private savePhoto(photoData: ArrayBuffer, mimeType: string): string {
+  // NOTE(isaiah): we should not be saving anything to disk ever. TODO(isaiah): Let's use cloudflare R2.
+  private savePhoto(photoData: Buffer<ArrayBufferLike>, mimeType: string): string {
     const uploadDir = path.join(__dirname, '../../../uploads/photos');
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
@@ -37,7 +41,7 @@ class PhotoTakenService {
     const filepath = path.join(uploadDir, filename);
 
     // Convert ArrayBuffer to Buffer and save
-    const buffer = Buffer.from(photoData);
+    const buffer = photoData;
     fs.writeFileSync(filepath, buffer);
 
     logger.info(`Photo saved to ${filepath}`);
@@ -50,7 +54,7 @@ class PhotoTakenService {
    * @param photoData The photo data as ArrayBuffer
    * @param mimeType The MIME type of the photo
    */
-  broadcastPhotoTaken(userSession: ExtendedUserSession, photoData: ArrayBuffer, mimeType: string): void {
+  broadcastPhotoTaken(userSession: UserSession, photoData: Buffer<ArrayBufferLike>, mimeType: string): void {
     // Get all TPAs subscribed to PHOTO_TAKEN
     const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.PHOTO_TAKEN);
 
@@ -66,7 +70,7 @@ class PhotoTakenService {
     logger.info(`Photo saved as ${filename}`);
 
     // Convert ArrayBuffer to base64 string
-    const base64Data = Buffer.from(photoData).toString('base64');
+    const base64Data = photoData.toString('base64');
 
     // Create the photo taken message
     const message = {
@@ -82,7 +86,7 @@ class PhotoTakenService {
 
     // Send to each subscribed TPA
     for (const packageName of subscribedApps) {
-      const websocket = userSession.appConnections.get(packageName);
+      const websocket = userSession.appWebsockets.get(packageName);
       if (websocket && websocket.readyState === 1) {
         websocket.send(JSON.stringify(message));
         logger.debug(`Sent photo to TPA ${packageName}`);

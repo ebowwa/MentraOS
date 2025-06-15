@@ -2,7 +2,8 @@
 
 import React, {useEffect, useMemo, useRef, useState, useCallback} from "react"
 import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle, BackHandler} from "react-native"
-import {useNavigation, useRoute, useFocusEffect} from "@react-navigation/native" // <<--- import useRoute
+import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
+import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -26,7 +27,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, clearHistory} = useNavigationHistory()
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
 
@@ -39,21 +40,45 @@ export default function SelectGlassesBluetoothScreen() {
   const handleForgetGlasses = useCallback(async () => {
     await coreCommunicator.sendDisconnectWearable()
     await coreCommunicator.sendForgetSmartGlasses()
-    router.replace('/pairing/select-glasses-model')
-  }, [])
+    // Clear NavigationHistoryContext history to prevent issues with back navigation
+    clearHistory()
+    // Use dismissTo to properly go back to select-glasses-model and clear the stack
+    router.dismissTo('/pairing/select-glasses-model')
+  }, [clearHistory])
 
   // Handle Android hardware back button
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        handleForgetGlasses()
-        return true // Prevent default back action
-      }
+  useEffect(() => {
+    // Only handle on Android
+    if (Platform.OS !== 'android') return
 
+    const onBackPress = () => {
+      // Call our custom back handler
+      handleForgetGlasses()
+      // Return true to prevent default back behavior and stop propagation
+      return true
+    }
+
+    // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
+    const timeout = setTimeout(() => {
+      // Add the event listener - this will be on top of the stack
       const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
-      return () => backHandler.remove()
-    }, [handleForgetGlasses])
-  )
+
+      // Store the handler for cleanup
+      backHandlerRef.current = backHandler
+    }, 100)
+
+    // Cleanup function
+    return () => {
+      clearTimeout(timeout)
+      if (backHandlerRef.current) {
+        backHandlerRef.current.remove()
+        backHandlerRef.current = null
+      }
+    }
+  }, [handleForgetGlasses])
+
+  // Ref to store the back handler for cleanup
+  const backHandlerRef = useRef<any>(null)
 
   useEffect(() => {
     const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {
@@ -133,12 +158,12 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     // If puck gets d/c'd here, return to home
     if (!status.core_info.puck_connected) {
-      router.navigate("/")
+      router.navigate("/(tabs)/home")
     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      router.navigate("/")
+      router.navigate("/(tabs)/home")
     }
   }, [status])
 

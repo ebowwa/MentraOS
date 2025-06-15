@@ -78,7 +78,7 @@ export const AppListItem = ({
         <View pointerEvents={isDisabled ? "none" : "auto"}>
           <Switch value={isActive} onValueChange={onTogglePress} />
         </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={20} style={themed($chevronHitbox)}>
+        <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
           <ChevronRight color={theme.colors.text} />
         </TouchableOpacity>
       </View>
@@ -171,12 +171,12 @@ const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
   return {
     borderRadius: 15,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
     gap: 4,
-    height: 24,
+    minHeight: 28,
     backgroundColor: colors.palette.primary200,
     alignSelf: "flex-start",
   }
@@ -184,23 +184,22 @@ const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
 
 const $tag: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 15,
-  paddingVertical: 4,
+  paddingVertical: 6,
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "flex-start",
   gap: 4,
-  height: 24,
+  minHeight: 28,
   alignSelf: "flex-start",
 })
 
 const $disconnect: ThemedStyle<TextStyle> = () => ({
   fontSize: 13,
   letterSpacing: 0.4,
-  lineHeight: 18,
+  lineHeight: 16,
   fontWeight: "700",
   color: "#ceced0",
   textAlign: "left",
-  overflow: "hidden",
 })
 
 export default Tag

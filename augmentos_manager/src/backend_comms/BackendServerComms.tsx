@@ -325,7 +325,7 @@ export default class BackendServerComms {
       const response = await axios(config);
       if (response.status === 200 && response.data) {
         console.log('App started successfully:', packageName);
-        showToast();
+        // showToast();
         return response.data;
       } else {
         throw new Error(`Bad response: ${response.statusText}`);
@@ -729,14 +729,14 @@ export default class BackendServerComms {
   }
 
 }
-function showToast() {
-  Toast.show({
-    type: "baseToast",
-    text1: translate("home:movedToActive"),
-    position: "bottom",
-    props: {
-      icon: <TruckIcon  color={colors.icon}/>,
-    },
-  })
-}
+// function showToast() {
+//   Toast.show({
+//     type: "baseToast",
+//     text1: translate("home:movedToActive"),
+//     position: "bottom",
+//     props: {
+//       icon: <TruckIcon  color={colors.icon}/>,
+//     },
+//   })
+// }
 

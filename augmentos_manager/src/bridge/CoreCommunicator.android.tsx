@@ -10,6 +10,8 @@ import {
 import {check, PERMISSIONS, RESULTS} from "react-native-permissions"
 import BleManager from "react-native-ble-manager"
 import BackendServerComms from "../backend_comms/BackendServerComms"
+import {showAlert} from "@/utils/AlertUtils"
+import {translate} from "@/i18n/translate"
 
 // For checking if location services are enabled
 const {ServiceStarter} = NativeModules
@@ -28,11 +30,25 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log("Checking Bluetooth state...")
+      
+      // Ensure BleManager is initialized
+      try {
+        await BleManager.start({showAlert: false})
+      } catch (initError) {
+        console.warn("BleManager already initialized or failed to initialize:", initError)
+      }
+      
       const state = await BleManager.checkState()
       console.log("Bluetooth state:", state)
-      return state === "on"
+      
+      // Handle different possible return values
+      const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
+      console.log("Bluetooth enabled:", isEnabled)
+      
+      return isEnabled
     } catch (error) {
       console.error("Error checking Bluetooth state:", error)
+      // If we can't check the state, assume it's disabled for security
       return false
     }
   }
@@ -81,10 +97,27 @@ export class CoreCommunicator extends EventEmitter {
     const isBtEnabled = await this.isBluetoothEnabled()
     console.log("Is Bluetooth enabled:", isBtEnabled)
     if (!isBtEnabled) {
-      console.log("Bluetooth is disabled, showing error")
+      console.log("Bluetooth is disabled, showing alert")
+      
+      // Show alert to user
+      showAlert(
+        translate("connectivity:bluetoothRequiredTitle"),
+        translate("connectivity:bluetoothRequiredMessage"),
+        [
+          {
+            text: translate("common:ok"),
+            style: "default"
+          }
+        ],
+        {
+          iconName: "bluetooth-off",
+          iconColor: "#F56565"
+        }
+      )
+      
       return {
         isReady: false,
-        message: "Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.",
+        message: translate("connectivity:bluetoothRequiredMessage"),
       }
     }
 
@@ -94,11 +127,26 @@ export class CoreCommunicator extends EventEmitter {
       const isLocationPermissionGranted = await this.isLocationPermissionGranted()
       console.log("Is Location permission granted:", isLocationPermissionGranted)
       if (!isLocationPermissionGranted) {
-        console.log("Location permission missing, showing error")
+        console.log("Location permission missing, showing alert")
+        
+        showAlert(
+          translate("connectivity:locationPermissionRequiredTitle"),
+          translate("connectivity:locationPermissionRequiredMessage"),
+          [
+            {
+              text: translate("common:ok"),
+              style: "default"
+            }
+          ],
+          {
+            iconName: "map-marker-off",
+            iconColor: "#F56565"
+          }
+        )
+        
         return {
           isReady: false,
-          message:
-            "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
+          message: translate("connectivity:locationPermissionRequiredMessage"),
         }
       }
 
@@ -106,11 +154,26 @@ export class CoreCommunicator extends EventEmitter {
       const isLocationServicesEnabled = await this.isLocationServicesEnabled()
       console.log("Are Location services enabled:", isLocationServicesEnabled)
       if (!isLocationServicesEnabled) {
-        console.log("Location services disabled, showing error")
+        console.log("Location services disabled, showing alert")
+        
+        showAlert(
+          translate("connectivity:locationServicesRequiredTitle"),
+          translate("connectivity:locationServicesRequiredMessage"),
+          [
+            {
+              text: translate("common:ok"),
+              style: "default"
+            }
+          ],
+          {
+            iconName: "crosshairs-gps",
+            iconColor: "#F56565"
+          }
+        )
+        
         return {
           isReady: false,
-          message:
-            "Location services are disabled. Please enable location services in your device settings and try again.",
+          message: translate("connectivity:locationServicesRequiredMessage"),
         }
       }
     }

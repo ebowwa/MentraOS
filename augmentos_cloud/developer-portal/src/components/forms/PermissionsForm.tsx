@@ -90,11 +90,11 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
   const getPermissionDescription = (type: PermissionType): string => {
     const info = PERMISSION_DISPLAY_INFO[type];
     if (info) {
-      return info.isLegacy 
-        ? `${info.description} ⚠️` 
+      return info.isLegacy
+        ? `${info.description} ⚠️`
         : info.description;
     }
-    
+
     // Fallback for any unmapped permissions
     switch (type) {
       case PermissionType.MICROPHONE:
@@ -223,7 +223,7 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
                       {type}
                     </SelectItem>
                   ))}
-                  
+
                   {/* Current legacy type (only if editing existing legacy permission) */}
                   {PERMISSION_DISPLAY_INFO[permission.type]?.isLegacy && (
                     <SelectItem value={permission.type}>
@@ -232,7 +232,7 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
                   )}
                 </SelectContent>
               </Select>
-              
+
               {PERMISSION_DISPLAY_INFO[permission.type]?.isLegacy && (
                 <div className="mt-2 p-3 bg-orange-50 border border-orange-200 rounded-md">
                   <div className="text-sm text-orange-800">
@@ -240,7 +240,7 @@ const PermissionItem: React.FC<PermissionItemProps> = ({
                   </div>
                 </div>
               )}
-              
+
               <p className="text-xs text-gray-500 mt-1">
                 {getPermissionDescription(permission.type as PermissionType)}
               </p>
@@ -284,7 +284,7 @@ export function PermissionsForm({ permissions, onChange }: PermissionsFormProps)
     return Object.values(PermissionType).filter(type => {
       // Exclude legacy permissions from new selections
       if (PERMISSION_DISPLAY_INFO[type]?.isLegacy) return false;
-      
+
       // Exclude already used permissions
       return !permissions.some((p, i) => p.type === type && i !== excludeIndex);
     });

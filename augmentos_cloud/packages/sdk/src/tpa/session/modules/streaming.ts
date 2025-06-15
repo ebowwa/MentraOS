@@ -86,11 +86,30 @@ export class StreamingModule {
    * @returns Promise that resolves when the stream request is sent (not when streaming begins)
    */
   async requestStream(options: RtmpStreamOptions): Promise<void> {
+    console.log(`[RTMP_STREAM_REQUEST] StreamingModule.requestStream called`, {
+      debugKey: 'RTMP_STREAM_REQUEST',
+      packageName: this.packageName,
+      sessionId: this.sessionId,
+      rtmpUrl: options.rtmpUrl,
+      isCurrentlyStreaming: this.isStreaming,
+      currentStreamUrl: this.currentStreamUrl,
+      currentStreamState: this.currentStreamState
+    });
+    
     if (!options.rtmpUrl) {
       throw new Error('rtmpUrl is required');
     }
 
     if (this.isStreaming) {
+      console.error(`[RTMP_STREAM_ALREADY_ACTIVE] Already streaming error`, {
+        debugKey: 'RTMP_STREAM_ALREADY_ACTIVE',
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+        currentStreamUrl: this.currentStreamUrl,
+        requestedUrl: options.rtmpUrl,
+        currentStreamState: this.currentStreamState,
+        isStreaming: this.isStreaming
+      });
       throw new Error('Already streaming. Stop the current stream before starting a new one.');
     }
 
@@ -111,10 +130,34 @@ export class StreamingModule {
 
     // Send the request
     try {
+      console.log(`[RTMP_STREAM_SENDING] Sending RTMP stream request`, {
+        debugKey: 'RTMP_STREAM_SENDING',
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+        rtmpUrl: options.rtmpUrl,
+        messageType: message.type
+      });
+      
       this.send(message);
       this.isStreaming = true;
+      
+      console.log(`[RTMP_STREAM_REQUEST_SENT] RTMP stream request sent successfully`, {
+        debugKey: 'RTMP_STREAM_REQUEST_SENT',
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+        isStreaming: this.isStreaming,
+        currentStreamUrl: this.currentStreamUrl
+      });
+      
       return Promise.resolve();
     } catch (error) {
+      console.error(`[RTMP_STREAM_REQUEST_FAIL] Failed to send RTMP stream request`, {
+        debugKey: 'RTMP_STREAM_REQUEST_FAIL',
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+        error,
+        rtmpUrl: options.rtmpUrl
+      });
       const errorMessage = error instanceof Error ? error.message : String(error);
       return Promise.reject(new Error(`Failed to request RTMP stream: ${errorMessage}`));
     }
@@ -126,7 +169,21 @@ export class StreamingModule {
    * @returns Promise that resolves when the stop request is sent
    */
   async stopStream(): Promise<void> {
+    console.log(`[RTMP_STREAM_STOP_REQUEST] StreamingModule.stopStream called`, {
+      debugKey: 'RTMP_STREAM_STOP_REQUEST',
+      packageName: this.packageName,
+      sessionId: this.sessionId,
+      isCurrentlyStreaming: this.isStreaming,
+      currentStreamUrl: this.currentStreamUrl,
+      currentStreamState: this.currentStreamState
+    });
+    
     if (!this.isStreaming) {
+      console.log(`[RTMP_STREAM_STOP_NOOP] Not streaming - no-op`, {
+        debugKey: 'RTMP_STREAM_STOP_NOOP',
+        packageName: this.packageName,
+        sessionId: this.sessionId
+      });
       // Not an error - just a no-op if not streaming
       return Promise.resolve();
     }
@@ -219,9 +276,23 @@ export class StreamingModule {
    * @param message - The status message from the cloud
    */
   updateStreamState(message: any): void {
+    console.log(`[RTMP_STREAM_STATE_UPDATE] StreamingModule.updateStreamState called`, {
+      debugKey: 'RTMP_STREAM_STATE_UPDATE',
+      packageName: this.packageName,
+      sessionId: this.sessionId,
+      messageType: message?.type,
+      messageStatus: message?.status,
+      currentIsStreaming: this.isStreaming
+    });
+    
     // Verify this is a valid stream response
     if (!isRtmpStreamStatus(message)) {
-      console.warn('Received invalid stream status message', message);
+      console.warn('[RTMP_STREAM_INVALID_STATUS] Received invalid stream status message', {
+        debugKey: 'RTMP_STREAM_INVALID_STATUS',
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+        message
+      });
       return;
     }
 
@@ -236,8 +307,26 @@ export class StreamingModule {
       timestamp: message.timestamp || new Date()
     };
 
+    console.log(`[RTMP_STREAM_STATUS_PROCESSED] Stream status processed`, {
+      debugKey: 'RTMP_STREAM_STATUS_PROCESSED',
+      packageName: this.packageName,
+      sessionId: this.sessionId,
+      streamId: status.streamId,
+      oldStatus: this.currentStreamState?.status,
+      newStatus: status.status,
+      wasStreaming: this.isStreaming
+    });
+
+    // Updated logic to check for timeout to handle resetting state.
     // Update local state based on status
-    if (status.status === 'stopped' || status.status === 'error') {
+    if (status.status === 'stopped' || status.status === 'error' || status.status === 'timeout') {
+      console.log(`[RTMP_STREAM_STATE_STOPPED] Stream stopped - updating local state`, {
+        debugKey: 'RTMP_STREAM_STATE_STOPPED',
+        packageName: this.packageName,
+        sessionId: this.sessionId,
+        status: status.status,
+        wasStreaming: this.isStreaming
+      });
       this.isStreaming = false;
       this.currentStreamUrl = undefined;
     }
