@@ -428,7 +428,7 @@ export class TranscriptionService {
     instance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEventArgs) => {
       const isInvalidOperation = event.errorCode === 7;
       const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-      
+
       sessionLogger.error({
         subscription,
         reason: event.reason,
