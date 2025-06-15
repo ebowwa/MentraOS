@@ -1,6 +1,6 @@
-import { FunctionComponent, PropsWithChildren } from "react"
+import {FunctionComponent, PropsWithChildren} from "react"
 
-type WrapperComponent = FunctionComponent<{ children: React.ReactNode }>
+type WrapperComponent = FunctionComponent<{children: React.ReactNode}>
 
 export function withWrappers(...wrappers: Array<WrapperComponent>) {
   return function (props: PropsWithChildren) {

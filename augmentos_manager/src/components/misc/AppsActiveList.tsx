@@ -39,7 +39,7 @@ export default function AppsActiveList({
     return apps.sort((a, b) => {
       const aIsForeground = a.tpaType === "standard"
       const bIsForeground = b.tpaType === "standard"
-      
+
       if (aIsForeground && !bIsForeground) return -1
       if (!aIsForeground && bIsForeground) return 1
       return 0
@@ -94,7 +94,7 @@ export default function AppsActiveList({
   useEffect(() => {
     // Skip animation logic when on search page
     if (isSearchPage) return
-    
+
     const newCount = runningApps.length
     if (newCount !== previousCount.current) {
       Animated.timing(containerHeight, {
@@ -206,9 +206,7 @@ export default function AppsActiveList({
     return (
       <View style={themed($appsContainer)}>
         <View style={themed($headerContainer)}></View>
-        <View style={themed($contentContainer)}>
-          {getAppsList()}
-        </View>
+        <View style={themed($contentContainer)}>{getAppsList()}</View>
       </View>
     )
   }

@@ -63,14 +63,13 @@ export default function ScreenSettingsScreen() {
     setHeight(status.glasses_settings.dashboard_height)
   }, [status.glasses_settings.dashboard_height])
 
-
   useFocusEffect(
     useCallback(() => {
       coreCommunicator.toggleUpdatingScreen(true)
       return () => {
         coreCommunicator.toggleUpdatingScreen(false)
       }
-    }, [])
+    }, []),
   )
 
   // -- Handlers --
@@ -175,7 +174,7 @@ export default function ScreenSettingsScreen() {
           value={depth ?? 5}
           min={1}
           max={5}
-          onValueChange={(value) => setDepth(value)}
+          onValueChange={value => setDepth(value)}
           onValueSet={changeDepth}
         />
 
@@ -187,7 +186,7 @@ export default function ScreenSettingsScreen() {
           value={height ?? 4}
           min={1}
           max={8}
-          onValueChange={(value) => setHeight(value)}
+          onValueChange={value => setHeight(value)}
           onValueSet={changeHeight}
         />
       </ScrollView>
@@ -214,19 +213,19 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    marginBottom: 10,
     marginHorizontal: -20,
     marginTop: -20,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
   // Removed hardcoded theme colors - using dynamic styling
   settingItem: {
-    flexDirection: "row",
     alignItems: "center",
+    borderBottomWidth: 1,
+    flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 20,
-    borderBottomWidth: 1,
     // borderBottomColor moved to dynamic styling
   },
   settingTextContainer: {
@@ -234,20 +233,20 @@ const styles = StyleSheet.create({
     paddingRight: 10,
   },
   value: {
+    flexWrap: "wrap",
     fontSize: 12,
     marginTop: 5,
-    flexWrap: "wrap",
   },
   disabledItem: {
     opacity: 0.4,
   },
   slider: {
-    width: "100%",
     height: 40,
+    width: "100%",
   },
   thumbTouchSize: {
-    width: 40,
     height: 40,
+    width: 40,
   },
   trackStyle: {
     height: 5,

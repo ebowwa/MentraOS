@@ -148,11 +148,12 @@ export default function Homepage() {
   useEffect(() => {
     const checkPermissions = async () => {
       const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
-      const hasNotifications = Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
-      
+      const hasNotifications =
+        Platform.OS === "android" ? await checkFeaturePermissions(PermissionFeatures.READ_NOTIFICATIONS) : true
+
       const shouldShowBell = !hasCalendar || !hasNotifications
       setHasMissingPermissions(shouldShowBell)
-      
+
       // Animate bell in if needed
       if (shouldShowBell) {
         Animated.timing(bellFadeAnim, {
@@ -162,7 +163,7 @@ export default function Homepage() {
         }).start()
       }
     }
-    
+
     checkPermissions()
   }, [])
 
@@ -202,7 +203,7 @@ export default function Homepage() {
         RightActionComponent={
           <View style={themed($headerRight)}>
             {hasMissingPermissions && (
-              <Animated.View style={{ opacity: bellFadeAnim }}>
+              <Animated.View style={{opacity: bellFadeAnim}}>
                 <TouchableOpacity onPress={handleBellPress}>
                   <NotificationOn />
                 </TouchableOpacity>

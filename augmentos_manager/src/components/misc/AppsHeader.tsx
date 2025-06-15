@@ -2,14 +2,14 @@ import {translate, TxKeyPath} from "@/i18n"
 import {colors, ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import SearchIcon from "assets/icons/component/SearchIcon"
-import { router } from "expo-router"
+import {router} from "expo-router"
 import * as React from "react"
 import {View, TextStyle, ViewStyle, Pressable} from "react-native"
 import {SafeAreaView} from "react-native-safe-area-context"
-import { Text } from "@/components/ignite"
+import {Text} from "@/components/ignite"
 
-
-const AppsHeader = ({ showSearchIcon = true, title }: { showSearchIcon?: boolean, title: TxKeyPath }) => {  const {themed, theme} = useAppTheme()
+const AppsHeader = ({showSearchIcon = true, title}: {showSearchIcon?: boolean; title: TxKeyPath}) => {
+  const {themed, theme} = useAppTheme()
 
   return (
     <View style={themed($listHeaderIcon)}>
@@ -20,7 +20,7 @@ const AppsHeader = ({ showSearchIcon = true, title }: { showSearchIcon?: boolean
         <Pressable
           style={themed($wrapper)}
           onPress={() => {
-            router.push('/search/search');
+            router.push("/search/search")
           }}>
           <SearchIcon color={theme.colors.text} />
         </Pressable>

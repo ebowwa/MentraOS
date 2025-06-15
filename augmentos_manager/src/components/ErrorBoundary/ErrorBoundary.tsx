@@ -1,5 +1,5 @@
-import { Component, ErrorInfo, ReactNode } from "react"
-import { ErrorDetails } from "./ErrorDetails"
+import {Component, ErrorInfo, ReactNode} from "react"
+import {ErrorDetails} from "./ErrorDetails"
 
 interface Props {
   children: ReactNode
@@ -22,7 +22,7 @@ interface State {
  * @returns {JSX.Element} The rendered `ErrorBoundary` component.
  */
 export class ErrorBoundary extends Component<Props, State> {
-  state = { error: null, errorInfo: null }
+  state = {error: null, errorInfo: null}
 
   // If an error in a child is encountered, this will run
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -43,7 +43,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   // Reset the error back to null
   resetError = () => {
-    this.setState({ error: null, errorInfo: null })
+    this.setState({error: null, errorInfo: null})
   }
 
   // To avoid unnecessary re-renders
@@ -63,11 +63,7 @@ export class ErrorBoundary extends Component<Props, State> {
   // Render an error UI if there's an error; otherwise, render children
   render() {
     return this.isEnabled() && this.state.error ? (
-      <ErrorDetails
-        onReset={this.resetError}
-        error={this.state.error}
-        errorInfo={this.state.errorInfo}
-      />
+      <ErrorDetails onReset={this.resetError} error={this.state.error} errorInfo={this.state.errorInfo} />
     ) : (
       this.props.children
     )

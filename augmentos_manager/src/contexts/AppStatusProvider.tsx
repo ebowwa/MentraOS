@@ -4,12 +4,19 @@ import {useAuth} from "@/contexts/AuthContext"
 import {useStatus} from "./AugmentOSStatusProvider"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {router} from "expo-router"
-import { AppState } from "react-native"
-import { loadSetting } from "@/utils/SettingsHelper"
-import { SETTINGS_KEYS } from "@/consts"
+import {AppState} from "react-native"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 
-export type TPAPermissionType = "ALL" | "MICROPHONE" | "CAMERA" | "CALENDAR" | "LOCATION" | "READ_NOTIFICATIONS" | "POST_NOTIFICATIONS"
+export type TPAPermissionType =
+  | "ALL"
+  | "MICROPHONE"
+  | "CAMERA"
+  | "CALENDAR"
+  | "LOCATION"
+  | "READ_NOTIFICATIONS"
+  | "POST_NOTIFICATIONS"
 export interface TPAPermission {
   description: string
   type: TPAPermissionType
@@ -83,7 +90,12 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
 
     // Check if we have a core token from BackendServerComms
     const coreToken = BackendServerComms.getInstance().getCoreToken()
-    console.log("AppStatusProvider: Core token check - token exists:", !!coreToken, "token length:", coreToken?.length || 0)
+    console.log(
+      "AppStatusProvider: Core token check - token exists:",
+      !!coreToken,
+      "token length:",
+      coreToken?.length || 0,
+    )
     if (!coreToken) {
       console.log("Waiting for core token before fetching apps")
       return
@@ -258,7 +270,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
         if (await loadSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, true)) {
           console.log("Attempt reconnect to glasses")
           if (status.core_info.default_wearable && !status.glasses_info?.model_name) {
-            await coreCommunicator.sendConnectWearable("")// does nothing if not already connected to glasses, at least on ios
+            await coreCommunicator.sendConnectWearable("") // does nothing if not already connected to glasses, at least on ios
           }
         }
       }

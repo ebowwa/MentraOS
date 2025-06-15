@@ -1,5 +1,5 @@
 import en from "../src/i18n/en"
-import { exec } from "child_process"
+import {exec} from "child_process"
 
 // Use this array for keys that for whatever reason aren't greppable so they
 // don't hold your test suite hostage by always failing.
@@ -43,14 +43,14 @@ function iterate(obj, stack, array) {
  */
 
 describe("i18n", () => {
-  test("There are no missing keys", (done) => {
+  test("There are no missing keys", done => {
     // Actual command output:
     // grep "[T\|t]x=[{]\?\"\S*\"[}]\?\|translate(\"\S*\"" -ohr './app' | grep -o "\".*\""
     const command = `grep "[T\\|t]x=[{]\\?\\"\\S*\\"[}]\\?\\|translate(\\"\\S*\\"" -ohr './app' | grep -o "\\".*\\""`
     exec(command, (_, stdout) => {
       const allTranslationsDefinedOld = iterate(en, "", [])
       // Replace first instance of "." because of i18next namespace separator
-      const allTranslationsDefined = allTranslationsDefinedOld.map((key) => key.replace(".", ":"))
+      const allTranslationsDefined = allTranslationsDefinedOld.map(key => key.replace(".", ":"))
       const allTranslationsUsed = stdout.replace(/"/g, "").split("\n")
       allTranslationsUsed.splice(-1, 1)
 

@@ -249,7 +249,7 @@ export function Screen(props: ScreenProps) {
   const {theme} = useAppTheme()
 
   return (
-    <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background}/*, $containerInsets*/]}>
+    <View style={[$containerStyle, {backgroundColor: backgroundColor || colors.background} /*, $containerInsets*/]}>
       <LinearGradient
         colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFF", "#FFF"]}
         style={{
@@ -295,5 +295,5 @@ const $justifyFlexEnd: ViewStyle = {
 const $innerStyle: ViewStyle = {
   justifyContent: "flex-start",
   alignItems: "stretch",
-  flex: 1,// added this so scroll views will expand to fill the screen
+  flex: 1, // added this so scroll views will expand to fill the screen
 }

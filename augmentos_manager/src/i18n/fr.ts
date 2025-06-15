@@ -1,5 +1,5 @@
 import demoFr from "./demo-fr"
-import { Translations } from "./en"
+import {Translations} from "./en"
 
 const fr: Translations = {
   common: {
@@ -64,8 +64,7 @@ const fr: Translations = {
       "Vous avez une idée pour rendre Ignite encore meilleur ? Nous sommes heureux de l'entendre ! Nous cherchons toujours des personnes qui veulent nous aider à construire les meilleurs outils React Native. Rejoignez-nous sur GitHub pour nous aider à construire l'avenir d'Ignite.",
     contributeToIgniteLink: "Contribuer à Ignite",
     theLatestInReactNativeTitle: "Les dernières nouvelles de React Native",
-    theLatestInReactNative:
-      "Nous sommes là pour vous tenir au courant de tout ce que React Native a à offrir.",
+    theLatestInReactNative: "Nous sommes là pour vous tenir au courant de tout ce que React Native a à offrir.",
     reactNativeRadioLink: "React Native Radio",
     reactNativeNewsletterLink: "React Native Newsletter",
     reactNativeLiveLink: "React Native Live",
@@ -109,8 +108,7 @@ const fr: Translations = {
     favoriteButton: "Favori",
     unfavoriteButton: "Non favori",
     accessibility: {
-      cardHint:
-        "Double-cliquez pour écouter l'épisode. Double-cliquez et maintenez pour {{action}} cet épisode.",
+      cardHint: "Double-cliquez pour écouter l'épisode. Double-cliquez et maintenez pour {{action}} cet épisode.",
       switch: "Activez pour afficher uniquement les favoris",
       favoriteAction: "Basculer en favori",
       favoriteIcon: "Épisode non favori",

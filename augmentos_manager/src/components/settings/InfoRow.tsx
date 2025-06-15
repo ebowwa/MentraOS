@@ -1,7 +1,7 @@
-import React from 'react'
-import { View, Text, ViewStyle, TextStyle } from 'react-native'
-import { ThemedStyle } from '@/theme'
-import { useAppTheme } from '@/utils/useAppTheme'
+import React from "react"
+import {View, Text, ViewStyle, TextStyle} from "react-native"
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 interface InfoRowProps {
   label: string
@@ -9,12 +9,12 @@ interface InfoRowProps {
   showDivider?: boolean
 }
 
-export function InfoRow({ label, value, showDivider = true }: InfoRowProps) {
-  const { theme, themed } = useAppTheme()
-  
+export function InfoRow({label, value, showDivider = true}: InfoRowProps) {
+  const {theme, themed} = useAppTheme()
+
   // Add zero-width spaces after periods to help with text wrapping
-  const formattedValue = value.replace(/\./g, '.\u200B')
-  
+  const formattedValue = value.replace(/\./g, ".\u200B")
+
   return (
     <>
       <View style={themed($row)}>
@@ -26,29 +26,29 @@ export function InfoRow({ label, value, showDivider = true }: InfoRowProps) {
   )
 }
 
-const $row: ThemedStyle<ViewStyle> = ({ spacing }) => ({
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
+const $row: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
   paddingVertical: spacing.sm,
 })
 
-const $label: ThemedStyle<TextStyle> = ({ colors }) => ({
+const $label: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   color: colors.textDim,
   flex: 1,
 })
 
-const $value: ThemedStyle<TextStyle> = ({ colors }) => ({
+const $value: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 15,
   color: colors.text,
-  textAlign: 'right',
-  maxWidth: '60%',
+  textAlign: "right",
+  maxWidth: "60%",
   // @ts-ignore - textBreakStrategy is Android only but doesn't hurt iOS
-  textBreakStrategy: 'highQuality',
+  textBreakStrategy: "highQuality",
 })
 
-const $divider: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
+const $divider: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   height: 1,
   backgroundColor: colors.separator,
   marginVertical: spacing.xxs,

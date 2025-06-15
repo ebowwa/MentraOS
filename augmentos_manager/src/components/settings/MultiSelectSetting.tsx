@@ -52,13 +52,13 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   option: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginVertical: 5,
   },
   optionLabel: {
-    marginLeft: 8,
     fontSize: 16,
+    marginLeft: 8,
   },
 })
 

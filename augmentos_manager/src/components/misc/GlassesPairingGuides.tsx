@@ -18,12 +18,14 @@ export function EvenRealitiesG1PairingGuide() {
   return (
     <View style={styles.guideContainer}>
       <Text text="Even Realities G1" style={[styles.guideTitle, {color: textColor}]} />
-      <Text 
+      <Text
         text="1. Disconnect your G1 from within the Even Realities app, or uninstall the Even Realities app"
-        style={[styles.guideStep, {color: textColor}]} />
-      <Text 
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
         text="2. Place your G1 in the charging case with the lid open."
-        style={[styles.guideStep, {color: textColor}]} />
+        style={[styles.guideStep, {color: textColor}]}
+      />
 
       <Image
         source={require("../../../assets/glasses/g1.png")}
@@ -44,10 +46,14 @@ export function VuzixZ100PairingGuide() {
   return (
     <View style={styles.guideContainer}>
       <Text text="Vuzix Z100" style={[styles.guideTitle, {color: textColor}]} />
-      <Text text="1. Make sure your Z100 is fully charged and turned on." style={[styles.guideStep, {color: textColor}]} />
-      <Text 
+      <Text
+        text="1. Make sure your Z100 is fully charged and turned on."
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
         text="2. Pair your Z100 with your device using the Vuzix Connect app."
-        style={[styles.guideStep, {color: textColor}]} />
+        style={[styles.guideStep, {color: textColor}]}
+      />
     </View>
   )
 }
@@ -59,12 +65,14 @@ export function MentraMach1PairingGuide() {
   return (
     <View style={styles.guideContainer}>
       <Text text="Mentra Mach1" style={[styles.guideTitle, {color: textColor}]} />
-      <Text 
+      <Text
         text="1. Make sure your Mach1 is fully charged and turned on."
-        style={[styles.guideStep, {color: textColor}]} />
-      <Text 
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
         text="2. Pair your Mach1 with your device using the Vuzix Connect app."
-        style={[styles.guideStep, {color: textColor}]} />
+        style={[styles.guideStep, {color: textColor}]}
+      />
     </View>
   )
 }
@@ -92,14 +100,15 @@ export function MentraLivePairingGuide() {
           // Fallback if image doesn't exist
           onError={e => console.log("Image failed to load")}
         />
-        
+
         {/* Feature list */}
         <GlassesFeatureList glassesModel="Mentra Live" />
 
         {/* Marketing description */}
-        <Text 
+        <Text
           text="Mentra Live brings the power of computer vision to your everyday life. With a camera that sees what you see, you can build and run AI apps that recognize objects, translate text, remember faces, and more. Perfect for developers creating the next generation of augmented reality experiences."
-          style={[styles.guideDescription, {color: theme.colors.text}]} />
+          style={[styles.guideDescription, {color: theme.colors.text}]}
+        />
         {/* </ScrollView> */}
 
         <View style={styles.buySection}>
@@ -117,10 +126,15 @@ export function MentraLivePairingGuide() {
                   onPress: () => Linking.openURL("https://mentra.glass/live"),
                 },
               ])
-            }}
-          >
-            <Text text={`${translate("pairing:preorderNow")} · $219`} style={[styles.buyButtonText, {color: theme.colors.background}]} />
-            <Text tx="pairing:preorderNowShipMessage" style={[styles.shippingText, {color: theme.colors.background, opacity: 0.8}]} />
+            }}>
+            <Text
+              text={`${translate("pairing:preorderNow")} · $219`}
+              style={[styles.buyButtonText, {color: theme.colors.background}]}
+            />
+            <Text
+              tx="pairing:preorderNowShipMessage"
+              style={[styles.shippingText, {color: theme.colors.background, opacity: 0.8}]}
+            />
           </TouchableOpacity>
           <Spacer height={theme.spacing.md} />
         </View>
@@ -136,18 +150,22 @@ export function AudioWearablePairingGuide() {
   return (
     <View style={styles.guideContainer}>
       <Text text="Audio Wearable" style={[styles.guideTitle, {color: textColor}]} />
-      <Text 
+      <Text
         text="1. Make sure your Audio Wearable is fully charged and turned on."
-        style={[styles.guideStep, {color: textColor}]} />
-      <Text 
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
         text="2. Enable Bluetooth pairing mode on your Audio Wearable."
-        style={[styles.guideStep, {color: textColor}]} />
-      <Text 
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
         text="3. Note: Audio Wearables don't have displays. All visual information will be converted to speech."
-        style={[styles.guideStep, {color: textColor}]} />
-      <Text 
+        style={[styles.guideStep, {color: textColor}]}
+      />
+      <Text
         text="Audio Wearables are smart glasses without displays. They use text-to-speech to provide information that would normally be shown visually. This makes them ideal for audio-only applications or for users who prefer auditory feedback."
-        style={[styles.guideDescription, {color: textColor}]} />
+        style={[styles.guideDescription, {color: textColor}]}
+      />
     </View>
   )
 }
@@ -157,9 +175,10 @@ export function VirtualWearablePairingGuide() {
   return (
     <View style={styles.guideContainer}>
       <Text text="Simulated Glasses" style={[styles.guideTitle, {color: theme.colors.text}]} />
-      <Text 
+      <Text
         text="The Simulated Glasses allows you to run AugmentOS without physical smart glasses."
-        style={[styles.guideStep, {color: theme.colors.text}]} />
+        style={[styles.guideStep, {color: theme.colors.text}]}
+      />
     </View>
   )
 }
@@ -201,9 +220,9 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   marketingBanner: {
-    padding: 12,
     borderRadius: 8,
     marginBottom: 15,
+    padding: 12,
   },
   marketingTag: {
     fontSize: 12,
@@ -220,20 +239,20 @@ const styles = StyleSheet.create({
   },
   guideDescription: {
     fontSize: 14,
-    marginTop: 20,
-    marginBottom: 20,
     lineHeight: 20,
+    marginBottom: 20,
+    marginTop: 20,
   },
   guideImage: {
-    width: "100%",
     height: 180,
-    resizeMode: "contain",
     marginVertical: 15,
+    resizeMode: "contain",
+    width: "100%",
   },
   featuresContainer: {
-    flexDirection: "column",
     alignItems: "center",
     borderRadius: 16,
+    flexDirection: "column",
     padding: 12,
     paddingLeft: 36,
   },
@@ -242,27 +261,27 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   featureItem: {
-    flexDirection: "row",
     alignItems: "center",
     alignSelf: "center",
-    marginBottom: 12,
+    flexDirection: "row",
     flex: 1,
+    marginBottom: 12,
   },
   featureText: {
-    marginLeft: 10,
     fontSize: 14,
     fontWeight: "500",
+    marginLeft: 10,
   },
   buySection: {
     marginTop: 20,
   },
   preorderButton: {
-    minHeight: 44,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 30,
     alignItems: "center",
+    borderRadius: 30,
     justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     width: "100%",
   },
   buyButtonText: {

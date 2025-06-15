@@ -1,13 +1,13 @@
 // in ../icons/SearchIcon.tsx
-import React from 'react';
-import Svg, { G, Path, Defs, ClipPath, Rect } from 'react-native-svg';
+import React from "react"
+import Svg, {G, Path, Defs, ClipPath, Rect} from "react-native-svg"
 
 interface SearchIconProps {
-  color?: string;
-  size?: number;
+  color?: string
+  size?: number
 }
 
-const SearchIcon = ({ color = '#F9F8FE', size = 24 }: SearchIconProps) => (
+const SearchIcon = ({color = "#F9F8FE", size = 24}: SearchIconProps) => (
   <Svg width={size} height={size} viewBox="0 0 21 20" fill="none">
     <G clipPath="url(#clip0_58023_2586)">
       <Path
@@ -31,6 +31,6 @@ const SearchIcon = ({ color = '#F9F8FE', size = 24 }: SearchIconProps) => (
       </ClipPath>
     </Defs>
   </Svg>
-);
+)
 
-export default SearchIcon;
+export default SearchIcon

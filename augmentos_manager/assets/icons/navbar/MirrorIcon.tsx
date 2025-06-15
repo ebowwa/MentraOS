@@ -1,13 +1,13 @@
 // in ../icons/MirrorIcon.tsx
-import React from 'react';
-import Svg, { Path } from 'react-native-svg';
+import React from "react"
+import Svg, {Path} from "react-native-svg"
 
 interface MirrorIconProps {
-  color?: string;
-  size?: number;
+  color?: string
+  size?: number
 }
 
-const MirrorIcon = ({ color = '#565E8C', size = 25 }: MirrorIconProps) => (
+const MirrorIcon = ({color = "#565E8C", size = 25}: MirrorIconProps) => (
   <Svg width={size} height={size} viewBox="0 0 25 25" fill="none">
     <Path
       fillRule="evenodd"
@@ -16,6 +16,6 @@ const MirrorIcon = ({ color = '#565E8C', size = 25 }: MirrorIconProps) => (
       fill={color}
     />
   </Svg>
-);
+)
 
-export default MirrorIcon;
+export default MirrorIcon

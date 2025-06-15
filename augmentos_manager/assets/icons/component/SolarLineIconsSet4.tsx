@@ -1,13 +1,13 @@
 // in ../icons/SolarLineIconsSet4.tsx
-import React from 'react';
-import Svg, { Path } from 'react-native-svg';
+import React from "react"
+import Svg, {Path} from "react-native-svg"
 
 interface SolarLineIconsSet4Props {
-  color?: string;
-  size?: number;
+  color?: string
+  size?: number
 }
 
-const SolarLineIconsSet4 = ({ color = '#F9F8FE', size = 24 }: SolarLineIconsSet4Props) => (
+const SolarLineIconsSet4 = ({color = "#F9F8FE", size = 24}: SolarLineIconsSet4Props) => (
   <Svg width={size} height={size} viewBox="0 0 24 25" fill="none">
     <Path
       d="M14.1626 17.0329L13.4533 16.7798C12.5134 16.4445 11.4864 16.4445 10.5464 16.7798L9.83716 17.0329"
@@ -38,6 +38,6 @@ const SolarLineIconsSet4 = ({ color = '#F9F8FE', size = 24 }: SolarLineIconsSet4
       strokeWidth={1.8}
     />
   </Svg>
-);
+)
 
-export default SolarLineIconsSet4;
+export default SolarLineIconsSet4

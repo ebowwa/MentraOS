@@ -1,12 +1,12 @@
-import React from "react";
-import { Svg, Path, Defs, ClipPath, Rect, G } from "react-native-svg";
+import React from "react"
+import {Svg, Path, Defs, ClipPath, Rect, G} from "react-native-svg"
 
 interface TooltipIconProps {
-  size?: number;
-  color?: string;
+  size?: number
+  color?: string
 }
 
-export const TooltipIcon = ({ size = 12, color = "#CECED0" }: TooltipIconProps) => (
+export const TooltipIcon = ({size = 12, color = "#CECED0"}: TooltipIconProps) => (
   <Svg width={size} height={size + 1} viewBox="0 0 12 13" fill="none">
     <Defs>
       <ClipPath id="clip0_60049_6515">
@@ -20,4 +20,4 @@ export const TooltipIcon = ({ size = 12, color = "#CECED0" }: TooltipIconProps) 
       />
     </G>
   </Svg>
-);
+)

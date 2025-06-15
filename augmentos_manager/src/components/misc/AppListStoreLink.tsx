@@ -25,13 +25,9 @@ export const AppListStoreLink = ({onPress}: AppListStoreLinkProps) => {
 
   return (
     <TouchableOpacity
-      style={[
-        themed($everything),
-        themed($everythingFlexBox),
-      ]}
+      style={[themed($everything), themed($everythingFlexBox)]}
       onPress={handlePress}
-      activeOpacity={0.7}
-    >
+      activeOpacity={0.7}>
       <View style={[themed($appDescription), themed($everythingFlexBox)]}>
         <View style={themed($iconContainer)}>
           <StoreIcon size={30} color={theme.colors.text} />

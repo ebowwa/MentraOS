@@ -210,34 +210,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollViewContainer: {
-    flex: 1,
-  },
   contentContainer: {
-    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-  },
-  text: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  glassesImage: {
-    width: 100,
-    height: 60,
-    resizeMode: "contain",
-    marginTop: 20,
+    paddingHorizontal: 20,
   },
   darkBackground: {
     backgroundColor: "#1c1c1c",
   },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
   darkText: {
     color: "#FFFFFF",
   },
+  glassesImage: {
+    height: 60,
+    marginTop: 20,
+    resizeMode: "contain",
+    width: 100,
+  },
+  lightBackground: {
+    backgroundColor: "#f0f0f0",
+  },
   lightText: {
     color: "#333333",
+  },
+  scrollViewContainer: {
+    flex: 1,
+  },
+  text: {
+    fontSize: 16,
+    marginBottom: 10,
   },
 })

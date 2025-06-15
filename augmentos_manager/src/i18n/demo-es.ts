@@ -1,4 +1,4 @@
-import { DemoTranslations } from "./demo-en"
+import {DemoTranslations} from "./demo-en"
 
 export const demoEs: DemoTranslations = {
   demoIcon: {
@@ -111,8 +111,7 @@ export const demoEs: DemoTranslations = {
         },
         switch: {
           label: "Variante `switch`",
-          helper:
-            "Una entrada del tipo on/off que sobresale más. Tiene mejor soporte de accesibilidad.",
+          helper: "Una entrada del tipo on/off que sobresale más. Tiene mejor soporte de accesibilidad.",
         },
       },
       statuses: {
@@ -213,8 +212,7 @@ export const demoEs: DemoTranslations = {
         customHeight: "Altura personalizada a través del atributo `height`",
         textHeight:
           "Altura determinada por el contenido del texto - Reprehenderit incididunt deserunt do do ea labore.",
-        longText:
-          "Limitar texto largo a solo una línea - Reprehenderit incididunt deserunt do do ea labore.",
+        longText: "Limitar texto largo a solo una línea - Reprehenderit incididunt deserunt do do ea labore.",
       },
       separators: {
         name: "Separadores",
@@ -232,8 +230,7 @@ export const demoEs: DemoTranslations = {
       },
       customLeftRight: {
         name: "Componentes personalizados en la izquierda o derecha",
-        description:
-          "Puede pasar un componente personalizado en la izquierda o derecha, si así lo necesitas.",
+        description: "Puede pasar un componente personalizado en la izquierda o derecha, si así lo necesitas.",
         customLeft: "Componente personalizado a la izquierda",
         customRight: "Componente personalizado a la derecha",
       },
@@ -247,8 +244,7 @@ export const demoEs: DemoTranslations = {
       },
       listIntegration: {
         name: "Integración con FlatList y FlashList",
-        description:
-          "El componente puede ser fácilmente integrado con tu interfaz de lista preferida.",
+        description: "El componente puede ser fácilmente integrado con tu interfaz de lista preferida.",
       },
       styling: {
         name: "Estilo",
@@ -329,8 +325,8 @@ export const demoEs: DemoTranslations = {
     description:
       "Un componente que se ajusta automáticamente el tamaño de una imagen remota o utilizando el atributo data-uri.",
     useCase: {
-      remoteUri: { name: "URI remota" },
-      base64Uri: { name: "URI Base64" },
+      remoteUri: {name: "URI remota"},
+      base64Uri: {name: "URI Base64"},
       scaledToFitDimensions: {
         name: "Escalado que se ajusta a las dimensiones",
         description:
@@ -367,10 +363,8 @@ export const demoEs: DemoTranslations = {
       weights: {
         name: "Grueso",
         description: "Hay un atributo de grueso.",
-        light:
-          "ligero - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
-        normal:
-          "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
+        light: "ligero - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
+        normal: "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
         medium: "medio - Non duis laborum quis laboris occaecat culpa cillum.",
         semibold: "seminegrita - Exercitation magna nostrud pariatur laborum occaecat aliqua.",
         bold: "negrita - Eiusmod ullamco magna exercitation est excepteur.",
@@ -381,8 +375,7 @@ export const demoEs: DemoTranslations = {
         viaText:
           "a través del atributo `text` - Billum in aute fugiat proident nisi pariatur est. Cupidatat anim cillum eiusmod ad. Officia eu magna aliquip labore dolore consequat.",
         viaTx: "a través del atributo `tx` -",
-        children:
-          "Contenido anidado (children) - Aliqua velit irure reprehenderit eu qui amet veniam consectetur.",
+        children: "Contenido anidado (children) - Aliqua velit irure reprehenderit eu qui amet veniam consectetur.",
         nestedChildren: "Contenidos anidados -",
         nestedChildren2: "Occaecat aliqua irure proident veniam.",
         nestedChildren3: "Ullamco cupidatat officia exercitation velit non ullamco nisi..",

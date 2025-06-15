@@ -1,5 +1,14 @@
 import React, {useState, useEffect} from "react"
-import {View, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Platform, Modal, ActivityIndicator} from "react-native"
+import {
+  View,
+  TouchableOpacity,
+  ScrollView,
+  ViewStyle,
+  TextStyle,
+  Platform,
+  Modal,
+  ActivityIndicator,
+} from "react-native"
 import {FontAwesome} from "@expo/vector-icons"
 import {Screen, Header, Icon, Text} from "@/components/ignite"
 import {router} from "expo-router"
@@ -24,13 +33,13 @@ export default function SettingsPage() {
   const {push, replace} = useNavigationHistory()
   const [showDeveloperSettings, setShowDeveloperSettings] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
-  
+
   // Check if user is from Mentra to show theme settings
   const isUserFromMentra = isMentraUser(user?.email)
 
   useEffect(() => {
     // Show developer settings on Android, or on iOS if it's TestFlight/Dev build
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       setShowDeveloperSettings(true)
     } else {
       setShowDeveloperSettings(__DEV__)
@@ -41,29 +50,28 @@ export default function SettingsPage() {
     try {
       console.log("Settings: Starting sign-out process")
       setIsSigningOut(true)
-      
+
       await logout()
 
       console.log("Settings: Logout completed, navigating to login")
-      
+
+      // Reset the loading state before navigation
+      setIsSigningOut(false)
+
       // Navigate to Login screen directly instead of SplashScreen
       // This ensures we skip the SplashScreen logic that might detect stale user data
       replace("/")
     } catch (err) {
       console.error("Settings: Error during sign-out:", err)
       setIsSigningOut(false)
-      
+
       // Show user-friendly error but still navigate to login to prevent stuck state
-      showAlert(
-        translate("common:error"),
-        translate("settings:signOutError"),
-        [
-          {
-            text: translate("common:ok"),
-            onPress: () => replace("/")
-          }
-        ]
-      )
+      showAlert(translate("common:error"), translate("settings:signOutError"), [
+        {
+          text: translate("common:ok"),
+          onPress: () => replace("/"),
+        },
+      ])
     }
   }
 
@@ -94,18 +102,15 @@ export default function SettingsPage() {
       {isUserFromMentra && (
         <>
           <Spacer height={theme.spacing.md} />
-          
-          <RouteButton
-            label="Theme Settings"
-            onPress={() => push("/settings/theme")}
-          />
+
+          <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
         </>
       )}
 
       {showDeveloperSettings && (
         <>
           <Spacer height={theme.spacing.md} />
-          
+
           <RouteButton
             label={translate("settings:developerSettings")}
             // subtitle={translate("settings:developerSettingsSubtitle")}
@@ -116,40 +121,27 @@ export default function SettingsPage() {
 
       <Spacer height={theme.spacing.md} />
 
-      <ActionButton
-        label={translate("settings:signOut")}
-        variant="destructive"
-        onPress={confirmSignOut}
-      />
+      <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
 
       {/* Loading overlay for sign out */}
-      <Modal
-        visible={isSigningOut}
-        transparent={true}
-        animationType="fade"
-      >
-        <View style={{
-          flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <View style={{
-            backgroundColor: theme.colors.background,
-            padding: theme.spacing.xl,
-            borderRadius: theme.spacing.md,
-            alignItems: 'center',
-            minWidth: 200
+      <Modal visible={isSigningOut} transparent={true} animationType="fade">
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(0, 0, 0, 0.7)",
+            justifyContent: "center",
+            alignItems: "center",
           }}>
-            <ActivityIndicator
-              size="large"
-              color={theme.colors.primary}
-              style={{marginBottom: theme.spacing.md}}
-            />
-            <Text
-              preset="bold"
-              style={{color: theme.colors.text}}
-            >
+          <View
+            style={{
+              backgroundColor: theme.colors.background,
+              padding: theme.spacing.xl,
+              borderRadius: theme.spacing.md,
+              alignItems: "center",
+              minWidth: 200,
+            }}>
+            <ActivityIndicator size="large" color={theme.colors.primary} style={{marginBottom: theme.spacing.md}} />
+            <Text preset="bold" style={{color: theme.colors.text}}>
               We're logging you out...
             </Text>
           </View>
