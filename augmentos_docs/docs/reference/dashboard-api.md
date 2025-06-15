@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 title: Dashboard API
 ---
 
@@ -17,8 +17,6 @@ Every [`TpaSession`](/reference/tpa-session) exposes a `dashboard` property:
 
 Internally the SDK converts your method calls into WebSocket messages that the cloud routes to the user's glasses.  You never have to construct layouts manually.
 
----
-
 ## DashboardMode enum
 
 ```typescript
@@ -31,8 +29,6 @@ enum DashboardMode {
 
 Use these values whenever a method accepts a *mode* parameter.
 
----
-
 ## DashboardContentAPI
 
 Interface implemented by `session.dashboard.content`.
@@ -42,8 +38,8 @@ Interface implemented by `session.dashboard.content`.
 | `write` | `(content: string, targets?: DashboardMode[]) => void` | Send content to one or more dashboard modes. *targets* defaults to `[DashboardMode.MAIN]`. |
 | `writeToMain` | `(content: string) => void` | Convenience wrapper around `write(content, [DashboardMode.MAIN])`. |
 | `writeToExpanded` | `(content: string) => void` | Convenience wrapper around `write(content, [DashboardMode.EXPANDED])`. |
-| `getCurrentMode` | `() => Promise<DashboardMode | 'none'>` | Resolve to the mode currently visible on the user's glasses (or `'none'` when the dashboard is closed). |
-| `onModeChange` | `(handler: (mode: DashboardMode | 'none') => void) => () => void` | Register a callback for mode transitions. Returns an *unsubscribe* function. |
+| `getCurrentMode` | `() => Promise<DashboardMode>` | Resolve to the mode currently visible on the user's glasses (or `'none'` when the dashboard is closed). |
+| `onModeChange` | `(handler: (mode: DashboardMode) => void) => () => void` | Register a callback for mode transitions. Returns an *unsubscribe* function. |
 
 ### Example
 
@@ -65,9 +61,7 @@ const unsubscribe = session.dashboard.content.onModeChange((mode) => {
 unsubscribe();
 ```
 
----
-
-## DashboardAPI (aggregator)
+## DashboardAPI
 
 ```typescript
 interface DashboardAPI {
@@ -76,8 +70,6 @@ interface DashboardAPI {
 ```
 
 Every `TpaSession` constructs this object and assigns it to `session.dashboard`.
-
----
 
 ## Message Types (advanced)
 
@@ -88,8 +80,6 @@ The SDK handles these for you, but they are listed here for completeness:
 | `DashboardContentUpdate` | `dashboard_content_update` | App | New content for dashboard |
 
 These map 1-to-1 to the TypeScript interfaces in `@augmentos/sdk/src/types/dashboard`.
-
----
 
 ## Frequently Asked Questions
 
