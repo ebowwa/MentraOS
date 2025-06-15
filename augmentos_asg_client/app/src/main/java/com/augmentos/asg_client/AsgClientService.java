@@ -191,8 +191,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         //startDebugVpsPhotoUploadTimer();
 
         // Register OTA download complete receiver
-        IntentFilter filter = new IntentFilter("com.augmentos.otaupdater.ACTION_OTA_DOWNLOAD_COMPLETE");
-        registerReceiver(otaDownloadReceiver, filter);
+        // IntentFilter filter = new IntentFilter("com.augmentos.otaupdater.ACTION_OTA_DOWNLOAD_COMPLETE");
+        // registerReceiver(otaDownloadReceiver, filter);
 
         SysControl.disablePackageViaAdb(getApplicationContext(), "com.xy.fakelauncher");
         SysControl.disablePackage(getApplicationContext(), "com.xy.fakelauncher");
@@ -709,7 +709,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     @Override
     public void onWifiStateChanged(boolean isConnected) {
-        Log.d(TAG, "WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+        // Log.d(TAG, "222 WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
 
         // When WiFi state changes, send status to AugmentOS Core via Bluetooth
         sendWifiStatusOverBle(isConnected);
@@ -1300,6 +1300,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     break;
 
                 case "set_wifi_credentials":
+                    Log.d(TAG, "Received set_wifi_credentials command");
                     // Handle WiFi configuration command if needed
                     String ssid = dataToProcess.optString("ssid", "");
                     String password = dataToProcess.optString("password", "");
@@ -1340,6 +1341,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         sendWifiScanResultsOverBle(new ArrayList<>());
                     }
                     break;
+
                 case "ping":
                     JSONObject pingResponse = new JSONObject();
                     pingResponse.put("type", "pong");
@@ -1347,14 +1349,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         bluetoothManager.sendData(pingResponse.toString().getBytes());
                     }
                     break;
+
                 case "request_battery_state":
                     break;
+
                 case "set_mic_state":
-
                     break;
+
                 case "set_mic_vad_state":
-
                     break;
+
                 case "set_hotspot_state":
                     boolean hotspotEnabled = dataToProcess.optBoolean("enabled", false);
 
@@ -1383,6 +1387,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         Log.d(TAG, "Received ota_update_response: rejected by user");
                     }
                     break;
+
                 case "set_photo_mode": {
                     String mode = dataToProcess.optString("mode", "save_locally");
                     switch (mode) {

@@ -2,6 +2,8 @@ package com.augmentos.otaupdater;
 
 import com.augmentos.otaupdater.helper.Constants;
 import com.augmentos.otaupdater.helper.OtaHelper;
+import com.augmentos.otaupdater.worker.OtaCheckWorker;
+import com.augmentos.otaupdater.worker.OtaHeartbeatWorker;
 
 import android.os.Bundle;
 import androidx.activity.EdgeToEdge;
@@ -15,7 +17,6 @@ import androidx.work.ExistingPeriodicWorkPolicy;
 import androidx.work.NetworkType;
 import androidx.work.PeriodicWorkRequest;
 import androidx.work.WorkManager;
-import com.augmentos.otaupdater.worker.OtaCheckWorker;
 
 import java.util.concurrent.TimeUnit;
 
@@ -37,8 +38,8 @@ public class MainActivity extends AppCompatActivity {
         // Initialize OtaHelper
         otaHelper = new OtaHelper(this);
 
-        // Set up periodic work request
-        setupPeriodicOtaCheck();
+        // Set up periodic work requests
+        setupPeriodicWorks();
 
         // Register for WiFi connectivity changes
         otaHelper.registerNetworkCallback(this);
@@ -50,17 +51,27 @@ public class MainActivity extends AppCompatActivity {
         otaHelper.cleanup();
     }
 
-    private void setupPeriodicOtaCheck() {
+    private void setupPeriodicWorks() {
         Constraints constraints = new Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build();
 
+        // Set up OTA check every 15 minutes
         PeriodicWorkRequest otaWork = new PeriodicWorkRequest.Builder(OtaCheckWorker.class, 15, TimeUnit.MINUTES)
                 .setConstraints(constraints)
                 .build();
 
+        // Set up heartbeat every 1 minute
+        PeriodicWorkRequest heartbeatWork = new PeriodicWorkRequest.Builder(OtaHeartbeatWorker.class, 1, TimeUnit.MINUTES)
+                .setConstraints(constraints)
+                .build();
+
+        // Enqueue both works
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
                 Constants.WORK_NAME_OTA_CHECK, ExistingPeriodicWorkPolicy.KEEP, otaWork);
+                
+        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                Constants.WORK_NAME_OTA_HEARTBEAT, ExistingPeriodicWorkPolicy.KEEP, heartbeatWork);
 
         // TODO Remove on Release TEMP: Enqueue a one-time OTA check to test immediately
         // androidx.work.OneTimeWorkRequest testOtaWork = new androidx.work.OneTimeWorkRequest.Builder(OtaCheckWorker.class).build();

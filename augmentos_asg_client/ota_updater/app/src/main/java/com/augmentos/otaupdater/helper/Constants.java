@@ -14,9 +14,9 @@ public class Constants {
 
     // Intent actions
     public static final String ACTION_INSTALL_OTA = "com.augmentos.asg_client.ACTION_INSTALL_OTA";
+    public static final String ACTION_HEARTBEAT = "com.augmentos.otaupdater.ACTION_HEARTBEAT";
 
     // WorkManager
     public static final String WORK_NAME_OTA_CHECK = "ota_check";
-
-
+    public static final String WORK_NAME_OTA_HEARTBEAT = "ota_heartbeat";
 }
