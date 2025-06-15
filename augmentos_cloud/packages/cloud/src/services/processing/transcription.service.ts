@@ -102,7 +102,7 @@ export class TranscriptionService {
           userSession.transcriptionStreams!.set(subscription, newStream);
         } catch (error) {
           sessionLogger.error({ subscription, error }, 'Failed to create transcription stream, will retry later');
-          
+
           // Schedule retry after 2 seconds
           setTimeout(() => {
             if (desiredSet.has(subscription) && !userSession.transcriptionStreams!.has(subscription)) {
@@ -203,14 +203,14 @@ export class TranscriptionService {
       );
     }
 
-    const streamInstance: ASRStreamInstance = { 
-      recognizer, 
-      pushStream, 
+    const streamInstance: ASRStreamInstance = {
+      recognizer,
+      pushStream,
       isReady: false,
       startTime: Date.now()
     };
     this.setupRecognitionHandlersForInstance(streamInstance, userSession, subscription, languageInfo);
-    
+
     return streamInstance;
   }
 
@@ -297,7 +297,7 @@ export class TranscriptionService {
         // console.log('translatedText', translatedText);
         // console.log('event.result.text', event.result.text);
 
-        sessionLogger.debug({ 
+        sessionLogger.debug({
           subscription,
           from: detectedSourceLang,
           to: languageInfo.translateLanguage,
@@ -427,7 +427,8 @@ export class TranscriptionService {
     // Common event handlers.
     instance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEventArgs) => {
       const isInvalidOperation = event.errorCode === 7;
-      
+      const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
+
       sessionLogger.error({
         subscription,
         reason: event.reason,
@@ -441,18 +442,18 @@ export class TranscriptionService {
       sessionLogger.debug({ event }, 'Detailed cancellation event');
 
       this.stopIndividualTranscriptionStream(instance, subscription, userSession);
-      
+
       // Remove the failed stream from the map
       userSession.transcriptionStreams?.delete(subscription);
-      
+
       // If the error is a temporary issue (not authentication or invalid operation), schedule a retry
-      if (event.errorCode !== 1 && event.errorCode !== 2 && event.errorCode !== 7) { // Not authentication, authorization, or invalid operation errors
-        sessionLogger.info({ subscription }, 'Scheduling retry for canceled recognition stream');
+      if (event.errorCode !== 1 && event.errorCode !== 2) { // Not authentication, authorization, or invalid operation errors
+        sessionLogger.info({ subscription, event }, 'Scheduling retry for canceled recognition stream');
         setTimeout(() => {
           // Check if the subscription is still needed and stream doesn't exist
           const currentSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.sessionId);
-          if (currentSubscriptions.includes(subscription as ExtendedStreamType) && 
-              !userSession.transcriptionStreams?.has(subscription)) {
+          if (currentSubscriptions.includes(subscription as ExtendedStreamType) &&
+            !userSession.transcriptionStreams?.has(subscription)) {
             sessionLogger.info({ subscription }, 'Retrying canceled transcription stream');
             try {
               const retryStream = this.createASRStreamForSubscription(subscription, userSession);
@@ -510,7 +511,7 @@ export class TranscriptionService {
     // Send to all subscribed apps using centralized messaging with automatic resurrection
     subscribedApps.forEach(async (packageName) => {
       const tpaSessionId = `${userSession.sessionId}-${packageName}`;
-      
+
       // CloudDataStreamMessage
       const dataStream: DataStream = {
         type: CloudToTpaMessageType.DATA_STREAM,
@@ -523,23 +524,23 @@ export class TranscriptionService {
       try {
         // Use centralized messaging with automatic resurrection
         const result = await userSession.appManager.sendMessageToTpa(packageName, dataStream);
-        
+
         if (!result.sent) {
-          userSession.logger.warn({ 
-            service: SERVICE_NAME, 
+          userSession.logger.warn({
+            service: SERVICE_NAME,
             packageName,
             resurrectionTriggered: result.resurrectionTriggered,
             error: result.error
           }, `Failed to send transcription data to TPA ${packageName}`);
         } else if (result.resurrectionTriggered) {
-          userSession.logger.warn({ 
-            service: SERVICE_NAME, 
-            packageName 
+          userSession.logger.warn({
+            service: SERVICE_NAME,
+            packageName
           }, `Transcription data sent to TPA ${packageName} after resurrection`);
         }
       } catch (error) {
-        userSession.logger.error({ 
-          service: SERVICE_NAME, 
+        userSession.logger.error({
+          service: SERVICE_NAME,
           packageName,
           error: error instanceof Error ? error.message : String(error)
         }, `Error sending transcription data to TPA ${packageName}`);
@@ -568,7 +569,7 @@ export class TranscriptionService {
   }
 
   feedAudioToTranscriptionStreams(userSession: UserSession, audioData: Uint8Array) {
-    
+
     if (!userSession.transcriptionStreams) {
       const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
       sessionLogger.error({
@@ -576,95 +577,95 @@ export class TranscriptionService {
       }, 'No transcription streams found for session');
       return;
     }
-    
+
     // Too verbose to log every audio feed, so we can comment this out.
     // sessionLogger.debug({ 
-      //   numStreams: userSession.transcriptionStreams.size,
-      //   dataSize: audioData.length,
-      //   operation: 'feedAudio'
-      // }, 'Feeding audio data to transcription streams');
-      
-      userSession.transcriptionStreams.forEach((instance, key) => {
-        try {
-          // Check if stream is ready for audio data
-          if (!instance.isReady) {
-            // Only warn if stream has been initializing for more than 5 seconds
-            const streamAge = Date.now() - (instance.startTime || 0);
-            if (streamAge > 5000) {
-              const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-              sessionLogger.warn({ 
-                streamKey: key, 
-                streamAge,
-                startTime: instance.startTime
-              }, 'Stream not ready after 5 seconds, skipping audio data');
-            }
-            return;
-          }
+    //   numStreams: userSession.transcriptionStreams.size,
+    //   dataSize: audioData.length,
+    //   operation: 'feedAudio'
+    // }, 'Feeding audio data to transcription streams');
 
-          // Check if stream is closed before writing
-          if ((instance.pushStream as any)?._readableState?.destroyed || 
-              (instance.pushStream as any)?._readableState?.ended) {
+    userSession.transcriptionStreams.forEach((instance, key) => {
+      try {
+        // Check if stream is ready for audio data
+        if (!instance.isReady) {
+          // Only warn if stream has been initializing for more than 5 seconds
+          const streamAge = Date.now() - (instance.startTime || 0);
+          if (streamAge > 5000) {
             const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-            sessionLogger.warn({ streamKey: key }, 'Skipping write to destroyed/ended stream');
-            return;
+            sessionLogger.warn({
+              streamKey: key,
+              streamAge,
+              startTime: instance.startTime
+            }, 'Stream not ready after 5 seconds, skipping audio data');
           }
-          
-          (instance.pushStream as any).write(audioData);
-        } catch (error: unknown) {
-          const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
-          
-          // Enhanced error logging with detailed Azure diagnostics
-          const errorDetails = {
-            // Stream context
-            streamKey: key,
-            userId: userSession.userId,
-            operation: 'feedAudio',
-            
-            // Audio context
-            audioDataSize: audioData.length,
-            audioDataType: audioData.constructor.name,
-            
-            // Azure-specific error details
-            errorCode: (error as any)?.code || (error as any)?.errorCode,
-            errorDetails: (error as any)?.errorDetails || (error as any)?.details,
-            azureReason: (error as any)?.reason,
-            azureResultId: (error as any)?.resultId,
-            errorName: (error as any)?.name,
-            errorMessage: (error as any)?.message,
-            
-            // Stream state diagnostics
-            pushStreamState: {
-              exists: !!instance.pushStream,
-              closed: (instance.pushStream as any)?._readableState?.ended,
-              destroyed: (instance.pushStream as any)?._readableState?.destroyed,
-              readable: (instance.pushStream as any)?._readableState?.readable,
-              internalState: (instance.pushStream as any)?._state
-            },
-            
-            recognizerState: {
-              exists: !!instance.recognizer,
-              state: (instance.recognizer as any)?._impl?.privReco?.privSessionId || 'unknown'
-            },
-            
-            // Runtime info
-            azureSDKInfo: 'microsoft-cognitiveservices-speech-sdk',
-            timestamp: new Date().toISOString()
-          };
-          
-          // Enrich the error object if it's an Error instance
-          if (error instanceof Error) {
-            sessionLogger.error(error, 'Error writing to push stream');
-            sessionLogger.debug({ errorDetails }, 'push stream Error Detailed error information');
-          }
-
-          // Remove dead streams to prevent repeated errors
-          if ((error as any)?.message === "Stream closed" || 
-              (error as any)?.name === "InvalidOperation") {
-            sessionLogger.warn({ streamKey: key }, 'Removing closed/invalid stream to prevent spam');
-            userSession.transcriptionStreams?.delete(key);
-          }
+          return;
         }
-      });
+
+        // Check if stream is closed before writing
+        if ((instance.pushStream as any)?._readableState?.destroyed ||
+          (instance.pushStream as any)?._readableState?.ended) {
+          const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
+          sessionLogger.warn({ streamKey: key }, 'Skipping write to destroyed/ended stream');
+          return;
+        }
+
+        (instance.pushStream as any).write(audioData);
+      } catch (error: unknown) {
+        const sessionLogger = userSession.logger.child({ service: SERVICE_NAME });
+
+        // Enhanced error logging with detailed Azure diagnostics
+        const errorDetails = {
+          // Stream context
+          streamKey: key,
+          userId: userSession.userId,
+          operation: 'feedAudio',
+
+          // Audio context
+          audioDataSize: audioData.length,
+          audioDataType: audioData.constructor.name,
+
+          // Azure-specific error details
+          errorCode: (error as any)?.code || (error as any)?.errorCode,
+          errorDetails: (error as any)?.errorDetails || (error as any)?.details,
+          azureReason: (error as any)?.reason,
+          azureResultId: (error as any)?.resultId,
+          errorName: (error as any)?.name,
+          errorMessage: (error as any)?.message,
+
+          // Stream state diagnostics
+          pushStreamState: {
+            exists: !!instance.pushStream,
+            closed: (instance.pushStream as any)?._readableState?.ended,
+            destroyed: (instance.pushStream as any)?._readableState?.destroyed,
+            readable: (instance.pushStream as any)?._readableState?.readable,
+            internalState: (instance.pushStream as any)?._state
+          },
+
+          recognizerState: {
+            exists: !!instance.recognizer,
+            state: (instance.recognizer as any)?._impl?.privReco?.privSessionId || 'unknown'
+          },
+
+          // Runtime info
+          azureSDKInfo: 'microsoft-cognitiveservices-speech-sdk',
+          timestamp: new Date().toISOString()
+        };
+
+        // Enrich the error object if it's an Error instance
+        if (error instanceof Error) {
+          sessionLogger.error(error, 'Error writing to push stream');
+          sessionLogger.debug({ errorDetails }, 'push stream Error Detailed error information');
+        }
+
+        // Remove dead streams to prevent repeated errors
+        if ((error as any)?.message === "Stream closed" ||
+          (error as any)?.name === "InvalidOperation") {
+          sessionLogger.warn({ streamKey: key }, 'Removing closed/invalid stream to prevent spam');
+          userSession.transcriptionStreams?.delete(key);
+        }
+      }
+    });
   }
 
   /***********************

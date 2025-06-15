@@ -208,16 +208,19 @@ export class GlassesWebSocketService {
         case GlassesToCloudMessageType.GLASSES_CONNECTION_STATE:
           // TODO(isaiah): verify logic
           await this.handleGlassesConnectionState(userSession, message as GlassesConnectionState);
+          sessionService.relayMessageToTpas(userSession, message);
           break;
 
         // Looks Good.
         case GlassesToCloudMessageType.VAD:
           await this.handleVad(userSession, message as Vad);
+          sessionService.relayMessageToTpas(userSession, message);
           // TODO(isaiah): relay to TPAs
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
           await this.handleLocationUpdate(userSession, message as LocationUpdate);
+          sessionService.relayMessageToTpas(userSession, message);
           // TODO(isaiah): broadcast to TPAs
           break;
 
@@ -225,7 +228,7 @@ export class GlassesWebSocketService {
           // TODO(isaiah): verify logic
           userSession.logger.debug({ service: SERVICE_NAME, message }, 'Calendar event received from glasses');
           subscriptionService.cacheCalendarEvent(userSession.sessionId, message as CalendarEvent);
-          // TODO(isaiah): broadcast to TPAs
+          sessionService.relayMessageToTpas(userSession, message);
           break;
 
         // TODO(isaiah): verify logic

@@ -166,7 +166,8 @@ export class DashboardManager {
           return false; // Not a dashboard message
       }
     } catch (error) {
-      this.logger.error({ error }, `Error handling dashboard message`);
+      const logger = this.userSession.logger.child({ message });
+      logger.error(error, `Error handling dashboard message of type ${message.type} for user ${this.userSession.userId}`);
       return false;
     }
   }
@@ -313,15 +314,15 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      this.logger.error({
-        error,
+      const logger = this.userSession.logger.child({
         currentMode: this.currentMode,
         systemContentIsEmpty: Object.values(this.systemContent).every(v => !v),
         systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
         systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
         mainContentCount: this.mainContent.size,
         expandedContentCount: this.expandedContent.size
-      }, 'Error updating dashboard');
+      });
+      this.logger.error(error, 'Error updating dashboard for user session ' + this.userSession.userId);
     }
   }
 
@@ -366,13 +367,13 @@ export class DashboardManager {
       // this.logger.info(`✅ Always-on dashboard updated successfully`);
       this.logger.warn({}, 'Always-on dashboard update is not yet implemented in the client');
     } catch (error) {
-      this.logger.error({
-        error,
+      const logger = this.userSession.logger.child({
         alwaysOnEnabled: this.alwaysOnEnabled,
-        systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
-        systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
+        systemContentTopLeft: this.systemContent.topLeft,
+        systemContentTopRight: this.systemContent.topRight,
         alwaysOnContentCount: this.alwaysOnContent.size
-      }, 'Error updating always-on dashboard');
+      });
+      logger.error(error, 'Error updating always-on dashboard for user session ' + this.userSession.userId);;
     }
   }
 
@@ -420,7 +421,8 @@ export class DashboardManager {
       // Log successful sending
       this.logger.debug({ packageName: displayRequest.packageName }, `Display request sent successfully for user: ${this.userSession.userId}, package ${displayRequest.packageName}`);
     } catch (error) {
-      this.logger.error({ error }, 'Error sending dashboard display request');
+      const logger = this.userSession.logger.child({ displayRequest, packageName: displayRequest.packageName });
+      logger.error(error, 'Error sending dashboard display request');
     }
   }
 
@@ -731,11 +733,13 @@ export class DashboardManager {
             ws.send(JSON.stringify(tpaMessage));
           }
         } catch (error) {
-          this.logger.error({ error, packageName }, 'Error sending dashboard message to TPA');
+          const logger = this.userSession.logger.child({ packageName, message });
+          logger.error(error, 'Error sending dashboard message to TPA');
         }
       });
     } catch (error) {
-      this.logger.error({ error }, 'Error broadcasting dashboard message');
+      const logger = this.userSession.logger.child({ message });
+      this.logger.error(error, 'Error broadcasting dashboard message');
     }
   }
 
