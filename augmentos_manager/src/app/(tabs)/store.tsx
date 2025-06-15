@@ -1,9 +1,9 @@
 import React, {useRef, useState, useCallback, useEffect} from "react"
 import {View, StyleSheet, ActivityIndicator, BackHandler} from "react-native"
+import {SafeAreaView} from "react-native-safe-area-context"
 import {WebView} from "react-native-webview"
 import Config from "react-native-config"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
-import {SafeAreaView} from "react-native-safe-area-context"
 import {RouteProp, useFocusEffect} from "@react-navigation/native"
 import {RootStackParamList} from "@/components/misc/types"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -88,7 +88,7 @@ export default function AppStoreWeb() {
 
   // If the prefetched WebView is ready, show it in the correct style
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {hasError ? (
         <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
       ) : (
@@ -105,6 +105,14 @@ export default function AppStoreWeb() {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
+            scalesPageToFit={false}
+            injectedJavaScript={`
+              const meta = document.createElement('meta');
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              meta.setAttribute('name', 'viewport');
+              document.getElementsByTagName('head')[0].appendChild(meta);
+              true;
+            `}
             renderLoading={() => (
               <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
                 <ActivityIndicator size="large" color={theme2.primaryColor} />

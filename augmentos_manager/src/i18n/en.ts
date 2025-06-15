@@ -84,8 +84,8 @@ const en = {
     glasses: "Glasses",
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
-    sensingLabel: "Microphone & Camera Access",
-    sensingSubtitle: "Enable microphones and cameras.",
+    sensingLabel: "Enable Sensors",
+    sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
     calendarSubtitle: "Display calendar events on your smart glasses.",
     autoBrightnessLabel: "Auto Brightness",
@@ -177,7 +177,7 @@ const en = {
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
-    sensingDisabled: "Sensing is disabled. Microphone and sensors won't work in apps.",
+    sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
   },
   common: {
     ok: "OK",

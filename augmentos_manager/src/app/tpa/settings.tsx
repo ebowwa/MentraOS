@@ -37,6 +37,8 @@ export default function AppSettings() {
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
   const insets = useSafeAreaInsets()
+  const hasLoadedData = useRef(false)
+  
   
   // Animation values for collapsing header
   const scrollY = useRef(new Animated.Value(0)).current
@@ -69,8 +71,8 @@ export default function AppSettings() {
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
-      return async () => {
-        await refreshAppStatus()
+      return () => {
+        refreshAppStatus()
       }
     }, []),
   )
@@ -221,8 +223,18 @@ export default function AppSettings() {
     }
   }, [serverAppInfo, packageName, appName])
 
-  // Fetch TPA settings on mount or when packageName/status change.
+  // Reset hasLoadedData when packageName changes
   useEffect(() => {
+    hasLoadedData.current = false
+  }, [packageName])
+
+  // Fetch TPA settings on mount
+  useEffect(() => {
+    // Skip if we've already loaded data for this packageName
+    if (hasLoadedData.current) {
+      return
+    }
+    
     let isMounted = true
     let debounceTimeout: NodeJS.Timeout
 
@@ -245,13 +257,14 @@ export default function AppSettings() {
     // Debounce fetch to avoid redundant calls
     debounceTimeout = setTimeout(() => {
       fetchUpdatedSettingsInfo()
+      hasLoadedData.current = true
     }, 150)
 
     return () => {
       isMounted = false
       clearTimeout(debounceTimeout)
     }
-  }, [packageName])
+  }, [])
 
   const fetchUpdatedSettingsInfo = async () => {
     // Only show skeleton if there are no cached settings
@@ -321,7 +334,6 @@ export default function AppSettings() {
 
   // When a setting changes, update local state and send the full updated settings payload.
   const handleSettingChange = (key: string, value: any) => {
-    console.log(`Changing ${key} to ${value}`)
     setSettingsState(prevState => ({
       ...prevState,
       [key]: value,
@@ -364,6 +376,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
+            settingKey={setting.key}
           />
         )
       case "text_no_save_button":
@@ -373,6 +386,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
+            settingKey={setting.key}
           />
         )
       case "slider":

@@ -1,6 +1,7 @@
 // AppIcon.tsx
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image, ViewStyle } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProps } from './types';
 import { AppInterface } from '@/contexts/AppStatusProvider';
@@ -38,6 +39,9 @@ const AppIcon: React.FC<AppIconProps> = ({
             <Image
                 source={{ uri: app.logoURL }}
                 style={styles.icon}
+                contentFit="cover"
+                transition={200}
+                cachePolicy="memory-disk"
             />
 
             {showLabel && (

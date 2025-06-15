@@ -147,6 +147,14 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{ children: React.ReactNo
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={false}
+            scalesPageToFit={false}
+            injectedJavaScript={`
+              const meta = document.createElement('meta');
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              meta.setAttribute('name', 'viewport');
+              document.getElementsByTagName('head')[0].appendChild(meta);
+              true;
+            `}
           />
         </View>
       ) : null}

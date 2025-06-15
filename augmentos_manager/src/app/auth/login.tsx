@@ -13,6 +13,7 @@ import {
   AppState,
   ViewStyle,
   TextStyle,
+  Keyboard,
 } from "react-native"
 import LinearGradient from "react-native-linear-gradient"
 import {supabase} from "@/supabase/supabaseClient"
@@ -302,6 +303,7 @@ export default function LoginScreen() {
   }
 
   const handleEmailSignUp = async (email: string, password: string) => {
+    Keyboard.dismiss()
     setIsFormLoading(true)
 
     try {
@@ -353,6 +355,7 @@ export default function LoginScreen() {
   }
 
   const handleEmailSignIn = async (email: string, password: string) => {
+    Keyboard.dismiss()
     setIsFormLoading(true)
     const {data, error} = await supabase.auth.signInWithPassword({
       email,
@@ -432,7 +435,10 @@ export default function LoginScreen() {
       preset="fixed"
       safeAreaEdges={["top"]}
       contentContainerStyle={themed($container)}>
-      <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={themed($scrollContent)} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
             <View style={themed($card)}>
               {/* Auth Loading Overlay */}
               {isAuthLoading && (
@@ -531,6 +537,15 @@ export default function LoginScreen() {
                       textStyle={themed($buttonText)}
                       onPress={() => handleEmailSignUp(email, password)}
                       disabled={isFormLoading}
+                      LeftAccessory={() =>
+                        isFormLoading && (
+                          <ActivityIndicator
+                            size="small"
+                            color={theme.colors.icon}
+                            style={{marginRight: 8}}
+                          />
+                        )
+                      }
                     />
 
                     <Spacer height={spacing.sm}/>
