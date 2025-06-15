@@ -15,7 +15,14 @@ const MicIcon = ({color = "#030514", width = 17, height = 16, withBackground = f
   const {themed, theme} = useAppTheme()
   const {status} = useStatus()
 
+  // Don't show mic indicator if:
+  // 1. Mic is not enabled for frontend OR
+  // 2. Preferred mic is glasses but no glasses are connected
   if (!status.core_info.is_mic_enabled_for_frontend) {
+    return null
+  }
+  
+  if (status.core_info.preferred_mic === "glasses" && !status.glasses_info) {
     return null
   }
 

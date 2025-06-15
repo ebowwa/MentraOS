@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from "react"
-import {View, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Platform} from "react-native"
+import {View, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Platform, Modal, ActivityIndicator} from "react-native"
 import {FontAwesome} from "@expo/vector-icons"
 import {Screen, Header, Icon, Text} from "@/components/ignite"
 import {router} from "expo-router"
@@ -23,6 +23,7 @@ export default function SettingsPage() {
   const {theme} = useAppTheme()
   const {push, replace} = useNavigationHistory()
   const [showDeveloperSettings, setShowDeveloperSettings] = useState(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   
   // Check if user is from Mentra to show theme settings
   const isUserFromMentra = isMentraUser(user?.email)
@@ -39,6 +40,7 @@ export default function SettingsPage() {
   const handleSignOut = async () => {
     try {
       console.log("Settings: Starting sign-out process")
+      setIsSigningOut(true)
       
       await logout()
 
@@ -49,6 +51,7 @@ export default function SettingsPage() {
       replace("/")
     } catch (err) {
       console.error("Settings: Error during sign-out:", err)
+      setIsSigningOut(false)
       
       // Show user-friendly error but still navigate to login to prevent stuck state
       showAlert(
@@ -118,6 +121,40 @@ export default function SettingsPage() {
         variant="destructive"
         onPress={confirmSignOut}
       />
+
+      {/* Loading overlay for sign out */}
+      <Modal
+        visible={isSigningOut}
+        transparent={true}
+        animationType="fade"
+      >
+        <View style={{
+          flex: 1,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <View style={{
+            backgroundColor: theme.colors.background,
+            padding: theme.spacing.xl,
+            borderRadius: theme.spacing.md,
+            alignItems: 'center',
+            minWidth: 200
+          }}>
+            <ActivityIndicator
+              size="large"
+              color={theme.colors.primary}
+              style={{marginBottom: theme.spacing.md}}
+            />
+            <Text
+              preset="bold"
+              style={{color: theme.colors.text}}
+            >
+              We're logging you out...
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   )
 }

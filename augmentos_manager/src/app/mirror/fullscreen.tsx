@@ -59,18 +59,12 @@ export default function GlassesMirrorFullscreen() {
     // Check for existing recordings
     checkRecordings()
 
-    // ;(async () => {
-    //   if (!permission?.granted) {
-    //     const permissionResult = await requestPermission()
-    //     if (!permissionResult.granted) {
-    //       showAlert("Permission Required", "Camera permission is needed for recording", undefined, {
-    //         iconName: "videocam-off",
-    //         iconColor: "#FF3B30",
-    //       })
-    //       return
-    //     }
-    //   }
-    // })()
+    // If no camera permission, go back to mirror tab
+    // This should not happen anymore since we check permissions before navigating here
+    if (!permission?.granted) {
+      router.replace("/mirror")
+      return
+    }
 
     return () => {
       // Show status bar when exiting
@@ -84,7 +78,7 @@ export default function GlassesMirrorFullscreen() {
         stopRecording()
       }
     }
-  }, [])
+  }, [permission])
 
   useFocusEffect(
     useCallback(() => {
@@ -307,58 +301,24 @@ export default function GlassesMirrorFullscreen() {
     }
   }
 
-  // Request camera permission if not granted
-  const handleRequestPermission = async () => {
-    const result = await requestPermission()
-    if(!result.canAskAgain){
-      showAlert(
-                        translate("mirror:cameraPermissionRequired"),
-                        translate("mirror:cameraPermissionRequiredMessage"),
-                        [
-                          {
-                            text: translate("common:cancel"),
-                            style: "cancel",
-                          },
-                          {
-                            text: translate("mirror:openSettings"),
-                            onPress: () => Linking.openSettings(),
-                          },
-                          
-                        ],
-                      )
-    }
-
-    return result.granted
-  }
 
   return (
     <View style={[styles.fullscreenContainer, { backgroundColor: theme.colors.fullscreenBackground }]}>
       {isGlassesConnected && lastEvent ? (
         <>
           {/* Camera feed */}
-          {permission?.granted ? (
-            <CameraView
-              ref={cameraRef}
-              style={styles.cameraBackground}
-              facing={cameraType}
-              mode="video"
-              enableTorch={false}
-            />
-          ) : (
-            <View style={[styles.fullscreenBackground, { backgroundColor: theme.colors.galleryBackground }]}>
-              <Text style={[styles.cameraPermissionText, { color: theme.colors.icon }]}>Camera permission needed for fullscreen mode</Text>
-              <TouchableOpacity style={[styles.permissionButton, { backgroundColor: theme.colors.permissionButton }]} onPress={handleRequestPermission}>
-                <Text style={[styles.permissionButtonText, { color: theme.colors.icon }]}>Grant Permission</Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <CameraView
+            ref={cameraRef}
+            style={styles.cameraBackground}
+            facing={cameraType}
+            mode="video"
+            enableTorch={false}
+          />
 
           {/* Overlay the glasses display content */}
-          {permission?.granted && (
-            <View style={styles.fullscreenOverlay}>
-              <GlassesDisplayMirrorFullscreen layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
-            </View>
-          )}
+          <View style={styles.fullscreenOverlay}>
+            <GlassesDisplayMirrorFullscreen layout={lastEvent.layout} fallbackMessage="Unknown layout data" />
+          </View>
 
           {/* Fullscreen exit button */}
           <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={handleExitFullscreen}>
@@ -366,11 +326,9 @@ export default function GlassesMirrorFullscreen() {
           </TouchableOpacity>
 
           {/* Camera flip button */}
-          {permission?.granted && (
-            <TouchableOpacity style={[styles.flipCameraButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={toggleCamera}>
-              <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={[styles.flipCameraButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={toggleCamera}>
+            <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
+          </TouchableOpacity>
 
           {/* Recording button */}
           {/* TEMPORARILY: COMMENT OUT THE RECORD BUTTON UNTIL THIS FEATURE IS COMPLETE */}
@@ -442,32 +400,6 @@ const styles = StyleSheet.create({
     height: "100%",
     aspectRatio: 1,
     alignSelf: "center",
-  },
-  fullscreenBackground: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    // backgroundColor moved to dynamic styling
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cameraPermissionText: {
-    // color moved to dynamic styling
-    fontSize: 16,
-    fontFamily: "Montserrat-Regular",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  permissionButton: {
-    // backgroundColor moved to dynamic styling
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-  },
-  permissionButtonText: {
-    // color moved to dynamic styling
-    fontSize: 16,
-    fontFamily: "Montserrat-Bold",
   },
   fullscreenOverlay: {
     position: "absolute",

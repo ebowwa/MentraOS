@@ -38,11 +38,12 @@ const en = {
   mirror: {
     title: "Glasses Mirror",
     cameraPermissionRequired: "Camera Permission Required",
-    cameraPermissionRequiredMessage: "To open cameraview please give camera permission on the settings",
+    cameraPermissionRequiredMessage: "Camera permission is needed to use the fullscreen glasses mirror",
+    grantPermission: "Grant Permission",
     openSettings: "Open Settings",
   },
   home: {
-    title: "Home",
+    title: "AugmentOS",
     pairGlasses: "Pair Glasses",
     connectGlasses: "Connect Glasses",
     connectingGlasses: "Connecting Glasses...",
@@ -168,6 +169,11 @@ const en = {
     connectingToAugmentOS: "Connecting to AugmentOS...",
     userCanceledAppleLogin: "Apple sign-in was canceled.",
     userCanceledGoogleLogin: "Google sign-in was canceled.",
+    success: "Success",
+    checkEmailVerification: "Please check your email and click the verification link to complete your account setup.",
+    emailAlreadyRegistered: "This email is already registered",
+    useGoogleSignIn: "This email is associated with a Google account. Please use 'Continue with Google' to sign in.",
+    useAppleSignIn: "This email is associated with an Apple account. Please use 'Continue with Apple' to sign in.",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
