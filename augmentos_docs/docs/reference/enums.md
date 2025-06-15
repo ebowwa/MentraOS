@@ -73,6 +73,23 @@ enum ViewType {
 }
 ```
 
+## DashboardMode
+
+Defines the different display modes available on the AugmentOS dashboard.
+
+```typescript
+enum DashboardMode {
+  MAIN = 'main',           // Standard compact dashboard (default)
+  EXPANDED = 'expanded'    // Larger dashboard when user opens it explicitly
+  // ALWAYS_ON = 'always_on'  // Compact overlay (coming soon)
+}
+```
+
+**Values:**
+- `MAIN`: The default compact dashboard mode that appears as a small overlay
+- `EXPANDED`: The full-screen dashboard mode that users can open for detailed information
+- `ALWAYS_ON`: *(Coming soon)* A persistent compact overlay mode
+
 ## AppSettingType
 
 Defines the types of interactive settings that can be configured for a TPA in the AugmentOS settings UI. Used within the `TpaConfig` interface.
@@ -190,7 +207,8 @@ Message types sent FROM TPA TO cloud.
 enum TpaToCloudMessageType {
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
-  DISPLAY_REQUEST = 'display_event' // Note: Reuses 'display_event' type string
+  DISPLAY_REQUEST = 'display_event', // Note: Reuses 'display_event' type string
+  DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update'
 }
 ```
 
@@ -205,6 +223,8 @@ enum CloudToTpaMessageType {
   APP_STOPPED = 'app_stopped',
   SETTINGS_UPDATE = 'settings_update',
   DATA_STREAM = 'data_stream', // Wrapper for stream data
+  DASHBOARD_MODE_CHANGED = 'dashboard_mode_changed',
+  DASHBOARD_ALWAYS_ON_CHANGED = 'dashboard_always_on_changed',
   WEBSOCKET_ERROR = 'websocket_error'
   // Note: Specific stream data like TranscriptionData uses StreamType directly as its type identifier.
 }

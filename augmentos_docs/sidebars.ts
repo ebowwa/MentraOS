@@ -31,6 +31,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'voice-activation',
+          label: 'Voice Activation Tutorial',
+        },
+        {
+          type: 'doc',
           id: 'railway-deployment',
           label: 'Deploy to Railway',
         },
@@ -38,7 +43,7 @@ const sidebars: SidebarsConfig = {
           type: 'doc',
           id: 'ubuntu-deployment',
           label: 'Deploy to Ubuntu Server',
-        },
+        }
       ],
     },
     {
