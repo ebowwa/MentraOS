@@ -1,8 +1,4 @@
-# Dashboard Tutorial – Writing Content to the AugmentOS Dashboard
-
-> **Audience:** App developers who want to display information on the AugmentOS dashboard.
-
----
+# Dashboard Tutorial
 
 ## What is the Dashboard?
 

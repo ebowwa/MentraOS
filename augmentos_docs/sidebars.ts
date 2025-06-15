@@ -60,6 +60,7 @@ const sidebars: SidebarsConfig = {
           id: 'tpa-lifecycle',
           label: 'App Lifecycle',
         },
+        'dashboard'
       ],
     },
     {
@@ -95,6 +96,7 @@ const sidebars: SidebarsConfig = {
             'reference/interfaces/setting-types',
           ],
         },
+        'reference/dashboard-api',
         'reference/utilities',
       ],
     },
