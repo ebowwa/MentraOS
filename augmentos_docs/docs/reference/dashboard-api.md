@@ -46,7 +46,7 @@ Every [`TpaSession`](/reference/tpa-session) exposes a `dashboard` property that
 
 | Property | Type | Purpose |
 | :------- | :--- | :------ |
-| `session.dashboard.content` | [`DashboardContentAPI`](#dashboardcontentapi) | Interface for writing content to the dashboard |
+| `session.dashboard.content` | [`DashboardContentAPI`](#class-dashboardcontentapi) | Interface for writing content to the dashboard |
 
 The SDK automatically converts your method calls into WebSocket messages that the AugmentOS cloud routes to the user's glasses. You never have to construct layouts manually - simply provide text content and specify which dashboard mode(s) should display it.
 

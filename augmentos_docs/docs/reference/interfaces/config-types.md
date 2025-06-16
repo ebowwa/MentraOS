@@ -19,9 +19,6 @@ interface TpaConfig {
   /** A brief description of the TPA's functionality. */
   description: string;
   
-  /** The version string of the TPA. */
-  version: string;
-  
   /** An array defining the configurable settings for the TPA. */
   settings: (AppSetting | GroupSetting)[];
 }
@@ -32,7 +29,6 @@ interface TpaConfig {
 const tpaConfig: TpaConfig = {
   name: "Weather App",
   description: "Displays real-time weather information for your current location",
-  version: "1.0.0",
   settings: [
     {
       type: "group",

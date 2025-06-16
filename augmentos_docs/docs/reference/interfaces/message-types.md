@@ -87,7 +87,7 @@ interface DashboardContentUpdate extends BaseMessage {
 }
 ```
 
-**Note:** This message is automatically sent by the SDK when using [`session.dashboard.content`](/reference/dashboard-api#dashboardcontentapi) methods.
+**Note:** This message is automatically sent by the SDK when using [`session.dashboard.content`](/reference/dashboard-api#class-dashboardcontentapi) methods.
 
 ## Cloud to TPA Messages
 
