@@ -114,6 +114,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // 2. Add a field to store the current mode
     private PhotoCaptureMode currentPhotoMode = PhotoCaptureMode.CLOUD;
 
+    // Service health monitoring
+    private static final String ACTION_HEARTBEAT = "com.augmentos.asg_client.ACTION_HEARTBEAT";
+    private static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+    private static final long HEARTBEAT_TIMEOUT_MS = 10000; // 10 seconds
+    private static final long RECOVERY_TIMEOUT_MS = 60000; // 1 minute
+    private static final long RECOVERY_HEARTBEAT_INTERVAL_MS = 5000; // 5 seconds during recovery
+    
+    private Handler heartbeatHandler;
+    private long lastHeartbeatTime = 0;
+    private boolean isInRecoveryMode = false;
+    private int missedHeartbeats = 0;
+
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
     // ---------------------------------------------
@@ -181,6 +193,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
 
+        // Register service health monitor with both actions
+        IntentFilter heartbeatFilter = new IntentFilter();
+        heartbeatFilter.addAction(ACTION_HEARTBEAT);
+        heartbeatFilter.addAction("com.augmentos.otaupdater.ACTION_HEARTBEAT"); // For backward compatibility
+        registerReceiver(heartbeatReceiver, heartbeatFilter);
+        Log.d(TAG, "Registered service health monitor with actions: " + ACTION_HEARTBEAT);
+
         // Start RTMP streaming for testing
         //startRtmpStreaming();
 
@@ -199,6 +218,25 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         SysControl.uninstallPackage(getApplicationContext(), "com.lhs.btserver");
         SysControl.uninstallPackageViaAdb(getApplicationContext(), "com.lhs.btserver");
     }
+
+    private final BroadcastReceiver heartbeatReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.d(TAG, "Received broadcast with action: " + action);
+            
+            if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
+                lastHeartbeatTime = System.currentTimeMillis();
+                Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
+                
+                // Send acknowledgment back to monitor
+                Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                ackIntent.setPackage("com.augmentos.otaupdater");
+                sendBroadcast(ackIntent);
+                Log.d(TAG, "Service heartbeat acknowledged and sent back to OTA Updater");
+            }
+        }
+    };
 
     /**
      * Initialize streaming callbacks for RTMP status updates
@@ -541,7 +579,18 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     @Override
     public void onDestroy() {
+        super.onDestroy();
         Log.d(TAG, "AsgClientService onDestroy");
+
+        // Unregister service health monitor
+        try {
+            unregisterReceiver(heartbeatReceiver);
+            Log.d(TAG, "Unregistered service health monitor");
+        } catch (IllegalArgumentException e) {
+            // Receiver was not registered
+            Log.w(TAG, "Service health monitor was not registered");
+        }
+
         // If still bound to AugmentosService, unbind
         if (isAugmentosBound) {
             unbindService(augmentosConnection);
@@ -591,6 +640,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
         super.onDestroy();
         unregisterReceiver(otaDownloadReceiver);
+
+        if (heartbeatHandler != null) {
+            heartbeatHandler.removeCallbacksAndMessages(null);
+        }
+        try {
+            unregisterReceiver(heartbeatReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver might not be registered
+        }
     }
 
     // ---------------------------------------------
