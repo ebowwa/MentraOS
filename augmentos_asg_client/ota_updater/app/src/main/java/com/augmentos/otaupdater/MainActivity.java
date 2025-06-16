@@ -163,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initiateRecovery() {
         Log.w(TAG, "Initiating recovery procedure");
-        
+
         // Create input data for the worker
         Data inputData = new Data.Builder()
             .putBoolean("is_recovery_mode", true)

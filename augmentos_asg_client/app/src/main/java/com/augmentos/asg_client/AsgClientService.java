@@ -75,6 +75,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_STOP_CORE = "ACTION_STOP_CORE";
     public static final String ACTION_START_FOREGROUND_SERVICE = "MY_ACTION_START_FOREGROUND_SERVICE";
     public static final String ACTION_STOP_FOREGROUND_SERVICE = "MY_ACTION_STOP_FOREGROUND_SERVICE";
+    public static final String ACTION_START_OTA_UPDATER = "ACTION_START_OTA_UPDATER";
 
     // Notification channel info
     private final String notificationAppName = "ASG Client";
@@ -177,6 +178,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
+
+        // Start OTA Updater after 5 seconds
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "Starting OTA Updater MainActivity after delay");
+            Intent otaIntent = new Intent();
+            otaIntent.setClassName("com.augmentos.otaupdater", "com.augmentos.otaupdater.MainActivity");
+            otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(otaIntent);
+        }, 5000); // 5 seconds delay
 
         // Initialize the network manager
         initializeNetworkManager();
@@ -485,15 +495,15 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 //    so it's alive even if we unbind.
                 Intent augmentosIntent = new Intent(this, AugmentosService.class);
                 augmentosIntent.setAction(AugmentosService.ACTION_START_CORE);
-//                startForegroundService(augmentosIntent);
-//
-//                // 2) Bind to AugmentosService to get a reference to it
-//                bindService(
-//                        new Intent(this, AugmentosService.class),
-//                        augmentosConnection,
-//                        BIND_AUTO_CREATE
-//                );
                 break;
+
+            // case ACTION_START_OTA_UPDATER:
+            //     Log.d(TAG, "Starting OTA Updater MainActivity");
+            //     Intent otaIntent = new Intent();
+            //     otaIntent.setClassName("com.augmentos.otaupdater", "com.augmentos.otaupdater.MainActivity");
+            //     otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            //     startActivity(otaIntent);
+            //     break;
 
             case ACTION_STOP_CORE:
             case ACTION_STOP_FOREGROUND_SERVICE:
