@@ -36,7 +36,6 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.stream.Collectors;
 
-
 public class OtaHelper {
     private static final String TAG = Constants.TAG;
     private static ConnectivityManager.NetworkCallback networkCallback;
@@ -45,6 +44,8 @@ public class OtaHelper {
     private static final Object versionCheckLock = new Object();
     private Handler handler;
     private Context context;
+    private Runnable periodicCheckRunnable;
+    private boolean isPeriodicCheckActive = false;
 
     public OtaHelper(Context context) {
         this.context = context.getApplicationContext(); // Use application context to avoid memory leaks
@@ -54,14 +55,52 @@ public class OtaHelper {
             Log.d(TAG, "Performing initial OTA check after 15 seconds");
             startVersionCheck(this.context);
         }, 15000);
+        
+        // Start periodic checks
+        startPeriodicChecks();
     }
 
     public void cleanup() {
         if (handler != null) {
             handler.removeCallbacksAndMessages(null);
         }
+        stopPeriodicChecks();
         unregisterNetworkCallback();
         context = null;
+    }
+
+    private void startPeriodicChecks() {
+        if (isPeriodicCheckActive) {
+            Log.d(TAG, "Periodic checks already active");
+            return;
+        }
+
+        periodicCheckRunnable = new Runnable() {
+            @Override
+            public void run() {
+                Log.d(TAG, "Performing periodic OTA check");
+                startVersionCheck(context);
+                // Schedule next check
+                handler.postDelayed(this, Constants.PERIODIC_CHECK_INTERVAL_MS);
+            }
+        };
+
+        // Start the first periodic check after the interval
+        handler.postDelayed(periodicCheckRunnable, Constants.PERIODIC_CHECK_INTERVAL_MS);
+        isPeriodicCheckActive = true;
+        Log.d(TAG, "Started periodic OTA checks every 15 minutes");
+    }
+
+    private void stopPeriodicChecks() {
+        if (!isPeriodicCheckActive) {
+            return;
+        }
+
+        if (handler != null && periodicCheckRunnable != null) {
+            handler.removeCallbacks(periodicCheckRunnable);
+        }
+        isPeriodicCheckActive = false;
+        Log.d(TAG, "Stopped periodic OTA checks");
     }
 
     public void registerNetworkCallback(Context context) {
@@ -82,12 +121,10 @@ public class OtaHelper {
             @Override
             public void onAvailable(Network network) {
                 super.onAvailable(network);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
-                    if (capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                        Log.d(TAG, "WiFi network became available, triggering version check");
-                        startVersionCheck(context);
-                    }
+                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                if (capabilities != null && capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    Log.d(TAG, "WiFi network became available, triggering version check");
+                    startVersionCheck(context);
                 }
             }
         };

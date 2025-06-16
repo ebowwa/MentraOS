@@ -12,11 +12,11 @@ public class Constants {
     public static final String ACTION_RESTART_ASG_CLIENT = "com.augmentos.asg_client.ACTION_START_FOREGROUND_SERVICE";
 
     // Service health monitoring intervals and timeouts
-    public static final long HEARTBEAT_INTERVAL_MS = 3000; // 3 seconds
-    public static final long RECOVERY_HEARTBEAT_INTERVAL_MS = 2000; // 500ms
-    public static final long HEARTBEAT_TIMEOUT_MS = 4500; // 4.5 seconds (1.5x normal interval)
+    public static final long HEARTBEAT_INTERVAL_MS = 30000;
+    public static final long RECOVERY_HEARTBEAT_INTERVAL_MS = 5000;
+    public static final long HEARTBEAT_TIMEOUT_MS = 75000;
     public static final int MAX_MISSED_HEARTBEATS = 3;
-    public static final long RECOVERY_RESTART_DELAY_MS = 2000; // 2 seconds
+    public static final long RECOVERY_RESTART_DELAY_MS = 5000; // 2 seconds
 
     // APK paths
     public static final String BACKUP_DIR = "/storage/emulated/0/asg";
@@ -29,6 +29,7 @@ public class Constants {
     public static final String OTA_FOLDER = "/data/local/tmp";
     public static final String APK_FULL_PATH = OTA_FOLDER + "/" + APK_FILENAME;
     public static final String METADATA_JSON = "metadata.json";
+    public static final long PERIODIC_CHECK_INTERVAL_MS = 30 * 60 * 1000; // 15 minutes in milliseconds
 
     // WorkManager
     public static final String WORK_NAME_OTA_CHECK = "ota_check";
