@@ -26,6 +26,7 @@ import {requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
 import showAlert from "@/utils/AlertUtils"
+import {PERMISSION_CONFIG} from "@/utils/PermissionsUtils"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {translate} from "@/i18n"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -41,6 +42,7 @@ import {
   checkAndRequestNotificationAccessSpecialPermission,
   checkNotificationAccessSpecialPermission,
 } from "@/utils/NotificationServiceUtils"
+import {AppListStoreLink} from "./AppListStoreLink"
 
 export default function InactiveAppList({
   isSearchPage = false,
@@ -292,7 +294,9 @@ export default function InactiveAppList({
           ? translate("home:permissionsRequiredTitle")
           : translate("home:permissionRequiredTitle"),
         translate("home:permissionMessage", {
-          permissions: neededPermissions.join(", "),
+          permissions: neededPermissions
+            .map(perm => PERMISSION_CONFIG[perm]?.name || perm)
+            .join(", "),
         }),
         [
           {
@@ -524,6 +528,19 @@ export default function InactiveAppList({
           </React.Fragment>
         )
       })}
+      
+      {/* Add "Get More Apps" link at the bottom */}
+      {availableApps.length > 0 && (
+        <>
+          <Spacer height={8} />
+          <Divider variant="inset" />
+          <Spacer height={8} />
+          <AppListStoreLink />
+        </>
+      )}
+      
+      {/* Add bottom padding for better scrolling experience */}
+      <Spacer height={40} />
     </View>
   )
 }

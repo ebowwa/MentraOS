@@ -12,6 +12,7 @@ import {
   TextStyle,
   ImageStyle,
   View,
+  Linking,
 } from "react-native"
 import {useNavigation} from "@react-navigation/native"
 import {Header, Screen, Text} from "@/components/ignite"
@@ -30,6 +31,8 @@ import {ThemedStyle} from "@/theme"
 import {useSafeAreaInsetsStyle} from "@/utils/useSafeAreaInsetsStyle"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router} from "expo-router"
+import {useCameraPermissions} from "expo-camera"
+import {translate} from "@/i18n"
 interface GalleryPhoto {
   id: string
   photoUrl: string
@@ -60,6 +63,7 @@ export default function GlassesMirror() {
   const {events} = useGlassesMirror() // From context
   const $bottomContainerInsets = useSafeAreaInsetsStyle(["bottom"])
   const {theme, themed} = useAppTheme()
+  const [permission, requestPermission] = useCameraPermissions()
 
   // Helper to check if we have a glasses model name
   const isGlassesConnected = !!status.glasses_info?.model_name
@@ -68,8 +72,50 @@ export default function GlassesMirror() {
   const lastEvent = events.length > 0 ? events[events.length - 1] : null
 
   // Function to navigate to fullscreen mode
-  const navigateToFullScreen = () => {
-    router.push("/mirror/fullscreen")
+  const navigateToFullScreen = async () => {
+    // Check if camera permission is already granted
+    if (permission?.granted) {
+      router.push("/mirror/fullscreen")
+      return
+    }
+
+    // Show alert asking for camera permission
+    showAlert(
+      translate("mirror:cameraPermissionRequired"),
+      translate("mirror:cameraPermissionRequiredMessage"),
+      [
+        {
+          text: translate("common:continue"),
+          onPress: async () => {
+            const permissionResult = await requestPermission()
+            if (permissionResult.granted) {
+              // Permission granted, navigate to fullscreen
+              router.push("/mirror/fullscreen")
+            } else if (!permissionResult.canAskAgain) {
+              // Permission permanently denied, show settings alert
+              showAlert(
+                translate("mirror:cameraPermissionRequired"),
+                translate("mirror:cameraPermissionRequiredMessage"),
+                [
+                  {
+                    text: translate("common:cancel"),
+                    style: "cancel",
+                  },
+                  {
+                    text: translate("mirror:openSettings"),
+                    onPress: () => Linking.openSettings(),
+                  },
+                ]
+              )
+            }
+            // If permission denied but can ask again, do nothing (user can try again)
+          },
+        },
+      ],
+      {
+        iconName: "camera",
+      }
+    )
   }
 
   // Gallery state

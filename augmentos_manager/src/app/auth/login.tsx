@@ -13,6 +13,7 @@ import {
   AppState,
   ViewStyle,
   TextStyle,
+  Keyboard,
 } from "react-native"
 import LinearGradient from "react-native-linear-gradient"
 import {supabase} from "@/supabase/supabaseClient"
@@ -198,6 +199,9 @@ export default function LoginScreen() {
           // Must match the deep link scheme/host/path in your AndroidManifest.xml
           redirectTo: "com.augmentos://auth/callback",
           skipBrowserRedirect: true,
+            queryParams: {
+              prompt: 'select_account'
+          }
         },
       })
 
@@ -299,6 +303,7 @@ export default function LoginScreen() {
   }
 
   const handleEmailSignUp = async (email: string, password: string) => {
+    Keyboard.dismiss()
     setIsFormLoading(true)
 
     try {
@@ -313,9 +318,30 @@ export default function LoginScreen() {
       })
 
       if (error) {
-        showAlert(translate("common:error"), error.message)
+        console.log("Sign-up error:", error)
+        
+        // Check for common Supabase error messages when email already exists
+        const errorMessage = error.message.toLowerCase()
+        
+        if (errorMessage.includes("already registered") || 
+            errorMessage.includes("user already registered") ||
+            errorMessage.includes("email already exists") ||
+            errorMessage.includes("identity already linked")) {
+          
+          // Try to detect if it's a Google or Apple account
+          // Note: Supabase doesn't always tell us which provider, so we show a generic message
+          showAlert(
+            translate("login:emailAlreadyRegistered"), 
+            translate("login:useGoogleSignIn")
+          )
+        } else {
+          showAlert(translate("common:error"), error.message)
+        }
       } else if (!data.session) {
-        showAlert(translate("login:success"), translate("login:checkEmailVerification"))
+        // Ensure translations are resolved before passing to showAlert
+        const successTitle = translate("login:success")
+        const verificationMessage = translate("login:checkEmailVerification")
+        showAlert(successTitle, verificationMessage)
       } else {
         console.log("Sign-up successful:", data)
         replace("/")
@@ -329,6 +355,7 @@ export default function LoginScreen() {
   }
 
   const handleEmailSignIn = async (email: string, password: string) => {
+    Keyboard.dismiss()
     setIsFormLoading(true)
     const {data, error} = await supabase.auth.signInWithPassword({
       email,
@@ -408,7 +435,10 @@ export default function LoginScreen() {
       preset="fixed"
       safeAreaEdges={["top"]}
       contentContainerStyle={themed($container)}>
-      <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        contentContainerStyle={themed($scrollContent)} 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled">
             <View style={themed($card)}>
               {/* Auth Loading Overlay */}
               {isAuthLoading && (
@@ -507,6 +537,15 @@ export default function LoginScreen() {
                       textStyle={themed($buttonText)}
                       onPress={() => handleEmailSignUp(email, password)}
                       disabled={isFormLoading}
+                      LeftAccessory={() =>
+                        isFormLoading && (
+                          <ActivityIndicator
+                            size="small"
+                            color={theme.colors.icon}
+                            style={{marginRight: 8}}
+                          />
+                        )
+                      }
                     />
 
                     <Spacer height={spacing.sm}/>
