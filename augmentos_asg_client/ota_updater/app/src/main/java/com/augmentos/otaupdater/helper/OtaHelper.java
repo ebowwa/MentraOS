@@ -328,27 +328,33 @@ public class OtaHelper {
     }
 
     public void installApk(Context context) {
+        installApk(context, Constants.APK_FULL_PATH);
+    }
+
+    public static void installApk(Context context, String apkPath) {
         try {
-            checkOlderApkFile(context);
-            Log.d(TAG, "Starting installation process for APK at: " + Constants.APK_FULL_PATH);
+//            if (apkPath.equals(Constants.APK_FULL_PATH)) {
+//                checkOlderApkFile(context);
+//            }
+            Log.d(TAG, "Starting installation process for APK at: " + apkPath);
             
             Intent intent = new Intent("com.xy.xsetting.action");
             intent.setPackage("com.android.systemui");
             intent.putExtra("cmd", "install");
-            intent.putExtra("pkpath", Constants.APK_FULL_PATH);
+            intent.putExtra("pkpath", apkPath);
             intent.putExtra("recv_pkname", context.getPackageName());
             intent.putExtra("startapp", true);
             
             // Verify APK exists before sending broadcast
-            File apkFile = new File(Constants.APK_FULL_PATH);
+            File apkFile = new File(apkPath);
             if (!apkFile.exists()) {
-                Log.e(TAG, "Installation failed: APK file not found at " + Constants.APK_FULL_PATH);
+                Log.e(TAG, "Installation failed: APK file not found at " + apkPath);
                 return;
             }
             
             // Verify APK is readable
             if (!apkFile.canRead()) {
-                Log.e(TAG, "Installation failed: Cannot read APK file at " + Constants.APK_FULL_PATH);
+                Log.e(TAG, "Installation failed: Cannot read APK file at " + apkPath);
                 return;
             }
             
@@ -414,5 +420,83 @@ public class OtaHelper {
 
         Log.d(TAG, "metadata version:"+localJsonVersion);
         return localJsonVersion;
+    }
+
+    public boolean reinstallApkFromBackup() {
+        String backupPath = Constants.BACKUP_APK_PATH;
+        Log.d(TAG, "Attempting to reinstall APK from backup at: " + backupPath);
+        
+        File backupApk = new File(backupPath);
+        if (!backupApk.exists()) {
+            Log.e(TAG, "Backup APK not found at: " + backupPath);
+            return false;
+        }
+
+        if (!backupApk.canRead()) {
+            Log.e(TAG, "Cannot read backup APK at: " + backupPath);
+            return false;
+        }
+
+        try {
+            // Verify the backup APK is valid using getPackageArchiveInfo
+            PackageManager pm = context.getPackageManager();
+            PackageInfo info = pm.getPackageArchiveInfo(backupPath, PackageManager.GET_ACTIVITIES);
+            if (info == null) {
+                Log.e(TAG, "Backup APK is not a valid Android package");
+                return false;
+            }
+
+            // Install the backup APK
+            Log.i(TAG, "Installing backup APK version: " + info.getLongVersionCode());
+            installApk(context, backupPath);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to reinstall backup APK: " + e.getMessage(), e);
+            return false;
+        }
+    }
+
+    // Add a method to save the backup APK
+    public boolean saveBackupApk(String sourceApkPath) {
+        try {
+            // Create backup directory if it doesn't exist
+            File backupDir = new File(context.getFilesDir(), Constants.BACKUP_DIR);
+            if (!backupDir.exists()) {
+                boolean created = backupDir.mkdirs();
+                Log.d(TAG, "Created backup directory: " + created);
+            }
+
+            File backupApk = new File(backupDir, Constants.BACKUP_APK_FILENAME);
+            String backupPath = backupApk.getAbsolutePath();
+
+            // Delete existing backup if it exists
+            if (backupApk.exists()) {
+                boolean deleted = backupApk.delete();
+                Log.d(TAG, "Deleted existing backup: " + deleted);
+            }
+
+            // Copy the APK to backup location
+            FileInputStream in = new FileInputStream(sourceApkPath);
+            FileOutputStream out = new FileOutputStream(backupApk);
+            byte[] buffer = new byte[4096];
+            int read;
+            while ((read = in.read(buffer)) != -1) {
+                out.write(buffer, 0, read);
+            }
+            in.close();
+            out.close();
+
+            // Verify the backup was created successfully
+            if (backupApk.exists() && backupApk.length() > 0) {
+                Log.i(TAG, "Successfully saved backup APK to: " + backupPath);
+                return true;
+            } else {
+                Log.e(TAG, "Failed to save backup APK - file not created or empty");
+                return false;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error saving backup APK", e);
+            return false;
+        }
     }
 }
