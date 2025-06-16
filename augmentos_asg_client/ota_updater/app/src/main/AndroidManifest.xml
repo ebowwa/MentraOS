@@ -31,18 +31,17 @@
             </intent-filter>
         </activity>
         <receiver
-            android:name=".receiver.BootReceiver"
-            android:exported="true"
-            android:enabled="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
-        <receiver
             android:name=".receiver.OtaCommandReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.augmentos.asg_client.ACTION_INSTALL_OTA" />
+            </intent-filter>
+        </receiver>
+        <receiver
+            android:name=".receiver.OtaHeartbeatAckReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.augmentos.asg_client.ACTION_HEARTBEAT_ACK" />
             </intent-filter>
         </receiver>
     </application>
