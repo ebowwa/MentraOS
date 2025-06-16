@@ -44,7 +44,19 @@ Your app *subscribes* to the events it needs.  The [`EventManager`](/reference/m
 
 See the [Events](./events) section for a complete list of available events.
 
-## 5. Permissions
+## 5. The App Lifecycle
+
+A typical AugmentOS app lifecycle looks like this:
+
+1.  **Webhook Request:**  When a user starts your app on their glasses, AugmentOS Cloud sends an HTTP POST request (a "webhook") to your app's pre-defined webhook URL. This request includes a unique `sessionId` and `userId`.
+2.  **WebSocket Connection:**  Your app receives the webhook and uses the `sessionId` to establish a WebSocket connection to AugmentOS Cloud.
+3.  **Subscription:** Your app subscribes to the events it needs (e.g., [transcription](/reference/interfaces/event-types#transcriptiondata), [head position](/reference/interfaces/event-types#headposition)).
+4.  **Event Handling:**  Your app receives events from AugmentOS Cloud and processes them. This often involves updating the display using the [`LayoutManager`](/reference/managers/layout-manager).
+5.  **Session Termination:** The session ends when the user stops the app, the glasses disconnect, or an error occurs.
+
+See [App Lifecycle](./tpa-lifecycle) for a more detailed explanation.
+
+## 6. Permissions
 
 AugmentOS uses a permissions system to control which device data and system resources your app can access. This system ensures user privacy and transparency while allowing you to build powerful applications with access to the data streams you need.
 
@@ -52,7 +64,7 @@ Your app must declare which permissions it needs to access device capabilities.
 
 See the [Permissions](./permissions) section for detailed information about declaring and using permissions.
 
-## 6. Layouts
+## 7. Layouts
 
 Layouts control what is displayed on the smart glasses' screen.  The SDK provides several pre-defined layout types:
 
@@ -65,19 +77,19 @@ You use the [`LayoutManager`](/reference/managers/layout-manager) (accessible th
 
 See the [Layouts](./layouts) section for more details.
 
-## 7. The App Lifecycle
+## 8. Dashboard
 
-A typical AugmentOS app lifecycle looks like this:
+The dashboard is a persistent UI surface that appears when users look up on their smart glasses. Unlike regular layouts that are temporary, the dashboard provides a always-available space where your app can display status updates, notifications, and contextual information even when other apps are active.
 
-1.  **Webhook Request:**  When a user starts your app on their glasses, AugmentOS Cloud sends an HTTP POST request (a "webhook") to your app's pre-defined webhook URL. This request includes a unique `sessionId` and `userId`.
-2.  **WebSocket Connection:**  Your app receives the webhook and uses the `sessionId` to establish a WebSocket connection to AugmentOS Cloud.
-3.  **Subscription:** Your app subscribes to the events it needs (e.g., [transcription](/reference/interfaces/event-types#transcriptiondata), [head position](/reference/interfaces/event-types#headposition)).
-4.  **Event Handling:**  Your app receives events from AugmentOS Cloud and processes them. This often involves updating the display using the [`LayoutManager`](/reference/managers/layout-manager).
-5.  **Session Termination:** The session ends when the user stops the app, the glasses disconnect, or an error occurs.
+*   **Persistent:** The dashboard remains visible across different app states and can show content from multiple apps simultaneously.
+*   **Mode-based:** Supports different display modes (main, expanded) to accommodate varying levels of detail.
+*   **Lightweight:** Designed for quick glances and brief status updates rather than complex interactions.
 
-See [App Lifecycle](./tpa-lifecycle) for a more detailed explanation.
+You use the [`DashboardAPI`](/reference/dashboard-api) (accessible through `session.dashboard`) to send content to the dashboard.
 
-## 8. User Authentication
+See the [Dashboard Tutorial](/dashboard) for a quick start guide and the [Dashboard API Reference](/reference/dashboard-api) for complete documentation.
+
+## 9. User Authentication
 
 AugmentOS provides mechanisms for identifying and authenticating users:
 
@@ -88,7 +100,7 @@ This allows you to provide personalized experiences and maintain user data acros
 
 See the [Webview Authentication](/webview-auth-overview) section for more details about the webview authentication flow.
 
-## 9. AI Tools
+## 10. AI Tools
 
 Your app can provide tools to the Mira AI assistant:
 
@@ -98,7 +110,7 @@ This allows users to interact with your app through natural language via the AI 
 
 See the [Tools](/tools) section for more details.
 
-## 10. Settings
+## 11. Settings
 
 AugmentOS provides a comprehensive settings system that allows users to customize how your app behaves.
 
@@ -106,7 +118,7 @@ Settings support various types including toggles, text inputs, dropdowns, slider
 
 See the [Settings](/settings) section for more details.
 
-## 11. The AugmentOS Cloud
+## 12. The AugmentOS Cloud
 
 The AugmentOS Cloud acts as a central hub, managing:
 

@@ -47,6 +47,16 @@ Provides access to the [`SettingsManager`](/reference/managers/settings-manager)
 readonly settings: SettingsManager
 ```
 
+### dashboard
+
+Provides access to the [`DashboardAPI`](/reference/dashboard-api#interface-dashboardapi) for sending content to the user's dashboard.
+
+```typescript
+readonly dashboard: DashboardAPI
+```
+
+The dashboard is a persistent UI surface that appears when users look up, allowing your app to display status updates and information even when other apps are active. See the [Dashboard Tutorial](/dashboard) for a quick start guide and the [Dashboard API Reference](/reference/dashboard-api) for complete documentation.
+
 ## Event Handling Methods
 
 ### onTranscription()
