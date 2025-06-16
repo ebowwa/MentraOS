@@ -91,8 +91,11 @@ package="com.augmentos.asg_client">
         android:name=".AsgClientService"
         android:enabled="true"
         android:exported="true"
-        android:foregroundServiceType="microphone"
-        />
+        android:foregroundServiceType="microphone">
+        <intent-filter>
+            <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
+        </intent-filter>
+    </service>
         
     <service
         android:name=".camera.CameraNeo"

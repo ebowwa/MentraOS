@@ -76,6 +76,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_START_FOREGROUND_SERVICE = "MY_ACTION_START_FOREGROUND_SERVICE";
     public static final String ACTION_STOP_FOREGROUND_SERVICE = "MY_ACTION_STOP_FOREGROUND_SERVICE";
     public static final String ACTION_START_OTA_UPDATER = "ACTION_START_OTA_UPDATER";
+    // Add the restart action constant
+    public static final String ACTION_RESTART_SERVICE = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
 
     // Notification channel info
     private final String notificationAppName = "ASG Client";
@@ -126,6 +128,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     private long lastHeartbeatTime = 0;
     private boolean isInRecoveryMode = false;
     private int missedHeartbeats = 0;
+
+    // Receiver for handling restart requests from OTA updater
+    private BroadcastReceiver restartReceiver;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -187,6 +192,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(otaIntent);
         }, 5000); // 5 seconds delay
+
+        // Register restart receiver
+        registerRestartReceiver();
 
         // Initialize the network manager
         initializeNetworkManager();
@@ -599,6 +607,17 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         } catch (IllegalArgumentException e) {
             // Receiver was not registered
             Log.w(TAG, "Service health monitor was not registered");
+        }
+
+        // Unregister restart receiver
+        try {
+            if (restartReceiver != null) {
+                unregisterReceiver(restartReceiver);
+                Log.d(TAG, "Unregistered restart receiver");
+            }
+        } catch (IllegalArgumentException e) {
+            // Receiver was not registered
+            Log.w(TAG, "Restart receiver was not registered");
         }
 
         // If still bound to AugmentosService, unbind
@@ -2047,6 +2066,39 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             } catch (JSONException e) {
                 Log.e(TAG, "Error creating video recording status response", e);
             }
+        }
+    }
+
+    /**
+     * Register the restart receiver to handle restart requests from OTA updater
+     */
+    private void registerRestartReceiver() {
+        if (restartReceiver == null) {
+            restartReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (ACTION_RESTART_SERVICE.equals(intent.getAction())) {
+                        Log.d(TAG, "Received restart request from OTA updater");
+
+                        // Start in foreground if not already running
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            createNotificationChannel();
+                            startForeground(asgServiceNotificationId, updateNotification());
+                            Log.d(TAG, "Started foreground service in response to restart request");
+                        }
+
+                        // Send heartbeat acknowledgment
+                        Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                        ackIntent.setPackage("com.augmentos.otaupdater");
+                        sendBroadcast(ackIntent);
+                        Log.d(TAG, "Sent heartbeat acknowledgment to OTA updater");
+                    }
+                }
+            };
+
+            IntentFilter filter = new IntentFilter(ACTION_RESTART_SERVICE);
+            registerReceiver(restartReceiver, filter);
+            Log.d(TAG, "Registered restart receiver");
         }
     }
 

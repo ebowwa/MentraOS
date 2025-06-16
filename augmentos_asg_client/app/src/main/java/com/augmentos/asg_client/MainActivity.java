@@ -66,6 +66,9 @@ public class MainActivity extends AppCompatActivity {
   private static final int PICK_CONTACT_REQUEST = 1;
   private static final int READ_CONTACTS_PERMISSIONS_REQUEST = 2;
 
+  // Constants for OTA updater communication
+  private static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+
   public boolean gettingPermissions = false;
 
   @SuppressLint("ClickableViewAccessibility")
@@ -75,9 +78,23 @@ public class MainActivity extends AppCompatActivity {
     
     // Stop factory test app before starting our services to avoid serial port conflicts
     stopFactoryTest();
-    
-    startAsgClientService();
-    mBound = false;
+
+      // Check if this is a restart request from OTA updater
+      boolean restartService = getIntent().getBooleanExtra("restart_service", false);
+      if (restartService) {
+          Log.i(TAG, "Received restart_service request from OTA updater");
+
+          // Force restart the service
+          restartAsgClientService();
+
+          // Send heartbeat acknowledgment directly to OTA updater
+          sendHeartbeatAck();
+      } else {
+          // Normal startup
+          startAsgClientService();
+      }
+
+      mBound = false;
 
     permissionsUtils = new PermissionsUtils(this, TAG);
     permissionsUtils.getSomePermissions();
@@ -388,4 +405,25 @@ public class MainActivity extends AppCompatActivity {
     n.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
     startActivity(n);
   }
+
+    /**
+     * Send heartbeat acknowledgment to OTA updater
+     */
+    private void sendHeartbeatAck() {
+        try {
+          // Send both versions to ensure compatibility
+          Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+          ackIntent.setPackage("com.augmentos.otaupdater");
+          sendBroadcast(ackIntent);
+
+          // Also send the OTA updater's expected version
+          Intent otaAckIntent = new Intent("com.augmentos.otaupdater.ACTION_HEARTBEAT_ACK");
+          otaAckIntent.setPackage("com.augmentos.otaupdater");
+          sendBroadcast(otaAckIntent);
+
+          Log.i(TAG, "Sent heartbeat acknowledgments to OTA updater");
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending heartbeat acknowledgment", e);
+        }
+    }
 }
