@@ -462,7 +462,7 @@ export default function LoginScreen() {
               <View style={themed($authLoadingContent)}>
                 <View style={themed($authLoadingLogoPlaceholder)} />
                 <ActivityIndicator size="large" color={theme.colors.tint} style={themed($authLoadingIndicator)} />
-                <Text tx="login:connectingToAccount" style={themed($authLoadingText)} />
+                <Text tx="login:connectingToAugmentOS" style={themed($authLoadingText)} />
               </View>
             </Animated.View>
           )}
@@ -572,7 +572,7 @@ export default function LoginScreen() {
                 {Platform.OS === "ios" && (
                   <TouchableOpacity style={[themed($socialButton), themed($appleButton)]} onPress={handleAppleSignIn}>
                     <View style={[themed($socialIconContainer), {position: "absolute", left: 12}]}>
-                      <AppleIcon />
+                      <AppleIcon color={theme.colors.text} />
                     </View>
                     <Text style={[themed($socialButtonText), themed($appleButtonText)]} tx="login:continueWithApple" />
                   </TouchableOpacity>
@@ -626,7 +626,7 @@ export default function LoginScreen() {
               alignItems: "center",
               minWidth: 200,
             }}>
-            <ActivityIndicator size="large" color={theme.colors.primary} style={{marginBottom: theme.spacing.md}} />
+            <ActivityIndicator size="large" color={theme.colors.tint} style={{marginBottom: theme.spacing.md}} />
             <Text preset="bold" style={{color: theme.colors.text}}>
               {formAction === "signup" ? "Creating your account..." : "Signing in..."}
             </Text>

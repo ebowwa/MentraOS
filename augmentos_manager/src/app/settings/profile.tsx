@@ -95,42 +95,43 @@ export default function ProfileSettingsPage() {
         {text: translate("common:cancel"), style: "cancel"},
         {
           text: translate("common:continue"),
-          style: "destructive",
           onPress: () => {
             console.log("Profile: User passed step 1 - Step 2")
             
-            // Step 2: More severe warning
-            showAlert(
-              translate("profileSettings:deleteAccountWarning2Title"),
-              translate("profileSettings:deleteAccountWarning2Message"),
-              [
-                {text: translate("common:cancel"), style: "cancel"},
-                {
-                  text: translate("common:continue"),
-                  style: "destructive",
-                  onPress: () => {
-                    console.log("Profile: User passed step 2 - Step 3")
-                    
-                    // Step 3: Final confirmation
-                    showAlert(
-                      translate("profileSettings:deleteAccountTitle"),
-                      translate("profileSettings:deleteAccountMessage") + "\n\n" + 
-                      "⚠️ THIS IS YOUR FINAL CHANCE TO CANCEL ⚠️",
-                      [
-                        {text: translate("common:cancel"), style: "cancel"},
-                        {
-                          text: "DELETE PERMANENTLY",
-                          style: "destructive",
-                          onPress: proceedWithAccountDeletion,
-                        },
-                      ],
-                      {cancelable: false},
-                    )
+            // Step 2: Generic confirmation - delay to let first modal close
+            setTimeout(() => {
+              showAlert(
+                translate("profileSettings:deleteAccountTitle"),
+                translate("profileSettings:deleteAccountMessage"),
+                [
+                  {text: translate("common:cancel"), style: "cancel"},
+                  {
+                    text: translate("common:continue"),
+                    onPress: () => {
+                      console.log("Profile: User passed step 2 - Step 3")
+                      
+                      // Step 3: Final severe warning - delay to let second modal close
+                      setTimeout(() => {
+                        showAlert(
+                          translate("profileSettings:deleteAccountWarning2Title"),
+                          translate("profileSettings:deleteAccountWarning2Message") + "\n\n" + 
+                          "⚠️ THIS IS YOUR FINAL CHANCE TO CANCEL ⚠️",
+                          [
+                            {text: translate("common:cancel"), style: "cancel"},
+                            {
+                              text: "DELETE PERMANENTLY",
+                              onPress: proceedWithAccountDeletion,
+                            },
+                          ],
+                          {cancelable: false},
+                        )
+                      }, 100)
+                    },
                   },
-                },
-              ],
-              {cancelable: false},
-            )
+                ],
+                {cancelable: false},
+              )
+            }, 100)
           },
         },
       ],

@@ -47,9 +47,11 @@ import {AppListStoreLink} from "./AppListStoreLink"
 export default function InactiveAppList({
   isSearchPage = false,
   searchQuery,
+  liveCaptionsRef,
 }: {
   isSearchPage?: boolean
   searchQuery?: string
+  liveCaptionsRef?: React.RefObject<any>
 }) {
   const {
     appStatus,
@@ -74,8 +76,9 @@ export default function InactiveAppList({
 
   const [containerWidth, setContainerWidth] = React.useState(0)
 
-  // Reference for the Live Captions list item
-  const liveCaptionsRef = useRef<any>(null)
+  // Reference for the Live Captions list item (use provided ref or create new one)
+  const internalLiveCaptionsRef = useRef<any>(null)
+  const actualLiveCaptionsRef = liveCaptionsRef || internalLiveCaptionsRef
 
   // Constants for grid item sizing
   const GRID_MARGIN = 6 // Total horizontal margin per item (left + right)
@@ -450,8 +453,27 @@ export default function InactiveAppList({
   if (Platform.OS === "ios") {
     availableApps = availableApps.filter(app => app.packageName !== "cloud.augmentos.notify" && app.name !== "Notify")
   }
-  // alphabetically sort the available apps
-  availableApps.sort((a, b) => a.name.localeCompare(b.name))
+  
+  // Sort apps: during onboarding, put Live Captions first, otherwise alphabetical
+  if (!onboardingCompleted) {
+    availableApps.sort((a, b) => {
+      // Check if either app is Live Captions
+      const aIsLiveCaptions = a.packageName === "com.augmentos.livecaptions" || 
+                              a.packageName === "cloud.augmentos.live-captions"
+      const bIsLiveCaptions = b.packageName === "com.augmentos.livecaptions" || 
+                              b.packageName === "cloud.augmentos.live-captions"
+      
+      // If a is Live Captions, it should come first
+      if (aIsLiveCaptions && !bIsLiveCaptions) return -1
+      // If b is Live Captions, it should come first
+      if (!aIsLiveCaptions && bIsLiveCaptions) return 1
+      // Otherwise sort alphabetically
+      return a.name.localeCompare(b.name)
+    })
+  } else {
+    // Normal alphabetical sort when onboarding is completed
+    availableApps.sort((a, b) => a.name.localeCompare(b.name))
+  }
 
   if (searchQuery) {
     availableApps = availableApps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -486,7 +508,7 @@ export default function InactiveAppList({
           app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
 
         // Only set ref for LiveCaptions app
-        const ref = isLiveCaptions ? liveCaptionsRef : null
+        const ref = isLiveCaptions ? actualLiveCaptionsRef : null
 
         // Get the shared opacity Animated.Value for this app
         const itemOpacity = opacities[app.packageName]

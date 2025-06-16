@@ -13,7 +13,7 @@ const en = {
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",
-    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.",
+    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.\n\nAlso, check that Bluetooth is enabled in device settings.",
     errorTitle: "Error",
     permissionsError: "Failed to request necessary permissions",
     connectionIssueTitle: "Connection Issue",
@@ -75,6 +75,8 @@ const en = {
     thereCanOnlyBeOneMessage: "You can only run one foreground app at a time.",
     glassesNotConnected: "Glasses Not Connected",
     appWillRunWhenConnected: "This app will start running once your glasses are connected.",
+    connectGlassesToStart: "Connect your glasses to get started",
+    tapToStartLiveCaptions: "Tap to start the Live Captions app",
   },
   glasses: {
     title: "Glasses",
@@ -113,6 +115,7 @@ const en = {
     forgetGlassesConfirm: "Are you sure you want to forget your glasses?",
     signOut: "Sign Out",
     signOutConfirm: "Are you sure you want to sign out?",
+    signOutError: "There was an error signing out. Please try again.",
     micPermissionTitle: "Microphone Permission Required",
     micPermissionMessage:
       "Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.",

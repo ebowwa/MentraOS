@@ -34,6 +34,7 @@ export const AppListItem = ({
   isActive,
   onTogglePress,
   onSettingsPress,
+  refProp,
   opacity,
   isDisabled,
   is_foreground,
@@ -43,6 +44,7 @@ export const AppListItem = ({
 
   return (
     <Animated.View
+      ref={refProp}
       style={[
         themed($everything),
         themed($everythingFlexBox),

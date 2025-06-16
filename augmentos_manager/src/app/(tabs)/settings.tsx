@@ -140,7 +140,7 @@ export default function SettingsPage() {
               alignItems: "center",
               minWidth: 200,
             }}>
-            <ActivityIndicator size="large" color={theme.colors.primary} style={{marginBottom: theme.spacing.md}} />
+            <ActivityIndicator size="large" color={theme.colors.tint} style={{marginBottom: theme.spacing.md}} />
             <Text preset="bold" style={{color: theme.colors.text}}>
               We're logging you out...
             </Text>
