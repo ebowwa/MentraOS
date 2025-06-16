@@ -47,17 +47,15 @@ export default function DataExportPage() {
     try {
       const data = await DataExportService.collectUserData(user, session, status, appStatus)
       const formatted = DataExportService.formatAsJson(data)
-      
+
       setExportData(data)
       setJsonString(formatted)
       console.log("DataExport: Data collection completed")
     } catch (error) {
       console.error("DataExport: Error collecting data:", error)
-      Alert.alert(
-        translate("common:error"),
-        "Failed to collect export data. Please try again.",
-        [{text: translate("common:ok")}]
-      )
+      Alert.alert(translate("common:error"), "Failed to collect export data. Please try again.", [
+        {text: translate("common:ok")},
+      ])
     } finally {
       setLoading(false)
     }
@@ -69,18 +67,10 @@ export default function DataExportPage() {
     setCopying(true)
     try {
       Clipboard.setString(jsonString)
-      Alert.alert(
-        "Copied!",
-        "Your data has been copied to the clipboard.",
-        [{text: translate("common:ok")}]
-      )
+      Alert.alert("Copied!", "Your data has been copied to the clipboard.", [{text: translate("common:ok")}])
     } catch (error) {
       console.error("DataExport: Error copying to clipboard:", error)
-      Alert.alert(
-        translate("common:error"),
-        "Failed to copy to clipboard.",
-        [{text: translate("common:ok")}]
-      )
+      Alert.alert(translate("common:error"), "Failed to copy to clipboard.", [{text: translate("common:ok")}])
     } finally {
       setCopying(false)
     }
@@ -92,11 +82,9 @@ export default function DataExportPage() {
     setSharing(true)
     try {
       const filename = DataExportService.generateFilename()
-      
+
       const result = await Share.share({
-        message: Platform.OS === 'ios' 
-          ? `AugmentOS Data Export - ${filename}\n\n${jsonString}`
-          : jsonString,
+        message: Platform.OS === "ios" ? `AugmentOS Data Export - ${filename}\n\n${jsonString}` : jsonString,
         title: `AugmentOS Data Export - ${filename}`,
       })
 
@@ -105,11 +93,7 @@ export default function DataExportPage() {
       }
     } catch (error) {
       console.error("DataExport: Error sharing:", error)
-      Alert.alert(
-        translate("common:error"),
-        "Failed to share data.",
-        [{text: translate("common:ok")}]
-      )
+      Alert.alert(translate("common:error"), "Failed to share data.", [{text: translate("common:ok")}])
     } finally {
       setSharing(false)
     }
@@ -124,23 +108,23 @@ export default function DataExportPage() {
 
   return (
     <Screen preset="fixed" style={themed($container)}>
-      <Header 
-        title="Data Export" 
-        leftIcon="caretLeft" 
+      <Header
+        title="Data Export"
+        leftIcon="caretLeft"
         onLeftPress={goBack}
         rightIcon={!loading ? "more" : undefined}
         rightIconColor={theme.colors.text}
-        onRightPress={!loading ? () => {
-          Alert.alert(
-            "Export Options",
-            "Choose an action for your data:",
-            [
-              {text: "Copy to Clipboard", onPress: handleCopy},
-              {text: "Share", onPress: handleShare},
-              {text: translate("common:cancel"), style: "cancel"}
-            ]
-          )
-        } : undefined}
+        onRightPress={
+          !loading
+            ? () => {
+                Alert.alert("Export Options", "Choose an action for your data:", [
+                  {text: "Copy to Clipboard", onPress: handleCopy},
+                  {text: "Share", onPress: handleShare},
+                  {text: translate("common:cancel"), style: "cancel"},
+                ])
+              }
+            : undefined
+        }
       />
 
       {loading ? (
@@ -156,7 +140,10 @@ export default function DataExportPage() {
             <Text text="Export Summary" style={themed($summaryTitle)} />
             {exportData && (
               <>
-                <Text text={`Generated: ${new Date(exportData.metadata.exportDate).toLocaleString()}`} style={themed($summaryText)} />
+                <Text
+                  text={`Generated: ${new Date(exportData.metadata.exportDate).toLocaleString()}`}
+                  style={themed($summaryText)}
+                />
                 <Text text={`Size: ${formatDataSize(jsonString)}`} style={themed($summaryText)} />
                 <Text text={`Apps: ${exportData.installedApps.length}`} style={themed($summaryText)} />
                 <Text text={`Settings: ${Object.keys(exportData.userSettings).length}`} style={themed($summaryText)} />
@@ -189,11 +176,7 @@ export default function DataExportPage() {
           {/* JSON Preview */}
           <View style={themed($jsonContainer)}>
             <Text text="Data Preview" style={themed($jsonTitle)} />
-            <ScrollView 
-              style={themed($jsonScrollView)}
-              showsVerticalScrollIndicator={true}
-              nestedScrollEnabled={true}
-            >
+            <ScrollView style={themed($jsonScrollView)} showsVerticalScrollIndicator={true} nestedScrollEnabled={true}>
               <Text text={jsonString} style={themed($jsonText)} />
             </ScrollView>
           </View>
@@ -277,7 +260,7 @@ const $jsonScrollView: ThemedStyle<ViewStyle> = ({}) => ({
 })
 
 const $jsonText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
-  fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+  fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
   fontSize: 12,
   color: colors.text,
   padding: spacing.md,

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import React from "react"
+import {View, StyleSheet} from "react-native"
 
 const SettingsSkeleton: React.FC = () => {
   // Render 5 placeholder rows for settings
@@ -12,32 +12,32 @@ const SettingsSkeleton: React.FC = () => {
         </View>
       ))}
     </View>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
   container: {
     gap: 12,
     paddingVertical: 8,
   },
-  skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  skeletonLabel: {
-    width: 120,
-    height: 18,
-    borderRadius: 6,
-    backgroundColor: '#e0e0e0',
-    marginRight: 16,
-  },
   skeletonControl: {
+    backgroundColor: "#ececec",
+    borderRadius: 6,
     flex: 1,
     height: 18,
-    borderRadius: 6,
-    backgroundColor: '#ececec',
   },
-});
+  skeletonLabel: {
+    backgroundColor: "#e0e0e0",
+    borderRadius: 6,
+    height: 18,
+    marginRight: 16,
+    width: 120,
+  },
+  skeletonRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+})
 
-export default SettingsSkeleton; 
+export default SettingsSkeleton

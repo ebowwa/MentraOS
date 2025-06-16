@@ -1,12 +1,12 @@
-import React from "react";
-import { Svg, Path, Defs, ClipPath, Rect, G } from "react-native-svg";
+import React from "react"
+import {Svg, Path, Defs, ClipPath, Rect, G} from "react-native-svg"
 
 interface TreeIconProps {
-  size?: number;
-  color?: string;
+  size?: number
+  color?: string
 }
 
-export const TreeIcon = ({ size = 17, color = "#ABAAFF" }: TreeIconProps) => (
+export const TreeIcon = ({size = 17, color = "#ABAAFF"}: TreeIconProps) => (
   <Svg width={size} height={size} viewBox="0 0 16 17" fill="none">
     <G clipPath="url(#clip0)">
       <Path
@@ -22,4 +22,4 @@ export const TreeIcon = ({ size = 17, color = "#ABAAFF" }: TreeIconProps) => (
       </ClipPath>
     </Defs>
   </Svg>
-);
+)

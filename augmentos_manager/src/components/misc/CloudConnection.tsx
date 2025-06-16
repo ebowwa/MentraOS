@@ -3,9 +3,7 @@ import {View, Text, StyleSheet} from "react-native"
 import LinearGradient from "react-native-linear-gradient"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import { useAppTheme } from "@/utils/useAppTheme"
-
-
+import {useAppTheme} from "@/utils/useAppTheme"
 
 export default function CloudConnection() {
   const {status} = useStatus()
@@ -68,39 +66,39 @@ export default function CloudConnection() {
 }
 
 const lightThemeStyles = StyleSheet.create({
-  outerContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 999,
-    borderRadius: 6,
-    padding: 2,
-    margin: 4,
+  icon: {
+    marginRight: 6,
   },
   innerContainer: {
     backgroundColor: "#FFFFFF",
     borderRadius: 4,
+    elevation: 1,
     padding: 8,
     shadowColor: "#000",
+    shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    shadowOffset: {width: 0, height: 1},
-    elevation: 1,
+  },
+  outerContainer: {
+    borderRadius: 6,
+    left: 0,
+    margin: 4,
+    padding: 2,
+    position: "absolute",
+    right: 0,
+    top: 0,
+    zIndex: 999,
   },
   row: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "center",
   },
-  icon: {
-    marginRight: 6,
-  },
   text: {
+    color: "#000",
+    fontFamily: "Montserrat-Regular",
     fontSize: 14,
     fontWeight: "600",
-    fontFamily: "Montserrat-Regular",
-    color: "#000",
   },
 })
 

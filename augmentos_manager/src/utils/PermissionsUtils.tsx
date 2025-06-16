@@ -1,6 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {Alert, Platform, Linking} from "react-native"
-import {request, check, PERMISSIONS, Permission, RESULTS, requestNotifications, checkNotifications} from "react-native-permissions"
+import {
+  request,
+  check,
+  PERMISSIONS,
+  Permission,
+  RESULTS,
+  requestNotifications,
+  checkNotifications,
+} from "react-native-permissions"
 import {Permission as RNPermission} from "react-native"
 import {PermissionsAndroid} from "react-native"
 import {checkNotificationAccessSpecialPermission} from "../utils/NotificationServiceUtils"

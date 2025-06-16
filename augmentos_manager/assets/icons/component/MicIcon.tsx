@@ -21,7 +21,7 @@ const MicIcon = ({color = "#030514", width = 17, height = 16, withBackground = f
   if (!status.core_info.is_mic_enabled_for_frontend) {
     return null
   }
-  
+
   if (status.core_info.preferred_mic === "glasses" && !status.glasses_info) {
     return null
   }

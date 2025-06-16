@@ -1,4 +1,4 @@
-import { ComponentType, FC, useMemo } from "react"
+import {ComponentType, FC, useMemo} from "react"
 import {
   GestureResponderEvent,
   ImageStyle,
@@ -12,10 +12,10 @@ import {
   ViewProps,
   ViewStyle,
 } from "react-native"
-import { $styles } from "../../../theme"
-import { Text, TextProps } from "../Text"
-import { useAppTheme } from "@/utils/useAppTheme"
-import type { ThemedStyle } from "@/theme"
+import {$styles} from "../../../theme"
+import {Text, TextProps} from "../Text"
+import {useAppTheme} from "@/utils/useAppTheme"
+import type {ThemedStyle} from "@/theme"
 
 export interface ToggleProps<T> extends Omit<TouchableOpacityProps, "style"> {
   /**
@@ -141,7 +141,7 @@ export function Toggle<T>(props: ToggleProps<T>) {
   } = props
 
   const {
-    theme: { colors },
+    theme: {colors},
     themed,
   } = useAppTheme()
 
@@ -154,11 +154,7 @@ export function Toggle<T>(props: ToggleProps<T>) {
 
   const $containerStyles = [$containerStyleOverride]
   const $inputWrapperStyles = [$styles.row, $inputWrapper, $inputWrapperStyleOverride]
-  const $helperStyles = themed([
-    $helper,
-    status === "error" && { color: colors.error },
-    HelperTextProps?.style,
-  ])
+  const $helperStyles = themed([$helper, status === "error" && {color: colors.error}, HelperTextProps?.style])
 
   /**
    * @param {GestureResponderEvent} e - The event object.
@@ -173,11 +169,10 @@ export function Toggle<T>(props: ToggleProps<T>) {
     <Wrapper
       activeOpacity={1}
       accessibilityRole={accessibilityRole}
-      accessibilityState={{ checked: value, disabled }}
+      accessibilityState={{checked: value, disabled}}
       {...WrapperProps}
       style={$containerStyles}
-      onPress={handlePress}
-    >
+      onPress={handlePress}>
       <View style={$inputWrapperStyles}>
         {labelPosition === "left" && <FieldLabel<T> {...props} labelPosition={labelPosition} />}
 
@@ -212,18 +207,10 @@ export function Toggle<T>(props: ToggleProps<T>) {
  * @returns {JSX.Element} The rendered `FieldLabel` component.
  */
 function FieldLabel<T>(props: ToggleProps<T>) {
-  const {
-    status,
-    label,
-    labelTx,
-    labelTxOptions,
-    LabelTextProps,
-    labelPosition,
-    labelStyle: $labelStyleOverride,
-  } = props
+  const {status, label, labelTx, labelTxOptions, LabelTextProps, labelPosition, labelStyle: $labelStyleOverride} = props
 
   const {
-    theme: { colors },
+    theme: {colors},
     themed,
   } = useAppTheme()
 
@@ -231,7 +218,7 @@ function FieldLabel<T>(props: ToggleProps<T>) {
 
   const $labelStyle = themed([
     $label,
-    status === "error" && { color: colors.error },
+    status === "error" && {color: colors.error},
     labelPosition === "right" && $labelRight,
     labelPosition === "left" && $labelLeft,
     $labelStyleOverride,
@@ -266,7 +253,7 @@ export const $inputOuterBase: ViewStyle = {
   flexDirection: "row",
 }
 
-const $helper: ThemedStyle<TextStyle> = ({ spacing }) => ({
+const $helper: ThemedStyle<TextStyle> = ({spacing}) => ({
   marginTop: spacing.xs,
 })
 
@@ -274,10 +261,10 @@ const $label: TextStyle = {
   flex: 1,
 }
 
-const $labelRight: ThemedStyle<TextStyle> = ({ spacing }) => ({
+const $labelRight: ThemedStyle<TextStyle> = ({spacing}) => ({
   marginStart: spacing.md,
 })
 
-const $labelLeft: ThemedStyle<TextStyle> = ({ spacing }) => ({
+const $labelLeft: ThemedStyle<TextStyle> = ({spacing}) => ({
   marginEnd: spacing.md,
 })

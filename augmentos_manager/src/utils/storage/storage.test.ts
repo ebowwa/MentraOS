@@ -1,6 +1,6 @@
-import { load, loadString, save, saveString, clear, remove, storage } from "./storage"
+import {load, loadString, save, saveString, clear, remove, storage} from "./storage"
 
-const VALUE_OBJECT = { x: 1 }
+const VALUE_OBJECT = {x: 1}
 const VALUE_STRING = JSON.stringify(VALUE_OBJECT)
 
 describe("MMKV Storage", () => {
@@ -32,10 +32,10 @@ describe("MMKV Storage", () => {
   })
 
   it("should save objects", () => {
-    save("object", { y: 2 })
-    expect(load<object>("object")).toEqual({ y: 2 })
-    save("object", { z: 3, also: true })
-    expect(load<object>("object")).toEqual({ z: 3, also: true })
+    save("object", {y: 2})
+    expect(load<object>("object")).toEqual({y: 2})
+    save("object", {z: 3, also: true})
+    expect(load<object>("object")).toEqual({z: 3, also: true})
   })
 
   it("should save strings and objects", () => {

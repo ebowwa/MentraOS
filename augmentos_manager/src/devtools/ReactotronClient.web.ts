@@ -8,4 +8,4 @@
  * remove reactotron-react-js from your package.json dependencies.
  */
 import Reactotron from "reactotron-react-js"
-export { Reactotron }
+export {Reactotron}

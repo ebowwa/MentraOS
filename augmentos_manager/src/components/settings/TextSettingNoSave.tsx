@@ -1,11 +1,5 @@
 import React, {useEffect} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  Platform,
-  Pressable,
-} from "react-native"
+import {View, Text, StyleSheet, Platform, Pressable} from "react-native"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router, useFocusEffect} from "expo-router"
 import {textEditorStore} from "@/utils/TextEditorStore"
@@ -19,7 +13,7 @@ type TextSettingNoSaveProps = {
 
 const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onChangeText, settingKey}) => {
   const {theme} = useAppTheme()
-  
+
   // Check for pending value when component gets focus
   useFocusEffect(
     React.useCallback(() => {
@@ -27,7 +21,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
       if (pendingValue && pendingValue.key === settingKey) {
         onChangeText(pendingValue.value)
       }
-    }, [settingKey, onChangeText])
+    }, [settingKey, onChangeText]),
   )
 
   const handleOpenEditor = () => {
@@ -37,7 +31,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
         label,
         value,
         settingKey,
-      }
+      },
     })
   }
 
@@ -57,23 +51,14 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
   )
 }
 
-
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 10,
-    width: "100%",
-  },
-  label: {
-    fontSize: 16,
-    marginBottom: 5,
-  },
   button: {
-    borderWidth: 1,
-    borderRadius: Platform.OS === "ios" ? 8 : 4,
-    padding: Platform.OS === "ios" ? 12 : 10,
-    minHeight: Platform.OS === "ios" ? 44 : 48,
-    justifyContent: "center",
     backgroundColor: "transparent",
+    borderRadius: Platform.OS === "ios" ? 8 : 4,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: Platform.OS === "ios" ? 44 : 48,
+    padding: Platform.OS === "ios" ? 12 : 10,
   },
   buttonPressed: {
     backgroundColor: Platform.OS === "ios" ? "rgba(0, 0, 0, 0.05)" : "transparent",
@@ -81,6 +66,14 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 16,
+  },
+  container: {
+    marginVertical: 10,
+    width: "100%",
+  },
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
   },
 })
 

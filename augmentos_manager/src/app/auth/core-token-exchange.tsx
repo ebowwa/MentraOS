@@ -52,7 +52,7 @@ export default function CoreTokenExchange() {
         throw err
       })
 
-      let uid = user.email || user.id
+      const uid = user.email || user.id
       coreCommunicator.setAuthenticationSecretKey(uid, coreToken)
       BackendServerComms.getInstance().setCoreToken(coreToken)
 
@@ -103,7 +103,7 @@ export default function CoreTokenExchange() {
       } else {
         // If we already have a token, go straight to Home
         BackendServerComms.getInstance().setCoreToken(status.core_info.core_token)
-        replace("/home")
+        replace("/(tabs)/home")
       }
     }
   }, [status.core_info.puck_connected, authLoading, user])
@@ -130,11 +130,9 @@ export default function CoreTokenExchange() {
             <Icon name="wifi-off" size={80} color={theme.colors.error} />
           </View>
 
-          <Text style={[styles.title, { color: theme.colors.text }]}>Connection Error</Text>
+          <Text style={[styles.title, {color: theme.colors.text}]}>Connection Error</Text>
 
-          <Text style={[styles.description, { color: theme.colors.textDim }]}>
-            {errorMessage}
-          </Text>
+          <Text style={[styles.description, {color: theme.colors.textDim}]}>{errorMessage}</Text>
         </View>
 
         <View style={styles.setupContainer}>
@@ -155,16 +153,13 @@ const $authLoadingText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  authLoadingIndicator: {
+    marginBottom: 16,
   },
-  loadingContainer: {
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
+  authLoadingLogoPlaceholder: {
+    height: 100,
+    marginBottom: 20,
+    width: 100,
   },
   authLoadingOverlay: {
     position: "absolute",
@@ -177,19 +172,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  authLoadingLogoPlaceholder: {
-    width: 100,
-    height: 100,
-    marginBottom: 20,
-  },
-  authLoadingIndicator: {
-    marginBottom: 16,
-  },
   authLoadingText: {
     fontSize: 16,
     fontFamily: "Montserrat-Medium",
     // color moved to themed style
     textAlign: "center",
+  },
+  container: {
+    flex: 1,
+  },
+  description: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 32,
+    paddingHorizontal: 24,
+    textAlign: "center",
+  },
+  iconContainer: {
+    marginBottom: 32,
+  },
+  infoContainer: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    paddingTop: 60,
+  },
+  loadingContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 16,
   },
   mainContainer: {
     flex: 1,
@@ -197,33 +211,17 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     padding: 24,
   },
-  infoContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingTop: 60,
-  },
-  iconContainer: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    textAlign: "center",
-    marginBottom: 28,
-  },
-  description: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 32,
-    lineHeight: 24,
-    paddingHorizontal: 24,
-  },
   setupContainer: {
-    width: "100%",
     alignItems: "center",
     paddingBottom: 40,
+    width: "100%",
+  },
+  title: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 28,
+    textAlign: "center",
   },
   // Removed hardcoded color styles - now using theme dynamic colors
 })

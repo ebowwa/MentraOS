@@ -34,6 +34,7 @@ export const AppListItem = ({
   isActive,
   onTogglePress,
   onSettingsPress,
+  refProp,
   opacity,
   isDisabled,
   is_foreground,
@@ -43,6 +44,7 @@ export const AppListItem = ({
 
   return (
     <Animated.View
+      ref={refProp}
       style={[
         themed($everything),
         themed($everythingFlexBox),
@@ -57,19 +59,19 @@ export const AppListItem = ({
             }
           : {},
       ]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[themed($appDescription), themed($everythingFlexBox)]}
         onPress={onTogglePress}
         disabled={isDisabled}
-        activeOpacity={0.7}
-      >
+        activeOpacity={0.7}>
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
             text={app.name}
             style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]}
             numberOfLines={1}
-            ellipsizeMode="tail" />
+            ellipsizeMode="tail"
+          />
           {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
         </View>
       </TouchableOpacity>
@@ -149,10 +151,11 @@ const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?
     return (
       <View style={themed(isActive ? $tagActive : $tag)}>
         <TreeIcon size={16} color={mColor} />
-        <Text 
+        <Text
           text={isForeground ? translate("home:foreground") : ""}
-          style={[themed($disconnect), {color: mColor}]} 
-          numberOfLines={1} />
+          style={[themed($disconnect), {color: mColor}]}
+          numberOfLines={1}
+        />
         <Pressable
           onPress={() => {
             Toast.show({

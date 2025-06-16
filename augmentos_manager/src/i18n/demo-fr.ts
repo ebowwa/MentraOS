@@ -1,4 +1,4 @@
-import { DemoTranslations } from "./demo-en"
+import {DemoTranslations} from "./demo-en"
 
 export const demoFr: DemoTranslations = {
   demoIcon: {
@@ -111,8 +111,7 @@ export const demoFr: DemoTranslations = {
         },
         switch: {
           label: "Variante `switch`",
-          helper:
-            "Une entrée on/off plus proéminente. Possède un meilleur support d’accessibilité.",
+          helper: "Une entrée on/off plus proéminente. Possède un meilleur support d’accessibilité.",
         },
       },
       statuses: {
@@ -135,8 +134,7 @@ export const demoFr: DemoTranslations = {
             helper: "Supporte le multiligne - Nulla proident consectetur labore sunt ea labore. ",
           },
           radioChangeSides: {
-            helper:
-              "Vous pouvez changer de côté - Laborum labore adipisicing in eu ipsum deserunt.",
+            helper: "Vous pouvez changer de côté - Laborum labore adipisicing in eu ipsum deserunt.",
           },
           customCheckBox: {
             label: "Passez une icône de case à cocher personnalisée.",
@@ -204,18 +202,15 @@ export const demoFr: DemoTranslations = {
     },
   },
   demoListItem: {
-    description:
-      "Un composant de ligne stylisé qui peut être utilisé dans FlatList, SectionList, ou seul.",
+    description: "Un composant de ligne stylisé qui peut être utilisé dans FlatList, SectionList, ou seul.",
     useCase: {
       height: {
         name: "Hauteur",
         description: "La ligne peut avoir différentes hauteurs.",
         defaultHeight: "Hauteur par défaut (56px)",
         customHeight: "Hauteur personnalisée via la prop `height`",
-        textHeight:
-          "Hauteur déterminée par le contenu du texte - Reprehenderit incididunt deserunt do do ea labore.",
-        longText:
-          "Limiter le texte long à une ligne - Reprehenderit incididunt deserunt do do ea labore.",
+        textHeight: "Hauteur déterminée par le contenu du texte - Reprehenderit incididunt deserunt do do ea labore.",
+        longText: "Limiter le texte long à une ligne - Reprehenderit incididunt deserunt do do ea labore.",
       },
       separators: {
         name: "Séparateurs",
@@ -233,8 +228,7 @@ export const demoFr: DemoTranslations = {
       },
       customLeftRight: {
         name: "Composants personnalisés gauche/droite",
-        description:
-          "Si vous avez besoin d’un composant personnalisé à gauche/droite, vous pouvez le passer.",
+        description: "Si vous avez besoin d’un composant personnalisé à gauche/droite, vous pouvez le passer.",
         customLeft: "Composant personnalisé à gauche",
         customRight: "Composant personnalisé à droite",
       },
@@ -248,8 +242,7 @@ export const demoFr: DemoTranslations = {
       },
       listIntegration: {
         name: "Intégration avec FlatList & FlashList",
-        description:
-          "Le composant peut être facilement intégré avec votre interface de liste préférée.",
+        description: "Le composant peut être facilement intégré avec votre interface de liste préférée.",
       },
       styling: {
         name: "Style",
@@ -280,8 +273,7 @@ export const demoFr: DemoTranslations = {
       },
       verticalAlignment: {
         name: "Alignement vertical",
-        description:
-          "Selon les besoins, la carte est préconfigurée avec différentes stratégies d’alignement.",
+        description: "Selon les besoins, la carte est préconfigurée avec différentes stratégies d’alignement.",
         top: {
           heading: "Haut (par défaut)",
           content: "Tout le contenu est automatiquement aligné en haut.",
@@ -327,11 +319,10 @@ export const demoFr: DemoTranslations = {
     },
   },
   demoAutoImage: {
-    description:
-      "Un composant Image qui dimensionne automatiquement une image distante ou data-uri.",
+    description: "Un composant Image qui dimensionne automatiquement une image distante ou data-uri.",
     useCase: {
-      remoteUri: { name: "URI distante" },
-      base64Uri: { name: "URI Base64" },
+      remoteUri: {name: "URI distante"},
+      base64Uri: {name: "URI Base64"},
       scaledToFitDimensions: {
         name: "Mis à l’échelle pour s’adapter aux dimensions",
         description:
@@ -343,8 +334,7 @@ export const demoFr: DemoTranslations = {
     },
   },
   demoText: {
-    description:
-      "Pour vos besoins d'affichage de texte. Ce composant est un HOC sur celui intégré à React Native.",
+    description: "Pour vos besoins d'affichage de texte. Ce composant est un HOC sur celui intégré à React Native.",
     useCase: {
       presets: {
         name: "Préréglages",
@@ -368,10 +358,8 @@ export const demoFr: DemoTranslations = {
       weights: {
         name: "Graisse",
         description: "Il y a une prop de graisse.",
-        light:
-          "léger - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
-        normal:
-          "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
+        light: "léger - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
+        normal: "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
         medium: "moyen - Non duis laborum quis laboris occaecat culpa cillum.",
         semibold: "demi-gras - Exercitation magna nostrud pariatur laborum occaecat aliqua.",
         bold: "gras - Eiusmod ullamco magna exercitation est excepteur.",
@@ -405,16 +393,14 @@ export const demoFr: DemoTranslations = {
     useCase: {
       actionIcons: {
         name: "Icônes d’action",
-        description:
-          "Vous pouvez facilement passer des icônes aux composants d’action gauche ou droit.",
+        description: "Vous pouvez facilement passer des icônes aux composants d’action gauche ou droit.",
         leftIconTitle: "Icône gauche",
         rightIconTitle: "Icône droite",
         bothIconsTitle: "Les deux icônes",
       },
       actionText: {
         name: "Texte d’action",
-        description:
-          "Vous pouvez facilement passer du texte aux composants d’action gauche ou droit.",
+        description: "Vous pouvez facilement passer du texte aux composants d’action gauche ou droit.",
         leftTxTitle: "Via `leftTx`",
         rightTextTitle: "Via `rightText`",
       },

@@ -1,5 +1,5 @@
-import { useLayoutEffect, useState } from "react"
-import { Image, ImageProps, ImageURISource, Platform, PixelRatio } from "react-native"
+import {useLayoutEffect, useState} from "react"
+import {Image, ImageProps, ImageURISource, Platform, PixelRatio} from "react-native"
 
 export interface AutoImageProps extends ImageProps {
   /**
@@ -72,7 +72,7 @@ export function useAutoImage(
  * @returns {JSX.Element} The rendered `AutoImage` component.
  */
 export function AutoImage(props: AutoImageProps) {
-  const { maxWidth, maxHeight, ...ImageProps } = props
+  const {maxWidth, maxHeight, ...ImageProps} = props
   const source = props.source as ImageURISource
   const headers = source?.headers
 
@@ -85,5 +85,5 @@ export function AutoImage(props: AutoImageProps) {
     [maxWidth, maxHeight],
   )
 
-  return <Image {...ImageProps} style={[{ width, height }, props.style]} />
+  return <Image {...ImageProps} style={[{width, height}, props.style]} />
 }

@@ -123,7 +123,7 @@ export default function PrivacySettingsScreen() {
   }, [appState, notificationsEnabled, calendarEnabled])
 
   const toggleSensing = async () => {
-    let newSensing = !isSensingEnabled
+    const newSensing = !isSensingEnabled
     await coreCommunicator.sendToggleSensing(newSensing)
     setIsSensingEnabled(newSensing)
   }

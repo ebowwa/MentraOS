@@ -1,9 +1,8 @@
-import { DemoTranslations } from "./demo-en"
+import {DemoTranslations} from "./demo-en"
 
 export const demoAr: DemoTranslations = {
   demoIcon: {
-    description:
-      "مكون لعرض أيقونة مسجلة.يتم تغليفه في <TouchableOpacity> يتم توفير 'OnPress'، وإلا يتم توفير <View",
+    description: "مكون لعرض أيقونة مسجلة.يتم تغليفه في <TouchableOpacity> يتم توفير 'OnPress'، وإلا يتم توفير <View",
     useCase: {
       icons: {
         name: "Icons",
@@ -28,8 +27,7 @@ export const demoAr: DemoTranslations = {
     useCase: {
       statuses: {
         name: "الحالات",
-        description:
-          "هناك حالة مماثلة ل 'preset' في المكونات الأخرى، ولكنها تؤثر على وظيفة المكون ايضاً.",
+        description: "هناك حالة مماثلة ل 'preset' في المكونات الأخرى، ولكنها تؤثر على وظيفة المكون ايضاً.",
         noStatus: {
           label: "لا يوجد حالات",
           helper: "هذه هي الحالة الافتراضية",
@@ -116,8 +114,7 @@ export const demoAr: DemoTranslations = {
       },
       statuses: {
         name: "الحالات",
-        description:
-          "هناك دعامة حالة مشابهة ل 'preset' في المكونات الأخرى، لكنها تؤثر على وظائف المكونات ايضاً",
+        description: "هناك دعامة حالة مشابهة ل 'preset' في المكونات الأخرى، لكنها تؤثر على وظائف المكونات ايضاً",
         noStatus: "لا توجد حالات- هذا هو الوضع الافتراضي",
         errorStatus: "حالة الخطأ - استخدمها عندما يكون هناك خطأ",
         disabledStatus: "حالة معطلة- تعطيل إمكانية التحرير وكتم صوت الإدخال",
@@ -161,8 +158,7 @@ export const demoAr: DemoTranslations = {
     },
   },
   demoButton: {
-    description:
-      "مكون يسمح للمستخدمين بإتخاذ الإجراءات والاختيارات. يلف مكون النص بمكون قابل للضغط",
+    description: "مكون يسمح للمستخدمين بإتخاذ الإجراءات والاختيارات. يلف مكون النص بمكون قابل للضغط",
     useCase: {
       presets: {
         name: "الإعدادات المسبقة",
@@ -208,8 +204,7 @@ export const demoAr: DemoTranslations = {
         description: "يمكن ان يكون الصف بارتفاعات مختلفة",
         defaultHeight: "الارتفاع الافتراضي (56px)",
         customHeight: "ارتفاع مخصص عبر دعامة 'height'",
-        textHeight:
-          "الارتفاع يتم تحديده من خلال محتوى النص - Reprehenderit incididunt deserunt do do ea labore.",
+        textHeight: "الارتفاع يتم تحديده من خلال محتوى النص - Reprehenderit incididunt deserunt do do ea labore.",
         longText: "تحديد النص إلى سطر واحد - Reprehenderit incididunt deserunt do do ea labore.",
       },
       separators: {
@@ -273,8 +268,7 @@ export const demoAr: DemoTranslations = {
       },
       verticalAlignment: {
         name: "انحياز عمودي",
-        description:
-          "اعتمادا على ما هو مطلوب، تأتي البطاقة مهيأة مسبقاً باستراتيجيات محاذاة مختلفة",
+        description: "اعتمادا على ما هو مطلوب، تأتي البطاقة مهيأة مسبقاً باستراتيجيات محاذاة مختلفة",
         top: {
           heading: "قمة (تقصير)",
           content: "يتم محاذاة كل محتوى تلقائياً إلى الأعلى",
@@ -305,8 +299,7 @@ export const demoAr: DemoTranslations = {
       },
       customComponent: {
         name: "مكونات مخصصة",
-        description:
-          "يمكن استبدال اي من المكونات المعدة مسبقاً بمكوناتك الخاصة. يمكنك ايضاً اضافة مكونات إضافية.",
+        description: "يمكن استبدال اي من المكونات المعدة مسبقاً بمكوناتك الخاصة. يمكنك ايضاً اضافة مكونات إضافية.",
         rightComponent: "RightComponent",
         leftComponent: "LeftComponent",
       },
@@ -339,8 +332,7 @@ export const demoAr: DemoTranslations = {
     },
   },
   demoText: {
-    description:
-      "لتلبية احتياجاتك في عرض النصوص. هذا المكون عبارة عن HOC فوق المكون المدمج Native React.",
+    description: "لتلبية احتياجاتك في عرض النصوص. هذا المكون عبارة عن HOC فوق المكون المدمج Native React.",
     useCase: {
       presets: {
         name: "الإعدادات المسبقة",
@@ -364,10 +356,8 @@ export const demoAr: DemoTranslations = {
       weights: {
         name: "أوزان",
         description: "هناك وزن الدعامة",
-        light:
-          "light - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
-        normal:
-          "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
+        light: "light - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
+        normal: "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
         medium: "medium - Non duis laborum quis laboris occaecat culpa cillum.",
         semibold: "semiBold - Exercitation magna nostrud pariatur laborum occaecat aliqua.",
         bold: "bold - Eiusmod ullamco magna exercitation est excepteur.",
@@ -413,8 +403,7 @@ export const demoAr: DemoTranslations = {
       },
       customActionComponents: {
         name: "مكونات الاجراء المخصص",
-        description:
-          "اذا لم تكن خيارات الرمز او النسكافية، فيمكنك تمرير مكون الاجراء المخصص الخاص بك.",
+        description: "اذا لم تكن خيارات الرمز او النسكافية، فيمكنك تمرير مكون الاجراء المخصص الخاص بك.",
         customLeftActionTitle: "عمل يسار مخصص ",
       },
       titleModes: {

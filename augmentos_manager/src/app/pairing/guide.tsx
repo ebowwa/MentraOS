@@ -1,5 +1,15 @@
 import React, {useState, useEffect, useRef, useCallback} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ViewStyle, BackHandler, Platform} from "react-native"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ViewStyle,
+  BackHandler,
+  Platform,
+} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native"
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
@@ -35,13 +45,13 @@ export default function GlassesPairingGuideScreen() {
     // Clear NavigationHistoryContext history to prevent issues with back navigation
     clearHistory()
     // Use dismissTo to properly go back to select-glasses-model and clear the stack
-    router.dismissTo('/pairing/select-glasses-model')
+    router.dismissTo("/pairing/select-glasses-model")
   }, [clearHistory])
 
   // Handle Android hardware back button
   useEffect(() => {
     // Only handle on Android
-    if (Platform.OS !== 'android') return
+    if (Platform.OS !== "android") return
 
     const onBackPress = () => {
       // Call our custom back handler
@@ -53,7 +63,7 @@ export default function GlassesPairingGuideScreen() {
     // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
     const timeout = setTimeout(() => {
       // Add the event listener - this will be on top of the stack
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+      const backHandler = BackHandler.addEventListener("hardwareBackPress", onBackPress)
 
       // Store the handler for cleanup
       backHandlerRef.current = backHandler
@@ -187,71 +197,71 @@ export default function GlassesPairingGuideScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollViewContainer: {
-    flex: 1,
-  },
   contentContainer: {
     alignItems: "center",
     justifyContent: "flex-start",
   },
-  text: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  glassesImage: {
-    width: 100,
-    height: 60,
-    resizeMode: "contain",
-    marginTop: 20,
-  },
   darkBackground: {
     backgroundColor: "#1c1c1c",
   },
-  lightBackground: {
-    //backgroundColor: '#f9f9f9',
+  darkButton: {
+    backgroundColor: "#333333",
   },
   darkText: {
     color: "#FFFFFF",
   },
-  lightText: {
-    color: "#333333",
+  glassesImage: {
+    height: 60,
+    marginTop: 20,
+    resizeMode: "contain",
+    width: 100,
   },
   helpButton: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
     borderRadius: 8,
-    marginTop: 20,
+    flexDirection: "row",
+    justifyContent: "center",
     marginBottom: 30,
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   helpButtonText: {
     color: "#FFFFFF",
+    fontFamily: "Montserrat-Regular",
     fontSize: 16,
     fontWeight: "600",
-    fontFamily: "Montserrat-Regular",
   },
   helpIcon: {
     marginRight: 8,
   },
   instructionsButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 20,
     alignSelf: "center",
+    borderRadius: 8,
+    marginBottom: 20,
+    marginTop: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  darkButton: {
-    backgroundColor: "#333333",
+  instructionsButtonText: {
+    fontFamily: "Montserrat-Regular",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  lightBackground: {
+    //backgroundColor: '#f9f9f9',
   },
   lightButton: {
     backgroundColor: "#e5e7eb",
   },
-  instructionsButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    fontFamily: "Montserrat-Regular",
+  lightText: {
+    color: "#333333",
+  },
+  scrollViewContainer: {
+    flex: 1,
+  },
+  text: {
+    fontSize: 16,
+    marginBottom: 10,
   },
 })

@@ -23,7 +23,7 @@ import {requestFeaturePermissions, PermissionFeatures} from "@/utils/Permissions
 import RNFS from "react-native-fs"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
-import { translate } from "@/i18n"
+import {translate} from "@/i18n"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -158,14 +158,14 @@ export default function GlassesMirrorFullscreen() {
   // Handle exiting fullscreen mode
   const handleExitFullscreen = () => {
     StatusBar.setHidden(false)
-    //router.back() commented bc it routing to home page. 
+    //router.back() commented bc it routing to home page.
     router.replace("/mirror")
   }
 
   // Toggle camera between front and back
   const toggleCamera = () => {
     if (!isRecording) {
-      setCameraType(cameraType === "front" ? "back" : "front")    
+      setCameraType(cameraType === "front" ? "back" : "front")
     } else {
       // Don't allow camera switching during recording
       if (Platform.OS === "android") {
@@ -301,9 +301,8 @@ export default function GlassesMirrorFullscreen() {
     }
   }
 
-
   return (
-    <View style={[styles.fullscreenContainer, { backgroundColor: theme.colors.fullscreenBackground }]}>
+    <View style={[styles.fullscreenContainer, {backgroundColor: theme.colors.fullscreenBackground}]}>
       {isGlassesConnected && lastEvent ? (
         <>
           {/* Camera feed */}
@@ -321,12 +320,16 @@ export default function GlassesMirrorFullscreen() {
           </View>
 
           {/* Fullscreen exit button */}
-          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={handleExitFullscreen}>
-            <Text style={[styles.exitFullscreenText, { color: theme.colors.icon }]}>Exit</Text>
+          <TouchableOpacity
+            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200}]}
+            onPress={handleExitFullscreen}>
+            <Text style={[styles.exitFullscreenText, {color: theme.colors.icon}]}>Exit</Text>
           </TouchableOpacity>
 
           {/* Camera flip button */}
-          <TouchableOpacity style={[styles.flipCameraButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={toggleCamera}>
+          <TouchableOpacity
+            style={[styles.flipCameraButton, {backgroundColor: theme.colors.palette.secondary200}]}
+            onPress={toggleCamera}>
             <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
           </TouchableOpacity>
 
@@ -358,23 +361,31 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (
-            <TouchableOpacity style={[styles.videosButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={() => router.back()}>
+            <TouchableOpacity
+              style={[styles.videosButton, {backgroundColor: theme.colors.palette.secondary200}]}
+              onPress={() => router.back()}>
               <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
-                <View style={[styles.badgeContainer, { backgroundColor: theme.colors.badgeBackground, borderColor: theme.colors.fullscreenOverlay }]}>
-                  <Text style={[styles.badgeText, { color: theme.colors.icon }]}>{recordingCount}</Text>
+                <View
+                  style={[
+                    styles.badgeContainer,
+                    {backgroundColor: theme.colors.badgeBackground, borderColor: theme.colors.fullscreenOverlay},
+                  ]}>
+                  <Text style={[styles.badgeText, {color: theme.colors.icon}]}>{recordingCount}</Text>
                 </View>
               )}
             </TouchableOpacity>
           )}
         </>
       ) : (
-        <View style={[styles.fallbackContainer, { backgroundColor: theme.colors.galleryBackground }]}>
-          <Text style={[styles.fallbackText, { color: theme.colors.icon }]}>
+        <View style={[styles.fallbackContainer, {backgroundColor: theme.colors.galleryBackground}]}>
+          <Text style={[styles.fallbackText, {color: theme.colors.icon}]}>
             {!isGlassesConnected ? "Connect glasses to use the Glasses Mirror" : "No display events available"}
           </Text>
-          <TouchableOpacity style={[styles.exitFullscreenButton, { backgroundColor: theme.colors.palette.secondary200 }]} onPress={handleExitFullscreen}>
-            <Text style={[styles.exitFullscreenText, { color: theme.colors.icon }]}>Back</Text>
+          <TouchableOpacity
+            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200}]}
+            onPress={handleExitFullscreen}>
+            <Text style={[styles.exitFullscreenText, {color: theme.colors.icon}]}>Back</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -383,108 +394,6 @@ export default function GlassesMirrorFullscreen() {
 }
 
 const styles = StyleSheet.create({
-  fullscreenContainer: {
-    flex: 1,
-    padding: 0,
-    // backgroundColor moved to dynamic styling
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1000,
-  },
-  cameraBackground: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    aspectRatio: 1,
-    alignSelf: "center",
-  },
-  fullscreenOverlay: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "transparent",
-    padding: 40,
-    zIndex: 10,
-  },
-  fullscreenDisplayContainer: {
-    padding: 0,
-    backgroundColor: "transparent",
-  },
-  exitFullscreenButton: {
-    position: "absolute",
-    top: 40,
-    right: 20,
-    // backgroundColor moved to dynamic styling
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 30,
-    zIndex: 20,
-  },
-  exitFullscreenText: {
-    // color moved to dynamic styling
-    fontSize: 16,
-    fontFamily: "Montserrat-Bold",
-  },
-  flipCameraButton: {
-    position: "absolute",
-    top: 40,
-    left: 20,
-    // backgroundColor moved to dynamic styling
-    padding: 12,
-    borderRadius: 50,
-    zIndex: 20,
-  },
-  recordingContainer: {
-    position: "absolute",
-    bottom: 40,
-    alignSelf: "center",
-    alignItems: "center",
-    zIndex: 20,
-  },
-  recordButton: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "rgba(255, 0, 0, 0.8)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: "white",
-  },
-  recordButtonInner: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "white",
-  },
-  recordingActive: {
-    backgroundColor: "rgba(255, 0, 0, 0.9)",
-    borderColor: "white",
-  },
-  recordingTimer: {
-    color: "white",
-    fontSize: 16,
-    fontFamily: "Montserrat-Bold",
-    marginTop: 10,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-  },
-  videosButton: {
-    position: "absolute",
-    bottom: 40,
-    right: 20,
-    // backgroundColor moved to dynamic styling
-    padding: 12,
-    borderRadius: 50,
-    zIndex: 20,
-  },
   badgeContainer: {
     position: "absolute",
     top: -5,
@@ -504,10 +413,32 @@ const styles = StyleSheet.create({
     fontFamily: "Montserrat-Bold",
     fontWeight: "bold",
   },
+  cameraBackground: {
+    alignSelf: "center",
+    aspectRatio: 1,
+    height: "100%",
+    position: "absolute",
+    width: "100%",
+  },
+  exitFullscreenButton: {
+    position: "absolute",
+    top: 40,
+    right: 20,
+    // backgroundColor moved to dynamic styling
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    zIndex: 20,
+  },
+  exitFullscreenText: {
+    // color moved to dynamic styling
+    fontSize: 16,
+    fontFamily: "Montserrat-Bold",
+  },
   fallbackContainer: {
+    alignItems: "center",
     flex: 1,
     justifyContent: "center",
-    alignItems: "center",
     // backgroundColor moved to dynamic styling
   },
   fallbackText: {
@@ -517,5 +448,85 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginHorizontal: 20,
     marginBottom: 20,
+  },
+  flipCameraButton: {
+    position: "absolute",
+    top: 40,
+    left: 20,
+    // backgroundColor moved to dynamic styling
+    padding: 12,
+    borderRadius: 50,
+    zIndex: 20,
+  },
+  fullscreenContainer: {
+    flex: 1,
+    padding: 0,
+    // backgroundColor moved to dynamic styling
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  fullscreenDisplayContainer: {
+    backgroundColor: "transparent",
+    padding: 0,
+  },
+  fullscreenOverlay: {
+    alignItems: "center",
+    backgroundColor: "transparent",
+    height: "100%",
+    justifyContent: "center",
+    padding: 40,
+    position: "absolute",
+    width: "100%",
+    zIndex: 10,
+  },
+  recordButton: {
+    alignItems: "center",
+    backgroundColor: "rgba(255, 0, 0, 0.8)",
+    borderColor: "white",
+    borderRadius: 35,
+    borderWidth: 4,
+    height: 70,
+    justifyContent: "center",
+    width: 70,
+  },
+  recordButtonInner: {
+    backgroundColor: "white",
+    borderRadius: 15,
+    height: 30,
+    width: 30,
+  },
+  recordingActive: {
+    backgroundColor: "rgba(255, 0, 0, 0.9)",
+    borderColor: "white",
+  },
+  recordingContainer: {
+    alignItems: "center",
+    alignSelf: "center",
+    bottom: 40,
+    position: "absolute",
+    zIndex: 20,
+  },
+  recordingTimer: {
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 20,
+    color: "white",
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    marginTop: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 5,
+  },
+  videosButton: {
+    position: "absolute",
+    bottom: 40,
+    right: 20,
+    // backgroundColor moved to dynamic styling
+    padding: 12,
+    borderRadius: 50,
+    zIndex: 20,
   },
 })

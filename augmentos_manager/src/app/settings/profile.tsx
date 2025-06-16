@@ -35,7 +35,6 @@ export default function ProfileSettingsPage() {
   } | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
 
-
   const {goBack, push} = useNavigationHistory()
 
   useEffect(() => {
@@ -86,75 +85,115 @@ export default function ProfileSettingsPage() {
   }
 
   const handleDeleteAccount = () => {
-    console.log("Profile: Starting account deletion process")
+    console.log("Profile: Starting account deletion process - Step 1")
+    
+    // Step 1: Initial warning
     showAlert(
-      translate("profileSettings:deleteAccountTitle"), 
-      translate("profileSettings:deleteAccountMessage"), 
+      translate("profileSettings:deleteAccountWarning1Title"),
+      translate("profileSettings:deleteAccountWarning1Message"),
       [
         {text: translate("common:cancel"), style: "cancel"},
         {
-          text: translate("common:delete"),
-          style: "destructive",
-          onPress: async () => {
-            console.log("Profile: User confirmed account deletion")
+          text: translate("common:continue"),
+          onPress: () => {
+            console.log("Profile: User passed step 1 - Step 2")
             
-            let deleteRequestSuccessful = false
-            let errorMessage = ""
-            
-            try {
-              console.log("Profile: Requesting account deletion from server")
-              const response = await BackendServerComms.getInstance().requestAccountDeletion()
-              
-              // Check if the response indicates success
-              deleteRequestSuccessful = response && (response.success === true || response.status === 'success')
-              console.log("Profile: Account deletion request successful:", deleteRequestSuccessful)
-            } catch (error) {
-              console.error("Profile: Error requesting account deletion:", error)
-              deleteRequestSuccessful = false
-              errorMessage = error instanceof Error ? error.message : String(error)
-            }
-            
-            // Always perform logout regardless of deletion request success
-            try {
-              console.log("Profile: Starting comprehensive logout")
-              await LogoutUtils.performCompleteLogout()
-              console.log("Profile: Logout completed successfully")
-            } catch (logoutError) {
-              console.error("Profile: Error during logout:", logoutError)
-              // Continue with navigation even if logout fails
-            }
-            
-            // Show appropriate message based on deletion request result
-            if (deleteRequestSuccessful) {
+            // Step 2: Generic confirmation - delay to let first modal close
+            setTimeout(() => {
               showAlert(
-                translate("profileSettings:deleteAccountSuccessTitle"),
-                translate("profileSettings:deleteAccountSuccessMessage"),
+                translate("profileSettings:deleteAccountTitle"),
+                translate("profileSettings:deleteAccountMessage"),
                 [
+                  {text: translate("common:cancel"), style: "cancel"},
                   {
-                    text: translate("common:ok"),
-                    onPress: () => router.replace("/")
-                  }
+                    text: translate("common:continue"),
+                    onPress: () => {
+                      console.log("Profile: User passed step 2 - Step 3")
+                      
+                      // Step 3: Final severe warning - delay to let second modal close
+                      setTimeout(() => {
+                        showAlert(
+                          translate("profileSettings:deleteAccountWarning2Title"),
+                          translate("profileSettings:deleteAccountWarning2Message") + "\n\n" + 
+                          "⚠️ THIS IS YOUR FINAL CHANCE TO CANCEL ⚠️",
+                          [
+                            {text: translate("common:cancel"), style: "cancel"},
+                            {
+                              text: "DELETE PERMANENTLY",
+                              onPress: proceedWithAccountDeletion,
+                            },
+                          ],
+                          {cancelable: false},
+                        )
+                      }, 100)
+                    },
+                  },
                 ],
-                { cancelable: false }
+                {cancelable: false},
               )
-            } else {
-              showAlert(
-                translate("profileSettings:deleteAccountPendingTitle"),
-                translate("profileSettings:deleteAccountPendingMessage"),
-                [
-                  {
-                    text: translate("common:ok"),
-                    onPress: () => router.replace("/")
-                  }
-                ],
-                { cancelable: false }
-              )
-            }
+            }, 100)
           },
         },
       ],
-      { cancelable: false }
+      {cancelable: false},
     )
+  }
+
+  const proceedWithAccountDeletion = async () => {
+    console.log("Profile: User confirmed account deletion - proceeding")
+
+    let deleteRequestSuccessful = false
+    let errorMessage = ""
+
+    try {
+      console.log("Profile: Requesting account deletion from server")
+      const response = await BackendServerComms.getInstance().requestAccountDeletion()
+
+      // Check if the response indicates success
+      deleteRequestSuccessful = response && (response.success === true || response.status === "success")
+      console.log("Profile: Account deletion request successful:", deleteRequestSuccessful)
+    } catch (error) {
+      console.error("Profile: Error requesting account deletion:", error)
+      deleteRequestSuccessful = false
+      errorMessage = error instanceof Error ? error.message : String(error)
+    }
+
+    // Always perform logout regardless of deletion request success
+    try {
+      console.log("Profile: Starting comprehensive logout")
+      await LogoutUtils.performCompleteLogout()
+      console.log("Profile: Logout completed successfully")
+    } catch (logoutError) {
+      console.error("Profile: Error during logout:", logoutError)
+      // Continue with navigation even if logout fails
+    }
+
+    // Show appropriate message based on deletion request result
+    if (deleteRequestSuccessful) {
+      showAlert(
+        translate("profileSettings:deleteAccountSuccessTitle"),
+        translate("profileSettings:deleteAccountSuccessMessage"),
+        [
+          {
+            text: translate("common:ok"),
+            onPress: () => router.replace("/"),
+          },
+        ],
+        {cancelable: false},
+      )
+    } else {
+      showAlert(
+        translate("profileSettings:deleteAccountPendingTitle"),
+        translate("profileSettings:deleteAccountPendingMessage"),
+        [
+          {
+            text: translate("common:ok"),
+            onPress: () => router.replace("/"),
+          },
+        ],
+        {cancelable: false},
+      )
+    }
   }
 
   const {theme, themed} = useAppTheme()
@@ -187,18 +226,18 @@ export default function ProfileSettingsPage() {
 
             <View style={themed($infoContainer)}>
               <Text tx="profileSettings:createdAt" style={themed($label)} />
-              <Text 
+              <Text
                 text={userData.createdAt ? new Date(userData.createdAt).toLocaleString() : "N/A"}
-                style={themed($infoText)} />
+                style={themed($infoText)}
+              />
             </View>
-
 
             {userData.provider == "email" && (
               <ActionButton
                 label={translate("profileSettings:changePassword")}
                 variant="default"
                 onPress={handleChangePassword}
-                containerStyle={{ marginBottom: theme.spacing.xs }}
+                containerStyle={{marginBottom: theme.spacing.xs}}
               />
             )}
 
@@ -206,9 +245,9 @@ export default function ProfileSettingsPage() {
               label={translate("profileSettings:requestDataExport")}
               variant="default"
               onPress={handleRequestDataExport}
-              containerStyle={{ marginBottom: theme.spacing.xs }}
+              containerStyle={{marginBottom: theme.spacing.xs}}
             />
-            
+
             <ActionButton
               label={translate("profileSettings:deleteAccount")}
               variant="destructive"
@@ -255,7 +294,6 @@ const $deleteAccountButton: ThemedStyle<ViewStyle> = ({colors}) => ({
 
 const $requestDataExportButton: ThemedStyle<ViewStyle> = ({colors}) => ({})
 
-
 const $requestDataExportButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.palette.primary500,
 })
@@ -297,7 +335,6 @@ const $infoText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
 })
 
-
 const $headerContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   flexDirection: "row",
   alignItems: "center",
@@ -336,7 +373,6 @@ const $navigationBarContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
   left: 0,
   right: 0,
 })
-
 
 const $inputIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
   marginRight: 12,

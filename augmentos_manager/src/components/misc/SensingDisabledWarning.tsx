@@ -4,7 +4,7 @@ import {View, Text, StyleSheet, TouchableOpacity} from "react-native"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {router} from "expo-router"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import { translate } from "@/i18n"
+import {translate} from "@/i18n"
 
 const SensingDisabledWarning: React.FC = () => {
   const {status} = useStatus()
@@ -42,18 +42,6 @@ const styles = StyleSheet.create({
     // marginHorizontal: 8,
     alignSelf: "center",
   },
-  warningContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-  warningText: {
-    marginLeft: 10,
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#E65100",
-    flex: 1,
-  },
   settingsButton: {
     padding: 5,
   },
@@ -61,6 +49,18 @@ const styles = StyleSheet.create({
     color: "#007AFF",
     fontSize: 14,
     fontWeight: "bold",
+  },
+  warningContent: {
+    alignItems: "center",
+    flexDirection: "row",
+    flex: 1,
+  },
+  warningText: {
+    color: "#E65100",
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 10,
   },
 })
 

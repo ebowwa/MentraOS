@@ -1,12 +1,12 @@
-import React from "react";
-import { Svg, Path } from "react-native-svg";
+import React from "react"
+import {Svg, Path} from "react-native-svg"
 
 interface TruckIconProps {
-  size?: number;
-  color?: string;
+  size?: number
+  color?: string
 }
 
-export const TruckIcon = ({ size = 25, color = "#F7F7F7" }: TruckIconProps) => (
+export const TruckIcon = ({size = 25, color = "#F7F7F7"}: TruckIconProps) => (
   <Svg width={size} height={size} viewBox="0 0 25 25" fill="none">
     <Path
       d="M7.25787 19.1437C8.41592 19.1437 9.35461 18.205 9.35461 17.0469C9.35461 15.8889 8.41592 14.9502 7.25787 14.9502C6.09982 14.9502 5.16113 15.8889 5.16113 17.0469C5.16113 18.205 6.09992 19.1437 7.25787 19.1437Z"
@@ -35,4 +35,4 @@ export const TruckIcon = ({ size = 25, color = "#F7F7F7" }: TruckIconProps) => (
     />
     <Path d="M14.5967 17.0469H15.6451" stroke={color} strokeLinecap="round" />
   </Svg>
-);
+)

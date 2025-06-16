@@ -1,7 +1,7 @@
 // TODO: write documentation about fonts and typography along with guides on how to add custom fonts in own
 // markdown file and add links from here
 
-import { Platform } from "react-native"
+import {Platform} from "react-native"
 import {
   SpaceGrotesk_300Light as spaceGroteskLight,
   SpaceGrotesk_400Regular as spaceGroteskRegular,
@@ -29,11 +29,11 @@ const fonts = {
   },
   sfProRounded: {
     // SF Pro Rounded - the cool robot font
-    light: Platform.select({ ios: "SF Pro Rounded", android: "sans-serif-light" }),
-    normal: Platform.select({ ios: "SF Pro Rounded", android: "sans-serif" }),
-    medium: Platform.select({ ios: "SF Pro Rounded", android: "sans-serif-medium" }),
-    semiBold: Platform.select({ ios: "SF Pro Rounded", android: "sans-serif-medium" }),
-    bold: Platform.select({ ios: "SF Pro Rounded", android: "sans-serif" }),
+    light: Platform.select({ios: "SF Pro Rounded", android: "sans-serif-light"}),
+    normal: Platform.select({ios: "SF Pro Rounded", android: "sans-serif"}),
+    medium: Platform.select({ios: "SF Pro Rounded", android: "sans-serif-medium"}),
+    semiBold: Platform.select({ios: "SF Pro Rounded", android: "sans-serif-medium"}),
+    bold: Platform.select({ios: "SF Pro Rounded", android: "sans-serif"}),
   },
   helveticaNeue: {
     // iOS only font.
@@ -75,5 +75,5 @@ export const typography = {
   /**
    * Lets get fancy with a monospace font!
    */
-  code: Platform.select({ ios: fonts.courier, android: fonts.monospace }),
+  code: Platform.select({ios: fonts.courier, android: fonts.monospace}),
 }

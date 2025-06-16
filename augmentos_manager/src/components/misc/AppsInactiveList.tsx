@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Easing,
 } from "react-native"
-import { Text } from "@/components/ignite"
+import {Text} from "@/components/ignite"
 import MessageModal from "./MessageModal"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
@@ -47,9 +47,11 @@ import {AppListStoreLink} from "./AppListStoreLink"
 export default function InactiveAppList({
   isSearchPage = false,
   searchQuery,
+  liveCaptionsRef,
 }: {
   isSearchPage?: boolean
   searchQuery?: string
+  liveCaptionsRef?: React.RefObject<any>
 }) {
   const {
     appStatus,
@@ -59,7 +61,7 @@ export default function InactiveAppList({
     clearPendingOperation,
     isSensingEnabled,
   } = useAppStatus()
-  const { status } = useStatus()
+  const {status} = useStatus()
   const [onboardingModalVisible, setOnboardingModalVisible] = useState(false)
   const [onboardingCompleted, setOnboardingCompleted] = useState(true)
   const [inLiveCaptionsPhase, setInLiveCaptionsPhase] = useState(false)
@@ -74,8 +76,9 @@ export default function InactiveAppList({
 
   const [containerWidth, setContainerWidth] = React.useState(0)
 
-  // Reference for the Live Captions list item
-  const liveCaptionsRef = useRef<any>(null)
+  // Reference for the Live Captions list item (use provided ref or create new one)
+  const internalLiveCaptionsRef = useRef<any>(null)
+  const actualLiveCaptionsRef = liveCaptionsRef || internalLiveCaptionsRef
 
   // Constants for grid item sizing
   const GRID_MARGIN = 6 // Total horizontal margin per item (left + right)
@@ -115,7 +118,6 @@ export default function InactiveAppList({
     }, []),
   )
 
-
   // Check if onboarding is completed on initial load
   useEffect(() => {
     const checkOnboardingStatus = async () => {
@@ -138,7 +140,6 @@ export default function InactiveAppList({
       pulseAnim.setValue(0)
     }
   }, [showOnboardingTip])
-
 
   const completeOnboarding = () => {
     saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
@@ -294,9 +295,7 @@ export default function InactiveAppList({
           ? translate("home:permissionsRequiredTitle")
           : translate("home:permissionRequiredTitle"),
         translate("home:permissionMessage", {
-          permissions: neededPermissions
-            .map(perm => PERMISSION_CONFIG[perm]?.name || perm)
-            .join(", "),
+          permissions: neededPermissions.map(perm => PERMISSION_CONFIG[perm]?.name || perm).join(", "),
         }),
         [
           {
@@ -322,27 +321,23 @@ export default function InactiveAppList({
     // Check if glasses are connected and this is the first app being activated
     const glassesConnected = status.glasses_info?.model_name != null
     const activeApps = appStatus.filter(app => app.is_running)
-    
+
     if (!glassesConnected && activeApps.length === 0) {
       // Show alert for first app activation when glasses aren't connected
       const shouldContinue = await new Promise<boolean>(resolve => {
-        showAlert(
-          translate("home:glassesNotConnected"),
-          translate("home:appWillRunWhenConnected"),
-          [
-            {
-              text: translate("common:cancel"),
-              style: "cancel",
-              onPress: () => resolve(false),
-            },
-            {
-              text: translate("common:ok"),
-              onPress: () => resolve(true),
-            },
-          ],
-        )
+        showAlert(translate("home:glassesNotConnected"), translate("home:appWillRunWhenConnected"), [
+          {
+            text: translate("common:cancel"),
+            style: "cancel",
+            onPress: () => resolve(false),
+          },
+          {
+            text: translate("common:ok"),
+            onPress: () => resolve(true),
+          },
+        ])
       })
-      
+
       if (!shouldContinue) {
         return
       }
@@ -350,7 +345,7 @@ export default function InactiveAppList({
 
     // Find the opacity value for this app
     const itemOpacity = opacities[packageName]
-    
+
     // Animate the app disappearing
     if (itemOpacity) {
       Animated.timing(itemOpacity, {
@@ -360,10 +355,10 @@ export default function InactiveAppList({
         useNativeDriver: true,
       }).start()
     }
-    
+
     // Wait a bit for animation to complete
     await new Promise(resolve => setTimeout(resolve, 300))
-    
+
     // Only update UI optimistically after user confirms and animation completes
     optimisticallyStartApp(packageName)
 
@@ -444,7 +439,6 @@ export default function InactiveAppList({
     })
   }
 
-
   // Filter out duplicate apps and running apps
   let availableApps = appStatus.filter(app => {
     if (app.is_running) {
@@ -459,8 +453,27 @@ export default function InactiveAppList({
   if (Platform.OS === "ios") {
     availableApps = availableApps.filter(app => app.packageName !== "cloud.augmentos.notify" && app.name !== "Notify")
   }
-  // alphabetically sort the available apps
-  availableApps.sort((a, b) => a.name.localeCompare(b.name))
+  
+  // Sort apps: during onboarding, put Live Captions first, otherwise alphabetical
+  if (!onboardingCompleted) {
+    availableApps.sort((a, b) => {
+      // Check if either app is Live Captions
+      const aIsLiveCaptions = a.packageName === "com.augmentos.livecaptions" || 
+                              a.packageName === "cloud.augmentos.live-captions"
+      const bIsLiveCaptions = b.packageName === "com.augmentos.livecaptions" || 
+                              b.packageName === "cloud.augmentos.live-captions"
+      
+      // If a is Live Captions, it should come first
+      if (aIsLiveCaptions && !bIsLiveCaptions) return -1
+      // If b is Live Captions, it should come first
+      if (!aIsLiveCaptions && bIsLiveCaptions) return 1
+      // Otherwise sort alphabetically
+      return a.name.localeCompare(b.name)
+    })
+  } else {
+    // Normal alphabetical sort when onboarding is completed
+    availableApps.sort((a, b) => a.name.localeCompare(b.name))
+  }
 
   if (searchQuery) {
     availableApps = availableApps.filter(app => app.name.toLowerCase().includes(searchQuery.toLowerCase()))
@@ -495,8 +508,7 @@ export default function InactiveAppList({
           app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
 
         // Only set ref for LiveCaptions app
-        const ref = isLiveCaptions ? liveCaptionsRef : null
-
+        const ref = isLiveCaptions ? actualLiveCaptionsRef : null
 
         // Get the shared opacity Animated.Value for this app
         const itemOpacity = opacities[app.packageName]
@@ -528,7 +540,7 @@ export default function InactiveAppList({
           </React.Fragment>
         )
       })}
-      
+
       {/* Add "Get More Apps" link at the bottom */}
       {availableApps.length > 0 && (
         <>
@@ -538,7 +550,7 @@ export default function InactiveAppList({
           <AppListStoreLink />
         </>
       )}
-      
+
       {/* Add bottom padding for better scrolling experience */}
       <Spacer height={40} />
     </View>

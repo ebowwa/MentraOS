@@ -18,12 +18,12 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 
   return (
     <View style={[themed($glassesScreen), containerStyle]}>
-    {layout && layout.layoutType ? (
-      renderLayout(layout, containerStyle)
-    ) : (
-      <Text style={[styles.glassesText]}>{fallbackMessage}</Text>
-    )}
-  </View>
+      {layout && layout.layoutType ? (
+        renderLayout(layout, containerStyle)
+      ) : (
+        <Text style={styles.glassesText}>{fallbackMessage}</Text>
+      )}
+    </View>
   )
 }
 
@@ -95,13 +95,31 @@ const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 })
 
 const styles = StyleSheet.create({
-  glassesDisplayContainer: {
+  cardContent: {
+    fontFamily: "Montserrat-Regular",
+    fontSize: 16,
+  },
+
+  cardTitle: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 18,
+    marginBottom: 5,
+  },
+  emptyTextWall: {
+    alignItems: "center",
+    borderColor: "#00FF00",
+    borderStyle: "dashed",
+    borderWidth: 1,
+    height: 100,
+    justifyContent: "center",
     width: "100%",
+  },
+  glassesDisplayContainer: {
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
+    width: "100%",
   },
-
   glassesText: {
     color: "#00FF00", // Bright green color for monochrome display
     fontFamily: "Montserrat-Regular",
@@ -110,24 +128,6 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(0, 0, 0, 0.9)",
     textShadowOffset: {width: 1, height: 1},
     textShadowRadius: 2,
-  },
-  emptyTextWall: {
-    borderWidth: 1,
-    borderColor: "#00FF00",
-    borderStyle: "dashed",
-    width: "100%",
-    height: 100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontFamily: "Montserrat-Bold",
-    marginBottom: 5,
-  },
-  cardContent: {
-    fontSize: 16,
-    fontFamily: "Montserrat-Regular",
   },
 })
 

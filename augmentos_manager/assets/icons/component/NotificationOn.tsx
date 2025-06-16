@@ -1,13 +1,13 @@
 // in ../icons/NotificationOn.tsx
-import React from 'react';
-import Svg, { G, Path, Defs, ClipPath, Rect } from 'react-native-svg';
+import React from "react"
+import Svg, {G, Path, Defs, ClipPath, Rect} from "react-native-svg"
 
 interface NotificationOnProps {
-  color?: string;
-  size?: number;
+  color?: string
+  size?: number
 }
 
-const NotificationOn = ({ color = '#565E8C', size = 24 }: NotificationOnProps) => (
+const NotificationOn = ({color = "#565E8C", size = 24}: NotificationOnProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <G clipPath="url(#clip0_218_3966)">
       <Path
@@ -38,6 +38,6 @@ const NotificationOn = ({ color = '#565E8C', size = 24 }: NotificationOnProps) =
       </ClipPath>
     </Defs>
   </Svg>
-);
+)
 
-export default NotificationOn;
+export default NotificationOn

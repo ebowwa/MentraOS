@@ -147,15 +147,15 @@ export default function DashboardSettingsScreen() {
       transparent={true}
       animationType="fade"
       onRequestClose={() => !isUpdating && setShowContentPicker(false)}>
-      <View style={[themed($modalOverlay)]}>
-        <View style={[themed($pickerContainer)]}>
+      <View style={themed($modalOverlay)}>
+        <View style={themed($pickerContainer)}>
           <View style={themed($pickerHeader)}>
             <Text style={themed($pickerTitle)}>Select Dashboard Content</Text>
             <TouchableOpacity
               onPress={() => !isUpdating && setShowContentPicker(false)}
               style={[styles.closeButton, isUpdating && styles.disabledButton]}
               disabled={isUpdating}>
-              <Text style={[styles.closeButtonText, { color: theme.colors.text }]}>✕</Text>
+              <Text style={[styles.closeButtonText, {color: theme.colors.text}]}>✕</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -165,11 +165,7 @@ export default function DashboardSettingsScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header
-        titleTx="settings:dashboardSettings"
-        leftIcon="caretLeft"
-        onLeftPress={goBack}
-      />
+      <Header titleTx="settings:dashboardSettings" leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView>
         {/* <Text style={themed($sectionTitle)}>General Settings</Text> */}
         {/* <View style={themed($settingItem)}>
@@ -349,15 +345,15 @@ const styles = StyleSheet.create({
     // backgroundColor moved to dynamic styling
   },
   header: {
+    borderBottomWidth: 1,
     padding: 20,
     paddingTop: 10,
-    borderBottomWidth: 1,
     // borderBottomColor moved to dynamic styling
   },
   headerTitle: {
+    fontFamily: "Montserrat-Bold",
     fontSize: 28,
     fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
     // color moved to dynamic styling
   },
   scrollViewContainer: {
@@ -391,8 +387,8 @@ const styles = StyleSheet.create({
     }),
   },
   settingItem: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     justifyContent: "space-between",
     padding: 16,
   },
@@ -412,8 +408,8 @@ const styles = StyleSheet.create({
     // color moved to dynamic styling
   },
   selectedValueContainer: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
   },
   selectedValue: {
     fontSize: 16,
@@ -421,7 +417,7 @@ const styles = StyleSheet.create({
     // color moved to dynamic styling
   },
   // modalOverlay, pickerContainer, pickerHeader moved to ThemedStyle
-  
+
   closeButton: {
     padding: 8,
   },
@@ -434,18 +430,18 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   pickerOption: {
-    padding: 16,
     borderBottomWidth: 1,
+    padding: 16,
     // borderBottomColor moved to dynamic styling
   },
   optionContent: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
   },
   pickerOptionText: {
-    fontSize: 16,
     flex: 1,
+    fontSize: 16,
     // color moved to dynamic styling
   },
   selectedOption: {
@@ -458,14 +454,14 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
     alignItems: "center",
     borderRadius: 12,
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
     // backgroundColor moved to dynamic styling
   },
   // pickerTitle moved to ThemedStyle
