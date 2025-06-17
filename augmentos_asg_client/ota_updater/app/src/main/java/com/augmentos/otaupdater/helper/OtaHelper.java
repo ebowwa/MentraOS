@@ -57,6 +57,9 @@ public class OtaHelper {
         
         // Start periodic checks
         startPeriodicChecks();
+
+        // Register network callback to check for updates when WiFi becomes available
+        registerNetworkCallback(this.context);
     }
 
     public void cleanup() {
@@ -205,6 +208,7 @@ public class OtaHelper {
                 }
                 isCheckingVersion = true;
             }
+
             try {
                 // 1. Get installed asg_client version
                 long currentVersion;
