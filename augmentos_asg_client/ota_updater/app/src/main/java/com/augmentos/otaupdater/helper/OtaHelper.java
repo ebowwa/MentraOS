@@ -433,7 +433,7 @@ public class OtaHelper {
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
                 Log.i(TAG, "Installation timer elapsed - sending completion broadcast");
                 sendUpdateCompletedBroadcast(context);
-            }, 5000); // Wait 60 seconds for installation to complete
+            }, 10000); // Wait 60 seconds for installation to complete
         } catch (SecurityException e) {
             Log.e(TAG, "Security exception while sending install broadcast", e);
             // Make sure to send completion broadcast on error
