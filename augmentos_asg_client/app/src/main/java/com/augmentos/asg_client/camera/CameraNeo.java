@@ -28,6 +28,7 @@ import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
 import android.util.Size;
@@ -76,8 +77,6 @@ public class CameraNeo extends LifecycleService {
     private Size jpegSize;
     private String cameraId;
     private boolean isK900Device = false;
-
-    // Screen wake is now handled by WakeLockManager
 
     // Target photo resolution (4:3 landscape orientation)
     private static final int TARGET_WIDTH = 1440;
@@ -323,6 +322,18 @@ public class CameraNeo extends LifecycleService {
         }
 
         try {
+            // First check if camera permission is granted
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                int cameraPermission = checkSelfPermission(android.Manifest.permission.CAMERA);
+                if (cameraPermission != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "Camera permission not granted");
+                    if (forVideo) notifyVideoError(currentVideoId, "Camera permission not granted");
+                    else notifyPhotoError("Camera permission not granted");
+                    stopSelf();
+                    return;
+                }
+            }
+
             String[] cameraIds = manager.getCameraIdList();
             if (isK900Device) {
                 if (cameraIds.length > 0) this.cameraId = "0";
@@ -466,8 +477,26 @@ public class CameraNeo extends LifecycleService {
             manager.openCamera(this.cameraId, forVideo ? videoStateCallback : photoStateCallback, backgroundHandler);
 
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Camera access exception", e);
-            notifyPhotoError("Could not access camera: " + e.getMessage());
+            // Handle camera access exceptions more specifically
+            Log.e(TAG, "Camera access exception: " + e.getReason(), e);
+            String errorMsg = "Could not access camera";
+
+            // Check for specific error reasons
+            if (e.getReason() == CameraAccessException.CAMERA_DISABLED) {
+                errorMsg = "Camera disabled by policy - please check camera permissions in Settings";
+                // Try to recover by restarting the camera service
+                Log.d(TAG, "Attempting to restart camera service in safe mode");
+                restartCameraServiceIfNeeded();
+            } else if (e.getReason() == CameraAccessException.CAMERA_ERROR) {
+                errorMsg = "Camera device encountered an error";
+            } else if (e.getReason() == CameraAccessException.CAMERA_IN_USE) {
+                errorMsg = "Camera is already in use by another app";
+                // Try to close other camera sessions
+                releaseCameraResources();
+            }
+
+            if (forVideo) notifyVideoError(currentVideoId, errorMsg);
+            else notifyPhotoError(errorMsg);
             stopSelf();
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while trying to lock camera", e);
@@ -927,6 +956,84 @@ public class CameraNeo extends LifecycleService {
         Log.d(TAG, "Waking up screen for camera access");
         // Use the WakeLockManager to acquire both CPU and screen wake locks
         WakeLockManager.acquireFullWakeLock(this);
+    }
+
+    /**
+     * Attempt to restart the camera service with different parameters if needed
+     */
+    private void restartCameraServiceIfNeeded() {
+        try {
+            // First, release all current camera resources
+            releaseCameraResources();
+
+            Log.d(TAG, "Camera service restart attempt made - waiting for system to release camera");
+
+            // Implement retry mechanism with delay to handle policy-disabled errors
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "Attempting camera restart with delayed retry");
+
+                // Try with a different camera ID if available
+                CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                if (manager != null) {
+                    try {
+                        String[] cameraIds = manager.getCameraIdList();
+                        // If we were using camera "0", try a different one if available
+                        if (cameraIds.length > 1 && "0".equals(cameraId)) {
+                            this.cameraId = "1";
+                            Log.d(TAG, "Switching to alternate camera ID: " + this.cameraId);
+                        }
+                    } catch (CameraAccessException e) {
+                        Log.e(TAG, "Error accessing camera during retry", e);
+                    }
+                }
+
+                // Request camera focus - this can help on some devices by signaling
+                // to the system that camera is needed
+                wakeUpScreen();
+
+                // Try releasing all app camera resources forcibly
+                if (cameraDevice != null) {
+                    cameraDevice.close();
+                    cameraDevice = null;
+                }
+
+                if (cameraCaptureSession != null) {
+                    cameraCaptureSession.close();
+                    cameraCaptureSession = null;
+                }
+
+                System.gc(); // Request garbage collection
+            }, 1000); // Short delay before retry
+        } catch (Exception e) {
+            Log.e(TAG, "Error in camera service restart", e);
+        }
+    }
+
+    /**
+     * Release all camera system resources
+     */
+    private void releaseCameraResources() {
+        try {
+            // Request to release system-wide camera resources
+            closeCamera();
+
+            // For policy-based restrictions, we need to ensure camera resources are fully released
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // On newer Android versions, encourage system resource release
+                CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                if (manager != null) {
+                    // Nothing we can directly do to force release, but we can
+                    // make sure our resources are gone
+                    if (cameraDevice != null) {
+                        cameraDevice.close();
+                        cameraDevice = null;
+                    }
+                    System.gc();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing camera resources", e);
+        }
     }
 
     // -----------------------------------------------------------------------------------

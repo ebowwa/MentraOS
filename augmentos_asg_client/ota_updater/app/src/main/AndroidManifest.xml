@@ -37,13 +37,7 @@
 <!--                <action android:name="com.augmentos.asg_client.ACTION_INSTALL_OTA" />-->
 <!--            </intent-filter>-->
 <!--        </receiver>-->
-        <receiver
-            android:name=".receiver.OtaHeartbeatAckReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.augmentos.asg_client.ACTION_HEARTBEAT_ACK" />
-            </intent-filter>
-        </receiver>
+        <!-- OtaHeartbeatAckReceiver removed as MainActivity now handles these broadcasts directly -->
     </application>
     <queries>
         <package android:name="com.augmentos.asg_client" />

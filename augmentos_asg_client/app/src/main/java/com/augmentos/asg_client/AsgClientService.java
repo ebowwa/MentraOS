@@ -78,6 +78,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_START_OTA_UPDATER = "ACTION_START_OTA_UPDATER";
     // Add the restart action constant
     public static final String ACTION_RESTART_SERVICE = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
+    public static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
+    public static final String ACTION_RESTART_CAMERA = "com.augmentos.asg_client.ACTION_RESTART_CAMERA";
 
     // Notification channel info
     private final String notificationAppName = "ASG Client";
@@ -241,7 +243,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
-            Log.d(TAG, "Received broadcast with action: " + action);
+            Log.d(TAG, "@#$$% Received broadcast with action: " + action);
             
             if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
                 lastHeartbeatTime = System.currentTimeMillis();
@@ -505,13 +507,32 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 augmentosIntent.setAction(AugmentosService.ACTION_START_CORE);
                 break;
 
-            // case ACTION_START_OTA_UPDATER:
-            //     Log.d(TAG, "Starting OTA Updater MainActivity");
-            //     Intent otaIntent = new Intent();
-            //     otaIntent.setClassName("com.augmentos.otaupdater", "com.augmentos.otaupdater.MainActivity");
-            //     otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            //     startActivity(otaIntent);
-            //     break;
+            case ACTION_RESTART_SERVICE:
+                Log.d(TAG, "AsgClientService onStartCommand -> restart request received");
+                createNotificationChannel();
+                startForeground(asgServiceNotificationId, updateNotification());
+                
+                // Register the restart receiver if not already registered
+                registerRestartReceiver();
+
+                // Initialize components if not already done
+                if (!isInitialized()) {
+                    Log.d(TAG, "Initializing components after restart");
+                    safelyInitializeComponents();
+                }
+
+                // Send restart complete broadcast
+                Intent completeIntent = new Intent(ACTION_RESTART_COMPLETE);
+                completeIntent.setPackage("com.augmentos.otaupdater");
+                sendBroadcast(completeIntent);
+                Log.d(TAG, "✅ Sent restart complete broadcast");
+
+                // Send heartbeat acknowledgment to confirm restart
+                Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                ackIntent.setPackage("com.augmentos.otaupdater");
+                sendBroadcast(ackIntent);
+                Log.d(TAG, "✅ Sent heartbeat acknowledgment to OTA updater after restart");
+                break;
 
             case ACTION_STOP_CORE:
             case ACTION_STOP_FOREGROUND_SERVICE:
@@ -528,6 +549,26 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 // Optionally also stop AugmentosService entirely
                 // if you want it fully shut down:
                 stopService(new Intent(this, AugmentosService.class));
+                break;
+
+            case ACTION_RESTART_CAMERA:
+                Log.d(TAG, "AsgClientService onStartCommand -> camera restart request received");
+
+                // Request camera reset by running adb commands to reset camera service
+                try {
+                    // Try to reset camera permissions first
+                    SysControl.injectAdbCommand(getApplicationContext(), "pm grant " + getPackageName() + " android.permission.CAMERA");
+
+                    // Try to kill camera service processes to force a reset
+                    SysControl.injectAdbCommand(getApplicationContext(), "kill $(pidof cameraserver)");
+
+                    // Also try to kill media server as it sometimes helps
+                    SysControl.injectAdbCommand(getApplicationContext(), "kill $(pidof mediaserver)");
+
+                    Log.d(TAG, "Camera service reset commands sent");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error attempting to reset camera service", e);
+                }
                 break;
 
             default:
@@ -1516,6 +1557,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     getMediaCaptureService().stopVideoRecording();
                 } else {
                     // Otherwise handle as normal photo capture
+                    // Check camera permissions before trying to take a photo
+                    if (!ensureCameraPermissions()) {
+                        Log.e(TAG, "Camera permissions denied - attempting to fix before capture");
+                        // Still try to take photo - the internal handler will check again
+                    }
                     handlePhotoCaptureWithMode();
                 }
                 break;
@@ -2308,6 +2354,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         switch (currentPhotoMode) {
             case SAVE_LOCALLY:
                 if (mMediaCaptureService != null) {
+                    // Check for camera permissions one more time before attempting capture
+                    ensureCameraPermissions();
                     mMediaCaptureService.takePhotoLocally();
                 }
                 break;
@@ -2318,10 +2366,50 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String requestId = "cloud_" + timeStamp;
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
+                    // Check for camera permissions one more time before attempting capture
+                    ensureCameraPermissions();
                     // Take photo and upload to cloud
                     mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
                 }
                 break;
         }
+    }
+
+    /**
+     * Check if camera permissions are granted and try to fix if they're not
+     *
+     * @return true if permissions are granted or fixed, false otherwise
+     */
+    private boolean ensureCameraPermissions() {
+        // First check if permission is granted
+        boolean hasPermission = true;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            int cameraPermission = checkSelfPermission(android.Manifest.permission.CAMERA);
+            hasPermission = (cameraPermission == android.content.pm.PackageManager.PERMISSION_GRANTED);
+        }
+
+        if (!hasPermission) {
+            Log.e(TAG, "Camera permissions not granted - attempting to fix programmatically");
+
+            try {
+                // Try to enable camera access via system commands
+                SysControl.injectAdbCommand(getApplicationContext(), "pm grant " + getPackageName() + " android.permission.CAMERA");
+                // Try to reset camera service
+                SysControl.injectAdbCommand(getApplicationContext(), "svc power reboot"); // Sometimes a soft reboot helps
+
+                // Check if fixed
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    int updatedPermission = checkSelfPermission(android.Manifest.permission.CAMERA);
+                    boolean fixed = (updatedPermission == android.content.pm.PackageManager.PERMISSION_GRANTED);
+                    Log.d(TAG, "Camera permission fix " + (fixed ? "successful" : "failed"));
+                    return fixed;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error attempting to fix camera permissions", e);
+            }
+            return false;
+        }
+
+        return true;
     }
 }

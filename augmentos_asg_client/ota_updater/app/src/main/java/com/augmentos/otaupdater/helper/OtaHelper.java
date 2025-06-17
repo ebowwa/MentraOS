@@ -1,8 +1,8 @@
 package com.augmentos.otaupdater.helper;
 
 import static com.augmentos.otaupdater.helper.Constants.APK_FILENAME;
+import static com.augmentos.otaupdater.helper.Constants.BASE_DIR;
 import static com.augmentos.otaupdater.helper.Constants.METADATA_JSON;
-import static com.augmentos.otaupdater.helper.Constants.OTA_FOLDER;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
@@ -24,7 +24,6 @@ import org.json.JSONObject;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -259,7 +258,7 @@ public class OtaHelper {
 
     public boolean downloadApk(String urlStr, JSONObject json, Context context) {
         try {
-            File asgDir = new File(OTA_FOLDER);
+            File asgDir = new File(BASE_DIR);
 
             if (asgDir.exists()) {
                 File targetApk = new File(Constants.APK_FULL_PATH);
@@ -285,7 +284,25 @@ public class OtaHelper {
 
             byte[] buffer = new byte[4096];
             int len;
-            while ((len = in.read(buffer)) > 0) out.write(buffer, 0, len);
+            long total = 0;
+            long fileSize = conn.getContentLength();
+            int lastProgress = 0;
+
+            Log.d(TAG, "Download started, file size: " + fileSize + " bytes");
+
+            while ((len = in.read(buffer)) > 0) {
+                out.write(buffer, 0, len);
+                total += len;
+
+                // Calculate progress percentage
+                int progress = fileSize > 0 ? (int) (total * 100 / fileSize) : 0;
+
+                // Log progress at 10% intervals
+                if (progress >= lastProgress + 10 || progress == 100) {
+                    Log.d(TAG, "Download progress: " + progress + "% (" + total + "/" + fileSize + " bytes)");
+                    lastProgress = progress;
+                }
+            }
 
             out.close();
             in.close();
@@ -354,7 +371,7 @@ public class OtaHelper {
         }
 
         try {
-            File jsonFile = new File(OTA_FOLDER, METADATA_JSON);
+            File jsonFile = new File(BASE_DIR, METADATA_JSON);
             FileWriter writer = new FileWriter(jsonFile);
             writer.write(json.toString(2)); // Pretty print
             writer.close();
@@ -381,27 +398,46 @@ public class OtaHelper {
             intent.putExtra("pkpath", apkPath);
             intent.putExtra("recv_pkname", context.getPackageName());
             intent.putExtra("startapp", true);
-            
+
             // Verify APK exists before sending broadcast
             File apkFile = new File(apkPath);
             if (!apkFile.exists()) {
                 Log.e(TAG, "Installation failed: APK file not found at " + apkPath);
+                sendUpdateCompletedBroadcast(context);
                 return;
             }
-            
+
             // Verify APK is readable
             if (!apkFile.canRead()) {
                 Log.e(TAG, "Installation failed: Cannot read APK file at " + apkPath);
+                sendUpdateCompletedBroadcast(context);
                 return;
             }
-            
+
+            // First send a broadcast to pause heartbeats during installation
+            Intent pauseHeartbeatIntent = new Intent(Constants.ACTION_INSTALL_OTA);
+            pauseHeartbeatIntent.setPackage(context.getPackageName());
+            context.sendBroadcast(pauseHeartbeatIntent);
+            Log.i(TAG, "Sent broadcast to pause heartbeats during installation");
+
             Log.d(TAG, "Sending install broadcast to system UI...");
             context.sendBroadcast(intent);
             Log.i(TAG, "Install broadcast sent successfully. System will handle installation.");
+
+            // Set a timer to send the completion broadcast after a reasonable amount of time
+            // This is necessary because the system doesn't notify us when installation is complete
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.i(TAG, "Installation timer elapsed - sending completion broadcast");
+                sendUpdateCompletedBroadcast(context);
+            }, 5000); // Wait 60 seconds for installation to complete
         } catch (SecurityException e) {
             Log.e(TAG, "Security exception while sending install broadcast", e);
+            // Make sure to send completion broadcast on error
+            sendUpdateCompletedBroadcast(context);
         } catch (Exception e) {
             Log.e(TAG, "Failed to send install broadcast", e);
+            // Make sure to send completion broadcast on error
+            sendUpdateCompletedBroadcast(context);
         }
     }
 
@@ -420,9 +456,9 @@ public class OtaHelper {
         }
     }
 
-    private void deleteOldFiles(){
-        String apkFile = OTA_FOLDER + "/" + APK_FILENAME;
-        String metaFile = OTA_FOLDER + "/" + METADATA_JSON ;
+    private void deleteOldFiles() {
+        String apkFile = BASE_DIR + "/" + APK_FILENAME;
+        String metaFile = BASE_DIR + "/" + METADATA_JSON ;
         //remove metaFile and apkFile
         File apk = new File(apkFile);
         File meta = new File(metaFile);
@@ -438,7 +474,7 @@ public class OtaHelper {
 
     private int getMetadataVersion() {
         int localJsonVersion = 0;
-        File metaDataJson = new File(OTA_FOLDER, METADATA_JSON);
+        File metaDataJson = new File(BASE_DIR, METADATA_JSON);
         if (metaDataJson.exists()) {
             FileInputStream fis = null;
             try {
@@ -462,7 +498,7 @@ public class OtaHelper {
     public boolean reinstallApkFromBackup() {
         String backupPath = Constants.BACKUP_APK_PATH;
         Log.d(TAG, "Attempting to reinstall APK from backup at: " + backupPath);
-        
+
         File backupApk = new File(backupPath);
         if (!backupApk.exists()) {
             Log.e(TAG, "Backup APK not found at: " + backupPath);
@@ -497,7 +533,7 @@ public class OtaHelper {
     public boolean saveBackupApk(String sourceApkPath) {
         try {
             // Create backup directory if it doesn't exist
-            File backupDir = new File(context.getFilesDir(), Constants.BACKUP_DIR);
+            File backupDir = new File(context.getFilesDir(), BASE_DIR);
             if (!backupDir.exists()) {
                 boolean created = backupDir.mkdirs();
                 Log.d(TAG, "Created backup directory: " + created);
@@ -534,6 +570,40 @@ public class OtaHelper {
         } catch (Exception e) {
             Log.e(TAG, "Error saving backup APK", e);
             return false;
+        }
+    }
+
+    // Send update completion broadcast with a delay to ensure proper sequencing
+    private static void sendUpdateCompletedBroadcast(Context context) {
+        try {
+            // Send a preparatory broadcast to reset the heartbeat system
+            Intent resetIntent = new Intent(Constants.ACTION_INSTALL_OTA);
+            resetIntent.setPackage(context.getPackageName());
+            context.sendBroadcast(resetIntent);
+
+            // Short delay to allow the system to process the reset
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                try {
+                    // Now send the completion broadcast
+                    Intent completeIntent = new Intent(Constants.ACTION_UPDATE_COMPLETED);
+                    completeIntent.setPackage(context.getPackageName());
+                    context.sendBroadcast(completeIntent);
+                    Log.i(TAG, "Sent update completion broadcast");
+                } catch (Exception e) {
+                    Log.e(TAG, "Failed to send delayed update completion broadcast", e);
+                }
+            }, 1000); // 1 second delay between reset and completion
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to send update reset broadcast", e);
+            // Fallback direct completion broadcast
+            try {
+                Intent completeIntent = new Intent(Constants.ACTION_UPDATE_COMPLETED);
+                completeIntent.setPackage(context.getPackageName());
+                context.sendBroadcast(completeIntent);
+                Log.i(TAG, "Sent fallback update completion broadcast");
+            } catch (Exception ex) {
+                Log.e(TAG, "Failed to send fallback update completion broadcast", ex);
+            }
         }
     }
 }
