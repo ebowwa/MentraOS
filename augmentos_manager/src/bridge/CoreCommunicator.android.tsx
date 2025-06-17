@@ -31,21 +31,34 @@ export class CoreCommunicator extends EventEmitter {
     try {
       console.log("Checking Bluetooth state...")
 
-      // Ensure BleManager is initialized
+      // Try to check state without initialization first (like iOS)
       try {
-        await BleManager.start({showAlert: false})
-      } catch (initError) {
-        console.warn("BleManager already initialized or failed to initialize:", initError)
+        const state = await BleManager.checkState()
+        console.log("Bluetooth state:", state)
+
+        // Handle different possible return values
+        const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
+        console.log("Bluetooth enabled:", isEnabled)
+
+        return isEnabled
+      } catch (stateError) {
+        console.log("BleManager not initialized, trying with initialization...")
+        
+        // If that fails, initialize and try again
+        try {
+          await BleManager.start({showAlert: false})
+          const state = await BleManager.checkState()
+          console.log("Bluetooth state (after init):", state)
+
+          const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
+          console.log("Bluetooth enabled (after init):", isEnabled)
+
+          return isEnabled
+        } catch (initError) {
+          console.warn("BleManager initialization failed:", initError)
+          return false
+        }
       }
-
-      const state = await BleManager.checkState()
-      console.log("Bluetooth state:", state)
-
-      // Handle different possible return values
-      const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
-      console.log("Bluetooth enabled:", isEnabled)
-
-      return isEnabled
     } catch (error) {
       console.error("Error checking Bluetooth state:", error)
       // If we can't check the state, assume it's disabled for security
@@ -201,12 +214,7 @@ export class CoreCommunicator extends EventEmitter {
    * Initializes the communication channel with Core
    */
   async initialize() {
-    // Initialize BleManager for permission checks
-    try {
-      await BleManager.start({showAlert: false})
-    } catch (error) {
-      console.warn("Failed to initialize BleManager:", error)
-    }
+    // BleManager initialization is now handled on-demand in isBluetoothEnabled()
 
     // Start the Core service if it's not already running
     if (!(await CoreCommsService.isServiceRunning())) {

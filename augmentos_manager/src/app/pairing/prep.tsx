@@ -42,8 +42,8 @@ export default function PairingPrepScreen() {
       return
     }
 
-    // For Simulated Glasses, we still need critical permissions but can skip Bluetooth
-    const needsBluetoothPermissions = glassesModelName !== "Simulated Glasses"
+    // Always request Bluetooth permissions - required for Android 14+ foreground service
+    const needsBluetoothPermissions = true
 
     try {
       // Check for Android-specific permissions
@@ -124,8 +124,10 @@ export default function PairingPrepScreen() {
         } // End of Bluetooth permissions block
       } // End of Android-specific permissions block
 
-      // Check connectivity BEFORE requesting permissions (doesn't require permissions)
-      if (needsBluetoothPermissions) {
+      // Check connectivity early for iOS (permissions work differently)
+      console.log("DEBUG: needsBluetoothPermissions:", needsBluetoothPermissions, "Platform.OS:", Platform.OS)
+      if (needsBluetoothPermissions && Platform.OS === "ios") {
+        console.log("DEBUG: Running iOS connectivity check early")
         const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
         if (!requirementsCheck.isReady) {
           // Show alert about missing requirements  
@@ -184,6 +186,20 @@ export default function PairingPrepScreen() {
         {text: translate("common:ok")},
       ])
       return
+    }
+
+    // Check connectivity for Android after permissions are granted
+    if (needsBluetoothPermissions && Platform.OS === "android") {
+      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+      if (!requirementsCheck.isReady) {
+        // Show alert about missing requirements  
+        showAlert(
+          translate("pairing:connectionIssueTitle"),
+          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+          [{text: translate("common:ok")}],
+        )
+        return
+      }
     }
 
     console.log("needsBluetoothPermissions", needsBluetoothPermissions)

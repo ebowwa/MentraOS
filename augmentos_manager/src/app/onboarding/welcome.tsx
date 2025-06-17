@@ -1,5 +1,6 @@
 import React from "react"
 import {View, Text, StyleSheet} from "react-native"
+import {Screen} from "@/components/ignite"
 import {saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -51,7 +52,7 @@ export default function OnboardingWelcome() {
   }
 
   return (
-    <View style={[styles.container, {backgroundColor: theme.colors.background}]}>
+    <Screen preset="fixed" style={{backgroundColor: theme.colors.background}}>
       <View style={styles.mainContainer}>
         {/* <View style={styles.logoContainer}>
           <Icon
@@ -83,7 +84,7 @@ export default function OnboardingWelcome() {
           LeftAccessory={() => <FontAwesome name="step-forward" size={16} color={theme.colors.text} />}
         />
       </View>
-    </View>
+    </Screen>
   )
 }
 
@@ -94,9 +95,6 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingBottom: 40,
     width: "100%",
-  },
-  container: {
-    flex: 1,
   },
   darkBackground: {
     backgroundColor: "#1c1c1c",

@@ -75,10 +75,10 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
 
   // Calculate spotlight hole position with padding
   const padding = 8
-  const spotlightX = targetMeasurements.x - padding
-  const spotlightY = targetMeasurements.y - padding
-  const spotlightWidth = targetMeasurements.width + padding * 2
-  const spotlightHeight = targetMeasurements.height + padding * 2
+  const spotlightX = Math.floor(targetMeasurements.x - padding)
+  const spotlightY = Math.floor(targetMeasurements.y - padding)
+  const spotlightWidth = Math.ceil(targetMeasurements.width + padding * 2)
+  const spotlightHeight = Math.ceil(targetMeasurements.height + padding * 2)
 
   // Determine if message should be above or below target
   const showMessageBelow = spotlightY < screenHeight / 3
@@ -86,49 +86,86 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
   return (
     <Modal transparent visible={visible} animationType="none">
       <Animated.View style={[styles.container, {opacity: fadeAnim}]} pointerEvents="auto">
-        {/* Create overlay with four rectangles around the spotlight */}
+        {/* Create overlay with four absolutely positioned rectangles around the spotlight */}
+        
         {/* Top overlay */}
         <TouchableOpacity 
-          style={[styles.overlay, {height: spotlightY}]} 
+          style={[
+            styles.overlay, 
+            {
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: spotlightY
+            }
+          ]} 
           onPress={onDismiss}
           activeOpacity={1}
         />
         
-        {/* Middle section with left and right overlays */}
-        <View style={{flexDirection: 'row', height: spotlightHeight}}>
-          {/* Left overlay */}
-          <TouchableOpacity 
-            style={[styles.overlay, {width: spotlightX}]} 
-            onPress={onDismiss}
-            activeOpacity={1}
-          />
-          
-          {/* Spotlight area - touchable */}
-          <TouchableOpacity
-            style={{
-              width: spotlightWidth,
-              height: spotlightHeight,
-              borderWidth: 2,
-              borderColor: 'rgba(255, 255, 255, 0.5)',
-              backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            }}
-            onPress={onTargetPress}
-            activeOpacity={0.8}
-          />
-          
-          {/* Right overlay */}
-          <TouchableOpacity 
-            style={[styles.overlay, {flex: 1}]} 
-            onPress={onDismiss}
-            activeOpacity={1}
-          />
-        </View>
+        {/* Left overlay */}
+        <TouchableOpacity 
+          style={[
+            styles.overlay, 
+            {
+              position: 'absolute',
+              top: spotlightY,
+              left: 0,
+              width: spotlightX,
+              height: spotlightHeight
+            }
+          ]} 
+          onPress={onDismiss}
+          activeOpacity={1}
+        />
+        
+        {/* Right overlay */}
+        <TouchableOpacity 
+          style={[
+            styles.overlay, 
+            {
+              position: 'absolute',
+              top: spotlightY,
+              left: spotlightX + spotlightWidth,
+              right: 0,
+              height: spotlightHeight
+            }
+          ]} 
+          onPress={onDismiss}
+          activeOpacity={1}
+        />
         
         {/* Bottom overlay */}
         <TouchableOpacity 
-          style={[styles.overlay, {flex: 1}]} 
+          style={[
+            styles.overlay, 
+            {
+              position: 'absolute',
+              top: spotlightY + spotlightHeight,
+              left: 0,
+              right: 0,
+              bottom: 0
+            }
+          ]} 
           onPress={onDismiss}
           activeOpacity={1}
+        />
+        
+        {/* Spotlight area - touchable */}
+        <TouchableOpacity
+          style={{
+            position: 'absolute',
+            top: spotlightY,
+            left: spotlightX,
+            width: spotlightWidth,
+            height: spotlightHeight,
+            borderWidth: 2,
+            borderColor: 'rgba(255, 255, 255, 0.5)',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+          }}
+          onPress={onTargetPress}
+          activeOpacity={0.8}
         />
 
         {/* Message bubble */}
