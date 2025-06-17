@@ -254,7 +254,7 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumnCentered}>
               <PillButton
-                text="Dev"
+                text="Dev Nicolo"
                 variant="secondary"
                 onPress={() => setCustomUrlInput("https://dev.augmentos.org:443")}
                 buttonStyle={styles.button}
