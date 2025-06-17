@@ -28,7 +28,7 @@ bun add @augmentos/react
 ## Prerequisites
 
 - **React 16.8+**: The library uses React Hooks
-- **AugmentOS TPA Server**: Your backend must be deployed, either on the same domain as your frontend or on a different domain that allows CORS requests from your frontend.
+- **AugmentOS App Server**: Your backend must be deployed, either on the same domain as your frontend or on a different domain that allows CORS requests from your frontend.
 - **Developer Console Setup**: Set the webview url in the developer console to your frontend server
 
 ## Basic Setup
@@ -145,7 +145,7 @@ function Content(): React.JSX.Element {
   const [isLoadingApi, setIsLoadingApi] = useState<boolean>(false);
 
   /**
-   * Makes an authenticated API call to the TPA backend notes endpoint
+   * Makes an authenticated API call to the app backend notes endpoint
    * Uses the frontendToken for authorization
    */
   const fetchNotesFromBackend = async (): Promise<void> => {
@@ -205,7 +205,7 @@ function Content(): React.JSX.Element {
       {/* API Testing Section */}
       <div style={{ marginTop: '30px', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
         <h2>Backend API Test</h2>
-        <p>Test authenticated calls to your TPA backend:</p>
+        <p>Test authenticated calls to your app backend:</p>
 
         <button
           onClick={fetchNotesFromBackend}
@@ -285,7 +285,7 @@ The `frontendToken` from `useAugmentosAuth` is a JWT token that you should inclu
 
 ```tsx
 /**
- * Hook for making authenticated API calls to the TPA backend
+ * Hook for making authenticated API calls to the app backend
  *
  * @returns {Object} Functions for making authenticated requests
  */
@@ -351,7 +351,6 @@ const useAuthenticatedApi = () => {
   return { authenticatedGet, authenticatedPost };
 };
 ```
-
 ## Authentication Hook API
 
 The `useAugmentosAuth` hook returns an object with the following properties:
@@ -361,7 +360,7 @@ interface AugmentosAuthContextType {
   /** Unique identifier for the authenticated user */
   userId: string | null;
 
-  /** JWT token for making authenticated requests to your TPA backend */
+  /** JWT token for making authenticated requests to your app backend */
   frontendToken: string | null;
 
   /** True while authentication is being processed */
@@ -388,10 +387,10 @@ interface AugmentosAuthContextType {
 
 ## CORS Configuration
 
-If your webview frontend is hosted separately from your TPA backend, configure CORS properly:
+If your webview frontend is hosted separately from your app backend, configure CORS properly:
 
 ```typescript
-// In your TPA server setup
+// In your app server setup
 import cors from 'cors';
 
 /**
@@ -424,7 +423,7 @@ app.use(cors({
 
 **Backend authentication fails**
 - Check that you're sending the `Authorization: Bearer ${frontendToken}` header
-- Verify your TPA server is configured to accept the frontend token
+- Verify your app server is configured to accept the frontend token
 - Ensure CORS is configured properly if frontend and backend are on different domains
 
 **Changes not reflecting**
@@ -462,3 +461,4 @@ const Content = () => {
 - **[Settings](/settings)**: Add user-configurable options to your webview
 - **[Tools](/tools)**: Integrate with Mira AI for natural language interactions
 - **[Core Concepts](/core-concepts)**: Understand the full AugmentOS ecosystem
+

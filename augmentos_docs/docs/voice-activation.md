@@ -149,4 +149,4 @@ new VoiceActivationServer({
 
 * Explore more event types in the [Events](/events) reference.
 * Combine voice activation with [AI Tools](/tools) to let users control your App via natural language.
-* Add context-aware responses by fetching user location or calendar data—just remember to declare the corresponding permissions. 
+* Add context-aware responses by fetching user location or calendar data—just remember to declare the corresponding permissions.

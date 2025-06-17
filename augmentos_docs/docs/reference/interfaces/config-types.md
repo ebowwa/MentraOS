@@ -5,21 +5,21 @@ title: Configuration Types
 
 # Configuration Types
 
-This page documents the interfaces and types used for configuring TPAs in the AugmentOS SDK.
+This page documents the interfaces and types used for configuring apps in the AugmentOS SDK.
 
 ## TpaConfig
 
-Represents the structure of the `tpa_config.json` file, defining metadata and settings for a TPA.
+Represents the structure of the `app_config.json` file, defining metadata and settings for an app.
 
 ```typescript
 interface TpaConfig {
-  /** The human-readable name of the TPA. */
+  /** The human-readable name of the app. */
   name: string;
-  
-  /** A brief description of the TPA's functionality. */
+
+  /** A brief description of the app's functionality. */
   description: string;
-  
-  /** An array defining the configurable settings for the TPA. */
+
+  /** An array defining the configurable settings for the app. */
   settings: (AppSetting | GroupSetting)[];
 }
 ```
@@ -61,19 +61,19 @@ Union type representing a specific, configurable application setting. Used in [`
 
 ```typescript
 type AppSetting =
-  | (BaseAppSetting & { 
-      type: AppSettingType.TOGGLE; 
-      defaultValue: boolean; 
-      value?: boolean 
+  | (BaseAppSetting & {
+      type: AppSettingType.TOGGLE;
+      defaultValue: boolean;
+      value?: boolean
     })
-  | (BaseAppSetting & { 
-      type: AppSettingType.TEXT; 
-      defaultValue?: string; 
-      value?: string 
+  | (BaseAppSetting & {
+      type: AppSettingType.TEXT;
+      defaultValue?: string;
+      value?: string
     })
   | (BaseAppSetting & {
       type: AppSettingType.SELECT;
-      options: { label: string; value: any }[]; 
+      options: { label: string; value: any }[];
       defaultValue?: any;
       value?: any;
     });
@@ -81,13 +81,13 @@ type AppSetting =
 interface BaseAppSetting {
   /** The unique identifier for this setting (used programmatically). */
   key: string;
-  
+
   /** The human-readable label displayed in the settings UI. */
   label: string;
-  
+
   /** The current value set by the user (provided by the cloud at runtime). */
   value?: any;
-  
+
   /** The default value for this setting if the user hasn't set one. */
   defaultValue?: any;
 }
@@ -145,7 +145,7 @@ A pseudo-setting used in [`TpaConfig`](#tpaconfig) to group related settings vis
 interface GroupSetting {
   /** Must be 'group'. */
   type: 'group';
-  
+
   /** The title displayed for the group header in the settings UI. */
   title: string;
 }
@@ -161,12 +161,11 @@ const groupSetting: GroupSetting = {
 
 ## AppSettings
 
-An array of [`AppSetting`](#appsetting) objects, representing the complete set of settings for a TPA instance, including current user values.
+An array of [`AppSetting`](#appsetting) objects, representing the complete set of settings for an app instance, including current user values.
 
 ```typescript
 type AppSettings = AppSetting[];
 ```
-
 **Example:**
 ```typescript
 const settings: AppSettings = [
@@ -236,24 +235,24 @@ The [`onSettingsUpdate()`](/reference/managers/event-manager#onsettingsupdate) a
 tpaSession.setSubscriptionSettings({
   // Update subscriptions when these settings change
   updateOnChange: ["enableTranscription", "enableHeadTracking"],
-  
+
   // Determine active subscriptions based on current settings
   handler: (settings) => {
     const subscriptions: StreamType[] = [];
-    
+
     // Find settings by key
     const enableTranscription = settings.find(s => s.key === "enableTranscription")?.value === true;
     const enableHeadTracking = settings.find(s => s.key === "enableHeadTracking")?.value === true;
-    
+
     // Add subscriptions based on settings
     if (enableTranscription) {
       subscriptions.push(StreamType.TRANSCRIPTION);
     }
-    
+
     if (enableHeadTracking) {
       subscriptions.push(StreamType.HEAD_POSITION);
     }
-    
+
     return subscriptions;
   }
 });

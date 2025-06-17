@@ -130,4 +130,45 @@ The AugmentOS Cloud acts as a central hub, managing:
 
 Your app interacts with the cloud, but you don't need to worry about the internal details of how the cloud operates. The SDK abstracts away these complexities.
 
+## 13. Logging
+
+AugmentOS provides structured logging capabilities using [Pino](https://getpino.io/), a fast and low-overhead logging library. Every [`TpaSession`](/reference/tpa-session) includes a pre-configured logger that automatically includes session context.
+
+### Session Logger
+
+Each session has a dedicated logger accessible via `session.logger`:
+
+```typescript
+protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+  // Logger automatically includes session context
+  session.logger.info('Session started', { timestamp: new Date() });
+
+  session.events.onTranscription((data) => {
+    session.logger.debug('Transcription received', {
+      text: data.text,
+      isFinal: data.isFinal
+    });
+  });
+}
+```
+
+### Log Levels
+
+Use appropriate log levels for different types of information:
+
+```typescript
+// Debug: Detailed information for troubleshooting
+session.logger.debug('Processing user input', { inputType: 'voice' });
+// Info: General information about app operation
+session.logger.info('User completed onboarding');
+// Warn: Something unexpected happened but app continues
+session.logger.warn('Transcription quality low', { confidence: 0.3 });
+// Error: Something went wrong that needs attention
+session.logger.error(error, 'Failed to save user preferences');
+```
+
+See the [TPA Session Logger documentation](/reference/tpa-session#logger) for complete API details.
+
+---
+
 By understanding these core concepts, you'll be well-equipped to start building powerful and engaging apps for AugmentOS smart glasses.
