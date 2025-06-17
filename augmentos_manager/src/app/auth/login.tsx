@@ -296,13 +296,11 @@ export default function LoginScreen() {
       if (data?.url) {
         console.log("Opening browser with:", data.url)
         await WebBrowser.openBrowserAsync(data.url)
-      }
 
-      // After returning from the browser, check the session
-      const {data: sessionData} = await supabase.auth.getSession()
-      console.log("Current session after Apple sign-in:", sessionData.session)
-      if (sessionData.session == null) {
-        showToastMessage("login:userCanceledAppleLogin")
+        // Directly hide the loading overlay when we leave the app
+        // This ensures it won't be shown when user returns without completing auth
+        setIsAuthLoading(false)
+        authOverlayOpacity.setValue(0)
       }
 
       // Note: The actual navigation to SplashScreen will be handled by

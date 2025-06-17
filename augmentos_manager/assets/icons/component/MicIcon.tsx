@@ -26,6 +26,7 @@ const MicIcon = ({color, width = 17, height = 16, withBackground = false}: MicIc
       [{text: translate("common:ok")}],
       {
         iconName: "microphone",
+        iconColor: theme.colors.icon,
       }
     )
   }

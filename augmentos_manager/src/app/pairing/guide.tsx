@@ -25,6 +25,7 @@ import {Screen} from "@/components/ignite/Screen"
 import {ThemedStyle} from "@/theme"
 import {Header} from "@/components/ignite/Header"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import showAlert from "@/utils/AlertUtils"
 
 export default function GlassesPairingGuideScreen() {
   const {goBack, push, clearHistory} = useNavigationHistory()
@@ -109,7 +110,7 @@ export default function GlassesPairingGuideScreen() {
   // Show help alert if showHelpAlert is true
   useEffect(() => {
     if (showHelpAlert) {
-      Alert.alert("Need Some Help?", `Having trouble pairing your ${glassesModelName}? Wanna see some tips?`, [
+      showAlert("Need Some Help?", `Having trouble pairing your ${glassesModelName}? Want some tips?`, [
         {
           text: "No, thanks.",
           style: "cancel",

@@ -5,7 +5,6 @@ import {
   ScrollView,
   ViewStyle,
   TextStyle,
-  Platform,
   Modal,
   ActivityIndicator,
 } from "react-native"
@@ -25,6 +24,7 @@ import ActionButton from "@/components/ui/ActionButton"
 import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
+import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 
 export default function SettingsPage() {
   const {status} = useStatus()
@@ -38,12 +38,9 @@ export default function SettingsPage() {
   const isUserFromMentra = isMentraUser(user?.email)
 
   useEffect(() => {
-    // Show developer settings on Android, or on iOS if it's TestFlight/Dev build
-    if (Platform.OS === "android") {
-      setShowDeveloperSettings(true)
-    } else {
-      setShowDeveloperSettings(__DEV__)
-    }
+    // Show developer settings for Android, development builds, or TestFlight builds
+    // Hide only for iOS App Store production builds
+    setShowDeveloperSettings(isDeveloperBuildOrTestflight())
   }, [])
 
   const handleSignOut = async () => {
