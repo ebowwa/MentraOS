@@ -8,7 +8,7 @@ const palette = {
   neutral700: "#3C3836",
   neutral800: "#191015",
   neutral900: "#000000",
-/*
+  /*
   primary100: "#FEFAF8", // Much closer to white with subtle warm hint
   primary200: "#E8C1B4",
   primary300: "#DDA28E",
@@ -23,7 +23,6 @@ const palette = {
   primary400: "#626894",
   primary500: "#41476E",
   primary600: "#21476E",
-
 
   secondary100: "#DCDDE9",
   secondary200: "#BCC0D6",
@@ -42,20 +41,20 @@ const palette = {
 
   // Warning/danger colors
   red500: "#f00", // Bright red for warnings
-  
+
   // Orange colors
   orange500: "#FF9500", // Warning orange
-  
+
   // Red error colors
   errorRed: "#FF3B30", // Error red
-  
+
   // Gallery background colors
   darkGalleryBg: "#121212", // Very dark background for gallery
   lightGalleryBg: "#f0f0f0", // Light background for gallery
 
   // Common blue colors found in hardcoded values
   blue100: "#E3F2FD",
-  blue200: "#BBDEFB", 
+  blue200: "#BBDEFB",
   blue300: "#90CAF9",
   blue400: "#42A5F5",
   blue500: "#2196F3", // Material Design Blue - most common hardcoded blue
@@ -68,7 +67,7 @@ const palette = {
 
   // Common gray colors found in hardcoded values
   gray100: "#F5F5F5",
-  gray200: "#EEEEEE", 
+  gray200: "#EEEEEE",
   gray300: "#E0E0E0",
   gray350: "#CECECE",
   gray400: "#BDBDBD",
@@ -88,7 +87,7 @@ const palette = {
   success100: "#E8F5E8",
   success500: "#4CAF50",
 
-  // Warning colors  
+  // Warning colors
   warning100: "#FFF3E0",
   warning500: "#FF9500",
 
@@ -213,7 +212,7 @@ export const colors = {
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
-  
+
   // Status/alert colors
   warningOrange: palette.orange500,
   errorRed: palette.errorRed,
@@ -221,7 +220,7 @@ export const colors = {
   // Loading and activity indicators
   loadingIndicator: palette.blue500,
 
-  // Icon colors  
+  // Icon colors
   icon: palette.neutral800, // darker icons for light theme
   iconSecondary: palette.neutral700, // darker secondary icons for light theme
 
@@ -235,27 +234,27 @@ export const colors = {
   // Fullscreen and modal backgrounds
   fullscreenBackground: palette.neutral900, // Black for fullscreen camera
   fullscreenOverlay: palette.overlay60, // Semi-transparent overlay
-  
+
   // Permission and action buttons
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
   destructiveAction: palette.errorRed, // Red for destructive actions in light theme
-  
+
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
-  
+
   // Gallery specific
   galleryLoadingIndicator: palette.blue500, // Blue for loading spinners
 
   // Status and notification colors
   statusSuccess: palette.success500, // Green for success messages
-  statusWarning: palette.warning500, // Orange for warning messages  
+  statusWarning: palette.warning500, // Orange for warning messages
   statusInfo: palette.blue500, // Blue for info messages
 
   // Modal and picker backgrounds
   pickerBackground: palette.whiteOverlay70, // Semi-transparent white for pickers
-  
+
   // Border variations
   borderLight: palette.overlay10, // Very light border
 
@@ -275,10 +274,10 @@ export const colors = {
   buttonPillSecondary: palette.buttonPillSecondary,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
-  
+
   // Checkmark color
   checkmark: palette.blue500, // Bright blue for checkmarks in light theme
-  
+
   // Slider thumb color
   sliderThumb: palette.gray350, // Match toggle switch knob color
 } as const

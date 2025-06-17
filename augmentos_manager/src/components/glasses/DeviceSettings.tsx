@@ -49,7 +49,7 @@ export default function DeviceSettings() {
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
   const {push} = useNavigationHistory()
   const {user} = useAuth()
-  
+
   // Check if user is from Mentra to show display position settings
   const isUserFromMentra = isMentraUser(user?.email)
 
@@ -112,8 +112,8 @@ export default function DeviceSettings() {
     } catch (error) {}
   }
 
-  let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
-  let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
+  const [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
+  const [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
 
   useEffect(() => {
     setBrightness(status?.glasses_settings?.brightness ?? 50)
@@ -184,7 +184,7 @@ export default function DeviceSettings() {
       <View style={themed($container)}>
         <View style={themed($emptyStateContainer)}>
           <Text style={themed($emptyStateText)}>
-            Glasses settings will appear here.{'\n'}Pair glasses to adjust settings.
+            Glasses settings will appear here.{"\n"}Pair glasses to adjust settings.
           </Text>
         </View>
       </View>
@@ -196,7 +196,9 @@ export default function DeviceSettings() {
       {/* Show helper text if glasses are paired but not connected */}
       {!status.glasses_info?.model_name && status.core_info.default_wearable && (
         <View style={themed($infoContainer)}>
-          <Text style={themed($infoText)}>Changes to glasses settings will take effect when glasses are connected.</Text>
+          <Text style={themed($infoText)}>
+            Changes to glasses settings will take effect when glasses are connected.
+          </Text>
         </View>
       )}
 
@@ -274,7 +276,6 @@ export default function DeviceSettings() {
           }}
         />
       )}
-
 
       <RouteButton
         label={translate("settings:dashboardSettings")}
@@ -364,58 +365,11 @@ const $emptyStateText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const styles = StyleSheet.create({
-  glassesImage: {
-    width: "80%",
-    height: 120,
-    resizeMode: "contain",
-  },
-  statusValue: {
+  buttonText: {
+    color: "#fff",
+    fontFamily: "Montserrat-Bold",
     fontSize: 14,
     fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedDot: {
-    fontSize: 14,
-    marginRight: 2,
-    fontFamily: "Montserrat-Bold",
-  },
-  separator: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedTextGreen: {
-    color: "#28a745",
-    marginLeft: 4,
-    marginRight: 2,
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedTextTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  statusLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "500",
-    letterSpacing: -0.08,
-    fontFamily: "SF Pro",
-  },
-  connectText: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 10,
-    fontFamily: "Montserrat-Bold",
-  },
-  noGlassesText: {
-    color: "black",
-    textAlign: "center",
-    fontSize: 16,
-    marginBottom: 10,
   },
   connectButton: {
     flexDirection: "row",
@@ -425,6 +379,30 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     width: "80%",
+  },
+  connectText: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  connectedDot: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    marginRight: 2,
+  },
+  connectedTextGreen: {
+    color: "#28a745",
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 4,
+    marginRight: 2,
+  },
+  connectedTextTitle: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   connectingButton: {
     flexDirection: "row",
@@ -447,15 +425,6 @@ const styles = StyleSheet.create({
   disabledDisconnectButton: {
     // backgroundColor moved to dynamic styling with theme
   },
-  icon: {
-    marginRight: 4,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
   disconnectButton: {
     flexDirection: "row",
     // backgroundColor moved to dynamic styling with theme
@@ -473,12 +442,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontFamily: "Montserrat-Regular",
   },
-  statusIndicatorsRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    //height: 30,
+  glassesImage: {
+    height: 120,
+    resizeMode: "contain",
+    width: "80%",
+  },
+  icon: {
+    marginRight: 4,
   },
   iconContainer: {
     // backgroundColor moved to dynamic styling with theme
@@ -488,13 +458,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  wifiContainer: {
+  noGlassesText: {
+    color: "black",
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  separator: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginHorizontal: 10,
+  },
+  statusIndicatorsRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    width: "100%",
+    //height: 30,
+  },
+  statusLabel: {
+    fontFamily: "SF Pro",
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: -0.08,
+    lineHeight: 16,
+  },
+  statusValue: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  wifiContainer: {
     alignItems: "center",
+    borderRadius: 18,
+    flexDirection: "row",
     justifyContent: "flex-end",
     paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 18,
   },
   wifiSsidText: {
     fontSize: 12,

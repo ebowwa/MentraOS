@@ -1,7 +1,17 @@
 // SelectGlassesBluetoothScreen.tsx
 
 import React, {useEffect, useMemo, useRef, useState, useCallback} from "react"
-import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle, BackHandler} from "react-native"
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Platform,
+  Alert,
+  ViewStyle,
+  BackHandler,
+} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
 import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
@@ -43,13 +53,13 @@ export default function SelectGlassesBluetoothScreen() {
     // Clear NavigationHistoryContext history to prevent issues with back navigation
     clearHistory()
     // Use dismissTo to properly go back to select-glasses-model and clear the stack
-    router.dismissTo('/pairing/select-glasses-model')
+    router.dismissTo("/pairing/select-glasses-model")
   }, [clearHistory])
 
   // Handle Android hardware back button
   useEffect(() => {
     // Only handle on Android
-    if (Platform.OS !== 'android') return
+    if (Platform.OS !== "android") return
 
     const onBackPress = () => {
       // Call our custom back handler
@@ -61,7 +71,7 @@ export default function SelectGlassesBluetoothScreen() {
     // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
     const timeout = setTimeout(() => {
       // Add the event listener - this will be on top of the stack
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
+      const backHandler = BackHandler.addEventListener("hardwareBackPress", onBackPress)
 
       // Store the handler for cleanup
       backHandlerRef.current = backHandler
@@ -245,7 +255,8 @@ export default function SelectGlassesBluetoothScreen() {
                       {
                         color: theme.colors.text,
                       },
-                    ]} />
+                    ]}
+                  />
                 </View>
                 <Icon name="angle-right" size={24} color={theme.colors.text} />
               </TouchableOpacity>
@@ -295,32 +306,32 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Prevent content from creating visual lines
   },
   titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    marginBottom: 10,
     marginHorizontal: -20,
     marginTop: -20,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
   // Removed hardcoded theme colors - using dynamic styling
   // titleContainerDark and titleContainerLight removed
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    textAlign: "left",
     marginBottom: 5,
+    textAlign: "left",
     // color moved to dynamic styling
   },
   // Removed hardcoded theme colors - using dynamic styling
   // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
   backButton: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginBottom: 20,
   },
   backButtonText: {
-    marginLeft: 10,
     fontSize: 18,
     fontWeight: "bold",
+    marginLeft: 10,
   },
   settingTextContainer: {
     flex: 1,
@@ -332,14 +343,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   value: {
+    flexWrap: "wrap",
     fontSize: 12,
     marginTop: 5,
-    flexWrap: "wrap",
   },
   headerContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 15,
     borderBottomWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
     // backgroundColor and borderBottomColor moved to dynamic styling
   },
   header: {

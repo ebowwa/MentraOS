@@ -955,7 +955,7 @@ public class CameraNeo extends LifecycleService {
     private void wakeUpScreen() {
         Log.d(TAG, "Waking up screen for camera access");
         // Use the WakeLockManager to acquire both CPU and screen wake locks
-        WakeLockManager.acquireFullWakeLock(this);
+        WakeLockManager.acquireFullWakeLockAndBringToForeground(this, 180000, 5000);
     }
 
     /**

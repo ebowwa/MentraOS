@@ -3,7 +3,7 @@ import {View, ViewStyle, TextStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate, TxKeyPath} from "@/i18n"
-import { Text } from "@/components/ignite"
+import {Text} from "@/components/ignite"
 
 interface EmptyAppsViewProps {
   statusMessageKey: TxKeyPath
@@ -15,14 +15,8 @@ const EmptyAppsView = ({statusMessageKey, activeAppsMessageKey}: EmptyAppsViewPr
 
   return (
     <View style={themed($emptyApps)}>
-      <Text 
-        tx={statusMessageKey}
-        style={themed($statusMessage)} 
-        numberOfLines={1} />
-      <Text 
-        tx={activeAppsMessageKey}
-        style={themed($activeAppsMessage)} 
-        numberOfLines={1} />
+      <Text tx={statusMessageKey} style={themed($statusMessage)} numberOfLines={1} />
+      <Text tx={activeAppsMessageKey} style={themed($activeAppsMessage)} numberOfLines={1} />
     </View>
   )
 }

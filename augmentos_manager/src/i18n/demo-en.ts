@@ -189,8 +189,7 @@ export const demoEn = {
       },
       disabling: {
         name: "Disabling",
-        description:
-          "The component can be disabled, and styled based on that. Press behavior will be disabled.",
+        description: "The component can be disabled, and styled based on that. Press behavior will be disabled.",
         standard: "Disabled - standard",
         filled: "Disabled - filled",
         reversed: "Disabled - reversed",
@@ -207,10 +206,8 @@ export const demoEn = {
         description: "The row can be different heights.",
         defaultHeight: "Default height (56px)",
         customHeight: "Custom height via `height` prop",
-        textHeight:
-          "Height determined by text content - Reprehenderit incididunt deserunt do do ea labore.",
-        longText:
-          "Limit long text to one line - Reprehenderit incididunt deserunt do do ea labore.",
+        textHeight: "Height determined by text content - Reprehenderit incididunt deserunt do do ea labore.",
+        longText: "Limit long text to one line - Reprehenderit incididunt deserunt do do ea labore.",
       },
       separators: {
         name: "Separators",
@@ -273,8 +270,7 @@ export const demoEn = {
       },
       verticalAlignment: {
         name: "Vertical Alignment",
-        description:
-          "Depending on what's required, the card comes preconfigured with different alignment strategies.",
+        description: "Depending on what's required, the card comes preconfigured with different alignment strategies.",
         top: {
           heading: "Top (default)",
           content: "All content is automatically aligned to the top.",
@@ -322,8 +318,8 @@ export const demoEn = {
   demoAutoImage: {
     description: "An Image component that automatically sizes a remote or data-uri image.",
     useCase: {
-      remoteUri: { name: "Remote URI" },
-      base64Uri: { name: "Base64 URI" },
+      remoteUri: {name: "Remote URI"},
+      base64Uri: {name: "Base64 URI"},
       scaledToFitDimensions: {
         name: "Scaled to Fit Dimensions",
         description:
@@ -335,8 +331,7 @@ export const demoEn = {
     },
   },
   demoText: {
-    description:
-      "For your text displaying needs. This component is a HOC over the built-in React Native one.",
+    description: "For your text displaying needs. This component is a HOC over the built-in React Native one.",
     useCase: {
       presets: {
         name: "Presets",
@@ -360,10 +355,8 @@ export const demoEn = {
       weights: {
         name: "Weights",
         description: "There's a weight prop.",
-        light:
-          "light - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
-        normal:
-          "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
+        light: "light - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
+        normal: "normal - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
         medium: "medium - Non duis laborum quis laboris occaecat culpa cillum.",
         semibold: "semiBold - Exercitation magna nostrud pariatur laborum occaecat aliqua.",
         bold: "bold - Eiusmod ullamco magna exercitation est excepteur.",
@@ -392,8 +385,7 @@ export const demoEn = {
     },
   },
   demoHeader: {
-    description:
-      "Component that appears on many screens. Will hold navigation buttons and screen title.",
+    description: "Component that appears on many screens. Will hold navigation buttons and screen title.",
     useCase: {
       actionIcons: {
         name: "Action Icons",
@@ -410,8 +402,7 @@ export const demoEn = {
       },
       customActionComponents: {
         name: "Custom Action Components",
-        description:
-          "If the icon or text options are not enough, you can pass in your own custom action component.",
+        description: "If the icon or text options are not enough, you can pass in your own custom action component.",
         customLeftActionTitle: "Custom Left Action",
       },
       titleModes: {

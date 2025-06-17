@@ -26,9 +26,24 @@ export class CoreCommunicator extends EventEmitter {
     try {
       console.log("Checking Bluetooth state...")
       await BleManager.start({showAlert: false})
-      const state = await BleManager.checkState()
-      console.log("Bluetooth state:", state)
-      return state === "on"
+      
+      // Poll for Bluetooth state every 50ms, up to 10 times (max 500ms)
+      for (let attempt = 0; attempt < 10; attempt++) {
+        const state = await BleManager.checkState()
+        console.log(`Bluetooth state check ${attempt + 1}:`, state)
+        
+        if (state !== "unknown") {
+          console.log("Bluetooth state determined:", state)
+          return state === "on"
+        }
+        
+        // Wait 50ms before next check
+        await new Promise(resolve => setTimeout(resolve, 50))
+      }
+      
+      // If still unknown after 10 attempts, assume it's available
+      console.log("Bluetooth state still unknown after 500ms, assuming available")
+      return true
     } catch (error) {
       console.error("Error checking Bluetooth state:", error)
       return false
@@ -75,13 +90,7 @@ export class CoreCommunicator extends EventEmitter {
   }> {
     console.log("Checking connectivity requirements")
 
-    // On iOS, we'll assume Bluetooth is available initially to avoid premature permissions
-    // The actual check will happen during the scanning process
-    if (Platform.OS === "ios") {
-      return {isReady: true}
-    }
-
-    // For Android, still check Bluetooth
+    // Check Bluetooth state on both iOS and Android
     const isBtEnabled = await this.isBluetoothEnabled()
     console.log("Is Bluetooth enabled:", isBtEnabled)
     if (!isBtEnabled) {
@@ -91,6 +100,12 @@ export class CoreCommunicator extends EventEmitter {
         message: "Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.",
       }
     }
+
+    // iOS doesn't require location permission for BLE scanning since iOS 13
+    if (Platform.OS === "ios") {
+      return {isReady: true}
+    }
+
 
     // Only check location on Android
     if (Platform.OS === "android") {
@@ -622,6 +637,17 @@ export class CoreCommunicator extends EventEmitter {
   async setGlassesWifiCredentials(ssid: string, password: string) {
     return await this.sendData({
       command: "set_glasses_wifi_credentials",
+      params: {
+        ssid,
+        password,
+      },
+    })
+  }
+
+  async sendWifiCredentials(ssid: string, password: string) {
+    console.log("Sending wifi credentials to Core", ssid, password)
+    return await this.sendData({
+      command: "send_wifi_credentials",
       params: {
         ssid,
         password,

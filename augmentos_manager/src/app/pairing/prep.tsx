@@ -42,8 +42,8 @@ export default function PairingPrepScreen() {
       return
     }
 
-    // For Simulated Glasses, we still need critical permissions but can skip Bluetooth
-    const needsBluetoothPermissions = glassesModelName !== "Simulated Glasses"
+    // Always request Bluetooth permissions - required for Android 14+ foreground service
+    const needsBluetoothPermissions = true
 
     try {
       // Check for Android-specific permissions
@@ -124,16 +124,33 @@ export default function PairingPrepScreen() {
         } // End of Bluetooth permissions block
       } // End of Android-specific permissions block
 
-      // Cross-platform permissions needed for both iOS and Android
+      // Check connectivity early for iOS (permissions work differently)
+      console.log("DEBUG: needsBluetoothPermissions:", needsBluetoothPermissions, "Platform.OS:", Platform.OS)
+      if (needsBluetoothPermissions && Platform.OS === "ios") {
+        console.log("DEBUG: Running iOS connectivity check early")
+        const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+        if (!requirementsCheck.isReady) {
+          // Show alert about missing requirements  
+          showAlert(
+            translate("pairing:connectionIssueTitle"),
+            requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            [{text: translate("common:ok")}],
+          )
+          return
+        }
+      }
 
-      const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH)
-      if (!hasBluetoothPermission) {
-        showAlert(
-          translate("pairing:bluetoothPermissionRequiredTitle"),
-          translate("pairing:bluetoothPermissionRequiredMessageAlt"),
-          [{text: translate("common:ok")}],
-        )
-        return // Stop the connection process
+      // Cross-platform permissions needed for both iOS and Android (only if connectivity check passed)
+      if (needsBluetoothPermissions) {
+        const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH)
+        if (!hasBluetoothPermission) {
+          showAlert(
+            translate("pairing:bluetoothPermissionRequiredTitle"),
+            translate("pairing:bluetoothPermissionRequiredMessageAlt"),
+            [{text: translate("common:ok")}],
+          )
+          return // Stop the connection process
+        }
       }
 
       // Request microphone permission (needed for both platforms)
@@ -171,11 +188,11 @@ export default function PairingPrepScreen() {
       return
     }
 
-    // Check that Bluetooth and Location are enabled/granted (skip for simulated glasses)
-    if (needsBluetoothPermissions) {
+    // Check connectivity for Android after permissions are granted
+    if (needsBluetoothPermissions && Platform.OS === "android") {
       const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
       if (!requirementsCheck.isReady) {
-        // Show alert about missing requirements
+        // Show alert about missing requirements  
         showAlert(
           translate("pairing:connectionIssueTitle"),
           requirementsCheck.message || translate("pairing:connectionIssueMessage"),
@@ -210,34 +227,34 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  scrollViewContainer: {
-    flex: 1,
-  },
   contentContainer: {
-    paddingHorizontal: 20,
     alignItems: "center",
     justifyContent: "center",
-  },
-  text: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  glassesImage: {
-    width: 100,
-    height: 60,
-    resizeMode: "contain",
-    marginTop: 20,
+    paddingHorizontal: 20,
   },
   darkBackground: {
     backgroundColor: "#1c1c1c",
   },
-  lightBackground: {
-    backgroundColor: "#f0f0f0",
-  },
   darkText: {
     color: "#FFFFFF",
   },
+  glassesImage: {
+    height: 60,
+    marginTop: 20,
+    resizeMode: "contain",
+    width: 100,
+  },
+  lightBackground: {
+    backgroundColor: "#f0f0f0",
+  },
   lightText: {
     color: "#333333",
+  },
+  scrollViewContainer: {
+    flex: 1,
+  },
+  text: {
+    fontSize: 16,
+    marginBottom: 10,
   },
 })

@@ -16,14 +16,8 @@ const TempActivateAppWindow = () => {
     <View>
       <View style={themed($tempWindow)}>
         <View style={themed($appNameParent)}>
-          <Text 
-            tx="home:activateAnApp"
-            style={[themed($appName), themed($appFlexBox)]} 
-            numberOfLines={1} />
-          <Text 
-            tx="home:activateAnAppMessage"
-            style={[themed($appName1), themed($appFlexBox)]} 
-            numberOfLines={2} />
+          <Text tx="home:activateAnApp" style={[themed($appName), themed($appFlexBox)]} numberOfLines={1} />
+          <Text tx="home:activateAnAppMessage" style={[themed($appName1), themed($appFlexBox)]} numberOfLines={2} />
         </View>
         <View style={themed($animatedToggle)}>
           <View style={[themed($toggleBarIcon), themed($toggleIconLayout)]} />

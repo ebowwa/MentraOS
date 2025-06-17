@@ -64,7 +64,7 @@ function SwitchInput(props: SwitchInputProps) {
       duration: 200, // Faster animation
       useNativeDriver: true, // Enable native driver for smoother animations
     }).start()
-    
+
     // Delay track color animation to start near the end of knob animation
     setTimeout(() => {
       Animated.timing(trackColorAnim.current, {
@@ -147,13 +147,13 @@ function SwitchInput(props: SwitchInputProps) {
         ? [+(knobWidth || 0) + offsetRight, offsetLeft]
         : [offsetLeft, +(knobWidth || 0) + offsetRight]
       : [rtlAdjustment * offsetLeft, rtlAdjustment * (+(knobWidth || 0) + offsetRight)]
-  
+
   const $animatedSwitchKnob = animate.current.interpolate({
     inputRange: [0, 1],
     // outputRange,
     outputRange: [-12, 12],
   })
-  
+
   // Interpolate track background color
   const animatedTrackColor = trackColorAnim.current.interpolate({
     inputRange: [0, 1],

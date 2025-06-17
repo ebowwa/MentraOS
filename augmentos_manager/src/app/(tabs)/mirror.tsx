@@ -105,7 +105,7 @@ export default function GlassesMirror() {
                     text: translate("mirror:openSettings"),
                     onPress: () => Linking.openSettings(),
                   },
-                ]
+                ],
               )
             }
             // If permission denied but can ask again, do nothing (user can try again)
@@ -114,7 +114,7 @@ export default function GlassesMirror() {
       ],
       {
         iconName: "camera",
-      }
+      },
     )
   }
 
@@ -720,7 +720,7 @@ const getModalStyles = (theme: any) => ({
     justifyContent: "center",
     alignItems: "center",
   } as ViewStyle,
-  
+
   closeButton: {
     position: "absolute",
     top: 40,

@@ -1,8 +1,8 @@
 // src/components/icons/GoogleIcon.tsx
-import * as React from 'react';
-import Svg, { Path } from 'react-native-svg';
+import * as React from "react"
+import Svg, {Path} from "react-native-svg"
 
-const GoogleIcon = (props: { size?: number }) => (
+const GoogleIcon = (props: {size?: number}) => (
   <Svg width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24">
     <Path
       d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -21,6 +21,6 @@ const GoogleIcon = (props: { size?: number }) => (
       fill="#EA4335"
     />
   </Svg>
-);
+)
 
-export default GoogleIcon;
+export default GoogleIcon

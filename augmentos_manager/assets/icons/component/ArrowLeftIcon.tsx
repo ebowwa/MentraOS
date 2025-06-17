@@ -1,12 +1,12 @@
-import React from "react";
-import { Svg, Path } from "react-native-svg";
+import React from "react"
+import {Svg, Path} from "react-native-svg"
 
 interface ArrowLeftIconProps {
-  size?: number;
-  color?: string;
+  size?: number
+  color?: string
 }
 
-export const ArrowLeftIcon = ({ size = 17, color = "#F9F8FE" }: ArrowLeftIconProps) => (
+export const ArrowLeftIcon = ({size = 17, color = "#F9F8FE"}: ArrowLeftIconProps) => (
   <Svg width={(size * 21) / 17} height={size} viewBox="0 0 21 17" fill="none">
     <Path
       d="M16.2411 8.72705L5.75879 8.72705"
@@ -23,4 +23,4 @@ export const ArrowLeftIcon = ({ size = 17, color = "#F9F8FE" }: ArrowLeftIconPro
       strokeLinejoin="round"
     />
   </Svg>
-);
+)

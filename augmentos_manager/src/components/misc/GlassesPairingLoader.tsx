@@ -32,7 +32,7 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
   const tipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pingPongDirection = useRef(1) // 1 for right, -1 for left
 
-  let tips = getModelSpecificTips(glassesModelName)
+  const tips = getModelSpecificTips(glassesModelName)
 
   // Set up all animations
   useEffect(() => {
@@ -358,25 +358,46 @@ const $tipText: ThemedStyle<TextStyle> = ({colors}) => ({
 })
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   animationContainer: {
-    height: 200,
-    flexShrink: 1,
     alignContent: "center",
-    justifyContent: "center",
     alignItems: "center",
+    flexShrink: 1,
+    height: 200,
+    justifyContent: "center",
     marginBottom: 30,
   },
+  container: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
 
+  darkText: {
+    color: "#f9fafb",
+  },
+  darkTip: {
+    color: "#d1d5db",
+  },
+
+  dot: {
+    fontSize: 24,
+    lineHeight: 20,
+    marginHorizontal: 2,
+  },
+  dotsContainer: {
+    flexDirection: "row",
+  },
   glassesIcon: {
     shadowColor: "#000",
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.2,
     shadowRadius: 3,
+  },
+  lightText: {
+    color: "#1f2937",
+  },
+  lightTip: {
+    color: "#4b5563",
   },
   phoneIcon: {
     shadowColor: "#000",
@@ -384,45 +405,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 3,
   },
-
-  dotsContainer: {
-    flexDirection: "row",
-  },
-  dot: {
-    fontSize: 24,
-    lineHeight: 20,
-    marginHorizontal: 2,
-  },
-  darkText: {
-    color: "#f9fafb",
-  },
-  lightText: {
-    color: "#1f2937",
-  },
   progressBarContainer: {
-    width: "100%",
-    height: 6,
     borderRadius: 3,
+    height: 6,
     marginBottom: 40,
     overflow: "hidden",
+    width: "100%",
+  },
+  tipText: {
+    fontFamily: "Montserrat-Regular",
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
   },
   tipsContainer: {
     alignItems: "center",
-    justifyContent: "center",
     height: 80,
+    justifyContent: "center",
     paddingHorizontal: 10,
-  },
-  tipText: {
-    textAlign: "center",
-    fontSize: 16,
-    lineHeight: 24,
-    fontFamily: "Montserrat-Regular",
-  },
-  darkTip: {
-    color: "#d1d5db",
-  },
-  lightTip: {
-    color: "#4b5563",
   },
 })
 

@@ -33,7 +33,7 @@ export default function SelectGlassesModelScreen() {
 
   // Platform-specific glasses options
   // For iOS, conditionally include Simulated Glasses based on TestFlight status
-  let glassesOptions =
+  const glassesOptions =
     Platform.OS === "ios"
       ? [
           {modelName: "Simulated Glasses", key: "Simulated Glasses"},
@@ -122,7 +122,7 @@ export default function SelectGlassesModelScreen() {
         {glassesOptions.map(glasses => (
           <TouchableOpacity
             key={glasses.key}
-            style={[themed($settingItem)]}
+            style={themed($settingItem)}
             onPress={() => {
               triggerGlassesPairingGuide(glasses.modelName)
             }}>
@@ -206,33 +206,33 @@ const styles = StyleSheet.create({
     // backgroundColor and borderColor moved to dynamic styling
   },
   titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    marginBottom: 10,
     marginHorizontal: -20,
     marginTop: -20,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
   // Removed hardcoded theme colors - using dynamic styling
   // titleContainerDark and titleContainerLight removed - use dynamic styling
   title: {
+    fontFamily: "Montserrat-Bold",
     fontSize: 24,
     fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    textAlign: "left",
     marginBottom: 5,
+    textAlign: "left",
     // color moved to dynamic styling
   },
   // Removed hardcoded theme colors - using dynamic styling
   // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
   backButton: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginBottom: 20,
   },
   backButtonText: {
-    marginLeft: 10,
     fontSize: 18,
     fontWeight: "bold",
+    marginLeft: 10,
   },
   settingTextContainer: {
     flex: 1,
@@ -244,14 +244,14 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
   },
   value: {
+    flexWrap: "wrap",
     fontSize: 12,
     marginTop: 5,
-    flexWrap: "wrap",
   },
   headerContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 15,
     borderBottomWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
     // backgroundColor and borderBottomColor moved to dynamic styling
   },
   header: {

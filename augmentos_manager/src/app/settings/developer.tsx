@@ -52,19 +52,19 @@ export default function DeveloperSettingsScreen() {
   }, [status.core_info.bypass_vad_for_debugging])
 
   const toggleBypassVadForDebugging = async () => {
-    let newSetting = !isBypassVADForDebuggingEnabled
+    const newSetting = !isBypassVADForDebuggingEnabled
     await coreCommunicator.sendToggleBypassVadForDebugging(newSetting)
     setIsBypassVADForDebuggingEnabled(newSetting)
   }
 
   const toggleReconnectOnAppForeground = async () => {
-    let newSetting = !reconnectOnAppForeground
+    const newSetting = !reconnectOnAppForeground
     await saveSetting(SETTINGS_KEYS.RECONNECT_ON_APP_FOREGROUND, newSetting)
     setReconnectOnAppForeground(newSetting)
   }
 
   const toggleBypassAudioEncodingForDebugging = async () => {
-    let newSetting = !isBypassAudioEncodingForDebuggingEnabled
+    const newSetting = !isBypassAudioEncodingForDebuggingEnabled
     await coreCommunicator.sendToggleBypassAudioEncodingForDebugging(newSetting)
     setIsBypassAudioEncodingForDebuggingEnabled(newSetting)
   }
@@ -254,7 +254,7 @@ export default function DeveloperSettingsScreen() {
             </View>
             <View style={styles.buttonColumnCentered}>
               <PillButton
-                text="Dev"
+                text="Dev Nicolo"
                 variant="secondary"
                 onPress={() => setCustomUrlInput("https://dev.augmentos.org:443")}
                 buttonStyle={styles.button}
@@ -304,13 +304,13 @@ export default function DeveloperSettingsScreen() {
 
 const styles = StyleSheet.create({
   warningContainer: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
     borderRadius: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   warningContent: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginBottom: 4,
   },
   warningTitle: {
@@ -323,36 +323,36 @@ const styles = StyleSheet.create({
     marginLeft: 22,
   },
   settingContainer: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
     borderRadius: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
   },
   button: {
     flexShrink: 1,
   },
   buttonColumn: {
-    marginTop: 12,
-    gap: 12,
     flexDirection: "row",
+    gap: 12,
     justifyContent: "space-between",
+    marginTop: 12,
   },
   buttonColumnCentered: {
-    marginTop: 12,
-    gap: 12,
     flexDirection: "row",
+    gap: 12,
     justifyContent: "center",
+    marginTop: 12,
   },
   settingTextContainer: {
     flex: 1,
   },
   label: {
-    fontSize: 16,
     flexWrap: "wrap",
+    fontSize: 16,
   },
   value: {
+    flexWrap: "wrap",
     fontSize: 12,
     marginTop: 5,
-    flexWrap: "wrap",
   },
   // New styles for custom URL section
   urlInput: {

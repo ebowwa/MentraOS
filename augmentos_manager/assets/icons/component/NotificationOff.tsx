@@ -1,13 +1,13 @@
 // in ../icons/NotificationOff.tsx
-import React from 'react';
-import Svg, { G, Path, Defs, ClipPath, Rect } from 'react-native-svg';
+import React from "react"
+import Svg, {G, Path, Defs, ClipPath, Rect} from "react-native-svg"
 
 interface NotificationOffProps {
-  color?: string;
-  size?: number;
+  color?: string
+  size?: number
 }
 
-const NotificationOff = ({ color = '#565E8C', size = 24 }: NotificationOffProps) => (
+const NotificationOff = ({color = "#565E8C", size = 24}: NotificationOffProps) => (
   <Svg width={size} height={size} viewBox="0 0 25 25" fill="none">
     <G clipPath="url(#clip0_218_3968)">
       <Path
@@ -38,6 +38,6 @@ const NotificationOff = ({ color = '#565E8C', size = 24 }: NotificationOffProps)
       </ClipPath>
     </Defs>
   </Svg>
-);
+)
 
-export default NotificationOff;
+export default NotificationOff

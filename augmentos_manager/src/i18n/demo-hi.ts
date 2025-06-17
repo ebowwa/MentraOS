@@ -1,4 +1,4 @@
-import { DemoTranslations } from "./demo-en"
+import {DemoTranslations} from "./demo-en"
 
 export const demoHi: DemoTranslations = {
   demoIcon: {
@@ -131,8 +131,7 @@ export const demoHi: DemoTranslations = {
             helper: "`helperTx` प्रॉप के माध्यम से।",
           },
           checkBoxMultiLine: {
-            helper:
-              "मल्टीलाइन का समर्थन करता है - Nulla proident consectetur labore sunt ea labore. ",
+            helper: "मल्टीलाइन का समर्थन करता है - Nulla proident consectetur labore sunt ea labore. ",
           },
           radioChangeSides: {
             helper: "आप पक्ष बदल सकते हैं - Laborum labore adipisicing in eu ipsum deserunt.",
@@ -203,18 +202,15 @@ export const demoHi: DemoTranslations = {
     },
   },
   demoListItem: {
-    description:
-      "एक स्टाइल किया गया पंक्ति कंपोनेंट जो FlatList, SectionList, या अकेले उपयोग किया जा सकता है।",
+    description: "एक स्टाइल किया गया पंक्ति कंपोनेंट जो FlatList, SectionList, या अकेले उपयोग किया जा सकता है।",
     useCase: {
       height: {
         name: "ऊँचाई",
         description: "पंक्ति की विभिन्न ऊँचाइयाँ हो सकती हैं।",
         defaultHeight: "डिफ़ॉल्ट ऊँचाई (56px)",
         customHeight: "`height` प्रॉप के माध्यम से कस्टम ऊँचाई",
-        textHeight:
-          "टेक्स्ट सामग्री द्वारा निर्धारित ऊँचाई - Reprehenderit incididunt deserunt do do ea labore.",
-        longText:
-          "लंबे टेक्स्ट को एक पंक्ति तक सीमित करें - Reprehenderit incididunt deserunt do do ea labore.",
+        textHeight: "टेक्स्ट सामग्री द्वारा निर्धारित ऊँचाई - Reprehenderit incididunt deserunt do do ea labore.",
+        longText: "लंबे टेक्स्ट को एक पंक्ति तक सीमित करें - Reprehenderit incididunt deserunt do do ea labore.",
       },
       separators: {
         name: "विभाजक",
@@ -232,8 +228,7 @@ export const demoHi: DemoTranslations = {
       },
       customLeftRight: {
         name: "कस्टम बायाँ/दायाँ कंपोनेंट",
-        description:
-          "यदि आपको कस्टम बायाँ/दायाँ कंपोनेंट की आवश्यकता है, तो आप इसे पास कर सकते हैं।",
+        description: "यदि आपको कस्टम बायाँ/दायाँ कंपोनेंट की आवश्यकता है, तो आप इसे पास कर सकते हैं।",
         customLeft: "कस्टम बायाँ कंपोनेंट",
         customRight: "कस्टम दायाँ कंपोनेंट",
       },
@@ -247,8 +242,7 @@ export const demoHi: DemoTranslations = {
       },
       listIntegration: {
         name: "FlatList और FlashList के साथ एकीकरण",
-        description:
-          "कंपोनेंट को आसानी से आपके पसंदीदा सूची इंटरफेस के साथ एकीकृत किया जा सकता है।",
+        description: "कंपोनेंट को आसानी से आपके पसंदीदा सूची इंटरफेस के साथ एकीकृत किया जा सकता है।",
       },
       styling: {
         name: "स्टाइलिंग",
@@ -279,8 +273,7 @@ export const demoHi: DemoTranslations = {
       },
       verticalAlignment: {
         name: "ऊर्ध्वाधर संरेखण",
-        description:
-          "आवश्यकता के अनुसार, कार्ड विभिन्न संरेखण रणनीतियों के साथ पूर्व-कॉन्फ़िगर किया गया है।",
+        description: "आवश्यकता के अनुसार, कार्ड विभिन्न संरेखण रणनीतियों के साथ पूर्व-कॉन्फ़िगर किया गया है।",
         top: {
           heading: "शीर्ष (डिफ़ॉल्ट)",
           content: "सभी सामग्री स्वचालित रूप से शीर्ष पर संरेखित होती है।",
@@ -326,11 +319,10 @@ export const demoHi: DemoTranslations = {
     },
   },
   demoAutoImage: {
-    description:
-      "एक छवि कंपोनेंट जो स्वचालित रूप से रिमोट या डेटा-यूआरआई छवि का आकार निर्धारित करता है।",
+    description: "एक छवि कंपोनेंट जो स्वचालित रूप से रिमोट या डेटा-यूआरआई छवि का आकार निर्धारित करता है।",
     useCase: {
-      remoteUri: { name: "रिमोट यूआरआई" },
-      base64Uri: { name: "बेस64 यूआरआई" },
+      remoteUri: {name: "रिमोट यूआरआई"},
+      base64Uri: {name: "बेस64 यूआरआई"},
       scaledToFitDimensions: {
         name: "आयामों के अनुरूप स्केल किया गया",
         description:
@@ -342,8 +334,7 @@ export const demoHi: DemoTranslations = {
     },
   },
   demoText: {
-    description:
-      "आपकी टेक्स्ट प्रदर्शन आवश्यकताओं के लिए। यह कंपोनेंट अंतर्निहित React Native कंपोनेंट पर एक HOC है।",
+    description: "आपकी टेक्स्ट प्रदर्शन आवश्यकताओं के लिए। यह कंपोनेंट अंतर्निहित React Native कंपोनेंट पर एक HOC है।",
     useCase: {
       presets: {
         name: "प्रीसेट",
@@ -367,10 +358,8 @@ export const demoHi: DemoTranslations = {
       weights: {
         name: "वजन",
         description: "एक वजन प्रॉप है।",
-        light:
-          "लाइट - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
-        normal:
-          "सामान्य - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
+        light: "लाइट - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
+        normal: "सामान्य - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
         medium: "मध्यम - Non duis laborum quis laboris occaecat culpa cillum.",
         semibold: "सेमीबोल्ड - Exercitation magna nostrud pariatur laborum occaecat aliqua.",
         bold: "बोल्ड - Eiusmod ullamco magna exercitation est excepteur.",
@@ -399,8 +388,7 @@ export const demoHi: DemoTranslations = {
     },
   },
   demoHeader: {
-    description:
-      "कई स्क्रीन पर दिखाई देने वाला कंपोनेंट। यह नेविगेशन बटन और स्क्रीन शीर्षक धारण करेगा।",
+    description: "कई स्क्रीन पर दिखाई देने वाला कंपोनेंट। यह नेविगेशन बटन और स्क्रीन शीर्षक धारण करेगा।",
     useCase: {
       actionIcons: {
         name: "एक्शन आइकन",

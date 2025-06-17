@@ -1,4 +1,4 @@
-import { DemoTranslations } from "./demo-en"
+import {DemoTranslations} from "./demo-en"
 
 export const demoKo: DemoTranslations = {
   demoIcon: {
@@ -28,8 +28,7 @@ export const demoKo: DemoTranslations = {
     useCase: {
       statuses: {
         name: "상태",
-        description:
-          "다른 컴포넌트의 `preset`과 유사한 상태 속성이 있으며, 컴포넌트의 기능에도 영향을 미칩니다.",
+        description: "다른 컴포넌트의 `preset`과 유사한 상태 속성이 있으며, 컴포넌트의 기능에도 영향을 미칩니다.",
         noStatus: {
           label: "상태 없음",
           helper: "이것이 기본 상태입니다",
@@ -116,8 +115,7 @@ export const demoKo: DemoTranslations = {
       },
       statuses: {
         name: "상태",
-        description:
-          "다른 컴포넌트의 `preset`과 유사한 상태 속성이 있으며, 컴포넌트의 기능에도 영향을 미칩니다.",
+        description: "다른 컴포넌트의 `preset`과 유사한 상태 속성이 있으며, 컴포넌트의 기능에도 영향을 미칩니다.",
         noStatus: "상태 없음 - 기본 상태",
         errorStatus: "오류 상태 - 오류가 있을 때 사용",
         disabledStatus: "비활성 상태 - 편집 기능을 비활성화하고 입력을 표시하지 않음",
@@ -191,8 +189,7 @@ export const demoKo: DemoTranslations = {
       },
       disabling: {
         name: "비활성화",
-        description:
-          "컴포넌트는 비활성화할 수 있으며, 그에 따라 스타일링할 수 있습니다. 누르는 동작이 비활성화됩니다.",
+        description: "컴포넌트는 비활성화할 수 있으며, 그에 따라 스타일링할 수 있습니다. 누르는 동작이 비활성화됩니다.",
         standard: "비활성화 - 표준",
         filled: "비활성화 - 채워진",
         reversed: "비활성화 - 역방향",
@@ -209,10 +206,8 @@ export const demoKo: DemoTranslations = {
         description: "행은 다른 높이를 가질 수 있습니다.",
         defaultHeight: "기본 높이 (56px)",
         customHeight: "`height` 속성을 통해 사용자 정의 높이",
-        textHeight:
-          "텍스트 내용에 의해 결정된 높이 - 예제를 위한 긴 문장입니다. 하나 둘 셋. 안녕하세요.",
-        longText:
-          "긴 텍스트를 한 줄로 제한 - 이것 역시 예제를 위한 긴 문장입니다. 오늘 날씨는 어떤가요?",
+        textHeight: "텍스트 내용에 의해 결정된 높이 - 예제를 위한 긴 문장입니다. 하나 둘 셋. 안녕하세요.",
+        longText: "긴 텍스트를 한 줄로 제한 - 이것 역시 예제를 위한 긴 문장입니다. 오늘 날씨는 어떤가요?",
       },
       separators: {
         name: "구분선",
@@ -323,8 +318,8 @@ export const demoKo: DemoTranslations = {
   demoAutoImage: {
     description: "원격 또는 data-uri 이미지의 크기를 자동으로 조정하는 Image 컴포넌트입니다.",
     useCase: {
-      remoteUri: { name: "원격 URI" },
-      base64Uri: { name: "Base64 URI" },
+      remoteUri: {name: "원격 URI"},
+      base64Uri: {name: "Base64 URI"},
       scaledToFitDimensions: {
         name: "치수에 맞게 조정",
         description:
@@ -388,8 +383,7 @@ export const demoKo: DemoTranslations = {
     },
   },
   demoHeader: {
-    description:
-      "여러 화면에 나타나는 컴포넌트입니다. 네비게이션 버튼과 화면 제목을 포함할 것입니다.",
+    description: "여러 화면에 나타나는 컴포넌트입니다. 네비게이션 버튼과 화면 제목을 포함할 것입니다.",
     useCase: {
       actionIcons: {
         name: "액션 아이콘",
@@ -406,8 +400,7 @@ export const demoKo: DemoTranslations = {
       },
       customActionComponents: {
         name: "사용자 정의 액션 컴포넌트",
-        description:
-          "아이콘이나 텍스트 옵션이 충분하지 않은 경우, 사용자 정의 액션 컴포넌트를 전달할 수 있습니다.",
+        description: "아이콘이나 텍스트 옵션이 충분하지 않은 경우, 사용자 정의 액션 컴포넌트를 전달할 수 있습니다.",
         customLeftActionTitle: "사용자 정의 왼쪽 액션",
       },
       titleModes: {

@@ -32,22 +32,23 @@ export default function GlassesWifiSetupScreen() {
 
   const handleScanForNetworks = () => {
     router.push({
-      pathname: '/pairing/glasseswifisetup/scan',
-      params: { deviceModel }
+      pathname: "/pairing/glasseswifisetup/scan",
+      params: { deviceModel },
     });
   };
 
   const handleManualEntry = () => {
     router.push({
-      pathname: '/pairing/glasseswifisetup/password',
-      params: { deviceModel, ssid: '' }
+      pathname: "/pairing/glasseswifisetup/password",
+      params: { deviceModel, ssid: "" },
     });
   };
 
   return (
     <Screen
-      preset="fixed"
+      preset="scroll"
       contentContainerStyle={themed($container)}
+      safeAreaEdges={["top"]}
     >
       <Header 
         title="WiFi Setup"
@@ -55,7 +56,6 @@ export default function GlassesWifiSetupScreen() {
         onLeftPress={handleGoBack}
       />
       <View style={themed($content)}>
-        
         <Text style={themed($subtitle)}>
           Your {deviceModel} glasses need WiFi to connect to the internet.
         </Text>
@@ -63,17 +63,13 @@ export default function GlassesWifiSetupScreen() {
         {/* Show current WiFi status if available */}
         {isWifiConnected && currentWifi && (
           <View style={themed($statusContainer)}>
-            <Text style={themed($statusText)}>
-              Currently connected to: {currentWifi}
-            </Text>
+            <Text style={themed($statusText)}>Currently connected to: {currentWifi}</Text>
           </View>
         )}
 
         {!isWifiConnected && (
           <View style={themed($statusContainer)}>
-            <Text style={themed($statusText)}>
-              Not connected to WiFi
-            </Text>
+            <Text style={themed($statusText)}>Not connected to WiFi</Text>
           </View>
         )}
 
@@ -83,7 +79,7 @@ export default function GlassesWifiSetupScreen() {
             subtitle="Automatically find nearby WiFi networks"
             onPress={handleScanForNetworks}
           />
-          
+
           <RouteButton
             label="Enter Network Manually"
             subtitle="Type in network name and password"
@@ -102,21 +98,14 @@ const $container: ThemedStyle<ViewStyle> = () => ({
 const $content: ThemedStyle<ViewStyle> = ({ spacing }) => ({
   flex: 1,
   padding: spacing.lg,
-  alignItems: 'center',
-});
-
-const $title: ThemedStyle<TextStyle> = ({ colors, typography }) => ({
-  ...typography.heading,
-  color: colors.text,
-  marginBottom: 10,
-  textAlign: 'center',
+  alignItems: "center",
 });
 
 const $subtitle: ThemedStyle<TextStyle> = ({ colors, spacing }) => ({
   fontSize: 16,
   color: colors.textDim,
   marginBottom: spacing.xl,
-  textAlign: 'center',
+  textAlign: "center",
 });
 
 const $statusContainer: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
@@ -124,17 +113,17 @@ const $statusContainer: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
   padding: spacing.md,
   borderRadius: spacing.xs,
   marginBottom: spacing.xl,
-  width: '100%',
+  width: "100%",
 });
 
 const $statusText: ThemedStyle<TextStyle> = ({ colors }) => ({
   fontSize: 14,
   color: colors.text,
-  textAlign: 'center',
+  textAlign: "center",
 });
 
 const $buttonContainer: ThemedStyle<ViewStyle> = ({ spacing }) => ({
-  width: '100%',
+  width: "100%",
   gap: spacing.md,
   marginTop: spacing.md,
 });
