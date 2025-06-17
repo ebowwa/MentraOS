@@ -288,7 +288,7 @@ export default function Homepage() {
                 </TouchableOpacity>
               </Animated.View>
             )}
-            <MicIcon withBackground />
+            <MicIcon width={24} height={24} />
           </View>
         }
       />

@@ -192,6 +192,8 @@ const en = {
   warning: {
     nonProdBackend: "You are using a non-production backend.",
     sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
+    microphoneActive: "Microphone Active",
+    microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
   },
   common: {
     ok: "OK",

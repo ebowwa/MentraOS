@@ -124,16 +124,31 @@ export default function PairingPrepScreen() {
         } // End of Bluetooth permissions block
       } // End of Android-specific permissions block
 
-      // Cross-platform permissions needed for both iOS and Android
+      // Check connectivity BEFORE requesting permissions (doesn't require permissions)
+      if (needsBluetoothPermissions) {
+        const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+        if (!requirementsCheck.isReady) {
+          // Show alert about missing requirements  
+          showAlert(
+            translate("pairing:connectionIssueTitle"),
+            requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            [{text: translate("common:ok")}],
+          )
+          return
+        }
+      }
 
-      const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH)
-      if (!hasBluetoothPermission) {
-        showAlert(
-          translate("pairing:bluetoothPermissionRequiredTitle"),
-          translate("pairing:bluetoothPermissionRequiredMessageAlt"),
-          [{text: translate("common:ok")}],
-        )
-        return // Stop the connection process
+      // Cross-platform permissions needed for both iOS and Android (only if connectivity check passed)
+      if (needsBluetoothPermissions) {
+        const hasBluetoothPermission = await requestFeaturePermissions(PermissionFeatures.BLUETOOTH)
+        if (!hasBluetoothPermission) {
+          showAlert(
+            translate("pairing:bluetoothPermissionRequiredTitle"),
+            translate("pairing:bluetoothPermissionRequiredMessageAlt"),
+            [{text: translate("common:ok")}],
+          )
+          return // Stop the connection process
+        }
       }
 
       // Request microphone permission (needed for both platforms)
@@ -169,20 +184,6 @@ export default function PairingPrepScreen() {
         {text: translate("common:ok")},
       ])
       return
-    }
-
-    // Check that Bluetooth and Location are enabled/granted (skip for simulated glasses)
-    if (needsBluetoothPermissions) {
-      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
-      if (!requirementsCheck.isReady) {
-        // Show alert about missing requirements
-        showAlert(
-          translate("pairing:connectionIssueTitle"),
-          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-          [{text: translate("common:ok")}],
-        )
-        return
-      }
     }
 
     console.log("needsBluetoothPermissions", needsBluetoothPermissions)

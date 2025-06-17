@@ -29,6 +29,11 @@ interface PillButtonProps extends Omit<TouchableOpacityProps, "style"> {
    * Whether the button is disabled
    */
   disabled?: boolean
+
+  /**
+   * Hit slop to increase touchable area around the button
+   */
+  hitSlop?: {top?: number; bottom?: number; left?: number; right?: number} | number
 }
 
 /**
@@ -66,7 +71,7 @@ export function PillButton({
   ]
 
   return (
-    <TouchableOpacity style={buttonStyles} disabled={disabled} {...touchableProps}>
+    <TouchableOpacity style={buttonStyles} disabled={disabled} hitSlop={10} {...touchableProps}>
       <Text style={textStyles}>{text}</Text>
     </TouchableOpacity>
   )

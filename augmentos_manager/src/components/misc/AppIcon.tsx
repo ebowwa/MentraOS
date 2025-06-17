@@ -21,13 +21,15 @@ const AppIcon: React.FC<AppIconProps> = ({app, isForegroundApp = false, onClick,
   const navigation = useNavigation<NavigationProps>()
   const {theme} = useAppTheme()
 
+  const WrapperComponent = onClick ? TouchableOpacity : View
+
   return (
-    <TouchableOpacity
+    <WrapperComponent
       onPress={onClick}
-      activeOpacity={0.7}
+      activeOpacity={onClick ? 0.7 : undefined}
       style={[styles.container, style]}
-      accessibilityLabel={`Launch ${app.name}`}
-      accessibilityRole="button">
+      accessibilityLabel={onClick ? `Launch ${app.name}` : undefined}
+      accessibilityRole={onClick ? "button" : undefined}>
       <Image
         source={{uri: app.logoURL}}
         style={styles.icon}
@@ -43,7 +45,7 @@ const AppIcon: React.FC<AppIconProps> = ({app, isForegroundApp = false, onClick,
           numberOfLines={2}
         />
       )}
-    </TouchableOpacity>
+    </WrapperComponent>
   )
 }
 

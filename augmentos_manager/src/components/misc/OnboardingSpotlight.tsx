@@ -85,15 +85,23 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
 
   return (
     <Modal transparent visible={visible} animationType="none">
-      <Animated.View style={[styles.container, {opacity: fadeAnim}]} pointerEvents="box-none">
+      <Animated.View style={[styles.container, {opacity: fadeAnim}]} pointerEvents="auto">
         {/* Create overlay with four rectangles around the spotlight */}
         {/* Top overlay */}
-        <View style={[styles.overlay, {height: spotlightY}]} pointerEvents="auto" />
+        <TouchableOpacity 
+          style={[styles.overlay, {height: spotlightY}]} 
+          onPress={onDismiss}
+          activeOpacity={1}
+        />
         
         {/* Middle section with left and right overlays */}
-        <View style={{flexDirection: 'row', height: spotlightHeight}} pointerEvents="box-none">
+        <View style={{flexDirection: 'row', height: spotlightHeight}}>
           {/* Left overlay */}
-          <View style={[styles.overlay, {width: spotlightX}]} pointerEvents="auto" />
+          <TouchableOpacity 
+            style={[styles.overlay, {width: spotlightX}]} 
+            onPress={onDismiss}
+            activeOpacity={1}
+          />
           
           {/* Spotlight area - touchable */}
           <TouchableOpacity
@@ -109,11 +117,19 @@ export const OnboardingSpotlight: React.FC<OnboardingSpotlightProps> = ({
           />
           
           {/* Right overlay */}
-          <View style={[styles.overlay, {flex: 1}]} pointerEvents="auto" />
+          <TouchableOpacity 
+            style={[styles.overlay, {flex: 1}]} 
+            onPress={onDismiss}
+            activeOpacity={1}
+          />
         </View>
         
         {/* Bottom overlay */}
-        <View style={[styles.overlay, {flex: 1}]} pointerEvents="auto" />
+        <TouchableOpacity 
+          style={[styles.overlay, {flex: 1}]} 
+          onPress={onDismiss}
+          activeOpacity={1}
+        />
 
         {/* Message bubble */}
         <View

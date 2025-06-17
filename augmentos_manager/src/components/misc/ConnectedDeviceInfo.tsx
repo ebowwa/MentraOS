@@ -19,10 +19,12 @@ import SunIcon from "assets/icons/component/SunIcon"
 import {theme} from "assets/icons/component/SunIcon"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import showAlert from "@/utils/AlertUtils"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
+  const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
 
   const connectGlasses = async () => {
     if (!status.core_info.default_wearable) {
@@ -30,20 +32,25 @@ export const ConnectDeviceButton = () => {
       return
     }
 
-    // Check that Bluetooth and Location are enabled/granted
-    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
-    if (!requirementsCheck.isReady) {
-      // Show alert about missing requirements
-      console.log("Requirements not met, showing banner with message:", requirementsCheck.message)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-        type: "error",
-      })
-
-      return
-    }
-
+    // Show loading state during connectivity check
+    setIsCheckingConnectivity(true)
+    
     try {
+      // Check that Bluetooth and Location are enabled/granted
+      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+      
+      if (!requirementsCheck.isReady) {
+        // Show alert about missing requirements
+        console.log("Requirements not met, showing alert with message:", requirementsCheck.message)
+        showAlert(
+          "Connection Requirements",
+          requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
+          [{text: "OK"}]
+        )
+        return
+      }
+
+      // Connectivity check passed, proceed with connection
       console.log("Connecting to glasses:", status.core_info.default_wearable)
       if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
         console.log("Connecting to glasses:", status.core_info.default_wearable)
@@ -51,10 +58,13 @@ export const ConnectDeviceButton = () => {
       }
     } catch (error) {
       console.error("connect to glasses error:", error)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: "Failed to connect to glasses",
-        type: "error",
-      })
+      showAlert(
+        "Connection Error",
+        "Failed to connect to glasses. Please try again.",
+        [{text: "OK"}]
+      )
+    } finally {
+      setIsCheckingConnectivity(false)
     }
   }
 
@@ -95,7 +105,7 @@ export const ConnectDeviceButton = () => {
     )
   }
 
-  if (status.core_info.is_searching) {
+  if (status.core_info.is_searching || isCheckingConnectivity) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
@@ -116,6 +126,7 @@ export const ConnectDeviceButton = () => {
         RightAccessory={() => <ChevronRight color={theme.colors.text} />}
         onPress={handleConnectOrDisconnect}
         tx="home:connectGlasses"
+        disabled={isCheckingConnectivity}
       />
     )
   }

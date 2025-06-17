@@ -108,7 +108,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
           ]
         : [], // For Android 12+, include the Bluetooth permissions in the normal flow
     critical: true, // Critical for glasses pairing
-    specialRequestNeeded: Platform.OS === "ios", // Special handling for iOS
+    specialRequestNeeded: false, // iOS Bluetooth permissions work with regular flow
   },
 }
 
