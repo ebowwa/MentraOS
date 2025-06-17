@@ -186,6 +186,9 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
 
+        // Enable WiFi when service starts
+        openWifi(this, true);
+
         // Start OTA Updater after 5 seconds
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             Log.d(TAG, "Starting OTA Updater MainActivity after delay");
@@ -2411,5 +2414,19 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
 
         return true;
+    }
+
+    /**
+     * Enable or disable WiFi via broadcast
+     *
+     * @param context Application context
+     * @param bEnable True to enable WiFi, false to disable
+     */
+    public static void openWifi(Context context, boolean bEnable) {
+        Intent nn = new Intent();
+        nn.putExtra("cmd", "setwifi");
+        nn.putExtra("enable", bEnable);
+        context.sendBroadcast(nn);
+        Log.d(TAG, "Sent WiFi " + (bEnable ? "enable" : "disable") + " broadcast");
     }
 }

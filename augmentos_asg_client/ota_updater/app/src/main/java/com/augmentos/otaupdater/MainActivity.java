@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     private long updateStartTime = 0;
     private static final long MAX_UPDATE_DURATION_MS = 10 * 60 * 1000; // 10 minutes max update time
 
+    private boolean processingHeartbeatAcknowledgment = false;
     // Broadcast receivers
     private BroadcastReceiver heartbeatReceiver;
     private BroadcastReceiver updateReceiver;
@@ -93,7 +94,12 @@ public class MainActivity extends AppCompatActivity {
             public void onReceive(Context context, Intent intent) {
                 if (Constants.ACTION_ASG_HEARTBEAT_ACK.equals(intent.getAction())) {
                     Log.i(TAG, "Heartbeat acknowledgment received "+ System.currentTimeMillis());
+//                    if (!processingHeartbeatAcknowledgment) {
+//                        processingHeartbeatAcknowledgment = true;
+                    Log.d(TAG, "Processing heartbeat acknowledgment on thread ID: " + Thread.currentThread().getId());
                     handleHeartbeatAcknowledgment();
+//                        processingHeartbeatAcknowledgment = false;
+//                    }
                 }
             }
         };
@@ -498,7 +504,7 @@ public class MainActivity extends AppCompatActivity {
 
             Log.i(TAG, "@$%% Handling heartbeat acknowledgment " + timeSinceLastAck + "ms");
             // Filter duplicate acknowledgments that arrive close together
-            if (timeSinceLastAck < 500) {  // 500ms deduplication window - increased from 100ms
+            if (timeSinceLastAck < 2000) {  // 2000ms deduplication window - increased from 500ms
                 Log.d(TAG, "Ignoring duplicate acknowledgment received after only " + timeSinceLastAck + "ms");
                 return;
             }
