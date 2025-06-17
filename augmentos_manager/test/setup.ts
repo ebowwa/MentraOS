@@ -9,7 +9,7 @@ jest.doMock("react-native", () => {
     {
       Image: {
         ...ReactNative.Image,
-        resolveAssetSource: jest.fn((_source) => mockFile), // eslint-disable-line @typescript-eslint/no-unused-vars
+        resolveAssetSource: jest.fn(_source => mockFile), // eslint-disable-line @typescript-eslint/no-unused-vars
         getSize: jest.fn(
           (
             uri: string, // eslint-disable-line @typescript-eslint/no-unused-vars
@@ -35,7 +35,7 @@ jest.mock("i18next", () => ({
 
 jest.mock("expo-localization", () => ({
   ...jest.requireActual("expo-localization"),
-  getLocales: () => [{ languageTag: "en-US", textDirection: "ltr" }],
+  getLocales: () => [{languageTag: "en-US", textDirection: "ltr"}],
 }))
 
 jest.mock("../src/i18n/i18n.ts", () => ({

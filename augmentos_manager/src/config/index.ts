@@ -23,6 +23,6 @@ if (__DEV__) {
   ExtraConfig = DevConfig
 }
 
-const Config = { ...BaseConfig, ...ExtraConfig }
+const Config = {...BaseConfig, ...ExtraConfig}
 
 export default Config

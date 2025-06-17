@@ -1,27 +1,27 @@
-import { NativeModules } from 'react-native';
+import {NativeModules} from "react-native"
 
-const { ServiceStarter } = NativeModules;
+const {ServiceStarter} = NativeModules
 
 export const startExternalService = () => {
-    ServiceStarter.startService();
-};
+  ServiceStarter.startService()
+}
 
 export const stopExternalService = () => {
-    ServiceStarter.stopService();
-};
+  ServiceStarter.stopService()
+}
 
 export const openCorePermissionsActivity = () => {
-    ServiceStarter.openPermissionsActivity();
-};
+  ServiceStarter.openPermissionsActivity()
+}
 
 export const isAugmentOsCoreInstalled = async () => {
-    return ServiceStarter.isAugmentOsCoreInstalled();
-};
+  return ServiceStarter.isAugmentOsCoreInstalled()
+}
 
 export const areAllCorePermissionsGranted = async () => {
-    return ServiceStarter.areAllCorePermissionsGranted();
+  return ServiceStarter.areAllCorePermissionsGranted()
 }
 
 export const isLocationServicesEnabled = async () => {
-    return ServiceStarter.isLocationEnabled();
+  return ServiceStarter.isLocationEnabled()
 }

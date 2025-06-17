@@ -8,7 +8,7 @@ import {translate} from "@/i18n"
 import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {router} from "expo-router"
-import { type ThemeType } from "@/utils/useAppTheme"
+import {type ThemeType} from "@/utils/useAppTheme"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
@@ -33,12 +33,7 @@ export default function ThemeSettingsPage() {
     }
   }
 
-  const renderThemeOption = (
-    themeKey: ThemeType,
-    label: string,
-    subtitle?: string,
-    isLast: boolean = false,
-  ) => (
+  const renderThemeOption = (themeKey: ThemeType, label: string, subtitle?: string, isLast: boolean = false) => (
     <>
       <TouchableOpacity
         style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
@@ -50,7 +45,7 @@ export default function ThemeSettingsPage() {
         <MaterialCommunityIcons
           name="check"
           size={24}
-          color={selectedTheme === themeKey ? (theme.colors.checkmark || theme.colors.palette.primary300) : "transparent"}
+          color={selectedTheme === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"}
         />
       </TouchableOpacity>
       {!isLast && <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />}
@@ -59,11 +54,7 @@ export default function ThemeSettingsPage() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
-      <Header
-        title="Theme Settings"
-        leftIcon="caretLeft"
-        onLeftPress={() => router.replace("/(tabs)/settings")}
-      />
+      <Header title="Theme Settings" leftIcon="caretLeft" onLeftPress={() => router.replace("/(tabs)/settings")} />
 
       <View style={themed($settingsGroup)}>
         {renderThemeOption("light", "Light Theme", undefined, false)}

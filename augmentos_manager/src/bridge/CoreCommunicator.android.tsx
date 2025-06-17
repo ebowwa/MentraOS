@@ -30,22 +30,35 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log("Checking Bluetooth state...")
-      
-      // Ensure BleManager is initialized
+
+      // Try to check state without initialization first (like iOS)
       try {
-        await BleManager.start({showAlert: false})
-      } catch (initError) {
-        console.warn("BleManager already initialized or failed to initialize:", initError)
+        const state = await BleManager.checkState()
+        console.log("Bluetooth state:", state)
+
+        // Handle different possible return values
+        const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
+        console.log("Bluetooth enabled:", isEnabled)
+
+        return isEnabled
+      } catch (stateError) {
+        console.log("BleManager not initialized, trying with initialization...")
+        
+        // If that fails, initialize and try again
+        try {
+          await BleManager.start({showAlert: false})
+          const state = await BleManager.checkState()
+          console.log("Bluetooth state (after init):", state)
+
+          const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
+          console.log("Bluetooth enabled (after init):", isEnabled)
+
+          return isEnabled
+        } catch (initError) {
+          console.warn("BleManager initialization failed:", initError)
+          return false
+        }
       }
-      
-      const state = await BleManager.checkState()
-      console.log("Bluetooth state:", state)
-      
-      // Handle different possible return values
-      const isEnabled = state === "on" || state === "On" || state === "ON" || state === true
-      console.log("Bluetooth enabled:", isEnabled)
-      
-      return isEnabled
     } catch (error) {
       console.error("Error checking Bluetooth state:", error)
       // If we can't check the state, assume it's disabled for security
@@ -98,7 +111,7 @@ export class CoreCommunicator extends EventEmitter {
     console.log("Is Bluetooth enabled:", isBtEnabled)
     if (!isBtEnabled) {
       console.log("Bluetooth is disabled, showing alert")
-      
+
       // Show alert to user
       showAlert(
         translate("connectivity:bluetoothRequiredTitle"),
@@ -106,15 +119,15 @@ export class CoreCommunicator extends EventEmitter {
         [
           {
             text: translate("common:ok"),
-            style: "default"
-          }
+            style: "default",
+          },
         ],
         {
           iconName: "bluetooth-off",
-          iconColor: "#F56565"
-        }
+          iconColor: "#F56565",
+        },
       )
-      
+
       return {
         isReady: false,
         message: translate("connectivity:bluetoothRequiredMessage"),
@@ -128,22 +141,22 @@ export class CoreCommunicator extends EventEmitter {
       console.log("Is Location permission granted:", isLocationPermissionGranted)
       if (!isLocationPermissionGranted) {
         console.log("Location permission missing, showing alert")
-        
+
         showAlert(
           translate("connectivity:locationPermissionRequiredTitle"),
           translate("connectivity:locationPermissionRequiredMessage"),
           [
             {
               text: translate("common:ok"),
-              style: "default"
-            }
+              style: "default",
+            },
           ],
           {
             iconName: "map-marker-off",
-            iconColor: "#F56565"
-          }
+            iconColor: "#F56565",
+          },
         )
-        
+
         return {
           isReady: false,
           message: translate("connectivity:locationPermissionRequiredMessage"),
@@ -155,22 +168,22 @@ export class CoreCommunicator extends EventEmitter {
       console.log("Are Location services enabled:", isLocationServicesEnabled)
       if (!isLocationServicesEnabled) {
         console.log("Location services disabled, showing alert")
-        
+
         showAlert(
           translate("connectivity:locationServicesRequiredTitle"),
           translate("connectivity:locationServicesRequiredMessage"),
           [
             {
               text: translate("common:ok"),
-              style: "default"
-            }
+              style: "default",
+            },
           ],
           {
             iconName: "crosshairs-gps",
-            iconColor: "#F56565"
-          }
+            iconColor: "#F56565",
+          },
         )
-        
+
         return {
           isReady: false,
           message: translate("connectivity:locationServicesRequiredMessage"),
@@ -201,12 +214,7 @@ export class CoreCommunicator extends EventEmitter {
    * Initializes the communication channel with Core
    */
   async initialize() {
-    // Initialize BleManager for permission checks
-    try {
-      await BleManager.start({showAlert: false})
-    } catch (error) {
-      console.warn("Failed to initialize BleManager:", error)
-    }
+    // BleManager initialization is now handled on-demand in isBluetoothEnabled()
 
     // Start the Core service if it's not already running
     if (!(await CoreCommsService.isServiceRunning())) {

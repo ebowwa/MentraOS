@@ -1,13 +1,5 @@
 import React, {useState} from "react"
-import {
-  View,
-  TextInput,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-  ViewStyle,
-  TextStyle,
-} from "react-native"
+import {View, TextInput, TouchableOpacity, ActivityIndicator, ScrollView, ViewStyle, TextStyle} from "react-native"
 import {supabase} from "@/supabase/supabaseClient"
 import {Button, Header, Screen, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -35,18 +27,12 @@ export default function ChangePasswordScreen() {
   const handleUpdatePassword = async () => {
     // Validation checks with specific error messages
     if (newPassword.length < 6) {
-      showAlert(
-        translate("common:error"),
-        translate("profileSettings:passwordTooShort")
-      )
+      showAlert(translate("common:error"), translate("profileSettings:passwordTooShort"))
       return
     }
 
     if (newPassword !== confirmPassword) {
-      showAlert(
-        translate("common:error"),
-        translate("profileSettings:passwordsDoNotMatch")
-      )
+      showAlert(translate("common:error"), translate("profileSettings:passwordsDoNotMatch"))
       return
     }
 
@@ -54,7 +40,7 @@ export default function ChangePasswordScreen() {
 
     try {
       const {error} = await supabase.auth.updateUser({
-        password: newPassword
+        password: newPassword,
       })
 
       if (error) {
@@ -77,28 +63,17 @@ export default function ChangePasswordScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header 
-        title={translate("profileSettings:changePassword")} 
-        leftIcon="caretLeft" 
-        onLeftPress={goBack} 
-      />
+      <Header title={translate("profileSettings:changePassword")} leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView contentContainerStyle={themed($scrollContent)} showsVerticalScrollIndicator={false}>
         <View style={themed($card)}>
-          <Text 
-            tx="profileSettings:changePasswordSubtitle" 
-            style={themed($subtitle)} 
-          />
+          <Text tx="profileSettings:changePasswordSubtitle" style={themed($subtitle)} />
 
           <View style={themed($form)}>
             <View style={themed($inputGroup)}>
               <Text tx="profileSettings:newPassword" style={themed($inputLabel)} />
               <View style={themed($enhancedInputContainer)}>
-                <FontAwesome
-                  name="lock"
-                  size={16}
-                  color={theme.colors.text}
-                />
-                <Spacer width={spacing.xxs}/>
+                <FontAwesome name="lock" size={16} color={theme.colors.text} />
+                <Spacer width={spacing.xxs} />
                 <TextInput
                   hitSlop={{top: 16, bottom: 16}}
                   style={themed($enhancedInput)}
@@ -112,11 +87,7 @@ export default function ChangePasswordScreen() {
                 <TouchableOpacity
                   hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                   onPress={() => setShowNewPassword(!showNewPassword)}>
-                  <FontAwesome 
-                    name={showNewPassword ? "eye" : "eye-slash"} 
-                    size={18} 
-                    color={theme.colors.text} 
-                  />
+                  <FontAwesome name={showNewPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.text} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -124,12 +95,8 @@ export default function ChangePasswordScreen() {
             <View style={themed($inputGroup)}>
               <Text tx="profileSettings:confirmPassword" style={themed($inputLabel)} />
               <View style={themed($enhancedInputContainer)}>
-                <FontAwesome
-                  name="lock"
-                  size={16}
-                  color={theme.colors.text}
-                />
-                <Spacer width={spacing.xxs}/>
+                <FontAwesome name="lock" size={16} color={theme.colors.text} />
+                <Spacer width={spacing.xxs} />
                 <TextInput
                   hitSlop={{top: 16, bottom: 16}}
                   style={themed($enhancedInput)}
@@ -143,23 +110,16 @@ export default function ChangePasswordScreen() {
                 <TouchableOpacity
                   hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                   onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  <FontAwesome 
-                    name={showConfirmPassword ? "eye" : "eye-slash"} 
-                    size={18} 
-                    color={theme.colors.text} 
-                  />
+                  <FontAwesome name={showConfirmPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.text} />
                 </TouchableOpacity>
               </View>
             </View>
 
             {newPassword.length > 0 && confirmPassword.length > 0 && !passwordsMatch && (
-              <Text 
-                tx="profileSettings:passwordsDoNotMatch" 
-                style={themed($errorText)} 
-              />
+              <Text tx="profileSettings:passwordsDoNotMatch" style={themed($errorText)} />
             )}
 
-            <Spacer height={spacing.lg}/>
+            <Spacer height={spacing.lg} />
 
             <Button
               tx="profileSettings:updatePassword"
@@ -169,13 +129,7 @@ export default function ChangePasswordScreen() {
               onPress={handleUpdatePassword}
               disabled={!isFormValid || isLoading}
               LeftAccessory={() =>
-                isLoading && (
-                  <ActivityIndicator
-                    size="small"
-                    color={theme.colors.icon}
-                    style={{marginRight: 8}}
-                  />
-                )
+                isLoading && <ActivityIndicator size="small" color={theme.colors.icon} style={{marginRight: 8}} />
               }
             />
           </View>
@@ -226,15 +180,17 @@ const $enhancedInputContainer: ThemedStyle<ViewStyle> = ({colors, spacing, isDar
   borderRadius: 8,
   paddingHorizontal: spacing.sm,
   backgroundColor: isDark ? colors.transparent : colors.background,
-  ...(isDark ? {
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  } : {}),
+  ...(isDark
+    ? {
+        shadowOffset: {
+          width: 0,
+          height: 1,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 2,
+      }
+    : {}),
 })
 
 const $enhancedInput: ThemedStyle<TextStyle> = ({colors}) => ({

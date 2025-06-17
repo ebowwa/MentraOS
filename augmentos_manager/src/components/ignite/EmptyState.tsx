@@ -1,10 +1,10 @@
-import { Image, ImageProps, ImageStyle, StyleProp, TextStyle, View, ViewStyle } from "react-native"
+import {Image, ImageProps, ImageStyle, StyleProp, TextStyle, View, ViewStyle} from "react-native"
 
-import { Button, ButtonProps } from "./Button"
-import { Text, TextProps } from "./Text"
-import { useAppTheme } from "@/utils/useAppTheme"
-import type { ThemedStyle } from "@/theme"
-import { translate } from "@/i18n/translate"
+import {Button, ButtonProps} from "./Button"
+import {Text, TextProps} from "./Text"
+import {useAppTheme} from "@/utils/useAppTheme"
+import type {ThemedStyle} from "@/theme"
+import {translate} from "@/i18n/translate"
 
 const sadFace = require("../../../assets/sad-face.png")
 
@@ -119,7 +119,7 @@ export function EmptyState(props: EmptyStateProps) {
   const {
     theme,
     themed,
-    theme: { spacing },
+    theme: {spacing},
   } = useAppTheme()
 
   const EmptyStatePresets = {
@@ -165,26 +165,26 @@ export function EmptyState(props: EmptyStateProps) {
   const $containerStyles = [$containerStyleOverride]
   const $imageStyles = [
     $image,
-    (isHeadingPresent || isContentPresent || isButtonPresent) && { marginBottom: spacing.xxxs },
+    (isHeadingPresent || isContentPresent || isButtonPresent) && {marginBottom: spacing.xxxs},
     $imageStyleOverride,
     ImageProps?.style,
   ]
   const $headingStyles = [
     themed($heading),
-    isImagePresent && { marginTop: spacing.xxxs },
-    (isContentPresent || isButtonPresent) && { marginBottom: spacing.xxxs },
+    isImagePresent && {marginTop: spacing.xxxs},
+    (isContentPresent || isButtonPresent) && {marginBottom: spacing.xxxs},
     $headingStyleOverride,
     HeadingTextProps?.style,
   ]
   const $contentStyles = [
     themed($content),
-    (isImagePresent || isHeadingPresent) && { marginTop: spacing.xxxs },
-    isButtonPresent && { marginBottom: spacing.xxxs },
+    (isImagePresent || isHeadingPresent) && {marginTop: spacing.xxxs},
+    isButtonPresent && {marginBottom: spacing.xxxs},
     $contentStyleOverride,
     ContentTextProps?.style,
   ]
   const $buttonStyles = [
-    (isImagePresent || isHeadingPresent || isContentPresent) && { marginTop: spacing.xl },
+    (isImagePresent || isHeadingPresent || isContentPresent) && {marginTop: spacing.xl},
     $buttonStyleOverride,
     ButtonProps?.style,
   ]
@@ -212,13 +212,7 @@ export function EmptyState(props: EmptyStateProps) {
       )}
 
       {isContentPresent && (
-        <Text
-          text={content}
-          tx={contentTx}
-          txOptions={contentTxOptions}
-          {...ContentTextProps}
-          style={$contentStyles}
-        />
+        <Text text={content} tx={contentTx} txOptions={contentTxOptions} {...ContentTextProps} style={$contentStyles} />
       )}
 
       {isButtonPresent && (
@@ -236,12 +230,12 @@ export function EmptyState(props: EmptyStateProps) {
   )
 }
 
-const $image: ImageStyle = { alignSelf: "center" }
-const $heading: ThemedStyle<TextStyle> = ({ spacing }) => ({
+const $image: ImageStyle = {alignSelf: "center"}
+const $heading: ThemedStyle<TextStyle> = ({spacing}) => ({
   textAlign: "center",
   paddingHorizontal: spacing.lg,
 })
-const $content: ThemedStyle<TextStyle> = ({ spacing }) => ({
+const $content: ThemedStyle<TextStyle> = ({spacing}) => ({
   textAlign: "center",
   paddingHorizontal: spacing.lg,
 })

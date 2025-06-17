@@ -3,7 +3,12 @@ import {View, Animated, Platform, ViewStyle, TextStyle, ScrollView} from "react-
 import {useNavigation, useFocusEffect, useRoute} from "@react-navigation/native"
 import type {NavigationProp} from "@react-navigation/native"
 import {Header, Screen} from "@/components/ignite"
-import {ConnectedDeviceInfo, ConnectDeviceButton, ConnectedGlasses, SplitDeviceInfo} from "@/components/misc/ConnectedDeviceInfo"
+import {
+  ConnectedDeviceInfo,
+  ConnectDeviceButton,
+  ConnectedGlasses,
+  SplitDeviceInfo,
+} from "@/components/misc/ConnectedDeviceInfo"
 import ConnectedSimulatedGlassesInfo from "@/components/misc/ConnectedSimulatedGlassesInfo"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -19,7 +24,7 @@ import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import DeviceSettings from "@/components/glasses/DeviceSettings"
 import {translate} from "@/i18n/translate"
-import { Spacer } from "@/components/misc/Spacer"
+import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 interface AnimatedSectionProps extends PropsWithChildren {
@@ -165,18 +170,16 @@ export default function Homepage() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
-      <Header
-        leftText={pageTitle}
-      />
+      <Header leftText={pageTitle} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
         {/* <View style={{flex: 1}}> */}
-          {/* <ConnectedGlasses showTitle={true} /> */}
-          <SplitDeviceInfo />
-          <ConnectedDeviceInfo />
-          <Spacer height={theme.spacing.md} />
-          <ConnectDeviceButton />
+        {/* <ConnectedGlasses showTitle={true} /> */}
+        <SplitDeviceInfo />
+        <ConnectedDeviceInfo />
+        <Spacer height={theme.spacing.md} />
+        <ConnectDeviceButton />
         {/* </View> */}
 
         <DeviceSettings />

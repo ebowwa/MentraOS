@@ -1,30 +1,27 @@
-import React, { useState } from "react"
-import { View, ViewStyle, ScrollView, TextInput, Pressable } from "react-native"
-import { router } from "expo-router"
-import { Screen } from "@/components/ignite"
+import React, {useState} from "react"
+import {View, ViewStyle, ScrollView, TextInput, Pressable} from "react-native"
+import {router} from "expo-router"
+import {Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
 import AppsInactiveList from "@/components/misc/AppsInactiveList"
-import { useAppStatus } from "@/contexts/AppStatusProvider"
-import { ThemedStyle } from "@/theme"
-import { useAppTheme } from "@/utils/useAppTheme"
-import { Spacer } from "@/components/misc/Spacer"
+import {useAppStatus} from "@/contexts/AppStatusProvider"
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {Spacer} from "@/components/misc/Spacer"
 import Divider from "@/components/misc/Divider"
-import { ArrowLeftIcon } from "assets/icons/component/ArrowLeftIcon"
-import { CloseXIcon } from "assets/icons/component/CloseXIcon"
-import { translate } from "@/i18n"
-
+import {ArrowLeftIcon} from "assets/icons/component/ArrowLeftIcon"
+import {CloseXIcon} from "assets/icons/component/CloseXIcon"
+import {translate} from "@/i18n"
 
 export default function SearchAppsPage() {
-  const { appStatus } = useAppStatus()
-  const { themed, theme } = useAppTheme()
+  const {appStatus} = useAppStatus()
+  const {themed, theme} = useAppTheme()
   const [searchQuery, setSearchQuery] = useState("")
-  let activeApps = appStatus.filter(app => app.is_running)
+  const activeApps = appStatus.filter(app => app.is_running)
 
   return (
     <Screen preset="fixed" style={themed($screen)} safeAreaEdges={["top"]}>
-      <View
-        style={themed($searchContainer)}
-      >
+      <View style={themed($searchContainer)}>
         <Pressable onPress={() => router.back()}>
           <ArrowLeftIcon color={theme.colors.icon} size={24} />
         </Pressable>
@@ -41,11 +38,10 @@ export default function SearchAppsPage() {
         </Pressable>
       </View>
 
-      <ScrollView 
-        style={themed($scrollView)} 
+      <ScrollView
+        style={themed($scrollView)}
         contentContainerStyle={themed($scrollContent)}
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         {activeApps.length > 0 && (
           <>
             <AppsActiveList isSearchPage={true} searchQuery={searchQuery} />
@@ -60,13 +56,13 @@ export default function SearchAppsPage() {
   )
 }
 
-const $screen: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $screen: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingHorizontal: spacing.lg,
   paddingTop: spacing.md,
   flex: 1,
 })
 
-const $searchContainer: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
+const $searchContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
   borderRadius: 24,
@@ -78,14 +74,14 @@ const $searchContainer: ThemedStyle<ViewStyle> = ({ colors, spacing }) => ({
   marginBottom: spacing.md,
 })
 
-const $searchInput: ThemedStyle<ViewStyle> = ({ colors }) => ({
+const $searchInput: ThemedStyle<ViewStyle> = ({colors}) => ({
   flex: 1,
   marginLeft: 12,
   color: colors.text,
   fontSize: 16,
 })
 
-const $scrollView: ThemedStyle<ViewStyle> = ({ spacing }) => ({
+const $scrollView: ThemedStyle<ViewStyle> = ({spacing}) => ({
   flex: 1,
   marginRight: -spacing.md,
   paddingRight: spacing.md,

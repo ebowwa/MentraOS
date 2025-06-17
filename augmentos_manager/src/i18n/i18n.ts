@@ -1,11 +1,11 @@
 import * as Localization from "expo-localization"
-import { I18nManager } from "react-native"
+import {I18nManager} from "react-native"
 import i18n from "i18next"
-import { initReactI18next } from "react-i18next"
+import {initReactI18next} from "react-i18next"
 import "intl-pluralrules"
 
 // if English isn't your default language, move Translations to the appropriate language file.
-import en, { Translations } from "./en"
+import en, {Translations} from "./en"
 import ar from "./ar"
 import ko from "./ko"
 import es from "./es"
@@ -17,7 +17,7 @@ const fallbackLocale = "en-US"
 
 const systemLocales = Localization.getLocales()
 
-const resources = { ar, en, ko, es, fr, ja, hi }
+const resources = {ar, en, ko, es, fr, ja, hi}
 const supportedTags = Object.keys(resources)
 
 // Checks to see if the device locale matches any of the supported locales
@@ -28,7 +28,7 @@ const systemTagMatchesSupportedTags = (deviceTag: string) => {
 }
 
 const pickSupportedLocale: () => Localization.Locale | undefined = () => {
-  return systemLocales.find((locale) => systemTagMatchesSupportedTags(locale.languageTag))
+  return systemLocales.find(locale => systemTagMatchesSupportedTags(locale.languageTag))
 }
 
 const locale = pickSupportedLocale()
@@ -73,11 +73,7 @@ type RecursiveKeyOfInner<TObj extends object> = {
   [TKey in keyof TObj & (string | number)]: RecursiveKeyOfHandleValue<TObj[TKey], `${TKey}`, false>
 }[keyof TObj & (string | number)]
 
-type RecursiveKeyOfHandleValue<
-  TValue,
-  Text extends string,
-  IsFirstLevel extends boolean,
-> = TValue extends any[]
+type RecursiveKeyOfHandleValue<TValue, Text extends string, IsFirstLevel extends boolean> = TValue extends any[]
   ? Text
   : TValue extends object
     ? IsFirstLevel extends true

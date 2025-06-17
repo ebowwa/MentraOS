@@ -1,5 +1,5 @@
 import demoHi from "./demo-hi"
-import { Translations } from "./en"
+import {Translations} from "./en"
 
 const hi: Translations = {
   common: {
@@ -52,8 +52,7 @@ const hi: Translations = {
   },
   demoCommunityScreen: {
     title: "समुदाय से जुड़ें",
-    tagLine:
-      "Infinite Red के React Native इंजीनियरों के समुदाय से जुड़ें और हमारे साथ अपने ऐप विकास को बेहतर बनाएं!",
+    tagLine: "Infinite Red के React Native इंजीनियरों के समुदाय से जुड़ें और हमारे साथ अपने ऐप विकास को बेहतर बनाएं!",
     joinUsOnSlackTitle: "Slack पर हमसे जुड़ें",
     joinUsOnSlack:
       "क्या आप चाहते हैं कि दुनिया भर के React Native इंजीनियरों से जुड़ने के लिए कोई जगह हो? Infinite Red Community Slack में बातचीत में शामिल हों! हमारा बढ़ता हुआ समुदाय प्रश्न पूछने, दूसरों से सीखने और अपने नेटवर्क को बढ़ाने के लिए एक सुरक्षित स्थान है।",
@@ -84,8 +83,7 @@ const hi: Translations = {
   demoDebugScreen: {
     howTo: "कैसे करें",
     title: "डीबग",
-    tagLine:
-      "बधाई हो, आपके पास यहां एक बहुत उन्नत React Native ऐप टेम्पलेट है। इस बॉयलरप्लेट का लाभ उठाएं!",
+    tagLine: "बधाई हो, आपके पास यहां एक बहुत उन्नत React Native ऐप टेम्पलेट है। इस बॉयलरप्लेट का लाभ उठाएं!",
     reactotron: "Reactotron को भेजें",
     reportBugs: "बग्स की रिपोर्ट करें",
     demoList: "डेमो सूची",
@@ -107,8 +105,7 @@ const hi: Translations = {
     favoriteButton: "पसंदीदा",
     unfavoriteButton: "नापसंद",
     accessibility: {
-      cardHint:
-        "एपिसोड सुनने के लिए डबल टैप करें। इस एपिसोड को {{action}} करने के लिए डबल टैप करें और होल्ड करें।",
+      cardHint: "एपिसोड सुनने के लिए डबल टैप करें। इस एपिसोड को {{action}} करने के लिए डबल टैप करें और होल्ड करें।",
       switch: "केवल पसंदीदा दिखाने के लिए स्विच करें",
       favoriteAction: "पसंदीदा टॉगल करें",
       favoriteIcon: "एपिसोड पसंदीदा नहीं है",

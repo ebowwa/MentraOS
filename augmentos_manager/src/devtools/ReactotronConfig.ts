@@ -3,16 +3,16 @@
  * free desktop app for inspecting and debugging your React Native app.
  * @see https://github.com/infinitered/reactotron
  */
-import { Platform, NativeModules } from "react-native"
+import {Platform, NativeModules} from "react-native"
 
-import { ArgType } from "reactotron-core-client"
+import {ArgType} from "reactotron-core-client"
 import mmkvPlugin from "reactotron-react-native-mmkv"
 
-import { storage } from "@/utils/storage"
-import { router } from "expo-router"
+import {storage} from "@/utils/storage"
+import {router} from "expo-router"
 
-import { Reactotron } from "./ReactotronClient"
-import { ReactotronReactNative } from "reactotron-react-native"
+import {Reactotron} from "./ReactotronClient"
+import {ReactotronReactNative} from "reactotron-react-native"
 
 const reactotron = Reactotron.configure({
   name: require("../../package.json").name,
@@ -22,7 +22,7 @@ const reactotron = Reactotron.configure({
   },
 })
 
-reactotron.use(mmkvPlugin<ReactotronReactNative>({ storage }))
+reactotron.use(mmkvPlugin<ReactotronReactNative>({storage}))
 
 if (Platform.OS !== "web") {
   reactotron.useReactNative({
@@ -53,10 +53,10 @@ reactotron.onCustomCommand({
   },
 })
 
-reactotron.onCustomCommand<[{ name: "route"; type: ArgType.String }]>({
+reactotron.onCustomCommand<[{name: "route"; type: ArgType.String}]>({
   command: "navigateTo",
-  handler: (args) => {
-    const { route } = args ?? {}
+  handler: args => {
+    const {route} = args ?? {}
     if (route) {
       Reactotron.log(`Navigating to: ${route}`)
       router.push(route)
@@ -66,7 +66,7 @@ reactotron.onCustomCommand<[{ name: "route"; type: ArgType.String }]>({
   },
   title: "Navigate To Screen",
   description: "Navigates to a screen by name.",
-  args: [{ name: "route", type: ArgType.String }],
+  args: [{name: "route", type: ArgType.String}],
 })
 
 reactotron.onCustomCommand({

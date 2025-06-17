@@ -1,13 +1,13 @@
 // in ../icons/UserIcon.tsx
-import React from 'react';
-import Svg, { Path, G, Defs, ClipPath, Rect } from 'react-native-svg';
+import React from "react"
+import Svg, {Path, G, Defs, ClipPath, Rect} from "react-native-svg"
 
 interface UserIconProps {
-  color?: string;
-  size?: number;
+  color?: string
+  size?: number
 }
 
-const UserIcon = ({ color = '#F9F8FE', size = 25 }: UserIconProps) => (
+const UserIcon = ({color = "#F9F8FE", size = 25}: UserIconProps) => (
   <Svg width={size} height={size} viewBox="0 0 25 25" fill="none">
     <G clipPath="url(#clip0)">
       <Path
@@ -31,6 +31,6 @@ const UserIcon = ({ color = '#F9F8FE', size = 25 }: UserIconProps) => (
       </ClipPath>
     </Defs>
   </Svg>
-);
+)
 
-export default UserIcon;
+export default UserIcon

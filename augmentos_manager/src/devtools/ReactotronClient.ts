@@ -5,4 +5,4 @@
  * Web is loaded from ReactotronClient.web.ts.
  */
 import Reactotron from "reactotron-react-native"
-export { Reactotron }
+export {Reactotron}

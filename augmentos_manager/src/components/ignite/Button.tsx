@@ -1,10 +1,5 @@
 import {ComponentType} from "react"
 import {LinearGradient} from "expo-linear-gradient"
-
-const gradientBorderStyle: ViewStyle = {
-  borderRadius: 30,
-  padding: 2,
-}
 import {
   Pressable,
   PressableProps,
@@ -18,6 +13,11 @@ import type {ThemedStyle, ThemedStyleArray} from "@/theme"
 import {$styles, spacing} from "@/theme"
 import {Text, TextProps} from "./Text"
 import {useAppTheme} from "@/utils/useAppTheme"
+
+const gradientBorderStyle: ViewStyle = {
+  borderRadius: 30,
+  padding: 2,
+}
 
 type Presets = "default" | "filled" | "reversed"
 
@@ -134,7 +134,9 @@ export function Button(props: ButtonProps) {
   const {themed, theme} = useAppTheme()
 
   const preset: Presets = props.preset ?? "default"
-  const gradientColors = theme.isDark ? [theme.colors.buttonGradientEnd, theme.colors.buttonGradientEnd] : [theme.colors.transparent, theme.colors.transparent]
+  const gradientColors = theme.isDark
+    ? [theme.colors.buttonGradientEnd, theme.colors.buttonGradientEnd]
+    : [theme.colors.transparent, theme.colors.transparent]
   /**
    * @param {PressableStateCallbackType} root0 - The root object containing the pressed state.
    * @param {boolean} root0.pressed - The pressed state.
@@ -163,7 +165,11 @@ export function Button(props: ButtonProps) {
   }
 
   return (
-    <LinearGradient colors={gradientColors} start={{x: 1, y: 0}} end={{x: 0, y: 0}} style={theme.isDark ? gradientBorderStyle : {}}>
+    <LinearGradient
+      colors={gradientColors}
+      start={{x: 1, y: 0}}
+      end={{x: 0, y: 0}}
+      style={theme.isDark ? gradientBorderStyle : {}}>
       <Pressable
         style={$viewStyle}
         accessibilityRole="button"

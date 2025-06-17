@@ -39,7 +39,7 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.md,
-  marginHorizontal: spacing.xxxs
+  marginHorizontal: spacing.xxxs,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
