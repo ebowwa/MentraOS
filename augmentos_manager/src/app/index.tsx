@@ -33,7 +33,9 @@ export default function IndexPage() {
     }
 
     if (!loading) {
-      initializeApp()
+      initializeApp().catch(error => {
+        console.error("Error initializing app:", error)
+      })
     }
   }, [user, loading, status, initializeCoreConnection])
 

@@ -33,6 +33,11 @@ export default function Root() {
     initI18n()
       .then(() => setIsI18nInitialized(true))
       .then(() => loadDateFnsLocale())
+      .catch(error => {
+        console.error("Error initializing i18n:", error)
+        // Still set initialized to true to prevent app from being stuck
+        setIsI18nInitialized(true)
+      })
   }, [])
 
   const loaded = fontsLoaded && isI18nInitialized

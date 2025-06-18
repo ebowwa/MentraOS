@@ -149,7 +149,9 @@ export default function Homepage() {
   // Check version once on mount
   useEffect(() => {
     if (Platform.OS == "android") {
-      checkCloudVersion()
+      checkCloudVersion().catch(error => {
+        console.error("Error checking cloud version:", error)
+      })
     }
   }, [])
 
@@ -173,7 +175,9 @@ export default function Homepage() {
       }
     }
 
-    checkPermissions()
+    checkPermissions().catch(error => {
+      console.error("Error checking permissions:", error)
+    })
   }, [])
 
   // Check onboarding status
@@ -203,7 +207,9 @@ export default function Homepage() {
       }
     }
 
-    checkOnboarding()
+    checkOnboarding().catch(error => {
+      console.error("Error checking onboarding:", error)
+    })
   }, [status.glasses_info?.model_name, appStatus])
 
   // Handle spotlight dismiss
