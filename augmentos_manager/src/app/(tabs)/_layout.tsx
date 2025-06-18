@@ -13,9 +13,9 @@ import StoreIcon from "assets/icons/navbar/StoreIcon"
 import UserIcon from "assets/icons/navbar/UserIcon"
 import showAlert from "@/utils/AlertUtils"
 import Toast from "react-native-toast-message"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
-import { SETTINGS_KEYS } from "@/consts"
-import { saveSetting } from "@/utils/SettingsHelper"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {SETTINGS_KEYS} from "@/consts"
+import {saveSetting} from "@/utils/SettingsHelper"
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
@@ -33,7 +33,6 @@ export default function Layout() {
   const pressTimeout = useRef<NodeJS.Timeout | null>(null)
 
   const handleQuickPress = () => {
-
     push("/settings")
 
     const currentTime = Date.now()
@@ -82,9 +81,7 @@ export default function Layout() {
 
   const userIcon = (focused: boolean) => {
     return (
-      <TouchableOpacity
-        onPress={handleQuickPress}
-        >
+      <TouchableOpacity onPress={handleQuickPress}>
         <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.textDim} />
       </TouchableOpacity>
     )
