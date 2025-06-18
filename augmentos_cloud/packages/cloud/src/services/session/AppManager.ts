@@ -1072,7 +1072,7 @@ export class AppManager {
             connection.send(JSON.stringify(message));
 
             // Close the connection
-            this.setAppConnectionState(packageName, AppConnectionState.DISCONNECTED);
+            this.setAppConnectionState(packageName, AppConnectionState.STOPPING);
             connection.close(1000, 'User session ended');
             this.logger.debug({ userId: this.userSession.userId, packageName, service: 'AppManager' },
               `Closed connection for ${packageName} during dispose`);
