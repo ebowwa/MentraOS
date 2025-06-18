@@ -177,20 +177,8 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
     try {
       const session = await getSessionFromToken(token);
       const tokenDuration = Date.now() - tokenStartTime;
-      
-      // DEBUG: Log detailed session lookup info with race condition detection
-      const userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
-      
-      if (session) {
-        const duration = Date.now() - startTime;
-        middlewareLogger.info({
-          userId: session.userId,
-          sessionId: session.sessionId,
-          duration,
-          tokenDuration,
-          authMethod: 'bearer'
-        }, `Bearer token auth successful in ${duration}ms`);
 
+      if (session) {
         (req as any).userSession = session;
         return next();
       } else {

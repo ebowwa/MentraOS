@@ -956,8 +956,12 @@ export class TpaSession {
           this.settings.updateSettings(this.settingsData);
 
           // Handle AugmentOS system settings if provided
+          this.logger.debug(`[TpaSession] CONNECTION_ACK augmentosSettings:`, message.augmentosSettings);
           if (message.augmentosSettings) {
+            this.logger.info(`[TpaSession] Calling updateAugmentosSettings with:`, message.augmentosSettings);
             this.settings.updateAugmentosSettings(message.augmentosSettings);
+          } else {
+            this.logger.warn(`[TpaSession] CONNECTION_ACK message missing augmentosSettings field`);
           }
 
           // Emit connected event with settings
