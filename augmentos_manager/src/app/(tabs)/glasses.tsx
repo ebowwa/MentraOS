@@ -176,7 +176,8 @@ export default function Homepage() {
 
         {/* <View style={{flex: 1}}> */}
         {/* <ConnectedGlasses showTitle={true} /> */}
-        <SplitDeviceInfo />
+        <ConnectedSimulatedGlassesInfo />
+        {/* <SplitDeviceInfo /> */}
         <ConnectedDeviceInfo />
         <Spacer height={theme.spacing.md} />
         <ConnectDeviceButton />

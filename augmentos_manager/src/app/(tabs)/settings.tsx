@@ -24,13 +24,10 @@ export default function SettingsPage() {
   const [devMode, setDevMode] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
 
-  // Check if user is from Mentra to show theme settings
-  const isUserFromMentra = isMentraUser(user?.email)
-
   useEffect(() => {
     const checkDevMode = async () => {
       const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
-      setDevMode(isDeveloperBuildOrTestflight() || devModeSetting)
+      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
     }
     checkDevMode()
   }, [])
@@ -82,35 +79,23 @@ export default function SettingsPage() {
 
       <Spacer height={theme.spacing.xl} />
 
-      <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
+      <View style={{flex: 1, gap: theme.spacing.md}}>
+        <RouteButton label={translate("settings:profileSettings")} onPress={() => push("/settings/profile")} />
 
-      <Spacer height={theme.spacing.md} />
+        <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
-      <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
+        {devMode && <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />}
 
-      {isUserFromMentra && (
-        <>
-          <Spacer height={theme.spacing.md} />
-
-          <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
-        </>
-      )}
-
-      {devMode && (
-        <>
-          <Spacer height={theme.spacing.md} />
-
+        {devMode && (
           <RouteButton
             label={translate("settings:developerSettings")}
             // subtitle={translate("settings:developerSettingsSubtitle")}
             onPress={() => push("/settings/developer")}
           />
-        </>
-      )}
+        )}
 
-      <Spacer height={theme.spacing.md} />
-
-      <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
+        <ActionButton label={translate("settings:signOut")} variant="destructive" onPress={confirmSignOut} />
+      </View>
 
       {/* Loading overlay for sign out */}
       <Modal visible={isSigningOut} transparent={true} animationType="fade">

@@ -163,7 +163,7 @@ export default function Layout() {
           tabBarLabel: translate("navigation:glasses"),
         }}
       />
-      <Tabs.Screen
+      {/* <Tabs.Screen
         name="mirror"
         options={{
           href: "/mirror",
@@ -173,7 +173,7 @@ export default function Layout() {
           ),
           tabBarLabel: translate("navigation:mirror"),
         }}
-      />
+      /> */}
       <Tabs.Screen
         name="store"
         options={{
