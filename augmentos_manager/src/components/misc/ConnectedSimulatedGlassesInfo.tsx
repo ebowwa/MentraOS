@@ -117,7 +117,7 @@ export default function ConnectedSimulatedGlassesInfo() {
         <View style={{flex: 1, width: "100%", position: "relative"}}>
           <GlassesDisplayMirror layout={lastEvent?.layout} fallbackMessage="Simulated Glasses Display" />
           {/* absolute position bottom right fullscreen button */}
-          <TouchableOpacity style={{position: "absolute", bottom: 10, right: 10}}>
+          <TouchableOpacity style={{position: "absolute", bottom: 10, right: 10}} onPress={navigateToFullScreen}>
             {/* <Text>Fullscreen</Text> */}
             <Icon name="fullscreen" size={24} color={theme.colors.text} />
           </TouchableOpacity>
