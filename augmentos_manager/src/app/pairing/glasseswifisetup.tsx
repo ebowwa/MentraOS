@@ -51,7 +51,7 @@ export default function GlassesWifiSetupScreen() {
       safeAreaEdges={["top"]}
     >
       <Header 
-        title="WiFi Setup"
+        title="Glasses WiFi Setup"
         leftIcon="caretLeft"
         onLeftPress={handleGoBack}
       />

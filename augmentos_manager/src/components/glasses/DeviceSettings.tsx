@@ -277,6 +277,40 @@ export default function DeviceSettings() {
         />
       )}
 
+      {/* Show ASG Client version info for Mentra Live glasses */}
+      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") && 
+       (status.glasses_info.asg_app_version || status.glasses_info.asg_build_number) && (
+        <View style={themed($settingsGroup)}>
+          <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>
+            ASG Client Version
+          </Text>
+          {/* {status.glasses_info.asg_app_version && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>App Version</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.asg_app_version}</Text>
+            </View>
+          )} */}
+          {status.glasses_info.asg_build_number && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Build Number</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.asg_build_number}</Text>
+            </View>
+          )}
+          {/* {status.glasses_info.asg_device_model && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Device Model</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.asg_device_model}</Text>
+            </View>
+          )} */}
+          {/* {status.glasses_info.asg_android_version && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Android Version</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.asg_android_version}</Text>
+            </View>
+          )} */}
+        </View>
+      )}
+
       <RouteButton
         label={translate("settings:dashboardSettings")}
         subtitle={translate("settings:dashboardDescription")}

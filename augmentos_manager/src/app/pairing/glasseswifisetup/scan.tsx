@@ -91,7 +91,7 @@ export default function WifiScanScreen() {
 
   return (
     <Screen preset="fixed" contentContainerStyle={themed($container)}>
-      <Header title="Select WiFi Network" leftIcon="caretLeft" onLeftPress={handleGoBack} />
+      <Header title="Select Glasses WiFi Network" leftIcon="caretLeft" onLeftPress={handleGoBack} />
       <View style={themed($content)}>
         {isScanning ? (
           <View style={themed($loadingContainer)}>

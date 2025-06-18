@@ -36,6 +36,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepA
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AsgVersionInfoEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -62,7 +63,13 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
  */
 public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final String TAG = "WearableAi_MentraLiveSGC";
-    
+
+    // ASG client version information
+    private String asgAppVersion = "";
+    private String asgBuildNumber = "";
+    private String asgDeviceModel = "";
+    private String asgAndroidVersion = "";
+
     // BLE UUIDs - updated to match K900 BES2800 MCU UUIDs for compatibility with both glass types
     // CRITICAL FIX: Swapped TX and RX UUIDs to match actual usage from central device perspective
     // In BLE, characteristic names are from the perspective of the device that owns them:
@@ -131,7 +138,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private boolean isWifiConnected = false;
     private String wifiSsid = "";
     
-    // Heartbeat state tracking
+    // Heartbeat tracking
     private Handler heartbeatHandler = new Handler(Looper.getMainLooper());
     private Runnable heartbeatRunnable;
     private int heartbeatCounter = 0;
@@ -1303,7 +1310,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "🔄 Requesting battery and WiFi status from glasses");
                 requestBatteryStatus();
                 requestWifiStatus();
-                
+
+                // Request version info from ASG client
+                Log.d(TAG, "🔄 Requesting version info from ASG client");
+                try {
+                    JSONObject versionRequest = new JSONObject();
+                    versionRequest.put("type", "request_version");
+                    sendDataToGlasses(versionRequest.toString());
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error creating version request", e);
+                }
+
                 Log.d(TAG, "🔄 Sending coreToken to ASG client");
                 sendCoreTokenToAsgClient();
                 
@@ -1323,6 +1340,26 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 
                 // Forward via EventBus for cloud communication (consistent with other message types)
                 EventBus.getDefault().post(new KeepAliveAckEvent(json));
+                break;
+
+            case "version_info":
+                // Process version information from ASG client
+                Log.d(TAG, "Received version info from ASG client: " + json.toString());
+                
+                // Extract version information and post event
+                String appVersion = json.optString("app_version", "");
+                String buildNumber = json.optString("build_number", "");
+                String deviceModel = json.optString("device_model", "");
+                String androidVersion = json.optString("android_version", "");
+                
+                Log.d(TAG, "ASG Client Version - App: " + appVersion + 
+                      ", Build: " + buildNumber + 
+                      ", Device: " + deviceModel + 
+                      ", Android: " + androidVersion);
+                
+                // Post event for version information
+                EventBus.getDefault().post(new AsgVersionInfoEvent(
+                    appVersion, buildNumber, deviceModel, androidVersion));
                 break;
 
             default:
@@ -1712,6 +1749,38 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
         if (isConnected) {
             requestWifiStatus();
         }
+    }
+
+    /**
+     * Get the ASG client app version
+     * @return App version string, or empty string if not available
+     */
+    public String getAsgAppVersion() {
+        return asgAppVersion;
+    }
+
+    /**
+     * Get the ASG client build number
+     * @return Build number string, or empty string if not available
+     */
+    public String getAsgBuildNumber() {
+        return asgBuildNumber;
+    }
+
+    /**
+     * Get the ASG client device model
+     * @return Device model string, or empty string if not available
+     */
+    public String getAsgDeviceModel() {
+        return asgDeviceModel;
+    }
+
+    /**
+     * Get the ASG client Android version
+     * @return Android version string, or empty string if not available
+     */
+    public String getAsgAndroidVersion() {
+        return asgAndroidVersion;
     }
     
     // Debug video command loop vars

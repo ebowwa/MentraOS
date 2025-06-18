@@ -43,7 +43,7 @@ export default function WifiPasswordScreen() {
 
   return (
     <Screen preset="scroll" contentContainerStyle={themed($container)}>
-      <Header title="Enter WiFi Details" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header title="Enter Glasses WiFi Details" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={themed($keyboardContainer)}>
         <View style={themed($content)}>
           <View style={themed($inputContainer)}>
