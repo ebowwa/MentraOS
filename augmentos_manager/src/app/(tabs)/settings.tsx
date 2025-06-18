@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from "react"
+import React, {useState, useEffect, useRef} from "react"
 import {View, Modal, ActivityIndicator} from "react-native"
 import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -13,8 +13,9 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
-import {loadSetting} from "@/utils/SettingsHelper"
+import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
+import Toast from "react-native-toast-message"
 
 export default function SettingsPage() {
   const {status} = useStatus()
@@ -31,6 +32,56 @@ export default function SettingsPage() {
     }
     checkDevMode()
   }, [])
+
+  const pressCount = useRef(0)
+  const lastPressTime = useRef(0)
+  const pressTimeout = useRef<NodeJS.Timeout | null>(null)
+
+  const handleQuickPress = () => {
+    push("/settings")
+
+    const currentTime = Date.now()
+    const timeDiff = currentTime - lastPressTime.current
+    const maxTimeDiff = 2000
+    const maxPressCount = 10
+    const showAlertAtPressCount = 5
+
+    // Reset counter if too much time has passed
+    if (timeDiff > maxTimeDiff) {
+      pressCount.current = 1
+    } else {
+      pressCount.current += 1
+    }
+
+    lastPressTime.current = currentTime
+
+    // Clear existing timeout
+    if (pressTimeout.current) {
+      clearTimeout(pressTimeout.current)
+    }
+
+    // Handle different press counts
+    if (pressCount.current === maxPressCount) {
+      showAlert("Developer Mode", "Developer mode enabled!", [{text: translate("common:ok")}])
+      saveSetting(SETTINGS_KEYS.DEV_MODE, true)
+      pressCount.current = 0
+    } else if (pressCount.current >= showAlertAtPressCount) {
+      const remaining = maxPressCount - pressCount.current
+      Toast.show({
+        type: "info",
+        text1: "Developer Mode",
+        text2: `${remaining} more taps to enable developer mode`,
+        position: "bottom",
+        topOffset: 80,
+        visibilityTime: 1000,
+      })
+    }
+
+    // Reset counter after 2 seconds of no activity
+    pressTimeout.current = setTimeout(() => {
+      pressCount.current = 0
+    }, maxTimeDiff)
+  }
 
   const handleSignOut = async () => {
     try {
@@ -75,7 +126,7 @@ export default function SettingsPage() {
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: theme.spacing.lg}}>
-      <Header leftTx="settings:title" />
+      <Header leftTx="settings:title" onLeftPress={handleQuickPress} />
 
       <Spacer height={theme.spacing.xl} />
 
