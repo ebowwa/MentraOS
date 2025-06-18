@@ -1989,6 +1989,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
         this.brightnessLevel = brightness;
         this.autoBrightness = false;
+        
+        // Save brightness settings to SharedPreferences
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .edit()
+            .putString(getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightness))
+            .putBoolean(getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
+            .apply();
+        
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
@@ -2000,6 +2008,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
         }
         this.autoBrightness = autoBrightness;
+        
+        // Save auto brightness setting to SharedPreferences
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .edit()
+            .putBoolean(getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
+            .apply();
+        
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
