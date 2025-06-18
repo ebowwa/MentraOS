@@ -54,17 +54,18 @@ const sidebars: SidebarsConfig = {
         id: 'core-concepts',
       },
       items: [
+        {
+          type: 'doc',
+          id: 'tpa-lifecycle',
+          label: 'App Lifecycle',
+        },
         'events',
         'permissions',
         'layouts',
         'settings',
         'tools',
         'webview-auth-overview',
-        {
-          type: 'doc',
-          id: 'tpa-lifecycle',
-          label: 'App Lifecycle',
-        },
+        'react-webviews',
         'dashboard'
       ],
     },
