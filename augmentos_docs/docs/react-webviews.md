@@ -1,6 +1,6 @@
 # React Webviews
 
-The `@augmentos/react` library simplifies building React-based webviews that integrate seamlessly with AugmentOS authentication. When users open your webview through the AugmentOS manager app, they are automatically authenticated without requiring a separate login process.
+The [`@augmentos/react`](https://www.npmjs.com/package/@augmentos/react) library simplifies building React-based webviews that integrate seamlessly with AugmentOS authentication. When users open your webview through the AugmentOS manager app, they are automatically authenticated without requiring a separate login process.
 
 ## What Are React Webviews?
 
@@ -12,6 +12,10 @@ React webviews are web applications built with React that run inside the Augment
 - **Dashboard Interfaces**: Show personalized information and controls
 
 The `@augmentos/react` library handles all the authentication complexity, automatically extracting and verifying user tokens from the AugmentOS system.
+
+## Complete Example
+
+There's a complete example of a React webview in the [`AugmentOS-React-Example-App`](https://github.com/AugmentOS-Community/AugmentOS-React-Example-App) repository.  Simply follow along with the README to get off the ground quickly.
 
 ## Installation
 
@@ -457,8 +461,8 @@ const Content = () => {
 
 ## Next Steps
 
+- **[Complete Example Application](https://github.com/AugmentOS-Community/AugmentOS-React-Example-App)**: See a complete example of a React webview
+- **[Deploying a React App](https://github.com/AugmentOS-Community/AugmentOS-React-Example-App/blob/main/DEPLOYMENT-single-server.md)**: This guide covers deploying the AugmentOS React Example App to production
 - **[Webview Authentication Overview](/webview-auth-overview)**: Learn about the broader authentication system
-- **[Settings](/settings)**: Add user-configurable options to your webview
-- **[Tools](/tools)**: Integrate with Mira AI for natural language interactions
 - **[Core Concepts](/core-concepts)**: Understand the full AugmentOS ecosystem
 
