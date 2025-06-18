@@ -2390,5 +2390,6 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         this.glassesDeviceModel = event.getDeviceModel();
         this.glassesAndroidVersion = event.getAndroidVersion();
         Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion);
+        sendStatusToAugmentOsManager();
     }
 }
