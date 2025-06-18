@@ -11,7 +11,9 @@
     "declaration": true,
     "declarationMap": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {},
+    "lib": ["ES2020"],
+    "types": ["node", "ws"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

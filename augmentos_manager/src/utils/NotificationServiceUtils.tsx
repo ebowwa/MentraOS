@@ -1,68 +1,64 @@
-import { NativeModules, Platform } from 'react-native';
-import showAlert from './AlertUtils';
+import {Alert, NativeModules, Platform} from "react-native"
+import showAlert from "./AlertUtils"
 
-// Access NotificationAccess at runtime to respect mocks
+const {NotificationAccess} = NativeModules
 
 export async function checkNotificationAccessSpecialPermission() {
-  if (Platform.OS !== 'android') {
-    return false;
+  if (Platform.OS !== "android") {
+    return false
   }
 
-  return await NativeModules.NotificationAccess.hasNotificationAccess();
+  return await NotificationAccess.hasNotificationAccess()
 }
 
 export async function checkAndRequestNotificationAccessSpecialPermission() {
-  if (Platform.OS !== 'android') {
-    return;
+  if (Platform.OS !== "android") {
+    return
   }
 
   try {
-    const hasAccess = await NativeModules.NotificationAccess.hasNotificationAccess();
+    const hasAccess = await NotificationAccess.hasNotificationAccess()
     if (!hasAccess) {
-      showAlert(
-        'Enable Notification Access',
-        'AugmentOS needs permission to read your phone notifications to display them on your smart glasses.\n\n' +
-        'On the next screen:\n' +
-        '1. Find "AugmentOS Manager" in the list\n' +
-        '2. Toggle the switch to ON\n' +
-        '3. Tap ALLOW when prompted',
+      await showAlert(
+        "Enable Notification Access",
+        "AugmentOS needs permission to read your phone notifications to display them on your smart glasses.\n\n" +
+          "On the next screen:\n" +
+          '1. Find "AugmentOS Manager" in the list\n' +
+          "2. Toggle the switch to ON\n" +
+          "3. Tap ALLOW when prompted",
         [
           {
-            text: 'Later',
-            style: 'cancel',
+            text: "Later",
+            style: "cancel",
           },
           {
-            text: 'Go to Settings',
+            text: "Go to Settings",
             onPress: () => {
-              NativeModules.NotificationAccess.requestNotificationAccess()
+              NotificationAccess.requestNotificationAccess()
                 .then(() => {
-                  console.log("Notification access settings opened successfully");
+                  console.log("Notification access settings opened successfully")
                 })
                 .catch((err: any) => {
-                  console.error('Error opening notification settings:', err);
+                  console.error("Error opening notification settings:", err)
                   showAlert(
-                    'Error',
-                    'Could not open notification settings. Please enable notification access manually in your device settings.',
-                    [{ text: 'OK' }]
-                  );
-                });
+                    "Error",
+                    "Could not open notification settings. Please enable notification access manually in your device settings.",
+                    [{text: "OK"}],
+                  )
+                })
             },
-          }
+          },
         ],
-        { cancelable: true },
-      );
+        {cancelable: true},
+      )
     } else {
-      console.log("Notification access already granted");
-      return true;
+      console.log("Notification access already granted")
+      return true
     }
-    return false;
+    return false
   } catch (error) {
-    console.error('Failed to check notification listener permission:', error);
-    showAlert(
-      'Error',
-      'There was a problem checking notification permissions. Please try again later.',
-      [{ text: 'OK' }]
-    );
-    return false;
+    console.error("Failed to check notification listener permission:", error)
+    showAlert("Error", "There was a problem checking notification permissions. Please try again later.", [{text: "OK"}])
+    return false
   }
 }

@@ -63,7 +63,7 @@ export class LC3Service {
         const wasmPath = path.resolve(__dirname, 'liblc3.wasm');
         logger.info(`Loading WASM from: ${wasmPath}`);
         const wasmBuffer = fs.readFileSync(wasmPath);
-        LC3Service.wasmModule = await WebAssembly.compile(wasmBuffer);
+        LC3Service.wasmModule = await WebAssembly.compile(new Uint8Array(wasmBuffer));
         logger.info('✅ LC3 WASM module compiled successfully');
       }
       
