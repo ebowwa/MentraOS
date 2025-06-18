@@ -5,10 +5,10 @@
  * to the dashboard and respond to dashboard mode changes.
  */
 // import { systemApps } from '../../constants';
-import { 
-  DashboardAPI, 
-  DashboardContentAPI, 
-  DashboardMode, 
+import {
+  DashboardAPI,
+  DashboardContentAPI,
+  DashboardMode,
   DashboardSystemAPI,
   DashboardContentUpdate,
   DashboardModeChange,
@@ -25,7 +25,7 @@ import dotenv from 'dotenv';
 // Load environment variables from .env file
 dotenv.config();
 
-const SYSTEM_DASHBOARD_PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'dev.augmentos.dashboard';
+const SYSTEM_DASHBOARD_PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'system.augmentos.dashboard';
 
 /**
  * Implementation of DashboardSystemAPI interface for system dashboard TPA
@@ -35,7 +35,7 @@ export class DashboardSystemManager implements DashboardSystemAPI {
     private session: TpaSession,
     private packageName: string,
     private send: (message: any) => void
-  ) {}
+  ) { }
 
   setTopLeft(content: string): void {
     this.updateSystemSection('topLeft', content);
@@ -83,13 +83,13 @@ export class DashboardSystemManager implements DashboardSystemAPI {
 export class DashboardContentManager implements DashboardContentAPI {
   private currentMode: DashboardMode | 'none' = 'none';
   // private alwaysOnEnabled: boolean = false;
-  
+
   constructor(
     private session: TpaSession,
     private packageName: string,
     private send: (message: any) => void,
     private events: EventManager
-  ) {}
+  ) { }
 
   write(content: string, targets: DashboardMode[] = [DashboardMode.MAIN]): void {
     const message: DashboardContentUpdate = {
@@ -137,7 +137,7 @@ export class DashboardContentManager implements DashboardContentAPI {
       callback(data.mode);
     });
   }
-  
+
   // onAlwaysOnChange(callback: (enabled: boolean) => void): () => void {
   //   return this.events.onDashboardAlwaysOnChange((data) => {
   //     this.alwaysOnEnabled = data.enabled;
@@ -171,10 +171,13 @@ export class DashboardManager implements DashboardAPI {
 
     // Create content API (available to all TPAs)
     this.content = new DashboardContentManager(session, packageName, send, events);
-    
+
     // Add system API if this is the system dashboard TPA
     if (packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
+      session.logger.info({ service: "SDK:DashboardManager" }, 'Initializing system dashboard manager');
       this.system = new DashboardSystemManager(session, packageName, send);
+    } else {
+      session.logger.info({ service: "SDK:DashboardManager" }, `Not the system dashboard: ${packageName}`);
     }
   }
 }

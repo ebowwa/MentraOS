@@ -8,7 +8,7 @@
 export const systemApps = {
   dashboard: {
     name: 'Dashboard',
-    packageName: 'dev.augmentos.dashboard',
+    packageName: 'system.augmentos.dashboard',
     isSystemApp: true
   },
 };

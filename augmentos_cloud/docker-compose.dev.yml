@@ -34,7 +34,6 @@ services:
     ports:
       - "8002:80"
     environment:
-      - NODE_ENV=development
       - HOST=0.0.0.0
       - SERVICE_NAME=cloud
       - CONTAINER_ENVIRONMENT=true

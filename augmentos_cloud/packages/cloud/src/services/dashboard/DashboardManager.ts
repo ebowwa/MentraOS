@@ -67,7 +67,7 @@ export class DashboardManager {
   private mainContent: Map<string, TpaContent> = new Map();
   private expandedContent: Map<string, TpaContent> = new Map();
   private alwaysOnContent: Map<string, TpaContent> = new Map();
-  
+
   // Circular queue tracking for main dashboard
   private mainContentRotationIndex: number = 0;
 
@@ -110,16 +110,8 @@ export class DashboardManager {
     // Start update interval
     // this.startUpdateInterval();
 
-    // Create a child logger for this manager
-    if (!userSession || !userSession.logger) {
-      // If no logger is available, use a fallback
-      const { logger: rootLogger } = require('../logging/pino-logger');
-      this.logger = rootLogger.child({ service: 'DashboardManager', error: 'Missing userSession.logger' });
-      this.logger.error('userSession or userSession.logger is undefined in DashboardManager constructor');
-    } else {
-      this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
-      this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
-    }
+    this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
+    this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
   }
 
   /**
@@ -150,6 +142,7 @@ export class DashboardManager {
    * @returns True if the message was handled, false otherwise
    */
   public handleTpaMessage(message: TpaToCloudMessage): boolean {
+    this.logger.debug({ message }, `Received TPA message of type ${message.type} for user ${this.userSession.userId}`);
     try {
       switch (message.type) {
         case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
@@ -197,8 +190,8 @@ export class DashboardManager {
 
     // Only cycle if we have multiple TPA content items
     if (this.mainContent.size <= 1) {
-      this.logger.debug({ 
-        contentCount: this.mainContent.size 
+      this.logger.debug({
+        contentCount: this.mainContent.size
       }, 'Head-up gesture ignored - not enough TPA content to cycle');
       return;
     }
@@ -283,6 +276,12 @@ export class DashboardManager {
    */
   public handleDashboardSystemUpdate(message: DashboardSystemUpdate): void {
     const { packageName, section, content } = message;
+    this.logger.debug({
+      function: 'handleDashboardSystemUpdate',
+      packageName,
+      section,
+      contentLength: content?.length || 0
+    }, `System dashboard section update from ${packageName} for section '${section}'`);
 
     // Only allow system dashboard to update system sections
     if (packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
@@ -522,7 +521,7 @@ export class DashboardManager {
   private getNextMainTpaContent(): string {
     // Get all available TPA content as an array
     const contentArray = Array.from(this.mainContent.values());
-    
+
     // Handle empty case
     if (contentArray.length === 0) {
       return '';
@@ -552,7 +551,7 @@ export class DashboardManager {
       rotationIndex: this.mainContentRotationIndex,
       allPackages: contentArray.map(c => c.packageName),
       sortedByTimestamp: contentArray.map(c => ({
-        packageName: c.packageName, 
+        packageName: c.packageName,
         timestamp: c.timestamp
       }))
     }, `🔄 Dashboard rotation: Selected ${selectedContent.packageName} (${currentIndex + 1}/${contentArray.length})`);
@@ -747,7 +746,7 @@ export class DashboardManager {
     const beforeState = {
       packageName,
       hadMainContent: this.mainContent.has(packageName),
-      hadExpandedContent: this.expandedContent.has(packageName), 
+      hadExpandedContent: this.expandedContent.has(packageName),
       hadAlwaysOnContent: this.alwaysOnContent.has(packageName),
       mainContentSizeBefore: this.mainContent.size,
       rotationIndexBefore: this.mainContentRotationIndex,
@@ -772,14 +771,14 @@ export class DashboardManager {
     if (hadMainContent && mainContentSizeBefore > 1) {
       const newMainContentSize = this.mainContent.size;
       const oldRotationIndex = this.mainContentRotationIndex;
-      
+
       // If we removed the currently displayed item or an item before it in the rotation,
       // we need to adjust the index to prevent out-of-bounds access
       if (newMainContentSize > 0) {
         // Reset to 0 if index is now out of bounds, otherwise keep current position
         if (this.mainContentRotationIndex >= newMainContentSize) {
           this.mainContentRotationIndex = 0;
-          this.logger.debug({ 
+          this.logger.debug({
             oldIndex: oldRotationIndex,
             newIndex: 0,
             newSize: newMainContentSize,
