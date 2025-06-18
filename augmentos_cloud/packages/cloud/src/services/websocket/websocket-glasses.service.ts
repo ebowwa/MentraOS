@@ -245,6 +245,7 @@ export class GlassesWebSocketService {
 
         case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
           const coreStatusUpdate = message as CoreStatusUpdate;
+          const logger = userSession.logger.child({ service: SERVICE_NAME, type: GlassesToCloudMessageType.CORE_STATUS_UPDATE });
           // userSession.logger.info('Received core status update:', coreStatusUpdate);
 
           try {
@@ -282,7 +283,7 @@ export class GlassesWebSocketService {
               bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
             };
 
-            console.log("🔥🔥🔥: newSettings:", newSettings);
+            logger.debug("🔥🔥🔥: newSettings:", newSettings);
 
             // Find or create the user
             const user = await User.findOrCreateUser(userSession.userId);
@@ -291,12 +292,12 @@ export class GlassesWebSocketService {
             const currentSettingsBeforeUpdate = JSON.parse(JSON.stringify(user.augmentosSettings));
             userSession.logger.info('Current settings before update:', currentSettingsBeforeUpdate);
 
-            console.log("🔥🔥🔥: currentSettingsBeforeUpdate:", currentSettingsBeforeUpdate);
-            console.log("🔥🔥🔥: newSettings:", newSettings);
+            logger.debug("🔥🔥🔥: currentSettingsBeforeUpdate:", currentSettingsBeforeUpdate);
+            logger.debug("🔥🔥🔥: newSettings:", newSettings);
 
             // Check if anything actually changed
             const changedKeys = this.getChangedKeys(currentSettingsBeforeUpdate, newSettings);
-            console.log("🔥🔥🔥: changedKeys:", changedKeys);
+            logger.debug("🔥🔥🔥: changedKeys:", changedKeys);
             if (changedKeys.length === 0) {
               userSession.logger.info('No changes detected in settings from core status update');
             } else {
