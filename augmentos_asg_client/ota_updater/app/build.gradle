@@ -18,10 +18,10 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("../keystore/release-key.jks")
-            storePassword System.getenv("KEYSTORE_PASSWORD") ?: "android"
-            keyAlias System.getenv("KEY_ALIAS") ?: "release"
-            keyPassword System.getenv("KEY_PASSWORD") ?: "android"
+            storeFile file("../../../augmentos_otaupdater/credentials/ota-keystore.jks")
+            storePassword System.getenv("OTA_STORE_PASSWORD") ?: "android"
+            keyAlias System.getenv("OTA_KEY_ALIAS") ?: "ota" 
+            keyPassword System.getenv("OTA_KEY_PASSWORD") ?: "android"
         }
     }
 

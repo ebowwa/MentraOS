@@ -16,16 +16,23 @@ if (envFile.exists()) {
     logger.warn(".env file not found at ${envFile}")
 }
 
+/**
+ * Release signing credentials from environment variables
+ */
+def asgStorePassword = project.hasProperty("ASG_STORE_PASSWORD") ? project.property("ASG_STORE_PASSWORD") : ""
+def asgKeyPassword = project.hasProperty("ASG_KEY_PASSWORD") ? project.property("ASG_KEY_PASSWORD") : ""
+def asgKeyAlias = project.hasProperty("ASG_KEY_ALIAS") ? project.property("ASG_KEY_ALIAS") : "asg"
+
 android {
     namespace 'com.augmentos.asg_client'
     compileSdk 34
 
     signingConfigs {
         release {
-            storeFile file("release.keystore")
-            storePassword "augmentos123"
-            keyAlias "augmentos"
-            keyPassword "augmentos123"
+            storeFile file("../android/credentials/asg-keystore.jks")
+            storePassword = asgStorePassword
+            keyAlias = asgKeyAlias
+            keyPassword = asgKeyPassword
         }
     }
 
@@ -77,7 +84,7 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            signingConfig asgStorePassword ? signingConfigs.release : signingConfigs.debug
         }
     }
 }
