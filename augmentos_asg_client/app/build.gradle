@@ -29,7 +29,7 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("../android/credentials/asg-keystore.jks")
+            storeFile file("../credentials/asg-keystore.jks")
             storePassword = asgStorePassword
             keyAlias = asgKeyAlias
             keyPassword = asgKeyPassword

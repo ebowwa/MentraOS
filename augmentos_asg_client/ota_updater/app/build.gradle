@@ -18,7 +18,7 @@ android {
 
     signingConfigs {
         release {
-            storeFile file("../../../augmentos_otaupdater/credentials/ota-keystore.jks")
+            storeFile file("../credentials/ota-keystore.jks")
             storePassword System.getenv("OTA_STORE_PASSWORD") ?: "android"
             keyAlias System.getenv("OTA_KEY_ALIAS") ?: "ota" 
             keyPassword System.getenv("OTA_KEY_PASSWORD") ?: "android"
