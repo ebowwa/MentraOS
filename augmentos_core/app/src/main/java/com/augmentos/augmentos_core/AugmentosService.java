@@ -105,7 +105,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneMan
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AsgVersionInfoEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -254,11 +254,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
 
-    // Add fields to cache latest ASG client version info
-    private String asgAppVersion = null;
-    private String asgBuildNumber = null;
-    private String asgDeviceModel = null;
-    private String asgAndroidVersion = null;
+    // Add fields to cache latest glasses version info
+    private String glassesAppVersion = null;
+    private String glassesBuildNumber = null;
+    private String glassesDeviceModel = null;
+    private String glassesAndroidVersion = null;
 
     public AugmentosService() {
     }
@@ -1371,11 +1371,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
                 // Add ASG client version information for Mentra Live glasses
                 if (deviceModel != null && deviceModel.contains("Mentra Live")) {
-                    // Use cached version info from AsgVersionInfoEvent
-                    connectedGlasses.put("asg_app_version", asgAppVersion != null ? asgAppVersion : "");
-                    connectedGlasses.put("asg_build_number", asgBuildNumber != null ? asgBuildNumber : "");
-                    connectedGlasses.put("asg_device_model", asgDeviceModel != null ? asgDeviceModel : "");
-                    connectedGlasses.put("asg_android_version", asgAndroidVersion != null ? asgAndroidVersion : "");
+                    // Add glasses version info
+                    connectedGlasses.put("glasses_app_version", glassesAppVersion != null ? glassesAppVersion : "");
+                    connectedGlasses.put("glasses_build_number", glassesBuildNumber != null ? glassesBuildNumber : "");
+                    connectedGlasses.put("glasses_device_model", glassesDeviceModel != null ? glassesDeviceModel : "");
+                    connectedGlasses.put("glasses_android_version", glassesAndroidVersion != null ? glassesAndroidVersion : "");
                 }
             }
             status.put("connected_glasses", connectedGlasses);
@@ -2382,12 +2382,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
     }
 
-    // Event handler for ASG version info
+    // Event handler for glasses version info
     @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
-    public void onAsgVersionInfoEvent(AsgVersionInfoEvent event) {
-        this.asgAppVersion = event.getAppVersion();
-        this.asgBuildNumber = event.getBuildNumber();
-        this.asgDeviceModel = event.getDeviceModel();
-        this.asgAndroidVersion = event.getAndroidVersion();
+    public void onGlassesVersionInfoEvent(GlassesVersionInfoEvent event) {
+        this.glassesAppVersion = event.getAppVersion();
+        this.glassesBuildNumber = event.getBuildNumber();
+        this.glassesDeviceModel = event.getDeviceModel();
+        this.glassesAndroidVersion = event.getAndroidVersion();
+        Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion);
     }
 }

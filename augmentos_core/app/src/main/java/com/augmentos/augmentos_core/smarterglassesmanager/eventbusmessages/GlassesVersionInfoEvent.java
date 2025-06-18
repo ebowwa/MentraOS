@@ -1,15 +1,15 @@
 package com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages;
 
 /**
- * Event for ASG client version information
+ * Event for glasses version information
  */
-public class AsgVersionInfoEvent {
+public class GlassesVersionInfoEvent {
     private final String appVersion;
     private final String buildNumber;
     private final String deviceModel;
     private final String androidVersion;
 
-    public AsgVersionInfoEvent(String appVersion, String buildNumber, String deviceModel, String androidVersion) {
+    public GlassesVersionInfoEvent(String appVersion, String buildNumber, String deviceModel, String androidVersion) {
         this.appVersion = appVersion;
         this.buildNumber = buildNumber;
         this.deviceModel = deviceModel;

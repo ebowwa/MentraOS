@@ -36,7 +36,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepA
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
-import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.AsgVersionInfoEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -64,11 +64,11 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
 public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final String TAG = "WearableAi_MentraLiveSGC";
 
-    // ASG client version information
-    private String asgAppVersion = "";
-    private String asgBuildNumber = "";
-    private String asgDeviceModel = "";
-    private String asgAndroidVersion = "";
+    // Glasses version information
+    private String glassesAppVersion = "";
+    private String glassesBuildNumber = "";
+    private String glassesDeviceModel = "";
+    private String glassesAndroidVersion = "";
 
     // BLE UUIDs - updated to match K900 BES2800 MCU UUIDs for compatibility with both glass types
     // CRITICAL FIX: Swapped TX and RX UUIDs to match actual usage from central device perspective
@@ -1352,13 +1352,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 String deviceModel = json.optString("device_model", "");
                 String androidVersion = json.optString("android_version", "");
                 
-                Log.d(TAG, "ASG Client Version - App: " + appVersion + 
+                Log.d(TAG, "Glasses Version - App: " + appVersion + 
                       ", Build: " + buildNumber + 
                       ", Device: " + deviceModel + 
                       ", Android: " + androidVersion);
                 
                 // Post event for version information
-                EventBus.getDefault().post(new AsgVersionInfoEvent(
+                EventBus.getDefault().post(new GlassesVersionInfoEvent(
                     appVersion, buildNumber, deviceModel, androidVersion));
                 break;
 
@@ -1730,7 +1730,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Check if the ASG client is connected to WiFi
      * @return true if connected to WiFi, false otherwise
      */
-    public boolean isAsgWifiConnected() {
+    public boolean isGlassesWifiConnected() {
         return isWifiConnected;
     }
     
@@ -1738,49 +1738,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Get the SSID of the WiFi network the ASG client is connected to
      * @return SSID string, or empty string if not connected
      */
-    public String getAsgWifiSsid() {
+    public String getGlassesWifiSsid() {
         return wifiSsid;
     }
-    
+
     /**
      * Manually request a WiFi status update from the ASG client
      */
-    public void refreshAsgWifiStatus() {
+    public void refreshGlassesWifiStatus() {
         if (isConnected) {
             requestWifiStatus();
         }
-    }
-
-    /**
-     * Get the ASG client app version
-     * @return App version string, or empty string if not available
-     */
-    public String getAsgAppVersion() {
-        return asgAppVersion;
-    }
-
-    /**
-     * Get the ASG client build number
-     * @return Build number string, or empty string if not available
-     */
-    public String getAsgBuildNumber() {
-        return asgBuildNumber;
-    }
-
-    /**
-     * Get the ASG client device model
-     * @return Device model string, or empty string if not available
-     */
-    public String getAsgDeviceModel() {
-        return asgDeviceModel;
-    }
-
-    /**
-     * Get the ASG client Android version
-     * @return Android version string, or empty string if not available
-     */
-    public String getAsgAndroidVersion() {
-        return asgAndroidVersion;
     }
     
     // Debug video command loop vars
