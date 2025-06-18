@@ -67,6 +67,12 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   }
 
   const push = (path: string) => {
+
+    // if the path is the same as the last path, don't add it to the history
+    if (historyRef.current[historyRef.current.length - 1] === path) {
+      return
+    }
+    
     historyRef.current.push(path)
 
     router.push(path as any)

@@ -1,22 +1,10 @@
 import React, {useState, useEffect} from "react"
-import {
-  View,
-  TouchableOpacity,
-  ScrollView,
-  ViewStyle,
-  TextStyle,
-  Modal,
-  ActivityIndicator,
-} from "react-native"
-import {FontAwesome} from "@expo/vector-icons"
-import {Screen, Header, Icon, Text} from "@/components/ignite"
-import {router} from "expo-router"
-import {spacing, ThemedStyle} from "@/theme"
+import {View, Modal, ActivityIndicator} from "react-native"
+import {Screen, Header, Text} from "@/components/ignite"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {translate} from "@/i18n"
 
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
-import coreCommunicator from "@/bridge/CoreCommunicator"
 import showAlert from "@/utils/AlertUtils"
 import {useAuth} from "@/contexts/AuthContext"
 import RouteButton from "@/components/ui/RouteButton"
@@ -25,22 +13,26 @@ import {Spacer} from "@/components/misc/Spacer"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {isMentraUser} from "@/utils/isMentraUser"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
 
 export default function SettingsPage() {
   const {status} = useStatus()
   const {logout, user} = useAuth()
   const {theme} = useAppTheme()
   const {push, replace} = useNavigationHistory()
-  const [showDeveloperSettings, setShowDeveloperSettings] = useState(true)
+  const [devMode, setDevMode] = useState(true)
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   // Check if user is from Mentra to show theme settings
   const isUserFromMentra = isMentraUser(user?.email)
 
   useEffect(() => {
-    // Show developer settings for Android, development builds, or TestFlight builds
-    // Hide only for iOS App Store production builds
-    setShowDeveloperSettings(isDeveloperBuildOrTestflight())
+    const checkDevMode = async () => {
+      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      setDevMode(isDeveloperBuildOrTestflight() || devModeSetting)
+    }
+    checkDevMode()
   }, [])
 
   const handleSignOut = async () => {
@@ -104,7 +96,7 @@ export default function SettingsPage() {
         </>
       )}
 
-      {showDeveloperSettings && (
+      {devMode && (
         <>
           <Spacer height={theme.spacing.md} />
 
