@@ -644,6 +644,17 @@ export class CoreCommunicator extends EventEmitter {
     })
   }
 
+  async sendWifiCredentials(ssid: string, password: string) {
+    console.log("Sending wifi credentials to Core", ssid, password)
+    return await this.sendData({
+      command: "send_wifi_credentials",
+      params: {
+        ssid,
+        password,
+      },
+    })
+  }
+
   async startService() {
     // TODO: ios
     // CoreCommsService.startService();
