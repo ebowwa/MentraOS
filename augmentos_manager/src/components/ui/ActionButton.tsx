@@ -3,7 +3,7 @@ import {TouchableOpacity, Text, ViewStyle, TextStyle} from "react-native"
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 
-export type ActionButtonVariant = "default" | "warning" | "destructive"
+export type ActionButtonVariant = "default" | "warning" | "destructive" | "secondary"
 
 interface ActionButtonProps {
   /**
@@ -51,6 +51,8 @@ export default function ActionButton({
         return theme.colors.palette.accent100
       case "destructive":
         return theme.colors.destructiveAction
+      case "secondary":
+        return theme.colors.textDim
       default:
         return theme.colors.palette.primary500
     }

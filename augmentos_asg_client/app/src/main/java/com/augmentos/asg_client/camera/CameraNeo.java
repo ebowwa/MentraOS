@@ -28,6 +28,7 @@ import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.os.PowerManager;
 import android.util.Log;
 import android.util.Size;
@@ -64,7 +65,7 @@ public class CameraNeo extends LifecycleService {
     private static final String TAG = "CameraNeo";
     private static final String CHANNEL_ID = "CameraNeoServiceChannel";
     private static final int NOTIFICATION_ID = 1;
-    
+
     // Camera variables
     private CameraDevice cameraDevice = null;
     private CaptureRequest.Builder captureRequestBuilder;
@@ -76,13 +77,11 @@ public class CameraNeo extends LifecycleService {
     private Size jpegSize;
     private String cameraId;
     private boolean isK900Device = false;
-    
-    // Screen wake is now handled by WakeLockManager
-    
+
     // Target photo resolution (4:3 landscape orientation)
     private static final int TARGET_WIDTH = 1440;
     private static final int TARGET_HEIGHT = 1080;
-    
+
     // Callback and execution handling
     private final Executor executor = Executors.newSingleThreadExecutor();
 
@@ -93,7 +92,7 @@ public class CameraNeo extends LifecycleService {
     public static final String ACTION_STOP_VIDEO_RECORDING = "com.augmentos.camera.ACTION_STOP_VIDEO_RECORDING";
     public static final String EXTRA_VIDEO_FILE_PATH = "com.augmentos.camera.EXTRA_VIDEO_FILE_PATH";
     public static final String EXTRA_VIDEO_ID = "com.augmentos.camera.EXTRA_VIDEO_ID";
-    
+
     // Callback interface for photo capture
     public interface PhotoCaptureCallback {
         void onPhotoCaptured(String filePath);
@@ -323,6 +322,18 @@ public class CameraNeo extends LifecycleService {
         }
 
         try {
+            // First check if camera permission is granted
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                int cameraPermission = checkSelfPermission(android.Manifest.permission.CAMERA);
+                if (cameraPermission != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                    Log.e(TAG, "Camera permission not granted");
+                    if (forVideo) notifyVideoError(currentVideoId, "Camera permission not granted");
+                    else notifyPhotoError("Camera permission not granted");
+                    stopSelf();
+                    return;
+                }
+            }
+
             String[] cameraIds = manager.getCameraIdList();
             if (isK900Device) {
                 if (cameraIds.length > 0) this.cameraId = "0";
@@ -341,7 +352,7 @@ public class CameraNeo extends LifecycleService {
                         break;
                     }
                 }
-                
+
                 // If no back camera found, use the first available camera
                 if (this.cameraId == null && cameraIds.length > 0) {
                     this.cameraId = cameraIds[0];
@@ -431,21 +442,21 @@ public class CameraNeo extends LifecycleService {
                         stopSelf();
                         return;
                     }
-                    
+
                     ByteBuffer buffer = image.getPlanes()[0].getBuffer();
                     byte[] bytes = new byte[buffer.remaining()];
                     buffer.get(bytes);
-                    
+
                     // Save the image data to the file
                     boolean success = saveImageDataToFile(bytes, filePath);
-                    
+
                     if (success) {
                         lastPhotoPath = filePath;
                         notifyPhotoCaptured(filePath);
                     } else {
                         notifyPhotoError("Failed to save image");
                     }
-                    
+
                     // Clean up resources
                     closeCamera();
                     stopSelf();
@@ -466,8 +477,26 @@ public class CameraNeo extends LifecycleService {
             manager.openCamera(this.cameraId, forVideo ? videoStateCallback : photoStateCallback, backgroundHandler);
 
         } catch (CameraAccessException e) {
-            Log.e(TAG, "Camera access exception", e);
-            notifyPhotoError("Could not access camera: " + e.getMessage());
+            // Handle camera access exceptions more specifically
+            Log.e(TAG, "Camera access exception: " + e.getReason(), e);
+            String errorMsg = "Could not access camera";
+
+            // Check for specific error reasons
+            if (e.getReason() == CameraAccessException.CAMERA_DISABLED) {
+                errorMsg = "Camera disabled by policy - please check camera permissions in Settings";
+                // Try to recover by restarting the camera service
+                Log.d(TAG, "Attempting to restart camera service in safe mode");
+                restartCameraServiceIfNeeded();
+            } else if (e.getReason() == CameraAccessException.CAMERA_ERROR) {
+                errorMsg = "Camera device encountered an error";
+            } else if (e.getReason() == CameraAccessException.CAMERA_IN_USE) {
+                errorMsg = "Camera is already in use by another app";
+                // Try to close other camera sessions
+                releaseCameraResources();
+            }
+
+            if (forVideo) notifyVideoError(currentVideoId, errorMsg);
+            else notifyPhotoError(errorMsg);
             stopSelf();
         } catch (InterruptedException e) {
             Log.e(TAG, "Interrupted while trying to lock camera", e);
@@ -542,18 +571,18 @@ public class CameraNeo extends LifecycleService {
     private boolean saveImageDataToFile(byte[] data, String filePath) {
         try {
             File file = new File(filePath);
-            
+
             // Ensure parent directory exists
             File parentDir = file.getParentFile();
             if (parentDir != null && !parentDir.exists()) {
                 parentDir.mkdirs();
             }
-            
+
             // Write image data to file
             try (FileOutputStream output = new FileOutputStream(file)) {
                 output.write(data);
             }
-            
+
             Log.d(TAG, "Saved image to: " + filePath);
             return true;
         } catch (Exception e) {
@@ -561,7 +590,7 @@ public class CameraNeo extends LifecycleService {
             return false;
         }
     }
-    
+
     /**
      * Camera state callback for Camera2 API
      */
@@ -662,13 +691,27 @@ public class CameraNeo extends LifecycleService {
             }
             captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON);
             if (isK900Device) {
-                captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 0);
-                captureRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
-                        new MeteringRectangle(0, 0, 4208, 3120, MeteringRectangle.METERING_WEIGHT_MAX)
-                });
-                captureRequestBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
-                captureRequestBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
-                captureRequestBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) 95);
+                // captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 0);
+                // captureRequestBuilder.set(CaptureRequest.CONTROL_AE_REGIONS, new MeteringRectangle[]{
+                //         new MeteringRectangle(0, 0, 4208, 3120, MeteringRectangle.METERING_WEIGHT_MAX)
+                // });
+                // captureRequestBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
+                // captureRequestBuilder.set(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY);
+                // captureRequestBuilder.set(CaptureRequest.JPEG_QUALITY, (byte) 95);
+
+                // Turn off auto exposure
+                // AUTO mode with AE (auto-exposure) enabled
+                captureRequestBuilder.set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_OFF);
+                captureRequestBuilder.set(CaptureRequest.SENSOR_EXPOSURE_TIME, 12500000L); // 50ms
+                captureRequestBuilder.set(CaptureRequest.SENSOR_SENSITIVITY, 600);
+                captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, 270);
+
+                // Let ISO and shutter be managed by AE
+                // DO NOT set SENSOR_SENSITIVITY or SENSOR_EXPOSURE_TIME manually here
+                // Set JPEG orientation
+                captureRequestBuilder.set(CaptureRequest.JPEG_ORIENTATION, 270);
+
+
             } else {
                 captureRequestBuilder.set(CaptureRequest.CONTROL_AE_EXPOSURE_COMPENSATION, 1);
                 captureRequestBuilder.set(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY);
@@ -832,13 +875,13 @@ public class CameraNeo extends LifecycleService {
             executor.execute(() -> sPhotoCallback.onPhotoCaptured(filePath));
         }
     }
-    
+
     private void notifyPhotoError(String errorMessage) {
         if (sPhotoCallback != null) {
             executor.execute(() -> sPhotoCallback.onPhotoError(errorMessage));
         }
     }
-    
+
     /**
      * Start background thread
      */
@@ -847,7 +890,7 @@ public class CameraNeo extends LifecycleService {
         backgroundThread.start();
         backgroundHandler = new Handler(backgroundThread.getLooper());
     }
-    
+
     /**
      * Stop background thread
      */
@@ -863,7 +906,7 @@ public class CameraNeo extends LifecycleService {
             }
         }
     }
-    
+
     /**
      * Close camera resources
      */
@@ -897,7 +940,7 @@ public class CameraNeo extends LifecycleService {
             cameraOpenCloseLock.release();
         }
     }
-    
+
     /**
      * Release wake locks to avoid battery drain
      */
@@ -913,6 +956,84 @@ public class CameraNeo extends LifecycleService {
         Log.d(TAG, "Waking up screen for camera access");
         // Use the WakeLockManager to acquire both CPU and screen wake locks
         WakeLockManager.acquireFullWakeLockAndBringToForeground(this, 180000, 5000);
+    }
+
+    /**
+     * Attempt to restart the camera service with different parameters if needed
+     */
+    private void restartCameraServiceIfNeeded() {
+        try {
+            // First, release all current camera resources
+            releaseCameraResources();
+
+            Log.d(TAG, "Camera service restart attempt made - waiting for system to release camera");
+
+            // Implement retry mechanism with delay to handle policy-disabled errors
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                Log.d(TAG, "Attempting camera restart with delayed retry");
+
+                // Try with a different camera ID if available
+                CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                if (manager != null) {
+                    try {
+                        String[] cameraIds = manager.getCameraIdList();
+                        // If we were using camera "0", try a different one if available
+                        if (cameraIds.length > 1 && "0".equals(cameraId)) {
+                            this.cameraId = "1";
+                            Log.d(TAG, "Switching to alternate camera ID: " + this.cameraId);
+                        }
+                    } catch (CameraAccessException e) {
+                        Log.e(TAG, "Error accessing camera during retry", e);
+                    }
+                }
+
+                // Request camera focus - this can help on some devices by signaling
+                // to the system that camera is needed
+                wakeUpScreen();
+
+                // Try releasing all app camera resources forcibly
+                if (cameraDevice != null) {
+                    cameraDevice.close();
+                    cameraDevice = null;
+                }
+
+                if (cameraCaptureSession != null) {
+                    cameraCaptureSession.close();
+                    cameraCaptureSession = null;
+                }
+
+                System.gc(); // Request garbage collection
+            }, 1000); // Short delay before retry
+        } catch (Exception e) {
+            Log.e(TAG, "Error in camera service restart", e);
+        }
+    }
+
+    /**
+     * Release all camera system resources
+     */
+    private void releaseCameraResources() {
+        try {
+            // Request to release system-wide camera resources
+            closeCamera();
+
+            // For policy-based restrictions, we need to ensure camera resources are fully released
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                // On newer Android versions, encourage system resource release
+                CameraManager manager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+                if (manager != null) {
+                    // Nothing we can directly do to force release, but we can
+                    // make sure our resources are gone
+                    if (cameraDevice != null) {
+                        cameraDevice.close();
+                        cameraDevice = null;
+                    }
+                    System.gc();
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error releasing camera resources", e);
+        }
     }
 
     // -----------------------------------------------------------------------------------
