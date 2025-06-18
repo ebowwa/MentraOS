@@ -199,10 +199,10 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }, 5000); // 5 seconds delay
 
         // Send version info after 3 seconds
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            Log.d(TAG, "Sending version info after delay");
+//        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+//            Log.d(TAG, "Sending version info after delay");
             sendVersionInfo();
-        }, 3000); // 3 seconds delay
+//        }, 3000); // 3 seconds delay
 
         // Register restart receiver
         registerRestartReceiver();
@@ -980,6 +980,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "Starting microphone streaming for non-K900 device");
                 glassesMicrophoneManager.startRecording();
             }
+
+            sendVersionInfo();
 
             // Notify any components that care about bluetooth status
             // For example, you could send a broadcast, update UI, etc.
