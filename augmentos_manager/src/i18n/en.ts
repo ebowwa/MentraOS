@@ -22,6 +22,8 @@ const en = {
       "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
     openSettings: "Open Settings",
     scanningForGlasses: "Scanning",
+    scanningForGlassesModel: "Scanning for {{model}}",
+    scanningForGlasses2: "Ensure your glasses are in range.",
     preorderNow: "PREORDER NOW",
     preorderNowShipMessage: "Ships September 2025",
   },

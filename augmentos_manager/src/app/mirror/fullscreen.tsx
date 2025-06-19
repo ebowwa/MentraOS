@@ -1,29 +1,18 @@
-import React, {useState, useRef, useEffect, useCallback} from "react"
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  StatusBar,
-  BackHandler,
-  Image,
-  ToastAndroid,
-  Platform,
-  Linking,
-} from "react-native"
 import Icon from "react-native-vector-icons/MaterialIcons"
-import {showAlert} from "@/utils/AlertUtils"
-import {CameraView, CameraType, useCameraPermissions} from "expo-camera"
 
-import {useFocusEffect, useNavigation} from "@react-navigation/native"
-import GlassesDisplayMirrorFullscreen from "@/components/misc/GlassesDisplayMirrorFullscreen"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {useGlassesMirror} from "@/contexts/GlassesMirrorContext"
+import showAlert from "@/utils/AlertUtils"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useCameraPermissions, CameraType, CameraView} from "expo-camera"
+import {router, useFocusEffect} from "expo-router"
+import {useState, useRef, useEffect, useCallback} from "react"
+import {View, Text, BackHandler, Platform, StatusBar, ToastAndroid, StyleSheet, TouchableOpacity} from "react-native"
+
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import RNFS from "react-native-fs"
-import {router} from "expo-router"
-import {useAppTheme} from "@/utils/useAppTheme"
-import {translate} from "@/i18n"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import GlassesDisplayMirrorFullscreen from "@/components/misc/GlassesDisplayMirrorFullscreen"
 
 // Request microphone permission for recording
 const requestMicrophonePermission = async () => {
@@ -41,6 +30,7 @@ export default function GlassesMirrorFullscreen() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordingPath, setRecordingPath] = useState<string | null>(null)
   const [recordingCount, setRecordingCount] = useState(0)
+  const {goBack, replace} = useNavigationHistory()
 
   const cameraRef = useRef<CameraView | null>(null)
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null)
@@ -62,7 +52,7 @@ export default function GlassesMirrorFullscreen() {
     // If no camera permission, go back to mirror tab
     // This should not happen anymore since we check permissions before navigating here
     if (!permission?.granted) {
-      router.replace("/mirror")
+      // router.replace("/mirror")
       return
     }
 
@@ -158,8 +148,7 @@ export default function GlassesMirrorFullscreen() {
   // Handle exiting fullscreen mode
   const handleExitFullscreen = () => {
     StatusBar.setHidden(false)
-    //router.back() commented bc it routing to home page.
-    router.replace("/mirror")
+    goBack()
   }
 
   // Toggle camera between front and back
@@ -304,7 +293,7 @@ export default function GlassesMirrorFullscreen() {
   return (
     <View style={[styles.fullscreenContainer, {backgroundColor: theme.colors.fullscreenBackground}]}>
       {isGlassesConnected && lastEvent ? (
-        <>
+        <View style={{flex: 1}}>
           {/* Camera feed */}
           <CameraView
             ref={cameraRef}
@@ -376,7 +365,7 @@ export default function GlassesMirrorFullscreen() {
               )}
             </TouchableOpacity>
           )}
-        </>
+        </View>
       ) : (
         <View style={[styles.fallbackContainer, {backgroundColor: theme.colors.galleryBackground}]}>
           <Text style={[styles.fallbackText, {color: theme.colors.icon}]}>

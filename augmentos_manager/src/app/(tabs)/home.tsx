@@ -299,7 +299,7 @@ export default function Homepage() {
         }
       />
 
-      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
+      <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}} contentInsetAdjustmentBehavior="automatic">
         {status.core_info.cloud_connection_status !== "CONNECTED" && <CloudConnection />}
 
         <SensingDisabledWarning />
@@ -318,8 +318,6 @@ export default function Homepage() {
         <AppsActiveList />
         <Spacer height={spacing.xl} />
         <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
-        {/* adds some extra padding to scroll: */}
-        <Spacer height={spacing.xxxl} />
       </ScrollView>
 
       <OnboardingSpotlight

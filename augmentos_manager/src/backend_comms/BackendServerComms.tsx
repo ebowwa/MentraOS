@@ -500,7 +500,7 @@ export default class BackendServerComms {
         throw new Error(`Failed to generate webview token: ${response.data.error || response.statusText}`)
       }
     } catch (error: any) {
-      console.error(`${this.TAG}: Error generating webview token -`, error.message || error)
+      console.log(`${this.TAG}: Error generating webview token -`, error.message || error)
       // Consider more specific error handling based on response status if available
       if (axios.isAxiosError(error) && error.response) {
         throw new Error(`Failed to generate webview token: ${error.response.data?.error || error.message}`)
