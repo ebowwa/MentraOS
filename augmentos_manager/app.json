@@ -87,6 +87,7 @@
       ],
       "./plugins/remove-ipad-orientations.js",
       "./plugins/android-signing-config.js",
+      "react-native-bottom-tabs",
       [
         "expo-build-properties",
         {
