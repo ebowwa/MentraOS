@@ -16,6 +16,7 @@ import {Circle} from "react-native-svg"
 import {AnimatedCircularProgress} from "react-native-circular-progress"
 import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/component/SunIcon"
+import {glassesFeatures} from "@/config/glassesFeatures"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 import showAlert from "@/utils/AlertUtils"
@@ -248,6 +249,10 @@ export function DeviceToolbar() {
   }
 
   const autoBrightness = status.glasses_settings.auto_brightness
+  const modelName = status.glasses_info?.model_name || ""
+  const hasDisplay = glassesFeatures[modelName]?.display ?? true // Default to true if model not found
+  const hasWifi = glassesFeatures[modelName]?.wifi ?? false // Default to false if model not found
+  const wifiSsid = status.glasses_info?.glasses_wifi_ssid
 
   return (
     <View style={themed($deviceToolbar)}>
@@ -264,27 +269,39 @@ export function DeviceToolbar() {
         )}
       </View>
 
-      {/* brightness */}
-      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
-        <SunIcon size={18} color={theme.colors.text} />
-        {autoBrightness ? (
-          <Text style={{color: theme.colors.text}}>Auto</Text>
-        ) : (
-          <>
-            <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-              {status.glasses_settings.brightness}%
-            </Text>
-          </>
-        )}
-      </View>
+      {/* brightness - only show for devices with displays */}
+      {hasDisplay && (
+        <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+          <SunIcon size={18} color={theme.colors.text} />
+          {autoBrightness ? (
+            <Text style={{color: theme.colors.text}}>Auto</Text>
+          ) : (
+            <>
+              <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                {status.glasses_settings.brightness}%
+              </Text>
+            </>
+          )}
+        </View>
+      )}
 
-      {/* wifi connection */}
-      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
-        {/* <WifiIcon size={24} color={theme.colors.text} /> */}
-        <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-          {status.glasses_info?.glasses_wifi_ssid}
-        </Text>
-      </View>
+      {/* wifi connection - only show for devices with WiFi support */}
+      {hasWifi && (
+        <TouchableOpacity
+          style={{flexDirection: "row", alignItems: "center", gap: 6}}
+          onPress={() => {
+            router.push({
+              pathname: "/pairing/glasseswifisetup",
+              params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
+            })
+          }}
+        >
+          <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.text} />
+          <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
+            {wifiSsid || "Disconnected"}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* mira button */}
       {/* <View style={{flexDirection: "row", alignItems: "center", gap: 4}}> */}
