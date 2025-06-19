@@ -2,14 +2,7 @@
 
 This library simplifies authentication for React-based webviews running within the AugmentOS manager application. It handles the extraction and verification of the `aos_signed_user_token` provided by the AugmentOS system and makes user information available through a React Context and Hook.
 
-## Features
-
--   Extracts `aos_signed_user_token` from URL query parameters.
--   Verifies the token using `jsrsasign` against the AugmentOS Cloud public key.
--   Extracts `userId` and `frontendToken` from the token payload.
--   Stores `userId` and `frontendToken` in `localStorage` for persistence during the session.
--   Provides an `AugmentosAuthProvider` and `useAugmentosAuth` hook for easy integration.
--   Manages loading and error states.
+Check out the full [AugmentOS React Documentation](https://docs.augmentos.org/react-webviews) for more details.
 
 ## Prerequisites
 

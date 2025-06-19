@@ -74,6 +74,8 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.md,
   borderRadius: spacing.sm,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
 })
 
 const $text: ThemedStyle<TextStyle> = ({colors}) => ({

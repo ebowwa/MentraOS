@@ -40,7 +40,7 @@ public class Constants {
     public static final String WORK_NAME_OTA_HEARTBEAT = "ota_heartbeat";
 
     // Recovery timing constants
-    public static final int MAX_RECOVERY_RESTART_ATTEMPTS = 4;       // Try restart 2 times before reinstall
+    public static final int MAX_RECOVERY_RESTART_ATTEMPTS = 1;       // Try restart 2 times before reinstall
     public static final long RECOVERY_RESTART_WAIT_MS = 15000;       // Wait 15 seconds between restart attempts
     public static final long RECOVERY_HEARTBEAT_WAIT_MS = 30000;     // Wait 30 seconds for heartbeat after restart
 

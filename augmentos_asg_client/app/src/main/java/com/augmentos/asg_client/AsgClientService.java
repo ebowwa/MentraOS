@@ -1659,6 +1659,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("timestamp", System.currentTimeMillis());
             String appVersion = "1.0.0";
             String buildNumber = "1";
+            Log.d(TAG, "App version: " + appVersion + ", Build number: " + buildNumber);
+
             try {
                 appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 buildNumber = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).versionCode);

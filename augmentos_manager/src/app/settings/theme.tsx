@@ -9,6 +9,7 @@ import {saveSetting, loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {router} from "expo-router"
 import {type ThemeType} from "@/utils/useAppTheme"
+import {StyleSheet} from "react-native"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
@@ -48,7 +49,8 @@ export default function ThemeSettingsPage() {
           color={selectedTheme === themeKey ? theme.colors.checkmark || theme.colors.palette.primary300 : "transparent"}
         />
       </TouchableOpacity>
-      {!isLast && <View style={{height: 1, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />}
+      {/* @ts-ignore */}
+      {!isLast && <View style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />}
     </>
   )
 

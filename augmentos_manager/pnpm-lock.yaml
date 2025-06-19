@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@bottom-tabs/react-navigation':
+        specifier: ^0.9.2
+        version: 0.9.2(@react-navigation/native@7.1.11(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1))(react-native-bottom-tabs@0.9.2(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1)
       '@expo-google-fonts/space-grotesk':
         specifier: ^0.2.3
         version: 0.2.3
@@ -104,6 +107,9 @@ importers:
       react-native-bluetooth-classic:
         specifier: 1.73.0-rc.13
         version: 1.73.0-rc.13(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))
+      react-native-bottom-tabs:
+        specifier: ^0.9.2
+        version: 0.9.2(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1)
       react-native-circular-progress:
         specifier: ^1.4.1
         version: 1.4.1(react-native-svg@15.8.0(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1)
@@ -983,6 +989,14 @@ packages:
 
   '@bcoe/v8-coverage@0.2.3':
     resolution: {integrity: sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==}
+
+  '@bottom-tabs/react-navigation@0.9.2':
+    resolution: {integrity: sha512-IZZKllcaqCGsKIgeXmYFGU95IXxbBpXtwKws4Lg2GJw/qqAYYsPFEl0JBvnymSD7G1zkHYEilg5UHuTd0NmX7A==}
+    peerDependencies:
+      '@react-navigation/native': '>=7'
+      react: '*'
+      react-native: '*'
+      react-native-bottom-tabs: '*'
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -4679,6 +4693,12 @@ packages:
     peerDependencies:
       react-native: '>=0.73.1'
 
+  react-native-bottom-tabs@0.9.2:
+    resolution: {integrity: sha512-kwLx9OM6v5P10TdmNhlEgb8nmwBOpwy3ULIxEv1v6cYjzuRkeYtA2dqYeFhJAn1rmWMrl3MnL3xzW5Q3IQyfAg==}
+    peerDependencies:
+      react: '*'
+      react-native: '*'
+
   react-native-circular-progress@1.4.1:
     resolution: {integrity: sha512-HEzvI0WPuWvsCgWE3Ff2HBTMgAEQB2GvTFw0KHyD/t1STAlDDRiolu0mEGhVvihKR3jJu3v3V4qzvSklY/7XzQ==}
     peerDependencies:
@@ -5138,6 +5158,10 @@ packages:
 
   setprototypeof@1.2.0:
     resolution: {integrity: sha512-E5LDX7Wrp85Kil5bhZv46j8jOeboKq5JMmYM3gVGdGH8xFpPWXUMsNrlODCrkoxMEeNi/XZIwuRvY4XNwYMJpw==}
+
+  sf-symbols-typescript@2.1.0:
+    resolution: {integrity: sha512-ezT7gu/SHTPIOEEoG6TF+O0m5eewl0ZDAO4AtdBi5HjsrUI6JdCG17+Q8+aKp0heM06wZKApRCn5olNbs0Wb/A==}
+    engines: {node: '>=10'}
 
   shallow-clone@3.0.1:
     resolution: {integrity: sha512-/6KqX+GVUdqPuPPd2LxDDxzX6CAbjJehAAOKlNpqqUpAqPM6HeL8f+o3a+JsyGjn2lv0WY8UsTgUJjU9Ok55NA==}
@@ -6858,6 +6882,14 @@ snapshots:
       '@babel/helper-validator-identifier': 7.27.1
 
   '@bcoe/v8-coverage@0.2.3': {}
+
+  '@bottom-tabs/react-navigation@0.9.2(@react-navigation/native@7.1.11(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1))(react-native-bottom-tabs@0.9.2(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@react-navigation/native': 7.1.11(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1)
+      color: 4.2.3
+      react: 18.3.1
+      react-native: 0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1)
+      react-native-bottom-tabs: 0.9.2(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1)
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -11601,6 +11633,14 @@ snapshots:
       buffer: 6.0.3
       react-native: 0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1)
 
+  react-native-bottom-tabs@0.9.2(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1):
+    dependencies:
+      react: 18.3.1
+      react-freeze: 1.0.4(react@18.3.1)
+      react-native: 0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1)
+      sf-symbols-typescript: 2.1.0
+      use-latest-callback: 0.2.4(react@18.3.1)
+
   react-native-circular-progress@1.4.1(react-native-svg@15.8.0(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1))(react-native@0.76.9(@babel/core@7.27.4)(@babel/preset-env@7.27.2(@babel/core@7.27.4))(@types/react@18.3.23)(react@18.3.1))(react@18.3.1):
     dependencies:
       prop-types: 15.8.1
@@ -12169,6 +12209,8 @@ snapshots:
   setimmediate@1.0.5: {}
 
   setprototypeof@1.2.0: {}
+
+  sf-symbols-typescript@2.1.0: {}
 
   shallow-clone@3.0.1:
     dependencies:
