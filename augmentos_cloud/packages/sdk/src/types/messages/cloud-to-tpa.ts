@@ -17,6 +17,7 @@ import { DashboardMode } from '../dashboard';
 export interface TpaConnectionAck extends BaseMessage {
   type: CloudToTpaMessageType.CONNECTION_ACK;
   settings?: AppSettings;
+  augmentosSettings?: Record<string, any>; // AugmentOS system settings
   config?: TpaConfig; // TPA config sent from cloud
 }
 

@@ -86,7 +86,18 @@
         }
       ],
       "./plugins/remove-ipad-orientations.js",
-      "./plugins/android-signing-config.js"
+      "./plugins/android-signing-config.js",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "extraPods": [
+              {"name": "SDWebImage", "modular_headers": true},
+              {"name": "SDWebImageSVGCoder", "modular_headers": true}
+            ]
+          }
+        }
+      ]
     ],
     "experiments": {
       "tsconfigPaths": true,

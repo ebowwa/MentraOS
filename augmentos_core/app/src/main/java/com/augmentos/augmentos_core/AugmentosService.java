@@ -59,6 +59,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.HeadU
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepAliveAckEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.MicModeChangedEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.MentraLiveSGC;
 import com.augmentos.augmentos_core.smarterglassesmanager.smartglassescommunicators.SmartGlassesCommunicator;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.BitmapJavaUtils;
@@ -103,6 +104,8 @@ import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneMan
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
 
 public class AugmentosService extends LifecycleService implements AugmentOsActionsCallback {
     public static final String TAG = "AugmentOSService";
@@ -250,6 +253,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // Handler and Runnable for periodic datetime sending
     private final Handler datetimeHandler = new Handler(Looper.getMainLooper());
     private Runnable datetimeRunnable;
+
+    // Add fields to cache latest glasses version info
+    private String glassesAppVersion = null;
+    private String glassesBuildNumber = null;
+    private String glassesDeviceModel = null;
+    private String glassesAndroidVersion = null;
 
     public AugmentosService() {
     }
@@ -770,7 +779,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             );
         }
     }
-    
+
+    /**
+     * Send a dedicated WiFi status change event to the AugmentOS manager
+     * @param isConnected Whether the glasses are connected to WiFi
+     * @param ssid The SSID of the connected network (if connected)
+     */
+    private void sendWifiStatusChangeEvent(boolean isConnected, String ssid) {
+        try {
+            JSONObject wifiStatusEvent = new JSONObject();
+            JSONObject wifiStatus = new JSONObject();
+            wifiStatus.put("connected", isConnected);
+            wifiStatus.put("ssid", ssid != null ? ssid : "");
+            wifiStatusEvent.put("glasses_wifi_status_change", wifiStatus);
+
+            if (blePeripheral != null) {
+                blePeripheral.sendDataToAugmentOsManager(wifiStatusEvent.toString());
+                Log.d(TAG, "Sent WiFi status change event: connected=" + isConnected + ", ssid=" + ssid);
+            }
+        } catch (JSONException e) {
+            Log.e(TAG, "Error creating WiFi status change event JSON", e);
+        }
+    }
+
     @Subscribe
     public void onGlassesNeedWifiCredentialsEvent(GlassesWifiStatusChange event) {
         glassesWifiConnected = event.isWifiConnected;
@@ -779,8 +810,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d(TAG, "Received GlassesNeedWifiCredentialsEvent: device=" + event.deviceModel +
               ", wifiConnected=" + event.isWifiConnected +
               ", SSID=" + event.currentSsid);
+
         
-        // Send status update to the manager
+        // Send the dedicated WiFi status change event
+        sendWifiStatusChangeEvent(glassesWifiConnected, glassesWifiSsid);
+        
+        // Also update the general status
         sendStatusToAugmentOsManager();
     }
     
@@ -1333,6 +1368,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     connectedGlasses.put("glasses_wifi_connected", glassesWifiConnected);
                     connectedGlasses.put("glasses_wifi_ssid", glassesWifiSsid);
                 }
+
+                // Add ASG client version information for Mentra Live glasses
+                if (deviceModel != null && deviceModel.contains("Mentra Live")) {
+                    // Add glasses version info
+                    connectedGlasses.put("glasses_app_version", glassesAppVersion != null ? glassesAppVersion : "");
+                    connectedGlasses.put("glasses_build_number", glassesBuildNumber != null ? glassesBuildNumber : "");
+                    connectedGlasses.put("glasses_device_model", glassesDeviceModel != null ? glassesDeviceModel : "");
+                    connectedGlasses.put("glasses_android_version", glassesAndroidVersion != null ? glassesAndroidVersion : "");
+                }
             }
             status.put("connected_glasses", connectedGlasses);
 
@@ -1766,29 +1810,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void disconnectWearable(String wearableId) {
         Log.d("AugmentOsService", "Disconnecting from wearable: " + wearableId);
+
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
         
         // Reset state AND completely stop the service to get a clean state
         if (smartGlassesManager != null) {
-            try {
-                // First reset state to ensure proper event handling
-                smartGlassesManager.resetState();
-                
-                // Then stop and unbind from the service completely
-                stopSmartGlassesManager();
-                
-                // Set to null to ensure we don't try to use it
-                smartGlassesManager = null;
-                smartGlassesManagerBound = false;
-                
-                Log.d(TAG, "Successfully stopped SmartGlassesManager service for clean reconnect");
-            } catch (Exception e) {
-                Log.e(TAG, "Error stopping SmartGlassesManager: " + e.getMessage());
-            }
+            smartGlassesManager.resetState();
         }
-        
+
         sendStatusToAugmentOsManager();
     }
 
@@ -1810,7 +1841,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         glassesWifiConnected = false;
         glassesWifiSsid = "";
         
-
+        
         // Reset instead of stopping
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
@@ -1976,6 +2007,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
         this.brightnessLevel = brightness;
         this.autoBrightness = false;
+        
+        // Save brightness settings to SharedPreferences
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .edit()
+            .putString(getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightness))
+            .putBoolean(getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
+            .apply();
+        
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
@@ -1987,6 +2026,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
         }
         this.autoBrightness = autoBrightness;
+        
+        // Save auto brightness setting to SharedPreferences
+        PreferenceManager.getDefaultSharedPreferences(this)
+            .edit()
+            .putBoolean(getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
+            .apply();
+        
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
@@ -2033,7 +2079,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     
     @Override
     public void setGlassesWifiCredentials(String ssid, String password) {
-        Log.d(TAG, "Setting WiFi credentials for glasses, SSID: " + ssid);
+        Log.d(TAG, "@#@$@ Setting WiFi credentials for glasses, SSID: " + ssid);
         
         if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
             blePeripheral.sendNotifyManager("No glasses connected to set WiFi credentials", "error");
@@ -2334,5 +2380,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (authHandler != null && authHandler.getCoreToken() != null) {
             ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
         }
+    }
+
+    // Event handler for glasses version info
+    @org.greenrobot.eventbus.Subscribe(threadMode = org.greenrobot.eventbus.ThreadMode.MAIN)
+    public void onGlassesVersionInfoEvent(GlassesVersionInfoEvent event) {
+        this.glassesAppVersion = event.getAppVersion();
+        this.glassesBuildNumber = event.getBuildNumber();
+        this.glassesDeviceModel = event.getDeviceModel();
+        this.glassesAndroidVersion = event.getAndroidVersion();
+        Log.d("AugmentOsService", "Glasses version info: " + glassesAppVersion + " " + glassesBuildNumber + " " + glassesDeviceModel + " " + glassesAndroidVersion);
+        sendStatusToAugmentOsManager();
     }
 }

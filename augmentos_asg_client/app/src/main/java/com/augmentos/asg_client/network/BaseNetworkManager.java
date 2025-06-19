@@ -50,7 +50,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
      * Notify all listeners that the WiFi state has changed
      * @param isConnected true if connected to WiFi, false otherwise
      */
-    protected void notifyWifiStateChanged(boolean isConnected) {
+    public void notifyWifiStateChanged(boolean isConnected) {
         // Important! Check the actual WiFi state - this prevents reversed state reporting
         boolean actuallyConnected = isConnectedToWifi();
         
@@ -65,6 +65,7 @@ public abstract class BaseNetworkManager implements INetworkManager {
         Log.d(TAG, "WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
         for (NetworkStateListener listener : listeners) {
             try {
+                // Log.d(TAG, "Notifying listener: " + listener.getClass().getSimpleName());
                 listener.onWifiStateChanged(isConnected);
             } catch (Exception e) {
                 Log.e(TAG, "Error notifying listener", e);
@@ -240,11 +241,61 @@ public abstract class BaseNetworkManager implements INetworkManager {
                 Log.e(TAG, "WiFi manager is null");
                 return networks;
             }
-            
-            // Check if WiFi is enabled
+
+            // Check if WiFi is enabled, and enable it if not
             if (!wifiManager.isWifiEnabled()) {
-                Log.d(TAG, "WiFi is disabled, cannot scan for networks");
-                return networks;
+                Log.d(TAG, "WiFi is disabled, enabling it before scan");
+                try {
+                    // Try to enable WiFi
+                    wifiManager.setWifiEnabled(true);
+
+                    // Wait briefly for WiFi to initialize
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+
+                    // Check again if WiFi is now enabled
+                    if (!wifiManager.isWifiEnabled()) {
+                        // If still not enabled, try alternative method
+                        Log.d(TAG, "Standard WiFi enable failed, trying broadcast method");
+                        sendEnableWifiBroadcast();
+
+                        // Wait a bit more for the broadcast to take effect
+                        try {
+                            Thread.sleep(2000);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                    }
+
+                    // Final check if WiFi is enabled
+                    if (!wifiManager.isWifiEnabled()) {
+                        Log.d(TAG, "Failed to enable WiFi, cannot scan for networks");
+                        return networks;
+                    }
+                } catch (SecurityException se) {
+                    // Handle permission issues
+                    Log.e(TAG, "No permission to enable WiFi, trying broadcast method", se);
+                    sendEnableWifiBroadcast();
+
+                    // Wait for broadcast to take effect
+                    try {
+                        Thread.sleep(2000);
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+
+                    // Check if broadcast method worked
+                    if (!wifiManager.isWifiEnabled()) {
+                        Log.e(TAG, "Failed to enable WiFi via broadcast, cannot scan");
+                        return networks;
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "Error enabling WiFi", e);
+                    return networks;
+                }
             }
             
             // First, try the K900-specific approach if this is a K900 device
@@ -349,15 +400,21 @@ public abstract class BaseNetworkManager implements INetworkManager {
                     Log.e(TAG, "Failed to start WiFi scan");
                     
                     // Try to get the results anyway, maybe there's a recent scan
-                    List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
-                    if (scanResults != null && !scanResults.isEmpty()) {
-                        for (android.net.wifi.ScanResult result : scanResults) {
-                            String ssid = result.SSID;
-                            if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
-                                networks.add(ssid);
-                                Log.d(TAG, "Found network from previous scan: " + ssid);
+                    try {
+                        List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
+                        if (scanResults != null && !scanResults.isEmpty()) {
+                            for (android.net.wifi.ScanResult result : scanResults) {
+                                String ssid = result.SSID;
+                                if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
+                                    networks.add(ssid);
+                                    Log.d(TAG, "Found network from previous scan: " + ssid);
+                                }
                             }
                         }
+                    } catch (SecurityException se) {
+                        Log.e(TAG, "No permission to access previous scan results", se);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error getting previous scan results", e);
                     }
                     
                     // Unregister the receiver
@@ -380,15 +437,21 @@ public abstract class BaseNetworkManager implements INetworkManager {
                 }
                 
                 // Get the scan results
-                List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
-                if (scanResults != null) {
-                    for (android.net.wifi.ScanResult result : scanResults) {
-                        String ssid = result.SSID;
-                        if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
-                            networks.add(ssid);
-                            Log.d(TAG, "Found network: " + ssid);
+                try {
+                    List<android.net.wifi.ScanResult> scanResults = wifiManager.getScanResults();
+                    if (scanResults != null) {
+                        for (android.net.wifi.ScanResult result : scanResults) {
+                            String ssid = result.SSID;
+                            if (ssid != null && !ssid.isEmpty() && !networks.contains(ssid)) {
+                                networks.add(ssid);
+                                Log.d(TAG, "Found network: " + ssid);
+                            }
                         }
                     }
+                } catch (SecurityException se) {
+                    Log.e(TAG, "No permission to access scan results", se);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error getting scan results", e);
                 }
                 
                 // Unregister the receiver
@@ -446,6 +509,33 @@ public abstract class BaseNetworkManager implements INetworkManager {
         }
     }
     
+    /**
+     * Send a broadcast to enable WiFi
+     * This works on K900 and some other Android devices without requiring CHANGE_WIFI_STATE permission
+     */
+    private void sendEnableWifiBroadcast() {
+        try {
+            // Try K900 method first
+            if (isK900Device()) {
+                Intent intent = new Intent(K900_BROADCAST_ACTION);
+                intent.setPackage(K900_SYSTEM_UI_PACKAGE);
+                intent.putExtra("cmd", "setwifi");
+                intent.putExtra("enable", true);
+                context.sendBroadcast(intent);
+                Log.d(TAG, "Sent K900-specific WiFi enable broadcast");
+            }
+
+            // Also try the general method that works on many devices
+            Intent intent = new Intent();
+            intent.putExtra("cmd", "setwifi");
+            intent.putExtra("enable", true);
+            context.sendBroadcast(intent);
+            Log.d(TAG, "Sent general WiFi enable broadcast");
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending WiFi enable broadcast", e);
+        }
+    }
+
     /**
      * Clean up resources
      */

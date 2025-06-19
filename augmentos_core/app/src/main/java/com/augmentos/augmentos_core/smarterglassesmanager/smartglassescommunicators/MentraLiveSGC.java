@@ -36,6 +36,7 @@ import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.KeepA
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.RtmpStreamStatusEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.supportedglasses.SmartGlassesDevice;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.SmartGlassesConnectionState;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesVersionInfoEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.json.JSONException;
@@ -62,7 +63,13 @@ import io.reactivex.rxjava3.subjects.PublishSubject;
  */
 public class MentraLiveSGC extends SmartGlassesCommunicator {
     private static final String TAG = "WearableAi_MentraLiveSGC";
-    
+
+    // Glasses version information
+    private String glassesAppVersion = "";
+    private String glassesBuildNumber = "";
+    private String glassesDeviceModel = "";
+    private String glassesAndroidVersion = "";
+
     // BLE UUIDs - updated to match K900 BES2800 MCU UUIDs for compatibility with both glass types
     // CRITICAL FIX: Swapped TX and RX UUIDs to match actual usage from central device perspective
     // In BLE, characteristic names are from the perspective of the device that owns them:
@@ -131,7 +138,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     private boolean isWifiConnected = false;
     private String wifiSsid = "";
     
-    // Heartbeat state tracking
+    // Heartbeat tracking
     private Handler heartbeatHandler = new Handler(Looper.getMainLooper());
     private Runnable heartbeatRunnable;
     private int heartbeatCounter = 0;
@@ -1204,6 +1211,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 boolean wifiConnected = json.optBoolean("connected", false);
                 String ssid = json.optString("ssid", "");
 
+                Log.d(TAG, "## Received WiFi status: connected=" + wifiConnected + ", SSID=" + ssid);
                 EventBus.getDefault().post(new GlassesWifiStatusChange(
                         smartGlassesDevice.deviceModelName,
                         wifiConnected,
@@ -1302,7 +1310,17 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 Log.d(TAG, "🔄 Requesting battery and WiFi status from glasses");
                 requestBatteryStatus();
                 requestWifiStatus();
-                
+
+                // Request version info from ASG client
+                Log.d(TAG, "🔄 Requesting version info from ASG client");
+                try {
+                    JSONObject versionRequest = new JSONObject();
+                    versionRequest.put("type", "request_version");
+                    sendDataToGlasses(versionRequest.toString());
+                } catch (JSONException e) {
+                    Log.e(TAG, "Error creating version request", e);
+                }
+
                 Log.d(TAG, "🔄 Sending coreToken to ASG client");
                 sendCoreTokenToAsgClient();
                 
@@ -1322,6 +1340,26 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
                 
                 // Forward via EventBus for cloud communication (consistent with other message types)
                 EventBus.getDefault().post(new KeepAliveAckEvent(json));
+                break;
+
+            case "version_info":
+                // Process version information from ASG client
+                Log.d(TAG, "Received version info from ASG client: " + json.toString());
+                
+                // Extract version information and post event
+                String appVersion = json.optString("app_version", "");
+                String buildNumber = json.optString("build_number", "");
+                String deviceModel = json.optString("device_model", "");
+                String androidVersion = json.optString("android_version", "");
+                
+                Log.d(TAG, "Glasses Version - App: " + appVersion + 
+                      ", Build: " + buildNumber + 
+                      ", Device: " + deviceModel + 
+                      ", Android: " + androidVersion);
+                
+                // Post event for version information
+                EventBus.getDefault().post(new GlassesVersionInfoEvent(
+                    appVersion, buildNumber, deviceModel, androidVersion));
                 break;
 
             default:
@@ -1564,12 +1602,13 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
     public void connectToSmartGlasses() {
         Log.d(TAG, "Connecting to Mentra Live glasses");
         connectionEvent(SmartGlassesConnectionState.CONNECTING);
-        
+
         if (isConnected) {
+            Log.d(TAG, "#@32 Already connected to Mentra Live glasses");
             connectionEvent(SmartGlassesConnectionState.CONNECTED);
             return;
         }
-        
+
         if (bluetoothAdapter == null) {
             Log.e(TAG, "Bluetooth not available");
             connectionEvent(SmartGlassesConnectionState.DISCONNECTED);
@@ -1691,7 +1730,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Check if the ASG client is connected to WiFi
      * @return true if connected to WiFi, false otherwise
      */
-    public boolean isAsgWifiConnected() {
+    public boolean isGlassesWifiConnected() {
         return isWifiConnected;
     }
     
@@ -1699,14 +1738,14 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      * Get the SSID of the WiFi network the ASG client is connected to
      * @return SSID string, or empty string if not connected
      */
-    public String getAsgWifiSsid() {
+    public String getGlassesWifiSsid() {
         return wifiSsid;
     }
-    
+
     /**
      * Manually request a WiFi status update from the ASG client
      */
-    public void refreshAsgWifiStatus() {
+    public void refreshGlassesWifiStatus() {
         if (isConnected) {
             requestWifiStatus();
         }
@@ -2085,7 +2124,7 @@ public class MentraLiveSGC extends SmartGlassesCommunicator {
      */
     @Override
     public void sendWifiCredentials(String ssid, String password) {
-        Log.d(TAG, "Sending WiFi credentials to glasses - SSID: " + ssid);
+        Log.d(TAG, "432432 Sending WiFi credentials to glasses - SSID: " + ssid);
         
         // Validate inputs
         if (ssid == null || ssid.isEmpty()) {

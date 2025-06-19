@@ -85,7 +85,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     if (!user) {
       console.log("AppStatusProvider: No user, clearing app status")
       setAppStatus([])
-      return
+      return Promise.resolve()
     }
 
     // Check if we have a core token from BackendServerComms
@@ -98,7 +98,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
     )
     if (!coreToken) {
       console.log("Waiting for core token before fetching apps")
-      return
+      return Promise.resolve()
     }
 
     console.log("AppStatusProvider: Token check passed, starting app fetch...")
@@ -238,7 +238,9 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
       // Add a delay to let the token become valid on the server side
       setTimeout(() => {
         console.log("CORE_TOKEN_SET: Delayed refresh executing now")
-        refreshAppStatus()
+        refreshAppStatus().catch(error => {
+          console.error("CORE_TOKEN_SET: Error during delayed refresh:", error)
+        })
       }, 1500)
     }
     // @ts-ignore

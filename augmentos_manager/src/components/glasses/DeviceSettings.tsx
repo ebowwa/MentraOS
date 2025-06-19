@@ -26,15 +26,16 @@ import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert from "@/utils/AlertUtils"
-import SunIcon from "assets/icons/component/SunIcon"
-import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
-import RouteButton from "../ui/RouteButton"
-import ActionButton from "../ui/ActionButton"
+import RouteButton from "@/components/ui/RouteButton"
+import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures} from "@/config/glassesFeatures"
 import {useAuth} from "@/contexts/AuthContext"
 import {isMentraUser} from "@/utils/isMentraUser"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 
 export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -50,8 +51,16 @@ export default function DeviceSettings() {
   const {push} = useNavigationHistory()
   const {user} = useAuth()
 
-  // Check if user is from Mentra to show display position settings
-  const isUserFromMentra = isMentraUser(user?.email)
+  const [devMode, setDevMode] = useState(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+
+  useEffect(() => {
+    const checkDevMode = async () => {
+      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
+    }
+    checkDevMode()
+  }, [])
 
   const {model_name} = status.glasses_info ?? {}
   const {default_wearable} = status.core_info ?? {}
@@ -216,7 +225,7 @@ export default function DeviceSettings() {
 
           {!autoBrightness && (
             <>
-              <View style={{height: 1, backgroundColor: theme.colors.separator, marginBottom: theme.spacing.xs}} />
+              <View style={{height: 0.5, backgroundColor: theme.colors.separator, marginBottom: theme.spacing.xs}} />
               <SliderSetting
                 label="Brightness"
                 value={brightness}
@@ -235,7 +244,12 @@ export default function DeviceSettings() {
 
       <View style={themed($settingsGroup)}>
         <TouchableOpacity
-          style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingBottom: theme.spacing.xs,
+            paddingTop: theme.spacing.xs,
+          }}
           onPress={() => setMic("phone")}>
           <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
           <MaterialCommunityIcons
@@ -247,7 +261,11 @@ export default function DeviceSettings() {
         {/* divider */}
         <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
         <TouchableOpacity
-          style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingTop: theme.spacing.xs,
+          }}
           onPress={() => setMic("glasses")}>
           <View style={{flexDirection: "column", gap: 4}}>
             <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
@@ -277,13 +295,45 @@ export default function DeviceSettings() {
         />
       )}
 
+      {/* Show ASG Client version info for Mentra Live glasses */}
+      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") &&
+        (status.glasses_info.glasses_app_version || status.glasses_info.glasses_build_number) && (
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Glasses Software Version</Text>
+            {/* {status.glasses_info.glasses_app_version && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>App Version</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_app_version}</Text>
+            </View>
+          )} */}
+            {status.glasses_info.glasses_build_number && (
+              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+                <Text style={{color: theme.colors.text}}>Build Number</Text>
+                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_build_number}</Text>
+              </View>
+            )}
+            {/* {status.glasses_info.glasses_device_model && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Device Model</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_device_model}</Text>
+            </View>
+          )} */}
+            {/* {status.glasses_info.glasses_android_version && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Android Version</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_android_version}</Text>
+            </View>
+          )} */}
+          </View>
+        )}
+
       <RouteButton
         label={translate("settings:dashboardSettings")}
         subtitle={translate("settings:dashboardDescription")}
         onPress={() => push("/settings/dashboard")}
       />
 
-      {isUserFromMentra && (
+      {devMode && (
         <RouteButton
           label={translate("settings:screenSettings")}
           subtitle={translate("settings:screenDescription")}
@@ -330,6 +380,8 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: 12,
   paddingHorizontal: 16,
   borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({

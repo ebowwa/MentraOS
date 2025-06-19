@@ -1,15 +1,19 @@
 import {MOCK_CONNECTION} from "@/consts"
 
-interface Glasses {
+export interface Glasses {
   model_name: string
   battery_level: number
-  glasses_use_wifi?: boolean // Flag to indicate if glasses model supports WiFi
-  glasses_wifi_connected?: boolean
-  glasses_wifi_ssid?: string
+  glasses_use_wifi: boolean
+  glasses_wifi_connected: boolean
+  glasses_wifi_ssid: string
   case_removed: boolean
   case_open: boolean
   case_charging: boolean
   case_battery_level: number
+  glasses_app_version?: string
+  glasses_build_number?: string
+  glasses_device_model?: string
+  glasses_android_version?: string
 }
 
 interface GlassesSettings {
@@ -202,6 +206,10 @@ export class AugmentOSParser {
               case_open: glassesInfo.case_open ?? true,
               case_charging: glassesInfo.case_charging ?? false,
               case_battery_level: glassesInfo.case_battery_level ?? 0,
+              glasses_app_version: glassesInfo.glasses_app_version,
+              glasses_build_number: glassesInfo.glasses_build_number,
+              glasses_device_model: glassesInfo.glasses_device_model,
+              glasses_android_version: glassesInfo.glasses_android_version,
             }
           : null,
         glasses_settings: {

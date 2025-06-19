@@ -98,7 +98,9 @@ export default function CoreTokenExchange() {
 
         // Don't try automatic retry if we're already loading or had an error
         if (!isLoading) {
-          handleTokenExchange()
+          handleTokenExchange().catch(error => {
+            console.error("Error in automatic token exchange:", error)
+          })
         }
       } else {
         // If we already have a token, go straight to Home

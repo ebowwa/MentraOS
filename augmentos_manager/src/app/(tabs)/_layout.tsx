@@ -1,8 +1,14 @@
-import React from "react"
-import {Tabs} from "expo-router/tabs"
+import React, {useRef} from "react"
+import {withLayoutContext} from "expo-router"
+import {
+  createNativeBottomTabNavigator,
+  NativeBottomTabNavigationOptions,
+  NativeBottomTabNavigationEventMap,
+} from "@bottom-tabs/react-navigation"
+import {ParamListBase, TabNavigationState} from "@react-navigation/native"
 import {translate} from "@/i18n"
 import {colors, spacing, ThemedStyle, typography} from "@/theme"
-import {TextStyle, View, ViewStyle} from "react-native"
+import {TextStyle, TouchableOpacity, View, ViewStyle} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import {useAppTheme, useThemeProvider} from "@/utils/useAppTheme"
 import {LinearGradient} from "expo-linear-gradient"
@@ -11,139 +17,76 @@ import HomeIcon from "assets/icons/navbar/HomeIcon"
 import MirrorIcon from "assets/icons/navbar/MirrorIcon"
 import StoreIcon from "assets/icons/navbar/StoreIcon"
 import UserIcon from "assets/icons/navbar/UserIcon"
+import showAlert from "@/utils/AlertUtils"
+import Toast from "react-native-toast-message"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {SETTINGS_KEYS} from "@/consts"
+import {saveSetting} from "@/utils/SettingsHelper"
+
+// Create the native bottom tab navigator
+const BottomTabNavigator = createNativeBottomTabNavigator().Navigator
+
+const Tabs = withLayoutContext<
+  NativeBottomTabNavigationOptions,
+  typeof BottomTabNavigator,
+  TabNavigationState<ParamListBase>,
+  NativeBottomTabNavigationEventMap
+>(BottomTabNavigator)
 
 export default function Layout() {
   const {bottom} = useSafeAreaInsets()
-
   const {themeScheme} = useThemeProvider()
   const {theme, themed} = useAppTheme()
-
-  const showLabel = false
-  const iconFocusedColor = theme.isDark ? "white" : theme.colors.palette.primary300
-  const whiteColor = "#fff"
+  const {push, replace} = useNavigationHistory()
+  
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
-        tabBarHideOnKeyboard: true,
-        tabBarShowLabel: true,
-        tabBarStyle: [
-          themed($tabBar),
-          {
-            paddingBottom: bottom + 8,
-            // borderTopColor moved to View wrapping LinearGradient
-            borderTopWidth: 0,
-            backgroundColor: "transparent",
-          },
-        ],
-        tabBarActiveTintColor: theme.isDark ? whiteColor : theme.colors.text,
-        tabBarInactiveTintColor: theme.colors.textDim,
-        tabBarLabelStyle: themed($tabBarLabel),
-        tabBarItemStyle: themed($tabBarItem),
-        tabBarLabelPosition: "below-icon",
-        // tabBarPosition: 'left',
-        // animation: 'shift',
-        // tabBarBackground: () => <View />,
-        tabBarBackground: () => (
-          <View
-            style={{
-              position: "absolute",
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              borderTopColor: theme.colors.separator,
-              borderTopWidth: 2,
-              overflow: "hidden",
-            }}>
-            <LinearGradient
-              colors={
-                theme.isDark
-                  ? [theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]
-                  : [whiteColor, whiteColor]
-              }
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: 0,
-                bottom: 0,
-              }}
-              start={{x: 0, y: 0}}
-              end={{x: 0, y: 2}}
-            />
-          </View>
-        ),
+        // Native bottom tabs styling
+        tabBarActiveTintColor: theme.colors.text,
+
       }}>
       <Tabs.Screen
         name="home"
         options={{
-          href: "/home",
-          headerShown: false,
-          tabBarIcon: ({focused, color}) => <HomeIcon size={28} color={focused ? iconFocusedColor : theme.colors.textDim} />,
-          tabBarLabel: translate("navigation:home"),
+          title: translate("navigation:home"),
+          // tabBarIcon: ({focused}) => ({sfSymbol: "house"}),
+          tabBarIcon: ({focused}) => require("assets/icons/home.svg"),
         }}
       />
+
       <Tabs.Screen
         name="glasses"
         options={{
-          href: "/glasses",
-          headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <SolarLineIconsSet4 size={28} color={focused ? iconFocusedColor : theme.colors.textDim} />
-          ),
-          tabBarLabel: translate("navigation:glasses"),
+          title: translate("navigation:glasses"),
+          // tabBarIcon: ({focused}) => ({
+          //   sfSymbol: "eyeglasses",
+          // }),
+          tabBarIcon: ({focused}) => require("assets/icons/glasses.svg"),
         }}
       />
-      <Tabs.Screen
-        name="mirror"
-        options={{
-          href: "/mirror",
-          headerShown: false,
-          tabBarIcon: ({focused, color}) => (
-            <MirrorIcon size={28} color={focused ? iconFocusedColor : theme.colors.textDim} />
-          ),
-          tabBarLabel: translate("navigation:mirror"),
-        }}
-      />
+
       <Tabs.Screen
         name="store"
         options={{
-          href: "/store",
-          headerShown: false,
-          tabBarIcon: ({focused, color}) => <StoreIcon size={28} color={focused ? iconFocusedColor : theme.colors.textDim} />,
-          tabBarLabel: translate("navigation:store"),
+          title: translate("navigation:store"),
+          // tabBarIcon: ({focused}) => ({
+          //   sfSymbol: "storefront",
+          // }),
+          tabBarIcon: ({focused}) => require("assets/icons/shopping-bag.svg"),
         }}
       />
+
       <Tabs.Screen
         name="settings"
         options={{
-          href: "/settings",
-          headerShown: false,
-          tabBarIcon: ({focused, color}) => <UserIcon size={28} color={focused ? iconFocusedColor : theme.colors.textDim} />,
-          tabBarLabel: translate("navigation:account"),
+          title: translate("navigation:account"),
+          // tabBarIcon: ({focused}) => ({
+          //   sfSymbol: "person.crop.circle",
+          // }),
+          tabBarIcon: ({focused}) => require("assets/icons/user.svg"),
         }}
       />
     </Tabs>
   )
 }
-
-const $tabBar: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  backgroundColor: colors.background,
-  borderTopColor: colors.separator,
-  borderTopWidth: 1,
-  paddingTop: 8,
-  height: 90,
-})
-
-const $tabBarItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
-  paddingTop: spacing.sm,
-  paddingBottom: spacing.xs,
-})
-
-const $tabBarLabel: ThemedStyle<TextStyle> = ({colors, typography}) => ({
-  fontSize: 12,
-  fontFamily: typography.primary.medium,
-  lineHeight: 16,
-  marginTop: 4,
-})

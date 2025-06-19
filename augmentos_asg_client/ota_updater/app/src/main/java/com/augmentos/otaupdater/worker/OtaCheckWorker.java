@@ -5,6 +5,8 @@ package com.augmentos.otaupdater.worker;
  */
 
 import android.content.Context;
+import android.util.Log;
+
 import androidx.annotation.NonNull;
 import androidx.work.Worker;
 import androidx.work.WorkerParameters;
@@ -21,7 +23,8 @@ public class OtaCheckWorker extends Worker {
     @NonNull
     @Override
     public Result doWork() {
-        OtaHelper helper = new OtaHelper();
+        Log.d(TAG, "Performing long running task in scheduled job");
+        OtaHelper helper = new OtaHelper(getApplicationContext());
         helper.startVersionCheck(getApplicationContext());
         return Result.success();
     }

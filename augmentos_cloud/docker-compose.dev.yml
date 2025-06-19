@@ -34,7 +34,6 @@ services:
     ports:
       - "8002:80"
     environment:
-      - NODE_ENV=development
       - HOST=0.0.0.0
       - SERVICE_NAME=cloud
       - CONTAINER_ENVIRONMENT=true
@@ -51,44 +50,6 @@ services:
     depends_on:
       builder:
         condition: service_completed_successfully
-
-  # Dashboard service
-  dashboard-manager:
-    stop_grace_period: 10s
-    init: true
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    restart: "no"
-    ports:
-      - "8012:80"
-    environment:
-      - NODE_ENV=development
-      - HOST=0.0.0.0
-      - SERVICE_NAME=dashboard-manager
-    env_file:
-      - .env
-    volumes:
-      - ./:/app
-      - node_modules:/app/node_modules
-      - bun_cache:/root/.bun
-      - ./logs:/app/logs
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
-    command: bash -c "cd packages/apps/dashboard && bun run dev"
-    networks:
-      - augmentos-network-dev
-    depends_on:
-      builder:
-        condition: service_completed_successfully
-    # depends_on:
-      # shared-packages:
-      #   condition: service_healthy
-      # cloud:
-      #   condition: service_started
 
 networks:
   augmentos-network-dev:

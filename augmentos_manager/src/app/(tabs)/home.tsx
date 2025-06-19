@@ -39,7 +39,7 @@ export default function Homepage() {
   const [isInitialLoading, setIsInitialLoading] = useState(true)
   const [hasMissingPermissions, setHasMissingPermissions] = useState(false)
   const [showOnboardingSpotlight, setShowOnboardingSpotlight] = useState(false)
-  const [onboardingTarget, setOnboardingTarget] = useState<'glasses' | 'livecaptions'>('glasses')
+  const [onboardingTarget, setOnboardingTarget] = useState<"glasses" | "livecaptions">("glasses")
   const [liveCaptionsPackageName, setLiveCaptionsPackageName] = useState<string | null>(null)
   const liveCaptionsRef = useRef<any>(null)
   const connectButtonRef = useRef<any>(null)
@@ -149,7 +149,9 @@ export default function Homepage() {
   // Check version once on mount
   useEffect(() => {
     if (Platform.OS == "android") {
-      checkCloudVersion()
+      checkCloudVersion().catch(error => {
+        console.error("Error checking cloud version:", error)
+      })
     }
   }, [])
 
@@ -173,7 +175,9 @@ export default function Homepage() {
       }
     }
 
-    checkPermissions()
+    checkPermissions().catch(error => {
+      console.error("Error checking permissions:", error)
+    })
   }, [])
 
   // Check onboarding status
@@ -183,19 +187,19 @@ export default function Homepage() {
       if (!onboardingCompleted) {
         // Check if glasses are connected
         const glassesConnected = status.glasses_info?.model_name != null
-        
+
         if (!glassesConnected) {
-          setOnboardingTarget('glasses')
+          setOnboardingTarget("glasses")
           setShowOnboardingSpotlight(true)
         } else {
           // Check if Live Captions app exists and is not running
           const liveCaptionsApp = appStatus.find(
-            app => app.packageName === "com.augmentos.livecaptions" || 
-                   app.packageName === "cloud.augmentos.live-captions"
+            app =>
+              app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions",
           )
-          
+
           if (liveCaptionsApp && !liveCaptionsApp.is_running) {
-            setOnboardingTarget('livecaptions')
+            setOnboardingTarget("livecaptions")
             setLiveCaptionsPackageName(liveCaptionsApp.packageName)
             setShowOnboardingSpotlight(true)
           }
@@ -203,7 +207,9 @@ export default function Homepage() {
       }
     }
 
-    checkOnboarding()
+    checkOnboarding().catch(error => {
+      console.error("Error checking onboarding:", error)
+    })
   }, [status.glasses_info?.model_name, appStatus])
 
   // Handle spotlight dismiss
@@ -215,20 +221,20 @@ export default function Homepage() {
 
   // Handle spotlight target press
   const handleSpotlightTargetPress = async () => {
-    if (onboardingTarget === 'glasses') {
-      router.push('/pairing/select-glasses-model')
-    } else if (onboardingTarget === 'livecaptions' && liveCaptionsPackageName) {
+    if (onboardingTarget === "glasses") {
+      router.push("/pairing/select-glasses-model")
+    } else if (onboardingTarget === "livecaptions" && liveCaptionsPackageName) {
       // Dismiss spotlight first
       setShowOnboardingSpotlight(false)
-      
+
       // Start the Live Captions app directly
       try {
         const backendComms = BackendServerComms.getInstance()
         await backendComms.startApp(liveCaptionsPackageName)
-        
+
         // Mark onboarding as completed
         await saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
-        
+
         // Show the success message after a short delay
         setTimeout(() => {
           showAlert(
@@ -237,7 +243,7 @@ export default function Homepage() {
             [{text: translate("common:ok")}],
             {
               iconName: "microphone",
-            }
+            },
           )
         }, 500)
       } catch (error) {
@@ -311,19 +317,18 @@ export default function Homepage() {
 
         <AppsActiveList />
         <Spacer height={spacing.xl} />
-        <AppsInactiveList 
-          key={`apps-list-${appStatus.length}`} 
-          liveCaptionsRef={liveCaptionsRef}
-        />
+        <AppsInactiveList key={`apps-list-${appStatus.length}`} liveCaptionsRef={liveCaptionsRef} />
+        {/* adds some extra padding to scroll: */}
+        <Spacer height={spacing.xxxl} />
       </ScrollView>
-      
+
       <OnboardingSpotlight
         visible={showOnboardingSpotlight}
-        targetRef={onboardingTarget === 'glasses' ? connectButtonRef : liveCaptionsRef}
+        targetRef={onboardingTarget === "glasses" ? connectButtonRef : liveCaptionsRef}
         onDismiss={handleSpotlightDismiss}
         onTargetPress={handleSpotlightTargetPress}
         message={
-          onboardingTarget === 'glasses'
+          onboardingTarget === "glasses"
             ? translate("home:connectGlassesToStart")
             : translate("home:tapToStartLiveCaptions")
         }

@@ -87,13 +87,17 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
     // Check if we already have a core token
     const backendComms = BackendServerComms.getInstance()
     if (backendComms.getCoreToken()) {
-      prefetchWebview()
+      prefetchWebview().catch(error => {
+        console.error("AppStoreWebviewPrefetchProvider: Error during initial prefetch:", error)
+      })
     }
 
     // Listen for when core token is set
     const handleCoreTokenSet = () => {
       console.log("AppStoreWebviewPrefetchProvider: Core token set, prefetching webview")
-      prefetchWebview()
+      prefetchWebview().catch(error => {
+        console.error("AppStoreWebviewPrefetchProvider: Error during core token prefetch:", error)
+      })
     }
 
     GlobalEventEmitter.on("CORE_TOKEN_SET", handleCoreTokenSet)
@@ -120,7 +124,9 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
       // Reload with fresh tokens after clearing
       setTimeout(() => {
-        prefetchWebview()
+        prefetchWebview().catch(error => {
+          console.error("AppStoreWebviewPrefetchProvider: Error during clear webview data prefetch:", error)
+        })
       }, 100)
     }
 
@@ -133,7 +139,9 @@ export const AppStoreWebviewPrefetchProvider: React.FC<{children: React.ReactNod
 
   // Expose a reload method (e.g., for logout/login)
   const reloadWebview = () => {
-    prefetchWebview()
+    prefetchWebview().catch(error => {
+      console.error("AppStoreWebviewPrefetchProvider: Error during reload webview:", error)
+    })
   }
 
   return (

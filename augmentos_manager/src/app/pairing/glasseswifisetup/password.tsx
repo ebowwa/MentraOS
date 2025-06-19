@@ -20,6 +20,8 @@ export default function WifiPasswordScreen() {
   const [showPassword, setShowPassword] = useState(false)
 
   const handleConnect = () => {
+    // console.log("3231 handleConnect called");
+
     if (!ssid) {
       GlobalEventEmitter.emit("SHOW_BANNER", {
         message: "Please enter a network name",
@@ -41,7 +43,7 @@ export default function WifiPasswordScreen() {
 
   return (
     <Screen preset="scroll" contentContainerStyle={themed($container)}>
-      <Header title="Enter WiFi Details" leftIcon="caretLeft" onLeftPress={() => router.back()} />
+      <Header title="Enter Glasses WiFi Details" leftIcon="caretLeft" onLeftPress={() => router.back()} />
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={themed($keyboardContainer)}>
         <View style={themed($content)}>
           <View style={themed($inputContainer)}>

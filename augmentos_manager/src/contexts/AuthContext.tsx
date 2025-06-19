@@ -33,7 +33,10 @@ export const AuthProvider: React.FC<{children: React.ReactNode}> = ({children}) 
       setLoading(false)
     }
 
-    getInitialSession()
+    getInitialSession().catch(error => {
+      console.error("AuthContext: Error getting initial session:", error)
+      setLoading(false)
+    })
 
     // 2. Listen for auth changes
     const {
