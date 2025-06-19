@@ -242,8 +242,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // IntentFilter filter = new IntentFilter("com.augmentos.otaupdater.ACTION_OTA_DOWNLOAD_COMPLETE");
         // registerReceiver(otaDownloadReceiver, filter);
 
-        SysControl.disablePackageViaAdb(getApplicationContext(), "com.xy.fakelauncher");
-        SysControl.disablePackage(getApplicationContext(), "com.xy.fakelauncher");
+        //SysControl.disablePackageViaAdb(getApplicationContext(), "com.xy.fakelauncher");
+        //SysControl.disablePackage(getApplicationContext(), "com.xy.fakelauncher");
         SysControl.uninstallPackage(getApplicationContext(), "com.lhs.btserver");
         SysControl.uninstallPackageViaAdb(getApplicationContext(), "com.lhs.btserver");
     }

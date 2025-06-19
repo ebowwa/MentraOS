@@ -431,31 +431,18 @@ public class MainActivity extends AppCompatActivity {
   }
 
   public void launchOdmLauncher(View view) {
-    Log.d(TAG, "=== TESTING SysControl Commands ===");
+    Log.d(TAG, "Launching ODM Launcher");
     
-    // Test 1: Try a simple command first
     try {
-      Log.d(TAG, "Testing simple brightness command first...");
-      SysControl.setBrightValue(this, 100);
-      Log.d(TAG, "Brightness command completed");
+      Intent intent = new Intent();
+      intent.setComponent(new ComponentName("com.xy.fakelauncher", "com.xy.fakelauncher.Launcher"));
+      intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      startActivity(intent);
+      Log.d(TAG, "Successfully launched ODM launcher");
     } catch (Exception e) {
-      Log.e(TAG, "Error with brightness command: " + e.getMessage(), e);
+      Log.e(TAG, "Error launching ODM launcher: " + e.getMessage(), e);
+      Toast.makeText(this, "Failed to launch ODM launcher", Toast.LENGTH_SHORT).show();
     }
-    
-    // Test 2: Try the ADB injection
-    try {
-      Log.d(TAG, "About to call SysControl.disablePackageViaAdb with context: " + this);
-      SysControl.disablePackageViaAdb(this, "com.xy.fakelauncher");
-      Log.d(TAG, "SysControl.disablePackageViaAdb call completed successfully");
-    } catch (Exception e) {
-      Log.e(TAG, "Error calling SysControl.disablePackageViaAdb: " + e.getMessage(), e);
-    }
-    
-    // Still launch the ODM launcher for comparison
-    Intent n = new Intent();
-    n.setComponent(new ComponentName("com.xy.fakelauncher", "com.xy.fakelauncher.Launcher"));
-    n.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-    startActivity(n);
   }
 
     /**
