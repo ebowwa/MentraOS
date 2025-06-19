@@ -92,19 +92,19 @@ if (!AUGMENTOS_API_KEY) {
 class MyAugmentOSApp extends TpaServer {
     /**
      * Handle new session connections
-     * @param session - The TPA session instance
+     * @param session - The app session instance
      * @param sessionId - Unique identifier for this session
      * @param userId - The user ID for this session
      */
     protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
-        console.log(`New session: ${sessionId} for user ${userId}`);
+        session.logger.info(`New session: ${sessionId} for user ${userId}`);
 
         // Display "Hello, World!" on the glasses
         session.layouts.showTextWall("Hello, World!");
 
         // Log when the session is disconnected
         session.events.onDisconnected(() => {
-            console.log(`Session ${sessionId} disconnected.`);
+            session.logger.info(`Session ${sessionId} disconnected.`);
         });
     }
 }
@@ -202,7 +202,10 @@ To make your locally running app accessible from the internet:
 3. Click "Create App"
 4. Set a unique package name (e.g., `com.yourname.myfirstapp`)
 5. For "Public URL", enter your ngrok static URL
-6. After the app is created, you will be given an API key. Copy this key.
+6. Add the microphone permission.  See the [Permissions](permissions) guide for details.
+7. After the app is created, you will be given an API key. Copy this key.
+
+> This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the App edit page under the `Share with Testers` section.
 
 ### 12. Set up App Permissions
 
@@ -267,6 +270,24 @@ ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
 
 > **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
 
+### 16. View Your Logs
+
+Notice that we're now using `session.logger` instead of `console.log`. The session logger automatically includes context like the user ID and session ID, making it easier to debug your app:
+
+```
+[12:34:56.789] INFO: New session: session_456 for user user_123
+    userId: "user_123"
+    sessionId: "session_456"
+    service: "tpa-session"
+
+[12:34:58.124] INFO: Session session_456 disconnected.
+    userId: "user_123"
+    sessionId: "session_456"
+    service: "tpa-session"
+```
+
+This structured logging helps you debug issues and monitor how users interact with your app.
+
 ## What's Next?
 
 Congratulations! You've built your first AugmentOS app. To continue your journey:
@@ -306,6 +327,35 @@ Build [Webviews](/webview-auth-overview) to provide web interfaces with automati
 - Access the webview at `/webview`
 - The current AugmentOS user is available at `request.authUserId`
 - Create a web interface that allows users to interact with your app's functionality
+
+### Monitor and Debug with Logging
+
+Use the session logger to improve your app:
+
+```typescript
+// Track user behavior
+session.logger.info('User completed tutorial', {
+  stepCount: 5,
+  duration: 120000
+});
+
+// Debug performance issues
+const startTime = Date.now();
+await processUserInput(input);
+session.logger.debug('Input processing completed', {
+  processingTime: Date.now() - startTime
+});
+
+// Monitor errors
+try {
+  await riskyOperation();
+} catch (error) {
+  session.logger.error(error, 'Risk operation failed', {
+    context: 'user-action',
+    retryable: true
+  });
+}
+```
 
 ### Learn More
 - Explore [Core Concepts](/core-concepts) to understand sessions, events, and the app lifecycle

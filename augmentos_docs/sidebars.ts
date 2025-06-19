@@ -31,6 +31,11 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'doc',
+          id: 'voice-activation',
+          label: 'Voice Activation Tutorial',
+        },
+        {
+          type: 'doc',
           id: 'railway-deployment',
           label: 'Deploy to Railway',
         },
@@ -38,7 +43,7 @@ const sidebars: SidebarsConfig = {
           type: 'doc',
           id: 'ubuntu-deployment',
           label: 'Deploy to Ubuntu Server',
-        },
+        }
       ],
     },
     {
@@ -49,17 +54,19 @@ const sidebars: SidebarsConfig = {
         id: 'core-concepts',
       },
       items: [
+        {
+          type: 'doc',
+          id: 'tpa-lifecycle',
+          label: 'App Lifecycle',
+        },
         'events',
         'permissions',
         'layouts',
         'settings',
         'tools',
         'webview-auth-overview',
-        {
-          type: 'doc',
-          id: 'tpa-lifecycle',
-          label: 'App Lifecycle',
-        },
+        'react-webviews',
+        'dashboard'
       ],
     },
     {
@@ -95,6 +102,7 @@ const sidebars: SidebarsConfig = {
             'reference/interfaces/setting-types',
           ],
         },
+        'reference/dashboard-api',
         'reference/utilities',
       ],
     },

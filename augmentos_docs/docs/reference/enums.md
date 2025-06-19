@@ -9,20 +9,20 @@ This page documents all the enumeration types available in the AugmentOS SDK. En
 
 ## TpaType
 
-Defines the different types or roles a TPA can have within the AugmentOS system.
+Defines the different types or roles an app can have within the AugmentOS system.
 
 ```typescript
 enum TpaType {
   SYSTEM_DASHBOARD = 'system_dashboard', // Special UI placement, system functionality
   SYSTEM_APPSTORE = 'system_appstore',   // System app store functionality
   BACKGROUND = 'background',             // Runs without primary UI, can temporarily display content
-  STANDARD = 'standard'                  // Regular TPA with standard lifecycle and UI interaction (default)
+  STANDARD = 'standard'                  // Regular app with standard lifecycle and UI interaction (default)
 }
 ```
 
 ## AppState
 
-Represents the lifecycle states of a TPA on the user's device.
+Represents the lifecycle states of an app on the user's device.
 
 ```typescript
 enum AppState {
@@ -73,9 +73,26 @@ enum ViewType {
 }
 ```
 
+## DashboardMode
+
+Defines the different display modes available on the AugmentOS dashboard.
+
+```typescript
+enum DashboardMode {
+  MAIN = 'main',           // Standard compact dashboard (default)
+  EXPANDED = 'expanded'    // Larger dashboard when user opens it explicitly
+  // ALWAYS_ON = 'always_on'  // Compact overlay (coming soon)
+}
+```
+
+**Values:**
+- `MAIN`: The default compact dashboard mode that appears as a small overlay
+- `EXPANDED`: The full-screen dashboard mode that users can open for detailed information
+- `ALWAYS_ON`: *(Coming soon)* A persistent compact overlay mode
+
 ## AppSettingType
 
-Defines the types of interactive settings that can be configured for a TPA in the AugmentOS settings UI. Used within the `TpaConfig` interface.
+Defines the types of interactive settings that can be configured for an app in the AugmentOS settings UI. Used within the `TpaConfig` interface.
 
 ```typescript
 enum AppSettingType {
@@ -98,26 +115,26 @@ enum StreamType {
   PHONE_BATTERY_UPDATE = 'phone_battery_update',   // Connected phone battery level and status
   GLASSES_CONNECTION_STATE = 'glasses_connection_state', // Glasses connection info (e.g., model)
   LOCATION_UPDATE = 'location_update',       // GPS location update
-  
+
   // Audio streams
   TRANSCRIPTION = 'transcription',           // Real-time speech-to-text results
   TRANSLATION = 'translation',               // Real-time speech translation results
   VAD = 'VAD',                               // Voice Activity Detection status (speaking/not speaking)
   AUDIO_CHUNK = 'audio_chunk',               // Raw audio data chunks (requires explicit subscription)
-  
+
   // Phone streams
   PHONE_NOTIFICATION = 'phone_notification', // Notification received on the connected phone
   NOTIFICATION_DISMISSED = 'notification_dismissed', // Notification dismissed on the glasses/phone
   CALENDAR_EVENT = 'calendar_event',         // Calendar event from the connected phone
-  
+
   // System streams / Control actions originating from glasses
   START_APP = 'start_app',                   // User requested to start an app
   STOP_APP = 'stop_app',                     // User requested to stop an app
   OPEN_DASHBOARD = 'open_dashboard',         // User requested to open the dashboard
-  
+
   // Video streams
   VIDEO = 'video',                           // Video stream data (if available/supported)
-  
+
   // Special subscription types (for cloud internal use primarily)
   ALL = 'all',                               // Subscribe to all possible streams
   WILDCARD = '*'                             // Wildcard subscription (similar to ALL)
@@ -126,18 +143,17 @@ enum StreamType {
 
 ## WebhookRequestType
 
-Identifies the type of request being sent from AugmentOS Cloud to a TPA server's webhook endpoint.
+Identifies the type of request being sent from AugmentOS Cloud to an app server's webhook endpoint.
 
 ```typescript
 enum WebhookRequestType {
-  SESSION_REQUEST = 'session_request',         // Request to start a new TPA session for a user
-  STOP_REQUEST = 'stop_request',               // Request to stop an existing TPA session
-  SERVER_REGISTRATION = 'server_registration', // Confirmation that the TPA server is registered
-  SERVER_HEARTBEAT = 'server_heartbeat',       // Periodic check to ensure the TPA server is responsive
+  SESSION_REQUEST = 'session_request',         // Request to start a new app session for a user
+  STOP_REQUEST = 'stop_request',               // Request to stop an existing app session
+  SERVER_REGISTRATION = 'server_registration', // Confirmation that the app server is registered
+  SERVER_HEARTBEAT = 'server_heartbeat',       // Periodic check to ensure the app server is responsive
   SESSION_RECOVERY = 'session_recovery'        // Request to recover a session (e.g., after cloud restart)
 }
 ```
-
 ## Message Type Enums
 
 These enums are used to identify the types of messages exchanged between different components of the AugmentOS system.
@@ -190,7 +206,8 @@ Message types sent FROM TPA TO cloud.
 enum TpaToCloudMessageType {
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
-  DISPLAY_REQUEST = 'display_event' // Note: Reuses 'display_event' type string
+  DISPLAY_REQUEST = 'display_event', // Note: Reuses 'display_event' type string
+  DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update'
 }
 ```
 
@@ -205,7 +222,9 @@ enum CloudToTpaMessageType {
   APP_STOPPED = 'app_stopped',
   SETTINGS_UPDATE = 'settings_update',
   DATA_STREAM = 'data_stream', // Wrapper for stream data
+  DASHBOARD_MODE_CHANGED = 'dashboard_mode_changed',
+  DASHBOARD_ALWAYS_ON_CHANGED = 'dashboard_always_on_changed',
   WEBSOCKET_ERROR = 'websocket_error'
   // Note: Specific stream data like TranscriptionData uses StreamType directly as its type identifier.
 }
-``` 
+```

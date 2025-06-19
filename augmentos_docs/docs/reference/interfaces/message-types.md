@@ -72,6 +72,23 @@ interface DisplayRequest extends BaseMessage {
 
 **Note:** This message is automatically sent by the SDK when using [`tpaSession.layouts`](/reference/managers/layout-manager) methods.
 
+### DashboardContentUpdate
+
+Message sent from a TPA to update dashboard content.
+
+```typescript
+interface DashboardContentUpdate extends BaseMessage {
+  type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
+  packageName: string;
+  sessionId: string;
+  content: string;
+  modes: DashboardMode[]; // Target dashboard modes
+  timestamp: Date;
+}
+```
+
+**Note:** This message is automatically sent by the SDK when using [`session.dashboard.content`](/reference/dashboard-api#class-dashboardcontentapi) methods.
+
 ## Cloud to TPA Messages
 
 ### TpaConnectionAck
@@ -141,6 +158,32 @@ interface DataStream extends BaseMessage {
 ```
 
 The SDK unwraps this message and dispatches it to the appropriate event handlers based on the `streamType`.
+
+### DashboardModeChanged
+
+Message sent by cloud to TPA when the dashboard mode changes.
+
+```typescript
+interface DashboardModeChanged extends BaseMessage {
+  type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+  mode: DashboardMode; // The new dashboard mode
+}
+```
+
+When this message is received, the SDK fires any registered `onModeChange` callbacks with the new mode.
+
+### DashboardAlwaysOnChanged
+
+Message sent by cloud to TPA when the always-on dashboard state changes.
+
+```typescript
+interface DashboardAlwaysOnChanged extends BaseMessage {
+  type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+  enabled: boolean; // Whether always-on dashboard is now enabled
+}
+```
+
+When this message is received, the SDK fires any registered always-on change callbacks.
 
 ## Stream Data Messages
 
@@ -217,7 +260,8 @@ Message types sent FROM TPA TO cloud.
 enum TpaToCloudMessageType {
   CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
-  DISPLAY_REQUEST = 'display_event'
+  DISPLAY_REQUEST = 'display_event',
+  DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update'
 }
 ```
 
@@ -232,6 +276,8 @@ enum CloudToTpaMessageType {
   APP_STOPPED = 'app_stopped',
   SETTINGS_UPDATE = 'settings_update',
   DATA_STREAM = 'data_stream',
+  DASHBOARD_MODE_CHANGED = 'dashboard_mode_changed',
+  DASHBOARD_ALWAYS_ON_CHANGED = 'dashboard_always_on_changed',
   WEBSOCKET_ERROR = 'websocket_error'
 }
 ```
@@ -271,6 +317,9 @@ The SDK provides type guard functions to identify message types:
 function isTpaConnectionInit(message: TpaToCloudMessage): message is TpaConnectionInit;
 function isTpaSubscriptionUpdate(message: TpaToCloudMessage): message is TpaSubscriptionUpdate;
 function isDisplayRequest(message: TpaToCloudMessage): message is DisplayRequest;
+function isDashboardContentUpdate(message: TpaToCloudMessage): message is DashboardContentUpdate;
+function isDashboardModeChange(message: TpaToCloudMessage): message is DashboardModeChange;
+function isDashboardSystemUpdate(message: TpaToCloudMessage): message is DashboardSystemUpdate;
 
 // For Cloud to TPA messages
 function isTpaConnectionAck(message: CloudToTpaMessage): message is TpaConnectionAck;
@@ -279,6 +328,8 @@ function isAppStopped(message: CloudToTpaMessage): message is AppStopped;
 function isSettingsUpdate(message: CloudToTpaMessage): message is SettingsUpdate;
 function isDataStream(message: CloudToTpaMessage): message is DataStream | AudioChunk;
 function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk;
+function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged;
+function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is DashboardAlwaysOnChanged;
 ```
 
 ## WebSocket Connection Flow

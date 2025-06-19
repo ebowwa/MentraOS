@@ -7,16 +7,16 @@ This document describes the lifecycle of an AugmentOS app within the AugmentOS e
 
 An AugmentOS app goes through the following stages:
 
-1.  **Registration (One-time):**  This happens *outside* of the normal runtime flow. You register your app with AugmentOS Cloud, providing:
+1.  **Registration (One-time):**  This happens outside of the normal runtime flow. You register your app with [AugmentOS Developer Portal](https://console.augmentos.org/tpas), providing:
     *   `packageName`: A unique identifier (e.g., `com.example.myapp`).
     *   `name`: A human-readable name.
     *   `description`: A description of your app.
     *   `webhookURL`: The URL where AugmentOS Cloud will send session start requests.
     *   `logoURL`: (Optional) URL to your app's logo.
     *   `apiKey`: A secret key for authenticating your app with the cloud.
-    *   `appType`:  The type of app (e.g., `standard`, `background`, `system`).
+    *   `permissions`: An array of permissions your app needs.  See the [Permissions](permissions) guide for details.
 
-    This registration process is currently handled manually, but will eventually be managed through a developer portal.
+    This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the App edit page under the `Share with Testers` section.
 
 2.  **Session Request (Webhook):** When a user starts your app on their smart glasses, AugmentOS Cloud sends an HTTP POST request to your app's `webhookURL`. This request includes:
 
