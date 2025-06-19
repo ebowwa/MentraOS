@@ -187,22 +187,33 @@ export class TranscriptionService {
       streamInstance.recognizer = new ConversationTranscriber(speechConfig, audioConfig);
     }
 
-    // ✅ CRITICAL: Proper Azure session event handling
+    // ✅ CRITICAL: Proper Azure session event handling with post-session-start delay
     streamInstance.recognizer.sessionStarted = (_sender: any, event: SessionEventArgs) => {
-      streamInstance.isReady = true;
       streamInstance.isInitializing = false;
-      streamInstance.readyTime = Date.now();
       streamInstance.sessionId = event.sessionId;
-      
-      const initializationTime = streamInstance.readyTime - streamInstance.startTime;
       
       sessionLogger.info({
         subscription,
         sessionId: event.sessionId,
-        initializationTime,
-        retryCount: streamInstance.retryCount,
-        operation: 'sessionReady'
-      }, `✅ Azure Speech session ready after ${initializationTime}ms - audio flow enabled`);
+        operation: 'sessionStarted'
+      }, 'Azure Speech session started - adding safety delay before enabling audio flow');
+      
+      // ✅ NEW: Add delay before marking as ready to prevent error code 7
+      // This ensures Azure is truly ready to receive audio after session start
+      setTimeout(() => {
+        streamInstance.isReady = true;
+        streamInstance.readyTime = Date.now();
+        
+        const initializationTime = streamInstance.readyTime - streamInstance.startTime;
+        
+        sessionLogger.info({
+          subscription,
+          sessionId: event.sessionId,
+          initializationTime,
+          retryCount: streamInstance.retryCount,
+          operation: 'sessionReady'
+        }, `✅ Azure Speech session ready after ${initializationTime}ms (including 500ms safety delay) - audio flow enabled`);
+      }, 500); // 500ms delay after sessionStarted to prevent InvalidOperation error 7
     };
 
     streamInstance.recognizer.sessionStopped = (_sender: any, event: SessionEventArgs) => {
@@ -284,7 +295,7 @@ export class TranscriptionService {
         subscription,
         retryCount: streamInstance.retryCount,
         operation: 'startRecognition'
-      }, 'Starting Azure Speech Recognition');
+      }, 'Starting Azure Speech Recognition after setup delay');
 
       if (languageInfo.type === StreamType.TRANSLATION) {
         (streamInstance.recognizer as azureSpeechSDK.TranslationRecognizer).startContinuousRecognitionAsync(
@@ -339,7 +350,17 @@ export class TranscriptionService {
       }
     };
 
-    startRecognition();
+    // ✅ NEW: Add delay before starting recognition to prevent error code 7
+    // This allows Azure SDK to complete internal setup before we start recognition
+    sessionLogger.info({
+      subscription,
+      operation: 'delayBeforeStart'
+    }, 'Waiting 200ms before starting Azure recognition to prevent InvalidOperation error 7');
+    
+    setTimeout(() => {
+      startRecognition();
+    }, 200); // 200ms delay before starting recognition
+    
     return streamInstance;
   }
 
@@ -761,8 +782,10 @@ export class TranscriptionService {
           return;
         }
 
-        // ✅ Audio is flowing to Azure - update counters
-        (instance.pushStream as any).write(audioData);
+        // ✅ Audio is flowing to Azure - convert to ArrayBuffer and update counters
+        // CRITICAL: Azure SDK expects ArrayBuffer, but we receive Uint8Array
+        const arrayBuffer = audioData.buffer.slice(audioData.byteOffset, audioData.byteOffset + audioData.byteLength);
+        (instance.pushStream as any).write(arrayBuffer);
         instance.audioChunksWritten++;
         instance.lastAudioTime = Date.now();
         
