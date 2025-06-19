@@ -1,7 +1,7 @@
 "on":
     push:
         branches:
-            - isaiah/big-refactor-dev
+            - isaiah/dashboard-move-to-tpa
 name: 🚀 [debug] Porter.run Deploy
 jobs:
     porter-deploy:

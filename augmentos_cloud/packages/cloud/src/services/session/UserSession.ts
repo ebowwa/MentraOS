@@ -64,13 +64,9 @@ export class UserSession {
   public microphoneManager: MicrophoneManager;
   public appManager: AppManager;
   public audioManager: AudioManager;
-  // public heartbeatManager: HeartbeatManager;
 
   public videoManager: VideoManager;
   public photoManager: PhotoManager;
-
-  // Transcription state
-  // transcriptionStreams: Map<string, ASRStreamInstance> = new Map();
 
   // Reconnection
   public _reconnectionTimers: Map<string, NodeJS.Timeout>;
@@ -87,14 +83,13 @@ export class UserSession {
     this.logger = rootLogger.child({ userId, service: 'UserSession' });
 
     // Initialize managers
-    this.displayManager = new DisplayManager(this);
-    this.dashboardManager = new DashboardManager(this);
-    this.microphoneManager = new MicrophoneManager(this);
     this.appManager = new AppManager(this);
     this.audioManager = new AudioManager(this);
-    // this.heartbeatManager = new HeartbeatManager(this);
-    this.videoManager = new VideoManager(this);
+    this.dashboardManager = new DashboardManager(this);
+    this.displayManager = new DisplayManager(this);
+    this.microphoneManager = new MicrophoneManager(this);
     this.photoManager = new PhotoManager(this);
+    this.videoManager = new VideoManager(this);
 
     this._reconnectionTimers = new Map();
 

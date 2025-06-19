@@ -1,3 +1,4 @@
+// TODO(isaiah): This class was created to debug the weirdest issue, but now that it's resolved it's should be deleted and we should store sessions in a map inside the UserSession class.
 /**
  * @fileoverview Singleton session storage class to manage UserSession instances
  * across the application. This isolates session storage from the UserSession class
@@ -45,23 +46,7 @@ class SessionStorage {
   }
   
   get(userId: string): UserSession | undefined {
-    const session = this.sessions.get(userId);
-    const allUserIds = Array.from(this.sessions.keys());
-
-    // Debug logging to track session lookups
-    rootLogger.debug({
-      service: 'SessionStorage.get',
-      lookupUserId: userId,
-      sessionFound: !!session,
-      totalSessions: this.sessions.size,
-      allSessionUserIds: allUserIds,
-      userIdType: typeof userId,
-      userIdLength: userId?.length || 0,
-      exactMatches: allUserIds.filter(id => id === userId),
-      similarMatches: allUserIds.filter(id => id.toLowerCase() === userId.toLowerCase()),
-      containsMatches: allUserIds.filter(id => id.includes(userId) || userId.includes(id))
-    }, `Session lookup: ${userId} -> ${session ? 'FOUND' : 'NOT FOUND'}`);
-    
+    const session = this.sessions.get(userId);    
     return session;
   }
   

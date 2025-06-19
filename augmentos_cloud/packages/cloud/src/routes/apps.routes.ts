@@ -177,51 +177,8 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
     try {
       const session = await getSessionFromToken(token);
       const tokenDuration = Date.now() - tokenStartTime;
-      
-      // DEBUG: Log detailed session lookup info with race condition detection
-      const userData = jwt.verify(token, AUGMENTOS_AUTH_JWT_SECRET);
-      const tokenUserId = (userData as JwtPayload).email;
-      
-      // Debug JWT contents
-      middlewareLogger.debug({
-        jwtPayload: userData,
-        extractedUserId: tokenUserId,
-        userIdFromSub: (userData as JwtPayload).sub,
-        userIdFromEmail: (userData as JwtPayload).email
-      }, 'JWT verification details');
-      const allSessions = UserSession.getAllSessions();
-      
-      // Check if user had a session recently but it's now missing
-      const userSession = allSessions.find(s => s.userId === tokenUserId);
-      const sessionFoundDirectly = !!UserSession.getById(tokenUserId);
-      
-      middlewareLogger.debug({
-        tokenUserId,
-        sessionFound: !!session,
-        sessionFoundDirectly,
-        sessionInAllSessions: !!userSession,
-        totalActiveSessions: allSessions.length,
-        allSessionUserIds: allSessions.map(s => s.userId),
-        userSessionDetails: userSession ? {
-          websocketState: userSession.websocket?.readyState,
-          disconnectedAt: userSession.disconnectedAt,
-          hasCleanupTimer: !!(userSession as any).cleanupTimerId,
-          startTime: userSession.startTime
-        } : null,
-        tokenDuration,
-        raceConditionSuspected: sessionFoundDirectly !== !!session
-      }, 'Session lookup details with race condition check');
-      
-      if (session) {
-        const duration = Date.now() - startTime;
-        middlewareLogger.info({
-          userId: session.userId,
-          sessionId: session.sessionId,
-          duration,
-          tokenDuration,
-          authMethod: 'bearer'
-        }, `Bearer token auth successful in ${duration}ms`);
 
+      if (session) {
         (req as any).userSession = session;
         return next();
       } else {
@@ -914,7 +871,7 @@ async function installApp(req: Request, res: Response) {
     }
 
     // Get app details
-    const app = await appService.findFromAppStore(packageName);
+    const app = await appService.getApp(packageName);
     if (!app) {
       return res.status(404).json({
         success: false,

@@ -1,6 +1,5 @@
-import { systemApps } from '../core/system-apps';
-import { ActiveDisplay, Layout, DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@augmentos/sdk';
-import { logger as rootLogger } from '../logging/pino-logger';
+import { ActiveDisplay, Layout, DisplayRequest, DisplayManagerI, TpaToCloudMessageType, ViewType, LayoutType } from '@augmentos/sdk';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 import { Logger } from 'pino';
 import { WebSocket } from 'ws';
 import UserSession from '../session/UserSession';
@@ -85,14 +84,14 @@ class DisplayManager {
     } 
 
     // Don't show boot screen for dashboard
-    if (packageName === systemApps.dashboard.packageName) {
-      this.logger.info({}, `[${this.userSession.userId}] Dashboard starting`);
+    if (packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
+      this.logger.info({}, `[${this.getUserId()}] Dashboard starting`);
       return;
     }
 
     // Save current display before showing boot screen (if not dashboard)
     if (this.displayState.currentDisplay &&
-        this.displayState.currentDisplay.displayRequest.packageName !== systemApps.dashboard.packageName) {
+        this.displayState.currentDisplay.displayRequest.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
 
       // Get the package name of the currently displayed content
       const currentDisplayPackage = this.displayState.currentDisplay.displayRequest.packageName;
@@ -249,7 +248,7 @@ class DisplayManager {
       if (this.bootingApps.size === 0) {
         this.logger.info({}, `[${this.userSession.userId}] 🔄 Boot screen complete, clearing state`);
         // Make sure we clear current display if it was boot screen
-        if (this.displayState.currentDisplay?.displayRequest.packageName === systemApps.dashboard.packageName) {
+        if (this.displayState.currentDisplay?.displayRequest.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
           this.clearDisplay('main');
         }
         // Process any queued requests
@@ -296,7 +295,7 @@ class DisplayManager {
   public handleDisplayRequest(displayRequest: DisplayRequest): boolean {
 
     // Always show dashboard immediately
-    if (displayRequest.packageName === systemApps.dashboard.packageName) {
+    if (displayRequest.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME) {
       return this.sendDisplay(displayRequest);
     }
 
@@ -632,14 +631,14 @@ class DisplayManager {
       const name = this.userSession.installedApps.get(packageName)?.name;
       if (name) return name;
 
-      const app = Object.values(systemApps).find(app => app.packageName === packageName);
-      return app ? app.name : packageName;
+      // TODO(isaiah): We can fetch app from db to get the name if it's not in userSession's installedApps.
+      return packageName; // Fallback to package name if no name found
     });
 
     const bootRequest: DisplayRequest = {
       type: TpaToCloudMessageType.DISPLAY_REQUEST,
       view: ViewType.MAIN,
-      packageName: systemApps.dashboard.packageName,
+      packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
       layout: {
         layoutType: LayoutType.REFERENCE_CARD,
         title: `// AugmentOS - Starting App${this.bootingApps.size > 1 ? 's' : ''}`,
@@ -664,7 +663,7 @@ class DisplayManager {
     const clearRequest: DisplayRequest = {
       type: TpaToCloudMessageType.DISPLAY_REQUEST,
       view: viewName as ViewType,
-      packageName: systemApps.dashboard.packageName,
+      packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
       layout: {
         layoutType: LayoutType.TEXT_WALL,
         text: ''

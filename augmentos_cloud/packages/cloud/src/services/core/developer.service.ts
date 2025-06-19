@@ -73,18 +73,18 @@ export async function validateApiKey(packageName: string, apiKey: string, userSe
 
     // Special validation for system apps. 
     // Currently, only the system dashboard app is considered a system app.
-    const isSystemApp = packageName === 'system.augmentos.dashboard';
+    // const isSystemApp = packageName === 'system.augmentos.dashboard';
 
-    if (isSystemApp) {
-      _logger.debug(`Validating SYSTEM APP API key for: ${packageName}`);
+    // if (isSystemApp) {
+    //   _logger.debug(`Validating SYSTEM APP API key for: ${packageName}`);
 
-      // System app api key should be same as AUGMENTOS_AUTH_JWT_SECRET
-      if (apiKey !== AUGMENTOS_AUTH_JWT_SECRET) {
-        _logger.error(`Invalid API key for system app ${packageName}`);
-        return false;
-      }
-      return true;
-    }
+    //   // System app api key should be same as AUGMENTOS_AUTH_JWT_SECRET
+    //   if (apiKey !== AUGMENTOS_AUTH_JWT_SECRET) {
+    //     _logger.error(`Invalid API key for system app ${packageName}`);
+    //     return false;
+    //   }
+    //   return true;
+    // }
 
     // Check if the app has a hashed API key
     if (!app?.hashedApiKey) {

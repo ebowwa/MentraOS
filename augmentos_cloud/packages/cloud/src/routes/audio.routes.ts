@@ -24,7 +24,7 @@ async function shazamAuthMiddleware(req: Request, res: Response, next: NextFunct
       });
     }
     // Validate the API key for the specified package
-    const isValid = await appService.validateApiKey(packageName, apiKey, req.ip);
+    const isValid = await appService.validateApiKey(packageName, apiKey);
     if (!isValid) {
       return res.status(401).json({
         success: false,
