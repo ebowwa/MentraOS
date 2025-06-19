@@ -28,6 +28,20 @@ import sessionService from './session.service';
 import axios, { AxiosError } from 'axios';
 const logger = rootLogger.child({ service: 'AppManager' });
 
+// Default AugmentOS system settings
+const DEFAULT_AUGMENTOS_SETTINGS = {
+  useOnboardMic: false,
+  contextualDashboard: true,
+  headUpAngle: 20,
+  brightness: 50,
+  autoBrightness: false,
+  sensingEnabled: true,
+  alwaysOnStatusBar: false,
+  bypassVad: false,
+  bypassAudioEncoding: false,
+  metricSystemEnabled: false
+} as const;
+
 const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "prod.augmentos.cloud"
 const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
@@ -391,6 +405,9 @@ export class AppManager {
       this.userSession.loadingApps.delete(app.packageName);
       this.userSession.displayManager.handleAppStop(app.packageName);
 
+      // Clean up dashboard content for failed app
+      this.userSession.dashboardManager.cleanupAppContent(app.packageName);
+
       // Reset connection state to prevent apps from being stuck in RESURRECTING
       this.setAppConnectionState(app.packageName, AppConnectionState.DISCONNECTED);
 
@@ -558,6 +575,9 @@ export class AppManager {
       // Clean up display state for stopped app
       this.userSession.displayManager.handleAppStop(packageName);
 
+      // Clean up dashboard content for stopped app
+      this.userSession.dashboardManager.cleanupAppContent(packageName);
+
     } catch (error) {
       this.logger.error(`Error stopping app ${packageName}:`, error);
     }
@@ -658,11 +678,15 @@ export class AppManager {
       const user = await User.findOrCreateUser(this.userSession.userId);
       const userSettings = user.getAppSettings(packageName) || app?.settings || [];
 
+      // Get user's AugmentOS system settings with fallback to defaults
+      const userAugmentosSettings = user.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
+
       // Send connection acknowledgment
       const ackMessage = {
         type: CloudToTpaMessageType.CONNECTION_ACK,
         sessionId: sessionId,
         settings: userSettings,
+        augmentosSettings: userAugmentosSettings,
         timestamp: new Date()
       };
 
@@ -772,7 +796,7 @@ export class AppManager {
       this.logger.debug({ appStateChange }, `Sent APP_STATE_CHANGE to ${this.userSession.userId}`);
       return appStateChange;
     } catch (error) {
-      this.logger.error(error , `Error broadcasting app state for ${this.userSession.userId}`);
+      this.logger.error(error, `Error broadcasting app state for ${this.userSession.userId}`);
       return null;
     }
   }
@@ -850,8 +874,9 @@ export class AppManager {
    * @param reason Close reason
    */
   async handleAppConnectionClosed(packageName: string, code: number, reason: string): Promise<void> {
+    const logger = this.logger.child({ function: 'handleAppConnectionClosed', packageName, code, reason });
     try {
-      this.logger.info({ packageName, code, reason }, `[AppManager:handleAppConnectionClosed]: (${packageName}, ${code}, ${reason})`);
+      logger.info({ packageName, code, reason }, `[AppManager]: (${packageName}, ${code}, ${reason})`);
 
       // Remove from app connections
       this.userSession.appWebsockets.delete(packageName);
@@ -863,22 +888,26 @@ export class AppManager {
       const currentState = this.getAppConnectionState(packageName);
 
       if (currentState === AppConnectionState.STOPPING) {
-        this.logger.debug({ packageName }, `[AppManager:handleAppConnectionClosed]: (currentState === AppConnectionState.STOPPING) - App ${packageName} stopped as expected, removing from tracking`);
+        this.logger.debug({ packageName }, `[AppManager]: (currentState === AppConnectionState.STOPPING) - App ${packageName} stopped as expected, removing from tracking`);
         return;
       }
 
       // Check for normal close codes (intentional shutdown)
       if (code === 1000 || code === 1001) {
-        this.logger.debug({ packageName, code }, `[AppManager:handleAppConnectionClosed]: (code === 1000 || code === 1001) - App ${packageName} closed normally`);
+        // this.logger.debug({ packageName, code }, `[AppManager:handleAppConnectionClosed]: (code === 1000 || code === 1001) - App ${packageName} closed normally`);
 
-        // Let's call stopApp to remove the app from runningApps and loadingApps.
-        await this.stopApp(packageName, false);
-        this.logger.debug(`App ${packageName} stopped cleanly after normal close`);
-        return;
+        // // Let's call stopApp to remove the app from runningApps and loadingApps.
+        // await this.stopApp(packageName, false);
+        // this.logger.debug(`App ${packageName} stopped cleanly after normal close`);
+        // return;
+
+        // NOTE(isaiah): I think even if the app closes normally, we still want to handle the grace period and resurrection logic.
+        // The app should only stop if it was stopped explicitly, not just because it closed normally.
+        logger.debug(`[AppManager]: (code === 1000 || code === 1001) | code:${code}, reason:${reason} | App ${packageName}, continuing to handle grace period and resurrection logic`);
       }
 
       // Unexpected close - start grace period
-      this.logger.warn(`App ${packageName} unexpectedly disconnected (code: ${code}) (reason: ${reason}), starting grace period`);
+      logger.warn(`App ${packageName} unexpectedly disconnected (code: ${code}) (reason: ${reason}), starting grace period`);
       this.setAppConnectionState(packageName, AppConnectionState.GRACE_PERIOD);
 
       // Clear any existing timer
@@ -889,32 +918,22 @@ export class AppManager {
 
       // Set new timer for grace period
       const reconnectionTimer = setTimeout(async () => {
-        this.logger.warn(`Reconnection Grace period expired for ${packageName}, checking connection state`);
+        logger.warn(`Reconnection Grace period expired for ${packageName}, checking connection state`);
 
         // If not reconnected, move to disconnected state and attempt resurrection.
         if (!this.userSession.appWebsockets.has(packageName)) {
           this.logger.debug(`App ${packageName} not reconnected, moving to DISCONNECTED state`);
-          // Let's let stopApp remove the app from runningApps and loadingApps.
-          // this.userSession.runningApps.delete(packageName);
-          // this.userSession.loadingApps.delete(packageName);
           this.setAppConnectionState(packageName, AppConnectionState.RESURRECTING);
 
-          // Broadcast app state change
+          // Try to resurrect the app.
           try {
-            // Try to resurrect the app.
             await this.stopApp(packageName, true);
             await this.startApp(packageName);
-            // this.broadcastAppState(); // should already be called from both stopApp and startApp.
           }
           catch (error) {
-            this.logger.error({
-              userId: this.userSession.userId,
-              packageName,
-              service: 'AppManager',
-              error: error instanceof Error ? error.message : String(error)
-            }, `Error starting resurrection for TPA ${packageName}`);
+            const logger = this.logger.child({ packageName, function: 'handleAppConnectionClosed' });
+            logger.error(error, `Error starting resurrection for TPA ${packageName}`);
           }
-
         }
 
         // Remove the timer from the map
@@ -1053,6 +1072,7 @@ export class AppManager {
             connection.send(JSON.stringify(message));
 
             // Close the connection
+            this.setAppConnectionState(packageName, AppConnectionState.STOPPING);
             connection.close(1000, 'User session ended');
             this.logger.debug({ userId: this.userSession.userId, packageName, service: 'AppManager' },
               `Closed connection for ${packageName} during dispose`);

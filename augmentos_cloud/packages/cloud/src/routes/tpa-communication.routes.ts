@@ -30,7 +30,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid packageName' });
     }
     // Validate the API key
-    const isValid = await appService.validateApiKey(packageName, tpaApiKey, req.ip);
+    const isValid = await appService.validateApiKey(packageName, tpaApiKey);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid API key' });
     }

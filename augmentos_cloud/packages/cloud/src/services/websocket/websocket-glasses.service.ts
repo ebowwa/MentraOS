@@ -13,9 +13,11 @@ import {
   ConnectionAck,
   ConnectionError,
   ConnectionInit,
+  CoreStatusUpdate,
   GlassesConnectionState,
   GlassesToCloudMessage,
   GlassesToCloudMessageType,
+  HeadPosition,
   KeepAliveAck,
   LocationUpdate,
   PhotoResponse,
@@ -27,12 +29,13 @@ import {
 import UserSession from '../session/UserSession';
 // import { SessionService } from '../session/session.service';
 import { logger as rootLogger } from '../logging/pino-logger';
-import subscriptionService from '../core/subscription.service';
+import subscriptionService from '../session/subscription.service';
 import { PosthogService } from '../logging/posthog.service';
-import { systemApps } from '../core/system-apps';
+// import { systemApps } from '../core/system-apps';
 import { sessionService } from '../session/session.service';
 import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 
 const SERVICE_NAME = 'websocket-glasses.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
@@ -240,6 +243,107 @@ export class GlassesWebSocketService {
           await this.handleAugmentOSSettingsUpdateRequest(userSession, message as AugmentosSettingsUpdateRequest);
           break;
 
+        case GlassesToCloudMessageType.CORE_STATUS_UPDATE: {
+          const coreStatusUpdate = message as CoreStatusUpdate;
+          const logger = userSession.logger.child({ service: SERVICE_NAME, type: GlassesToCloudMessageType.CORE_STATUS_UPDATE });
+          // userSession.logger.info('Received core status update:', coreStatusUpdate);
+
+          try {
+            // The status is already an object, no need to parse
+            const statusObj = coreStatusUpdate.status as any;
+            const coreInfo = statusObj.status.core_info;
+            const connectedGlasses = statusObj.status.connected_glasses;
+            logger.debug({ service: SERVICE_NAME, coreInfo, connectedGlasses }, 'Core status update received');
+
+            if (!coreInfo || !connectedGlasses) {
+              userSession.logger.error('Invalid core status update format - missing required fields');
+              break;
+            }
+;
+            
+            let brightness = statusObj.status.glasses_settings.brightness;
+            const glassesSettings = statusObj.status.glasses_settings;
+            
+            // Map core status fields to augmentos settings
+            const newSettings = {
+              useOnboardMic: coreInfo.force_core_onboard_mic,
+              contextualDashboard: coreInfo.contextual_dashboard_enabled,
+              metricSystemEnabled: coreInfo.metric_system_enabled,
+              headUpAngle: connectedGlasses.head_up_angle,
+
+              // Glasses settings.
+              brightness: glassesSettings.brightness,
+              autoBrightness: glassesSettings.auto_brightness,
+              dashboard_height: glassesSettings.dashboard_height,
+              dashboard_depth: glassesSettings.dashboard_depth,
+
+              sensingEnabled: coreInfo.sensing_enabled,
+              alwaysOnStatusBar: coreInfo.always_on_status_bar_enabled,
+              bypassVad: coreInfo.bypass_vad_for_debugging,
+              bypassAudioEncoding: coreInfo.bypass_audio_encoding_for_debugging,
+            };
+
+            logger.debug("🔥🔥🔥: newSettings:", newSettings);
+
+            // Find or create the user
+            const user = await User.findOrCreateUser(userSession.userId);
+
+            // Get current settings before update
+            const currentSettingsBeforeUpdate = JSON.parse(JSON.stringify(user.augmentosSettings));
+            userSession.logger.info('Current settings before update:', currentSettingsBeforeUpdate);
+
+            logger.debug("🔥🔥🔥: currentSettingsBeforeUpdate:", currentSettingsBeforeUpdate);
+            logger.debug("🔥🔥🔥: newSettings:", newSettings);
+
+            // Check if anything actually changed
+            const changedKeys = this.getChangedKeys(currentSettingsBeforeUpdate, newSettings);
+            logger.debug("🔥🔥🔥: changedKeys:", changedKeys);
+            if (changedKeys.length === 0) {
+              userSession.logger.info('No changes detected in settings from core status update');
+            } else {
+              userSession.logger.info('Changes detected in settings from core status update:', {
+                changedFields: changedKeys.map(key => ({
+                  key,
+                  from: `${(currentSettingsBeforeUpdate as Record<string, any>)[key]} (${typeof (currentSettingsBeforeUpdate as Record<string, any>)[key]})`,
+                  to: `${(newSettings as Record<string, any>)[key]} (${typeof (newSettings as Record<string, any>)[key]})`
+                }))
+              });
+              // Update the settings in the database before broadcasting
+              try {
+                await user.updateAugmentosSettings(newSettings);
+                userSession.logger.info('Updated AugmentOS settings in the database.');
+              } catch (dbError) {
+                userSession.logger.error(dbError, 'Failed to update AugmentOS settings in the database:');
+                return; // Do not broadcast if DB update fails
+              }
+              // Only notify for changed keys
+              const notifiedApps = new Set<string>();
+              for (const key of changedKeys) {
+                const subscribedApps = subscriptionService.getSubscribedAppsForAugmentosSetting(userSession, key);
+                // userSession.logger.info('Subscribed apps for key:', key, subscribedApps);
+                for (const packageName of subscribedApps) {
+                  if (notifiedApps.has(packageName)) continue;
+                  const tpaWs = userSession.appWebsockets.get(packageName);
+                  if (tpaWs && tpaWs.readyState === 1) {
+                    userSession.logger.info(`[websocket.service]: Broadcasting AugmentOS settings update to ${packageName}`);
+                    const augmentosSettingsUpdate = {
+                      type: 'augmentos_settings_update',
+                      sessionId: `${userSession.sessionId}-${packageName}`,
+                      settings: newSettings,
+                      timestamp: new Date()
+                    };
+                    tpaWs.send(JSON.stringify(augmentosSettingsUpdate));
+                    notifiedApps.add(packageName);
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            userSession.logger.error(error, 'Error updating settings from core status:');
+          }
+          break;
+        }
+
         // Mentra Live.
         case GlassesToCloudMessageType.RTMP_STREAM_STATUS:
           // Delegate to VideoManager within the user's session
@@ -254,6 +358,12 @@ export class GlassesWebSocketService {
         case GlassesToCloudMessageType.PHOTO_RESPONSE:
           // Delegate to PhotoManager
           userSession.photoManager.handlePhotoResponse(message as PhotoResponse);
+          break;
+
+        case GlassesToCloudMessageType.HEAD_POSITION:
+          await this.handleHeadPosition(userSession, message as HeadPosition);
+          // Also relay to TPAs in case they want to handle head position events
+          sessionService.relayMessageToTpas(userSession, message);
           break;
 
         // TODO(isaiah): Add other message type handlers as needed
@@ -281,7 +391,7 @@ export class GlassesWebSocketService {
       try {
         // Start the dashboard app, but let's not add to the user's running apps since it's a system app.
         // honestly there should be no annyomous users so if it's an anonymous user we should just not start the dashboard
-        await userSession.appManager.startApp(systemApps.dashboard.packageName);
+        await userSession.appManager.startApp(SYSTEM_DASHBOARD_PACKAGE_NAME);
       }
       catch (error) {
         userSession.logger.error({ error }, `Error starting dashboard app`);
@@ -316,6 +426,15 @@ export class GlassesWebSocketService {
     };
 
     userSession.websocket.send(JSON.stringify(ackMessage));
+  }
+
+
+  // Utility function to get changed keys between two objects
+  private getChangedKeys<T extends Record<string, any>>(before: T, after: T): string[] {
+    return Object.keys(after).filter(
+      key => before[key] !== after[key] ||
+        (typeof before[key] !== typeof after[key] && before[key] != after[key])
+    );
   }
 
 
@@ -366,6 +485,45 @@ export class GlassesWebSocketService {
     }
     catch (error) {
       userSession.logger.error({ error, service: SERVICE_NAME }, `Error updating user location:`, error);
+    }
+  }
+
+  /**
+   * Handle head position event message
+   * 
+   * @param userSession User session
+   * @param message Head position message
+   */
+  private async handleHeadPosition(userSession: UserSession, message: HeadPosition): Promise<void> {
+    userSession.logger.debug({
+      position: message.position,
+      service: SERVICE_NAME
+    }, `Head position event received: ${message.position}`);
+
+    try {
+      // If head position is 'up', trigger dashboard content cycling
+      if (message.position === 'up') {
+        userSession.logger.info({
+          service: SERVICE_NAME,
+          sessionId: userSession.sessionId
+        }, 'Head up detected - triggering dashboard content cycling');
+
+        // Call the dashboard manager's onHeadsUp method to cycle content
+        userSession.dashboardManager.onHeadsUp();
+      }
+
+      // Track the head position event
+      PosthogService.trackEvent(GlassesToCloudMessageType.HEAD_POSITION, userSession.userId, {
+        sessionId: userSession.sessionId,
+        position: message.position,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      userSession.logger.error({
+        error,
+        service: SERVICE_NAME,
+        position: message.position
+      }, 'Error handling head position event');
     }
   }
 

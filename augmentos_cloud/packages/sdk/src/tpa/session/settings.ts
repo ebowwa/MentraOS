@@ -263,6 +263,29 @@ export class SettingsManager {
   }
   
   /**
+   * 🎛️ Get an AugmentOS system setting value with optional default
+   * 
+   * @param key AugmentOS setting key (e.g., 'metricSystemEnabled', 'brightness')
+   * @param defaultValue Default value to return if the setting is not found
+   * @returns The setting value or the default value
+   * 
+   * @example
+   * ```typescript
+   * const isMetric = settings.getAugmentOS<boolean>('metricSystemEnabled', false);
+   * const brightness = settings.getAugmentOS<number>('brightness', 50);
+   * ```
+   */
+  getAugmentOS<T = any>(key: string, defaultValue?: T): T {
+    const value = this.augmentosSettings[key];
+    
+    if (value !== undefined) {
+      return value as T;
+    }
+    
+    return defaultValue as T;
+  }
+
+  /**
    * 🔍 Find a setting by key
    * 
    * @param key Setting key to find
@@ -296,14 +319,33 @@ export class SettingsManager {
   }
   
   /**
+   * 🎛️ Listen for changes to a specific AugmentOS setting (e.g., metricSystemEnabled)
+   * 
+   * @param key The augmentosSettings key to listen for (e.g., 'metricSystemEnabled')
+   * @param handler Function to call when the value changes
+   * @returns Function to remove the listener
+   * 
+   * @example
+   * ```typescript
+   * settings.onAugmentOSChange('metricSystemEnabled', (isMetric, wasMetric) => {
+   *   console.log(`Units changed: ${wasMetric ? 'metric' : 'imperial'} → ${isMetric ? 'metric' : 'imperial'}`);
+   * });
+   * ```
+   */
+  onAugmentOSChange<T = any>(key: string, handler: SettingValueChangeHandler<T>): () => void {
+    return this.onAugmentosSettingChange(key, handler);
+  }
+
+  /**
    * Listen for changes to a specific AugmentOS setting (e.g., metricSystemEnabled)
    * This is a convenience wrapper for onValueChange for well-known augmentosSettings keys.
    * @param key The augmentosSettings key to listen for (e.g., 'metricSystemEnabled')
    * @param handler Function to call when the value changes
    * @returns Function to remove the listener
+   * @deprecated Use onAugmentOSChange instead
    */
   onAugmentosSettingsChange<T = any>(key: string, handler: SettingValueChangeHandler<T>): () => void {
-    return this.onValueChange(key, handler);
+    return this.onAugmentosSettingChange(key, handler);
   }
 
   /**

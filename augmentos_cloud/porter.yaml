@@ -20,12 +20,3 @@ services:
   env:
     HOST: "0.0.0.0"
     SERVICE_NAME: "cloud"
-- name: dashboard-manager
-  type: web
-  run: node packages/apps/dashboard/dist/index.js
-  port: 80
-  cpuCores: 0.5
-  ramMegabytes: 512
-  env:
-    HOST: "0.0.0.0"
-    SERVICE_NAME: "dashboard-manager"
