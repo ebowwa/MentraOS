@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeftIcon, AlertCircle, CheckCircle, Upload } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
@@ -21,10 +22,17 @@ import PermissionsForm from '../components/forms/PermissionsForm';
 import { Permission } from '@/types/tpa';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
+import ImageUpload from '../components/forms/ImageUpload';
+import TpaTypeTooltip from '../components/forms/TpaTypeTooltip';
+// import type { TpaType } from '@augmentos/sdk';
 // import { TPA } from '@/types/tpa';
 // Import the public email provider list
 // import publicEmailDomains from 'email-providers/all.json';
 
+enum TpaType {
+  STANDARD = 'standard',
+  BACKGROUND = 'background'
+}
 /**
  * Page for creating a new TPA (Third Party Application)
  */
@@ -41,9 +49,9 @@ const CreateTPA: React.FC = () => {
     publicUrl: '',
     logoURL: '',
     webviewURL: '',
+    tpaType: TpaType.BACKGROUND, // Default to BACKGROUND
     permissions: [], // Initialize permissions as empty array
     // isPublic: false,
-    // tpaType: TpaType.STANDARD
   });
 
   // Validation state
@@ -119,6 +127,14 @@ const CreateTPA: React.FC = () => {
     }));
   };
 
+  // Handle TpaType changes
+  const handleTpaTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tpaType: value as TpaType
+    }));
+  };
+
 
 
   // Validate form
@@ -164,22 +180,7 @@ const CreateTPA: React.FC = () => {
 
     // Logo URL validation
     if (!formData.logoURL) {
-      newErrors.logoURL = 'Logo URL is required';
-    } else {
-      try {
-        // Apply normalizeUrl to handle missing protocols before validation
-        const normalizedUrl = normalizeUrl(formData.logoURL);
-        new URL(normalizedUrl);
-
-        // Update the form data with the normalized URL
-        setFormData(prev => ({
-          ...prev,
-          logoURL: normalizedUrl
-        }));
-      } catch (e) {
-        console.error(e);
-        newErrors.logoURL = 'Please enter a valid URL';
-      }
+      newErrors.logoURL = 'Logo is required';
     }
 
     // Webview URL validation (optional)
@@ -238,7 +239,7 @@ const CreateTPA: React.FC = () => {
         publicUrl: formData.publicUrl,
         logoURL: formData.logoURL,
         webviewURL: formData.webviewURL,
-        // tpaType: TpaType.STANDARD, // Using the default type
+        tpaType: formData.tpaType,
         permissions: formData.permissions
       };
 
@@ -432,21 +433,30 @@ const CreateTPA: React.FC = () => {
                 <Label htmlFor="logoURL">
                   Logo URL <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="logoURL"
-                  name="logoURL"
-                  value={formData.logoURL}
-                  onChange={handleChange}
-                  onBlur={handleUrlBlur}
-                  placeholder="yourserver.com/logo.png"
-                  className={errors.logoURL ? "border-red-500" : ""}
+                <ImageUpload
+                  currentImageUrl={formData.logoURL}
+                  onImageUploaded={(url) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      logoURL: url
+                    }));
+                    // Clear error when image is uploaded
+                    if (errors.logoURL) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.logoURL;
+                        return newErrors;
+                      });
+                    }
+                  }}
+                  packageName={formData.packageName}
+                  disabled={isLoading}
+                  hasError={!!errors.logoURL}
+                  errorMessage={errors.logoURL}
                 />
-                {errors.logoURL && (
-                  <p className="text-xs text-red-500 mt-1">{errors.logoURL}</p>
-                )}
+                {/* Note: The actual Cloudflare URL is stored in logoURL but not displayed to the user */}
                 <p className="text-xs text-gray-500">
-                  URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
-                  HTTPS is required and will be added automatically if not specified.
+                  Upload an image that will be used as your app's icon (recommended: 512x512 PNG).
                 </p>
               </div>
 
@@ -464,10 +474,43 @@ const CreateTPA: React.FC = () => {
                 {errors.webviewURL && (
                   <p className="text-xs text-red-500 mt-1">{errors.webviewURL}</p>
                 )}
-                <p className="text-xs text-gray-500 pb-5">
+                <p className="text-xs text-gray-500">
                   If your app has a companion mobile interface, provide the URL here.
                   HTTPS is required and will be added automatically if not specified.
                 </p>
+              </div>
+
+              {/* TPA Type Selection */}
+              <div className="space-y-2 pb-5">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tpaType">App Type</Label>
+                  <TpaTypeTooltip />
+                </div>
+                <p className="text-xs text-gray-500">
+                  Background apps can run alongside other apps, 
+                  <br/>Only 1 foreground app can run at a time.
+                  <br/>foreground apps yield the display to background apps when displaying content.
+                </p>
+                <Select value={formData.tpaType} onValueChange={handleTpaTypeChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select app type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={TpaType.BACKGROUND}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Background App</span>
+                        {/* <span className="text-xs text-gray-500">Multiple can run simultaneously</span> */}
+                      </div>
+                    </SelectItem>
+                    <SelectItem value={TpaType.STANDARD}>
+                      <div className="flex flex-col">
+                        <span className="font-medium">Foreground App</span>
+                        {/* <span className="text-xs text-gray-500">Only one can run at a time</span> */}
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
               </div>
 
 

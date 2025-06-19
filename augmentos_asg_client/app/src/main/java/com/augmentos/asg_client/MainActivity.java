@@ -3,6 +3,7 @@
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     https://www.apache.org/licenses/LICENSE-2.0
@@ -49,6 +50,7 @@ import androidx.preference.PreferenceManager;
 
 // import com.firebase.ui.auth.AuthUI;
 import com.augmentos.asg_client.AsgClientService;
+import com.augmentos.asg_client.AsgClientService;
 import com.augmentos.augmentos_core.smarterglassesmanager.utils.PermissionsUtils;
 
 import android.media.projection.MediaProjectionManager;
@@ -65,6 +67,11 @@ public class MainActivity extends AppCompatActivity {
   private static final int PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
   private static final int PICK_CONTACT_REQUEST = 1;
   private static final int READ_CONTACTS_PERMISSIONS_REQUEST = 2;
+  private static final int PERMISSIONS_REQUEST_CAMERA = 3;
+
+  // Constants for OTA updater communication
+  private static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+  private static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
 
   public boolean gettingPermissions = false;
 
@@ -72,8 +79,40 @@ public class MainActivity extends AppCompatActivity {
   @Override
   protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
-    startAsgClientService();
-    mBound = false;
+    
+    // Stop factory test app before starting our services to avoid serial port conflicts
+    stopFactoryTest();
+
+      // Check if this is a restart request from OTA updater
+      boolean restartService = getIntent().getBooleanExtra("restart_service", false);
+    boolean startService = getIntent().getBooleanExtra("start_service", false);
+      if (restartService) {
+          Log.i(TAG, "Received restart_service request from OTA updater");
+
+          // Force restart the service
+          restartAsgClientService();
+
+          // Send heartbeat acknowledgment directly to OTA updater
+          sendHeartbeatAck();
+      } else if (startService) {
+        Log.i(TAG, "Received start_service request");
+
+        // Start the service if not running
+        if (!isMyServiceRunning(AsgClientService.class)) {
+          startAsgClientService();
+        }
+
+        // Send heartbeat acknowledgment
+        sendHeartbeatAck();
+
+        // Also send restart complete broadcast
+        sendRestartComplete();
+      } else {
+          // Normal startup
+          startAsgClientService();
+      }
+
+      mBound = false;
 
     permissionsUtils = new PermissionsUtils(this, TAG);
     permissionsUtils.getSomePermissions();
@@ -120,6 +159,16 @@ public class MainActivity extends AppCompatActivity {
       //ActivityCompat.requestPermissions(:w
       // this, new String[] {Manifest.permission.RECORD_AUDIO}, PERMISSIONS_REQUEST_RECORD_AUDIO);
       }
+
+    // Explicitly check camera permissions
+    if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+            != PackageManager.PERMISSION_GRANTED) {
+      gettingPermissions = true;
+      requestPermissions(new String[]{
+              Manifest.permission.CAMERA,
+              Manifest.permission.FOREGROUND_SERVICE_CAMERA
+      }, PERMISSIONS_REQUEST_CAMERA);
+    }
   }
 
   @Override
@@ -146,6 +195,21 @@ public class MainActivity extends AppCompatActivity {
           Toast.makeText(
                           this,
                           "This app requires Microphone permission to function properly.",
+                          Toast.LENGTH_LONG)
+                  .show();
+        }
+        return;
+      case PERMISSIONS_REQUEST_CAMERA:
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+          Log.d(TAG, "Camera permission granted");
+          // Restart camera service if it was running
+          if (isMyServiceRunning(AsgClientService.class)) {
+            sendAsgClientServiceMessage("com.augmentos.asg_client.ACTION_RESTART_CAMERA");
+          }
+        } else {
+          Toast.makeText(
+                          this,
+                          "This app requires Camera permission to function properly.",
                           Toast.LENGTH_LONG)
                   .show();
         }
@@ -229,6 +293,15 @@ public class MainActivity extends AppCompatActivity {
       @Override
       public void run() {
         startAsgClientService();
+
+        // Send restart complete notification after service is started
+        new Handler().postDelayed(new Runnable() {
+          @Override
+          public void run() {
+            sendRestartComplete();
+            sendHeartbeatAck();
+          }
+        }, 1000); // Wait a bit to ensure service is fully started
       }
     }, 300);
   }
@@ -350,6 +423,60 @@ public class MainActivity extends AppCompatActivity {
                       | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                       | View.SYSTEM_UI_FLAG_FULLSCREEN
                       | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
+  }
+
+  private void stopFactoryTest() {
+    SysControl.stopApp(this, "com.android.factorytest");
+  }
+
+  public void launchOdmLauncher(View view) {
+    Log.d(TAG, "Launching ODM Launcher");
+    
+    try {
+      Intent intent = new Intent();
+      intent.setComponent(new ComponentName("com.xy.fakelauncher", "com.xy.fakelauncher.Launcher"));
+      intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      startActivity(intent);
+      Log.d(TAG, "Successfully launched ODM launcher");
+    } catch (Exception e) {
+      Log.e(TAG, "Error launching ODM launcher: " + e.getMessage(), e);
+      Toast.makeText(this, "Failed to launch ODM launcher", Toast.LENGTH_SHORT).show();
+    }
+  }
+
+    /**
+     * Send heartbeat acknowledgment to OTA updater
+     */
+    private void sendHeartbeatAck() {
+        try {
+          // Send both versions to ensure compatibility
+          Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+          ackIntent.setPackage("com.augmentos.otaupdater");
+          sendBroadcast(ackIntent);
+
+          // Also send the OTA updater's expected version
+          Intent otaAckIntent = new Intent("com.augmentos.otaupdater.ACTION_HEARTBEAT_ACK");
+          otaAckIntent.setPackage("com.augmentos.otaupdater");
+          sendBroadcast(otaAckIntent);
+
+          Log.i(TAG, "Sent heartbeat acknowledgments to OTA updater");
+        } catch (Exception e) {
+            Log.e(TAG, "Error sending heartbeat acknowledgment", e);
+        }
+    }
+
+  /**
+   * Send restart complete notification to OTA updater
+   */
+  private void sendRestartComplete() {
+    try {
+      Intent completeIntent = new Intent(ACTION_RESTART_COMPLETE);
+      completeIntent.setPackage("com.augmentos.otaupdater");
+      sendBroadcast(completeIntent);
+      Log.i(TAG, "Sent restart complete notification to OTA updater");
+    } catch (Exception e) {
+      Log.e(TAG, "Error sending restart complete notification", e);
     }
   }
 }

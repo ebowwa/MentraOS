@@ -4,6 +4,8 @@ import android.util.Log;
 
 import java.util.*;
 import java.util.concurrent.*;
+import android.os.Handler;
+import android.os.Looper;
 
 public class WindowManagerWithTimeouts {
     public static final String TAG = "WindowManager";
@@ -16,10 +18,12 @@ public class WindowManagerWithTimeouts {
 
     private final Runnable globalTimeoutAction;
 
-    // Track what is currently shown on-screen so we don’t re-send the same layer repeatedly
+    // Track what is currently shown on-screen so we don't re-send the same layer repeatedly
     private Layer currentlyDisplayedLayer = null;
     private long currentlyDisplayedLayerTimestamp = 0;
     private boolean globalTimedOut = false;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private Runnable updateDisplayRunnable;
 
 
     /**
@@ -94,7 +98,7 @@ public class WindowManagerWithTimeouts {
     }
 
     /**
-     * Check if any layer’s lingerTime has passed; if so, hide that layer.
+     * Check if any layer's lingerTime has passed; if so, hide that layer.
      * Also check for global inactivity.
      */
     private void checkTimeouts() {
@@ -130,10 +134,29 @@ public class WindowManagerWithTimeouts {
         updateDisplay();
     }
 
+    private void updateDisplay() {
+        // Cancel any pending delayed execution
+        if (updateDisplayRunnable != null) {
+            handler.removeCallbacks(updateDisplayRunnable);
+        }
+        
+        // Fire immediately
+        doUpdateDisplay();
+        
+        // Schedule to fire again after 1 second
+        updateDisplayRunnable = new Runnable() {
+            @Override
+            public void run() {
+                doUpdateDisplay();
+            }
+        };
+        handler.postDelayed(updateDisplayRunnable, 1000);
+    }
+
     /**
      * Renders whichever layer is on top. If the dashboard is visible, it wins.
      */
-    private void updateDisplay() {
+    private void doUpdateDisplay() {
         // Dashboard first
         Layer dash = findLayer("DASHBOARD");
         if (dash != null && dash.isVisible()) {
@@ -143,7 +166,7 @@ public class WindowManagerWithTimeouts {
 
         // Otherwise newest visible layer
         Layer top = layers.stream()
-                .filter(Layer::isVisible)
+                .filter(layer -> layer != null && layer.isVisible())  // Add null check
                 .max(Comparator.comparingLong(Layer::getLastUpdated))
                 .orElse(null);
 

@@ -45,7 +45,7 @@ export const validateTpaApiKey = async (req: Request, res: Response, next: NextF
     }
 
     // Validate the provided API key against the stored hash
-    const isValid = await appService.validateApiKey(app.packageName, apiKey, req.ip);
+    const isValid = await appService.validateApiKey(app.packageName, apiKey);
 
     if (!isValid) {
       logger.warn(`TPA API Key Middleware: Invalid API Key for package ${app.packageName}`);

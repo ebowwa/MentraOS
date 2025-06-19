@@ -1,10 +1,10 @@
-import { NativeModule, NativeModules } from 'react-native';
+import {NativeModule, NativeModules} from "react-native"
 
 interface InstallApkModuleInterface extends NativeModule {
-  installApk: (packageName: string) => Promise<any>;
-  downloadCoreApk: () => Promise<string>;
+  installApk: (packageName: string) => Promise<any>
+  downloadCoreApk: () => Promise<string>
 }
 
-const { InstallApkModule } = NativeModules;
+const {InstallApkModule} = NativeModules
 
-export default InstallApkModule as InstallApkModuleInterface;
+export default InstallApkModule as InstallApkModuleInterface

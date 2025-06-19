@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, RefreshCw, Share2, LinkIcon, Upload, MoveIcon, Download, Files } from "lucide-react";
@@ -16,7 +17,6 @@ import ApiKeyDialog from '../components/dialogs/ApiKeyDialog';
 import SharingDialog from '../components/dialogs/SharingDialog';
 import PublishDialog from '../components/dialogs/PublishDialog';
 import ImportConfigDialog from '../components/dialogs/ImportConfigDialog';
-import { TpaType } from '@augmentos/sdk';
 import { normalizeUrl } from '@/libs/utils';
 import PermissionsForm from '../components/forms/PermissionsForm';
 import SettingsEditor from '../components/forms/SettingsEditor';
@@ -25,7 +25,14 @@ import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
 // import publicEmailDomains from 'email-providers/all.json';
 import MoveOrgDialog from '../components/dialogs/MoveOrgDialog';
+import ImageUpload from '../components/forms/ImageUpload';
+import TpaTypeTooltip from '../components/forms/TpaTypeTooltip';
+// import { TpaType } from '@augmentos/sdk';
 
+enum TpaType {
+  STANDARD = 'standard',
+  BACKGROUND = 'background'
+}
 // Extend TPA type locally to include sharedWithOrganization
 interface EditableTPA extends TPA {
   sharedWithOrganization?: boolean;
@@ -196,7 +203,7 @@ const EditTPA: React.FC = () => {
     };
 
     fetchData();
-  }, [packageName, currentOrg, user?.email]);
+  }, [packageName, currentOrg?.id, user?.email]);
 
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -254,6 +261,14 @@ const EditTPA: React.FC = () => {
     }));
   };
 
+  // Handle TpaType changes
+  const handleTpaTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tpaType: value as TpaType
+    }));
+  };
+
   /**
    * Recursively removes _id fields and empty options/enum arrays from objects and arrays
    * Also removes id fields from settings (but not from tools where id is the tool identifier)
@@ -296,7 +311,8 @@ const EditTPA: React.FC = () => {
       name: formData.name,
       description: formData.description,
       publicUrl: formData.publicUrl || '',
-      logoURL: formData.logoURL || '',
+      logoURL: formData.logoURL || '', // Cloudflare Images URL
+      tpaType: formData.tpaType,
       permissions: removeIdFields(formData.permissions || []),
       settings: removeIdFields(formData.settings || [], true),
       tools: removeIdFields(formData.tools || [])
@@ -639,6 +655,15 @@ const EditTPA: React.FC = () => {
       return { isValid: false, error: 'Optional field "webviewURL" must be a string if provided.' };
     }
 
+    // tpaType is optional but if present, must be a valid TpaType value (excluding SYSTEM_DASHBOARD)
+    if (config.tpaType !== undefined) {
+      const validTpaTypes = [TpaType.BACKGROUND, TpaType.STANDARD];
+      if (!validTpaTypes.includes(config.tpaType)) {
+        console.log('Validation failed: tpaType is present but invalid');
+        return { isValid: false, error: 'Optional field "tpaType" must be either "background" or "standard" if provided.' };
+      }
+    }
+
     // Validate each setting (but allow empty or missing settings array)
     if (config.settings && Array.isArray(config.settings)) {
       for (let index = 0; index < config.settings.length; index++) {
@@ -855,6 +880,7 @@ const EditTPA: React.FC = () => {
           publicUrl: (importConfigData.publicUrl !== undefined && importConfigData.publicUrl.trim() !== '')
             ? importConfigData.publicUrl.trim()
             : prev.publicUrl,
+          // Note: logoURL from import will be a Cloudflare Images URL or other hosted URL
           logoURL: (importConfigData.logoURL !== undefined && importConfigData.logoURL.trim() !== '')
             ? importConfigData.logoURL.trim()
             : prev.logoURL,
@@ -862,6 +888,11 @@ const EditTPA: React.FC = () => {
           webviewURL: (importConfigData.webviewURL !== undefined && typeof importConfigData.webviewURL === 'string' && importConfigData.webviewURL.trim() !== '')
             ? importConfigData.webviewURL.trim()
             : prev.webviewURL,
+
+          // Update tpaType if provided, otherwise keep existing (defaults to BACKGROUND in form)
+          tpaType: importConfigData.tpaType !== undefined
+            ? importConfigData.tpaType
+            : prev.tpaType,
 
           // Replace permissions if provided, otherwise keep existing
           permissions: importConfigData.permissions !== undefined
@@ -1013,17 +1044,20 @@ const EditTPA: React.FC = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="logoURL">Logo URL</Label>
-                  <Input
-                    id="logoURL"
-                    name="logoURL"
-                    value={formData.logoURL}
-                    onChange={handleChange}
-                    onBlur={handleUrlBlur}
-                    placeholder="yourserver.com/logo.png"
+                  <ImageUpload
+                    currentImageUrl={formData.logoURL}
+                    onImageUploaded={(url) => {
+                      setFormData(prev => ({
+                        ...prev,
+                        logoURL: url
+                      }));
+                    }}
+                    packageName={formData.packageName}
+                    disabled={isSaving}
                   />
+                  {/* Note: The actual Cloudflare URL is stored in logoURL but not displayed to the user */}
                   <p className="text-xs text-gray-500">
-                    URL to an image that will be used as your app's icon (recommended: 512x512 PNG).
-                    HTTPS is required and will be added automatically if not specified.
+                    Upload an image that will be used as your app's icon (recommended: 512x512 PNG).
                   </p>
                 </div>
 
@@ -1041,7 +1075,40 @@ const EditTPA: React.FC = () => {
                     If your app has a companion mobile interface, provide the URL here.
                     HTTPS is required and will be added automatically if not specified.
                   </p>
+                </div>
+
+                {/* TPA Type Selection */}
+                <div className="space-y-2 pb-5">
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="tpaType">App Type</Label>
+                    <TpaTypeTooltip />
                   </div>
+                <p className="text-xs text-gray-500">
+                  <br/>Background apps can run alongside other apps, 
+                  <br/>Only 1 foreground app can run at a time.
+                  <br/>foreground apps yield the display to background apps when displaying content.
+                </p>
+                  <Select value={formData.tpaType} onValueChange={handleTpaTypeChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select app type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={TpaType.BACKGROUND}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">Background App</span>
+                          {/* <span className="text-xs text-gray-500">Multiple can run simultaneously</span> */}
+                        </div>
+                      </SelectItem>
+                      <SelectItem value={TpaType.STANDARD}>
+                        <div className="flex flex-col">
+                          <span className="font-medium">Foreground App</span>
+                          {/* <span className="text-xs text-gray-500">Only one can run at a time</span> */}
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                </div>
 
                   {/* Permissions Section */}
                   <div className="border rounded-md p-4 mt-6">

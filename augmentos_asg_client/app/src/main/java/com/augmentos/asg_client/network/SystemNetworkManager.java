@@ -235,11 +235,12 @@ public class SystemNetworkManager extends BaseNetworkManager {
     
     @Override
     public void connectToWifi(String ssid, String password) {
+        // Log.d(TAG, "System Network Manager: Attempting to connect to WiFi: " + ssid);
         if (ssid == null || ssid.isEmpty()) {
             Log.e(TAG, "Cannot connect to WiFi with empty SSID");
             return;
         }
-        
+
         try {
             // First ensure WiFi is enabled
             if (!wifiManager.isWifiEnabled()) {
@@ -349,25 +350,38 @@ public class SystemNetworkManager extends BaseNetworkManager {
         
         try {
             // Remove existing suggestions
-            wifiManager.removeNetworkSuggestions(new ArrayList<>());
-            
-            // Build the suggestion
-            WifiNetworkSuggestion.Builder builder = new WifiNetworkSuggestion.Builder()
-                    .setSsid(ssid)
-                    .setIsAppInteractionRequired(false); // Silent connection
-            
-            if (password != null && !password.isEmpty()) {
-                builder.setWpa2Passphrase(password);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                wifiManager.removeNetworkSuggestions(new ArrayList<>());
             }
-            
-            WifiNetworkSuggestion suggestion = builder.build();
-            
+
+            // Build the suggestion
+            WifiNetworkSuggestion.Builder builder = null; // Silent connection
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                builder = new WifiNetworkSuggestion.Builder()
+                        .setSsid(ssid)
+                        .setIsAppInteractionRequired(false);
+            }
+
+            if (password != null && !password.isEmpty()) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    builder.setWpa2Passphrase(password);
+                }
+            }
+
+            WifiNetworkSuggestion suggestion = null;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                suggestion = builder.build();
+            }
+
             // Add to list
             List<WifiNetworkSuggestion> suggestionsList = new ArrayList<>();
             suggestionsList.add(suggestion);
             
             // Add the suggestions to the WifiManager
-            int status = wifiManager.addNetworkSuggestions(suggestionsList);
+            int status = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                status = wifiManager.addNetworkSuggestions(suggestionsList);
+            }
             if (status != WifiManager.STATUS_NETWORK_SUGGESTIONS_SUCCESS) {
                 Log.e(TAG, "Failed to add network suggestions, status=" + status);
                 return;

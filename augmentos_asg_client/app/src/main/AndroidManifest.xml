@@ -7,7 +7,7 @@ package="com.augmentos.asg_client">
       android:required="false" />
     <uses-feature
         android:name="android.hardware.camera"
-        android:required="false" />
+        android:required="true" />
 
   <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
   <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
@@ -35,6 +35,8 @@ package="com.augmentos.asg_client">
   <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
   <uses-permission android:name="android.permission.CAMERA" />
+  <uses-permission android:name="android.hardware.camera.full" />
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
@@ -53,6 +55,8 @@ package="com.augmentos.asg_client">
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+  <!-- Add camera background permission -->
+  <uses-permission android:name="android.permission.CAMERA_BACKGROUND" />
 
 
     <!-- Application node is not neccessary for libraries -->
@@ -87,23 +91,37 @@ package="com.augmentos.asg_client">
         android:excludeFromRecents="true"
         android:taskAffinity=""
         android:exported="false" />
+
+    <!-- Receiver for handling restart requests from OTA updater -->
+    <receiver
+        android:name=".AsgClientRestartReceiver"
+        android:enabled="true"
+        android:exported="true">
+      <intent-filter>
+        <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
+      </intent-filter>
+    </receiver>
+
     <service
         android:name=".AsgClientService"
         android:enabled="true"
         android:exported="true"
-        android:foregroundServiceType="microphone"
-        />
-        
+        android:foregroundServiceType="camera|microphone">
+        <intent-filter>
+            <action android:name="com.augmentos.asg_client.ACTION_RESTART_SERVICE" />
+        </intent-filter>
+    </service>
+
     <service
         android:name=".camera.CameraNeo"
         android:enabled="true"
-        android:exported="false"
-        android:foregroundServiceType="camera" />
+        android:exported="true"
+        android:foregroundServiceType="camera|microphone" />
 
     <service
         android:name=".streaming.RtmpStreamingService"
         android:enabled="true"
-        android:exported="false"
+        android:exported="true"
         android:foregroundServiceType="camera|microphone" />
 
       <activity
@@ -137,6 +155,8 @@ package="com.augmentos.asg_client">
           android:name="android.support.FILE_PROVIDER_PATHS"
           android:resource="@xml/file_provider" />
     </provider>
+
+    <!-- Service health monitoring is handled by AsgClientService -->
 
   </application>
 
