@@ -138,6 +138,32 @@ app.use(cors({
 
     "https://augmentos.pages.dev",
     "https://augmentos-appstore-2.pages.dev",
+
+    "https://mentra.glass",
+    "https://api.mentra.glass",
+    "https://dev.api.mentra.glass",
+    "https://uscentral.api.mentra.glass",
+    "https://france.api.mentra.glass",
+    "https://asiaeast.api.mentra.glass",
+
+    "https://apps.mentra.glass",
+    "https://console.mentra.glass",
+    "https://dev.mentra.glass",
+    "https://account.mentra.glass",
+    "https://docs.mentra.glass",
+    "https://store.mentra.glass",
+    
+    "https://appsdev.mentra.glass",
+    "https://consoledev.mentra.glass",
+    "https://accountdev.mentra.glass",
+    "https://docsdev.mentra.glass",
+    "https://storedev.mentra.glass",
+
+    "https://dev.apps.mentra.glass",
+    "https://dev.console.mentra.glass",
+    "https://dev.account.mentra.glass",
+    "https://dev.docs.mentra.glass",
+    "https://dev.store.mentra.glass",
   ]
 }));
 
