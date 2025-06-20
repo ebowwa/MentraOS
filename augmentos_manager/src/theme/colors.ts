@@ -116,8 +116,8 @@ const palette = {
   tabBarGradientStart: "#F5E6D3", // Very light peachy orange for light theme tab bar start
   tabBarGradientEnd: "#FEFCFA", // Almost white with hint of warmth for light theme tab bar end
 
-  altTabBarGradientStart: "#1D1D45",
-  altTabBarGradientEnd: "#090A14",
+  altTabBarGradientStart: "#F5E6D3",
+  altTabBarGradientEnd: "#FEFCFA",
 
   // Button gradient colors
   buttonGradientStart: "#4340D3", // Purple-blue for button gradient start
