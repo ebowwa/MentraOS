@@ -49,7 +49,7 @@ const en = {
     openSettings: "Open Settings",
   },
   home: {
-    title: "AugmentOS",
+    title: "Home",
     pairGlasses: "Pair Glasses",
     connectGlasses: "Connect Glasses",
     connectingGlasses: "Connecting Glasses...",
@@ -167,7 +167,7 @@ const en = {
     passwordUpdatedSuccess: "Password updated successfully",
   },
   login: {
-    title: "AugmentOS",
+    title: "MentraOS",
     subtitle: "The future of smart glasses starts here",
     email: "Email",
     password: "Password",

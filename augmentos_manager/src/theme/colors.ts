@@ -196,7 +196,7 @@ export const colors = {
   loginGradientEnd: palette.neutral100, // White
 
   // Semantic color mappings for common UI elements
-  buttonPrimary: palette.blue500,
+  buttonPrimary: palette.primary500,
   buttonSecondary: palette.blue500,
   buttonDisabled: palette.lightGray,
   buttonDanger: palette.angry500,
@@ -236,6 +236,9 @@ export const colors = {
   // Tab bar gradients
   tabBarBackground1: palette.tabBarGradientStart,
   tabBarBackground2: palette.tabBarGradientEnd,
+  
+  // Tab bar solid background (for native tabs)
+  tabBarBackground: palette.neutral100,
 
   altTabBarBackground1: palette.altTabBarGradientStart,
   altTabBarBackground2: palette.altTabBarGradientEnd,
