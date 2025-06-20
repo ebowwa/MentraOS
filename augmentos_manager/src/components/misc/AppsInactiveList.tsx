@@ -265,7 +265,7 @@ export default function InactiveAppList({
   }
   const startApp = async (packageName: string) => {
     if (!onboardingCompleted) {
-      if (packageName !== "com.augmentos.livecaptions" && packageName !== "cloud.augmentos.live-captions") {
+      if (packageName !== "com.augmentos.livecaptions" && packageName !== "com.mentra.livecaptions") {
         showAlert(
           translate("home:completeOnboardingTitle"),
           translate("home:completeOnboardingMessage"),
@@ -459,9 +459,9 @@ export default function InactiveAppList({
     availableApps.sort((a, b) => {
       // Check if either app is Live Captions
       const aIsLiveCaptions = a.packageName === "com.augmentos.livecaptions" || 
-                              a.packageName === "cloud.augmentos.live-captions"
+                              a.packageName === "com.mentra.livecaptions"
       const bIsLiveCaptions = b.packageName === "com.augmentos.livecaptions" || 
-                              b.packageName === "cloud.augmentos.live-captions"
+                              b.packageName === "com.mentra.livecaptions"
       
       // If a is Live Captions, it should come first
       if (aIsLiveCaptions && !bIsLiveCaptions) return -1
@@ -505,7 +505,7 @@ export default function InactiveAppList({
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app
         const isLiveCaptions =
-          app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"
+          app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"  || app.packageName === "com.mentra.livecaptions"
 
         // Only set ref for LiveCaptions app
         const ref = isLiveCaptions ? actualLiveCaptionsRef : null

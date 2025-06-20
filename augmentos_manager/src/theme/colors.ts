@@ -116,6 +116,9 @@ const palette = {
   tabBarGradientStart: "#F5E6D3", // Very light peachy orange for light theme tab bar start
   tabBarGradientEnd: "#FEFCFA", // Almost white with hint of warmth for light theme tab bar end
 
+  altTabBarGradientStart: "#1D1D45",
+  altTabBarGradientEnd: "#090A14",
+
   // Button gradient colors
   buttonGradientStart: "#4340D3", // Purple-blue for button gradient start
   buttonGradientEnd: "#06114D", // Dark blue for button gradient end
@@ -153,6 +156,9 @@ export const colors = {
    * Secondary text information.
    */
   textDim: palette.neutral700,
+
+  // basically WoB or BoW for light theme
+  textAlt: palette.neutral200,
   /**
    * The default color of the screen background.
    */
@@ -190,7 +196,7 @@ export const colors = {
   loginGradientEnd: palette.neutral100, // White
 
   // Semantic color mappings for common UI elements
-  buttonPrimary: palette.blue500,
+  buttonPrimary: palette.primary500,
   buttonSecondary: palette.blue500,
   buttonDisabled: palette.lightGray,
   buttonDanger: palette.angry500,
@@ -230,6 +236,12 @@ export const colors = {
   // Tab bar gradients
   tabBarBackground1: palette.tabBarGradientStart,
   tabBarBackground2: palette.tabBarGradientEnd,
+  
+  // Tab bar solid background (for native tabs)
+  tabBarBackground: palette.neutral100,
+
+  altTabBarBackground1: palette.altTabBarGradientStart,
+  altTabBarBackground2: palette.altTabBarGradientEnd,
 
   // Fullscreen and modal backgrounds
   fullscreenBackground: palette.neutral900, // Black for fullscreen camera

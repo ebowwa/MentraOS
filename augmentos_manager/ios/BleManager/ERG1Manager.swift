@@ -747,6 +747,7 @@ extension ERG1Manager {
     // Define the hardcoded whitelist JSON
     let apps = [
       AppInfo(id: "com.augment.os", name: "AugmentOS"),
+      AppInfo(id: "com.mentra.os", name: "MentraOS"),
       AppInfo(id: "io.heckel.ntfy", name: "ntfy")
     ]
     let whitelistJson = createWhitelistJson(apps: apps)

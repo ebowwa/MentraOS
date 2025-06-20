@@ -43,8 +43,13 @@ export default function Layout() {
     <Tabs
       screenOptions={{
         // Native bottom tabs styling
-        tabBarActiveTintColor: theme.colors.text,
-
+        tabBarActiveTintColor: theme.colors.tint,
+        tabBarInactiveTintColor: theme.colors.textDim,
+        tabBarStyle: {
+          backgroundColor: theme.colors.tabBarBackground,
+        },
+        // Force the appearance to match your theme
+        ...(themeScheme && { appearance: themeScheme }),
       }}>
       <Tabs.Screen
         name="home"
