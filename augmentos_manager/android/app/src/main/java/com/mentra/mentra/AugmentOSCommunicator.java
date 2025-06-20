@@ -1,9 +1,9 @@
-package com.augmentos.augmentos;
+package com.mentra.mentra;
 
 import android.content.Context;
 import android.util.Log;
 
-import com.augmentos.augmentoslib.AugmentOSLib;
+import com.mentra.mentralib.AugmentOSLib;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
 

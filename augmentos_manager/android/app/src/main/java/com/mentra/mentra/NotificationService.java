@@ -1,4 +1,4 @@
-package com.augmentos.augmentos;
+package com.mentra.mentra;
 
 import android.app.Notification;
 import android.content.Intent;
@@ -40,9 +40,9 @@ public class NotificationService extends NotificationListenerService {
             "com.samsung.android.app.smartcapture",
             "com.sec.android.app.camera",
             "com.sec.android.gallery3d",
-            "com.augmentos.augmentos",
+            "com.mentra.mentra",
             "com.osp.app.signin",
-            "com.augmentos.augmentos",
+            "com.mentra.mentra",
             "com.github.welldomax.tunnelshare"
             );
 

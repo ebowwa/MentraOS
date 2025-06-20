@@ -1,4 +1,4 @@
-package com.augmentos.augmentos;
+package com.mentra.mentra;
 
 public class NewNotificationReceivedEvent {
     public String appName;

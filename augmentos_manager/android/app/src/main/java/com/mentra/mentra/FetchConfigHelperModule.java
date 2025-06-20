@@ -1,4 +1,4 @@
-package com.augmentos.augmentos;
+package com.mentra.mentra;
 
 import android.content.res.Resources;
 import com.facebook.react.bridge.ReactApplicationContext;

@@ -1,4 +1,4 @@
-package com.augmentos.augmentos
+package com.mentra.mentra
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

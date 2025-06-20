@@ -1,4 +1,4 @@
-package com.augmentos.augmentos;
+package com.mentra.mentra;
 
 import android.content.Context;
 import android.content.Intent;
