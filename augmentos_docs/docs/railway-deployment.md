@@ -89,6 +89,7 @@ cd my-augmentos-app
    - **Package Name**: Use the same package name from your environment variables
    - **Server URL**: Enter your Railway URL (e.g., `https://yourapp-production-fa42.up.railway.app`)
    - **Webview URL**: Enter `https://yourapp-production-fa42.up.railway.app/webview`
+   - **Permissions**: Add the microphone permission.  See the [Permissions](permissions) guide for details.
 5. Click **"Create App"**
 6. Take note of the api key, as you will need it later and it won't be shown again
 

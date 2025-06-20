@@ -105,7 +105,7 @@ session.events.on<CalendarEvent>(StreamType.CALENDAR_EVENT, (data) => {
 });
 ```
 
-### 4. **NOTIFICATIONS**
+### 4. **READ_NOTIFICATIONS**
 
 - **Purpose**: Access to device notifications
 - **Data Streams Enabled**:

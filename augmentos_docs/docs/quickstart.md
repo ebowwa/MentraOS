@@ -44,9 +44,9 @@ We are going to use ngrok to expose your local app to the internet.  This is use
 3. Click "Create App"
 4. Set a unique package name like `com.yourName.yourAppName`
 5. For "Public URL", enter your ngrok static URL
-6. In the edit app screen, add the microphone permission
+6. In the edit app screen, add the microphone permission.  See the [Permissions](permissions) guide for details.
 
-> **Note**: If your app needs access to device data like microphone, location, or notifications, you can configure permissions in the developer console. See the [Permissions](permissions) guide for details.
+> This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the app edit page under the `Share with Testers` section.
 
 ### Get your app running
 

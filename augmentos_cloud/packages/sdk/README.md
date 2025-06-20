@@ -1,6 +1,12 @@
 # @augmentos/sdk
 
-Build Third Party Apps (TPAs) for AugmentOS smartglasses. This SDK provides everything you need to create real-time AR applications that respond to voice, head movements, and other inputs.
+Build apps for AugmentOS smartglasses. This SDK provides everything you need to create real-time AR applications that respond to voice, head movements, and other inputs.
+
+## Prerequisites
+
+- Node.js (v18 or later)
+- Bun
+- Basic TypeScript knowledge
 
 ## 🚀 Building Your First App
 
@@ -11,6 +17,8 @@ The quickest way to get started is using our example app. This guide assumes you
 Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
 
 ### Set up ngrok
+
+We are going to use ngrok to expose your local app to the internet. This is useful for development, but when you're ready to go live, you'll want to deploy to a cloud service.
 
 1. [Install ngrok](https://ngrok.com/docs/getting-started/)
 2. Create an ngrok account
@@ -32,43 +40,61 @@ Download AugmentOS from [AugmentOS.org/install](https://AugmentOS.org/install)
 3. Click "Create App"
 4. Set a unique package name like `com.yourName.yourAppName`
 5. For "Public URL", enter your ngrok static URL
+6. In the edit app screen, add the microphone permission.  See the [Permissions](https://docs.augmentos.org/permissions) guide for details.
+
+> This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the app edit page under the `Share with Testers` section.
+
 
 ### Get your app running
 
 1. [Install bun](https://bun.sh/docs/installation)
-2. Clone the example repo: 
+2. Create a new repo from the template using the `Use this template` dropdown in the upper right of [the example app repository](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App) or the following command:
    ```bash
-   git clone git@github.com:AugmentOS-Community/AugmentOS-Cloud-Example-App.git
+   gh repo create --template AugmentOS-Community/AugmentOS-Cloud-Example-App
    ```
-3. Navigate to the repo directory and install dependencies:
-    ```bash
-    cd AugmentOS-Cloud-Example-App
-    bun install
-    ```
-4. Edit your `index.ts` to match the app you registered:
-   ```typescript
-   const app = new ExampleAugmentOSApp({
-     packageName: 'com.yourName.yourAppName', // The packageName you specified on console.AugmentOS.org
-     apiKey: 'your_api_key', // Get this from console.AugmentOS.org
-     port: 3000 // The port you're hosting the server on
-   });
-   ```
-5. Run your app:
+
+   ![Create repo from template](https://github.com/user-attachments/assets/c10e14e8-2dc5-4dfa-adac-dd334c1b73a5)
+
+   **Note:** If you want a more in-depth example (recommended for those who've already completed this quickstart), you can use the [Extended Example](https://github.com/AugmentOS-Community/AugmentOS-Extended-Example-App) which includes app settings support.
+3. Clone your new repo locally:
    ```bash
-   bun run index.ts
+   git clone <your-repo-url>
    ```
-6. Expose your app to the internet with ngrok:
+4. Navigate to your repo directory and install dependencies:
+   ```bash
+   cd <your-repo-name>
+   bun install
+   ```
+5. Set up your environment variables:
+   * Create a `.env` file in the root directory by copying the example:
+     ```bash
+     cp .env.example .env
+     ```
+   * Edit the `.env` file with your app details:
+     ```
+     PORT=3000
+     PACKAGE_NAME=com.yourName.yourAppName
+     AUGMENTOS_API_KEY=your_api_key_from_console
+     ```
+   * Make sure the `PACKAGE_NAME` matches what you registered in the AugmentOS Console
+   * Get your `API_KEY` from the AugmentOS Developer Console
+6. Run your app:
+   ```bash
+   bun run dev
+   ```
+7. Expose your app to the internet with ngrok:
    ```bash
    ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
    ```
    Note: `3000` is the port. It must match what is in the app config. If you changed it to `8080`, use `8080` for ngrok instead.
 
-For more information, visit the [AugmentOS-Cloud-Example-App repository](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App).
+> After making changes to your app code or restarting your server, you may need to restart your app inside the AugmentOS phone app.
+
+For more information, visit the [AugmentOS-Cloud-Example-App repository](https://github.com/AugmentOS-Community/AugmentOS-Cloud-Example-App). For a more in-depth example with app settings support, see the [Extended Example](https://github.com/AugmentOS-Community/AugmentOS-Extended-Example-App).
 
 ## Next Steps
 
-- Explore the [Getting Started (From Scratch)](getting-started) guide for a more detailed walkthrough
-- Learn about [Core Concepts](core-concepts) to understand how AugmentOS apps work
+- Check out the [documentation](https://docs.augmentos.org) for more information
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for help and support
 
 ## 📄 License

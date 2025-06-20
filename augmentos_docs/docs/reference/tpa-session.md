@@ -47,6 +47,71 @@ Provides access to the [`SettingsManager`](/reference/managers/settings-manager)
 readonly settings: SettingsManager
 ```
 
+### dashboard
+
+Provides access to the [`DashboardAPI`](/reference/dashboard-api#interface-dashboardapi) for sending content to the user's dashboard.
+
+```typescript
+readonly dashboard: DashboardAPI
+```
+
+The dashboard is a persistent UI surface that appears when users look up, allowing your app to display status updates and information even when other apps are active. See the [Dashboard Tutorial](/dashboard) for a quick start guide and the [Dashboard API Reference](/reference/dashboard-api) for complete documentation.
+
+### logger
+
+Provides access to a pre-configured [Pino](https://getpino.io) logger instance for session-specific logging.
+
+```typescript
+readonly logger: Logger
+```
+
+The logger is automatically configured with session context including:
+- `userId`: The current user's identifier
+- `packageName`: Your app's package name
+- `sessionId`: The current session identifier
+- `service`: Set to 'tpa-session'
+
+**Example:**
+```typescript
+protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+  // The logger automatically includes session context
+  session.logger.info('Session started successfully');
+  session.logger.debug('Detailed debug information', { additionalData: 'value' });
+
+  session.events.onTranscription((data) => {
+    session.logger.debug('Received transcription', { text: data.text, isFinal: data.isFinal });
+
+    if (data.text.includes('error')) {
+      session.logger.warn('Potential error detected in transcription', { text: data.text });
+    }
+  });
+
+  try {
+    // Some operation that might fail
+    await someRiskyOperation();
+  } catch (error) {
+    session.logger.error(error, 'Failed to perform operation');
+    // Handle error appropriately
+  }
+}
+```
+
+**Log Levels:**
+- `session.logger.debug()`: Detailed debugging information
+- `session.logger.info()`: General information about app operation
+- `session.logger.warn()`: Warning conditions that don't stop execution
+- `session.logger.error()`: Error conditions that should be investigated
+
+**Structured Logging:**
+```typescript
+session.logger.info('User performed action', {
+  action: 'button_press',
+  buttonId: 'main',
+  timestamp: new Date(),
+  metadata: { /* additional context */ }
+});
+```
+
 ## Event Handling Methods
 
 ### onTranscription()
