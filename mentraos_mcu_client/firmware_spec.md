@@ -1,8 +1,8 @@
-# 📦 AugmentOS BLE Packet Format Specification (v1.1)
+# 📦 MentraOS BLE Packet Format Specification (v1.1)
 
 ## 🔑 Overview
 
-This specification defines the binary packet format and transport protocol for communication between AugmentOS Core (on a phone) and smart glasses via Bluetooth Low Energy (BLE). It supports both JSON control messages and high-speed binary data transfers like audio and image streams.
+This specification defines the binary packet format and transport protocol for communication between the MentraOS App (on a phone) and smart glasses via Bluetooth Low Energy (BLE). It supports both JSON control messages and high-speed binary data transfers like audio and image streams.
 
 * All messages are sent over **standard BLE characteristics (GATT)**.
 * Every BLE packet starts with a **1-byte control header**.
@@ -14,7 +14,7 @@ This specification defines the binary packet format and transport protocol for c
 
 | Role    | UUID                                   | Description                          |
 | ------- | -------------------------------------- | ------------------------------------ |
-| Service | `00004860-0000-1000-8000-00805f9b34fb` | AugmentOS BLE Service                |
+| Service | `00004860-0000-1000-8000-00805f9b34fb` | MentraOS BLE Service                 |
 | TX Char | `000071FF-0000-1000-8000-00805f9b34fb` | Phone (central) → Glasses (write)    |
 | RX Char | `000070FF-0000-1000-8000-00805f9b34fb` | Glasses → Phone (notify or indicate) |
 | CCCD    | `00002902-0000-1000-8000-00805f9b34fb` | Enable notify on RX Char             |
