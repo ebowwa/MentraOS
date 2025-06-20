@@ -212,7 +212,7 @@ const $baseViewStyle: ThemedStyle<ViewStyle> = ({spacing, colors, isDark}) => ({
   paddingVertical: spacing.sm,
   paddingHorizontal: spacing.sm,
   overflow: "hidden",
-  backgroundColor: colors.palette.primary500,
+  backgroundColor: colors.buttonPrimary,
   // Add subtle border for light theme
   borderWidth: isDark ? 0 : 1,
   borderColor: isDark ? undefined : colors.border,

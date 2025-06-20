@@ -49,7 +49,7 @@ const en = {
     openSettings: "Open Settings",
   },
   home: {
-    title: "MentraOS",
+    title: "Home",
     pairGlasses: "Pair Glasses",
     connectGlasses: "Connect Glasses",
     connectingGlasses: "Connecting Glasses...",
