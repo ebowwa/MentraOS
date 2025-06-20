@@ -1,4 +1,4 @@
-package com.augmentos.augmentos.logcapture;
+package com.mentra.mentra.logcapture;
 
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;

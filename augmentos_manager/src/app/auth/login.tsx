@@ -200,7 +200,7 @@ export default function LoginScreen() {
     })
 
     // Add this to see if linking is working at all
-    Linking.canOpenURL("com.augmentos://auth/callback").then(supported => {
+    Linking.canOpenURL("com.mentra://auth/callback").then(supported => {
       console.log("Can open URL:", supported)
     }).catch(error => {
       console.error("Error checking URL support:", error)
@@ -249,7 +249,7 @@ export default function LoginScreen() {
         provider: "google",
         options: {
           // Must match the deep link scheme/host/path in your AndroidManifest.xml
-          redirectTo: "com.augmentos://auth/callback",
+          redirectTo: "com.mentra://auth/callback",
           skipBrowserRedirect: true,
           queryParams: {
             prompt: "select_account",
@@ -313,7 +313,7 @@ export default function LoginScreen() {
         provider: "apple",
         options: {
           // Match the deep link scheme/host/path in your AndroidManifest.xml
-          redirectTo: "com.augmentos://auth/callback",
+          redirectTo: "com.mentra://auth/callback",
         },
       })
 
@@ -364,7 +364,7 @@ export default function LoginScreen() {
         email,
         password,
         options: {
-          emailRedirectTo: "com.augmentos://auth/callback",
+          emailRedirectTo: "com.mentra://auth/callback",
         },
       })
 

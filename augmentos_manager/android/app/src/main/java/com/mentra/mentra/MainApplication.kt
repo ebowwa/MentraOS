@@ -1,4 +1,4 @@
-package com.augmentos.augmentos
+package com.mentra.mentra
 
 import android.app.Application
 import android.content.res.Configuration
@@ -25,7 +25,7 @@ import it.innove.BleManagerPackage
 // import com.reactnativecommunity.slider.ReactSliderPackage
 import com.lugg.RNCConfig.RNCConfigPackage
 // import org.reactnative.camera.RNCameraPackage
-import com.augmentos.augmentos.logcapture.LogcatCapturePackage
+import com.mentra.mentra.logcapture.LogcatCapturePackage
 import com.reactnativecommunity.webview.RNCWebViewPackage
 import com.rnfs.RNFSPackage
 import com.brentvatne.react.ReactVideoPackage

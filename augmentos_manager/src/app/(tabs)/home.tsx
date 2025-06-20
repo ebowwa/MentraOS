@@ -195,7 +195,7 @@ export default function Homepage() {
           // Check if Live Captions app exists and is not running
           const liveCaptionsApp = appStatus.find(
             app =>
-              app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions",
+              app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions" || app.packageName === "com.mentra.livecaptions",
           )
 
           if (liveCaptionsApp && !liveCaptionsApp.is_running) {
