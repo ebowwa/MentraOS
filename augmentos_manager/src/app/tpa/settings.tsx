@@ -577,9 +577,9 @@ export default function AppSettings() {
               <View style={{paddingVertical: theme.spacing.sm}}>
                 <Text style={{fontSize: 15, color: theme.colors.text}}>Additional Information</Text>
               </View>
-              <InfoRow label="Company" value={serverAppInfo?.company || "-"} showDivider={false} />
-              <InfoRow label="Website" value={serverAppInfo?.website || "-"} showDivider={false} />
-              <InfoRow label="Contact" value={serverAppInfo?.contact || "-"} showDivider={false} />
+              <InfoRow label="Company" value={serverAppInfo?.organization?.name || "-"} showDivider={false} />
+              <InfoRow label="Website" value={serverAppInfo?.organization?.website || "-"} showDivider={false} />
+              <InfoRow label="Contact" value={serverAppInfo?.organization?.contactEmail || "-"} showDivider={false} />
               <InfoRow
                 label="App Type"
                 value={
