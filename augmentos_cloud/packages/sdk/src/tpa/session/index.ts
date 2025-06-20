@@ -1182,7 +1182,7 @@ export class TpaSession {
         }
       } catch (processingError: unknown) {
         // Catch any errors during message processing to prevent TPA crashes
-        this.logger.error('Error processing message:', processingError);
+        this.logger.error(processingError, 'Error processing message:');
         const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
         this.events.emit('error', new Error(`Error processing message: ${errorMessage}`));
       }
@@ -1525,7 +1525,7 @@ export class TpaSession {
       const userList = await this.discoverTpaUsers(domain, false);
       return userList.totalUsers;
     } catch (error) {
-      this.logger.error({ error }, 'Error getting user count');
+      this.logger.error(error, 'Error getting user count');
       return 0;
     }
   }
@@ -1539,7 +1539,7 @@ export class TpaSession {
   async broadcastToTpaUsers(payload: any, roomId?: string): Promise<void> {
     try {
       const messageId = this.generateMessageId();
-      
+
       const message = {
         type: 'tpa_broadcast_message',
         packageName: this.config.packageName,
@@ -1549,7 +1549,7 @@ export class TpaSession {
         senderUserId: this.userId,
         timestamp: new Date()
       };
-      
+
       this.send(message as any);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1567,10 +1567,10 @@ export class TpaSession {
     return new Promise((resolve, reject) => {
       try {
         const messageId = this.generateMessageId();
-        
+
         // Store promise resolver
         this.pendingDirectMessages.set(messageId, { resolve, reject });
-        
+
         const message = {
           type: 'tpa_direct_message',
           packageName: this.config.packageName,
@@ -1581,7 +1581,7 @@ export class TpaSession {
           senderUserId: this.userId,
           timestamp: new Date()
         };
-        
+
         this.send(message as any);
 
         // Set timeout to avoid hanging promises
@@ -1619,7 +1619,7 @@ export class TpaSession {
         roomConfig,
         timestamp: new Date()
       };
-      
+
       this.send(message as any);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -1641,7 +1641,7 @@ export class TpaSession {
         roomId,
         timestamp: new Date()
       };
-      
+
       this.send(message as any);
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
