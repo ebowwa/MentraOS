@@ -87,6 +87,8 @@ export default function SelectGlassesModelScreen() {
   }
 
   const radialGradient = (size: number, rotation: number) => {
+    const strokeWidth = theme.spacing.xxxs;
+    const halfStroke = strokeWidth / 2;
     return (
       <Svg width={size} height={size}>
         <Defs>
@@ -98,11 +100,11 @@ export default function SelectGlassesModelScreen() {
             ry="0.9978"
             gradientUnits="objectBoundingBox"
             gradientTransform={`rotate(${rotation} 10 10)`}>
-            <Stop offset="0" stopColor={theme.colors.palette.primary500} />
-            <Stop offset="1" stopColor={theme.colors.palette.primary200} />
+            <Stop offset="0" stopColor={theme.isDark ? theme.colors.palette.primary500 : theme.colors.palette.primary300} />
+            <Stop offset="1" stopColor={theme.isDark ? theme.colors.palette.primary200 : theme.colors.palette.primary100} />
           </RadialGradient>
         </Defs>
-        <Rect x="0" y="0" width={size} height={size} rx="10" ry="10" fill="url(#grad)" />
+        <Rect x={halfStroke} y={halfStroke} width={size - strokeWidth} height={size - strokeWidth} rx={theme.borderRadius.md - 2} ry={theme.borderRadius.md - 2} fill="url(#grad)" stroke={theme.colors.border} strokeWidth={strokeWidth} />
       </Svg>
     )
   }
@@ -149,8 +151,8 @@ export default function SelectGlassesModelScreen() {
             onPress={() => {
               triggerGlassesPairingGuide(glasses.modelName)
             }}>
-            <View style={{position: "relative"}}>
-              {radialGradient(100, Math.round(Math.random() * 360))}
+            <View style={{position: "relative", marginLeft: -theme.spacing.xxxs, marginTop: -theme.spacing.xxxs, marginBottom: -theme.spacing.xxxs}}>
+              {radialGradient(100 + theme.spacing.xxxs * 2, Math.round(Math.random() * 360))}
               <Image source={getGlassesImage(glasses.modelName)} style={themed($glassesImage)} />
             </View>
             <View style={styles.settingTextContainer}>
@@ -183,7 +185,7 @@ export default function SelectGlassesModelScreen() {
   )
 }
 
-const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
@@ -193,7 +195,7 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginVertical: 8,
 
   // Rounded corners
-  borderRadius: 10,
+  borderRadius: borderRadius.md,
 
   borderWidth: spacing.xxxs,
   borderColor: colors.border,
@@ -272,7 +274,8 @@ const styles = StyleSheet.create({
   },
   settingTextContainer: {
     flex: 1,
-    paddingHorizontal: 10,
+    paddingLeft: 20,
+    paddingRight: 10,
   },
   label: {
     fontSize: 18, // bigger text size
