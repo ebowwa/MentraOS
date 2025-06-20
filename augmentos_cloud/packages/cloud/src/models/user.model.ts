@@ -427,10 +427,33 @@ UserSchema.methods.updateAppLastActive = async function(
     this.installedApps = [];
   }
 
-  const app = this.installedApps.find(app => app.packageName === packageName);
+  let app = this.installedApps.find(app => app.packageName === packageName);
+  
   if (app) {
+    // App exists in list, update timestamp
     app.lastActiveAt = new Date();
     await this.save();
+  } else {
+    // Check if this is a pre-installed app that's missing from user's list
+    try {
+      const { getPreInstalledForThisServer } = require('../services/core/app.service');
+      const serverPreInstalled = getPreInstalledForThisServer();
+      
+      if (serverPreInstalled.includes(packageName)) {
+        // Auto-add missing pre-installed app with current timestamp
+        this.installedApps.push({
+          packageName,
+          installedDate: new Date(),
+          lastActiveAt: new Date()
+        });
+        await this.save();
+        logger.info(`Auto-added missing pre-installed app ${packageName} for user ${this.email}`);
+      }
+      // If not pre-installed, silently ignore (app might be starting before installation completes)
+    } catch (error) {
+      logger.error('Error checking pre-installed apps in updateAppLastActive:', error);
+      // Don't fail the operation if checking pre-installed apps fails
+    }
   }
 };
 
@@ -453,8 +476,11 @@ UserSchema.statics.findByEmail = async function(email: string): Promise<UserI | 
 UserSchema.statics.findOrCreateUser = async function (email: string): Promise<UserI> {
   email = email.toLowerCase();
   let user = await this.findOne({ email });
+  let isNewUser = false;
+  
   if (!user) {
     user = await this.create({ email });
+    isNewUser = true;
 
     // Create personal organization for new user if they don't have one
     // Import OrganizationService to avoid circular dependency
@@ -468,6 +494,39 @@ UserSchema.statics.findOrCreateUser = async function (email: string): Promise<Us
       await user.save();
     }
   }
+
+  // Auto-install pre-installed apps for new users OR existing users missing them
+  try {
+    const { getPreInstalledForThisServer } = require('../services/core/app.service');
+    const serverPreInstalled = getPreInstalledForThisServer();
+    
+    const missingPreInstalled = serverPreInstalled.filter((pkg: string) => 
+      !user.installedApps?.some((app: any) => app.packageName === pkg)
+    );
+
+    if (missingPreInstalled.length > 0) {
+      if (!user.installedApps) user.installedApps = [];
+      
+      for (const packageName of missingPreInstalled) {
+        user.installedApps.push({
+          packageName,
+          installedDate: new Date(),
+          // Don't set lastActiveAt initially
+        });
+      }
+      await user.save();
+      
+      if (isNewUser) {
+        logger.info(`Auto-installed ${missingPreInstalled.length} pre-installed apps for new user: ${email}`);
+      } else {
+        logger.info(`Auto-installed ${missingPreInstalled.length} missing pre-installed apps for existing user: ${email}`);
+      }
+    }
+  } catch (error) {
+    logger.error('Error auto-installing pre-installed apps:', error);
+    // Don't fail user creation if app installation fails
+  }
+
   return user;
 };
 
