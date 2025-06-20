@@ -28,12 +28,9 @@ export default class BackendServerComms {
       return customUrl
     }
 
-    // const secure = Config.AUGMENTOS_SECURE === 'true';
-    // const host = Config.AUGMENTOS_HOST;
-    // const port = Config.AUGMENTOS_PORT;
-    const secure = true
-    const host = "global.augmentos.cloud"
-    const port = "443"
+    const secure = Config.MENTRAOS_SECURE === 'true';
+    const host = Config.MENTRAOS_HOST;
+    const port = Config.MENTRAOS_PORT;
     const protocol = secure ? "https" : "http"
     const defaultServerUrl = `${protocol}://${host}:${port}`
     console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`)
