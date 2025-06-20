@@ -12,6 +12,7 @@ interface Location {
 interface InstalledApp {
   packageName: string;
   installedDate: Date;
+  lastActiveAt?: Date;
 }
 
 // Extend Document for TypeScript support
@@ -35,6 +36,7 @@ export interface UserI extends Document {
   installedApps?: Array<{
     packageName: string;
     installedDate: Date;
+    lastActiveAt?: Date;
   }>;
 
   /**
@@ -76,11 +78,13 @@ export interface UserI extends Document {
 
   updateAugmentosSettings(settings: Partial<UserI['augmentosSettings']>): Promise<void>;
   getAugmentosSettings(): UserI['augmentosSettings'];
+  updateAppLastActive(packageName: string): Promise<void>;
 }
 
 const InstalledAppSchema = new Schema({
   packageName: { type: String, required: true },
-  installedDate: { type: Date, default: Date.now }
+  installedDate: { type: Date, default: Date.now },
+  lastActiveAt: { type: Date }
 });
 
 // --- New Schema for Lightweight Updates ---
@@ -412,6 +416,22 @@ UserSchema.methods.getAugmentosSettings = function(
   this: UserI
 ): UserI['augmentosSettings'] {
   return this.augmentosSettings;
+};
+
+// Update last active timestamp for an app
+UserSchema.methods.updateAppLastActive = async function(
+  this: UserI,
+  packageName: string
+): Promise<void> {
+  if (!this.installedApps) {
+    this.installedApps = [];
+  }
+
+  const app = this.installedApps.find(app => app.packageName === packageName);
+  if (app) {
+    app.lastActiveAt = new Date();
+    await this.save();
+  }
 };
 
 // --- Middleware ---
