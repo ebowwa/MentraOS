@@ -284,10 +284,10 @@ export class TpaServer {
           } as WebhookResponse);
         }
       } catch (error) {
-        this.logger.error(error, '❌ Error handling webhook:');
+        this.logger.error(error, '❌ Error handling webhook: ' + (error as Error).message);
         res.status(500).json({
           status: 'error',
-          message: 'Internal server error'
+          message: 'Error handling webhook: ' + (error as Error).message
         } as WebhookResponse);
       }
     });
