@@ -12,6 +12,7 @@ interface Location {
 interface InstalledApp {
   packageName: string;
   installedDate: Date;
+  lastActiveAt?: Date;
 }
 
 // Extend Document for TypeScript support
@@ -35,6 +36,7 @@ export interface UserI extends Document {
   installedApps?: Array<{
     packageName: string;
     installedDate: Date;
+    lastActiveAt?: Date;
   }>;
 
   /**
@@ -76,11 +78,13 @@ export interface UserI extends Document {
 
   updateAugmentosSettings(settings: Partial<UserI['augmentosSettings']>): Promise<void>;
   getAugmentosSettings(): UserI['augmentosSettings'];
+  updateAppLastActive(packageName: string): Promise<void>;
 }
 
 const InstalledAppSchema = new Schema({
   packageName: { type: String, required: true },
-  installedDate: { type: Date, default: Date.now }
+  installedDate: { type: Date, default: Date.now },
+  lastActiveAt: { type: Date }
 });
 
 // --- New Schema for Lightweight Updates ---
@@ -414,6 +418,45 @@ UserSchema.methods.getAugmentosSettings = function(
   return this.augmentosSettings;
 };
 
+// Update last active timestamp for an app
+UserSchema.methods.updateAppLastActive = async function(
+  this: UserI,
+  packageName: string
+): Promise<void> {
+  if (!this.installedApps) {
+    this.installedApps = [];
+  }
+
+  let app = this.installedApps.find(app => app.packageName === packageName);
+  
+  if (app) {
+    // App exists in list, update timestamp
+    app.lastActiveAt = new Date();
+    await this.save();
+  } else {
+    // Check if this is a pre-installed app that's missing from user's list
+    try {
+      const { getPreInstalledForThisServer } = require('../services/core/app.service');
+      const serverPreInstalled = getPreInstalledForThisServer();
+      
+      if (serverPreInstalled.includes(packageName)) {
+        // Auto-add missing pre-installed app with current timestamp
+        this.installedApps.push({
+          packageName,
+          installedDate: new Date(),
+          lastActiveAt: new Date()
+        });
+        await this.save();
+        logger.info(`Auto-added missing pre-installed app ${packageName} for user ${this.email}`);
+      }
+      // If not pre-installed, silently ignore (app might be starting before installation completes)
+    } catch (error) {
+      logger.error('Error checking pre-installed apps in updateAppLastActive:', error);
+      // Don't fail the operation if checking pre-installed apps fails
+    }
+  }
+};
+
 // --- Middleware ---
 UserSchema.pre('save', function(next) {
   if (this.email) {
@@ -433,8 +476,11 @@ UserSchema.statics.findByEmail = async function(email: string): Promise<UserI | 
 UserSchema.statics.findOrCreateUser = async function (email: string): Promise<UserI> {
   email = email.toLowerCase();
   let user = await this.findOne({ email });
+  let isNewUser = false;
+  
   if (!user) {
     user = await this.create({ email });
+    isNewUser = true;
 
     // Create personal organization for new user if they don't have one
     // Import OrganizationService to avoid circular dependency
@@ -448,6 +494,39 @@ UserSchema.statics.findOrCreateUser = async function (email: string): Promise<Us
       await user.save();
     }
   }
+
+  // Auto-install pre-installed apps for new users OR existing users missing them
+  try {
+    const { getPreInstalledForThisServer } = require('../services/core/app.service');
+    const serverPreInstalled = getPreInstalledForThisServer();
+    
+    const missingPreInstalled = serverPreInstalled.filter((pkg: string) => 
+      !user.installedApps?.some((app: any) => app.packageName === pkg)
+    );
+
+    if (missingPreInstalled.length > 0) {
+      if (!user.installedApps) user.installedApps = [];
+      
+      for (const packageName of missingPreInstalled) {
+        user.installedApps.push({
+          packageName,
+          installedDate: new Date(),
+          // Don't set lastActiveAt initially
+        });
+      }
+      await user.save();
+      
+      if (isNewUser) {
+        logger.info(`Auto-installed ${missingPreInstalled.length} pre-installed apps for new user: ${email}`);
+      } else {
+        logger.info(`Auto-installed ${missingPreInstalled.length} missing pre-installed apps for existing user: ${email}`);
+      }
+    }
+  } catch (error) {
+    logger.error('Error auto-installing pre-installed apps:', error);
+    // Don't fail user creation if app installation fails
+  }
+
   return user;
 };
 
