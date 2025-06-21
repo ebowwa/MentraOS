@@ -300,10 +300,44 @@ UserSchema.methods.addRunningApp = async function (this: UserI, appName: string)
 };
 
 UserSchema.methods.removeRunningApp = async function (this: UserI, appName: string): Promise<void> {
-  if (this.runningApps.includes(appName)) {
-    this.runningApps = this.runningApps.filter(app => app !== appName);
-    await this.save();
+  const maxRetries = 3;
+  let lastError: any;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      // Re-fetch the user document to get the latest version
+      const freshUser = await (this.constructor as any).findOne({ _id: this._id });
+      if (!freshUser) {
+        throw new Error(`User ${this.email} not found during removeRunningApp`);
+      }
+
+      if (freshUser.runningApps.includes(appName)) {
+        freshUser.runningApps = freshUser.runningApps.filter((app: string) => app !== appName);
+        await freshUser.save();
+        return;
+      }
+      // App not in running apps, nothing to do
+      return;
+    } catch (error: any) {
+      lastError = error;
+      
+      // If it's a version conflict, retry
+      if (error.name === 'VersionError') {
+        logger.warn(`Version conflict in removeRunningApp for user ${this.email}, app ${appName}, attempt ${attempt + 1}/${maxRetries}`);
+        if (attempt < maxRetries - 1) {
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 50));
+          continue;
+        }
+      }
+      
+      // For other errors or max retries reached, throw
+      throw error;
+    }
   }
+  
+  // If we get here, all retries failed
+  throw lastError;
 };
 
 // UserSchema.methods.updateAppSettings = async function (
@@ -423,38 +457,73 @@ UserSchema.methods.updateAppLastActive = async function(
   this: UserI,
   packageName: string
 ): Promise<void> {
-  if (!this.installedApps) {
-    this.installedApps = [];
-  }
+  const maxRetries = 3;
+  let lastError: any;
 
-  let app = this.installedApps.find(app => app.packageName === packageName);
-  
-  if (app) {
-    // App exists in list, update timestamp
-    app.lastActiveAt = new Date();
-    await this.save();
-  } else {
-    // Check if this is a pre-installed app that's missing from user's list
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const { getPreInstalledForThisServer } = require('../services/core/app.service');
-      const serverPreInstalled = getPreInstalledForThisServer();
-      
-      if (serverPreInstalled.includes(packageName)) {
-        // Auto-add missing pre-installed app with current timestamp
-        this.installedApps.push({
-          packageName,
-          installedDate: new Date(),
-          lastActiveAt: new Date()
-        });
-        await this.save();
-        logger.info(`Auto-added missing pre-installed app ${packageName} for user ${this.email}`);
+      // Re-fetch the user document to get the latest version
+      const freshUser = await (this.constructor as any).findOne({ _id: this._id });
+      if (!freshUser) {
+        throw new Error(`User ${this.email} not found during updateAppLastActive`);
       }
-      // If not pre-installed, silently ignore (app might be starting before installation completes)
-    } catch (error) {
-      logger.error('Error checking pre-installed apps in updateAppLastActive:', error);
-      // Don't fail the operation if checking pre-installed apps fails
+
+      if (!freshUser.installedApps) {
+        freshUser.installedApps = [];
+      }
+
+      let app = freshUser.installedApps.find((app: any) => app.packageName === packageName);
+      
+      if (app) {
+        // App exists in list, update timestamp
+        app.lastActiveAt = new Date();
+        await freshUser.save();
+        return;
+      } else {
+        // Check if this is a pre-installed app that's missing from user's list
+        try {
+          const { getPreInstalledForThisServer } = require('../services/core/app.service');
+          const serverPreInstalled = getPreInstalledForThisServer();
+          
+          if (serverPreInstalled.includes(packageName)) {
+            // Auto-add missing pre-installed app with current timestamp
+            freshUser.installedApps.push({
+              packageName,
+              installedDate: new Date(),
+              lastActiveAt: new Date()
+            });
+            await freshUser.save();
+            logger.info(`Auto-added missing pre-installed app ${packageName} for user ${freshUser.email}`);
+            return;
+          }
+          // If not pre-installed, silently ignore (app might be starting before installation completes)
+          return;
+        } catch (error) {
+          logger.error('Error checking pre-installed apps in updateAppLastActive:', error);
+          // Don't fail the operation if checking pre-installed apps fails
+          return;
+        }
+      }
+    } catch (error: any) {
+      lastError = error;
+      
+      // If it's a version conflict, retry
+      if (error.name === 'VersionError') {
+        logger.warn(`Version conflict in updateAppLastActive for user ${this.email}, app ${packageName}, attempt ${attempt + 1}/${maxRetries}`);
+        if (attempt < maxRetries - 1) {
+          // Wait a bit before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 50));
+          continue;
+        }
+      }
+      
+      // For other errors or max retries reached, throw
+      throw error;
     }
   }
+  
+  // If we get here, all retries failed
+  throw lastError;
 };
 
 // --- Middleware ---

@@ -323,16 +323,25 @@ export class AppManager {
     try {
       const user = await User.findByEmail(this.userSession.userId);
       if (user) {
-        return user.updateAppLastActive(packageName);
+        await user.updateAppLastActive(packageName);
+        return;
       }
       this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
         `User ${this.userSession.userId} not found while updating last active for app ${packageName}`);
-      return Promise.reject(new Error(`User ${this.userSession.userId} not found`));
+      return;
 
     } catch (error) {
-      this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager', error },
-        `Error updating last active for app ${packageName}`);
-      return Promise.reject(error);
+      // Log the error but don't crash the application
+      this.logger.error({ 
+        userId: this.userSession.userId, 
+        packageName, 
+        service: 'AppManager', 
+        error: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : 'Unknown'
+      }, `Error updating last active for app ${packageName} - continuing without crash`);
+      
+      // Don't throw the error - this is a non-critical operation
+      return;
     }
   }
 
