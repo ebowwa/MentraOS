@@ -176,7 +176,7 @@ export default function Homepage() {
 
         {/* <View style={{flex: 1}}> */}
         {/* <ConnectedGlasses showTitle={true} /> */}
-        {status.core_info.default_wearable && <ConnectedSimulatedGlassesInfo />}
+        {status.glasses_info?.model_name && <ConnectedSimulatedGlassesInfo />}
         {/* <SplitDeviceInfo /> */}
         <ConnectedDeviceInfo />
         <Spacer height={theme.spacing.md} />

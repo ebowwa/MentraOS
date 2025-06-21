@@ -197,7 +197,7 @@ export const colors = {
   altTabBarBackground2: palette.altTabBarGradientEnd,
 
   // Fullscreen and modal backgrounds
-  fullscreenBackground: palette.neutral900, // Black for fullscreen camera
+  fullscreenBackground: "#000000", // Black for fullscreen camera
   fullscreenOverlay: palette.overlay60, // Semi-transparent overlay
 
   // Permission and action buttons

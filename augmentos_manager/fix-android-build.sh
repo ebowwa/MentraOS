@@ -56,9 +56,14 @@ else
     done
 fi
 
-# Step 5: Build Android
+# Step 5: Clean Gradle cache
 echo ""
-echo "🚀 Step 5: Building Android app..."
+echo "🧹 Step 5: Cleaning Gradle cache..."
+cd android && ./gradlew clean && cd ..
+
+# Step 6: Build Android
+echo ""
+echo "🚀 Step 6: Building Android app..."
 pnpm android
 
 # Check if build was successful
@@ -73,6 +78,6 @@ else
     echo "❌ Android build failed!"
     echo ""
     echo "Try running the following commands manually:"
-    echo "1. cd android && ./gradlew clean"
+    echo "1. pnpm expo prebuild"
     echo "2. pnpm android"
 fi
