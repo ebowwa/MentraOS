@@ -17,6 +17,8 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
 
   // Animation values
   const progressAnim = useRef(new Animated.Value(0)).current
+  const connectionBarOpacity = useRef(new Animated.Value(0)).current
+  const connectionBarScale = useRef(new Animated.Value(0.8)).current
 
   const [currentTipIndex, setCurrentTipIndex] = React.useState(0)
   const progressValue = useRef(0)
@@ -33,6 +35,24 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
       useNativeDriver: false,
       easing: Easing.out(Easing.exp),
     }).start()
+
+    // Connection bar animation - appears after 3 seconds
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(connectionBarOpacity, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+          easing: Easing.out(Easing.cubic),
+        }),
+        Animated.spring(connectionBarScale, {
+          toValue: 1,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start()
+    }, 3000)
 
     // Set up fact rotator
     const rotateTips = () => {
@@ -74,6 +94,22 @@ const GlassesPairingLoader: React.FC<GlassesPairingLoaderProps> = ({glassesModel
           {/* New phone and glasses images layout */}
           <View style={themed($imagesContainer)}>
             <Image source={phoneImage} style={themed($phoneImage)} resizeMode="contain" />
+            
+            {/* Animated connection bar */}
+            <Animated.View 
+              style={[
+                themed($connectionBar),
+                {
+                  opacity: connectionBarOpacity,
+                  transform: [{scaleX: connectionBarScale}],
+                }
+              ]}
+            >
+              <View style={themed($connectionDiamond)} />
+              <View style={themed($connectionLine)} />
+              <View style={themed($connectionDiamond)} />
+            </Animated.View>
+            
             <Image source={glassesImage} style={themed($glassesImage)} resizeMode="contain" />
           </View>
 
@@ -164,6 +200,30 @@ const $progressBar: ThemedStyle<ViewStyle> = ({colors}) => ({
   height: "100%",
   borderRadius: 3,
   backgroundColor: colors.palette.primary300,
+})
+
+const $connectionBar: ThemedStyle<ViewStyle> = ({colors}) => ({
+  position: "absolute",
+  flexDirection: "row",
+  alignItems: "center",
+  top: "50%",
+  marginTop: -22, // Center the 4px bar and raise by 20px
+  left: 60, // Extend into phone image
+  right: 60, // Extend into glasses image
+  zIndex: 10, // Ensure it appears over the images
+})
+
+const $connectionLine: ThemedStyle<ViewStyle> = ({colors}) => ({
+  flex: 1,
+  height: 4,
+  backgroundColor: colors.buttonPrimary,
+})
+
+const $connectionDiamond: ThemedStyle<ViewStyle> = ({colors}) => ({
+  width: 12,
+  height: 12,
+  backgroundColor: colors.buttonPrimary,
+  transform: [{rotate: "45deg"}],
 })
 
 const styles = StyleSheet.create({})
