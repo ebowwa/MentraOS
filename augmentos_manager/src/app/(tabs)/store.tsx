@@ -78,7 +78,11 @@ export default function AppStoreWeb() {
   // Show loading state while getting the URL
   if (!appStoreUrl) {
     return (
-      <Screen preset="fixed" style={{paddingHorizontal: 0}}>
+      <Screen 
+        preset="fixed" 
+        style={{paddingHorizontal: 0}}
+        gradientColors={[theme.colors.tabBarGradientStart, theme.colors.tabBarGradientEnd]}
+      >
         <View style={{paddingHorizontal: theme.spacing.lg}}>
           <Header leftTx="store:title" />
         </View>
@@ -92,19 +96,23 @@ export default function AppStoreWeb() {
 
   // If the prefetched WebView is ready, show it in the correct style
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: 0}}>
+    <Screen 
+      preset="fixed" 
+      style={{paddingHorizontal: 0}}
+      gradientColors={[theme.colors.tabBarGradientStart, theme.colors.tabBarGradientEnd]}
+    >
       <View style={{paddingHorizontal: theme.spacing.lg}}>
         <Header leftTx="store:title" />
       </View>
       {hasError ? (
         <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
       ) : (
-        <View style={styles.webViewContainer}>
+        <View style={[styles.webViewContainer, {backgroundColor: theme.colors.background}]}>
           {/* Show the prefetched WebView, but now visible and full size */}
           <WebView
             ref={prefetchedWebviewRef}
             source={{uri: appStoreUrl}}
-            style={styles.webView}
+            style={[styles.webView, {backgroundColor: theme.colors.background}]}
             onLoadStart={() => setWebviewLoading(true)}
             onLoadEnd={() => setWebviewLoading(false)}
             onError={handleError}
@@ -113,6 +121,8 @@ export default function AppStoreWeb() {
             domStorageEnabled={true}
             startInLoadingState={true}
             scalesPageToFit={false}
+            bounces={false}
+            scrollEnabled={true}
             injectedJavaScript={`
               const meta = document.createElement('meta');
               meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
