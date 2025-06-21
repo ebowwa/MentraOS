@@ -1,6 +1,5 @@
 import React, {useRef, useState, useCallback, useEffect} from "react"
 import {View, StyleSheet, ActivityIndicator, BackHandler} from "react-native"
-import {SafeAreaView} from "react-native-safe-area-context"
 import {WebView} from "react-native-webview"
 import Config from "react-native-config"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
@@ -10,7 +9,7 @@ import {useAppStatus} from "@/contexts/AppStatusProvider"
 import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {useLocalSearchParams} from "expo-router"
-import {Text} from "@/components/ignite"
+import {Text, Screen, Header} from "@/components/ignite"
 
 // Define package name for the store webview
 const STORE_PACKAGE_NAME = "org.augmentos.store"
@@ -79,16 +78,24 @@ export default function AppStoreWeb() {
   // Show loading state while getting the URL
   if (!appStoreUrl) {
     return (
-      <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
-        <ActivityIndicator size="large" color={theme2.primaryColor} />
-        <Text text="Preparing App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
-      </View>
+      <Screen preset="fixed" style={{paddingHorizontal: 0}}>
+        <View style={{paddingHorizontal: theme.spacing.lg}}>
+          <Header leftTx="store:title" />
+        </View>
+        <View style={[styles.loadingContainer, {backgroundColor: theme.colors.background, paddingHorizontal: theme.spacing.lg}]}>
+          <ActivityIndicator size="large" color={theme2.primaryColor} />
+          <Text text="Preparing App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
+        </View>
+      </Screen>
     )
   }
 
   // If the prefetched WebView is ready, show it in the correct style
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+    <Screen preset="fixed" style={{paddingHorizontal: 0}}>
+      <View style={{paddingHorizontal: theme.spacing.lg}}>
+        <Header leftTx="store:title" />
+      </View>
       {hasError ? (
         <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
       ) : (
@@ -122,13 +129,15 @@ export default function AppStoreWeb() {
           />
         </View>
       )}
-    </SafeAreaView>
+    </Screen>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
+  loadingContainer: {
     flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingOverlay: {
     alignItems: "center",

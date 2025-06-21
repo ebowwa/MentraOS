@@ -8,6 +8,7 @@ import {
   Animated,
   Platform,
   ViewStyle,
+  TextStyle,
   ActivityIndicator,
   Easing,
 } from "react-native"
@@ -541,14 +542,23 @@ export default function InactiveAppList({
         )
       })}
 
-      {/* Add "Get More Apps" link at the bottom */}
-      {availableApps.length > 0 && (
+      {/* Add "Get More Apps" link at the bottom - only on home page, not search */}
+      {availableApps.length > 0 && !isSearchPage && (
         <>
           <Spacer height={8} />
           <Divider variant="inset" />
           <Spacer height={8} />
           <AppListStoreLink />
         </>
+      )}
+
+      {/* Show "No apps found" message when searching returns no results */}
+      {isSearchPage && searchQuery && availableApps.length === 0 && (
+        <View style={themed($noAppsContainer)}>
+          <Text style={themed($noAppsText)}>
+            {translate("home:noAppsFoundForQuery", {query: searchQuery})}
+          </Text>
+        </View>
       )}
 
       {/* Add bottom padding for better scrolling experience */}
@@ -562,6 +572,19 @@ const $loadingContainer: ThemedStyle<ViewStyle> = () => ({
   justifyContent: "center",
   alignItems: "center",
   marginTop: 50,
+})
+
+const $noAppsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  paddingVertical: spacing.xxl,
+})
+
+const $noAppsText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
+  fontSize: 16,
+  color: colors.textDim,
+  textAlign: "center",
 })
 
 const styles = StyleSheet.create({
