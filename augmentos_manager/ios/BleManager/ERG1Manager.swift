@@ -746,7 +746,7 @@ extension ERG1Manager {
   func getWhitelistChunks() -> [[UInt8]] {
     // Define the hardcoded whitelist JSON
     let apps = [
-      AppInfo(id: "com.augment.os", name: "AugmentOS"),
+      //AppInfo(id: "com.augment.os", name: "AugmentOS"),
       AppInfo(id: "com.mentra.os", name: "MentraOS"),
       AppInfo(id: "io.heckel.ntfy", name: "ntfy")
     ]

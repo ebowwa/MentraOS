@@ -62,12 +62,13 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
             onSlidingComplete={handleValueSet} // Wrap the callback to round values
             minimumValue={min}
             maximumValue={max}
-            minimumTrackTintColor={theme.colors.palette.primary300}
-            maximumTrackTintColor={theme.colors.palette.neutral300}
+            minimumTrackTintColor={theme.colors.sliderTrackActive}
+            maximumTrackTintColor={theme.colors.sliderTrackInactive}
             thumbStyle={{
               width: 24,
               height: 24,
               backgroundColor: theme.colors.sliderThumb,
+              borderRadius: 12,
             }}
           />
         </View>

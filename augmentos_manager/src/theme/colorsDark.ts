@@ -163,10 +163,11 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: "#9E9E9E", // Darker gray for OFF track
-  switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
+  switchTrackOff: "#565E8C", // Purple-gray track for OFF state
+  switchTrackOn: "#7674FB", // Purple track for ON state
   switchThumb: palette.neutral100,
-  switchThumbOff: "#E0E0E0", // More noticeable gray handle for OFF state
+  switchThumbOn: "#FFFFFF", // White thumb for ON state
+  switchThumbOff: "#D5D8F5", // Light purple thumb for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.darkGalleryBg,
@@ -229,6 +230,7 @@ export const colors = {
   // Warning background
   warningBackground: palette.warningBackground,
   warningBackgroundDestructive: "rgba(254, 152, 235, 0.4)", // Pink warning background with 40% opacity
+  warningBorderDestructive: "rgba(254, 152, 235, 0.16)", // Faded pink border (40% of background opacity)
 
   // Input border highlight
   inputBorderHighlight: palette.inputBorderHighlight,
@@ -241,4 +243,9 @@ export const colors = {
 
   // Checkmark color
   checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
+
+  // Slider colors
+  sliderThumb: "#FFFFFF", // White handle for dark theme
+  sliderTrackActive: "#7674FB", // Purple track for active/filled portion (matches switch ON)
+  sliderTrackInactive: "#565E8C", // Purple-gray for inactive portion (matches switch OFF)
 } as const

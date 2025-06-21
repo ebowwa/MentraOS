@@ -212,9 +212,9 @@ export const colors = {
   // Switch/toggle colors
   switchTrackOff: "#9E9E9E", // Darker gray for OFF track
   switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
-  switchThumb: palette.gray350,
-  switchThumbOn: palette.neutral100, // White thumb for ON state
-  switchThumbOff: palette.gray350, // More noticeable gray handle for OFF state
+  switchThumb: palette.gray600,
+  switchThumbOn: palette.gray700, // Dark gray thumb for ON state (better contrast on light bg)
+  switchThumbOff: palette.gray600, // Medium gray handle for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
@@ -277,6 +277,7 @@ export const colors = {
   // Warning background
   warningBackground: palette.warningBackground,
   warningBackgroundDestructive: "rgba(254, 152, 235, 0.4)", // Pink warning background with 40% opacity
+  warningBorderDestructive: "rgba(254, 152, 235, 0.16)", // Faded pink border (40% of background opacity)
 
   // Input border highlight
   inputBorderHighlight: palette.inputBorderHighlight,
@@ -290,6 +291,8 @@ export const colors = {
   // Checkmark color
   checkmark: palette.blue500, // Bright blue for checkmarks in light theme
 
-  // Slider thumb color
-  sliderThumb: palette.gray350, // Match toggle switch knob color
+  // Slider colors
+  sliderThumb: palette.gray700, // Dark gray for better contrast on light background
+  sliderTrackActive: palette.primary300, // Default track color for light theme
+  sliderTrackInactive: palette.neutral300, // Default inactive track color for light theme
 } as const

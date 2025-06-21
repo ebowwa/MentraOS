@@ -8,6 +8,7 @@ import {useCameraPermissions, CameraType, CameraView} from "expo-camera"
 import {router, useFocusEffect} from "expo-router"
 import {useState, useRef, useEffect, useCallback} from "react"
 import {View, Text, BackHandler, Platform, StatusBar, ToastAndroid, StyleSheet, TouchableOpacity} from "react-native"
+import {useSafeAreaInsets} from "react-native-safe-area-context"
 
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
 import RNFS from "react-native-fs"
@@ -23,6 +24,7 @@ export default function GlassesMirrorFullscreen() {
   const {status} = useStatus()
   const {events} = useGlassesMirror() // From context
   const {theme} = useAppTheme()
+  const insets = useSafeAreaInsets()
   const [permission, requestPermission] = useCameraPermissions()
   const [hasMicrophonePermission, setHasMicrophonePermission] = useState(false)
   const [cameraType, setCameraType] = useState<CameraType>("front")
@@ -30,6 +32,7 @@ export default function GlassesMirrorFullscreen() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [recordingPath, setRecordingPath] = useState<string | null>(null)
   const [recordingCount, setRecordingCount] = useState(0)
+  const [isCameraOn, setIsCameraOn] = useState(true)
   const {goBack, replace} = useNavigationHistory()
 
   const cameraRef = useRef<CameraView | null>(null)
@@ -165,6 +168,20 @@ export default function GlassesMirrorFullscreen() {
     }
   }
 
+  // Toggle camera on/off
+  const toggleCameraOnOff = () => {
+    if (isRecording) {
+      // Don't allow turning camera off while recording
+      if (Platform.OS === "android") {
+        ToastAndroid.show("Cannot turn off camera while recording", ToastAndroid.SHORT)
+      } else {
+        showAlert("Recording in Progress", "Cannot turn off camera while recording")
+      }
+      return
+    }
+    setIsCameraOn(!isCameraOn)
+  }
+
   // Format seconds into MM:SS format
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60)
@@ -176,6 +193,14 @@ export default function GlassesMirrorFullscreen() {
 
   // Start recording video
   const startRecording = async () => {
+    if (!isCameraOn) {
+      showAlert("Camera Off", "Turn on the camera to start recording", undefined, {
+        iconName: "videocam-off",
+        iconColor: "#FF3B30",
+      })
+      return
+    }
+
     if (!permission?.granted) {
       const permissionResult = await requestPermission()
       if (!permissionResult.granted) {
@@ -294,14 +319,21 @@ export default function GlassesMirrorFullscreen() {
     <View style={[styles.fullscreenContainer, {backgroundColor: theme.colors.fullscreenBackground}]}>
       {isGlassesConnected && lastEvent ? (
         <View style={{flex: 1}}>
-          {/* Camera feed */}
-          <CameraView
-            ref={cameraRef}
-            style={styles.cameraBackground}
-            facing={cameraType}
-            mode="video"
-            enableTorch={false}
-          />
+          {/* Camera feed - only render if camera is on */}
+          {isCameraOn && (
+            <CameraView
+              ref={cameraRef}
+              style={styles.cameraBackground}
+              facing={cameraType}
+              mode="video"
+              enableTorch={false}
+            />
+          )}
+
+          {/* Dark background when camera is off */}
+          {!isCameraOn && (
+            <View style={[styles.cameraBackground, {backgroundColor: theme.colors.fullscreenBackground}]} />
+          )}
 
           {/* Overlay the glasses display content */}
           <View style={styles.fullscreenOverlay}>
@@ -310,17 +342,26 @@ export default function GlassesMirrorFullscreen() {
 
           {/* Fullscreen exit button */}
           <TouchableOpacity
-            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200}]}
+            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
             onPress={handleExitFullscreen}>
             <Text style={[styles.exitFullscreenText, {color: theme.colors.icon}]}>Exit</Text>
           </TouchableOpacity>
 
-          {/* Camera flip button */}
+          {/* Camera toggle on/off button */}
           <TouchableOpacity
-            style={[styles.flipCameraButton, {backgroundColor: theme.colors.palette.secondary200}]}
-            onPress={toggleCamera}>
-            <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
+            style={[styles.cameraToggleButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
+            onPress={toggleCameraOnOff}>
+            <Icon name={isCameraOn ? "videocam" : "videocam-off"} size={28} color={theme.colors.icon} />
           </TouchableOpacity>
+
+          {/* Camera flip button - only show when camera is on */}
+          {isCameraOn && (
+            <TouchableOpacity
+              style={[styles.flipCameraButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
+              onPress={toggleCamera}>
+              <Icon name="flip-camera-ios" size={28} color={theme.colors.icon} />
+            </TouchableOpacity>
+          )}
 
           {/* Recording button */}
           {/* TEMPORARILY: COMMENT OUT THE RECORD BUTTON UNTIL THIS FEATURE IS COMPLETE */}
@@ -351,7 +392,7 @@ export default function GlassesMirrorFullscreen() {
           {/* Gallery button - goes back to main screen to view gallery */}
           {!isRecording && (
             <TouchableOpacity
-              style={[styles.videosButton, {backgroundColor: theme.colors.palette.secondary200}]}
+              style={[styles.videosButton, {backgroundColor: theme.colors.palette.secondary200, bottom: insets.bottom + 40}]}
               onPress={() => router.back()}>
               <Icon name="photo-library" size={24} color={theme.colors.icon} />
               {recordingCount > 0 && (
@@ -372,7 +413,7 @@ export default function GlassesMirrorFullscreen() {
             {!isGlassesConnected ? "Connect glasses to use the Glasses Mirror" : "No display events available"}
           </Text>
           <TouchableOpacity
-            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200}]}
+            style={[styles.exitFullscreenButton, {backgroundColor: theme.colors.palette.secondary200, top: insets.top + 20}]}
             onPress={handleExitFullscreen}>
             <Text style={[styles.exitFullscreenText, {color: theme.colors.icon}]}>Back</Text>
           </TouchableOpacity>
@@ -438,10 +479,19 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 20,
   },
-  flipCameraButton: {
+  cameraToggleButton: {
     position: "absolute",
     top: 40,
     left: 20,
+    // backgroundColor moved to dynamic styling
+    padding: 12,
+    borderRadius: 50,
+    zIndex: 20,
+  },
+  flipCameraButton: {
+    position: "absolute",
+    top: 40,
+    left: 80,
     // backgroundColor moved to dynamic styling
     padding: 12,
     borderRadius: 50,
