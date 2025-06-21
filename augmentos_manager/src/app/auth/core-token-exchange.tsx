@@ -161,7 +161,7 @@ export default function CoreTokenExchange() {
         </View>
 
         <View style={styles.setupContainer}>
-          {!isUsingCustomUrl && (
+          {isUsingCustomUrl && (
             <Button 
               onPress={handleResetUrl}
               isDarkTheme={theme.isDark} 
