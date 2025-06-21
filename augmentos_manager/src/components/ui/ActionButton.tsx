@@ -60,7 +60,7 @@ export default function ActionButton({
 
   return (
     <TouchableOpacity
-      style={[themed($container), containerStyle]}
+      style={[themed($container), disabled && {opacity: 0.4}, containerStyle]}
       onPress={onPress}
       disabled={disabled}
       activeOpacity={0.7}>

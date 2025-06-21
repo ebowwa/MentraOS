@@ -70,6 +70,7 @@ const en = {
     activateAnApp: "Activate an app",
     activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
     search: "Search",
+    noAppsFoundForQuery: "No apps found for \"{{query}}\"",
     movedToActive: "Moved to Active",
     movedToInactive: "Moved to Inactive",
     foreground: "Foreground",
