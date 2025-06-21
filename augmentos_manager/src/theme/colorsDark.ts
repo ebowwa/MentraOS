@@ -4,9 +4,10 @@ const palette = {
   neutral700: "#D7CEC9",
   neutral600: "#B6ACA6",
   neutral500: "#978F8A",
-  neutral400: "#564E4A",
+  // neutral400: "#564E4A",
+  neutral400: "#202761",
   neutral300: "#3C3836",
-  neutral200: "#141434",
+  neutral200: "#161C47",
   neutral100: "#FFFFFF",
 
   primary600: "#F4E0D9",
@@ -14,7 +15,7 @@ const palette = {
   primary400: "#565E8C",
   primary300: "#4240D1",
   // primary200: "#C76542",
-  primary200: "navy",
+  primary200: "#6274EE",
   primary100: "#A54F31",
 
   secondary500: "#DCDDE9",
@@ -34,20 +35,20 @@ const palette = {
 
   // Warning/danger colors
   red500: "#f00", // Bright red for warnings
-  
+
   // Orange colors
   orange500: "#FF9500", // Warning orange
-  
+
   // Red error colors
   errorRed: "#FF3B30", // Error red
-  
+
   // Gallery background colors
   darkGalleryBg: "#121212", // Very dark background for gallery
   lightGalleryBg: "#f0f0f0", // Light background for gallery
 
   // Common blue colors found in hardcoded values (same as light theme)
   blue100: "#E3F2FD",
-  blue200: "#BBDEFB", 
+  blue200: "#BBDEFB",
   blue300: "#90CAF9",
   blue400: "#42A5F5",
   blue500: "#2196F3", // Material Design Blue - most common hardcoded blue
@@ -60,7 +61,7 @@ const palette = {
 
   // Common gray colors found in hardcoded values (same as light theme)
   gray100: "#F5F5F5",
-  gray200: "#EEEEEE", 
+  gray200: "#EEEEEE",
   gray300: "#E0E0E0",
   gray400: "#BDBDBD",
   gray500: "#9E9E9E",
@@ -79,7 +80,7 @@ const palette = {
   success100: "#E8F5E8",
   success500: "#4CAF50",
 
-  // Warning colors  
+  // Warning colors
   warning100: "#FFF3E0",
   warning500: "#FF9500",
 
@@ -108,6 +109,9 @@ const palette = {
   tabBarGradientStart: "#090A14", // Dark blue for dark theme tab bar start
   tabBarGradientEnd: "#080D33", // Darker blue for dark theme tab bar end
 
+  altTabBarGradientStart: "#030514",
+  altTabBarGradientEnd: "#1D1D45",
+
   // Button gradient colors (same for both themes)
   buttonGradientStart: "#4340D3", // Purple-blue for button gradient start
   buttonGradientEnd: "#06114D", // Dark blue for button gradient end
@@ -131,6 +135,7 @@ export const colors = {
   transparent: "rgba(0, 0, 0, 0)",
   text: palette.neutral800,
   textDim: palette.neutral600,
+  textAlt: palette.neutral200,
   background: palette.neutral200,
   border: palette.neutral400,
   tint: palette.primary500,
@@ -144,7 +149,7 @@ export const colors = {
   loginGradientEnd: palette.neutral200, // Same dark background
 
   // Semantic color mappings for common UI elements
-  buttonPrimary: palette.blue500,
+  buttonPrimary: palette.primary500,
   buttonSecondary: palette.blue500,
   buttonDisabled: palette.lightGray,
   buttonDanger: palette.angry500,
@@ -165,7 +170,7 @@ export const colors = {
 
   // Gallery specific colors
   galleryBackground: palette.darkGalleryBg,
-  
+
   // Status/alert colors
   warningOrange: palette.orange500,
   errorRed: palette.errorRed,
@@ -183,31 +188,37 @@ export const colors = {
   // Tab bar gradients
   tabBarBackground1: palette.tabBarGradientStart,
   tabBarBackground2: palette.tabBarGradientEnd,
+  
+  // Tab bar solid background (for native tabs)
+  tabBarBackground: palette.neutral200,
+
+  altTabBarBackground1: palette.altTabBarGradientStart,
+  altTabBarBackground2: palette.altTabBarGradientEnd,
 
   // Fullscreen and modal backgrounds
   fullscreenBackground: palette.neutral900, // Black for fullscreen camera
   fullscreenOverlay: palette.overlay60, // Semi-transparent overlay
-  
+
   // Permission and action buttons
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
   destructiveAction: palette.warningPink, // Pink for destructive actions
-  
+
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
-  
+
   // Gallery specific
   galleryLoadingIndicator: palette.blue500, // Blue for loading spinners
 
   // Status and notification colors
   statusSuccess: palette.success500, // Green for success messages
-  statusWarning: palette.warning500, // Orange for warning messages  
+  statusWarning: palette.warning500, // Orange for warning messages
   statusInfo: palette.blue500, // Blue for info messages
 
   // Modal and picker backgrounds
   pickerBackground: palette.overlay70, // Dark semi-transparent for dark theme pickers
-  
+
   // Border variations
   borderLight: palette.overlay10, // Very light border
 
@@ -227,7 +238,7 @@ export const colors = {
   buttonPillSecondary: palette.buttonPillSecondary,
   buttonPillPrimaryText: palette.buttonPillPrimaryText,
   buttonPillSecondaryText: palette.buttonPillSecondaryText,
-  
+
   // Checkmark color
   checkmark: "#7B79FF", // Brighter purple-blue for checkmarks in dark theme
 } as const

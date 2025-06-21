@@ -8,7 +8,7 @@ import {
   ViewProps,
   ViewStyle,
 } from "react-native"
-import { useAppTheme } from "@/utils/useAppTheme"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 export type IconTypes = keyof typeof iconRegistry
 
@@ -59,12 +59,12 @@ export function PressableIcon(props: PressableIconProps) {
     ...pressableProps
   } = props
 
-  const { theme } = useAppTheme()
+  const {theme} = useAppTheme()
 
   const $imageStyle: StyleProp<ImageStyle> = [
     $imageStyleBase,
-    { tintColor: color ?? theme.colors.text },
-    size !== undefined && { width: size, height: size },
+    {tintColor: color ?? theme.colors.text},
+    size !== undefined && {width: size, height: size},
     $imageStyleOverride,
   ]
 
@@ -83,21 +83,14 @@ export function PressableIcon(props: PressableIconProps) {
  * @returns {JSX.Element} The rendered `Icon` component.
  */
 export function Icon(props: IconProps) {
-  const {
-    icon,
-    color,
-    size,
-    style: $imageStyleOverride,
-    containerStyle: $containerStyleOverride,
-    ...viewProps
-  } = props
+  const {icon, color, size, style: $imageStyleOverride, containerStyle: $containerStyleOverride, ...viewProps} = props
 
-  const { theme } = useAppTheme()
+  const {theme} = useAppTheme()
 
   const $imageStyle: StyleProp<ImageStyle> = [
     $imageStyleBase,
-    { tintColor: color ?? theme.colors.text },
-    size !== undefined && { width: size, height: size },
+    {tintColor: color ?? theme.colors.text},
+    size !== undefined && {width: size, height: size},
     $imageStyleOverride,
   ]
 

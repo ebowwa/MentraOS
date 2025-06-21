@@ -1,8 +1,19 @@
 // SelectGlassesBluetoothScreen.tsx
 
 import React, {useEffect, useMemo, useRef, useState, useCallback} from "react"
-import {View, StyleSheet, TouchableOpacity, ScrollView, Image, Platform, Alert, ViewStyle, BackHandler} from "react-native"
-import {useNavigation, useRoute, useFocusEffect} from "@react-navigation/native" // <<--- import useRoute
+import {
+  View,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Platform,
+  Alert,
+  ViewStyle,
+  BackHandler,
+} from "react-native"
+import {useNavigation, useRoute} from "@react-navigation/native" // <<--- import useRoute
+import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -26,7 +37,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {searchResults, setSearchResults} = useSearchResults()
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, clearHistory} = useNavigationHistory()
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
 
@@ -39,21 +50,45 @@ export default function SelectGlassesBluetoothScreen() {
   const handleForgetGlasses = useCallback(async () => {
     await coreCommunicator.sendDisconnectWearable()
     await coreCommunicator.sendForgetSmartGlasses()
-    router.replace('/pairing/select-glasses-model')
-  }, [])
+    // Clear NavigationHistoryContext history to prevent issues with back navigation
+    clearHistory()
+    // Use dismissTo to properly go back to select-glasses-model and clear the stack
+    router.dismissTo("/pairing/select-glasses-model")
+  }, [clearHistory])
 
   // Handle Android hardware back button
-  useFocusEffect(
-    useCallback(() => {
-      const onBackPress = () => {
-        handleForgetGlasses()
-        return true // Prevent default back action
-      }
+  useEffect(() => {
+    // Only handle on Android
+    if (Platform.OS !== "android") return
 
-      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress)
-      return () => backHandler.remove()
-    }, [handleForgetGlasses])
-  )
+    const onBackPress = () => {
+      // Call our custom back handler
+      handleForgetGlasses()
+      // Return true to prevent default back behavior and stop propagation
+      return true
+    }
+
+    // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
+    const timeout = setTimeout(() => {
+      // Add the event listener - this will be on top of the stack
+      const backHandler = BackHandler.addEventListener("hardwareBackPress", onBackPress)
+
+      // Store the handler for cleanup
+      backHandlerRef.current = backHandler
+    }, 100)
+
+    // Cleanup function
+    return () => {
+      clearTimeout(timeout)
+      if (backHandlerRef.current) {
+        backHandlerRef.current.remove()
+        backHandlerRef.current = null
+      }
+    }
+  }, [handleForgetGlasses])
+
+  // Ref to store the back handler for cleanup
+  const backHandlerRef = useRef<any>(null)
 
   useEffect(() => {
     const handleSearchResult = ({modelName, deviceName}: {modelName: string; deviceName: string}) => {
@@ -133,12 +168,12 @@ export default function SelectGlassesBluetoothScreen() {
   useEffect(() => {
     // If puck gets d/c'd here, return to home
     if (!status.core_info.puck_connected) {
-      router.navigate("/")
+      router.navigate("/(tabs)/home")
     }
 
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
-      router.navigate("/")
+      router.navigate("/(tabs)/home")
     }
   }, [status])
 
@@ -194,8 +229,12 @@ export default function SelectGlassesBluetoothScreen() {
   const glassesImage = useMemo(() => getGlassesImage(glassesModelName), [glassesModelName])
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:scanningForGlasses" leftIcon="caretLeft" onLeftPress={handleForgetGlasses} />
+    <Screen
+      preset="fixed"
+      style={{paddingHorizontal: theme.spacing.md}}
+      safeAreaEdges={["bottom"]}
+      gradientColors={[theme.colors.altTabBarBackground1, theme.colors.altTabBarBackground2]}>
+      <Header leftIcon="caretLeft" onLeftPress={handleForgetGlasses} />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>
@@ -211,16 +250,17 @@ export default function SelectGlassesBluetoothScreen() {
                 onPress={() => {
                   triggerGlassesPairingGuide(glassesModelName, deviceName)
                 }}>
-                <Image source={glassesImage} style={styles.glassesImage} />
+                {/* <Image source={glassesImage} style={styles.glassesImage} /> */}
                 <View style={styles.settingTextContainer}>
                   <Text
-                    text={deviceName}
+                    text={`${glassesModelName}  ${deviceName}`}
                     style={[
                       styles.label,
                       {
                         color: theme.colors.text,
                       },
-                    ]} />
+                    ]}
+                  />
                 </View>
                 <Icon name="angle-right" size={24} color={theme.colors.text} />
               </TouchableOpacity>
@@ -232,12 +272,12 @@ export default function SelectGlassesBluetoothScreen() {
   )
 }
 
-const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
   // Increased padding to give it a "bigger" look
-  paddingVertical: 25,
+  paddingVertical: spacing.sm,
   paddingHorizontal: 15,
 
   // Larger margin to separate each card
@@ -245,7 +285,8 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
 
   // Rounded corners
   borderRadius: 10,
-  borderWidth: 1,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
 
   // More subtle shadow for iOS
   shadowColor: "#000",
@@ -260,8 +301,10 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors}) => ({
 
 const styles = StyleSheet.create({
   contentContainer: {
-    alignItems: "center",
-    justifyContent: "center",
+    // alignItems: "center",
+    // justifyContent: "center",
+    height: 320,
+    // backgroundColor: "red",
   },
   container: {
     flex: 1,
@@ -270,51 +313,51 @@ const styles = StyleSheet.create({
     overflow: "hidden", // Prevent content from creating visual lines
   },
   titleContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 20,
+    marginBottom: 10,
     marginHorizontal: -20,
     marginTop: -20,
-    marginBottom: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
   // Removed hardcoded theme colors - using dynamic styling
   // titleContainerDark and titleContainerLight removed
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    textAlign: "left",
     marginBottom: 5,
+    textAlign: "left",
     // color moved to dynamic styling
   },
   // Removed hardcoded theme colors - using dynamic styling
   // darkBackground, lightBackground, darkText, lightText, darkSubtext, lightSubtext, darkIcon, lightIcon removed
   backButton: {
-    flexDirection: "row",
     alignItems: "center",
+    flexDirection: "row",
     marginBottom: 20,
   },
   backButtonText: {
-    marginLeft: 10,
     fontSize: 18,
     fontWeight: "bold",
+    marginLeft: 10,
   },
   settingTextContainer: {
     flex: 1,
     paddingHorizontal: 10,
   },
   label: {
-    fontSize: 18, // bigger text size
+    fontSize: 16, // bigger text size
     fontWeight: "600",
     flexWrap: "wrap",
   },
   value: {
+    flexWrap: "wrap",
     fontSize: 12,
     marginTop: 5,
-    flexWrap: "wrap",
   },
   headerContainer: {
-    paddingVertical: 15,
-    paddingHorizontal: 15,
     borderBottomWidth: 1,
+    paddingHorizontal: 15,
+    paddingVertical: 15,
     // backgroundColor and borderBottomColor moved to dynamic styling
   },
   header: {

@@ -16,7 +16,7 @@ export interface EpisodeItem {
     type: string
     length: number
     duration: number
-    rating: { scheme: string; value: string }
+    rating: {scheme: string; value: string}
   }
   categories: string[]
 }

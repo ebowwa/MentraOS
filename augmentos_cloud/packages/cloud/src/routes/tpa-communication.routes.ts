@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { validateTpaApiKey } from '../middleware/validateApiKey';
-import sessionService from '../services/core/session.service';
+import sessionService from '../services/session/session.service';
 import multiUserTpaService from '../services/core/multi-user-tpa.service';
 import appService from '../services/core/app.service';
 
@@ -30,7 +30,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid packageName' });
     }
     // Validate the API key
-    const isValid = await appService.validateApiKey(packageName, tpaApiKey, req.ip);
+    const isValid = await appService.validateApiKey(packageName, tpaApiKey);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid API key' });
     }

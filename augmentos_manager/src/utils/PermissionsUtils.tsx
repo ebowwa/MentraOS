@@ -1,6 +1,14 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import {Alert, Platform, Linking} from "react-native"
-import {request, check, PERMISSIONS, Permission, RESULTS, requestNotifications, checkNotifications} from "react-native-permissions"
+import {
+  request,
+  check,
+  PERMISSIONS,
+  Permission,
+  RESULTS,
+  requestNotifications,
+  checkNotifications,
+} from "react-native-permissions"
 import {Permission as RNPermission} from "react-native"
 import {PermissionsAndroid} from "react-native"
 import {checkNotificationAccessSpecialPermission} from "../utils/NotificationServiceUtils"
@@ -100,7 +108,7 @@ const PERMISSION_CONFIG: Record<string, PermissionConfig> = {
           ]
         : [], // For Android 12+, include the Bluetooth permissions in the normal flow
     critical: true, // Critical for glasses pairing
-    specialRequestNeeded: Platform.OS === "ios", // Special handling for iOS
+    specialRequestNeeded: false, // iOS Bluetooth permissions work with regular flow
   },
 }
 
@@ -283,7 +291,7 @@ export const requestBackgroundLocationPermission = async (): Promise<boolean> =>
     return new Promise(resolve => {
       Alert.alert(
         "Background Location Permission",
-        "AugmentOS needs access to your location when the app is in the background " +
+        "MentraOS needs access to your location when the app is in the background " +
           "to provide continuous tracking and location-based features. " +
           'On the next screen, please select "Allow all the time".',
         [

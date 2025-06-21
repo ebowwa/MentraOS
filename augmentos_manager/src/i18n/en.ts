@@ -13,16 +13,30 @@ const en = {
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",
-    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.",
+    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.\n\nAlso, check that Bluetooth is enabled in device settings.",
     errorTitle: "Error",
     permissionsError: "Failed to request necessary permissions",
     connectionIssueTitle: "Connection Issue",
     connectionIssueMessage: "Cannot connect to glasses - check Bluetooth and Location settings",
-    bluetoothPermissionPreviouslyDenied: "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
+    bluetoothPermissionPreviouslyDenied:
+      "Bluetooth permissions are required but have been denied previously. Please enable them in Settings to continue.",
     openSettings: "Open Settings",
     scanningForGlasses: "Scanning",
+    scanningForGlassesModel: "Scanning for {{model}}",
+    scanningForGlasses2: "Ensure your glasses are in range.",
     preorderNow: "PREORDER NOW",
-    preorderNowShipMessage: "Ships September 2025"
+    preorderNowShipMessage: "Ships September 2025",
+  },
+  connectivity: {
+    bluetoothRequiredTitle: "Bluetooth Required",
+    bluetoothRequiredMessage:
+      "Bluetooth is required to connect to glasses. Please enable Bluetooth in your device settings and try again.",
+    locationPermissionRequiredTitle: "Location Permission Required",
+    locationPermissionRequiredMessage:
+      "Location permission is required to scan for glasses on Android. Please grant location permission in your device settings and try again.",
+    locationServicesRequiredTitle: "Location Services Required",
+    locationServicesRequiredMessage:
+      "Location services are disabled. Please enable location services in your device settings and try again.",
   },
   privacySettings: {
     title: "Privacy Settings",
@@ -30,7 +44,8 @@ const en = {
   mirror: {
     title: "Glasses Mirror",
     cameraPermissionRequired: "Camera Permission Required",
-    cameraPermissionRequiredMessage: "To open cameraview please give camera permission on the settings",
+    cameraPermissionRequiredMessage: "Camera permission is needed to use the fullscreen glasses mirror",
+    grantPermission: "Grant Permission",
     openSettings: "Open Settings",
   },
   home: {
@@ -62,6 +77,8 @@ const en = {
     thereCanOnlyBeOneMessage: "You can only run one foreground app at a time.",
     glassesNotConnected: "Glasses Not Connected",
     appWillRunWhenConnected: "This app will start running once your glasses are connected.",
+    connectGlassesToStart: "Connect your glasses to get started",
+    tapToStartLiveCaptions: "Tap to start the Live Captions app",
   },
   glasses: {
     title: "Glasses",
@@ -75,8 +92,8 @@ const en = {
     glasses: "Glasses",
     bypassVAD: "Bypass VAD for Debugging",
     bypassVADSubtitle: "Bypass the VAD (Voice Activity Detection).",
-    sensingLabel: "Microphone & Camera Access",
-    sensingSubtitle: "Enable microphones and cameras.",
+    sensingLabel: "Enable Sensors",
+    sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
     calendarSubtitle: "Display calendar events on your smart glasses.",
     autoBrightnessLabel: "Auto Brightness",
@@ -100,8 +117,10 @@ const en = {
     forgetGlassesConfirm: "Are you sure you want to forget your glasses?",
     signOut: "Sign Out",
     signOutConfirm: "Are you sure you want to sign out?",
+    signOutError: "There was an error signing out. Please try again.",
     micPermissionTitle: "Microphone Permission Required",
-    micPermissionMessage: "Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.",
+    micPermissionMessage:
+      "Microphone permission is required to use the phone microphone feature. Please grant microphone permission in settings.",
     contextualDashboardLabel: "Contextual Dashboard",
     contextualDashboardSubtitle: "Show a summary of your phone notifications when you look up.",
     metricSystemLabel: "Use Metric System",
@@ -109,7 +128,8 @@ const en = {
     adjustHeadAngleLabel: "Adjust Head-Up Angle",
     adjustHeadAngleSubtitle: "Adjust the angle at which the contextual dashboard appears when you look up.",
     reconnectOnAppForeground: "Reconnect on App Foreground",
-    reconnectOnAppForegroundSubtitle: "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
+    reconnectOnAppForegroundSubtitle:
+      "Automatically attempt to reconnect to glasses when the app comes back to the foreground.",
   },
   profileSettings: {
     title: "Profile Settings",
@@ -132,13 +152,22 @@ const en = {
     dataExportMessage: "You will receive an email with your data export shortly.",
     deleteAccountTitle: "Delete Account",
     deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
+    deleteAccountWarning1Title: "⚠️ WARNING",
+    deleteAccountWarning1Message: "You are about to permanently delete your AugmentOS account. This action is IRREVERSIBLE.",
+    deleteAccountWarning2Title: "🚨 FINAL WARNING",
+    deleteAccountWarning2Message: "This will PERMANENTLY DELETE:\n• All your data\n• All your settings\n• All your app configurations\n• Your entire account history\n\nThere is NO way to recover this data!",
     deleteAccountSuccessTitle: "Account Deleted",
     deleteAccountSuccessMessage: "Your account has been successfully deleted.",
     deleteAccountPendingTitle: "Account Deletion Requested",
-    deleteAccountPendingMessage: "Your account deletion request has been received and will be processed within 2-3 business days.",
+    deleteAccountPendingMessage:
+      "Your account deletion request has been received and will be processed within 2-3 business days.",
+    changePasswordSubtitle: "Enter your new password below. Make sure it's at least 6 characters long.",
+    passwordsDoNotMatch: "Passwords do not match",
+    passwordTooShort: "Password must be at least 6 characters long",
+    passwordUpdatedSuccess: "Password updated successfully",
   },
   login: {
-    title: "AugmentOS",
+    title: "MentraOS",
     subtitle: "The future of smart glasses starts here",
     email: "Email",
     password: "Password",
@@ -156,10 +185,17 @@ const en = {
     connectingToAugmentOS: "Connecting to AugmentOS...",
     userCanceledAppleLogin: "Apple sign-in was canceled.",
     userCanceledGoogleLogin: "Google sign-in was canceled.",
+    success: "Success",
+    checkEmailVerification: "Please check your email and click the verification link to complete your account setup.",
+    emailAlreadyRegistered: "This email is already registered",
+    useGoogleSignIn: "This email is associated with a Google account. Please use 'Continue with Google' to sign in.",
+    useAppleSignIn: "This email is associated with an Apple account. Please use 'Continue with Apple' to sign in.",
   },
   warning: {
     nonProdBackend: "You are using a non-production backend.",
-    sensingDisabled: "Sensing is disabled. Microphone and sensors won't work in apps.",
+    sensingDisabled: "Sensors are disabled. Camera, microphone, and other sensors won't work in apps.",
+    microphoneActive: "Microphone Active",
+    microphoneActiveMessage: "One or more apps are currently using your glasses microphone.",
   },
   common: {
     ok: "OK",
@@ -172,7 +208,7 @@ const en = {
     yes: "Yes",
     delete: "Delete",
     continue: "Continue",
-    next: "Next"
+    next: "Next",
   },
   welcomeScreen: {
     postscript:
@@ -180,7 +216,7 @@ const en = {
     readyForLaunch: "Your app, almost ready for launch!",
     exciting: "(ohh, this is exciting!)",
     letsGo: "Let's go!",
-    skipOnboarding: "Skip Onboarding"
+    skipOnboarding: "Skip Onboarding",
   },
   errorScreen: {
     title: "Something went wrong!",
@@ -205,7 +241,7 @@ const en = {
     mirror: "Mirror",
     store: "Store",
     account: "Account",
-  }
+  },
 }
 
 export default en

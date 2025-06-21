@@ -1,26 +1,20 @@
-import { ThemedStyle } from '@/theme';
-import { useAppTheme } from '@/utils/useAppTheme';
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextStyle } from 'react-native';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
+import React from "react"
+import {View, Text, TouchableOpacity, StyleSheet, TextStyle} from "react-native"
+import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
 
 interface InternetConnectionFallbackComponentProps {
-  retry: () => void;
+  retry: () => void
 }
 
-export default function InternetConnectionFallbackComponent({ retry }: InternetConnectionFallbackComponentProps) {
-  const {theme, themed} = useAppTheme();
+export default function InternetConnectionFallbackComponent({retry}: InternetConnectionFallbackComponentProps) {
+  const {theme, themed} = useAppTheme()
 
   return (
     <View style={styles.fallbackContainer}>
-      <MaterialCommunityIcons
-        name="alert-circle-outline"
-        size={60}
-        color={theme.colors.text}
-      />
-      <Text style={themed($fallbackText)}>
-        AugmentOS Store not yet available in 2.0.
-      </Text>
+      <MaterialCommunityIcons name="alert-circle-outline" size={60} color={theme.colors.text} />
+      <Text style={themed($fallbackText)}>AugmentOS Store not yet available in 2.0.</Text>
       {/*<TouchableOpacity*/}
       {/*  style={[styles.retryButton, { backgroundColor: theme.selectedChipBg }]}*/}
       {/*  onPress={retry}>*/}
@@ -29,37 +23,37 @@ export default function InternetConnectionFallbackComponent({ retry }: InternetC
       {/*  </Text>*/}
       {/*</TouchableOpacity>*/}
     </View>
-  );
+  )
 }
 
 const $fallbackText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontSize: 16,
-  textAlign: 'center',
+  textAlign: "center",
   marginVertical: 20,
 })
 
 const styles = StyleSheet.create({
   fallbackContainer: {
+    alignItems: "center",
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
     padding: 20,
   },
   fallbackText: {
+    fontFamily: "Montserrat-Regular",
     fontSize: 16,
-    textAlign: 'center',
     marginVertical: 20,
-    fontFamily: 'Montserrat-Regular',
+    textAlign: "center",
   },
   retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
     borderRadius: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
   },
   retryButtonText: {
+    fontFamily: "Montserrat-SemiBold",
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Montserrat-SemiBold',
+    fontWeight: "600",
   },
-});
+})

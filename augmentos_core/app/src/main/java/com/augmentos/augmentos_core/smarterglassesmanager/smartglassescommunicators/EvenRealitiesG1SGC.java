@@ -1246,6 +1246,10 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         isScanning = true;
         scanner.startScan(filters, settings, modernScanCallback);
         Log.d(TAG, "CALL START SCAN - Started scanning for devices...");
+        
+        // Ensure scanning state is immediately communicated to UI
+        connectionState = SmartGlassesConnectionState.SCANNING;
+        connectionEvent(connectionState);
 
         // Stop the scan after some time (e.g., 10-15s instead of 60 to avoid throttling)
         //handler.postDelayed(() -> stopScan(), 10000);
@@ -1282,6 +1286,11 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         }
 
         String deviceName = device.getName();
+        if (deviceName == null) {
+            Log.d(TAG, "Skipping null device name: " + device.getAddress() + "... this means something horriffic has occured. Look into this.");
+            return;
+        }
+
         Log.d(TAG, "attemptGattConnection called for device: " + deviceName + " (" + device.getAddress() + ")");
 
         // Check if both devices are bonded before attempting connection

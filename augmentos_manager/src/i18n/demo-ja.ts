@@ -1,4 +1,4 @@
-import { DemoTranslations } from "./demo-en"
+import {DemoTranslations} from "./demo-en"
 
 export const demoJa: DemoTranslations = {
   demoIcon: {
@@ -111,8 +111,7 @@ export const demoJa: DemoTranslations = {
         },
         switch: {
           label: "`switch`バリエーション",
-          helper:
-            "代表的なon/offのインプットです。他と比べアクセシビリティのサポートが充実しています。",
+          helper: "代表的なon/offのインプットです。他と比べアクセシビリティのサポートが充実しています。",
         },
       },
       statuses: {
@@ -192,8 +191,7 @@ export const demoJa: DemoTranslations = {
       },
       disabling: {
         name: "無効化",
-        description:
-          "このコンポーネントは無効化できます。スタイルも同時に変更され、押した際の挙動も無効化されます。",
+        description: "このコンポーネントは無効化できます。スタイルも同時に変更され、押した際の挙動も無効化されます。",
         standard: "無効化 - standard",
         filled: "無効化 - filled",
         reversed: "無効化 - reversed",
@@ -211,8 +209,7 @@ export const demoJa: DemoTranslations = {
         description: "高さの指定ができます。",
         defaultHeight: "デフォルトの高さ (56px)",
         customHeight: "`height`を使ったカスタムの高さ",
-        textHeight:
-          "テキストによって決まった高さ - Reprehenderit incididunt deserunt do do ea labore.",
+        textHeight: "テキストによって決まった高さ - Reprehenderit incididunt deserunt do do ea labore.",
         longText: "テキストを1行に制限する- Reprehenderit incididunt deserunt do do ea labore.",
       },
       separators: {
@@ -245,8 +242,7 @@ export const demoJa: DemoTranslations = {
       },
       listIntegration: {
         name: "FlatList & FlashListに組みこむ場合",
-        description:
-          "このコンポーネントはお好みのリスト系のコンポーネントへ容易に組み込むことができます。",
+        description: "このコンポーネントはお好みのリスト系のコンポーネントへ容易に組み込むことができます。",
       },
       styling: {
         name: "スタイリング",
@@ -308,8 +304,7 @@ export const demoJa: DemoTranslations = {
       },
       customComponent: {
         name: "カスタムコンポーネント",
-        description:
-          "全てのプリセットはカスタムコンポーネントを使って拡張/変更することができます。",
+        description: "全てのプリセットはカスタムコンポーネントを使って拡張/変更することができます。",
         rightComponent: "右コンポーネント",
         leftComponent: "左コンポーネント",
       },
@@ -325,8 +320,8 @@ export const demoJa: DemoTranslations = {
   demoAutoImage: {
     description: "リモートまたはデータURIによって自動的にサイズを変更する画像コンポーネントです。",
     useCase: {
-      remoteUri: { name: "リモート URI" },
-      base64Uri: { name: "Base64 URI" },
+      remoteUri: {name: "リモート URI"},
+      base64Uri: {name: "Base64 URI"},
       scaledToFitDimensions: {
         name: "ディメンションにフィットするように拡大する",
         description:
@@ -363,10 +358,8 @@ export const demoJa: DemoTranslations = {
       weights: {
         name: "ウエイト",
         description: "ウエイト用のpropです。",
-        light:
-          "ライト - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
-        normal:
-          "ノーマル - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
+        light: "ライト - Nulla magna incididunt excepteur est occaecat duis culpa dolore cupidatat enim et.",
+        normal: "ノーマル - Magna incididunt dolor ut veniam veniam laboris aliqua velit ea incididunt.",
         medium: "ミディアム - Non duis laborum quis laboris occaecat culpa cillum.",
         semibold: "セミボールド - Exercitation magna nostrud pariatur laborum occaecat aliqua.",
         bold: "ボールド - Eiusmod ullamco magna exercitation est excepteur.",
@@ -395,8 +388,7 @@ export const demoJa: DemoTranslations = {
     },
   },
   demoHeader: {
-    description:
-      "様々なスクリーンで登場するコンポーネントです。ナビゲーションのボタンとスクリーンタイトルを含みます。",
+    description: "様々なスクリーンで登場するコンポーネントです。ナビゲーションのボタンとスクリーンタイトルを含みます。",
     useCase: {
       actionIcons: {
         name: "アクションアイコン",

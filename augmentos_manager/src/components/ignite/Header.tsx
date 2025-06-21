@@ -145,7 +145,7 @@ export function Header(props: HeaderProps) {
     themed,
   } = useAppTheme()
   const {
-    backgroundColor = 'transparent',
+    backgroundColor = "transparent",
     LeftActionComponent,
     leftIcon,
     leftIconColor,
@@ -178,10 +178,9 @@ export function Header(props: HeaderProps) {
   const {theme} = useAppTheme()
 
   return (
-
-      <View style={[$container, $containerInsets, {backgroundColor}, $containerStyleOverride]}>
-        <View style={[$styles.row, $wrapper, $styleOverride]}>
-            {/* <LinearGradient
+    <View style={[$container, $containerInsets, {backgroundColor}, $containerStyleOverride]}>
+      <View style={[$styles.row, $wrapper, $styleOverride]}>
+        {/* <LinearGradient
       colors={theme.isDark ? ["#090A14", "#080D33"] : ["#FFA500", "#FFF5E6"]}
       style={{
         position: "absolute",
@@ -192,42 +191,42 @@ export function Header(props: HeaderProps) {
       }}
       start={{x: 0, y: 0}}
       end={{x: 0, y: 1}}> */}
-          <HeaderAction
-            tx={leftTx}
-            text={leftText}
-            icon={leftIcon}
-            iconColor={leftIconColor}
-            onPress={onLeftPress}
-            txOptions={leftTxOptions}
-            backgroundColor={backgroundColor}
-            ActionComponent={LeftActionComponent}
-          />
+        <HeaderAction
+          tx={leftTx}
+          text={leftText}
+          icon={leftIcon}
+          iconColor={leftIconColor}
+          onPress={onLeftPress}
+          txOptions={leftTxOptions}
+          backgroundColor={backgroundColor}
+          ActionComponent={LeftActionComponent}
+        />
 
-          {!!titleContent && (
-            <View
-              style={[
-                titleMode === "center" && themed($titleWrapperCenter),
-                titleMode === "flex" && $titleWrapperFlex,
-                $titleContainerStyleOverride,
-              ]}
-              pointerEvents="none">
-              <Text weight="medium" size="md" text={titleContent} style={[$title, $titleStyleOverride]} />
-            </View>
-          )}
+        {!!titleContent && (
+          <View
+            style={[
+              titleMode === "center" && themed($titleWrapperCenter),
+              titleMode === "flex" && $titleWrapperFlex,
+              $titleContainerStyleOverride,
+            ]}
+            pointerEvents="none">
+            <Text weight="medium" size="md" text={titleContent} style={[$title, $titleStyleOverride]} />
+          </View>
+        )}
 
-          <HeaderAction
-            tx={rightTx}
-            text={rightText}
-            icon={rightIcon}
-            iconColor={rightIconColor}
-            onPress={onRightPress}
-            txOptions={rightTxOptions}
-            backgroundColor={backgroundColor}
-            ActionComponent={RightActionComponent}
-          />
-    {/* </LinearGradient> */}
-        </View>
+        <HeaderAction
+          tx={rightTx}
+          text={rightText}
+          icon={rightIcon}
+          iconColor={rightIconColor}
+          onPress={onRightPress}
+          txOptions={rightTxOptions}
+          backgroundColor={backgroundColor}
+          ActionComponent={RightActionComponent}
+        />
+        {/* </LinearGradient> */}
       </View>
+    </View>
   )
 }
 
@@ -296,7 +295,7 @@ const $actionTextContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $actionText: ThemedStyle<TextStyle> = ({colors}) => ({
-  color: colors.text
+  color: colors.text,
 })
 
 const $actionIconContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({

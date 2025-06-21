@@ -16,15 +16,25 @@ android {
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        release {
+            storeFile file("../credentials/ota-keystore.jks")
+            storePassword System.getenv("OTA_STORE_PASSWORD") ?: "android"
+            keyAlias System.getenv("OTA_KEY_ALIAS") ?: "ota" 
+            keyPassword System.getenv("OTA_KEY_PASSWORD") ?: "android"
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
+            signingConfig signingConfigs.release
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 }
 

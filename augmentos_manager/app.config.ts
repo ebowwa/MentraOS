@@ -2,14 +2,12 @@
  * Use ts-node here so we can use TypeScript for our Config Plugins
  * and not have to compile them to JavaScript
  */
-require("ts-node/register")
-
 import dotenv from "dotenv"
+
+import {ExpoConfig, ConfigContext} from "@expo/config"
+
+require("ts-node/register")
 dotenv.config()
-
-import { ExpoConfig, ConfigContext } from "@expo/config"
-
-
 
 /**
  * @param config ExpoConfig coming from the static config app.json if it exists
@@ -17,15 +15,15 @@ import { ExpoConfig, ConfigContext } from "@expo/config"
  * You can read more about Expo's Configuration Resolution Rules here:
  * https://docs.expo.dev/workflow/configuration/#configuration-resolution-rules
  */
-module.exports = ({ config }: ConfigContext): Partial<ExpoConfig> => {
+module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
   const existingPlugins = config.plugins ?? []
 
   return {
     ...config,
     plugins: [...existingPlugins, require("./plugins/withSplashScreen").withSplashScreen],
     extra: {
-      AUGMENTOS_VERSION: process.env.AUGMENTOS_VERSION,
-      AUGMENTOS_APPSTORE_URL: process.env.AUGMENTOS_APPSTORE_URL,
+      MENTRAOS_VERSION: process.env.MENTRAOS_VERSION,
+      MENTRAOS_APPSTORE_URL: process.env.MENTRAOS_APPSTORE_URL,
     },
   }
 }

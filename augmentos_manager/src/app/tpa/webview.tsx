@@ -61,7 +61,7 @@ export default function AppWebView() {
 
   function determineCloudUrl(): string | undefined {
     const cloudHostName =
-      process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.AUGMENTOS_HOST
+      process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.MENTRAOS_HOST
     if (
       cloudHostName &&
       cloudHostName.trim() !== "prod.augmentos.cloud" &&
@@ -110,7 +110,7 @@ export default function AppWebView() {
         try {
           signedUserToken = await backendComms.generateWebviewToken(packageName, "generate-webview-signed-user-token")
         } catch (error) {
-          console.warn('Failed to generate signed user token:', error)
+          console.warn("Failed to generate signed user token:", error)
           signedUserToken = undefined
         }
         const cloudApiUrl = determineCloudUrl()
@@ -202,21 +202,22 @@ export default function AppWebView() {
   return (
     // <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
     <View style={{flex: 1}}>
-      <Header 
+      <Header
         title={appName}
         titleMode="center"
-        leftIcon="caretLeft" 
-        style={{paddingLeft: 16}} 
+        leftIcon="caretLeft"
+        style={{paddingLeft: 16}}
         onLeftPress={() => router.back()}
         rightIcon="settings"
+        rightIconColor={theme.colors.icon}
         onRightPress={() => {
           router.replace({
             pathname: "/tpa/settings",
             params: {
               packageName: packageName as string,
               appName: appName as string,
-              fromWebView: "true"
-            }
+              fromWebView: "true",
+            },
           })
         }}
       />
@@ -255,12 +256,12 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  webView: {
-    flex: 1,
-  },
   errorText: {
-    textAlign: "center",
     marginTop: -40,
     paddingHorizontal: 20,
+    textAlign: "center",
+  },
+  webView: {
+    flex: 1,
   },
 })

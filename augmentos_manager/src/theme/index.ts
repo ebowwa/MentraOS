@@ -1,10 +1,10 @@
-import type { StyleProp } from "react-native"
-import { colors as colorsLight } from "./colors"
-import { colors as colorsDark } from "./colorsDark"
-import { spacing as spacingLight, borderRadius as borderRadiusLight } from "./spacing"
-import { spacing as spacingDark, borderRadius as borderRadiusDark } from "./spacingDark"
-import { timing } from "./timing"
-import { typography } from "./typography"
+import type {StyleProp} from "react-native"
+import {colors as colorsLight} from "./colors"
+import {colors as colorsDark} from "./colorsDark"
+import {spacing as spacingLight, borderRadius as borderRadiusLight} from "./spacing"
+import {spacing as spacingDark, borderRadius as borderRadiusDark} from "./spacingDark"
+import {timing} from "./timing"
+import {typography} from "./typography"
 
 // This supports "light" and "dark" themes by default. If undefined, it'll use the system theme
 export type ThemeContexts = "light" | "dark" | undefined
@@ -68,16 +68,12 @@ export const darkTheme: Theme = {
  * }
  */
 export type ThemedStyle<T> = (theme: Theme) => T
-export type ThemedStyleArray<T> = (
-  | ThemedStyle<T>
-  | StyleProp<T>
-  | (StyleProp<T> | ThemedStyle<T>)[]
-)[]
+export type ThemedStyleArray<T> = (ThemedStyle<T> | StyleProp<T> | (StyleProp<T> | ThemedStyle<T>)[])[]
 
 // Export the theme objects with backwards compatibility for the old theme structure.
-export { colorsLight as colors }
-export { colorsDark }
-export { spacingLight as spacing }
+export {colorsLight as colors}
+export {colorsDark}
+export {spacingLight as spacing}
 
 export * from "./styles"
 export * from "./typography"

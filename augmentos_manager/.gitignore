@@ -89,5 +89,7 @@ web-build/
 
 /coverage
 
+# Expo
+expo-env.d.ts
 # Yarn
 .yarn/*

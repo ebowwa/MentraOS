@@ -20,12 +20,11 @@ import {
   ViewType,
   DisplayRequest,
   TpaToCloudMessage,
-  UserSession
+  // UserSession
 } from '@augmentos/sdk';
-import { logger as rootLogger } from '../logging/pino-logger';
-import { systemApps } from '../core/system-apps';
-import { ExtendedUserSession } from '../core/session.service';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
 import { Logger } from 'pino';
+import UserSession from '../session/UserSession';
 
 /**
  * Dashboard content from a TPA
@@ -69,6 +68,9 @@ export class DashboardManager {
   private expandedContent: Map<string, TpaContent> = new Map();
   private alwaysOnContent: Map<string, TpaContent> = new Map();
 
+  // Circular queue tracking for main dashboard
+  private mainContentRotationIndex: number = 0;
+
   // System dashboard content (managed by system.augmentos.dashboard TPA)
   private systemContent: SystemContent = {
     topLeft: '',
@@ -83,7 +85,7 @@ export class DashboardManager {
   private updateInterval: NodeJS.Timeout | null = null;
 
   // Reference to the user session this dashboard belongs to
-  private userSession: ExtendedUserSession;
+  private userSession: UserSession;
 
   // child logger for this manager
   private logger: Logger;// = logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
@@ -93,7 +95,7 @@ export class DashboardManager {
    * @param userSession The user session this dashboard belongs to
    * @param config Dashboard configuration options
    */
-  constructor(userSession: ExtendedUserSession, config: DashboardConfig = {}) {
+  constructor(userSession: UserSession, config: DashboardConfig = {}) {
     // Store reference to user session
     this.userSession = userSession;
 
@@ -108,16 +110,8 @@ export class DashboardManager {
     // Start update interval
     // this.startUpdateInterval();
 
-    // Create a child logger for this manager
-    if (!userSession || !userSession.logger) {
-      // If no logger is available, use a fallback
-      const { logger: rootLogger } = require('../logging/pino-logger');
-      this.logger = rootLogger.child({ service: 'DashboardManager', error: 'Missing userSession.logger' });
-      this.logger.error('userSession or userSession.logger is undefined in DashboardManager constructor');
-    } else {
-      this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
-      this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
-    }
+    this.logger = userSession.logger.child({ service: 'DashboardManager', sessionId: this.userSession.sessionId });
+    this.logger.info({ mode: this.currentMode }, `Dashboard Manager initialized for user ${userSession.userId} with mode: ${this.currentMode}`);
   }
 
   /**
@@ -148,6 +142,7 @@ export class DashboardManager {
    * @returns True if the message was handled, false otherwise
    */
   public handleTpaMessage(message: TpaToCloudMessage): boolean {
+    this.logger.debug({ message }, `Received TPA message of type ${message.type} for user ${this.userSession.userId}`);
     try {
       switch (message.type) {
         case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
@@ -166,7 +161,8 @@ export class DashboardManager {
           return false; // Not a dashboard message
       }
     } catch (error) {
-      this.logger.error({ error }, `Error handling dashboard message`);
+      const logger = this.userSession.logger.child({ message });
+      logger.error(error, `Error handling dashboard message of type ${message.type} for user ${this.userSession.userId}`);
       return false;
     }
   }
@@ -179,6 +175,38 @@ export class DashboardManager {
     // Clean up content when a TPA disconnects
     this.cleanupAppContent(packageName);
     this.logger.info({ packageName }, `Cleaned up dashboard content for disconnected TPA: ${packageName}`);
+  }
+
+  /**
+   * Handle head-up gesture to cycle through TPA content in main dashboard
+   * This method is called from websocket-glasses service when user looks up
+   */
+  public onHeadsUp(): void {
+    // Only cycle content if we're in main dashboard mode
+    if (this.currentMode !== DashboardMode.MAIN) {
+      this.logger.debug({ currentMode: this.currentMode }, 'Head-up gesture ignored - not in main dashboard mode');
+      return;
+    }
+
+    // Only cycle if we have multiple TPA content items
+    if (this.mainContent.size <= 1) {
+      this.logger.debug({
+        contentCount: this.mainContent.size
+      }, 'Head-up gesture ignored - not enough TPA content to cycle');
+      return;
+    }
+
+    // Advance to next item in circular queue
+    this.mainContentRotationIndex = (this.mainContentRotationIndex + 1) % this.mainContent.size;
+
+    this.logger.info({
+      newIndex: this.mainContentRotationIndex,
+      totalItems: this.mainContent.size,
+      sessionId: this.userSession.sessionId
+    }, 'Head-up gesture triggered - cycling to next TPA content');
+
+    // Update the dashboard to show the new content
+    this.updateDashboard();
   }
 
   /**
@@ -231,7 +259,7 @@ export class DashboardManager {
     const { packageName, mode } = message;
 
     // Only allow system dashboard to change mode
-    if (packageName !== systemApps.dashboard.packageName) {
+    if (packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
       this.logger.warn({ packageName }, `Unauthorized dashboard mode change attempt from ${packageName}`);
       return;
     }
@@ -248,9 +276,15 @@ export class DashboardManager {
    */
   public handleDashboardSystemUpdate(message: DashboardSystemUpdate): void {
     const { packageName, section, content } = message;
+    this.logger.debug({
+      function: 'handleDashboardSystemUpdate',
+      packageName,
+      section,
+      contentLength: content?.length || 0
+    }, `System dashboard section update from ${packageName} for section '${section}'`);
 
     // Only allow system dashboard to update system sections
-    if (packageName !== systemApps.dashboard.packageName) {
+    if (packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
       this.logger.warn({ packageName, section }, `Unauthorized system dashboard update attempt for section ${section} from ${packageName}`);
       return;
     }
@@ -303,7 +337,7 @@ export class DashboardManager {
       // Create a display request for regular dashboard
       const displayRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
-        packageName: systemApps.dashboard.packageName,
+        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.DASHBOARD,
         layout,
         timestamp: new Date(),
@@ -313,15 +347,15 @@ export class DashboardManager {
       // Send the display request using the session's DisplayManager
       this.sendDisplayRequest(displayRequest);
     } catch (error) {
-      this.logger.error({
-        error,
+      const logger = this.userSession.logger.child({
         currentMode: this.currentMode,
         systemContentIsEmpty: Object.values(this.systemContent).every(v => !v),
         systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
         systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
         mainContentCount: this.mainContent.size,
         expandedContentCount: this.expandedContent.size
-      }, 'Error updating dashboard');
+      });
+      this.logger.error(error, 'Error updating dashboard for user session ' + this.userSession.userId);
     }
   }
 
@@ -350,7 +384,7 @@ export class DashboardManager {
       // Create a display request specifically for always-on with the new view type
       const displayRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
-        packageName: systemApps.dashboard.packageName,
+        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.ALWAYS_ON,  // Use the new view type
         layout,
         timestamp: new Date(),
@@ -366,13 +400,13 @@ export class DashboardManager {
       // this.logger.info(`✅ Always-on dashboard updated successfully`);
       this.logger.warn({}, 'Always-on dashboard update is not yet implemented in the client');
     } catch (error) {
-      this.logger.error({
-        error,
+      const logger = this.userSession.logger.child({
         alwaysOnEnabled: this.alwaysOnEnabled,
-        systemContentTopLeft: this.systemContent.topLeft?.substring(0, 20),
-        systemContentTopRight: this.systemContent.topRight?.substring(0, 20),
+        systemContentTopLeft: this.systemContent.topLeft,
+        systemContentTopRight: this.systemContent.topRight,
         alwaysOnContentCount: this.alwaysOnContent.size
-      }, 'Error updating always-on dashboard');
+      });
+      logger.error(error, 'Error updating always-on dashboard for user session ' + this.userSession.userId);;
     }
   }
 
@@ -411,7 +445,7 @@ export class DashboardManager {
       }
 
       // Use the DisplayManager to send the display request
-      const sent = this.userSession.displayManager.handleDisplayEvent(displayRequest, this.userSession);
+      const sent = this.userSession.displayManager.handleDisplayRequest(displayRequest);
       if (!sent) {
         this.logger.warn({ displayRequest }, `Display request not sent - DisplayManager is not ready for user: ${this.userSession.userId}`);
         return;
@@ -420,7 +454,8 @@ export class DashboardManager {
       // Log successful sending
       this.logger.debug({ packageName: displayRequest.packageName }, `Display request sent successfully for user: ${this.userSession.userId}, package ${displayRequest.packageName}`);
     } catch (error) {
-      this.logger.error({ error }, 'Error sending dashboard display request');
+      const logger = this.userSession.logger.child({ displayRequest, packageName: displayRequest.packageName });
+      logger.error(error, 'Error sending dashboard display request');
     }
   }
 
@@ -464,9 +499,9 @@ export class DashboardManager {
    * @returns Formatted bottom section text
    */
   private formatSystemRightSection(): string {
-    // Get just the most recent TPA content item for the main dashboard
-    // We only want to show one item at a time, not multiple
-    const tpaContent = this.getCombinedTpaContent(this.mainContent, 1);
+    // Get the next TPA content item using circular rotation for the main dashboard
+    // We only want to show one item at a time, cycling through all available content
+    const tpaContent = this.getNextMainTpaContent();
 
     // If there's system content for the bottom right, add it before TPA content
     // Add topRight system info to the TPA content.
@@ -476,6 +511,82 @@ export class DashboardManager {
 
     // Add topRight system info to the TPA content.
     return `${this.systemContent.topRight}\n${tpaContent}`;
+  }
+
+  /**
+   * Get the next TPA content for main dashboard using circular queue rotation
+   * This method implements the circular queue logic for cycling through TPA content
+   * @returns Next TPA content string, or empty string if no content available
+   */
+  private getNextMainTpaContent(): string {
+    // Get all available TPA content as an array
+    const contentArray = Array.from(this.mainContent.values());
+
+    // Handle empty case
+    if (contentArray.length === 0) {
+      return '';
+    }
+
+    // Handle single item case - no need to rotate
+    if (contentArray.length === 1) {
+      return this.extractTextFromContent(contentArray[0].content);
+    }
+
+    // Sort by timestamp to ensure consistent ordering (newest first for stable rotation)
+    // Handle both Date objects and timestamp numbers
+    contentArray.sort((a, b) => {
+      const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+      const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+      return bTime - aTime;
+    });
+
+    // Use circular queue logic with rotation index
+    const currentIndex = this.mainContentRotationIndex % contentArray.length;
+    const selectedContent = contentArray[currentIndex];
+
+    this.logger.info({
+      totalItems: contentArray.length,
+      currentIndex,
+      selectedPackage: selectedContent.packageName,
+      rotationIndex: this.mainContentRotationIndex,
+      allPackages: contentArray.map(c => c.packageName),
+      sortedByTimestamp: contentArray.map(c => ({
+        packageName: c.packageName,
+        timestamp: c.timestamp
+      }))
+    }, `🔄 Dashboard rotation: Selected ${selectedContent.packageName} (${currentIndex + 1}/${contentArray.length})`);
+
+    // Extract text content from the selected item
+    return this.extractTextFromContent(selectedContent.content);
+  }
+
+  /**
+   * Extract text content from TPA content (handles both string and Layout types)
+   * @param content TPA content (string or Layout)
+   * @returns Extracted text string
+   */
+  private extractTextFromContent(content: string | Layout): string {
+    if (typeof content === 'string') {
+      return content;
+    }
+
+    // Handle Layout content types
+    switch (content.layoutType) {
+      case LayoutType.TEXT_WALL:
+        return content.text || '';
+      case LayoutType.DOUBLE_TEXT_WALL:
+        return [content.topText, content.bottomText]
+          .filter(Boolean)
+          .join('\n');
+      case LayoutType.DASHBOARD_CARD:
+        return [content.leftText, content.rightText]
+          .filter(Boolean)
+          .join(' | ');
+      case LayoutType.REFERENCE_CARD:
+        return `${content.title}\n${content.text}`;
+      default:
+        return '';
+    }
   }
 
   /**
@@ -490,7 +601,11 @@ export class DashboardManager {
 
     // Get TPA content from expanded content queue (only the most recent item)
     const content = Array.from(this.expandedContent.values())
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .sort((a, b) => {
+        const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+        const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+        return bTime - aTime;
+      })
       .slice(0, 1)[0];
 
     // Get text content (will always be a string now)
@@ -540,7 +655,11 @@ export class DashboardManager {
   private getCombinedTpaContent(contentQueue: Map<string, TpaContent>, limit?: number): string {
     // Sort by timestamp (newest first)
     const sortedContent = Array.from(contentQueue.values())
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .sort((a, b) => {
+        const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
+        const bTime = b.timestamp instanceof Date ? b.timestamp.getTime() : new Date(b.timestamp).getTime();
+        return bTime - aTime;
+      })
       .slice(0, limit || this.queueSize);
 
     // If no content, return empty string
@@ -623,13 +742,54 @@ export class DashboardManager {
    * @param packageName TPA package name
    */
   public cleanupAppContent(packageName: string): void {
+    // Log the current state before cleanup
+    const beforeState = {
+      packageName,
+      hadMainContent: this.mainContent.has(packageName),
+      hadExpandedContent: this.expandedContent.has(packageName),
+      hadAlwaysOnContent: this.alwaysOnContent.has(packageName),
+      mainContentSizeBefore: this.mainContent.size,
+      rotationIndexBefore: this.mainContentRotationIndex,
+      allMainContentPackages: Array.from(this.mainContent.keys())
+    };
+
+    this.logger.info(beforeState, `🧹 Starting dashboard cleanup for TPA: ${packageName}`);
+
     // Check if this TPA had always-on content
     const hadAlwaysOnContent = this.alwaysOnContent.has(packageName);
+
+    // Check if this TPA was in main content and adjust rotation index if needed
+    const hadMainContent = this.mainContent.has(packageName);
+    const mainContentSizeBefore = this.mainContent.size;
 
     // Remove from all content queues
     this.mainContent.delete(packageName);
     this.expandedContent.delete(packageName);
     this.alwaysOnContent.delete(packageName);
+
+    // Adjust rotation index if we removed main content
+    if (hadMainContent && mainContentSizeBefore > 1) {
+      const newMainContentSize = this.mainContent.size;
+      const oldRotationIndex = this.mainContentRotationIndex;
+
+      // If we removed the currently displayed item or an item before it in the rotation,
+      // we need to adjust the index to prevent out-of-bounds access
+      if (newMainContentSize > 0) {
+        // Reset to 0 if index is now out of bounds, otherwise keep current position
+        if (this.mainContentRotationIndex >= newMainContentSize) {
+          this.mainContentRotationIndex = 0;
+          this.logger.debug({
+            oldIndex: oldRotationIndex,
+            newIndex: 0,
+            newSize: newMainContentSize,
+            removedPackage: packageName
+          }, 'Reset rotation index after TPA disconnect');
+        }
+      } else {
+        // No content left, reset index
+        this.mainContentRotationIndex = 0;
+      }
+    }
 
     // Update the regular dashboard
     this.updateDashboard();
@@ -639,7 +799,17 @@ export class DashboardManager {
       this.updateAlwaysOnDashboard();
     }
 
-    this.logger.info({ packageName }, 'Cleaned up dashboard content for TPA');
+    // Log the final state after cleanup
+    const afterState = {
+      packageName,
+      newMainContentSize: this.mainContent.size,
+      rotationIndexAfter: this.mainContentRotationIndex,
+      remainingMainContentPackages: Array.from(this.mainContent.keys()),
+      hadMainContent,
+      hadAlwaysOnContent
+    };
+
+    this.logger.info(afterState, `✅ Dashboard cleanup completed for TPA: ${packageName}`);
   }
 
   /**
@@ -698,7 +868,7 @@ export class DashboardManager {
       // Send an empty layout to clear the always-on view
       const clearRequest: DisplayRequest = {
         type: TpaToCloudMessageType.DISPLAY_REQUEST,
-        packageName: systemApps.dashboard.packageName,
+        packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.ALWAYS_ON,
         layout: {
           layoutType: LayoutType.DASHBOARD_CARD,
@@ -720,7 +890,8 @@ export class DashboardManager {
   private broadcastToAllTpas(message: any): void {
     try {
       // Use the appConnections map to send to all connected TPAs
-      this.userSession.appConnections.forEach((ws, packageName) => {
+      // this.userSession.appConnections.forEach((ws, packageName) => {
+      this.userSession.appWebsockets.forEach((ws, packageName) => {
         try {
           if (ws && ws.readyState === WebSocket.OPEN) {
             const tpaMessage = {
@@ -730,11 +901,13 @@ export class DashboardManager {
             ws.send(JSON.stringify(tpaMessage));
           }
         } catch (error) {
-          this.logger.error({ error, packageName }, 'Error sending dashboard message to TPA');
+          const logger = this.userSession.logger.child({ packageName, message });
+          logger.error(error, 'Error sending dashboard message to TPA');
         }
       });
     } catch (error) {
-      this.logger.error({ error }, 'Error broadcasting dashboard message');
+      const logger = this.userSession.logger.child({ message });
+      this.logger.error(error, 'Error broadcasting dashboard message');
     }
   }
 

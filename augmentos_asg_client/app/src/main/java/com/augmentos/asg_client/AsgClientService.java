@@ -50,10 +50,10 @@ import com.augmentos.asg_client.network.NetworkStateListener; // Make sure this 
 import com.augmentos.augmentos_core.smarterglassesmanager.camera.CameraRecordingService;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Locale;
+import android.content.BroadcastReceiver;
+import android.content.IntentFilter;
 
 /**
  * This is the FULL AsgClientService code that:
@@ -75,6 +75,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public static final String ACTION_STOP_CORE = "ACTION_STOP_CORE";
     public static final String ACTION_START_FOREGROUND_SERVICE = "MY_ACTION_START_FOREGROUND_SERVICE";
     public static final String ACTION_STOP_FOREGROUND_SERVICE = "MY_ACTION_STOP_FOREGROUND_SERVICE";
+    public static final String ACTION_START_OTA_UPDATER = "ACTION_START_OTA_UPDATER";
+    // Add the restart action constant
+    public static final String ACTION_RESTART_SERVICE = "com.augmentos.asg_client.ACTION_RESTART_SERVICE";
+    public static final String ACTION_RESTART_COMPLETE = "com.augmentos.asg_client.ACTION_RESTART_COMPLETE";
+    public static final String ACTION_RESTART_CAMERA = "com.augmentos.asg_client.ACTION_RESTART_CAMERA";
 
     // Notification channel info
     private final String notificationAppName = "ASG Client";
@@ -113,6 +118,21 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
     // 2. Add a field to store the current mode
     private PhotoCaptureMode currentPhotoMode = PhotoCaptureMode.CLOUD;
+
+    // Service health monitoring
+    private static final String ACTION_HEARTBEAT = "com.augmentos.asg_client.ACTION_HEARTBEAT";
+    private static final String ACTION_HEARTBEAT_ACK = "com.augmentos.asg_client.ACTION_HEARTBEAT_ACK";
+    private static final long HEARTBEAT_TIMEOUT_MS = 10000; // 10 seconds
+    private static final long RECOVERY_TIMEOUT_MS = 60000; // 1 minute
+    private static final long RECOVERY_HEARTBEAT_INTERVAL_MS = 5000; // 5 seconds during recovery
+    
+    private Handler heartbeatHandler;
+    private long lastHeartbeatTime = 0;
+    private boolean isInRecoveryMode = false;
+    private int missedHeartbeats = 0;
+
+    // Receiver for handling restart requests from OTA updater
+    private BroadcastReceiver restartReceiver;
 
     // ---------------------------------------------
     // ServiceConnection for the AugmentosService
@@ -166,6 +186,27 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         super.onCreate();
         Log.d(TAG, "AsgClientService onCreate");
 
+        // Enable WiFi when service starts
+        openWifi(this, true);
+
+        // Start OTA Updater after 5 seconds
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            Log.d(TAG, "Starting OTA Updater MainActivity after delay");
+            Intent otaIntent = new Intent();
+            otaIntent.setClassName("com.augmentos.otaupdater", "com.augmentos.otaupdater.MainActivity");
+            otaIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(otaIntent);
+        }, 5000); // 5 seconds delay
+
+        // Send version info after 3 seconds
+//        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+//            Log.d(TAG, "Sending version info after delay");
+            sendVersionInfo();
+//        }, 3000); // 3 seconds delay
+
+        // Register restart receiver
+        registerRestartReceiver();
+
         // Initialize the network manager
         initializeNetworkManager();
 
@@ -181,6 +222,13 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Initialize streaming callbacks
         initializeStreamingCallbacks();
 
+        // Register service health monitor with both actions
+        IntentFilter heartbeatFilter = new IntentFilter();
+        heartbeatFilter.addAction(ACTION_HEARTBEAT);
+        heartbeatFilter.addAction("com.augmentos.otaupdater.ACTION_HEARTBEAT"); // For backward compatibility
+        registerReceiver(heartbeatReceiver, heartbeatFilter);
+        Log.d(TAG, "Registered service health monitor with actions: " + ACTION_HEARTBEAT);
+
         // Start RTMP streaming for testing
         //startRtmpStreaming();
 
@@ -190,11 +238,34 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // DEBUG: Start the debug photo upload timer for VPS
         //startDebugVpsPhotoUploadTimer();
 
-        SysControl.disablePackageViaAdb(getApplicationContext(), "com.xy.fakelauncher");
-        SysControl.disablePackage(getApplicationContext(), "com.xy.fakelauncher");
+        // Register OTA download complete receiver
+        // IntentFilter filter = new IntentFilter("com.augmentos.otaupdater.ACTION_OTA_DOWNLOAD_COMPLETE");
+        // registerReceiver(otaDownloadReceiver, filter);
+
+        //SysControl.disablePackageViaAdb(getApplicationContext(), "com.xy.fakelauncher");
+        //SysControl.disablePackage(getApplicationContext(), "com.xy.fakelauncher");
         SysControl.uninstallPackage(getApplicationContext(), "com.lhs.btserver");
         SysControl.uninstallPackageViaAdb(getApplicationContext(), "com.lhs.btserver");
     }
+
+    private final BroadcastReceiver heartbeatReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            Log.d(TAG, "@#$$% Received broadcast with action: " + action);
+            
+            if (ACTION_HEARTBEAT.equals(action) || "com.augmentos.otaupdater.ACTION_HEARTBEAT".equals(action)) {
+                lastHeartbeatTime = System.currentTimeMillis();
+                Log.d(TAG, "Service heartbeat received at " + lastHeartbeatTime);
+                
+                // Send acknowledgment back to monitor
+                Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                ackIntent.setPackage("com.augmentos.otaupdater");
+                sendBroadcast(ackIntent);
+                Log.d(TAG, "Service heartbeat acknowledged and sent back to OTA Updater");
+            }
+        }
+    };
 
     /**
      * Initialize streaming callbacks for RTMP status updates
@@ -378,7 +449,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
             // Pass the existing bluetoothManager instance instead of creating a new one
             glassesMicrophoneManager = new com.augmentos.asg_client.audio.GlassesMicrophoneManager(
-                getApplicationContext(), bluetoothManager);
+                    getApplicationContext(), bluetoothManager);
 
             // Set up a callback for LC3 encoded audio data if needed
             glassesMicrophoneManager.setLC3DataCallback(lc3Data -> {
@@ -443,14 +514,33 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 //    so it's alive even if we unbind.
                 Intent augmentosIntent = new Intent(this, AugmentosService.class);
                 augmentosIntent.setAction(AugmentosService.ACTION_START_CORE);
-//                startForegroundService(augmentosIntent);
-//
-//                // 2) Bind to AugmentosService to get a reference to it
-//                bindService(
-//                        new Intent(this, AugmentosService.class),
-//                        augmentosConnection,
-//                        BIND_AUTO_CREATE
-//                );
+                break;
+
+            case ACTION_RESTART_SERVICE:
+                Log.d(TAG, "AsgClientService onStartCommand -> restart request received");
+                createNotificationChannel();
+                startForeground(asgServiceNotificationId, updateNotification());
+                
+                // Register the restart receiver if not already registered
+                registerRestartReceiver();
+
+                // Initialize components if not already done
+                if (!isInitialized()) {
+                    Log.d(TAG, "Initializing components after restart");
+                    safelyInitializeComponents();
+                }
+
+                // Send restart complete broadcast
+                Intent completeIntent = new Intent(ACTION_RESTART_COMPLETE);
+                completeIntent.setPackage("com.augmentos.otaupdater");
+                sendBroadcast(completeIntent);
+                Log.d(TAG, "✅ Sent restart complete broadcast");
+
+                // Send heartbeat acknowledgment to confirm restart
+                Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                ackIntent.setPackage("com.augmentos.otaupdater");
+                sendBroadcast(ackIntent);
+                Log.d(TAG, "✅ Sent heartbeat acknowledgment to OTA updater after restart");
                 break;
 
             case ACTION_STOP_CORE:
@@ -468,6 +558,26 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 // Optionally also stop AugmentosService entirely
                 // if you want it fully shut down:
                 stopService(new Intent(this, AugmentosService.class));
+                break;
+
+            case ACTION_RESTART_CAMERA:
+                Log.d(TAG, "AsgClientService onStartCommand -> camera restart request received");
+
+                // Request camera reset by running adb commands to reset camera service
+                try {
+                    // Try to reset camera permissions first
+                    SysControl.injectAdbCommand(getApplicationContext(), "pm grant " + getPackageName() + " android.permission.CAMERA");
+
+                    // Try to kill camera service processes to force a reset
+                    SysControl.injectAdbCommand(getApplicationContext(), "kill $(pidof cameraserver)");
+
+                    // Also try to kill media server as it sometimes helps
+                    SysControl.injectAdbCommand(getApplicationContext(), "kill $(pidof mediaserver)");
+
+                    Log.d(TAG, "Camera service reset commands sent");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error attempting to reset camera service", e);
+                }
                 break;
 
             default:
@@ -537,7 +647,29 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     @Override
     public void onDestroy() {
+        super.onDestroy();
         Log.d(TAG, "AsgClientService onDestroy");
+
+        // Unregister service health monitor
+        try {
+            unregisterReceiver(heartbeatReceiver);
+            Log.d(TAG, "Unregistered service health monitor");
+        } catch (IllegalArgumentException e) {
+            // Receiver was not registered
+            Log.w(TAG, "Service health monitor was not registered");
+        }
+
+        // Unregister restart receiver
+        try {
+            if (restartReceiver != null) {
+                unregisterReceiver(restartReceiver);
+                Log.d(TAG, "Unregistered restart receiver");
+            }
+        } catch (IllegalArgumentException e) {
+            // Receiver was not registered
+            Log.w(TAG, "Restart receiver was not registered");
+        }
+
         // If still bound to AugmentosService, unbind
         if (isAugmentosBound) {
             unbindService(augmentosConnection);
@@ -550,7 +682,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // Stop RTMP streaming if active
         try {
             org.greenrobot.eventbus.EventBus.getDefault().post(
-                new com.augmentos.asg_client.streaming.StreamingCommand.Stop()
+                    new com.augmentos.asg_client.streaming.StreamingCommand.Stop()
             );
 
             // Also use the static method as a backup
@@ -586,6 +718,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         // No need to clean up MediaQueueManager as it's stateless and file-based
 
         super.onDestroy();
+        unregisterReceiver(otaDownloadReceiver);
+
+        if (heartbeatHandler != null) {
+            heartbeatHandler.removeCallbacksAndMessages(null);
+        }
+        try {
+            unregisterReceiver(heartbeatReceiver);
+        } catch (IllegalArgumentException e) {
+            // Receiver might not be registered
+        }
     }
 
     // ---------------------------------------------
@@ -704,7 +846,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
      */
     @Override
     public void onWifiStateChanged(boolean isConnected) {
-        Log.d(TAG, "WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
+        // Log.d(TAG, "222 WiFi state changed: " + (isConnected ? "CONNECTED" : "DISCONNECTED"));
 
         // When WiFi state changes, send status to AugmentOS Core via Bluetooth
         sendWifiStatusOverBle(isConnected);
@@ -838,6 +980,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 Log.d(TAG, "Starting microphone streaming for non-K900 device");
                 glassesMicrophoneManager.startRecording();
             }
+
+            sendVersionInfo();
 
             // Notify any components that care about bluetooth status
             // For example, you could send a broadcast, update UI, etc.
@@ -1002,7 +1146,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         if (bluetoothManager != null && bluetoothManager.isConnected()) {
                             bluetoothManager.sendData(jsonResponse.getBytes());
                             Log.d(TAG, "✅ Sent glasses_ready response to phone");
-                            
+
                             // Automatically send WiFi status after glasses_ready
                             Log.d(TAG, "📶 Auto-sending WiFi status after glasses_ready");
                             if (networkManager != null) {
@@ -1181,8 +1325,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             int fps = videoConfig.optInt("fps", 30);
 
                             Log.d(TAG, "RTMP video config - bitrate: " + bitrate +
-                                   ", resolution: " + width + "x" + height +
-                                   ", fps: " + fps);
+                                    ", resolution: " + width + "x" + height +
+                                    ", fps: " + fps);
 
                             // TODO: In the future, these could be passed to configure the stream quality
                         } catch (Exception e) {
@@ -1199,8 +1343,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             boolean stereo = audioConfig.optBoolean("stereo", true);
 
                             Log.d(TAG, "RTMP audio config - bitrate: " + bitrate +
-                                   ", sampleRate: " + sampleRate +
-                                   ", stereo: " + stereo);
+                                    ", sampleRate: " + sampleRate +
+                                    ", stereo: " + stereo);
                         } catch (Exception e) {
                             Log.e(TAG, "Error parsing audio config: " + e.getMessage());
                         }
@@ -1214,8 +1358,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         // Pass streamId to the service
                         com.augmentos.asg_client.streaming.RtmpStreamingService.startStreaming(this, rtmpUrl, streamId);
 
-                        Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl + 
-                               (streamId.isEmpty() ? "" : " and streamId: " + streamId));
+                        Log.d(TAG, "RTMP streaming started with URL: " + rtmpUrl +
+                                (streamId.isEmpty() ? "" : " and streamId: " + streamId));
                     } catch (Exception e) {
                         Log.e(TAG, "Error starting RTMP streaming", e);
                         sendRtmpStatusResponse(false, "exception", e.getMessage());
@@ -1265,7 +1409,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     if (!streamId.isEmpty() && !ackId.isEmpty()) {
                         // Try to reset the timeout for this stream
                         boolean streamIdValid = com.augmentos.asg_client.streaming.RtmpStreamingService.resetStreamTimeout(streamId);
-                        
+
                         if (streamIdValid) {
                             // Send ACK response back to cloud
                             sendKeepAliveAck(streamId, ackId);
@@ -1274,7 +1418,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                             // Unknown stream ID - kill current stream and request restart
                             Log.e(TAG, "Received keep-alive for unknown stream ID: " + streamId + " - terminating current stream");
                             com.augmentos.asg_client.streaming.RtmpStreamingService.stopStreaming(this);
-                            
+
                             // Send error status to cloud to request proper restart
                             try {
                                 JSONObject errorStatus = new JSONObject();
@@ -1295,6 +1439,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     break;
 
                 case "set_wifi_credentials":
+                    Log.d(TAG, "Received set_wifi_credentials command");
                     // Handle WiFi configuration command if needed
                     String ssid = dataToProcess.optString("ssid", "");
                     String password = dataToProcess.optString("password", "");
@@ -1335,6 +1480,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         sendWifiScanResultsOverBle(new ArrayList<>());
                     }
                     break;
+
                 case "ping":
                     JSONObject pingResponse = new JSONObject();
                     pingResponse.put("type", "pong");
@@ -1342,14 +1488,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                         bluetoothManager.sendData(pingResponse.toString().getBytes());
                     }
                     break;
+
                 case "request_battery_state":
                     break;
+
                 case "set_mic_state":
-
                     break;
+
                 case "set_mic_vad_state":
-
                     break;
+
                 case "set_hotspot_state":
                     boolean hotspotEnabled = dataToProcess.optBoolean("enabled", false);
 
@@ -1369,6 +1517,16 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 case "":
                     Log.d(TAG, "Received data with no type field: " + dataToProcess);
                     break;
+                case "ota_update_response":
+                    boolean accepted = dataToProcess.optBoolean("accepted", false);
+                    if (accepted) {
+                        Log.d(TAG, "Received ota_update_response: accepted, proceeding with OTA installation");
+                        // TODO: Trigger OTA installation here
+                    } else {
+                        Log.d(TAG, "Received ota_update_response: rejected by user");
+                    }
+                    break;
+
                 case "set_photo_mode": {
                     String mode = dataToProcess.optString("mode", "save_locally");
                     switch (mode) {
@@ -1410,6 +1568,11 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     getMediaCaptureService().stopVideoRecording();
                 } else {
                     // Otherwise handle as normal photo capture
+                    // Check camera permissions before trying to take a photo
+                    if (!ensureCameraPermissions()) {
+                        Log.e(TAG, "Camera permissions denied - attempting to fix before capture");
+                        // Still try to take photo - the internal handler will check again
+                    }
                     handlePhotoCaptureWithMode();
                 }
                 break;
@@ -1496,6 +1659,8 @@ public class AsgClientService extends Service implements NetworkStateListener, B
             versionInfo.put("timestamp", System.currentTimeMillis());
             String appVersion = "1.0.0";
             String buildNumber = "1";
+            Log.d(TAG, "App version: " + appVersion + ", Build number: " + buildNumber);
+
             try {
                 appVersion = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
                 buildNumber = String.valueOf(getPackageManager().getPackageInfo(getPackageName(), 0).versionCode);
@@ -1705,52 +1870,52 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Media capture listener (delegated to MediaCaptureService)
     private final MediaCaptureService.MediaCaptureListener mediaCaptureListener =
             new MediaCaptureService.MediaCaptureListener() {
-            @Override
-            public void onPhotoCapturing(String requestId) {
-                Log.d(TAG, "Photo capturing started: " + requestId);
-            }
+                @Override
+                public void onPhotoCapturing(String requestId) {
+                    Log.d(TAG, "Photo capturing started: " + requestId);
+                }
 
-            @Override
-            public void onPhotoCaptured(String requestId, String filePath) {
-                Log.d(TAG, "Photo captured: " + requestId + ", path: " + filePath);
-            }
+                @Override
+                public void onPhotoCaptured(String requestId, String filePath) {
+                    Log.d(TAG, "Photo captured: " + requestId + ", path: " + filePath);
+                }
 
-            @Override
-            public void onPhotoUploading(String requestId) {
-                Log.d(TAG, "Photo uploading: " + requestId);
-            }
+                @Override
+                public void onPhotoUploading(String requestId) {
+                    Log.d(TAG, "Photo uploading: " + requestId);
+                }
 
-            @Override
-            public void onPhotoUploaded(String requestId, String url) {
-                Log.d(TAG, "Photo uploaded: " + requestId + ", URL: " + url);
-            }
+                @Override
+                public void onPhotoUploaded(String requestId, String url) {
+                    Log.d(TAG, "Photo uploaded: " + requestId + ", URL: " + url);
+                }
 
-            @Override
-            public void onVideoRecordingStarted(String requestId, String filePath) {
-                Log.d(TAG, "Video recording started: " + requestId + ", path: " + filePath);
-            }
+                @Override
+                public void onVideoRecordingStarted(String requestId, String filePath) {
+                    Log.d(TAG, "Video recording started: " + requestId + ", path: " + filePath);
+                }
 
-            @Override
-            public void onVideoRecordingStopped(String requestId, String filePath) {
-                Log.d(TAG, "Video recording stopped: " + requestId + ", path: " + filePath);
-            }
+                @Override
+                public void onVideoRecordingStopped(String requestId, String filePath) {
+                    Log.d(TAG, "Video recording stopped: " + requestId + ", path: " + filePath);
+                }
 
-            @Override
-            public void onVideoUploading(String requestId) {
-                Log.d(TAG, "Video uploading: " + requestId);
-            }
+                @Override
+                public void onVideoUploading(String requestId) {
+                    Log.d(TAG, "Video uploading: " + requestId);
+                }
 
-            @Override
-            public void onVideoUploaded(String requestId, String url) {
-                Log.d(TAG, "Video uploaded: " + requestId + ", URL: " + url);
-            }
+                @Override
+                public void onVideoUploaded(String requestId, String url) {
+                    Log.d(TAG, "Video uploaded: " + requestId + ", URL: " + url);
+                }
 
-            @Override
-            public void onMediaError(String requestId, String error, int mediaType) {
-                String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
-                Log.e(TAG, mediaTypeName + " error: " + requestId + ", error: " + error);
-            }
-        };
+                @Override
+                public void onMediaError(String requestId, String error, int mediaType) {
+                    String mediaTypeName = mediaType == MediaUploadQueueManager.MEDIA_TYPE_PHOTO ? "Photo" : "Video";
+                    Log.e(TAG, mediaTypeName + " error: " + requestId + ", error: " + error);
+                }
+            };
 
     /**
      * Send a success response for a media request
@@ -1963,6 +2128,39 @@ public class AsgClientService extends Service implements NetworkStateListener, B
         }
     }
 
+    /**
+     * Register the restart receiver to handle restart requests from OTA updater
+     */
+    private void registerRestartReceiver() {
+        if (restartReceiver == null) {
+            restartReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    if (ACTION_RESTART_SERVICE.equals(intent.getAction())) {
+                        Log.d(TAG, "Received restart request from OTA updater");
+
+                        // Start in foreground if not already running
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            createNotificationChannel();
+                            startForeground(asgServiceNotificationId, updateNotification());
+                            Log.d(TAG, "Started foreground service in response to restart request");
+                        }
+
+                        // Send heartbeat acknowledgment
+                        Intent ackIntent = new Intent(ACTION_HEARTBEAT_ACK);
+                        ackIntent.setPackage("com.augmentos.otaupdater");
+                        sendBroadcast(ackIntent);
+                        Log.d(TAG, "Sent heartbeat acknowledgment to OTA updater");
+                    }
+                }
+            };
+
+            IntentFilter filter = new IntentFilter(ACTION_RESTART_SERVICE);
+            registerReceiver(restartReceiver, filter);
+            Log.d(TAG, "Registered restart receiver");
+        }
+    }
+
 
     /**
      * Example method to send status data back to the connected device
@@ -2125,7 +2323,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
 
                 // Update the foreground notification
                 NotificationManager notificationManager =
-                    (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                        (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
 
                 if (notificationManager != null) {
                     notificationManager.notify(asgServiceNotificationId, notification);
@@ -2141,12 +2339,36 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     // Our StreamPackLite-based implementation (RTMPStreamingExample) can be used
     // if the existing RTMP implementation needs to be enhanced in the future
 
+    private BroadcastReceiver otaDownloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            Log.d(TAG, "Received OTA download complete broadcast");
+            if ("com.augmentos.otaupdater.ACTION_OTA_DOWNLOAD_COMPLETE".equals(intent.getAction())) {
+                Log.d(TAG, "Received OTA download complete broadcast");
+                // Send BLE message to phone/controller
+                if (bluetoothManager != null && bluetoothManager.isConnected()) {
+                    try {
+                        org.json.JSONObject otaMsg = new org.json.JSONObject();
+                        otaMsg.put("type", "ota_update_available");
+                        // TODO: Optionally add version or details if available
+                        bluetoothManager.sendData(otaMsg.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                        Log.d(TAG, "Sent ota_update_available BLE message to phone/controller");
+                    } catch (org.json.JSONException e) {
+                        Log.e(TAG, "Error creating ota_update_available JSON", e);
+                    }
+                }
+            }
+        }
+    };
+
     // In the method that handles photo capture (e.g., handlePhotoButtonPress or similar):
     private void handlePhotoCaptureWithMode() {
         Log.d(TAG, "Handling photo capture with current mode: " + currentPhotoMode);
         switch (currentPhotoMode) {
             case SAVE_LOCALLY:
                 if (mMediaCaptureService != null) {
+                    // Check for camera permissions one more time before attempting capture
+                    ensureCameraPermissions();
                     mMediaCaptureService.takePhotoLocally();
                 }
                 break;
@@ -2157,10 +2379,64 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                     String requestId = "cloud_" + timeStamp;
                     String photoFilePath = getExternalFilesDir(null) + java.io.File.separator + "IMG_" + timeStamp + ".jpg";
 
+                    // Check for camera permissions one more time before attempting capture
+                    ensureCameraPermissions();
                     // Take photo and upload to cloud
                     mMediaCaptureService.takePhotoAndUpload(photoFilePath, requestId);
                 }
                 break;
         }
+    }
+
+    /**
+     * Check if camera permissions are granted and try to fix if they're not
+     *
+     * @return true if permissions are granted or fixed, false otherwise
+     */
+    private boolean ensureCameraPermissions() {
+        // First check if permission is granted
+        boolean hasPermission = true;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            int cameraPermission = checkSelfPermission(android.Manifest.permission.CAMERA);
+            hasPermission = (cameraPermission == android.content.pm.PackageManager.PERMISSION_GRANTED);
+        }
+
+        if (!hasPermission) {
+            Log.e(TAG, "Camera permissions not granted - attempting to fix programmatically");
+
+            try {
+                // Try to enable camera access via system commands
+                SysControl.injectAdbCommand(getApplicationContext(), "pm grant " + getPackageName() + " android.permission.CAMERA");
+                // Try to reset camera service
+                SysControl.injectAdbCommand(getApplicationContext(), "svc power reboot"); // Sometimes a soft reboot helps
+
+                // Check if fixed
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    int updatedPermission = checkSelfPermission(android.Manifest.permission.CAMERA);
+                    boolean fixed = (updatedPermission == android.content.pm.PackageManager.PERMISSION_GRANTED);
+                    Log.d(TAG, "Camera permission fix " + (fixed ? "successful" : "failed"));
+                    return fixed;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Error attempting to fix camera permissions", e);
+            }
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Enable or disable WiFi via broadcast
+     *
+     * @param context Application context
+     * @param bEnable True to enable WiFi, false to disable
+     */
+    public static void openWifi(Context context, boolean bEnable) {
+        Intent nn = new Intent();
+        nn.putExtra("cmd", "setwifi");
+        nn.putExtra("enable", bEnable);
+        context.sendBroadcast(nn);
+        Log.d(TAG, "Sent WiFi " + (bEnable ? "enable" : "disable") + " broadcast");
     }
 }

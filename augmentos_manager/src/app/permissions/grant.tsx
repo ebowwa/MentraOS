@@ -66,14 +66,14 @@ const GrantPermissionsScreen: React.FC = () => {
 
   const triggerGrantPermissions = async () => {
     // Request all basic permissions first
-    let basicPermissionsGranted = await requestBasicPermissions()
+    const basicPermissionsGranted = await requestBasicPermissions()
     console.log("Basic permissions request completed")
 
     if (basicPermissionsGranted) {
       // Request notification permissions with explanation
       Alert.alert(
         "Notification Access",
-        "AugmentOS would like to access your notifications to forward them to your smart glasses. This enhances your experience by showing phone notifications on your glasses.",
+        "MentraOS would like to access your notifications to forward them to your smart glasses. This enhances your experience by showing phone notifications on your glasses.",
         [
           {
             text: "Grant Access",
@@ -99,7 +99,7 @@ const GrantPermissionsScreen: React.FC = () => {
     // After notification permission flow, request optional calendar permission
     Alert.alert(
       "Calendar Access",
-      "AugmentOS would like to access your calendar to display events on your smart glasses. This permission is optional.",
+      "MentraOS would like to access your calendar to display events on your smart glasses. This permission is optional.",
       [
         {
           text: "Grant Access",
@@ -143,7 +143,7 @@ const GrantPermissionsScreen: React.FC = () => {
           <Text style={[styles.title, theme.isDark ? styles.lightText : styles.darkText]}>Permissions Required</Text>
 
           <Text style={[styles.description, theme.isDark ? styles.lightSubtext : styles.darkSubtext]}>
-            AugmentOS needs permissions to function properly. Please grant access to continue using all features.
+            MentraOS needs permissions to function properly. Please grant access to continue using all features.
           </Text>
           <Button
             disabled={false}
@@ -159,44 +159,13 @@ const GrantPermissionsScreen: React.FC = () => {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollViewContainer: {
-    flex: 1,
-  },
-  contentContainer: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    minHeight: "100%",
-  },
-  iconContainer: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-    textAlign: "center",
-    marginBottom: 16,
-  },
-  description: {
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 40,
-    lineHeight: 24,
-    paddingHorizontal: 24,
-  },
   button: {
     backgroundColor: "#2196F3",
-    paddingVertical: 16,
-    paddingHorizontal: 32,
     borderRadius: 12,
-    width: "100%",
-    maxWidth: 300,
     elevation: 3,
+    maxWidth: 300,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
@@ -204,30 +173,61 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    width: "100%",
   },
   buttonText: {
     color: "#FFFFFF",
-    textAlign: "center",
     fontSize: 18,
     fontWeight: "600",
+    textAlign: "center",
+  },
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+    minHeight: "100%",
+    padding: 24,
   },
   darkBackground: {
     backgroundColor: "#1c1c1c",
   },
-  lightBackground: {
-    backgroundColor: "#f8f9fa",
+  darkSubtext: {
+    color: "#4a4a4a",
   },
   darkText: {
     color: "#1a1a1a",
   },
-  lightText: {
-    color: "#FFFFFF",
+  description: {
+    fontSize: 16,
+    lineHeight: 24,
+    marginBottom: 40,
+    paddingHorizontal: 24,
+    textAlign: "center",
   },
-  darkSubtext: {
-    color: "#4a4a4a",
+  iconContainer: {
+    marginBottom: 32,
+  },
+  lightBackground: {
+    backgroundColor: "#f8f9fa",
   },
   lightSubtext: {
     color: "#e0e0e0",
+  },
+  lightText: {
+    color: "#FFFFFF",
+  },
+  scrollViewContainer: {
+    flex: 1,
+  },
+  title: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 16,
+    textAlign: "center",
   },
 })
 

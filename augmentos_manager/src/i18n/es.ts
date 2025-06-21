@@ -1,5 +1,5 @@
 import demoEs from "./demo-es"
-import { Translations } from "./en"
+import {Translations} from "./en"
 
 const es: Translations = {
   common: {
@@ -64,8 +64,7 @@ const es: Translations = {
       "¿Tienes una idea para hacer que Ignite sea aún mejor? ¡Nos encantaría escucharla! Estamos siempre buscando personas que quieran ayudarnos a construir las mejores herramientas para React Native. Únete a nosotros en GitHub para ayudarnos a construir el futuro de Ignite.",
     contributeToIgniteLink: "Contribuir a Ignite",
     theLatestInReactNativeTitle: "Lo último en el mundo de React Native",
-    theLatestInReactNative:
-      "Estamos aquí para mantenerte al día con todo lo que React Native tiene para ofrecer.",
+    theLatestInReactNative: "Estamos aquí para mantenerte al día con todo lo que React Native tiene para ofrecer.",
     reactNativeRadioLink: "React Native Radio",
     reactNativeNewsletterLink: "Newsletter de React Native",
     reactNativeLiveLink: "React Native Live",

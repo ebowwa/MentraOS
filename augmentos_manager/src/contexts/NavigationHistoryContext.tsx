@@ -7,8 +7,8 @@ interface NavigationHistoryContextType {
   goBack: () => void
   getHistory: () => string[]
   clearHistory: () => void
-  push: (path: string) => void
-  replace: (path: string, params?: any) => void
+  push: (path: string, params?: any) => Promise<void>
+  replace: (path: string, params?: any) => Promise<void>
 }
 
 const NavigationHistoryContext = createContext<NavigationHistoryContextType | undefined>(undefined)
@@ -66,16 +66,25 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     }
   }
 
-  const push = (path: string) => {
+  const push = (path: string, params?: any): Promise<void> => {
+    // if the path is the same as the last path, don't add it to the history
+    if (historyRef.current[historyRef.current.length - 1] === path) {
+      return Promise.resolve()
+    }
+
     historyRef.current.push(path)
 
-    router.push(path as any)
+    router.push({pathname: path as any, params: params as any})
+    return Promise.resolve()
   }
 
-  const replace = (path: string, params?: any) => {
+  const replace = (path: string, params?: any): Promise<void> => {
+    console.log("[NAV HISTORY DEBUG] replace called with path:", path, "params:", params)
     historyRef.current.pop()
     historyRef.current.push(path)
-    router.replace({pathname: path as any, params: params as any})
+    const result = router.replace({pathname: path as any, params: params as any})
+    console.log("[NAV HISTORY DEBUG] router.replace returned:", result, "type:", typeof result)
+    return result || Promise.resolve()
   }
 
   const getHistory = () => {

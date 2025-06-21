@@ -1,5 +1,5 @@
-export const AUGMENTOS_MANAGER_PACKAGE_NAME = "com.augmentos.augmentos"
-export const AUGMENTOS_CORE_PACKAGE_NAME = "com.augmentos.augmentos_core"
+export const MENTRAOS_MANAGER_PACKAGE_NAME = "com.mentra.mentra"
+export const MENTRAOS_CORE_PACKAGE_NAME = "com.augmentos.augmentos_core"
 
 export const MOCK_CONNECTION: boolean = false
 export const INTENSE_LOGGING: boolean = false
@@ -17,6 +17,7 @@ export const SETTINGS_KEYS = {
   RECONNECT_ON_APP_FOREGROUND: "RECONNECT_ON_APP_FOREGROUND",
   HAS_EVER_ACTIVATED_APP: "HAS_EVER_ACTIVATED_APP",
   THEME_PREFERENCE: "THEME_PREFERENCE",
+  DEV_MODE: "DEV_MODE",
 }
 
 // Models that support WiFi configuration

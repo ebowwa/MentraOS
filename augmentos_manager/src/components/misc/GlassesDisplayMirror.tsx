@@ -1,7 +1,7 @@
 import {ThemedStyle} from "@/theme"
 import {useAppTheme} from "@/utils/useAppTheme"
 import React from "react"
-import {View, Text, StyleSheet, Image, ViewStyle} from "react-native"
+import {View, Text, StyleSheet, Image, ViewStyle, TextStyle} from "react-native"
 
 interface GlassesDisplayMirrorProps {
   layout: any
@@ -18,20 +18,19 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
 
   return (
     <View style={[themed($glassesScreen), containerStyle]}>
-    {layout && layout.layoutType ? (
-      renderLayout(layout, containerStyle)
-    ) : (
-      <Text style={[styles.glassesText]}>{fallbackMessage}</Text>
-    )}
-  </View>
+      {layout && layout.layoutType ? (
+        renderLayout(layout, containerStyle, themed($glassesText))
+      ) : (
+        <Text style={themed($glassesText)}>{fallbackMessage}</Text>
+      )}
+    </View>
   )
 }
 
 /**
  * Render logic for each layoutType
  */
-function renderLayout(layout: any, containerStyle?: any) {
-  const textStyle = [styles.glassesText]
+function renderLayout(layout: any, containerStyle?: any, textStyle?: TextStyle) {
 
   switch (layout.layoutType) {
     case "reference_card": {
@@ -87,47 +86,49 @@ function renderLayout(layout: any, containerStyle?: any) {
 const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   width: "100%",
   minHeight: 200, // Default height for normal mode
-  backgroundColor: "#000000",
+  backgroundColor: colors.palette.neutral200,
   borderRadius: 10,
   padding: 15,
   borderWidth: 2,
-  borderColor: "#333333",
+  // borderColor: "#333333",
+  borderColor: colors.border,
+})
+
+const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.text,
+  fontFamily: "Montserrat-Regular",
+  fontSize: 16,
+  // Add text shadow for better visibility against any background
+  textShadowColor: "rgba(0, 0, 0, 0.9)",
+  textShadowOffset: {width: 1, height: 1},
+  textShadowRadius: 2,
 })
 
 const styles = StyleSheet.create({
-  glassesDisplayContainer: {
+  cardContent: {
+    fontFamily: "Montserrat-Regular",
+    fontSize: 16,
+  },
+
+  cardTitle: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 18,
+    marginBottom: 5,
+  },
+  emptyTextWall: {
+    alignItems: "center",
+    borderColor: "#00FF00",
+    borderStyle: "dashed",
+    borderWidth: 1,
+    height: 100,
+    justifyContent: "center",
     width: "100%",
+  },
+  glassesDisplayContainer: {
     alignItems: "center",
     justifyContent: "center",
     padding: 16,
-  },
-
-  glassesText: {
-    color: "#00FF00", // Bright green color for monochrome display
-    fontFamily: "Montserrat-Regular",
-    fontSize: 16,
-    // Add text shadow for better visibility against any background
-    textShadowColor: "rgba(0, 0, 0, 0.9)",
-    textShadowOffset: {width: 1, height: 1},
-    textShadowRadius: 2,
-  },
-  emptyTextWall: {
-    borderWidth: 1,
-    borderColor: "#00FF00",
-    borderStyle: "dashed",
     width: "100%",
-    height: 100,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontFamily: "Montserrat-Bold",
-    marginBottom: 5,
-  },
-  cardContent: {
-    fontSize: 16,
-    fontFamily: "Montserrat-Regular",
   },
 })
 

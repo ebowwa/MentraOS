@@ -1,18 +1,18 @@
 // CheckBox.tsx
 
-import React from 'react';
-import { Pressable, View, StyleSheet } from 'react-native';
-import { useAppTheme } from '@/utils/useAppTheme';
-import { Text } from '@/components/ignite';
+import React from "react"
+import {Pressable, View, StyleSheet} from "react-native"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {Text} from "@/components/ignite"
 
 interface CheckBoxProps {
-  checked: boolean;
-  onChange: (newValue: boolean) => void;
-  label?: string;
-  disabled?: boolean;
-  containerStyle?: object;
-  boxStyle?: object;
-  labelStyle?: object;
+  checked: boolean
+  onChange: (newValue: boolean) => void
+  label?: string
+  disabled?: boolean
+  containerStyle?: object
+  boxStyle?: object
+  labelStyle?: object
 }
 
 const CheckBox: React.FC<CheckBoxProps> = ({
@@ -24,53 +24,56 @@ const CheckBox: React.FC<CheckBoxProps> = ({
   boxStyle,
   labelStyle,
 }) => {
-  const { theme } = useAppTheme();
-  
+  const {theme} = useAppTheme()
+
   return (
     <Pressable
       style={[styles.container, containerStyle]}
       onPress={() => !disabled && onChange(!checked)}
-      disabled={disabled}
-    >
-      <View style={[
-        styles.box, 
-        { borderColor: theme.colors.border },
-        boxStyle, 
-        checked && [styles.boxChecked, { 
-          backgroundColor: theme.colors.buttonPrimary, 
-          borderColor: theme.colors.buttonPrimary 
-        }]
-      ]}>
-        {checked && <Text text="✓" style={[styles.checkMark, { color: theme.colors.palette.neutral100 }]} />}
+      disabled={disabled}>
+      <View
+        style={[
+          styles.box,
+          {borderColor: theme.colors.border},
+          boxStyle,
+          checked && [
+            styles.boxChecked,
+            {
+              backgroundColor: theme.colors.buttonPrimary,
+              borderColor: theme.colors.buttonPrimary,
+            },
+          ],
+        ]}>
+        {checked && <Text text="✓" style={[styles.checkMark, {color: theme.colors.palette.neutral100}]} />}
       </View>
-      {label ? <Text text={label} style={[styles.label, { color: theme.colors.text }, labelStyle]} /> : null}
+      {label ? <Text text={label} style={[styles.label, {color: theme.colors.text}, labelStyle]} /> : null}
     </Pressable>
-  );
-};
+  )
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   box: {
-    width: 20,
-    height: 20,
-    borderWidth: 2,
+    alignItems: "center",
     borderRadius: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderWidth: 2,
+    height: 20,
+    justifyContent: "center",
     marginRight: 8,
+    width: 20,
   },
   boxChecked: {
     // Colors handled dynamically with theme
   },
   checkMark: {
-    fontWeight: 'bold',
+    fontWeight: "bold",
+  },
+  container: {
+    alignItems: "center",
+    flexDirection: "row",
   },
   label: {
     fontSize: 16,
   },
-});
+})
 
-export default CheckBox;
+export default CheckBox

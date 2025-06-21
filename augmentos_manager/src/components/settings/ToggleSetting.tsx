@@ -21,10 +21,7 @@ const ToggleSetting: React.FC<ToggleSettingProps> = ({label, subtitle, value, on
         <Text text={label} style={themed($label)} />
         {subtitle && <Text text={subtitle} style={themed($subtitle)} />}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onValueChange}
-      />
+      <Switch value={value} onValueChange={onValueChange} />
     </View>
   )
 }
@@ -38,6 +35,8 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
   borderRadius: spacing.sm,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
 })
 
 const $textContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
@@ -61,9 +60,9 @@ const $subtitle: ThemedStyle<TextStyle> = ({colors}) => ({
 
 const styles = StyleSheet.create({
   container: {
+    alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
     width: "100%",
   },
   label: {

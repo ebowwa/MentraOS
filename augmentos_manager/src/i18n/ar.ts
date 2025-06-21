@@ -1,5 +1,5 @@
 import demoAr from "./demo-ar"
-import { Translations } from "./en"
+import {Translations} from "./en"
 
 const ar: Translations = {
   common: {
@@ -9,8 +9,7 @@ const ar: Translations = {
     logOut: "تسجيل خروج",
   },
   welcomeScreen: {
-    postscript:
-      "ربما لا يكون هذا هو الشكل الذي يبدو عليه تطبيقك مالم يمنحك المصمم هذه الشاشات وشحنها في هذه الحالة",
+    postscript: "ربما لا يكون هذا هو الشكل الذي يبدو عليه تطبيقك مالم يمنحك المصمم هذه الشاشات وشحنها في هذه الحالة",
     readyForLaunch: "تطبيقك تقريبا جاهز للتشغيل",
     exciting: "اوه هذا مثير",
     letsGo: "لنذهب",
@@ -52,8 +51,7 @@ const ar: Translations = {
   },
   demoCommunityScreen: {
     title: "تواصل مع المجتمع",
-    tagLine:
-      "قم بالتوصيل لمنتدى Infinite Red الذي يضم تفاعل المهندسين المحلّيين ورفع مستوى تطوير تطبيقك معنا",
+    tagLine: "قم بالتوصيل لمنتدى Infinite Red الذي يضم تفاعل المهندسين المحلّيين ورفع مستوى تطوير تطبيقك معنا",
     joinUsOnSlackTitle: "انضم الينا على Slack",
     joinUsOnSlack:
       "هل ترغب في وجود مكان للتواصل مع مهندسي React Native حول العالم؟ الانضمام الى المحادثة في سلاك المجتمع الاحمر اللانهائي! مجتمعناالمتنامي هو مساحةآمنة لطرح الاسئلة والتعلم من الآخرين وتنمية شبكتك.",
@@ -75,8 +73,7 @@ const ar: Translations = {
   },
   demoShowroomScreen: {
     jumpStart: "مكونات او عناصر لبدء مشروعك",
-    lorem2Sentences:
-      "عامل الناس بأخلاقك لا بأخلاقهم. عامل الناس بأخلاقك لا بأخلاقهم. عامل الناس بأخلاقك لا بأخلاقهم",
+    lorem2Sentences: "عامل الناس بأخلاقك لا بأخلاقهم. عامل الناس بأخلاقك لا بأخلاقهم. عامل الناس بأخلاقك لا بأخلاقهم",
     demoHeaderTxExample: "ياي",
     demoViaTxProp: "عبر `tx` Prop",
     demoViaSpecifiedTxProp: "Prop `{{prop}}Tx` عبر",
@@ -91,12 +88,10 @@ const ar: Translations = {
     demoPodcastList: "قائمة البودكاست التجريبي",
     androidReactotronHint:
       "اذا لم ينجح ذللك، فتأكد من تشغيل تطبيق الحاسوب الخاص Reactotron، وقم بتشغيل عكس adb tcp:9090 \ntcp:9090 من جهازك الطرفي ، واعد تحميل التطبيق",
-    iosReactotronHint:
-      "اذا لم ينجح ذلك، فتأكد من تشغيل تطبيق الحاسوب الخاص ب Reactotron وأعد تحميل التطبيق",
+    iosReactotronHint: "اذا لم ينجح ذلك، فتأكد من تشغيل تطبيق الحاسوب الخاص ب Reactotron وأعد تحميل التطبيق",
     macosReactotronHint: "اذا لم ينجح ذلك، فتأكد من تشغيل الحاسوب ب Reactotron وأعد تحميل التطبيق",
     webReactotronHint: "اذا لم ينجح ذلك، فتأكد من تشغيل الحاسوب ب Reactotron وأعد تحميل التطبيق",
-    windowsReactotronHint:
-      "اذا لم ينجح ذلك، فتأكد من تشغيل الحاسوب ب Reactotron وأعد تحميل التطبيق",
+    windowsReactotronHint: "اذا لم ينجح ذلك، فتأكد من تشغيل الحاسوب ب Reactotron وأعد تحميل التطبيق",
   },
   demoPodcastListScreen: {
     title: "حلقات إذاعية React Native",
@@ -114,8 +109,7 @@ const ar: Translations = {
     },
     noFavoritesEmptyState: {
       heading: "هذا يبدو فارغاً بعض الشيء.",
-      content:
-        "لم تتم اضافة اي مفضلات حتى الان. اضغط على القلب في إحدى الحلقات لإضافته الى المفضلة.",
+      content: "لم تتم اضافة اي مفضلات حتى الان. اضغط على القلب في إحدى الحلقات لإضافته الى المفضلة.",
     },
   },
 

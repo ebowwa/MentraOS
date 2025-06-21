@@ -1,24 +1,24 @@
 // LogService.ts
-import { NativeModules, Platform } from 'react-native';
-import BackendServerComms from '../backend_comms/BackendServerComms';
+import {NativeModules, Platform} from "react-native"
+import BackendServerComms from "../backend_comms/BackendServerComms"
 
-const { LogcatCapture } = NativeModules;
+const {LogcatCapture} = NativeModules
 
 // This is a simple stub for iOS - actual iOS implementation will be added in the future
 class LogService {
-  private static instance: LogService;
-  private TAG = 'MXT2_LogService';
-  private backendComms: BackendServerComms;
+  private static instance: LogService
+  private TAG = "MXT2_LogService"
+  private backendComms: BackendServerComms
 
   private constructor() {
-    this.backendComms = BackendServerComms.getInstance();
+    this.backendComms = BackendServerComms.getInstance()
   }
 
   public static getInstance(): LogService {
     if (!LogService.instance) {
-      LogService.instance = new LogService();
+      LogService.instance = new LogService()
     }
-    return LogService.instance;
+    return LogService.instance
   }
 
   /**
@@ -28,16 +28,16 @@ class LogService {
    */
   public async getLogs(lines: number = 1000): Promise<string> {
     try {
-      if (Platform.OS === 'android' && LogcatCapture) {
-        return await LogcatCapture.getLogs(lines);
+      if (Platform.OS === "android" && LogcatCapture) {
+        return await LogcatCapture.getLogs(lines)
       } else {
         // Stub for iOS - to be implemented in the future
-        console.warn(`${this.TAG}: Log module not available on iOS yet`);
-        return 'Log capture is not yet available on iOS';
+        console.warn(`${this.TAG}: Log module not available on iOS yet`)
+        return "Log capture is not yet available on iOS"
       }
     } catch (error) {
-      console.error(`${this.TAG}: Error getting logs -`, error);
-      return `Error retrieving logs: ${error}`;
+      console.error(`${this.TAG}: Error getting logs -`, error)
+      return `Error retrieving logs: ${error}`
     }
   }
 
@@ -47,16 +47,16 @@ class LogService {
    */
   public async clearLogs(): Promise<boolean> {
     try {
-      if (Platform.OS === 'android' && LogcatCapture) {
-        return await LogcatCapture.clearLogs();
+      if (Platform.OS === "android" && LogcatCapture) {
+        return await LogcatCapture.clearLogs()
       } else {
         // Stub for iOS - to be implemented in the future
-        console.warn(`${this.TAG}: Log clearing not available on iOS yet`);
-        return false;
+        console.warn(`${this.TAG}: Log clearing not available on iOS yet`)
+        return false
       }
     } catch (error) {
-      console.error(`${this.TAG}: Error clearing logs -`, error);
-      return false;
+      console.error(`${this.TAG}: Error clearing logs -`, error)
+      return false
     }
   }
 
@@ -68,7 +68,7 @@ class LogService {
   public async sendErrorReport(description: string): Promise<boolean> {
     try {
       // Get logs
-      const logs = await this.getLogs();
+      const logs = await this.getLogs()
 
       // Prepare data for report
       const reportData = {
@@ -78,17 +78,17 @@ class LogService {
           platform: Platform.OS,
           version: Platform.Version,
         },
-        timestamp: new Date().toISOString()
-      };
+        timestamp: new Date().toISOString(),
+      }
 
       // Use the dedicated method in BackendServerComms
-      await this.backendComms.sendErrorReport(reportData);
-      return true;
+      await this.backendComms.sendErrorReport(reportData)
+      return true
     } catch (error) {
-      console.error(`${this.TAG}: Error sending report -`, error);
-      return false;
+      console.error(`${this.TAG}: Error sending report -`, error)
+      return false
     }
   }
 }
 
-export default LogService;
+export default LogService

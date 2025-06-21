@@ -1,7 +1,7 @@
 // src/AppSettings.tsx
 import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback, useRef} from "react"
 import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Animated} from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
+import {useSafeAreaInsets} from "react-native-safe-area-context"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
 import TextSettingNoSave from "@/components/settings/TextSettingNoSave"
@@ -23,12 +23,12 @@ import {router, useFocusEffect, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, PillButton} from "@/components/ignite"
 import {ThemedStyle} from "@/theme"
-import { useNavigationHistory } from "@/contexts/NavigationHistoryContext"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import ActionButton from "@/components/ui/ActionButton"
 import Divider from "@/components/misc/Divider"
-import { InfoRow } from "@/components/settings/InfoRow"
-import { SettingsGroup } from "@/components/settings/SettingsGroup"
-import { showAlert } from "@/utils/AlertUtils"
+import {InfoRow} from "@/components/settings/InfoRow"
+import {SettingsGroup} from "@/components/settings/SettingsGroup"
+import {showAlert} from "@/utils/AlertUtils"
 
 export default function AppSettings() {
   const {packageName, appName, fromWebView} = useLocalSearchParams()
@@ -37,13 +37,14 @@ export default function AppSettings() {
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
   const insets = useSafeAreaInsets()
-  
+  const hasLoadedData = useRef(false)
+
   // Animation values for collapsing header
   const scrollY = useRef(new Animated.Value(0)).current
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 50, 100],
     outputRange: [0, 0, 1],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   })
   if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
     console.error("No packageName or appName found in params")
@@ -69,8 +70,8 @@ export default function AppSettings() {
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
-      return async () => {
-        await refreshAppStatus()
+      return () => {
+        refreshAppStatus()
       }
     }, []),
   )
@@ -138,8 +139,8 @@ export default function AppSettings() {
     console.log(`Uninstalling app: ${packageName}`)
 
     showAlert(
-      "Uninstall App", 
-      `Are you sure you want to uninstall ${appInfo?.name || appName}?`, 
+      "Uninstall App",
+      `Are you sure you want to uninstall ${appInfo?.name || appName}?`,
       [
         {
           text: "Cancel",
@@ -149,46 +150,46 @@ export default function AppSettings() {
           text: "Uninstall",
           style: "destructive",
           onPress: async () => {
-          try {
-            setIsUninstalling(true)
-            // First stop the app if it's running
-            if (appInfo?.is_running) {
-              // Optimistically update UI first
-              optimisticallyStopApp(packageName)
-              await backendServerComms.stopApp(packageName)
+            try {
+              setIsUninstalling(true)
+              // First stop the app if it's running
+              if (appInfo?.is_running) {
+                // Optimistically update UI first
+                optimisticallyStopApp(packageName)
+                await backendServerComms.stopApp(packageName)
+                clearPendingOperation(packageName)
+              }
+
+              // Then uninstall it
+              await backendServerComms.uninstallApp(packageName)
+
+              // Show success message
+              GlobalEventEmitter.emit("SHOW_BANNER", {
+                message: `${appInfo?.name || appName} has been uninstalled successfully`,
+                type: "success",
+              })
+
+              goBack()
+            } catch (error: any) {
+              console.error("Error uninstalling app:", error)
               clearPendingOperation(packageName)
+              refreshAppStatus()
+              GlobalEventEmitter.emit("SHOW_BANNER", {
+                message: `Error uninstalling app: ${error.message || "Unknown error"}`,
+                type: "error",
+              })
+            } finally {
+              setIsUninstalling(false)
             }
-
-            // Then uninstall it
-            await backendServerComms.uninstallApp(packageName)
-
-            // Show success message
-            GlobalEventEmitter.emit("SHOW_BANNER", {
-              message: `${appInfo?.name || appName} has been uninstalled successfully`,
-              type: "success",
-            })
-            
-            goBack()
-          } catch (error: any) {
-            console.error("Error uninstalling app:", error)
-            clearPendingOperation(packageName)
-            refreshAppStatus()
-            GlobalEventEmitter.emit("SHOW_BANNER", {
-              message: `Error uninstalling app: ${error.message || "Unknown error"}`,
-              type: "error",
-            })
-          } finally {
-            setIsUninstalling(false)
-          }
+          },
         },
+      ],
+      {
+        iconName: "delete-forever",
+        iconSize: 48,
+        iconColor: theme.colors.destructiveAction,
       },
-    ],
-    {
-      iconName: "delete-forever",
-      iconSize: 48,
-      iconColor: theme.colors.destructiveAction,
-    }
-  )
+    )
   }
 
   // Add header button when webviewURL exists
@@ -221,8 +222,18 @@ export default function AppSettings() {
     }
   }, [serverAppInfo, packageName, appName])
 
-  // Fetch TPA settings on mount or when packageName/status change.
+  // Reset hasLoadedData when packageName changes
   useEffect(() => {
+    hasLoadedData.current = false
+  }, [packageName])
+
+  // Fetch TPA settings on mount
+  useEffect(() => {
+    // Skip if we've already loaded data for this packageName
+    if (hasLoadedData.current) {
+      return
+    }
+
     let isMounted = true
     let debounceTimeout: NodeJS.Timeout
 
@@ -245,13 +256,14 @@ export default function AppSettings() {
     // Debounce fetch to avoid redundant calls
     debounceTimeout = setTimeout(() => {
       fetchUpdatedSettingsInfo()
+      hasLoadedData.current = true
     }, 150)
 
     return () => {
       isMounted = false
       clearTimeout(debounceTimeout)
     }
-  }, [packageName])
+  }, [])
 
   const fetchUpdatedSettingsInfo = async () => {
     // Only show skeleton if there are no cached settings
@@ -297,13 +309,11 @@ export default function AppSettings() {
       setSettingsLoading(false)
       // Auto-redirect to webview if needed
       if (data.webviewURL && fromWebView !== "true") {
-        replace("/tpa/webview",
-          {
-            webviewURL: data.webviewURL,
-            appName: appName,
-            packageName: packageName,
-          },
-        )
+        replace("/tpa/webview", {
+          webviewURL: data.webviewURL,
+          appName: appName,
+          packageName: packageName,
+        })
       }
     } catch (err) {
       setSettingsLoading(false)
@@ -321,7 +331,6 @@ export default function AppSettings() {
 
   // When a setting changes, update local state and send the full updated settings payload.
   const handleSettingChange = (key: string, value: any) => {
-    console.log(`Changing ${key} to ${value}`)
     setSettingsState(prevState => ({
       ...prevState,
       [key]: value,
@@ -364,6 +373,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
+            settingKey={setting.key}
           />
         )
       case "text_no_save_button":
@@ -373,6 +383,7 @@ export default function AppSettings() {
             label={setting.label}
             value={settingsState[setting.key]}
             onChangeText={text => handleSettingChange(setting.key, text)}
+            settingKey={setting.key}
           />
         )
       case "slider":
@@ -440,51 +451,47 @@ export default function AppSettings() {
       {isUninstalling && <LoadingOverlay message={`Uninstalling ${appInfo?.name || appName}...`} />}
 
       <View>
-        <Header 
-          title="" 
-          leftIcon="caretLeft" 
+        <Header
+          title=""
+          leftIcon="caretLeft"
           onLeftPress={() => router.back()}
-          RightActionComponent={serverAppInfo?.webviewURL ? (
-            <TouchableOpacity
-              style={{ marginRight: 8 }}
-              onPress={() => {
-                router.replace({
-                  pathname: "/tpa/webview",
-                  params: {
-                    webviewURL: serverAppInfo.webviewURL,
-                    appName: appName as string,
-                    packageName: packageName as string,
-                    fromSettings: "true"
-                  }
-                })
-              }}
-            >
-              <FontAwesome
-                name="globe"
-                size={22}
-                color={theme.colors.text}
-              />
-            </TouchableOpacity>
-          ) : undefined}
+          RightActionComponent={
+            serverAppInfo?.webviewURL ? (
+              <TouchableOpacity
+                style={{marginRight: 8}}
+                onPress={() => {
+                  router.replace({
+                    pathname: "/tpa/webview",
+                    params: {
+                      webviewURL: serverAppInfo.webviewURL,
+                      appName: appName as string,
+                      packageName: packageName as string,
+                      fromSettings: "true",
+                    },
+                  })
+                }}>
+                <FontAwesome name="globe" size={22} color={theme.colors.text} />
+              </TouchableOpacity>
+            ) : undefined
+          }
         />
-        <Animated.View 
-          style={{ 
-            opacity: headerOpacity, 
-            position: 'absolute',
+        <Animated.View
+          style={{
+            opacity: headerOpacity,
+            position: "absolute",
             top: insets.top,
             left: 0,
             right: 0,
             height: 56,
-            justifyContent: 'center',
-            alignItems: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          <Text 
+            justifyContent: "center",
+            alignItems: "center",
+            pointerEvents: "none",
+          }}>
+          <Text
             text={appInfo?.name || appName}
             style={{
               fontSize: 17,
-              fontWeight: '600',
+              fontWeight: "600",
               color: theme.colors.text,
             }}
             numberOfLines={1}
@@ -493,27 +500,24 @@ export default function AppSettings() {
         </Animated.View>
       </View>
 
-      <Animated.ScrollView 
+      <Animated.ScrollView
         style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: true }
-        )}
+        onScroll={Animated.event([{nativeEvent: {contentOffset: {y: scrollY}}}], {useNativeDriver: true})}
         scrollEventThrottle={16}>
         <View style={{gap: theme.spacing.lg}}>
           {/* Combined App Info and Action Section */}
           <View style={themed($topSection)}>
             <AppIcon app={appInfo} isForegroundApp={appInfo.is_foreground} style={themed($appIconLarge)} />
-            
+
             <View style={themed($rightColumn)}>
               <View style={themed($textContainer)}>
-                <Text style={[themed($appNameSmall)]}>{appInfo.name}</Text>
-                <Text style={[themed($versionText)]}>{appInfo.version || "1.0.0"}</Text>
+                <Text style={themed($appNameSmall)}>{appInfo.name}</Text>
+                <Text style={themed($versionText)}>{appInfo.version || "1.0.0"}</Text>
               </View>
               <View style={themed($buttonContainer)}>
-                <PillButton 
+                <PillButton
                   text={appInfo.is_running ? "Stop" : "Start"}
                   onPress={handleStartStopApp}
                   variant="secondary"
@@ -534,12 +538,9 @@ export default function AppSettings() {
 
           {/* App Instructions Section */}
           {serverAppInfo?.instructions && (
-            <View
-              style={[
-                themed($sectionContainer),
-              ]}>
-              <Text style={[themed($sectionTitle)]}>About this App</Text>
-              <Text style={[themed($instructionsText)]}>{serverAppInfo.instructions}</Text>
+            <View style={themed($sectionContainer)}>
+              <Text style={themed($sectionTitle)}>About this App</Text>
+              <Text style={themed($instructionsText)}>{serverAppInfo.instructions}</Text>
             </View>
           )}
 
@@ -558,56 +559,41 @@ export default function AppSettings() {
 
           {/* Additional Information Section */}
           <View>
-            <Text style={[
-              themed($groupTitle), 
-              {
-                marginTop: theme.spacing.md,
-                marginBottom: theme.spacing.xs,
-                paddingHorizontal: theme.spacing.md,
-                fontSize: 16,
-                fontFamily: "Montserrat-Regular",
-                color: theme.colors.textDim,
-              }
-            ]}>Other</Text>
+            <Text
+              style={[
+                themed($groupTitle),
+                {
+                  marginTop: theme.spacing.md,
+                  marginBottom: theme.spacing.xs,
+                  paddingHorizontal: theme.spacing.md,
+                  fontSize: 16,
+                  fontFamily: "Montserrat-Regular",
+                  color: theme.colors.textDim,
+                },
+              ]}>
+              Other
+            </Text>
             <SettingsGroup>
               <View style={{paddingVertical: theme.spacing.sm}}>
                 <Text style={{fontSize: 15, color: theme.colors.text}}>Additional Information</Text>
               </View>
-              <InfoRow 
-                label="Company" 
-                value={serverAppInfo?.company || "-"} 
+              <InfoRow label="Company" value={serverAppInfo?.organization?.name || "-"} showDivider={false} />
+              <InfoRow label="Website" value={serverAppInfo?.organization?.website || "-"} showDivider={false} />
+              <InfoRow label="Contact" value={serverAppInfo?.organization?.contactEmail || "-"} showDivider={false} />
+              <InfoRow
+                label="App Type"
+                value={
+                  appInfo?.tpaType === "standard" ? "Standard" : appInfo?.tpaType === "background" ? "Background" : "-"
+                }
                 showDivider={false}
               />
-              <InfoRow 
-                label="Website" 
-                value={serverAppInfo?.website || "-"} 
-                showDivider={false}
-              />
-              <InfoRow 
-                label="Contact" 
-                value={serverAppInfo?.contact || "-"} 
-                showDivider={false}
-              />
-              <InfoRow 
-                label="App Type" 
-                value={appInfo?.tpaType === "standard" ? "Standard" : appInfo?.tpaType === "background" ? "Background" : "-"} 
-                showDivider={false}
-              />
-              <InfoRow 
-                label="Package Name" 
-                value={packageName} 
-                showDivider={false}
-              />
+              <InfoRow label="Package Name" value={packageName} showDivider={false} />
             </SettingsGroup>
           </View>
 
           {/* Uninstall Button at the bottom */}
           {serverAppInfo?.uninstallable && (
-            <ActionButton
-              label="Uninstall"
-              variant="destructive"
-              onPress={handleUninstallApp}
-            />
+            <ActionButton label="Uninstall" variant="destructive" onPress={handleUninstallApp} />
           )}
 
           {/* Bottom safe area padding */}
@@ -626,7 +612,7 @@ const $topSection: ThemedStyle<ViewStyle> = ({spacing}) => ({
 
 const $rightColumn: ThemedStyle<ViewStyle> = () => ({
   flex: 1,
-  justifyContent: 'space-between',
+  justifyContent: "space-between",
 })
 
 const $textContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
@@ -634,7 +620,7 @@ const $textContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $buttonContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
-  alignSelf: 'flex-start',
+  alignSelf: "flex-start",
   marginTop: spacing.sm,
 })
 
@@ -657,7 +643,6 @@ const $versionText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
 })
 
-
 const $descriptionSection: ThemedStyle<ViewStyle> = ({spacing}) => ({
   paddingVertical: spacing.xs,
   paddingHorizontal: spacing.md,
@@ -674,7 +659,6 @@ const $appInfoHeader: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   shadowOpacity: 0.1,
   shadowRadius: spacing.xxs,
 })
-
 
 const $descriptionContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingTop: spacing.sm,
@@ -696,7 +680,6 @@ const $appName: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.xxs,
   color: colors.text,
 })
-
 
 const $sectionContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   borderRadius: spacing.sm,
@@ -747,4 +730,3 @@ const $loadingContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 })
 
 const $groupTitle: ThemedStyle<TextStyle> = () => ({})
-

@@ -34,6 +34,7 @@ export const AppListItem = ({
   isActive,
   onTogglePress,
   onSettingsPress,
+  refProp,
   opacity,
   isDisabled,
   is_foreground,
@@ -43,6 +44,7 @@ export const AppListItem = ({
 
   return (
     <Animated.View
+      ref={refProp}
       style={[
         themed($everything),
         themed($everythingFlexBox),
@@ -57,19 +59,19 @@ export const AppListItem = ({
             }
           : {},
       ]}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[themed($appDescription), themed($everythingFlexBox)]}
         onPress={onTogglePress}
         disabled={isDisabled}
-        activeOpacity={0.7}
-      >
+        activeOpacity={0.7}>
         <AppIcon app={app} isForegroundApp={is_foreground} style={themed($appIcon)} />
         <View style={themed($appNameWrapper)}>
           <Text
             text={app.name}
             style={[themed($appName), isActive ? themed($activeApp) : themed($inactiveApp)]}
             numberOfLines={1}
-            ellipsizeMode="tail" />
+            ellipsizeMode="tail"
+          />
           {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
         </View>
       </TouchableOpacity>
@@ -78,7 +80,7 @@ export const AppListItem = ({
         <View pointerEvents={isDisabled ? "none" : "auto"}>
           <Switch value={isActive} onValueChange={onTogglePress} />
         </View>
-        <TouchableOpacity onPress={onSettingsPress} hitSlop={20} style={themed($chevronHitbox)}>
+        <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
           <ChevronRight color={theme.colors.text} />
         </TouchableOpacity>
       </View>
@@ -149,10 +151,11 @@ const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?
     return (
       <View style={themed(isActive ? $tagActive : $tag)}>
         <TreeIcon size={16} color={mColor} />
-        <Text 
+        <Text
           text={isForeground ? translate("home:foreground") : ""}
-          style={[themed($disconnect), {color: mColor}]} 
-          numberOfLines={1} />
+          style={[themed($disconnect), {color: mColor}]}
+          numberOfLines={1}
+        />
         <Pressable
           onPress={() => {
             Toast.show({
@@ -171,12 +174,12 @@ const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
   return {
     borderRadius: 15,
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 6,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "flex-start",
     gap: 4,
-    height: 24,
+    minHeight: 28,
     backgroundColor: colors.palette.primary200,
     alignSelf: "flex-start",
   }
@@ -184,23 +187,22 @@ const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
 
 const $tag: ThemedStyle<ViewStyle> = () => ({
   borderRadius: 15,
-  paddingVertical: 4,
+  paddingVertical: 6,
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "flex-start",
   gap: 4,
-  height: 24,
+  minHeight: 28,
   alignSelf: "flex-start",
 })
 
 const $disconnect: ThemedStyle<TextStyle> = () => ({
   fontSize: 13,
   letterSpacing: 0.4,
-  lineHeight: 18,
+  lineHeight: 16,
   fontWeight: "700",
   color: "#ceced0",
   textAlign: "left",
-  overflow: "hidden",
 })
 
 export default Tag

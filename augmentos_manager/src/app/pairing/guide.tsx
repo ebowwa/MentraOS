@@ -1,6 +1,17 @@
-import React, {useState, useEffect, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ViewStyle} from "react-native"
+import React, {useState, useEffect, useRef, useCallback} from "react"
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Alert,
+  ViewStyle,
+  BackHandler,
+  Platform,
+} from "react-native"
 import {useNavigation, useRoute} from "@react-navigation/native"
+import {useFocusEffect} from "@react-navigation/native"
 import Icon from "react-native-vector-icons/FontAwesome"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import coreCommunicator from "@/bridge/CoreCommunicator"
@@ -14,9 +25,10 @@ import {Screen} from "@/components/ignite/Screen"
 import {ThemedStyle} from "@/theme"
 import {Header} from "@/components/ignite/Header"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import showAlert from "@/utils/AlertUtils"
 
 export default function GlassesPairingGuideScreen() {
-  const {goBack, push} = useNavigationHistory()
+  const {goBack, push, clearHistory} = useNavigationHistory()
   const {status} = useStatus()
   const route = useRoute()
   const {glassesModelName} = route.params as {glassesModelName: string}
@@ -25,6 +37,51 @@ export default function GlassesPairingGuideScreen() {
   const [pairingInProgress, setPairingInProgress] = useState(true)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const hasAlertShownRef = useRef(false)
+
+  // Shared function to handle the forget glasses logic
+  const handleForgetGlasses = useCallback(async () => {
+    setPairingInProgress(false)
+    await coreCommunicator.sendDisconnectWearable()
+    await coreCommunicator.sendForgetSmartGlasses()
+    // Clear NavigationHistoryContext history to prevent issues with back navigation
+    clearHistory()
+    // Use dismissTo to properly go back to select-glasses-model and clear the stack
+    router.dismissTo("/pairing/select-glasses-model")
+  }, [clearHistory])
+
+  // Handle Android hardware back button
+  useEffect(() => {
+    // Only handle on Android
+    if (Platform.OS !== "android") return
+
+    const onBackPress = () => {
+      // Call our custom back handler
+      handleForgetGlasses()
+      // Return true to prevent default back behavior and stop propagation
+      return true
+    }
+
+    // Use setTimeout to ensure our handler is registered after NavigationHistoryContext
+    const timeout = setTimeout(() => {
+      // Add the event listener - this will be on top of the stack
+      const backHandler = BackHandler.addEventListener("hardwareBackPress", onBackPress)
+
+      // Store the handler for cleanup
+      backHandlerRef.current = backHandler
+    }, 100)
+
+    // Cleanup function
+    return () => {
+      clearTimeout(timeout)
+      if (backHandlerRef.current) {
+        backHandlerRef.current.remove()
+        backHandlerRef.current = null
+      }
+    }
+  }, [handleForgetGlasses])
+
+  // Ref to store the back handler for cleanup
+  const backHandlerRef = useRef<any>(null)
 
   // Timer to show help message after 30 seconds
   useEffect(() => {
@@ -53,7 +110,7 @@ export default function GlassesPairingGuideScreen() {
   // Show help alert if showHelpAlert is true
   useEffect(() => {
     if (showHelpAlert) {
-      Alert.alert("Need Some Help?", `Having trouble pairing your ${glassesModelName}? Wanna see some tips?`, [
+      showAlert("Need Some Help?", `Having trouble pairing your ${glassesModelName}? Want some tips?`, [
         {
           text: "No, thanks.",
           style: "cancel",
@@ -70,22 +127,6 @@ export default function GlassesPairingGuideScreen() {
     }
   }, [showHelpAlert, glassesModelName])
 
-  // useEffect(() => {
-  //   const unsubscribe = navigation.addListener("beforeRemove", e => {
-  //     const actionType = e.data?.action?.type
-  //     if (actionType === "GO_BACK" || actionType === "POP") {
-  //       coreCommunicator.sendForgetSmartGlasses()
-  //       coreCommunicator.sendDisconnectWearable()
-  //       e.preventDefault()
-  //       router.push({pathname: "/pairing/select-glasses-model"})
-  //     } else {
-  //       console.log("Navigation triggered by", actionType, "so skipping disconnect logic.")
-  //     }
-  //   })
-
-  //   return unsubscribe
-  // }, [navigation])
-
   useEffect(() => {
     // If pairing successful, return to home
     if (status.core_info.puck_connected && status.glasses_info?.model_name) {
@@ -94,7 +135,7 @@ export default function GlassesPairingGuideScreen() {
       if (timerRef.current) {
         clearTimeout(timerRef.current)
       }
-      router.push({pathname: "/home"})
+      router.push({pathname: "/(tabs)/home"})
     }
   }, [status])
 
@@ -103,12 +144,7 @@ export default function GlassesPairingGuideScreen() {
 
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
-      <Header leftIcon="caretLeft" onLeftPress={async () => {
-          setPairingInProgress(false);
-          await coreCommunicator.sendDisconnectWearable();
-          await coreCommunicator.sendForgetSmartGlasses();
-          router.replace('/pairing/select-glasses-model');
-        }} />
+      <Header leftIcon="caretLeft" onLeftPress={handleForgetGlasses} />
       {pairingInProgress ? (
         // Show the beautiful animated loader while pairing is in progress
         <GlassesPairingLoader glassesModelName={glassesModelName} />
@@ -162,71 +198,71 @@ export default function GlassesPairingGuideScreen() {
 }
 
 const styles = StyleSheet.create({
-  scrollViewContainer: {
-    flex: 1,
-  },
   contentContainer: {
     alignItems: "center",
-    justifyContent: "center",
-  },
-  text: {
-    fontSize: 16,
-    marginBottom: 10,
-  },
-  glassesImage: {
-    width: 100,
-    height: 60,
-    resizeMode: "contain",
-    marginTop: 20,
+    justifyContent: "flex-start",
   },
   darkBackground: {
     backgroundColor: "#1c1c1c",
   },
-  lightBackground: {
-    //backgroundColor: '#f9f9f9',
+  darkButton: {
+    backgroundColor: "#333333",
   },
   darkText: {
     color: "#FFFFFF",
   },
-  lightText: {
-    color: "#333333",
+  glassesImage: {
+    height: 60,
+    marginTop: 20,
+    resizeMode: "contain",
+    width: 100,
   },
   helpButton: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
     borderRadius: 8,
-    marginTop: 20,
+    flexDirection: "row",
+    justifyContent: "center",
     marginBottom: 30,
+    marginTop: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   helpButtonText: {
     color: "#FFFFFF",
+    fontFamily: "Montserrat-Regular",
     fontSize: 16,
     fontWeight: "600",
-    fontFamily: "Montserrat-Regular",
   },
   helpIcon: {
     marginRight: 8,
   },
   instructionsButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    marginTop: 10,
-    marginBottom: 20,
     alignSelf: "center",
+    borderRadius: 8,
+    marginBottom: 20,
+    marginTop: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
-  darkButton: {
-    backgroundColor: "#333333",
+  instructionsButtonText: {
+    fontFamily: "Montserrat-Regular",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  lightBackground: {
+    //backgroundColor: '#f9f9f9',
   },
   lightButton: {
     backgroundColor: "#e5e7eb",
   },
-  instructionsButtonText: {
-    fontSize: 14,
-    fontWeight: "500",
-    fontFamily: "Montserrat-Regular",
+  lightText: {
+    color: "#333333",
+  },
+  scrollViewContainer: {
+    flex: 1,
+  },
+  text: {
+    fontSize: 16,
+    marginBottom: 10,
   },
 })

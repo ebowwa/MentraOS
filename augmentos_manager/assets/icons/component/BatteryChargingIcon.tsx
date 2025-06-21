@@ -1,12 +1,12 @@
-import React from "react";
-import { Svg, Path, G, Defs, ClipPath, Rect } from "react-native-svg";
+import React from "react"
+import {Svg, Path, G, Defs, ClipPath, Rect} from "react-native-svg"
 
 interface BatteryChargingIconProps {
-  size?: number;
-  color?: string;
+  size?: number
+  color?: string
 }
 
-export const BatteryChargingIcon = ({ size = 16, color = "#D5D8F5" }: BatteryChargingIconProps) => (
+export const BatteryChargingIcon = ({size = 16, color = "#D5D8F5"}: BatteryChargingIconProps) => (
   <Svg width={size + 1} height={size} viewBox="0 0 17 16" fill="none">
     <G clipPath="url(#clip0)">
       <Path
@@ -24,4 +24,4 @@ export const BatteryChargingIcon = ({ size = 16, color = "#D5D8F5" }: BatteryCha
       </ClipPath>
     </Defs>
   </Svg>
-);
+)

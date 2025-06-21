@@ -209,7 +209,7 @@ export class TpaSession {
           this.logger.warn(`⚠️ [${this.config.packageName}] Fixed malformed WebSocket URL: ${fixedUrl}`);
         }
       } catch (error) {
-        this.logger.error({ error, config: this.config }, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.augmentOSWebsocketUrl}`);
+        this.logger.error(error, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.augmentOSWebsocketUrl}`);
       }
     }
 
@@ -226,7 +226,7 @@ export class TpaSession {
           this.logger.error({ config: this.config }, `⚠️ [${this.config.packageName}] Invalid WebSocket URL protocol: ${url.protocol}. Should be ws: or wss:`);
         }
       } catch (error) {
-        this.logger.error({ error, config: this.config }, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.augmentOSWebsocketUrl}`);
+        this.logger.error(error, `⚠️ [${this.config.packageName}] Invalid WebSocket URL format: ${this.config.augmentOSWebsocketUrl}`);
       }
     }
 
@@ -478,7 +478,7 @@ export class TpaSession {
           try {
             this.sendConnectionInit();
           } catch (error: unknown) {
-            this.logger.error({ error }, 'Error during connection initialization');
+            this.logger.error(error, 'Error during connection initialization');
             const errorMessage = error instanceof Error ? error.message : String(error);
             this.events.emit('error', new Error(`Connection initialization failed: ${errorMessage}`));
             reject(error);
@@ -513,7 +513,7 @@ export class TpaSession {
                 this.handleMessage(audioChunk);
                 return;
               } catch (error: unknown) {
-                this.logger.error({ error }, 'Error processing binary message:');
+                this.logger.error(error, 'Error processing binary message:');
                 const errorMessage = error instanceof Error ? error.message : String(error);
                 this.events.emit('error', new Error(`Failed to process binary message: ${errorMessage}`));
                 return;
@@ -555,7 +555,7 @@ export class TpaSession {
               // Process the validated message
               this.handleMessage(message);
             } catch (error: unknown) {
-              this.logger.error({ error }, 'JSON parsing error');
+              this.logger.error(error, 'JSON parsing error');
               const errorMessage = error instanceof Error ? error.message : String(error);
               this.events.emit('error', new Error(`Failed to parse JSON message: ${errorMessage}`));
             }
@@ -620,13 +620,13 @@ export class TpaSession {
 
         // Connection error handler
         const errorHandler = (error: Error) => {
-          this.logger.error({ error }, 'WebSocket error');
+          this.logger.error(error, 'WebSocket error');
           this.events.emit('error', error);
         };
 
         // Enhanced error handler with detailed logging
         this.ws.on('error', (error: Error) => {
-          this.logger.error({ error, config: this.config }, `⛔️⛔️⛔️ [${this.config.packageName}] WebSocket connection error: ${error.message}`);
+          this.logger.error(error, `⛔️⛔️⛔️ [${this.config.packageName}] WebSocket connection error: ${error.message}`);
 
           // Try to provide more context
           const errMsg = error.message || '';
@@ -676,7 +676,7 @@ export class TpaSession {
         this.resources.track(timeoutCleanup);
 
       } catch (error: unknown) {
-        this.logger.error({ error }, 'Connection setup error');
+        this.logger.error(error, 'Connection setup error');
         const errorMessage = error instanceof Error ? error.message : String(error);
         reject(new Error(`Failed to setup connection: ${errorMessage}`));
       }
@@ -798,7 +798,7 @@ export class TpaSession {
         this.updateSubscriptions();
       }
     } catch (error: unknown) {
-      this.logger.error({ error }, 'Error updating subscriptions from settings');
+      this.logger.error(error, 'Error updating subscriptions from settings');
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.events.emit('error', new Error(`Failed to update subscriptions: ${errorMessage}`));
     }
@@ -957,6 +957,15 @@ export class TpaSession {
           // Update the settings manager with the new settings
           this.settings.updateSettings(this.settingsData);
 
+          // Handle AugmentOS system settings if provided
+          this.logger.debug(`[TpaSession] CONNECTION_ACK augmentosSettings:`, message.augmentosSettings);
+          if (message.augmentosSettings) {
+            this.logger.info(`[TpaSession] Calling updateAugmentosSettings with:`, message.augmentosSettings);
+            this.settings.updateAugmentosSettings(message.augmentosSettings);
+          } else {
+            this.logger.warn(`[TpaSession] CONNECTION_ACK message missing augmentosSettings field`);
+          }
+
           // Emit connected event with settings
           this.events.emit('connected', this.settingsData);
 
@@ -1073,7 +1082,7 @@ export class TpaSession {
               (this.dashboard.content as any).setCurrentMode(mode);
             }
           } catch (error) {
-            this.logger.error({ error }, 'Error handling dashboard mode change');
+            this.logger.error(error, 'Error handling dashboard mode change');
           }
         }
         // Handle always-on dashboard state changes
@@ -1087,7 +1096,7 @@ export class TpaSession {
               (this.dashboard.content as any).setAlwaysOnEnabled(enabled);
             }
           } catch (error) {
-            this.logger.error({ error }, 'Error handling dashboard always-on change');
+            this.logger.error(error, 'Error handling dashboard always-on change');
           }
         }
         // Handle custom messages
@@ -1181,7 +1190,7 @@ export class TpaSession {
       }
     } catch (error: unknown) {
       // Final safety net to ensure the TPA doesn't crash on any unexpected errors
-      this.logger.error({ error, message }, 'Unexpected error in message handler');
+      this.logger.error(error, 'Unexpected error in message handler');
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.events.emit('error', new Error(`Unexpected error in message handler: ${errorMessage}`));
     }
@@ -1240,7 +1249,7 @@ export class TpaSession {
       // Emit to subscribers
       this.events.emit(StreamType.AUDIO_CHUNK, audioChunk);
     } catch (error: unknown) {
-      this.logger.error({ error }, 'Error processing binary message');
+      this.logger.error(error, 'Error processing binary message');
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.events.emit('error', new Error(`Error processing binary message: ${errorMessage}`));
     }
@@ -1293,7 +1302,7 @@ export class TpaSession {
 
       return data;
     } catch (error: unknown) {
-      this.logger.error({ error }, `Error sanitizing ${streamType} data`);
+      this.logger.error(error, `Error sanitizing ${streamType} data`);
       // Return a safe empty object if something goes wrong
       return {};
     }
@@ -1374,7 +1383,7 @@ export class TpaSession {
       this.reconnectAttempts = 0;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({ error }, `❌ [${this.config.packageName}] Reconnection failed for user ${this.userId}`);
+      this.logger.error(error, `❌ [${this.config.packageName}] Reconnection failed for user ${this.userId}`);
       this.events.emit('error', new Error(`Reconnection failed: ${errorMessage}`));
 
       // Check if this was the last attempt
@@ -1439,7 +1448,7 @@ export class TpaSession {
       }
     } catch (error: unknown) {
       // Log the error and emit an event so TPA developers are aware
-      this.logger.error({ error }, 'Message send error');
+      this.logger.error(error , 'Message send error');
 
       // Ensure we always emit an Error object
       if (error instanceof Error) {

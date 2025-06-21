@@ -16,13 +16,15 @@ import {Circle} from "react-native-svg"
 import {AnimatedCircularProgress} from "react-native-circular-progress"
 import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/component/SunIcon"
-import { theme } from "assets/icons/component/SunIcon"
+import {glassesFeatures} from "@/config/glassesFeatures"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
+import showAlert from "@/utils/AlertUtils"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
   const {themed, theme} = useAppTheme()
+  const [isCheckingConnectivity, setIsCheckingConnectivity] = useState(false)
 
   const connectGlasses = async () => {
     if (!status.core_info.default_wearable) {
@@ -30,20 +32,25 @@ export const ConnectDeviceButton = () => {
       return
     }
 
-    // Check that Bluetooth and Location are enabled/granted
-    const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
-    if (!requirementsCheck.isReady) {
-      // Show alert about missing requirements
-      console.log("Requirements not met, showing banner with message:", requirementsCheck.message)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-        type: "error",
-      })
-
-      return
-    }
-
+    // Show loading state during connectivity check
+    setIsCheckingConnectivity(true)
+    
     try {
+      // Check that Bluetooth and Location are enabled/granted
+      const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
+      
+      if (!requirementsCheck.isReady) {
+        // Show alert about missing requirements
+        console.log("Requirements not met, showing alert with message:", requirementsCheck.message)
+        showAlert(
+          "Connection Requirements",
+          requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
+          [{text: "OK"}]
+        )
+        return
+      }
+
+      // Connectivity check passed, proceed with connection
       console.log("Connecting to glasses:", status.core_info.default_wearable)
       if (status.core_info.default_wearable && status.core_info.default_wearable != "") {
         console.log("Connecting to glasses:", status.core_info.default_wearable)
@@ -51,10 +58,13 @@ export const ConnectDeviceButton = () => {
       }
     } catch (error) {
       console.error("connect to glasses error:", error)
-      GlobalEventEmitter.emit("SHOW_BANNER", {
-        message: "Failed to connect to glasses",
-        type: "error",
-      })
+      showAlert(
+        "Connection Error",
+        "Failed to connect to glasses. Please try again.",
+        [{text: "OK"}]
+      )
+    } finally {
+      setIsCheckingConnectivity(false)
     }
   }
 
@@ -85,8 +95,8 @@ export const ConnectDeviceButton = () => {
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <SolarLineIconsSet4  color={ theme.isDark ? "white" : "black"}/>}
-        RightAccessory={() => <ChevronRight   color={ theme.isDark ? "white" : "black"}/>}
+        LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.textAlt} />}
+        RightAccessory={() => <ChevronRight color={theme.colors.textAlt} />}
         onPress={() => {
           router.push("/pairing/select-glasses-model")
         }}
@@ -95,12 +105,12 @@ export const ConnectDeviceButton = () => {
     )
   }
 
-  if (status.core_info.is_searching) {
+  if (status.core_info.is_searching || isCheckingConnectivity) {
     return (
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <ActivityIndicator size="small" color={theme.colors.text} style={{marginLeft: 5}} />}
+        LeftAccessory={() => <ActivityIndicator size="small" color={theme.colors.textAlt} style={{marginLeft: 5}} />}
         onPress={handleConnectOrDisconnect}
         tx="home:connectingGlasses"
       />
@@ -112,10 +122,11 @@ export const ConnectDeviceButton = () => {
       <Button
         textStyle={[{marginLeft: spacing.xxl}]}
         textAlignment="left"
-        LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.text} />}
-        RightAccessory={() => <ChevronRight color={theme.colors.text} />}
+        LeftAccessory={() => <SolarLineIconsSet4 color={theme.colors.textAlt} />}
+        RightAccessory={() => <ChevronRight color={theme.colors.textAlt} />}
         onPress={handleConnectOrDisconnect}
         tx="home:connectGlasses"
+        disabled={isCheckingConnectivity}
       />
     )
   }
@@ -159,7 +170,7 @@ export const ConnectedGlasses: React.FC<ConnectedGlassesProps> = ({showTitle}) =
   )
 
   useEffect(() => {
-    let wearable = status.core_info.default_wearable
+    const wearable = status.core_info.default_wearable
     let image = getGlassesImage(wearable)
 
     // if the glasses have not been removed from the case, show the case open or closed image
@@ -197,14 +208,14 @@ export function SplitDeviceInfo() {
 
   // Show image if we have either connected glasses or a default wearable
   const wearable = status.glasses_info?.model_name || status.core_info.default_wearable
-  
+
   if (!wearable) {
     return null
   }
 
-  let glassesImage = getGlassesImage(wearable)
+  const glassesImage = getGlassesImage(wearable)
   let caseImage = null
-  
+
   // Only show case image if glasses are actually connected (not just paired)
   if (status.glasses_info?.model_name && !status.glasses_info?.case_removed) {
     if (status.glasses_info?.case_open) {
@@ -237,7 +248,11 @@ export function DeviceToolbar() {
     return null
   }
 
-  let autoBrightness = status.glasses_settings.auto_brightness
+  const autoBrightness = status.glasses_settings.auto_brightness
+  const modelName = status.glasses_info?.model_name || ""
+  const hasDisplay = glassesFeatures[modelName]?.display ?? true // Default to true if model not found
+  const hasWifi = glassesFeatures[modelName]?.wifi ?? false // Default to false if model not found
+  const wifiSsid = status.glasses_info?.glasses_wifi_ssid
 
   return (
     <View style={themed($deviceToolbar)}>
@@ -254,27 +269,39 @@ export function DeviceToolbar() {
         )}
       </View>
 
-      {/* brightness */}
-      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
-        <SunIcon size={18} color={theme.colors.text} />
-        {autoBrightness ? (
-          <Text style={{color: theme.colors.text}}>Auto</Text>
-        ) : (
-          <>
-            <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-              {status.glasses_settings.brightness}%
-            </Text>
-          </>
-        )}
-      </View>
+      {/* brightness - only show for devices with displays */}
+      {hasDisplay && (
+        <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+          <SunIcon size={18} color={theme.colors.text} />
+          {autoBrightness ? (
+            <Text style={{color: theme.colors.text}}>Auto</Text>
+          ) : (
+            <>
+              <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                {status.glasses_settings.brightness}%
+              </Text>
+            </>
+          )}
+        </View>
+      )}
 
-      {/* wifi connection */}
-      <View style={{flexDirection: "row", alignItems: "center", gap: 4}}>
-        {/* <WifiIcon size={24} color={theme.colors.text} /> */}
-        <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-          {status.glasses_info?.glasses_wifi_ssid}
-        </Text>
-      </View>
+      {/* wifi connection - only show for devices with WiFi support */}
+      {hasWifi && (
+        <TouchableOpacity
+          style={{flexDirection: "row", alignItems: "center", gap: 6}}
+          onPress={() => {
+            router.push({
+              pathname: "/pairing/glasseswifisetup",
+              params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
+            })
+          }}
+        >
+          <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.text} />
+          <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
+            {wifiSsid || "Disconnected"}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* mira button */}
       {/* <View style={{flexDirection: "row", alignItems: "center", gap: 4}}> */}
@@ -439,6 +466,55 @@ const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const styles = StyleSheet.create({
+  batteryContainer: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  batteryIcon: {
+    alignSelf: "center",
+    marginRight: 4,
+  },
+  buttonText: {
+    color: "#fff",
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  connectText: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  connectedContent: {
+    alignItems: "center",
+    flex: 1,
+    flexShrink: 1,
+    justifyContent: "space-between",
+  },
+  connectedDot: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    marginRight: 2,
+  },
+  connectedStatus: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginBottom: 12,
+  },
+  connectedTextGreen: {
+    color: "#28a745",
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 4,
+    marginRight: 2,
+  },
+  connectedTextTitle: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
   deviceInfoContainer: {
     padding: 16,
     borderRadius: 12,
@@ -447,93 +523,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 16, // Increased space above component
     backgroundColor: "#E5E5EA",
-  },
-  connectedContent: {
-    flex: 1,
-    flexShrink: 1,
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  disconnectedContent: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  glassesImage: {
-    width: "80%",
-    height: 120,
-    resizeMode: "contain",
-  },
-  statusInfoNotConnected: {
-    alignItems: "center",
-    flex: 1,
-    width: "100%",
-  },
-  statusInfo: {
-    alignItems: "center",
-    flex: 1,
-    marginRight: 20,
-  },
-  batteryContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  batteryIcon: {
-    marginRight: 4,
-    alignSelf: "center",
-  },
-  statusValue: {
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedStatus: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  connectedDot: {
-    fontSize: 14,
-    marginRight: 2,
-    fontFamily: "Montserrat-Bold",
-  },
-  separator: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedTextGreen: {
-    color: "#28a745",
-    marginLeft: 4,
-    marginRight: 2,
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedTextTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  statusLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "500",
-    letterSpacing: -0.08,
-    fontFamily: "SF Pro",
-  },
-  connectText: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 10,
-    fontFamily: "Montserrat-Bold",
-  },
-  noGlassesText: {
-    color: "black",
-    textAlign: "center",
-    fontSize: 16,
-    marginBottom: 10,
   },
   disabledButton: {
     flexDirection: "row",
@@ -547,58 +536,96 @@ const styles = StyleSheet.create({
   disabledDisconnectButton: {
     backgroundColor: "#A9A9A9",
   },
-  icon: {
-    marginRight: 4,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
   disconnectButton: {
-    flexDirection: "row",
-    backgroundColor: "#E24A24",
     alignItems: "center",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    backgroundColor: "#E24A24",
     borderRadius: 12,
+    flexDirection: "row",
     justifyContent: "center",
     marginRight: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     width: "40%",
   },
   disconnectText: {
     color: "#fff",
+    fontFamily: "Montserrat-Regular",
     fontSize: 12,
     fontWeight: "500",
-    fontFamily: "Montserrat-Regular",
+  },
+  disconnectedContent: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  glassesImage: {
+    height: 120,
+    resizeMode: "contain",
+    width: "80%",
+  },
+  icon: {
+    marginRight: 4,
+  },
+  iconContainer: {
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 15,
+    height: 30,
+    justifyContent: "center",
+    width: 30,
+  },
+  noGlassesText: {
+    color: "black",
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  separator: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginHorizontal: 10,
   },
   statusIndicatorsRow: {
-    width: "100%",
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 10,
+    width: "100%",
     //height: 30,
   },
-  iconContainer: {
-    backgroundColor: "rgba(0, 0, 0, 0.1)",
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: "center",
+  statusInfo: {
     alignItems: "center",
+    flex: 1,
+    marginRight: 20,
+  },
+  statusInfoNotConnected: {
+    alignItems: "center",
+    flex: 1,
+    width: "100%",
+  },
+  statusLabel: {
+    fontFamily: "SF Pro",
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: -0.08,
+    lineHeight: 16,
+  },
+  statusValue: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
   },
   wifiContainer: {
-    flexDirection: "row",
     alignItems: "center",
+    borderRadius: 18,
+    flexDirection: "row",
     justifyContent: "flex-end",
     paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 18,
   },
   wifiSsidText: {
-    fontSize: 12,
     color: "#4CAF50",
+    fontSize: 12,
     fontWeight: "bold",
     marginRight: 5,
     maxWidth: 120,

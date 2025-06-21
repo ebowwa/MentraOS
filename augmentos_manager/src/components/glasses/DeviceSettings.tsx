@@ -26,13 +26,16 @@ import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
 import showAlert from "@/utils/AlertUtils"
-import SunIcon from "assets/icons/component/SunIcon"
-import ChevronRight from "assets/icons/component/ChevronRight"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
-import RouteButton from "../ui/RouteButton"
-import ActionButton from "../ui/ActionButton"
+import RouteButton from "@/components/ui/RouteButton"
+import ActionButton from "@/components/ui/ActionButton"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {glassesFeatures} from "@/config/glassesFeatures"
+import {useAuth} from "@/contexts/AuthContext"
+import {isMentraUser} from "@/utils/isMentraUser"
+import {loadSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
 
 export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -46,6 +49,18 @@ export default function DeviceSettings() {
   const [isConnectButtonDisabled, setConnectButtonDisabled] = useState(false)
   const [isDisconnectButtonDisabled, setDisconnectButtonDisabled] = useState(false)
   const {push} = useNavigationHistory()
+  const {user} = useAuth()
+
+  const [devMode, setDevMode] = useState(true)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+
+  useEffect(() => {
+    const checkDevMode = async () => {
+      const devModeSetting = await loadSetting(SETTINGS_KEYS.DEV_MODE, false)
+      setDevMode(isDeveloperBuildOrTestflight() || isMentraUser(user?.email) || devModeSetting)
+    }
+    checkDevMode()
+  }, [])
 
   const {model_name} = status.glasses_info ?? {}
   const {default_wearable} = status.core_info ?? {}
@@ -106,8 +121,8 @@ export default function DeviceSettings() {
     } catch (error) {}
   }
 
-  let [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
-  let [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
+  const [autoBrightness, setAutoBrightness] = useState(status?.glasses_settings?.auto_brightness ?? true)
+  const [brightness, setBrightness] = useState(status?.glasses_settings?.brightness ?? 50)
 
   useEffect(() => {
     setBrightness(status?.glasses_settings?.brightness ?? 50)
@@ -178,7 +193,7 @@ export default function DeviceSettings() {
       <View style={themed($container)}>
         <View style={themed($emptyStateContainer)}>
           <Text style={themed($emptyStateText)}>
-            Glasses settings will appear here.{'\n'}Pair glasses to adjust settings.
+            Glasses settings will appear here.{"\n"}Pair glasses to adjust settings.
           </Text>
         </View>
       </View>
@@ -190,7 +205,9 @@ export default function DeviceSettings() {
       {/* Show helper text if glasses are paired but not connected */}
       {!status.glasses_info?.model_name && status.core_info.default_wearable && (
         <View style={themed($infoContainer)}>
-          <Text style={themed($infoText)}>Changes to glasses settings will take effect when glasses are connected.</Text>
+          <Text style={themed($infoText)}>
+            Changes to glasses settings will take effect when glasses are connected.
+          </Text>
         </View>
       )}
 
@@ -208,7 +225,7 @@ export default function DeviceSettings() {
 
           {!autoBrightness && (
             <>
-              <View style={{height: 1, backgroundColor: theme.colors.separator, marginBottom: theme.spacing.xs}} />
+              <View style={{height: 0.5, backgroundColor: theme.colors.separator, marginBottom: theme.spacing.xs}} />
               <SliderSetting
                 label="Brightness"
                 value={brightness}
@@ -227,7 +244,12 @@ export default function DeviceSettings() {
 
       <View style={themed($settingsGroup)}>
         <TouchableOpacity
-          style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingBottom: theme.spacing.xs,
+            paddingTop: theme.spacing.xs,
+          }}
           onPress={() => setMic("phone")}>
           <Text style={{color: theme.colors.text}}>{translate("deviceSettings:phoneMic")}</Text>
           <MaterialCommunityIcons
@@ -239,7 +261,11 @@ export default function DeviceSettings() {
         {/* divider */}
         <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
         <TouchableOpacity
-          style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 8}}
+          style={{
+            flexDirection: "row",
+            justifyContent: "space-between",
+            paddingTop: theme.spacing.xs,
+          }}
           onPress={() => setMic("glasses")}>
           <View style={{flexDirection: "column", gap: 4}}>
             <Text style={{color: theme.colors.text}}>{translate("deviceSettings:glassesMic")}</Text>
@@ -269,6 +295,37 @@ export default function DeviceSettings() {
         />
       )}
 
+      {/* Show ASG Client version info for Mentra Live glasses */}
+      {status.glasses_info?.model_name?.toLowerCase().includes("mentra live") &&
+        (status.glasses_info.glasses_app_version || status.glasses_info.glasses_build_number) && (
+          <View style={themed($settingsGroup)}>
+            <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Glasses Software Version</Text>
+            {/* {status.glasses_info.glasses_app_version && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>App Version</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_app_version}</Text>
+            </View>
+          )} */}
+            {status.glasses_info.glasses_build_number && (
+              <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+                <Text style={{color: theme.colors.text}}>Build Number</Text>
+                <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_build_number}</Text>
+              </View>
+            )}
+            {/* {status.glasses_info.glasses_device_model && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Device Model</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_device_model}</Text>
+            </View>
+          )} */}
+            {/* {status.glasses_info.glasses_android_version && (
+            <View style={{flexDirection: "row", justifyContent: "space-between", paddingVertical: 4}}>
+              <Text style={{color: theme.colors.text}}>Android Version</Text>
+              <Text style={{color: theme.colors.textDim}}>{status.glasses_info.glasses_android_version}</Text>
+            </View>
+          )} */}
+          </View>
+        )}
 
       <RouteButton
         label={translate("settings:dashboardSettings")}
@@ -276,13 +333,15 @@ export default function DeviceSettings() {
         onPress={() => push("/settings/dashboard")}
       />
 
-      <RouteButton
-        label={translate("settings:screenSettings")}
-        subtitle={translate("settings:screenDescription")}
-        onPress={() => push("/settings/screen")}
-      />
+      {devMode && (
+        <RouteButton
+          label={translate("settings:screenSettings")}
+          subtitle={translate("settings:screenDescription")}
+          onPress={() => push("/settings/screen")}
+        />
+      )}
 
-      {status.glasses_info?.model_name && (
+      {status.glasses_info?.model_name && status.glasses_info.model_name !== "Simulated Glasses" && (
         <ActionButton
           label={translate("settings:disconnectGlasses")}
           variant="destructive"
@@ -321,6 +380,8 @@ const $settingsGroup: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   paddingVertical: 12,
   paddingHorizontal: 16,
   borderRadius: spacing.md,
+  borderWidth: 2,
+  borderColor: colors.border,
 })
 
 const $subtitle: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
@@ -356,58 +417,11 @@ const $emptyStateText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
 })
 
 const styles = StyleSheet.create({
-  glassesImage: {
-    width: "80%",
-    height: 120,
-    resizeMode: "contain",
-  },
-  statusValue: {
+  buttonText: {
+    color: "#fff",
+    fontFamily: "Montserrat-Bold",
     fontSize: 14,
     fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedDot: {
-    fontSize: 14,
-    marginRight: 2,
-    fontFamily: "Montserrat-Bold",
-  },
-  separator: {
-    marginHorizontal: 10,
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedTextGreen: {
-    color: "#28a745",
-    marginLeft: 4,
-    marginRight: 2,
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  connectedTextTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
-  statusLabel: {
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: "500",
-    letterSpacing: -0.08,
-    fontFamily: "SF Pro",
-  },
-  connectText: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginBottom: 10,
-    fontFamily: "Montserrat-Bold",
-  },
-  noGlassesText: {
-    color: "black",
-    textAlign: "center",
-    fontSize: 16,
-    marginBottom: 10,
   },
   connectButton: {
     flexDirection: "row",
@@ -417,6 +431,30 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 8,
     width: "80%",
+  },
+  connectText: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
+  connectedDot: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    marginRight: 2,
+  },
+  connectedTextGreen: {
+    color: "#28a745",
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginLeft: 4,
+    marginRight: 2,
+  },
+  connectedTextTitle: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
   },
   connectingButton: {
     flexDirection: "row",
@@ -439,15 +477,6 @@ const styles = StyleSheet.create({
   disabledDisconnectButton: {
     // backgroundColor moved to dynamic styling with theme
   },
-  icon: {
-    marginRight: 4,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "bold",
-    fontFamily: "Montserrat-Bold",
-  },
   disconnectButton: {
     flexDirection: "row",
     // backgroundColor moved to dynamic styling with theme
@@ -465,12 +494,13 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     fontFamily: "Montserrat-Regular",
   },
-  statusIndicatorsRow: {
-    width: "100%",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: 10,
-    //height: 30,
+  glassesImage: {
+    height: 120,
+    resizeMode: "contain",
+    width: "80%",
+  },
+  icon: {
+    marginRight: 4,
   },
   iconContainer: {
     // backgroundColor moved to dynamic styling with theme
@@ -480,13 +510,44 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  wifiContainer: {
+  noGlassesText: {
+    color: "black",
+    fontSize: 16,
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  separator: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 16,
+    fontWeight: "bold",
+    marginHorizontal: 10,
+  },
+  statusIndicatorsRow: {
     flexDirection: "row",
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    width: "100%",
+    //height: 30,
+  },
+  statusLabel: {
+    fontFamily: "SF Pro",
+    fontSize: 12,
+    fontWeight: "500",
+    letterSpacing: -0.08,
+    lineHeight: 16,
+  },
+  statusValue: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  wifiContainer: {
     alignItems: "center",
+    borderRadius: 18,
+    flexDirection: "row",
     justifyContent: "flex-end",
     paddingHorizontal: 5,
     paddingVertical: 2,
-    borderRadius: 18,
   },
   wifiSsidText: {
     fontSize: 12,

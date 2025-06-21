@@ -1,25 +1,25 @@
-import { ThemedStyle } from '@/theme';
-import { useAppTheme } from '@/utils/useAppTheme';
-import React from 'react';
-import { View, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { Slider } from 'react-native-elements';
-import { Text } from '@/components/ignite';
+import {ThemedStyle} from "@/theme"
+import {useAppTheme} from "@/utils/useAppTheme"
+import React from "react"
+import {View, StyleSheet, ViewStyle, TextStyle} from "react-native"
+import {Slider} from "react-native-elements"
+import {Text} from "@/components/ignite"
 
 type Theme = {
-  backgroundColor: string;
-  textColor: string;
-};
+  backgroundColor: string
+  textColor: string
+}
 
 type SliderSettingProps = {
-  label: string;
-  subtitle?: string;
-  value: number | undefined; // Allow undefined if value might not always be set
-  min: number;
-  max: number;
-  onValueChange: (value: number) => void; // For immediate feedback, e.g., UI updates
-  onValueSet: (value: number) => void; // For BLE requests or final actions
-  containerStyle?: ViewStyle;
-};
+  label: string
+  subtitle?: string
+  value: number | undefined // Allow undefined if value might not always be set
+  min: number
+  max: number
+  onValueChange: (value: number) => void // For immediate feedback, e.g., UI updates
+  onValueSet: (value: number) => void // For BLE requests or final actions
+  containerStyle?: ViewStyle
+}
 
 const SliderSetting: React.FC<SliderSettingProps> = ({
   label,
@@ -31,18 +31,17 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
   onValueSet,
   containerStyle,
 }) => {
-
   const handleValueChange = (val: number) => {
-    const roundedValue = Math.round(val);
-    onValueChange(roundedValue); // Emit only integer values
-  };
+    const roundedValue = Math.round(val)
+    onValueChange(roundedValue) // Emit only integer values
+  }
 
   const handleValueSet = (val: number) => {
-    const roundedValue = Math.round(val);
-    onValueSet(roundedValue); // Emit only integer values
-  };
+    const roundedValue = Math.round(val)
+    onValueSet(roundedValue) // Emit only integer values
+  }
 
-  const {theme, themed} = useAppTheme();
+  const {theme, themed} = useAppTheme()
 
   return (
     <View style={[themed($container), containerStyle]}>
@@ -75,8 +74,8 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
         <Text text={String(max)} style={themed($minMaxText)} />
       </View>
     </View>
-  );
-};
+  )
+}
 
 const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   flexDirection: "column",
@@ -120,7 +119,7 @@ const $sliderContainer: ThemedStyle<ViewStyle> = ({colors}) => ({
 })
 
 const $slider: ThemedStyle<ViewStyle> = ({colors}) => ({
-  width: '100%',
+  width: "100%",
   height: 40,
 })
 
@@ -141,7 +140,7 @@ const $minMaxText: ThemedStyle<TextStyle> = ({colors}) => ({
   fontSize: 12,
   color: colors.textDim,
   minWidth: 25,
-  textAlign: 'center',
+  textAlign: "center",
 })
 
-export default SliderSetting;
+export default SliderSetting

@@ -23,6 +23,7 @@ export interface ConnectionAck extends BaseMessage {
  */
 export interface ConnectionError extends BaseMessage {
   type: CloudToGlassesMessageType.CONNECTION_ERROR;
+  code?: string;
   message: string;
 }
 

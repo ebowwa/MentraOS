@@ -1,5 +1,5 @@
 import demoJa from "./demo-ja"
-import { Translations } from "./en"
+import {Translations} from "./en"
 
 const ja: Translations = {
   common: {
@@ -25,8 +25,7 @@ const ja: Translations = {
   emptyStateComponent: {
     generic: {
       heading: "静かだ...悲しい。",
-      content:
-        "データが見つかりません。ボタンを押してアプリをリロード、またはリフレッシュしてください。",
+      content: "データが見つかりません。ボタンを押してアプリをリロード、またはリフレッシュしてください。",
       button: "もう一度やってみよう",
     },
   },

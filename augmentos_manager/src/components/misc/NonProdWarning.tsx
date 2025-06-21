@@ -69,18 +69,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     width: "100%",
   },
-  warningContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    flex: 1,
-  },
-
   settingsButton: {
     padding: 5,
   },
+
   settingsButtonTextBlue: {
     color: "#007AFF",
     fontSize: 14,
     fontWeight: "bold",
+  },
+  warningContent: {
+    alignItems: "center",
+    flexDirection: "row",
+    flex: 1,
   },
 })

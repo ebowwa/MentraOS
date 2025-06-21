@@ -7,11 +7,11 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { AppI, StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
+import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
 // TODO(isaiah): Consider splitting this into multiple services (appstore.service, developer.service, tools.service)
 import axios, { AxiosError } from 'axios';
-import { systemApps } from './system-apps';
-import App from '../../models/app.model';
+// import { systemApps } from './system-apps';
+import App, { AppI } from '../../models/app.model';
 import { ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
@@ -19,10 +19,41 @@ import { logger as rootLogger } from '../logging/pino-logger';
 import { Types } from 'mongoose';
 const logger = rootLogger.child({ service: 'app.service' });
 
-const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 const APPSTORE_ENABLED = true;
+export const SYSTEM_DASHBOARD_PACKAGE_NAME = process.env.SYSTEM_DASHBOARD_PACKAGE_NAME || 'dev.augmentos.dashboard';
 export const PRE_INSTALLED = ["com.augmentos.livecaptions", "cloud.augmentos.notify", "cloud.augmentos.mira"];
+export const PRE_INSTALLED_DEBUG = [
+  "com.mentra.link",
+  "com.mentra.notes",
+  "com.mentra.soundy",
+  "com.mentra.cactusai",
+  "com.mentra.hive",
+
+  "com.augmentos.calendarreminder",
+  "com.augmentos.xstats",
+  "com.augmentos.tictactoe",
+  "com.augmentos.displaytext",
+  "com.augmentos.shazam",
+
+  "cloud.augmentos.aughog",
+  "cloud.augmentos.recorder",
+
+];
 // export const PRE_INSTALLED = ["cloud.augmentos.live-captions-global", "cloud.augmentos.notify", "cloud.augmentos.mira"];
+
+if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_APPS === 'true') {
+  // If we're in debug mode, add the debug apps to the preinstalled list.
+  PRE_INSTALLED.push(...PRE_INSTALLED_DEBUG);
+  logger.info('Debug mode enabled - adding debug apps to preinstalled list:', PRE_INSTALLED_DEBUG);
+}
+
+/**
+ * Returns the list of apps that should be auto-installed for users on this server instance.
+ * This matches the environment - core apps only in production, core + debug in development.
+ */
+export function getPreInstalledForThisServer(): string[] {
+  return [...PRE_INSTALLED]; // Return copy of current server's pre-installed apps
+}
 
 /**
  * System TPAs that are always available.
@@ -43,29 +74,11 @@ export const LOCAL_APPS: AppI[] = [];
     app.uninstallable = true;
     LOCAL_APPS.push(app);
   });
+
+  // Fetch dashboard app..
+
 })();
 
-/**
- * System TPAs that are always available.
- * These are core applications provided by the platform.
- * @Param developerId - leaving this undefined indicates a system app.
- */
-export const SYSTEM_APPS: AppI[] = [
-  {
-    packageName: systemApps.dashboard.packageName,
-    name: systemApps.dashboard.name,
-    tpaType: TpaType.SYSTEM_DASHBOARD,
-    description: "The time, The news, The weather, The notifications, The everything. 😎🌍🚀",
-    publicUrl: `http://${systemApps.dashboard.host}`,
-    logoURL: `https://cloud.augmentos.org/${systemApps.dashboard.packageName}.png`,
-    permissions: [
-      {
-        type: PermissionType.ALL,
-        description: "The dashboard app needs access to everything to provide a seamless experience."
-      }
-    ],
-  },
-];
 
 export function isUninstallable(packageName: string) {
   return !PRE_INSTALLED.includes(packageName);
@@ -116,87 +129,17 @@ export class AppService {
     return allApps;
   }
 
-  // /**
-  //  * Gets available system TPAs.
-  //  * @returns array of system apps.
-  //  */
-  getSystemApps(): AppI[] {
-    return SYSTEM_APPS;
-  }
-
   /**
    * Gets a specific TPA by ID.
    * @param packageName - TPA identifier
    * @returns Promise resolving to app if found
    */
   async getApp(packageName: string): Promise<AppI | undefined> {
-    // return [...SYSTEM_TPAS, ...APP_STORE].find(app => app.packageName === packageName);
-    let app: AppI | undefined = [...SYSTEM_APPS, ...LOCAL_APPS].find(app => app.packageName === packageName);
-    // if we can't find the app, try checking the appstore via the App Mongodb model.
-
-    if (APPSTORE_ENABLED) {
-      if (!app) {
-        // Check if the app is in the app store
-        logger.debug('Checking app store for app:', packageName);
-
-        // Use lean() to get a plain JavaScript object instead of a Mongoose document
-        app = await App.findOne({
-          packageName: packageName
-        }).lean() as AppI;
-      }
-    }
-
+    // Use lean() to get a plain JavaScript object instead of a Mongoose document
+    const app = await App.findOne({ packageName: packageName }).lean() as AppI;
     return app;
   }
 
-  async findFromAppStore(packageName: string): Promise<AppI | undefined> {
-    const app = await App.findOne({
-      packageName: packageName
-    }).lean() as AppI;
-    return app;
-  }
-
-  /**
-   * Triggers a webhook for a TPA.
-   * @param url - Webhook URL
-   * @param payload - Data to send
-   * @throws If webhook fails after retries
-   */
-  async triggerWebhook(url: string, payload: SessionWebhookRequest): Promise<void> {
-    const maxRetries = 2;
-    const baseDelay = 1000; // 1 second
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        await axios.post(url, payload, {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          timeout: 10000 // Increase timeout to 10 seconds
-        });
-        return;
-      } catch (error: unknown) {
-        if (attempt === maxRetries - 1) {
-          if (axios.isAxiosError(error)) {
-            logger.error(`triggerWebhook failed`, {
-              url,
-              attempt,
-              status: error.response?.status,
-              data: error.response?.data,
-              message: error.message
-            });
-          }
-          throw new Error(`Webhook failed after ${maxRetries} attempts: ${(error as AxiosError).message || 'Unknown error'}`);
-        }
-        // Exponential backoff
-        await new Promise(resolve =>
-          setTimeout(resolve, baseDelay * Math.pow(2, attempt))
-        );
-      }
-    }
-  }
-
-  // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   /**
  * Triggers the stop webhook for a TPA app session.
  * @param url - Stop Webhook URL
@@ -241,15 +184,6 @@ export class AppService {
     await this.triggerStopWebhook(app.publicUrl, payload);
   }
 
-  isSystemApp(packageName: string, apiKey?: string): boolean {
-    // Check if the app is in the system apps list
-    const isSystemApp = [...LOCAL_APPS, ...SYSTEM_APPS].some(app => app.packageName === packageName);
-    // or if the xxx.yyy.zzz if the xxx == "system" or "local"
-    const _isSystemApp = packageName.split('.').length > 2 && (packageName.split('.')[0] === 'system' || packageName.split('.')[0] === 'local');
-
-    return isSystemApp || (_isSystemApp && apiKey === AUGMENTOS_AUTH_JWT_SECRET);
-  }
-
   /**
    * Validates a TPA's API key.
    * @param packageName - TPA identifier
@@ -257,42 +191,11 @@ export class AppService {
    * @param clientIp - Optional IP address of the client for system app validation
    * @returns Promise resolving to validation result
    */
-  async validateApiKey(packageName: string, apiKey: string, clientIp?: string): Promise<boolean> {
+  async validateApiKey(packageName: string, apiKey: string): Promise<boolean> {
     const app = await this.getApp(packageName);
     if (!app) {
       logger.warn(`App ${packageName} not found`);
       return false;
-    }
-
-    if (this.isSystemApp(packageName, apiKey)) {
-      return true;
-    }
-
-    // Additional verification for system apps
-    // If a system app, verify it's coming from the internal cluster network. note: for some reason this doesn't work in porter. but does work if running the cloud from docker-compose on the azure vm.
-    if (clientIp) {
-      // Check if IP is from the internal network
-      // Docker networks typically use 172.x.x.x, 10.x.x.x, or 192.168.x.x
-      // Kubernetes pod IPs depend on your cluster configuration
-      // Handle IPv6-mapped IPv4 addresses (::ffff:a.b.c.d)
-      const ipv4 = clientIp.startsWith('::ffff:') ? clientIp.substring(7) : clientIp;
-
-      const isInternalIp = ipv4.startsWith('10.') ||
-        ipv4.startsWith('172.') ||
-        ipv4.startsWith('192.168.') ||
-        // For Kubernetes cluster IPs (adjust based on your actual cluster IP range)
-        ipv4.includes('.svc.cluster.local') ||
-        clientIp === '::ffff:127.0.0.1' ||
-        ipv4 === '127.0.0.1' ||
-        ipv4 === 'localhost';
-
-      logger.debug(`System app ${packageName} connection IP check: ${clientIp} (IPv4: ${ipv4}), isInternal: ${isInternalIp}`);
-
-      if (isInternalIp) {
-        // Reject connection if not from internal network
-        logger.warn(`System app ${packageName} connection is an internal IP: ${clientIp} (IPv4: ${ipv4}) - allowing access`);
-        return true;
-      }
     }
 
     // For regular apps, validate API key as normal

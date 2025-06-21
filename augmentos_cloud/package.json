@@ -4,7 +4,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "cd packages/sdk && bun run build && cd ../utils && bun run build && cd ../agents && bun run build && cd ../apps/dashboard && bun run build",
+    "build": "cd packages/sdk && bun run build && cd ../utils && bun run build && cd ../agents && bun run build",
     "setup-deps": "bun install --no-link",
     "local": "bun run local:stop && bun run local:rebuild && docker compose -f docker-compose.local.yml -p dev up",
     "local:stop": "docker compose -f docker-compose.local.yml -p dev down --timeout 5 || docker kill $(docker ps -q)",
@@ -52,7 +52,6 @@
     "pino-pretty": "^13.0.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
-    "typescript": "4.9.5",
     "tz-lookup": "^6.1.25",
     "uuid": "^11.1.0",
     "winston": "^3.17.0"
@@ -66,6 +65,7 @@
     "globals": "^15.15.0",
     "pm2": "^5.4.3",
     "tsx": "^4.19.3",
+    "typescript": "^5.2.0",
     "typescript-eslint": "^8.24.0"
   }
 }

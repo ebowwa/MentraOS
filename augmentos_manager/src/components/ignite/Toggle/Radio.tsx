@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react"
-import { StyleProp, View, ViewStyle, Animated } from "react-native"
-import { $styles } from "../../../theme"
-import { $inputOuterBase, BaseToggleInputProps, ToggleProps, Toggle } from "./Toggle"
-import { useAppTheme } from "@/utils/useAppTheme"
+import {useEffect, useRef} from "react"
+import {StyleProp, View, ViewStyle, Animated} from "react-native"
+import {$styles} from "../../../theme"
+import {$inputOuterBase, BaseToggleInputProps, ToggleProps, Toggle} from "./Toggle"
+import {useAppTheme} from "@/utils/useAppTheme"
 
 export interface RadioToggleProps extends Omit<ToggleProps<RadioInputProps>, "ToggleInput"> {
   /**
@@ -33,7 +33,7 @@ function RadioInput(props: RadioInputProps) {
   } = props
 
   const {
-    theme: { colors },
+    theme: {colors},
   } = useAppTheme()
 
   const opacity = useRef(new Animated.Value(0))
@@ -73,23 +73,15 @@ function RadioInput(props: RadioInputProps) {
 
   return (
     <View
-      style={[
-        $inputOuter,
-        { backgroundColor: offBackgroundColor, borderColor: outerBorderColor },
-        $outerStyleOverride,
-      ]}
-    >
+      style={[$inputOuter, {backgroundColor: offBackgroundColor, borderColor: outerBorderColor}, $outerStyleOverride]}>
       <Animated.View
         style={[
           $styles.toggleInner,
-          { backgroundColor: onBackgroundColor },
+          {backgroundColor: onBackgroundColor},
           $innerStyleOverride,
-          { opacity: opacity.current },
-        ]}
-      >
-        <View
-          style={[$radioDetail, { backgroundColor: dotBackgroundColor }, $detailStyleOverride]}
-        />
+          {opacity: opacity.current},
+        ]}>
+        <View style={[$radioDetail, {backgroundColor: dotBackgroundColor}, $detailStyleOverride]} />
       </Animated.View>
     </View>
   )
@@ -101,4 +93,4 @@ const $radioDetail: ViewStyle = {
   borderRadius: 6,
 }
 
-const $inputOuter: StyleProp<ViewStyle> = [$inputOuterBase, { borderRadius: 12 }]
+const $inputOuter: StyleProp<ViewStyle> = [$inputOuterBase, {borderRadius: 12}]

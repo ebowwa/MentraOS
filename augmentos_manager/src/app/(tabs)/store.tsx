@@ -1,9 +1,9 @@
 import React, {useRef, useState, useCallback, useEffect} from "react"
 import {View, StyleSheet, ActivityIndicator, BackHandler} from "react-native"
+import {SafeAreaView} from "react-native-safe-area-context"
 import {WebView} from "react-native-webview"
 import Config from "react-native-config"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
-import {SafeAreaView} from "react-native-safe-area-context"
 import {RouteProp, useFocusEffect} from "@react-navigation/native"
 import {RootStackParamList} from "@/components/misc/types"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
@@ -88,7 +88,7 @@ export default function AppStoreWeb() {
 
   // If the prefetched WebView is ready, show it in the correct style
   return (
-    <SafeAreaView style={{flex: 1}}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {hasError ? (
         <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
       ) : (
@@ -105,6 +105,14 @@ export default function AppStoreWeb() {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}
+            scalesPageToFit={false}
+            injectedJavaScript={`
+              const meta = document.createElement('meta');
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              meta.setAttribute('name', 'viewport');
+              document.getElementsByTagName('head')[0].appendChild(meta);
+              true;
+            `}
             renderLoading={() => (
               <View style={[styles.loadingOverlay, {backgroundColor: theme.colors.background}]}>
                 <ActivityIndicator size="large" color={theme2.primaryColor} />
@@ -122,24 +130,24 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  webViewContainer: {
-    flex: 1,
+  loadingOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0, // Keep this overlay as is since it's theme-neutral
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 10,
   },
   webView: {
     flex: 1,
   },
-  loadingOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0, 0, 0, 0.3)", // Keep this overlay as is since it's theme-neutral
-  },
-  loadingText: {
-    marginTop: 10,
-    fontSize: 16,
+  webViewContainer: {
+    flex: 1,
   },
 })

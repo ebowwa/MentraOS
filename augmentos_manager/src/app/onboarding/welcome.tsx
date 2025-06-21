@@ -1,57 +1,58 @@
-import React from 'react';
-import {View, Text, StyleSheet} from 'react-native';
-import {saveSetting} from '@/utils/SettingsHelper';
-import {SETTINGS_KEYS} from '@/consts';
-import {useAppStatus} from '@/contexts/AppStatusProvider';
-import BackendServerComms from '@/backend_comms/BackendServerComms';
-import { router } from 'expo-router';
-import { useAppTheme } from '@/utils/useAppTheme';
-import { useNavigationHistory } from '@/contexts/NavigationHistoryContext';
-import { Button } from '@/components/ignite/Button';
+import React from "react"
+import {View, Text, StyleSheet} from "react-native"
+import {Screen} from "@/components/ignite"
+import {saveSetting} from "@/utils/SettingsHelper"
+import {SETTINGS_KEYS} from "@/consts"
+import {useAppStatus} from "@/contexts/AppStatusProvider"
+import BackendServerComms from "@/backend_comms/BackendServerComms"
+import {router} from "expo-router"
+import {useAppTheme} from "@/utils/useAppTheme"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {Button} from "@/components/ignite/Button"
 import {FontAwesome} from "@expo/vector-icons"
-import { Spacer } from '@/components/misc/Spacer';
+import {Spacer} from "@/components/misc/Spacer"
 
 export default function OnboardingWelcome() {
-  const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus();
-  const {theme, themed} = useAppTheme();
-  const isDarkTheme = theme.isDark;
+  const {appStatus, optimisticallyStopApp, clearPendingOperation, refreshAppStatus} = useAppStatus()
+  const {theme, themed} = useAppTheme()
+  const isDarkTheme = theme.isDark
   const {goBack, push, replace} = useNavigationHistory()
-  const backendComms = BackendServerComms.getInstance();
+  const backendComms = BackendServerComms.getInstance()
 
   const stopAllApps = async () => {
-    const runningApps = appStatus.filter(app => app.is_running);
+    const runningApps = appStatus.filter(app => app.is_running)
     for (const runningApp of runningApps) {
-      optimisticallyStopApp(runningApp.packageName);
+      optimisticallyStopApp(runningApp.packageName)
       try {
-        await backendComms.stopApp(runningApp.packageName);
-        clearPendingOperation(runningApp.packageName);
+        await backendComms.stopApp(runningApp.packageName)
+        clearPendingOperation(runningApp.packageName)
       } catch (error) {
-        console.error('stop app error:', error);
-        refreshAppStatus();
+        console.error("stop app error:", error)
+        refreshAppStatus()
       }
     }
-  };
+  }
 
   // Skip onboarding and go directly to home
   const handleSkip = () => {
     // Mark onboarding as completed when skipped
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true);
-    replace('/(tabs)/home');
-  };
+    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, true)
+    replace("/(tabs)/home")
+  }
 
   // Continue to glasses selection screen
   const handleContinue = async () => {
     // Mark that onboarding should be shown on Home screen
-    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false);
+    saveSetting(SETTINGS_KEYS.ONBOARDING_COMPLETED, false)
 
     // deactivate all running apps:
-    await stopAllApps();
+    await stopAllApps()
 
-    router.push('/pairing/select-glasses-model');
-  };
+    router.push("/pairing/select-glasses-model")
+  }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <Screen preset="fixed" style={{backgroundColor: theme.colors.background}}>
       <View style={styles.mainContainer}>
         {/* <View style={styles.logoContainer}>
           <Icon
@@ -62,9 +63,9 @@ export default function OnboardingWelcome() {
         </View> */}
 
         <View style={styles.infoContainer}>
-          <Text style={[styles.title, { color: theme.colors.text }]}>Welcome to AugmentOS</Text>
+          <Text style={[styles.title, {color: theme.colors.text}]}>Welcome to AugmentOS</Text>
 
-          <Text style={[styles.description, { color: theme.colors.text }]}>
+          <Text style={[styles.description, {color: theme.colors.text}]}>
             Let's go through a quick tutorial to get you started with AugmentOS.
           </Text>
         </View>
@@ -72,98 +73,83 @@ export default function OnboardingWelcome() {
         <Button
           onPress={handleContinue}
           tx="common:continue"
-          textAlignment='center'
-          LeftAccessory={() => (
-                        <FontAwesome
-                          name="chevron-right"
-                          size={16}
-                          color={theme.colors.text}
-                        />
-                      )}
+          textAlignment="center"
+          LeftAccessory={() => <FontAwesome name="chevron-right" size={16} color={theme.colors.text} />}
         />
-        
-        <Spacer height={10}/>
-        <Button 
-        onPress={handleSkip} 
-          tx='welcomeScreen:skipOnboarding'
-          LeftAccessory={() => (
-                        <FontAwesome
-                          name="step-forward"
-                          size={16}
-                          color={theme.colors.text}
-                        />
-                      )}
+
+        <Spacer height={10} />
+        <Button
+          onPress={handleSkip}
+          tx="welcomeScreen:skipOnboarding"
+          LeftAccessory={() => <FontAwesome name="step-forward" size={16} color={theme.colors.text} />}
         />
       </View>
-    </View>
-  );
-};
+    </Screen>
+  )
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  mainContainer: {
-    flex: 1,
-    flexDirection: 'column',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  logoContainer: {
+  buttonContainer: {
+    alignItems: "center",
     flex: 0,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
+    justifyContent: "flex-end",
     paddingBottom: 40,
+    width: "100%",
   },
-  infoContainer: {
-    flex: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    marginBottom: 40,
+  darkBackground: {
+    backgroundColor: "#1c1c1c",
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    fontFamily: 'Montserrat-Bold',
-    textAlign: 'center',
-    marginBottom: 20,
+  darkSubtext: {
+    color: "#4a4a4a",
+  },
+  darkText: {
+    color: "#1a1a1a",
   },
   description: {
     fontSize: 18,
-    textAlign: 'center',
-    marginBottom: 32,
     lineHeight: 26,
+    marginBottom: 32,
     paddingHorizontal: 24,
+    textAlign: "center",
   },
-  buttonContainer: {
+  infoContainer: {
+    alignItems: "center",
     flex: 0,
-    justifyContent: 'flex-end',
-    paddingBottom: 40,
-    width: '100%',
-    alignItems: 'center',
-  },
-  skipButtonContainer: {
-    marginTop: 16,
-    width: '100%',
-    alignItems: 'center',
-  },
-  darkBackground: {
-    backgroundColor: '#1c1c1c',
+    justifyContent: "center",
+    marginBottom: 40,
+    width: "100%",
   },
   lightBackground: {
-    backgroundColor: '#f8f9fa',
-  },
-  darkText: {
-    color: '#1a1a1a',
-  },
-  lightText: {
-    color: '#FFFFFF',
-  },
-  darkSubtext: {
-    color: '#4a4a4a',
+    backgroundColor: "#f8f9fa",
   },
   lightSubtext: {
-    color: '#e0e0e0',
+    color: "#e0e0e0",
   },
-});
+  lightText: {
+    color: "#FFFFFF",
+  },
+  logoContainer: {
+    alignItems: "center",
+    flex: 0,
+    justifyContent: "flex-end",
+    paddingBottom: 40,
+  },
+  mainContainer: {
+    flex: 1,
+    flexDirection: "column",
+    justifyContent: "center",
+    padding: 24,
+  },
+  skipButtonContainer: {
+    alignItems: "center",
+    marginTop: 16,
+    width: "100%",
+  },
+  title: {
+    fontFamily: "Montserrat-Bold",
+    fontSize: 32,
+    fontWeight: "bold",
+    marginBottom: 20,
+    textAlign: "center",
+  },
+})

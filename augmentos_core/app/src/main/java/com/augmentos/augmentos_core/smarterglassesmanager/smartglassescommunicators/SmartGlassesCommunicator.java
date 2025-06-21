@@ -93,8 +93,8 @@ public abstract class SmartGlassesCommunicator {
     private boolean isPending = false;
 
     public void connectionEvent(SmartGlassesConnectionState connectState) {
-        if (connectState == lastConnectState && isPending) {
-            // Ignore duplicate calls within debounce period
+        if (connectState == lastConnectState) {
+            // Ignore duplicate calls regardless of timing
             return;
         }
 

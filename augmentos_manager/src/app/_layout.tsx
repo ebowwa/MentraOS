@@ -1,17 +1,17 @@
-import { useEffect, useState } from "react"
-import { Slot, SplashScreen } from "expo-router"
+import {useEffect, useState} from "react"
+import {Slot, SplashScreen} from "expo-router"
 
-import { useFonts } from "@expo-google-fonts/space-grotesk"
-import { colors, customFontsToLoad } from "@/theme"
-import { initI18n } from "@/i18n"
-import { loadDateFnsLocale } from "@/utils/formatDate"
-import { useThemeProvider } from "@/utils/useAppTheme"
-import { AllProviders } from "@/utils/AllProviders"
+import {useFonts} from "@expo-google-fonts/space-grotesk"
+import {colors, customFontsToLoad} from "@/theme"
+import {initI18n} from "@/i18n"
+import {loadDateFnsLocale} from "@/utils/formatDate"
+import {useThemeProvider} from "@/utils/useAppTheme"
+import {AllProviders} from "@/utils/AllProviders"
 import BackgroundGradient from "@/components/misc/BackgroundGradient"
-import Toast, { SuccessToast, BaseToast, ErrorToast } from 'react-native-toast-message';
-import { View } from "react-native";
-import { Text } from "@/components/ignite";
-import { Ionicons } from '@expo/vector-icons'; // Replace with your project's icon import if different
+import Toast, {SuccessToast, BaseToast, ErrorToast} from "react-native-toast-message"
+import {View} from "react-native"
+import {Text} from "@/components/ignite"
+import {Ionicons} from "@expo/vector-icons" // Replace with your project's icon import if different
 
 SplashScreen.preventAutoHideAsync()
 
@@ -22,23 +22,28 @@ if (__DEV__) {
   require("src/devtools/ReactotronConfig.ts")
 }
 
-export { ErrorBoundary } from "@/components/ErrorBoundary/ErrorBoundary"
+export {ErrorBoundary} from "@/components/ErrorBoundary/ErrorBoundary"
 
 export default function Root() {
   const [fontsLoaded, fontError] = useFonts(customFontsToLoad)
   const [isI18nInitialized, setIsI18nInitialized] = useState(false)
-  const { themeScheme, setThemeContextOverride, ThemeProvider } = useThemeProvider()
+  const {themeScheme, setThemeContextOverride, ThemeProvider} = useThemeProvider()
 
   useEffect(() => {
     initI18n()
       .then(() => setIsI18nInitialized(true))
       .then(() => loadDateFnsLocale())
+      .catch(error => {
+        console.error("Error initializing i18n:", error)
+        // Still set initialized to true to prevent app from being stuck
+        setIsI18nInitialized(true)
+      })
   }, [])
 
   const loaded = fontsLoaded && isI18nInitialized
 
   const toastConfig = {
-    baseToast: ({ text1, props }: { text1?: string; props?: { icon?: React.ReactNode } }) => (
+    baseToast: ({text1, props}: {text1?: string; props?: {icon?: React.ReactNode}}) => (
       <View
         style={{
           flexDirection: "row",
@@ -48,12 +53,9 @@ export default function Root() {
           paddingVertical: 12,
           paddingHorizontal: 16,
           marginHorizontal: 16,
-        }}
-      >
+        }}>
         {props?.icon && (
-          <View style={{ marginRight: 10, justifyContent: "center", alignItems: "center" }}>
-            {props.icon}
-          </View>
+          <View style={{marginRight: 10, justifyContent: "center", alignItems: "center"}}>{props.icon}</View>
         )}
         <Text
           text={text1}
@@ -63,7 +65,7 @@ export default function Root() {
           }}
         />
       </View>
-    )
+    ),
   }
 
   useEffect(() => {
@@ -81,9 +83,9 @@ export default function Root() {
   }
 
   return (
-    <ThemeProvider value={{ themeScheme, setThemeContextOverride }}>
+    <ThemeProvider value={{themeScheme, setThemeContextOverride}}>
       <AllProviders>
-        <View style={{ flex: 1 }}>
+        <View style={{flex: 1}}>
           <BackgroundGradient>
             <Slot />
             <Toast config={toastConfig} />
