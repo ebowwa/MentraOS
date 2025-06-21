@@ -60,6 +60,7 @@ const config: Config = {
     // Social card for link previews
     image: 'img/augmentos-social-card.png',
     metadata: [
+      {name: 'algolia-site-verification', content: '78682C22CC6FC033'},
       {name: 'og:image', content: 'https://docs.augmentos.org/img/augmentos-social-card.png'},
       {name: 'twitter:image', content: 'https://docs.augmentos.org/img/augmentos-social-card.png'},
       {name: 'twitter:card', content: 'summary_large_image'},
