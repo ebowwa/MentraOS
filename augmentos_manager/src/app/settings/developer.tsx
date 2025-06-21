@@ -142,6 +142,7 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    await coreCommunicator.setServerUrl("") // Clear Android service override
     setSavedCustomUrl(null)
     setCustomUrlInput("")
     showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
