@@ -19,5 +19,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Lock files from other package managers
+bun.lock
+
 # Backups
 docs/intro.md.backup
