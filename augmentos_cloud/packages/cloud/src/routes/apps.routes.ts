@@ -310,6 +310,7 @@ const router = express.Router();
  */
 async function getAllApps(req: Request, res: Response) {
   try {
+    // console.log('getAllApps');
     // Check API key auth first
     const apiKey = req.query.apiKey as string;
     const packageName = req.query.packageName as string;
@@ -523,6 +524,7 @@ async function getAppByPackage(req: Request, res: Response) {
  */
 async function startApp(req: Request, res: Response) {
   const { packageName } = req.params;
+  // console.log('@#$%^&#@42342 startApp', packageName);
   const userSession: UserSession = (req as any).userSession;
   
   // Use req.log from pino-http with service context
@@ -556,6 +558,20 @@ async function startApp(req: Request, res: Response) {
   }, 'Route entry context');
 
   try {
+    // Validate that the app exists before attempting to start it
+    const app = await appService.getApp(packageName);
+    if (!app) {
+      const totalDuration = Date.now() - startTime;
+      routeLogger.error({
+        totalDuration
+      }, `App ${packageName} not found in database`);
+      
+      return res.status(404).json({
+        success: false,
+        message: 'App not found'
+      });
+    }
+
     // WARN: Already running (weird but we handle gracefully)
     if (userSession.runningApps.has(packageName)) {
       routeLogger.warn('App already in runningApps before startApp call');
