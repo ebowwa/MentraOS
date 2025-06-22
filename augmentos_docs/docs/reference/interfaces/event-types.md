@@ -5,7 +5,7 @@ title: Event Types
 
 # Event Types
 
-This page documents the data interfaces for events that can be received from the AugmentOS platform.
+This page documents the data interfaces for events that can be received from the MentraOS platform.
 
 ## TranscriptionData
 

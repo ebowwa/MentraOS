@@ -1,6 +1,6 @@
 # AI Tools
 
-AugmentOS provides a powerful way for apps to extend Mira AI's capabilities through custom tools. These tools allow Mira to take actions within your app, such as creating content, fetching data, or controlling features - all through natural language conversations with users.
+MentraOS provides a powerful way for apps to extend Mira AI's capabilities through custom tools. These tools allow Mira to take actions within your app, such as creating content, fetching data, or controlling features - all through natural language conversations with users.
 
 ```typescript
 // Example of handling a tool call in your app
@@ -36,7 +36,7 @@ For detailed reference on the interfaces involved, see [Tool Types](/reference/i
 
 ## Defining Your Tools
 
-Tools are defined in the devloper console.  Go to [console.augmentos.org/tpas](https://console.augmentos.org/tpas) and edit your app, then look for the "AI Tools" section.
+Tools are defined in the devloper console.  Go to [console.mentra.glass/tpas](https://console.mentra.glass/tpas) and edit your app, then look for the "AI Tools" section.
 
 ![AI Tools Section](/img/tool-editor.png)
 
@@ -67,7 +67,7 @@ For the full interface definition, see [ToolParameterSchema](/reference/interfac
 In your app server, override the [`onToolCall`](/reference/tpa-server#ontoolcall-protected) method to handle incoming [tool calls](/reference/interfaces/tool-types#toolcall):
 
 ```typescript
-import { TpaServer, ToolCall } from '@augmentos/sdk';
+import { TpaServer, ToolCall } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   protected async onToolCall(toolCall: ToolCall): Promise<string | undefined> {
@@ -221,7 +221,7 @@ Your `onToolCall` method should return a string that will be passed to Mira's AI
 Here's how to implement a complete todo list app with Mira integration:
 
 ```typescript
-import { TpaServer, ToolCall } from '@augmentos/sdk';
+import { TpaServer, ToolCall } from '@mentraos/sdk';
 
 // Simple in-memory todo storage
 const todos = new Map<string, Map<string, Todo>>();

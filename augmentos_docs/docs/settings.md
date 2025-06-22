@@ -1,10 +1,10 @@
 # Settings
 
-AugmentOS provides a powerful settings system that allows apps to offer customizable experiences to users. Settings can be configured through the developer console and are automatically synchronized with your app, allowing users to personalize their experience through the AugmentOS app.
+MentraOS provides a powerful settings system that allows apps to offer customizable experiences to users. Settings can be configured through the developer console and are automatically synchronized with your app, allowing users to personalize their experience through the MentraOS app.
 
 ```typescript
 // Example of accessing settings in your app
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -27,7 +27,7 @@ App settings are user-configurable options that control how your application beh
 - **Persistent**: Settings are stored in the cloud and synchronized across devices
 - **Type-safe**: Each setting has a defined type (toggle, text, select, etc.)
 - **Real-time**: Changes are immediately synchronized to your running app
-- **User-friendly**: Displayed in the AugmentOS app with proper UI controls
+- **User-friendly**: Displayed in the MentraOS app with proper UI controls
 
 Settings allow users to customize aspects like:
 - Display preferences (langauges, layouts)
@@ -36,7 +36,7 @@ Settings allow users to customize aspects like:
 
 ## Defining Your Settings
 
-Settings are defined in the developer console. Go to [console.augmentos.org/tpas](https://console.augmentos.org/tpas) and edit your app, then look for the "App Settings" section.
+Settings are defined in the developer console. Go to [console.mentra.glass/tpas](https://console.mentra.glass/tpas) and edit your app, then look for the "App Settings" section.
 
 ![App Settings Section](/img/settings-editor.png)
 
@@ -51,7 +51,7 @@ Settings are defined in the developer console. Go to [console.augmentos.org/tpas
 
 ### Setting Types
 
-AugmentOS supports several setting types:
+MentraOS supports several setting types:
 
 #### Toggle (Boolean)
 On/off switches for boolean values.
@@ -176,7 +176,7 @@ For additional information on the types, see [Setting Types Reference](/referenc
 The app session provides a `settings` property with methods to access and monitor settings:
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -202,7 +202,7 @@ export class MyTpaServer extends TpaServer {
 React to setting changes in real-time:
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   private cleanupHandlers: Array<() => void> = [];
@@ -239,7 +239,7 @@ export class MyTpaServer extends TpaServer {
 ### Feature Toggles
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class FeatureToggleServer extends TpaServer {
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -267,7 +267,7 @@ export class FeatureToggleServer extends TpaServer {
 ### Language Selection
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class MultilingualServer extends TpaServer {
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -358,7 +358,7 @@ Make settings self-explanatory:
 Remove setting change listeners when your app stops:
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class CleanupExampleServer extends TpaServer {
   private settingsCleanup: Array<() => void> = [];
@@ -383,9 +383,9 @@ export class CleanupExampleServer extends TpaServer {
 ## Settings Lifecycle
 
 1. **Definition**: Settings are defined in the developer console
-2. **Storage**: Settings are stored in AugmentOS Cloud
+2. **Storage**: Settings are stored in MentraOS Cloud
 3. **Synchronization**: When an app starts, settings are automatically loaded
-4. **User Changes**: Users modify settings through the AugmentOS manager app
+4. **User Changes**: Users modify settings through the MentraOS manager app
 5. **Real-time Sync**: Changes are immediately pushed to running apps
 6. **Persistence**: Settings persist across app restarts and devices
 

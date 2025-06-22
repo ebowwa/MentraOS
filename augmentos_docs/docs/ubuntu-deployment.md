@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Deploy to an Ubuntu Server
 
-This guide will walk you through deploying your AugmentOS app to an Ubuntu server. This approach gives you full control over your hosting environment and is ideal for production deployments that require custom configurations or integration with existing infrastructure.
+This guide will walk you through deploying your MentraOS app to an Ubuntu server. This approach gives you full control over your hosting environment and is ideal for production deployments that require custom configurations or integration with existing infrastructure.
 
 ## Why Use an Ubuntu Server?
 
@@ -22,7 +22,7 @@ Make sure you have:
 - **Ubuntu Server**: 22.04 LTS or later (physical server, VPS, or cloud instance)
 - **Domain Name**: A domain pointing to your server's IP address
 - **SSH Access**: Root or sudo access to your Ubuntu server
-- **AugmentOS Account**: For the developer console at [console.AugmentOS.org](https://console.AugmentOS.org)
+- **MentraOS Account**: For the developer console at [console.mentra.glass](https://console.mentra.glass)
 - **Basic Linux Knowledge**: For server administration and troubleshooting
 
 ## Part 1: Prepare Your Server
@@ -47,7 +47,7 @@ sudo apt install -y curl unzip git build-essential ufw
 
 ### 2. Install Bun Runtime
 
-Install Bun, the fast JavaScript runtime that AugmentOS apps use:
+Install Bun, the fast JavaScript runtime that MentraOS apps use:
 
 ```bash
 # Download and install Bun
@@ -97,7 +97,7 @@ If your code is in a Git repository:
 cd /opt
 
 # Clone your repository
-sudo git clone https://github.com/YOUR_USERNAME/your-augmentos-app.git myapp
+sudo git clone https://github.com/YOUR_USERNAME/your-mentraos-app.git myapp
 
 # Set proper ownership (replace 'ubuntu' with your username)
 sudo chown -R ubuntu:ubuntu /opt/myapp
@@ -109,10 +109,10 @@ If you're uploading from your local machine:
 
 ```bash
 # From your local machine, upload your app directory
-scp -r ./my-augmentos-app ubuntu@YOUR_SERVER_IP:/tmp/
+scp -r ./my-mentraos-app ubuntu@YOUR_SERVER_IP:/tmp/
 
 # On the server, move it to the proper location
-sudo mv /tmp/my-augmentos-app /opt/myapp
+sudo mv /tmp/my-mentraos-app /opt/myapp
 sudo chown -R ubuntu:ubuntu /opt/myapp
 ```
 
@@ -149,7 +149,7 @@ nano .env
 ```env
 PORT=3000
 PACKAGE_NAME=com.yourname.yourapp
-AUGMENTOS_API_KEY=your_api_key_from_console
+MENTRAOS_API_KEY=your_api_key_from_console
 NODE_ENV=production
 ```
 
@@ -181,7 +181,7 @@ sudo nano /etc/systemd/system/myapp.service
 **Add the following configuration:**
 ```ini
 [Unit]
-Description=AugmentOS App Server
+Description=MentraOS App Server
 After=network.target
 
 [Service]
@@ -377,11 +377,11 @@ curl -I https://myapp.example.org
 
 Your app should now be accessible via HTTPS with a valid SSL certificate.
 
-## Part 6: Register with AugmentOS
+## Part 6: Register with MentraOS
 
-### 17. Update AugmentOS Console
+### 17. Update MentraOS Console
 
-1. Navigate to [console.AugmentOS.org](https://console.AugmentOS.org)
+1. Navigate to [console.mentra.glass](https://console.mentra.glass)
 2. Sign in and select your app
 3. Update the **Server URL** to your domain: `https://myapp.example.org`
 4. If using a webview, update the **Webview URL** to: `https://myapp.example.org/webview`
@@ -389,7 +389,7 @@ Your app should now be accessible via HTTPS with a valid SSL certificate.
 
 ### 18. Test Your Live App
 
-1. **Open the AugmentOS app** on your phone
+1. **Open the MentraOS app** on your phone
 2. **Find your app** in the app list and tap to start it
 3. **Expected behavior:**
    - Your app should connect successfully
@@ -462,9 +462,9 @@ sudo certbot renew --force-renewal
 
 ## Next Steps
 
-Congratulations! Your AugmentOS app is now running on your Ubuntu server with HTTPS. Here's what you can do next:
+Congratulations! Your MentraOS app is now running on your Ubuntu server with HTTPS. Here's what you can do next:
 
-### Explore AugmentOS Features
+### Explore MentraOS Features
 
 - **[Events](events)**: Handle user interactions and sensor data
 - **[Settings](settings)**: Add configurable options for users
@@ -476,6 +476,6 @@ Congratulations! Your AugmentOS app is now running on your Ubuntu server with HT
 - **[Discord Community](https://discord.gg/5ukNvkEAqT)**: Get help from other developers
 - **[Ubuntu Server Documentation](https://ubuntu.com/server/docs)**: Learn more about server administration
 - **[Nginx Documentation](https://nginx.org/en/docs/)**: Advanced web server configuration
-- **[AugmentOS Documentation](/)**: Explore the full SDK documentation
+- **[MentraOS Documentation](/)**: Explore the full SDK documentation
 
-Your AugmentOS app is now production-ready and running on your own infrastructure!
+Your MentraOS app is now production-ready and running on your own infrastructure!

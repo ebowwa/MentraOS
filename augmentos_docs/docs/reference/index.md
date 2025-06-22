@@ -3,13 +3,13 @@ sidebar_position: 1
 title: SDK Reference
 ---
 
-# AugmentOS SDK Reference
+# MentraOS SDK Reference
 
-Welcome to the reference for the AugmentOS SDK. This section provides detailed information about all classes, interfaces, types, and enums available in the `@augmentos/sdk` package.
+Welcome to the reference for the MentraOS SDK. This section provides detailed information about all classes, interfaces, types, and enums available in the `@mentraos/sdk` package.
 
 ## Overview
 
-The AugmentOS SDK is organized into several main components:
+The MentraOS SDK is organized into several main components:
 
 - **Primary Classes**: Core classes like [`TpaServer`](/reference/tpa-server) and [`TpaSession`](/reference/tpa-session) that serve as the main entry points for app development
 - **Manager Classes**: Component classes like [`EventManager`](/reference/managers/event-manager), [`LayoutManager`](/reference/managers/layout-manager), and [`SettingsManager`](/reference/managers/settings-manager) that handle specific functionalities

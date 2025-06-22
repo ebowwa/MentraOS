@@ -5,12 +5,12 @@ title: Dashboard API
 
 # Dashboard API Reference
 
-The Dashboard API provides an interface for displaying real-time information and status updates directly on the user's AugmentOS glasses. It allows your TPA to send content to different dashboard modes and react to user interactions with the dashboard.
+The Dashboard API provides an interface for displaying real-time information and status updates directly on the user's MentraOS glasses. It allows your TPA to send content to different dashboard modes and react to user interactions with the dashboard.
 
 ## Import
 
 ```typescript
-import { TpaServer, TpaSession, DashboardMode } from '@augmentos/sdk';
+import { TpaServer, TpaSession, DashboardMode } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -48,11 +48,11 @@ Every [`TpaSession`](/reference/tpa-session) exposes a `dashboard` property that
 | :------- | :--- | :------ |
 | `session.dashboard.content` | [`DashboardContentAPI`](#class-dashboardcontentapi) | Interface for writing content to the dashboard |
 
-The SDK automatically converts your method calls into WebSocket messages that the AugmentOS cloud routes to the user's glasses. You never have to construct layouts manually - simply provide text content and specify which dashboard mode(s) should display it.
+The SDK automatically converts your method calls into WebSocket messages that the MentraOS cloud routes to the user's glasses. You never have to construct layouts manually - simply provide text content and specify which dashboard mode(s) should display it.
 
 ## Enum: DashboardMode
 
-The `DashboardMode` enum defines the different display modes available on the AugmentOS dashboard.
+The `DashboardMode` enum defines the different display modes available on the MentraOS dashboard.
 
 ```typescript
 enum DashboardMode {
@@ -328,10 +328,10 @@ The SDK handles these WebSocket messages automatically, but they are documented 
 | Message | `type` value | Sent By | Purpose |
 | :------ | :----------- | :------ | :------ |
 | `DashboardContentUpdate` | `dashboard_content_update` | TPA | Send new content to dashboard |
-| `DashboardModeChange` | `dashboard_mode_change` | AugmentOS | Notify of mode transitions |
+| `DashboardModeChange` | `dashboard_mode_change` | MentraOS | Notify of mode transitions |
 | `DashboardModeQuery` | `dashboard_mode_query` | TPA | Request current mode |
 
-These correspond to TypeScript interfaces in `@augmentos/sdk/src/types/dashboard`.
+These correspond to TypeScript interfaces in `@mentraos/sdk/src/types/dashboard`.
 
 ## Frequently Asked Questions
 

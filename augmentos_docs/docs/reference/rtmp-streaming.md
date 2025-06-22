@@ -1,10 +1,10 @@
 # RTMP Streaming
 
-The AugmentOS SDK provides the capability to request RTMP streams directly from connected smart glasses. This feature is useful for applications that need to broadcast the camera feed to streaming platforms, conduct remote inspections, or implement surveillance features.
+The MentraOS SDK provides the capability to request RTMP streams directly from connected smart glasses. This feature is useful for applications that need to broadcast the camera feed to streaming platforms, conduct remote inspections, or implement surveillance features.
 
 ## Overview
 
-RTMP (Real-Time Messaging Protocol) is widely used for live streaming to platforms like YouTube, Twitch, Facebook Live, and custom streaming servers. The AugmentOS SDK allows Third-Party Applications (TPAs) to request the smart glasses to stream their camera feed to any RTMP endpoint.
+RTMP (Real-Time Messaging Protocol) is widely used for live streaming to platforms like YouTube, Twitch, Facebook Live, and custom streaming servers. The MentraOS SDK allows Third-Party Applications (TPAs) to request the smart glasses to stream their camera feed to any RTMP endpoint.
 
 ## Requirements
 
@@ -145,11 +145,11 @@ Here's a more complete example showing how to implement RTMP streaming in a Reac
 ```typescript
 import React, { useState, useEffect } from 'react';
 import { Button, Text, View } from 'react-native';
-import { useAugmentOS } from '@augmentos/sdk-react';
-import type { StreamStatus } from '@augmentos/sdk';
+import { useMentraOS } from '@mentraos/sdk-react';
+import type { StreamStatus } from '@mentraos/sdk';
 
 export function StreamingComponent() {
-  const { client } = useAugmentOS();
+  const { client } = useMentraOS();
   const [streamStatus, setStreamStatus] = useState<StreamStatus | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
 

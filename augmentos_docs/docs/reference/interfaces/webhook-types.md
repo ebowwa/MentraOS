@@ -5,9 +5,9 @@ title: Webhook Types
 
 # Webhook Types
 
-This page documents the webhook interfaces used for communication between AugmentOS Cloud and TPA servers.
+This page documents the webhook interfaces used for communication between MentraOS Cloud and TPA servers.
 
-Webhooks are HTTP requests sent from AugmentOS Cloud to your TPA server to manage the lifecycle of TPA sessions.
+Webhooks are HTTP requests sent from MentraOS Cloud to your TPA server to manage the lifecycle of TPA sessions.
 
 ## BaseWebhookRequest
 
@@ -39,7 +39,7 @@ interface SessionWebhookRequest extends BaseWebhookRequest {
   type: WebhookRequestType.SESSION_REQUEST;
   
   /** The specific WebSocket URL the TpaSession should connect to for this session. */
-  augmentOSWebsocketUrl?: string;
+  mentraOSWebsocketUrl?: string;
 }
 ```
 
@@ -51,7 +51,7 @@ interface SessionWebhookRequest extends BaseWebhookRequest {
   "sessionId": "session-123456",
   "userId": "user-789012",
   "timestamp": "2023-04-01T12:30:45Z",
-  "augmentOSWebsocketUrl": "wss://cloud.augmentos.org/tpa-ws/session-123456"
+  "mentraOSWebsocketUrl": "wss://api.mentra.glass/tpa-ws/session-123456"
 }
 ```
 
@@ -87,7 +87,7 @@ When this webhook is received, your [`TpaServer.onStop`](/reference/tpa-server#o
 
 ## ServerRegistrationWebhookRequest
 
-Webhook confirming successful registration of the TPA server with AugmentOS Cloud.
+Webhook confirming successful registration of the TPA server with MentraOS Cloud.
 
 ```typescript
 interface ServerRegistrationWebhookRequest extends BaseWebhookRequest {
@@ -128,7 +128,7 @@ interface SessionRecoveryWebhookRequest extends BaseWebhookRequest {
   type: WebhookRequestType.SESSION_RECOVERY;
   
   /** The WebSocket URL to use for reconnection. */
-  augmentOSWebsocketUrl: string;
+  mentraOSWebsocketUrl: string;
 }
 ```
 
@@ -139,7 +139,7 @@ interface SessionRecoveryWebhookRequest extends BaseWebhookRequest {
   "sessionId": "session-123456",
   "userId": "user-789012",
   "timestamp": "2023-04-01T14:15:30Z",
-  "augmentOSWebsocketUrl": "wss://cloud.augmentos.org/tpa-ws/session-123456"
+  "mentraOSWebsocketUrl": "wss://api.mentra.glass/tpa-ws/session-123456"
 }
 ```
 
@@ -240,9 +240,9 @@ function processWebhook(request: WebhookRequest): WebhookResponse {
 
 ## Webhook Flow
 
-1. **Registration**: When your [`TpaServer`](/reference/tpa-server) starts, it is registered with AugmentOS Cloud.
-2. **Server Registration Confirmation**: AugmentOS Cloud sends a [`SERVER_REGISTRATION`](/reference/enums#webhookrequesttype) webhook to confirm registration.
-3. **Heartbeat**: AugmentOS Cloud periodically sends [`SERVER_HEARTBEAT`](/reference/enums#webhookrequesttype) webhooks to check if your server is still running.
-4. **Session Initialization**: When a user starts your TPA, AugmentOS Cloud sends a [`SESSION_REQUEST`](/reference/enums#webhookrequesttype) webhook.
+1. **Registration**: When your [`TpaServer`](/reference/tpa-server) starts, it is registered with MentraOS Cloud.
+2. **Server Registration Confirmation**: MentraOS Cloud sends a [`SERVER_REGISTRATION`](/reference/enums#webhookrequesttype) webhook to confirm registration.
+3. **Heartbeat**: MentraOS Cloud periodically sends [`SERVER_HEARTBEAT`](/reference/enums#webhookrequesttype) webhooks to check if your server is still running.
+4. **Session Initialization**: When a user starts your TPA, MentraOS Cloud sends a [`SESSION_REQUEST`](/reference/enums#webhookrequesttype) webhook.
 5. **Session Termination**: When a user stops your TPA or there's a system issue, a [`STOP_REQUEST`](/reference/enums#webhookrequesttype) webhook is sent.
-6. **Session Recovery**: If AugmentOS Cloud restarts or detects a potential disconnection, it may send a [`SESSION_RECOVERY`](/reference/enums#webhookrequesttype) webhook. 
+6. **Session Recovery**: If MentraOS Cloud restarts or detects a potential disconnection, it may send a [`SESSION_RECOVERY`](/reference/enums#webhookrequesttype) webhook. 

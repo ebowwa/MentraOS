@@ -5,11 +5,11 @@ title: Message Types
 
 # Message Types
 
-This page documents the WebSocket message interfaces used for real-time communication in the AugmentOS SDK.
+This page documents the WebSocket message interfaces used for real-time communication in the MentraOS SDK.
 
 ## BaseMessage
 
-The fundamental structure for all messages exchanged within the AugmentOS system.
+The fundamental structure for all messages exchanged within the MentraOS system.
 
 ```typescript
 interface BaseMessage {

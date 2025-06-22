@@ -5,14 +5,14 @@ title: Utilities
 
 # Utilities
 
-The AugmentOS SDK provides several utility classes and functions that help with resource management and working with data streams.
+The MentraOS SDK provides several utility classes and functions that help with resource management and working with data streams.
 
 ## ResourceTracker
 
 [`ResourceTracker`](#resourcetracker) is a utility class used to manage the lifecycle of resources, ensuring they are properly cleaned up to prevent memory leaks.
 
 ```typescript
-import { ResourceTracker, createResourceTracker } from '@augmentos/sdk';
+import { ResourceTracker, createResourceTracker } from '@mentraos/sdk';
 ```
 
 ### Creating a ResourceTracker

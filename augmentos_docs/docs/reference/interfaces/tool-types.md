@@ -71,7 +71,7 @@ interface ToolCall {
 
 ## Tool Configuration
 
-Tools are defined in the devloper console.  Go to [console.augmentos.com/tpas](https://console.augmentos.com/tpas) and edit your TPA, then look for the "AI Tools" section.
+Tools are defined in the devloper console.  Go to [console.mentra.glass/tpas](https://console.mentra.glass/tpas) and edit your TPA, then look for the "AI Tools" section.
 
 ![AI Tools Section](/img/tool-editor.png)
 

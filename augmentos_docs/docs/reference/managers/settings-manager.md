@@ -1,11 +1,11 @@
 # SettingsManager API Reference
 
-The `SettingsManager` class provides a type-safe interface for accessing and monitoring TPA settings. It automatically synchronizes with AugmentOS Cloud and provides real-time change notifications.
+The `SettingsManager` class provides a type-safe interface for accessing and monitoring TPA settings. It automatically synchronizes with MentraOS Cloud and provides real-time change notifications.
 
 ## Import
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -215,23 +215,23 @@ try {
 }
 ```
 
-## AugmentOS Settings
+## MentraOS Settings
 
-The SettingsManager also provides access to system-wide AugmentOS settings.
+The SettingsManager also provides access to system-wide MentraOS settings.
 
-### onAugmentosSettingChange
+### onMentraosSettingChange
 
-Listen for changes to specific AugmentOS settings.
+Listen for changes to specific MentraOS settings.
 
 ```typescript
-onAugmentosSettingChange<T = any>(
+onMentraosSettingChange<T = any>(
   key: string,
   handler: (newValue: T, oldValue: T) => void
 ): () => void
 ```
 
 **Parameters:**
-- `key`: AugmentOS setting key (e.g., 'metricSystemEnabled')
+- `key`: MentraOS setting key (e.g., 'metricSystemEnabled')
 - `handler`: Function called when the value changes
 
 **Returns:** Cleanup function to remove the listener
@@ -239,7 +239,7 @@ onAugmentosSettingChange<T = any>(
 **Example:**
 ```typescript
 // Listen for metric system changes
-const cleanup = session.settings.onAugmentosSettingChange<boolean>(
+const cleanup = session.settings.onMentraosSettingChange<boolean>(
   'metricSystemEnabled',
   (enabled, wasEnabled) => {
     if (enabled) {
@@ -253,28 +253,28 @@ const cleanup = session.settings.onAugmentosSettingChange<boolean>(
 );
 ```
 
-### getAugmentosSetting
+### getMentraosSetting
 
-Get the current value of an AugmentOS setting.
+Get the current value of an MentraOS setting.
 
 ```typescript
-getAugmentosSetting<T = any>(key: string, defaultValue?: T): T
+getMentraosSetting<T = any>(key: string, defaultValue?: T): T
 ```
 
 **Parameters:**
-- `key`: AugmentOS setting key
+- `key`: MentraOS setting key
 - `defaultValue`: Default value if setting doesn't exist
 
 **Returns:** Setting value or default value
 
 **Example:**
 ```typescript
-const metricEnabled = session.settings.getAugmentosSetting<boolean>(
+const metricEnabled = session.settings.getMentraosSetting<boolean>(
   'metricSystemEnabled',
   false
 );
 
-const userLocale = session.settings.getAugmentosSetting<string>(
+const userLocale = session.settings.getMentraosSetting<string>(
   'locale',
   'en-US'
 );
@@ -306,7 +306,7 @@ const value = session.settings.get('some_setting');
 ### 3. Clean Up Listeners
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 export class MyTpaServer extends TpaServer {
   private cleanupFunctions: Array<() => void> = [];

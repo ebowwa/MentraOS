@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Build From Scratch
 
-This guide will walk you through creating a simple "Hello, World" AugmentOS app that displays text on the AugmentOS smart glasses. This will introduce you to the basic structure of an app and how to use the SDK.
+This guide will walk you through creating a simple "Hello, World" MentraOS app that displays text on the MentraOS smart glasses. This will introduce you to the basic structure of an app and how to use the SDK.
 
 ## Prerequisites
 
@@ -21,8 +21,8 @@ Make sure you have the following installed:
 Create a new directory for your app and initialize a Node.js project:
 
 ```bash
-mkdir my-first-augmentos-app
-cd my-first-augmentos-app
+mkdir my-first-mentraos-app
+cd my-first-mentraos-app
 bun init -y
 ```
 
@@ -30,10 +30,10 @@ This will create a package.json file.
 
 ### 2. Install the SDK
 
-Install the @augmentos/sdk package:
+Install the @mentraos/sdk package:
 
 ```bash
-bun add @augmentos/sdk
+bun add @mentraos/sdk
 ```
 
 ### 3. Install Additional Dependencies
@@ -49,7 +49,7 @@ bun add -d typescript tsx @types/node
 Create the following project structure:
 
 ```
-my-first-augmentos-app/
+my-first-mentraos-app/
 ├── src/
 │   └── index.ts
 ├── .env
@@ -62,8 +62,8 @@ Create a `.env` file:
 
 ```env
 PORT=3000
-PACKAGE_NAME=com.example.myfirstaugmentosapp
-AUGMENTOS_API_KEY=your_api_key_from_console
+PACKAGE_NAME=com.example.myfirstmentraosapp
+MENTRAOS_API_KEY=your_api_key_from_console
 ```
 
 Edit the `.env` file with your app details (you'll get these values when you register your app later).
@@ -73,23 +73,23 @@ Edit the `.env` file with your app details (you'll get these values when you reg
 Add the following code to `src/index.ts`:
 
 ```typescript
-import { TpaServer, TpaSession } from '@augmentos/sdk';
+import { TpaServer, TpaSession } from '@mentraos/sdk';
 
 // Load configuration from environment variables
-const PACKAGE_NAME = process.env.PACKAGE_NAME || "com.example.myfirstaugmentosapp";
+const PACKAGE_NAME = process.env.PACKAGE_NAME || "com.example.myfirstmentraosapp";
 const PORT = parseInt(process.env.PORT || "3000");
-const AUGMENTOS_API_KEY = process.env.AUGMENTOS_API_KEY;
+const MENTRAOS_API_KEY = process.env.MENTRAOS_API_KEY;
 
-if (!AUGMENTOS_API_KEY) {
-    console.error("AUGMENTOS_API_KEY environment variable is required");
+if (!MENTRAOS_API_KEY) {
+    console.error("MENTRAOS_API_KEY environment variable is required");
     process.exit(1);
 }
 
 /**
- * MyAugmentOSApp - A simple AugmentOS application that displays "Hello, World!"
+ * MyMentraOSApp - A simple MentraOS application that displays "Hello, World!"
  * Extends TpaServer to handle sessions and user interactions
  */
-class MyAugmentOSApp extends TpaServer {
+class MyMentraOSApp extends TpaServer {
     /**
      * Handle new session connections
      * @param session - The app session instance
@@ -110,9 +110,9 @@ class MyAugmentOSApp extends TpaServer {
 }
 
 // Create and start the app server
-const server = new MyAugmentOSApp({
+const server = new MyMentraOSApp({
     packageName: PACKAGE_NAME,
-    apiKey: AUGMENTOS_API_KEY,
+    apiKey: MENTRAOS_API_KEY,
     port: PORT
 });
 
@@ -152,7 +152,7 @@ Update your `package.json` with the following scripts:
 
 ```json
 {
-  "name": "my-first-augmentos-app",
+  "name": "my-first-mentraos-app",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {
@@ -161,7 +161,7 @@ Update your `package.json` with the following scripts:
     "dev": "bun --watch src/index.ts"
   },
   "dependencies": {
-    "@augmentos/sdk": "^1.1.10"
+    "@mentraos/sdk": "^1.1.10"
   },
   "devDependencies": {
     "typescript": "^5.0.0",
@@ -170,11 +170,11 @@ Update your `package.json` with the following scripts:
 }
 ```
 
-## Part 2: Connect to AugmentOS
+## Part 2: Connect to MentraOS
 
-### 9. Install AugmentOS on Your Phone
+### 9. Install MentraOS on Your Phone
 
-Download and install the AugmentOS app from [AugmentOS.org/install](https://AugmentOS.org/install)
+Download and install the MentraOS app from [mentra.glass/os](https://mentra.glass/os)
 
 ### 10. Set Up ngrok
 
@@ -195,10 +195,10 @@ To make your locally running app accessible from the internet:
 
 ### 11. Register Your App
 
-![AugmentOS Console](https://github.com/user-attachments/assets/36192c2b-e1ba-423b-90de-47ff8cd91318)
+![MentraOS Console](https://github.com/user-attachments/assets/36192c2b-e1ba-423b-90de-47ff8cd91318)
 
-1. Navigate to [console.AugmentOS.org](https://console.AugmentOS.org/)
-2. Click "Sign In" and log in with the same account you're using for AugmentOS
+1. Navigate to [console.mentra.glass](https://console.mentra.glass/)
+2. Click "Sign In" and log in with the same account you're using for MentraOS
 3. Click "Create App"
 4. Set a unique package name (e.g., `com.yourname.myfirstapp`)
 5. For "Public URL", enter your ngrok static URL
@@ -211,7 +211,7 @@ To make your locally running app accessible from the internet:
 
 Your app must declare which permissions it needs to access device capabilities.  To add permissions to your app:
 
-1. Go to [console.AugmentOS.org](https://console.AugmentOS.org/)
+1. Go to [console.mentra.glass](https://console.mentra.glass/)
 2. Click on your app to open its settings
 3. Scroll to the **Required Permissions** section
 4. Click **Add Permission** to add a new permission
@@ -230,10 +230,10 @@ Edit your `.env` file with the values from your registered app:
 ```env
 PORT=3000
 PACKAGE_NAME=com.yourname.myfirstapp
-AUGMENTOS_API_KEY=your_actual_api_key_from_console
+MENTRAOS_API_KEY=your_actual_api_key_from_console
 ```
 
-Make sure the `PACKAGE_NAME` matches what you registered in the AugmentOS Console.
+Make sure the `PACKAGE_NAME` matches what you registered in the MentraOS Console.
 
 ## Part 3: Run Your App
 
@@ -268,7 +268,7 @@ ngrok http --url=<YOUR_NGROK_URL_HERE> 3000
 
 > Note: The port number (3000) must match the PORT in your `.env` file.
 
-> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the MentraOS phone app.
 
 ### 16. View Your Logs
 
@@ -290,7 +290,7 @@ This structured logging helps you debug issues and monitor how users interact wi
 
 ## What's Next?
 
-Congratulations! You've built your first AugmentOS app. To continue your journey:
+Congratulations! You've built your first MentraOS app. To continue your journey:
 
 ### Subscribe to Events
 
@@ -315,17 +315,17 @@ Configure [Settings](/settings) to let users customize your app's behavior throu
 Implement [AI Tools](/tools) to extend Mira AI's capabilities with custom functions that users can invoke through natural language.
 
 - Your app can respond to tool calls from Mira AI via `onToolCall` in your code
-- Define custom tools that can be called by AugmentOS through natural language
+- Define custom tools that can be called by MentraOS through natural language
 - Each tool takes specific parameters and returns a result
 - Tools can perform operations on your application's data
 - Properly handle authentication and validation in your tool implementations
 
 ### Build a Webview
 
-Build [Webviews](/webview-auth-overview) to provide web interfaces with automatic AugmentOS user authentication.
+Build [Webviews](/webview-auth-overview) to provide web interfaces with automatic MentraOS user authentication.
 
 - Access the webview at `/webview`
-- The current AugmentOS user is available at `request.authUserId`
+- The current MentraOS user is available at `request.authUserId`
 - Create a web interface that allows users to interact with your app's functionality
 
 ### Monitor and Debug with Logging
@@ -365,6 +365,6 @@ try {
 
 ### Get Help
 - Join our [Discord community](https://discord.gg/5ukNvkEAqT) for support
-- Visit [AugmentOS.org](https://augmentos.org) for the latest updates
-- Check out the [GitHub Organization](https://github.com/AugmentOS-Community) for examples
-- For a more in-depth example with app settings support, see the [Extended Example](https://github.com/AugmentOS-Community/AugmentOS-Extended-Example-App)
+- Visit [Mentra.glass](https://mentra.glass) for the latest updates
+- Check out the [GitHub Organization](https://github.com/Mentra-Community) for examples
+- For a more in-depth example with app settings support, see the [Extended Example](https://github.com/Mentra-Community/MentraOS-Extended-Example-App)

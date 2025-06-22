@@ -141,7 +141,7 @@ tpaSession.layouts.showBitmapView(base64Image);
 
 ## DisplayRequest
 
-The `DisplayRequest` interface is the message structure sent to AugmentOS Cloud when a TPA wants to display a layout.
+The `DisplayRequest` interface is the message structure sent to MentraOS Cloud when a TPA wants to display a layout.
 
 ```typescript
 interface DisplayRequest extends BaseMessage {

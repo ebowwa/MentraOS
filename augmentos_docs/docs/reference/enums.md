@@ -5,11 +5,11 @@ title: Enums
 
 # Enums
 
-This page documents all the enumeration types available in the AugmentOS SDK. Enums are used to define sets of named constants that represent distinct values throughout the SDK.
+This page documents all the enumeration types available in the MentraOS SDK. Enums are used to define sets of named constants that represent distinct values throughout the SDK.
 
 ## TpaType
 
-Defines the different types or roles an app can have within the AugmentOS system.
+Defines the different types or roles an app can have within the MentraOS system.
 
 ```typescript
 enum TpaType {
@@ -75,7 +75,7 @@ enum ViewType {
 
 ## DashboardMode
 
-Defines the different display modes available on the AugmentOS dashboard.
+Defines the different display modes available on the MentraOS dashboard.
 
 ```typescript
 enum DashboardMode {
@@ -92,7 +92,7 @@ enum DashboardMode {
 
 ## AppSettingType
 
-Defines the types of interactive settings that can be configured for an app in the AugmentOS settings UI. Used within the `TpaConfig` interface.
+Defines the types of interactive settings that can be configured for an app in the MentraOS settings UI. Used within the `TpaConfig` interface.
 
 ```typescript
 enum AppSettingType {
@@ -143,7 +143,7 @@ enum StreamType {
 
 ## WebhookRequestType
 
-Identifies the type of request being sent from AugmentOS Cloud to an app server's webhook endpoint.
+Identifies the type of request being sent from MentraOS Cloud to an app server's webhook endpoint.
 
 ```typescript
 enum WebhookRequestType {
@@ -156,7 +156,7 @@ enum WebhookRequestType {
 ```
 ## Message Type Enums
 
-These enums are used to identify the types of messages exchanged between different components of the AugmentOS system.
+These enums are used to identify the types of messages exchanged between different components of the MentraOS system.
 
 ### GlassesToCloudMessageType
 

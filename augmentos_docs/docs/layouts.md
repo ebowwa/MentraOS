@@ -1,6 +1,6 @@
 # Layouts
 
-AugmentOS Cloud provides a set of pre-defined layouts for displaying content on the smart glasses' AR view. These layouts allow you to create visually consistent and user-friendly interfaces without needing to deal with low-level graphics programming. You interact with layouts through the [`LayoutManager`](/reference/managers/layout-manager), which is a property of the [`TpaSession`](/reference/tpa-session) object.
+MentraOS Cloud provides a set of pre-defined layouts for displaying content on the smart glasses' AR view. These layouts allow you to create visually consistent and user-friendly interfaces without needing to deal with low-level graphics programming. You interact with layouts through the [`LayoutManager`](/reference/managers/layout-manager), which is a property of the [`TpaSession`](/reference/tpa-session) object.
 
 ```typescript
 // Example of accessing the LayoutManager
@@ -21,10 +21,10 @@ The SDK currently supports the following layout types:
 *   **Example:**
 
     ```typescript
-    import { TpaSession, LayoutType, ViewType, TpaToCloudMessageType } from '@augmentos/sdk';
+    import { TpaSession, LayoutType, ViewType, TpaToCloudMessageType } from '@mentraos/sdk';
 
     // Assuming you have a TpaSession instance called 'session'
-    session.layouts.showTextWall("Connected to AugmentOS Cloud");
+    session.layouts.showTextWall("Connected to MentraOS Cloud");
 
     // Example of a complete DisplayRequest for a TextWall.
     // You don't normally construct this directly; the LayoutManager does it.
@@ -148,10 +148,10 @@ session.layouts.showTextWall("Dashboard Message", { view: ViewType.DASHBOARD });
 
 ## Layout Interfaces
 
-The `@augmentos/sdk` provides TypeScript interfaces for each layout type.  These interfaces ensure type safety and provide autocompletion in your IDE.  You can import these directly:
+The `@mentraos/sdk` provides TypeScript interfaces for each layout type.  These interfaces ensure type safety and provide autocompletion in your IDE.  You can import these directly:
 
 ```typescript
-import { TextWall, DoubleTextWall, ReferenceCard, LayoutType, ViewType } from '@augmentos/sdk';
+import { TextWall, DoubleTextWall, ReferenceCard, LayoutType, ViewType } from '@mentraos/sdk';
 
 const textWallLayout: TextWall = {
   layoutType: LayoutType.TEXT_WALL,
@@ -166,4 +166,4 @@ const textWallLayout: TextWall = {
 *   **Use Appropriate Layouts:**  Choose the layout type that best suits the content you're displaying.
 *   **Consider Head Position:** The [`head_position`](/reference/interfaces/event-types#headposition) event lets you know if the user is looking up (at the dashboard) or down (at the main view).  You can use this to tailor the displayed content.
 *   **Avoid Flicker:** Rapidly changing the display can be visually jarring.  Use appropriate durations and consider debouncing or throttling updates if necessary.
-* **Text Wrapping:** The glasses have limited width, so it is important to handle text that is longer than can fit on one line. The `@augmentos/utils` package provides a `wrapText` utility function to handle this.
+* **Text Wrapping:** The glasses have limited width, so it is important to handle text that is longer than can fit on one line. The `@mentraos/utils` package provides a `wrapText` utility function to handle this.

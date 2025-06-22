@@ -5,20 +5,20 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'AugmentOS SDK Docs',
-  tagline: 'Build your AugmentOS smart glasses app.',
+  title: 'MentraOS SDK Docs',
+  tagline: 'Build your MentraOS smart glasses app.',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
-  url: 'https://docs.augmentos.org',
+  url: 'https://docs.mentra.glass',
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'augmentos-community', // Usually your GitHub org/user name.
-  projectName: 'augmentos', // Usually your repo name.
+  organizationName: 'mentra-community', // Usually your GitHub org/user name.
+  projectName: 'mentra', // Usually your repo name.
 
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
@@ -40,7 +40,7 @@ const config: Config = {
           // Please change this to your repo.
           // Remove or update this to remove/edit "edit this page" links.
           editUrl:
-            'https://github.com/augmentos-community/augmentos/tree/main/augmentos_docs/create-docusaurus/',
+            'https://github.com/mentra-community/mentraos/tree/main/mentraos_docs/create-docusaurus/',
           routeBasePath: '/', // Set docs as the root
         },
         blog: false,
@@ -58,23 +58,23 @@ const config: Config = {
 
   themeConfig: {
     // Social card for link previews
-    image: 'img/augmentos-social-card.png',
+    image: 'img/mentraos-social-card.png',
     metadata: [
       {name: 'algolia-site-verification', content: '78682C22CC6FC033'},
-      {name: 'og:image', content: 'https://docs.augmentos.org/img/augmentos-social-card.png'},
-      {name: 'twitter:image', content: 'https://docs.augmentos.org/img/augmentos-social-card.png'},
+      {name: 'og:image', content: 'https://docs.mentra.glass/img/mentraos-social-card.png'},
+      {name: 'twitter:image', content: 'https://docs.mentra.glass/img/mentraos-social-card.png'},
       {name: 'twitter:card', content: 'summary_large_image'},
     ],
     navbar: {
-      title: 'AugmentOS SDK Docs (Beta)',
+      title: 'MentraOS SDK Docs (Beta)',
       logo: {
-        alt: 'AugmentOS Logo',
+        alt: 'MentraOS Logo',
         src: 'img/logo.svg',
       },
       // Only docs in the navbar
       items: [
         {
-          href: 'https://github.com/augmentos-community/augmentos',
+          href: 'https://github.com/mentra-community/mentraos',
           label: 'GitHub',
           position: 'right',
         },
@@ -114,7 +114,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/augmentos-community/augmentos',
+              href: 'https://github.com/mentra-community/mentraos',
             },
           ],
         },

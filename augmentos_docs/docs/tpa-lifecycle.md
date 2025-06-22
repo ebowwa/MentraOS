@@ -1,24 +1,24 @@
 # App Lifecycle
 
 
-This document describes the lifecycle of an AugmentOS app within the AugmentOS ecosystem. Understanding this lifecycle is crucial for building robust and responsive apps.
+This document describes the lifecycle of an MentraOS app within the MentraOS ecosystem. Understanding this lifecycle is crucial for building robust and responsive apps.
 
 ## Stages of the App Lifecycle
 
-An AugmentOS app goes through the following stages:
+An MentraOS app goes through the following stages:
 
-1.  **Registration (One-time):**  This happens outside of the normal runtime flow. You register your app with [AugmentOS Developer Portal](https://console.augmentos.org/tpas), providing:
+1.  **Registration (One-time):**  This happens outside of the normal runtime flow. You register your app with [MentraOS Developer Portal](https://console.mentra.glass/tpas), providing:
     *   `packageName`: A unique identifier (e.g., `com.example.myapp`).
     *   `name`: A human-readable name.
     *   `description`: A description of your app.
-    *   `webhookURL`: The URL where AugmentOS Cloud will send session start requests.
+    *   `webhookURL`: The URL where MentraOS Cloud will send session start requests.
     *   `logoURL`: (Optional) URL to your app's logo.
     *   `apiKey`: A secret key for authenticating your app with the cloud.
     *   `permissions`: An array of permissions your app needs.  See the [Permissions](permissions) guide for details.
 
     This automatically installs the app for your user.  For other people to test the app (including others in your organization), they need to install the app.  Get the app install link from the App edit page under the `Share with Testers` section.
 
-2.  **Session Request (Webhook):** When a user starts your app on their smart glasses, AugmentOS Cloud sends an HTTP POST request to your app's `webhookURL`. This request includes:
+2.  **Session Request (Webhook):** When a user starts your app on their smart glasses, MentraOS Cloud sends an HTTP POST request to your app's `webhookURL`. This request includes:
 
     *   `type`: `"session_request"`
     *   `sessionId`: A unique identifier for this session.
@@ -27,14 +27,14 @@ An AugmentOS app goes through the following stages:
 
     Your app server should listen for these POST requests on the configured `webhookPath` (default: `/webhook`).
 
-3.  **WebSocket Connection:**  Upon receiving the `session_request`, your app establishes a WebSocket connection to AugmentOS Cloud. The [`TpaServer`](/reference/tpa-server) class in the SDK handles this for you automatically. You provide the cloud's WebSocket URL in the [`TpaServerConfig`](/reference/tpa-server#configuration):
+3.  **WebSocket Connection:**  Upon receiving the `session_request`, your app establishes a WebSocket connection to MentraOS Cloud. The [`TpaServer`](/reference/tpa-server) class in the SDK handles this for you automatically. You provide the cloud's WebSocket URL in the [`TpaServerConfig`](/reference/tpa-server#configuration):
 
     ```typescript
     const server = new TpaServer({
       packageName: PACKAGE_NAME,
       apiKey: API_KEY,
       port: PORT,
-      augmentOSWebsocketUrl: `ws://localhost:${CLOUD_PORT}/tpa-ws`, // Or your cloud URL
+      mentraOSWebsocketUrl: `ws://localhost:${CLOUD_PORT}/tpa-ws`, // Or your cloud URL
       webhookPath: '/webhook',
     });
     ```
@@ -48,11 +48,11 @@ An AugmentOS app goes through the following stages:
 
     The [`TpaSession`](/reference/tpa-session) class handles sending this message automatically.
 
-5.  **Subscription:**  Your app subscribes to the data streams it needs (e.g., [transcription](/reference/interfaces/event-types#transcriptiondata), [head position](/reference/interfaces/event-types#headposition)) using the [`subscribe()`](/reference/tpa-session#subscribe) method or the [`events`](/reference/managers/event-manager) object (see [Events](./events) for details). This informs AugmentOS Cloud which data to send to your app.
+5.  **Subscription:**  Your app subscribes to the data streams it needs (e.g., [transcription](/reference/interfaces/event-types#transcriptiondata), [head position](/reference/interfaces/event-types#headposition)) using the [`subscribe()`](/reference/tpa-session#subscribe) method or the [`events`](/reference/managers/event-manager) object (see [Events](./events) for details). This informs MentraOS Cloud which data to send to your app.
 
-6.  **Event Handling:**  Your app receives real-time events from AugmentOS Cloud via the WebSocket connection. You handle these events using event listeners (e.g., [`session.events.onTranscription()`](/reference/managers/event-manager#ontranscription)).
+6.  **Event Handling:**  Your app receives real-time events from MentraOS Cloud via the WebSocket connection. You handle these events using event listeners (e.g., [`session.events.onTranscription()`](/reference/managers/event-manager#ontranscription)).
 
-7.  **Display Updates:**  Your app sends display requests to AugmentOS Cloud to control what is shown on the glasses' display. You use the [`LayoutManager`](/reference/managers/layout-manager) (accessible through `session.layouts`) to create and send these requests.
+7.  **Display Updates:**  Your app sends display requests to MentraOS Cloud to control what is shown on the glasses' display. You use the [`LayoutManager`](/reference/managers/layout-manager) (accessible through `session.layouts`) to create and send these requests.
 
 8.  **Session Termination:**  The session ends when:
 
@@ -61,13 +61,13 @@ An AugmentOS app goes through the following stages:
     *   Your app explicitly disconnects.
     *   An error occurs that terminates the session.
 
-    AugmentOS Cloud will send a [`stop_request`](/reference/interfaces/webhook-types#stopwebhookrequest) webhook to your app when a session ends. You can override the [`onStop`](/reference/tpa-server#onstop-protected) method in your [`TpaServer`](/reference/tpa-server) to handle any necessary cleanup. The [`TpaSession`](/reference/tpa-session) also emits a [`disconnected`](/reference/managers/event-manager#ondisconnected) event.
+    MentraOS Cloud will send a [`stop_request`](/reference/interfaces/webhook-types#stopwebhookrequest) webhook to your app when a session ends. You can override the [`onStop`](/reference/tpa-server#onstop-protected) method in your [`TpaServer`](/reference/tpa-server) to handle any necessary cleanup. The [`TpaSession`](/reference/tpa-session) also emits a [`disconnected`](/reference/managers/event-manager#ondisconnected) event.
 
 ## Important Implementation Details
 
-> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the AugmentOS phone app.
+> **IMPORTANT:** After making changes to your app code or restarting your server, you must restart your app inside the MentraOS phone app.
 
-This restart is necessary because the AugmentOS phone app maintains a connection to your cloud app. When you make code changes or restart your server, you need to establish a fresh connection.
+This restart is necessary because the MentraOS phone app maintains a connection to your cloud app. When you make code changes or restart your server, you need to establish a fresh connection.
 
 ## Example Lifecycle Flow
 

@@ -1,6 +1,6 @@
 # Setting Types Reference
 
-This page provides detailed reference documentation for all setting-related types and interfaces in the AugmentOS SDK.
+This page provides detailed reference documentation for all setting-related types and interfaces in the MentraOS SDK.
 
 ## Enums
 

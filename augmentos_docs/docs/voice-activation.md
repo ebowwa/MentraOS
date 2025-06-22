@@ -5,7 +5,7 @@ sidebar_position: 6
 
 # Voice-Activation Tutorial
 
-Learn how to build an **AugmentOS App** that:
+Learn how to build an **MentraOS App** that:
 
 1. Listens for live speech transcriptions provided by the system.
 2. Detects a custom **activation phrase** (for example "computer").
@@ -17,9 +17,9 @@ Learn how to build an **AugmentOS App** that:
 
 ## Prerequisites
 
-1. **AugmentOS SDK ≥ `0.13.0`** installed in your project.
+1. **MentraOS SDK ≥ `0.13.0`** installed in your project.
 2. A local development environment configured as described in [Getting Started](/getting-started).
-3. **MICROPHONE** permission added to your App in the [Developer Console](https://console.augmentos.org/) so the transcription stream is available.  See [Permissions](/permissions).
+3. **MICROPHONE** permission added to your App in the [Developer Console](https://console.mentra.glass/) so the transcription stream is available.  See [Permissions](/permissions).
 
 ---
 
@@ -31,7 +31,7 @@ Create a new project—or reuse an existing one—and install the SDK:
 mkdir voice-activation-app
 cd voice-activation-app
 bun init -y           # or npm init -y / pnpm init -y
-bun add @augmentos/sdk
+bun add @mentraos/sdk
 bun add -d typescript tsx @types/node
 ```
 
@@ -44,7 +44,7 @@ Copy the basic project structure from the [Quickstart](/quickstart) if you haven
 The full source code is shown first, followed by a step-by-step explanation.
 
 ```typescript title="src/index.ts"
-import { TpaServer, TpaSession } from "@augmentos/sdk";
+import { TpaServer, TpaSession } from "@mentraos/sdk";
 
 /**
  * A custom keyword that triggers our action once detected in speech
@@ -61,7 +61,7 @@ class VoiceActivationServer extends TpaServer {
    *
    * @param session   – Connection-scoped helper APIs and event emitters
    * @param sessionId – Unique identifier for this connection
-   * @param userId    – AugmentOS user identifier
+   * @param userId    – MentraOS user identifier
    */
   protected async onSession(
     session: TpaSession,
@@ -96,7 +96,7 @@ class VoiceActivationServer extends TpaServer {
 // Bootstrap the server using environment variables for configuration
 new VoiceActivationServer({
   packageName: process.env.PACKAGE_NAME ?? "com.example.voiceactivation",
-  apiKey: process.env.AUGMENTOS_API_KEY!,
+  apiKey: process.env.MENTRAOS_API_KEY!,
   port: Number(process.env.PORT ?? "3000"),
 }).start();
 ```
@@ -121,7 +121,7 @@ new VoiceActivationServer({
    ```env
    PORT=3000
    PACKAGE_NAME=com.example.voiceactivation
-   AUGMENTOS_API_KEY=your_api_key_here
+   MENTRAOS_API_KEY=your_api_key_here
    ```
 
 2. Start the development server:
@@ -132,7 +132,7 @@ new VoiceActivationServer({
    bun run build && bun run start
    ```
 
-3. Expose the port with **ngrok** (or your tunnel of choice) so AugmentOS on your phone can reach it, then restart the App inside AugmentOS.
+3. Expose the port with **ngrok** (or your tunnel of choice) so MentraOS on your phone can reach it, then restart the App inside MentraOS.
 
 ---
 

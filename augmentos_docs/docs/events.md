@@ -1,10 +1,10 @@
-# AugmentOS Cloud Events
+# MentraOS Cloud Events
 
-AugmentOS Cloud uses an event-driven architecture to communicate real-time data from the smartglasses to your AugmentOS app. Your app can *subscribe* to specific events and receive data as it becomes available. This document describes how to subscribe to events, the available event types, and the data structure for each event.
+MentraOS Cloud uses an event-driven architecture to communicate real-time data from the smartglasses to your MentraOS app. Your app can *subscribe* to specific events and receive data as it becomes available. This document describes how to subscribe to events, the available event types, and the data structure for each event.
 
 ## Subscribing to Events
 
-The [`TpaSession`](/reference/tpa-session) class in the `@augmentos/sdk` provides several ways to subscribe to events.  You'll typically do this within the [`onSession`](/reference/tpa-server#onsession-protected) method of your [`TpaServer`](/reference/tpa-server):
+The [`TpaSession`](/reference/tpa-session) class in the `@mentraos/sdk` provides several ways to subscribe to events.  You'll typically do this within the [`onSession`](/reference/tpa-server#onsession-protected) method of your [`TpaServer`](/reference/tpa-server):
 
 ```typescript
 protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
@@ -41,7 +41,7 @@ You can subscribe to events using these methods:
 2.  **Generic [`on`](/reference/managers/event-manager#on) Method:** Use this for events that don't have a dedicated method, or for custom event types:
 
     ```typescript
-    import { StreamType, ButtonPress } from '@augmentos/sdk';
+    import { StreamType, ButtonPress } from '@mentraos/sdk';
 
     session.events.on<ButtonPress>(StreamType.BUTTON_PRESS, (data) => {
       // Handle button press data
@@ -86,7 +86,7 @@ cleanupHandlers.forEach(handler => this.addCleanupHandler(handler));
 
 ## Available Events
 
-The following table lists the available event types, their descriptions, and the corresponding data types.  The [`StreamType`](/reference/enums#streamtype) enum in `@augmentos/sdk` provides the canonical names for these events.
+The following table lists the available event types, their descriptions, and the corresponding data types.  The [`StreamType`](/reference/enums#streamtype) enum in `@mentraos/sdk` provides the canonical names for these events.
 
 | Event Type                     | `StreamType` Constant              | Description                                                                          | Data Type                        |
 | :----------------------------- | :---------------------------------- | :----------------------------------------------------------------------------------- | :-------------------------------- |

@@ -2,17 +2,17 @@ import React from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import ThemedImage from '@theme/ThemedImage';
 
-export default function AugmentOSArchImage({
+export default function MentraOSArchImage({
   width = 500,
   className = '',
 }) {
-  const lightImage = useBaseUrl('/img/augmentos-arch-light.png');
-  const darkImage = useBaseUrl('/img/augmentos-arch-dark.png');
+  const lightImage = useBaseUrl('/img/mentraos-arch-light.png');
+  const darkImage = useBaseUrl('/img/mentraos-arch-dark.png');
 
   return (
     <div style={{ textAlign: 'center', margin: '20px 0' }}>
       <ThemedImage
-        alt="AugmentOS Architecture"
+        alt="MentraOS Architecture"
         sources={{
           light: lightImage,
           dark: darkImage,

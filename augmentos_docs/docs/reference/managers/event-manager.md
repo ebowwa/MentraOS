@@ -5,7 +5,7 @@ title: EventManager
 
 # EventManager
 
-The `EventManager` handles event subscriptions and dispatching within a [`TpaSession`](/reference/tpa-session). It provides methods for subscribing to various event types from the AugmentOS platform.
+The `EventManager` handles event subscriptions and dispatching within a [`TpaSession`](/reference/tpa-session). It provides methods for subscribing to various event types from the MentraOS platform.
 
 You access the EventManager through the `events` property of a [`TpaSession`](/reference/tpa-session) instance:
 
@@ -228,7 +228,7 @@ onConnected(handler: (data: AppSettings | undefined) => void): () => void
 **Example:**
 ```typescript
 tpaSession.events.onConnected((settings) => {
-  console.log('Connected to AugmentOS Cloud');
+  console.log('Connected to MentraOS Cloud');
   if (settings) {
     console.log('Initial settings received:', settings);
   }
@@ -251,7 +251,7 @@ onDisconnected(handler: (reason: string) => void): () => void
 **Example:**
 ```typescript
 tpaSession.events.onDisconnected((reason) => {
-  console.log(`Disconnected from AugmentOS Cloud. Reason: ${reason}`);
+  console.log(`Disconnected from MentraOS Cloud. Reason: ${reason}`);
 });
 ```
 
@@ -277,7 +277,7 @@ tpaSession.events.onError((error) => {
 
 ### onSettingsUpdate()
 
-Registers a handler for when the application settings are updated by the user via AugmentOS Cloud.
+Registers a handler for when the application settings are updated by the user via MentraOS Cloud.
 
 ```typescript
 onSettingsUpdate(handler: (settings: AppSettings) => void): () => void
@@ -345,7 +345,7 @@ on<T extends StreamType>(
 
 **Example:**
 ```typescript
-import { StreamType } from '@augmentos/sdk';
+import { StreamType } from '@mentraos/sdk';
 
 // Subscribe to a specific stream type
 tpaSession.events.on(StreamType.LOCATION_UPDATE, (data) => {

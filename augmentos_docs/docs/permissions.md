@@ -1,10 +1,10 @@
 # Permissions
 
-AugmentOS uses a permissions system to control which device data and system resources your app can access. This system ensures user privacy and transparency while allowing you to build powerful applications with access to the data streams you need.
+MentraOS uses a permissions system to control which device data and system resources your app can access. This system ensures user privacy and transparency while allowing you to build powerful applications with access to the data streams you need.
 
 ## Overview
 
-When you build an AugmentOS app, you must declare which permissions your app requires to function. These permissions map directly to sensitive device capabilities like microphone access, location services, and notification data. Users can see exactly what permissions your app requires before installing it, and the system automatically enforces these permissions at runtime.
+When you build an MentraOS app, you must declare which permissions your app requires to function. These permissions map directly to sensitive device capabilities like microphone access, location services, and notification data. Users can see exactly what permissions your app requires before installing it, and the system automatically enforces these permissions at runtime.
 
 ```typescript
 // Example: Your app automatically receives permission information in session
@@ -25,7 +25,7 @@ protected async onSession(session: TpaSession, sessionId: string, userId: string
 
 The permissions system operates at two levels:
 
-1. **Declaration Level**: You declare which permissions your app needs in the [AugmentOS Developer Console](https://console.augmentos.org/)
+1. **Declaration Level**: You declare which permissions your app needs in the [MentraOS Developer Console](https://console.mentra.glass/)
 2. **Runtime Level**: The system automatically enforces these permissions when your app tries to access protected data streams
 
 When a user starts your app:
@@ -39,7 +39,7 @@ When a user starts your app:
 
 To declare permissions for your app:
 
-1. Log in to the [AugmentOS Developer Console](https://console.augmentos.org/)
+1. Log in to the [MentraOS Developer Console](https://console.mentra.glass/)
 2. Navigate to your app's settings page
 3. Scroll to the **Required Permissions** section
 4. Click **Add Permission** to add a new permission
@@ -49,7 +49,7 @@ To declare permissions for your app:
 
 ## Available Permission Types
 
-AugmentOS defines five core permission types that map to device-level capabilities:
+MentraOS defines five core permission types that map to device-level capabilities:
 
 ### 1. **MICROPHONE**
 

@@ -6,10 +6,10 @@ title: TpaSession
 
 # TpaSession
 
-`TpaSession` (also known as `TpaClient` in older documentation) manages an active WebSocket connection (session) between an app instance and AugmentOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
+`TpaSession` (also known as `TpaClient` in older documentation) manages an active WebSocket connection (session) between an app instance and MentraOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
 
 ```typescript
-import { TpaSession } from '@augmentos/sdk';
+import { TpaSession } from '@mentraos/sdk';
 ```
 
 ## Constructor
@@ -170,7 +170,7 @@ onPhoneNotifications(handler: (data: PhoneNotification) => void): () => void
 
 ### subscribe()
 
-Informs the AugmentOS Cloud that this app session wants to receive events of the specified type.
+Informs the MentraOS Cloud that this app session wants to receive events of the specified type.
 
 ```typescript
 subscribe(type: StreamType): void
@@ -200,7 +200,7 @@ on<T extends StreamType>(
 
 ### connect()
 
-Establishes the WebSocket connection to AugmentOS Cloud for this session.
+Establishes the WebSocket connection to MentraOS Cloud for this session.
 
 ```typescript
 connect(sessionId: string): Promise<void>
@@ -270,8 +270,8 @@ interface TpaSessionConfig {
   /** Your API key for authentication. */
   apiKey: string;
 
-  /** The WebSocket URL provided by AugmentOS Cloud. Defaults to 'ws://localhost:8002/tpa-ws'. */
-  augmentOSWebsocketUrl?: string;
+  /** The WebSocket URL provided by MentraOS Cloud. Defaults to 'ws://localhost:8002/tpa-ws'. */
+  mentraOSWebsocketUrl?: string;
 
   /** Whether the session should automatically attempt to reconnect if the connection drops. Defaults to `false`. */
   autoReconnect?: boolean;

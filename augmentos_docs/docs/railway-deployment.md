@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Deploy to Railway
 
-This guide will walk you through deploying your AugmentOS app to Railway, a cloud hosting platform that makes deployment simple and reliable. Instead of running your app locally with ngrok, you'll have a production-ready hosted solution.
+This guide will walk you through deploying your MentraOS app to Railway, a cloud hosting platform that makes deployment simple and reliable. Instead of running your app locally with ngrok, you'll have a production-ready hosted solution.
 
 ## Why Use Railway?
 
@@ -23,20 +23,20 @@ Make sure you have:
 
 - **GitHub Account**: For code repository hosting
 - **Railway Account**: Free account at [railway.com](https://railway.com)
-- **AugmentOS Account**: For the developer console at [console.AugmentOS.org](https://console.AugmentOS.org)
+- **MentraOS Account**: For the developer console at [console.mentra.glass](https://console.mentra.glass)
 - **Basic Git Knowledge**: For pushing code changes
 
 ## Part 1: Set Up Your Repository
 
 ### 1. Create Your App Repository
 
-Create a new repository from the AugmentOS example app template:
+Create a new repository from the MentraOS example app template:
 
 **Option A: Using GitHub Web Interface**
-1. Go to the [AugmentOS Cloud Example App repository](https://github.com/AugmentOS-Community/AugmentOS-Extended-Example-App)
+1. Go to the [MentraOS Cloud Example App repository](https://github.com/Mentra-Community/MentraOS-Extended-Example-App)
 2. Click the green **"Use this template"** dropdown in the upper right
 3. Select **"Create a new repository"**
-4. Choose a repository name (e.g., `my-augmentos-app`)
+4. Choose a repository name (e.g., `my-mentraos-app`)
 5. Set visibility to Public or Private
 6. Click **"Create repository"**
 
@@ -44,7 +44,7 @@ Create a new repository from the AugmentOS example app template:
 
 **Option B: Using GitHub CLI**
 ```bash
-gh repo create --template AugmentOS-Community/AugmentOS-Extended-Example-App my-augmentos-app
+gh repo create --template MentraOS-Community/MentraOS-Extended-Example-App my-mentraos-app
 ```
 
 ### 2. Clone Your Repository
@@ -52,8 +52,8 @@ gh repo create --template AugmentOS-Community/AugmentOS-Extended-Example-App my-
 Clone your new repository locally:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/my-augmentos-app
-cd my-augmentos-app
+git clone https://github.com/YOUR_USERNAME/my-mentraos-app
+cd my-mentraos-app
 ```
 
 ## Part 2: Deploy to Railway
@@ -78,12 +78,12 @@ cd my-augmentos-app
 3. You'll get a URL like: `yourapp-production-fa42.up.railway.app`
 4. Copy this URL - you'll need it for the next step
 
-## Part 3: Register Your App with AugmentOS
+## Part 3: Register Your App with MentraOS
 
 ### 6. Register in Developer Console
 
-1. Navigate to [console.AugmentOS.org](https://console.AugmentOS.org)
-2. Sign in with the same account you use for AugmentOS
+1. Navigate to [console.mentra.glass](https://console.mentra.glass)
+2. Sign in with the same account you use for MentraOS
 3. Click **"Create App"**
 4. Fill in the details:
    - **Package Name**: Use the same package name from your environment variables
@@ -95,7 +95,7 @@ cd my-augmentos-app
 
 ### 7. Import App Configuration
 
-You can now add permissions, settings, and tools to your app via the AugmentOS Developer Console. Instead of doing it manually, let's upload this example's [`app_config.json`](https://raw.githubusercontent.com/AugmentOS-Community/AugmentOS-Extended-Example-App/refs/heads/main/app_config.json) file by clicking the **"Import app_config.json"** button under **Configuration Management**:
+You can now add permissions, settings, and tools to your app via the MentraOS Developer Console. Instead of doing it manually, let's upload this example's [`app_config.json`](https://raw.githubusercontent.com/Mentra-Community/MentraOS-Extended-Example-App/refs/heads/main/app_config.json) file by clicking the **"Import app_config.json"** button under **Configuration Management**:
 
 ![Import app config](https://github.com/user-attachments/assets/14736150-7f02-43db-8b29-bbe918a4086b)
 
@@ -113,8 +113,8 @@ You can now add permissions, settings, and tools to your app via the AugmentOS D
 1. In your Railway project dashboard, click on the **"Variables"** tab
 2. Under **"Suggested Variables"**, you'll see template variables from the `.env.example` file
 3. Replace the placeholder values:
-   - **PACKAGE_NAME**: Change `org.yourname.appname` to your unique package name (e.g., `com.yourname.myaugmentosapp`)
-   - **AUGMENTOS_API_KEY**: Replace `your_api_key_here` with your actual API key from the AugmentOS Console
+   - **PACKAGE_NAME**: Change `org.yourname.appname` to your unique package name (e.g., `com.yourname.mymentraosapp`)
+   - **MENTRAOS_API_KEY**: Replace `your_api_key_here` with your actual API key from the MentraOS Console
    - **PORT**: Leave as `3000`
 4. Click **"Add All"** to save the variables
 
@@ -126,28 +126,28 @@ You can now add permissions, settings, and tools to your app via the AugmentOS D
 
 ## Part 4: Test Your Deployed App
 
-### 10. Install AugmentOS
+### 10. Install MentraOS
 
 If you haven't already:
-1. Download the AugmentOS app from [AugmentOS.org/install](https://AugmentOS.org/install)
+1. Download the MentraOS app from [mentra.glass/os](https://mentra.glass/os)
 2. Set up your smart glasses following the setup guide
 
 ### 11. Test Your App
 
-1. Open the AugmentOS app on your phone
+1. Open the MentraOS app on your phone
 2. Find your app in the app list and tap to start it
 3. **Expected behavior:**
    - Spoken text should appear on your smart glasses display
 
 ### 12. Test the Webview
 
-1. In the AugmentOS phone app, tap the gear icon next to your app name
+1. In the MentraOS phone app, tap the gear icon next to your app name
 2. This opens the webview interface
 3. **Expected behavior:**
    - You should see your username displayed
 
 ### 13. Test Settings
-1. In the AugmentOS phone app, with the webview interface open, tap the gear icon in the upper right
+1. In the MentraOS phone app, with the webview interface open, tap the gear icon in the upper right
 2. This opens the settings menu
 3. **Expected behavior:**
    - You should see the "Show live transcription" setting
@@ -168,13 +168,13 @@ Railway automatically deploys when you push changes to GitHub:
    git push origin main
    ```
 3. Railway will automatically detect the changes and deploy within 1-2 minutes
-4. To see the changes, restart your app in AugmentOS:
+4. To see the changes, restart your app in MentraOS:
    - Tap your app in the list to stop it
    - Tap again to restart it
 
 ## Next Steps
 
-Congratulations! Your AugmentOS app is now running in the cloud. Here's what you can do next:
+Congratulations! Your MentraOS app is now running in the cloud. Here's what you can do next:
 
 ### Explore Advanced Features
 
@@ -187,8 +187,8 @@ Congratulations! Your AugmentOS app is now running in the cloud. Here's what you
 
 - **[Discord Community](https://discord.gg/5ukNvkEAqT)**: Get help from other developers
 - **[Railway Documentation](https://docs.railway.app/)**: Learn more about Railway features
-- **[AugmentOS Documentation](/)**: Explore the full SDK documentation
-- **[GitHub Examples](https://github.com/AugmentOS-Community)**: See more example projects
+- **[MentraOS Documentation](/)**: Explore the full SDK documentation
+- **[GitHub Examples](https://github.com/Mentra-Community)**: See more example projects
 
 ### Troubleshooting
 
@@ -200,7 +200,7 @@ Congratulations! Your AugmentOS app is now running in the cloud. Here's what you
 **Changes not appearing?**
 - Confirm your GitHub push was successful
 - Check Railway deployment status
-- Restart your app in AugmentOS after deployment completes
+- Restart your app in MentraOS after deployment completes
 
 **Webview not loading?**
 - Verify the webview URL is set correctly in the developer console

@@ -5,10 +5,10 @@ title: TpaServer
 
 # TpaServer
 
-`TpaServer` is the base class for creating Third Party Application (app) servers that handle webhook requests from AugmentOS Cloud to manage app sessions.
+`TpaServer` is the base class for creating Third Party Application (app) servers that handle webhook requests from MentraOS Cloud to manage app sessions.
 
 ```typescript
-import { TpaServer } from '@augmentos/sdk';
+import { TpaServer } from '@mentraos/sdk';
 ```
 
 ## Constructor
@@ -144,7 +144,7 @@ protected generateToken(
 **Parameters:**
 - `userId`: The user's identifier
 - `sessionId`: The session identifier
-- `secretKey`: Your app's secret key (should match the one configured in AugmentOS Cloud)
+- `secretKey`: Your app's secret key (should match the one configured in MentraOS Cloud)
 
 **Returns:** The generated JWT token string
 
@@ -163,10 +163,10 @@ protected addCleanupHandler(handler: () => void): void
 
 ```typescript
 interface TpaServerConfig {
-  /** Your unique app identifier (e.g., 'org.company.appname'). Must match console.augmentos.org. */
+  /** Your unique app identifier (e.g., 'org.company.appname'). Must match console.mentra.glass. */
   packageName: string;
 
-  /** Your API key obtained from console.augmentos.org for authentication. */
+  /** Your API key obtained from console.mentra.glass for authentication. */
   apiKey: string;
 
   /** The port number the app server will listen on. Defaults to 3000. */

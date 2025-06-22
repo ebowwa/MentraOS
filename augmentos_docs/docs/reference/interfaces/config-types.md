@@ -5,7 +5,7 @@ title: Configuration Types
 
 # Configuration Types
 
-This page documents the interfaces and types used for configuring apps in the AugmentOS SDK.
+This page documents the interfaces and types used for configuring apps in the MentraOS SDK.
 
 ## TpaConfig
 

@@ -1,83 +1,83 @@
 # React Webviews
 
-The [`@augmentos/react`](https://www.npmjs.com/package/@augmentos/react) library simplifies building React-based webviews that integrate seamlessly with AugmentOS authentication. When users open your webview through the AugmentOS manager app, they are automatically authenticated without requiring a separate login process.
+The [`@mentraos/react`](https://www.npmjs.com/package/@mentraos/react) library simplifies building React-based webviews that integrate seamlessly with MentraOS authentication. When users open your webview through the MentraOS manager app, they are automatically authenticated without requiring a separate login process.
 
 ## What Are React Webviews?
 
-React webviews are web applications built with React that run inside the AugmentOS manager app. They provide rich user interfaces for:
+React webviews are web applications built with React that run inside the MentraOS manager app. They provide rich user interfaces for:
 
 - **Settings and Configuration**: Let users customize your app's behavior
 - **Data Visualization**: Display charts, graphs, and analytics
 - **Content Management**: Create, edit, and organize user content
 - **Dashboard Interfaces**: Show personalized information and controls
 
-The `@augmentos/react` library handles all the authentication complexity, automatically extracting and verifying user tokens from the AugmentOS system.
+The `@mentraos/react` library handles all the authentication complexity, automatically extracting and verifying user tokens from the MentraOS system.
 
 ## Complete Example
 
-There's a complete example of a React webview in the [`AugmentOS-React-Example-App`](https://github.com/AugmentOS-Community/AugmentOS-React-Example-App) repository.  Simply follow along with the README to get off the ground quickly.
+There's a complete example of a React webview in the [`MentraOS-React-Example-App`](https://github.com/Mentra-Community/MentraOS-React-Example-App) repository.  Simply follow along with the README to get off the ground quickly.
 
 ## Installation
 
 Install the React authentication library in your webview project:
 
 ```bash
-npm install @augmentos/react
+npm install @mentraos/react
 # or
-yarn add @augmentos/react
+yarn add @mentraos/react
 # or
-bun add @augmentos/react
+bun add @mentraos/react
 ```
 
 ## Prerequisites
 
 - **React 16.8+**: The library uses React Hooks
-- **AugmentOS App Server**: Your backend must be deployed, either on the same domain as your frontend or on a different domain that allows CORS requests from your frontend.
+- **MentraOS App Server**: Your backend must be deployed, either on the same domain as your frontend or on a different domain that allows CORS requests from your frontend.
 - **Developer Console Setup**: Set the webview url in the developer console to your frontend server
 
 ## Basic Setup
 
 ### 1. Wrap Your App with the Authentication Provider
 
-The `AugmentosAuthProvider` component manages authentication state for your entire React application:
+The `MentraosAuthProvider` component manages authentication state for your entire React application:
 
 ```tsx
 // src/main.tsx
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { AugmentosAuthProvider } from '@augmentos/react';
+import { MentraosAuthProvider } from '@mentraos/react';
 
 /**
- * Application entry point that provides AugmentOS authentication context
+ * Application entry point that provides MentraOS authentication context
  * to the entire React component tree
  */
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AugmentosAuthProvider>
+    <MentraosAuthProvider>
       <App />
-    </AugmentosAuthProvider>
+    </MentraosAuthProvider>
   </React.StrictMode>
 );
 ```
 
 ### 2. Access Authentication State
 
-Use the `useAugmentosAuth` hook to access user information and authentication status:
+Use the `useMentraosAuth` hook to access user information and authentication status:
 
 ```tsx
 // src/components/UserProfile.tsx
 import React from 'react';
-import { useAugmentosAuth } from '@augmentos/react';
+import { useMentraosAuth } from '@mentraos/react';
 
 /**
  * Component that displays user authentication status and profile information.
- * Demonstrates basic usage of the AugmentOS authentication hook.
+ * Demonstrates basic usage of the MentraOS authentication hook.
  *
  * @returns {React.JSX.Element} User profile component with authentication state
  */
 const UserProfile: React.FC = (): React.JSX.Element => {
-  const { userId, isLoading, error, isAuthenticated, logout } = useAugmentosAuth();
+  const { userId, isLoading, error, isAuthenticated, logout } = useMentraosAuth();
 
   // Handle loading state during authentication
   if (isLoading) {
@@ -89,20 +89,20 @@ const UserProfile: React.FC = (): React.JSX.Element => {
     return (
       <div style={{ color: 'red' }}>
         <p>Authentication Error: {error}</p>
-        <p>Please ensure you are opening this page from the AugmentOS app.</p>
+        <p>Please ensure you are opening this page from the MentraOS app.</p>
       </div>
     );
   }
 
   // Handle unauthenticated state
   if (!isAuthenticated || !userId) {
-    return <div>Not authenticated. Please open from the AugmentOS manager app.</div>;
+    return <div>Not authenticated. Please open from the MentraOS manager app.</div>;
   }
 
   // Display authenticated user information
   return (
     <div>
-      <h2>Welcome, AugmentOS User!</h2>
+      <h2>Welcome, MentraOS User!</h2>
       <p>User ID: <strong>{userId}</strong></p>
       <button onClick={logout}>Logout</button>
     </div>
@@ -118,12 +118,12 @@ Here's a comprehensive example that demonstrates authentication, API calls, and 
 
 ```tsx
 /**
- * Main application component that demonstrates AugmentOS authentication integration.
- * This file serves as the root component for testing the augmentos-react package functionality.
+ * Main application component that demonstrates MentraOS authentication integration.
+ * This file serves as the root component for testing the mentraos-react package functionality.
  */
 
 import React, { useState } from 'react';
-import { AugmentosAuthProvider, useAugmentosAuth } from '@augmentos/react';
+import { MentraosAuthProvider, useMentraosAuth } from '@mentraos/react';
 
 /**
  * Type definition for the API response from the notes endpoint
@@ -134,14 +134,14 @@ interface NotesApiResponse {
 
 /**
  * Content component that displays authentication status and user information.
- * This component consumes the AugmentosAuth context to show loading states,
+ * This component consumes the MentraosAuth context to show loading states,
  * errors, and authenticated user data. It also provides functionality to make
  * authenticated API calls to the TPA backend.
  *
  * @returns {React.JSX.Element} The rendered content based on authentication state
  */
 function Content(): React.JSX.Element {
-  const { userId, isLoading, error, isAuthenticated, frontendToken } = useAugmentosAuth();
+  const { userId, isLoading, error, isAuthenticated, frontendToken } = useMentraosAuth();
 
   // State for managing API call results and loading state
   const [apiResult, setApiResult] = useState<NotesApiResponse | null>(null);
@@ -264,19 +264,19 @@ function Content(): React.JSX.Element {
 
 /**
  * Root App component that provides authentication context to the entire application.
- * This component wraps the Content component with the AugmentosAuthProvider
+ * This component wraps the Content component with the MentraosAuthProvider
  * to enable authentication functionality throughout the app.
  *
  * @returns {React.JSX.Element} The main application component
  */
 function App(): React.JSX.Element {
   return (
-    <AugmentosAuthProvider>
+    <MentraosAuthProvider>
       <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-        <h1>AugmentOS React Test App</h1>
+        <h1>MentraOS React Test App</h1>
         <Content />
       </div>
-    </AugmentosAuthProvider>
+    </MentraosAuthProvider>
   );
 }
 
@@ -285,7 +285,7 @@ export default App;
 
 ## Making Authenticated API Calls
 
-The `frontendToken` from `useAugmentosAuth` is a JWT token that you should include in the `Authorization` header when making requests to your TPA backend:
+The `frontendToken` from `useMentraosAuth` is a JWT token that you should include in the `Authorization` header when making requests to your TPA backend:
 
 ```tsx
 /**
@@ -294,7 +294,7 @@ The `frontendToken` from `useAugmentosAuth` is a JWT token that you should inclu
  * @returns {Object} Functions for making authenticated requests
  */
 const useAuthenticatedApi = () => {
-  const { frontendToken } = useAugmentosAuth();
+  const { frontendToken } = useMentraosAuth();
 
   /**
    * Makes an authenticated GET request to the specified endpoint
@@ -357,10 +357,10 @@ const useAuthenticatedApi = () => {
 ```
 ## Authentication Hook API
 
-The `useAugmentosAuth` hook returns an object with the following properties:
+The `useMentraosAuth` hook returns an object with the following properties:
 
 ```typescript
-interface AugmentosAuthContextType {
+interface MentraosAuthContextType {
   /** Unique identifier for the authenticated user */
   userId: string | null;
 
@@ -383,8 +383,8 @@ interface AugmentosAuthContextType {
 
 ## How Authentication Works
 
-1. **Token Extraction**: When the AugmentOS manager opens your webview, it appends an `aos_signed_user_token` parameter to the URL
-2. **Token Verification**: The library verifies the token's signature against the AugmentOS Cloud public key
+1. **Token Extraction**: When the MentraOS manager opens your webview, it appends an `aos_signed_user_token` parameter to the URL
+2. **Token Verification**: The library verifies the token's signature against the MentraOS Cloud public key
 3. **User Identification**: If valid, it extracts the `userId` and `frontendToken` from the token payload
 4. **Persistence**: The authentication data is stored in `localStorage` for the session
 5. **Context Sharing**: All authentication state is made available through React Context
@@ -415,15 +415,15 @@ app.use(cors({
 
 ### Common Issues
 
-**"AugmentOS signed user token not found"**
-- Ensure your webview is opened through the AugmentOS manager app
+**"MentraOS signed user token not found"**
+- Ensure your webview is opened through the MentraOS manager app
 - Check that the manager app is correctly appending the token to your URL
 - Verify your webview URL is configured correctly in the Developer Console
 
 **"Token validation failed"**
 - Verify the device clock is synchronized (token expiration is time-sensitive)
-- Check that you're using the latest version of `@augmentos/react`
-- Ensure the AugmentOS manager app is up to date
+- Check that you're using the latest version of `@mentraos/react`
+- Ensure the MentraOS manager app is up to date
 
 **Backend authentication fails**
 - Check that you're sending the `Authorization: Bearer ${frontendToken}` header
@@ -432,7 +432,7 @@ app.use(cors({
 
 **Changes not reflecting**
 - Clear browser cache and localStorage
-- Restart the AugmentOS manager app
+- Restart the MentraOS manager app
 - Check browser developer tools for JavaScript errors
 
 ### Debugging Tips
@@ -442,7 +442,7 @@ Enable debug logging to troubleshoot authentication issues:
 ```tsx
 // Add this to see authentication state changes
 const Content = () => {
-  const auth = useAugmentosAuth();
+  const auth = useMentraosAuth();
 
   // Log authentication state for debugging
   React.useEffect(() => {
@@ -461,8 +461,8 @@ const Content = () => {
 
 ## Next Steps
 
-- **[Complete Example Application](https://github.com/AugmentOS-Community/AugmentOS-React-Example-App)**: See a complete example of a React webview
-- **[Deploying a React App](https://github.com/AugmentOS-Community/AugmentOS-React-Example-App/blob/main/DEPLOYMENT-single-server.md)**: This guide covers deploying the AugmentOS React Example App to production
+- **[Complete Example Application](https://github.com/Mentra-Community/MentraOS-React-Example-App)**: See a complete example of a React webview
+- **[Deploying a React App](https://github.com/Mentra-Community/MentraOS-React-Example-App/blob/main/DEPLOYMENT-single-server.md)**: This guide covers deploying the MentraOS React Example App to production
 - **[Webview Authentication Overview](/webview-auth-overview)**: Learn about the broader authentication system
-- **[Core Concepts](/core-concepts)**: Understand the full AugmentOS ecosystem
+- **[Core Concepts](/core-concepts)**: Understand the full MentraOS ecosystem
 

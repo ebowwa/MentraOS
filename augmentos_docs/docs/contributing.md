@@ -4,13 +4,13 @@ title: 👥 Contributing Guide
 sidebar_position: 20
 ---
 
-# Contributing to AugmentOS
+# Contributing to MentraOS
 
-Thank you for your interest in contributing to AugmentOS! This guide will help you understand the project architecture, development workflow, and how to make effective contributions.
+Thank you for your interest in contributing to MentraOS! This guide will help you understand the project architecture, development workflow, and how to make effective contributions.
 
 ## Project Overview
 
-AugmentOS is an open-source operating system, app store, and development framework for smart glasses. The system follows a distributed architecture where most processing happens in the cloud, with the glasses primarily acting as input/output devices.
+MentraOS is an open-source operating system, app store, and development framework for smart glasses. The system follows a distributed architecture where most processing happens in the cloud, with the glasses primarily acting as input/output devices.
 
 ### Core Components
 
@@ -22,19 +22,19 @@ graph TD
     end
     
     subgraph "Client Layer"
-        AOSManager[AugmentOS Manager App]
-        AOSCore[AugmentOS Core Module]
-        AOSiOS[AugmentOS iOS Module]
+        AOSManager[MentraOS Manager App]
+        AOSCore[MentraOS Core Module]
+        AOSiOS[MentraOS iOS Module]
     end
     
     subgraph "Cloud Layer"
-        AOSCloud[AugmentOS Cloud]
+        AOSCloud[MentraOS Cloud]
         WebApps[Web Applications]
         WebSocket[WebSocket Service]
     end
     
     subgraph "Web Applications"
-        AppStore[AugmentOS Store]
+        AppStore[MentraOS Store]
         DevConsole[Developer Console]
     end
     
@@ -58,48 +58,48 @@ graph TD
 
 ### System Components
 
-1. **AugmentOS Manager** (`augmentos_manager/`): 
+1. **MentraOS Manager** (`mentraos_manager/`): 
    - React Native application for smartphones
    - User interface for managing glasses, apps, and settings
    - Interfaces with native modules on iOS/Android
 
-2. **AugmentOS Core** (`augmentos_core/`):
+2. **MentraOS Core** (`mentraos_core/`):
    - Android native module
    - Handles Bluetooth communication with glasses
    - Manages glass connections and capabilities
 
-3. **iOS Native Module** (`augmentos_manager/ios`):
+3. **iOS Native Module** (`mentraos_manager/ios`):
    - iOS native module
    - Handles Bluetooth communication with glasses
    - Manages glass connections and capabilities
 
-4. **ASG Client** (`augmentos_asg_client/`):
+4. **ASG Client** (`mentraos_asg_client/`):
    - Android app for Android-based smart glasses
-   - Enables glasses to connect to the AugmentOS ecosystem
-   - Provides a BLE API for android-based glasses to connect to AugmentOS Manager
-   - Communicates with AugmentOS Cloud directly for streaming photos/videos
+   - Enables glasses to connect to the MentraOS ecosystem
+   - Provides a BLE API for android-based glasses to connect to MentraOS Manager
+   - Communicates with MentraOS Cloud directly for streaming photos/videos
 
-5. **AugmentOS Cloud** (`augmentos_cloud/`):
+5. **MentraOS Cloud** (`mentraos_cloud/`):
    - Node.js backend services
    - Manages app sessions, transcription, and display
    - Handles real-time communication between glasses and TPAs
    - Controls app lifecycle and display rendering
 
-6. **AugmentOS Store** (`augmentos_cloud/store/`):
+6. **MentraOS Store** (`mentraos_cloud/store/`):
    - Web application for users to discover and install apps
    - Showcases available third-party applications
    - Provides app ratings, descriptions, and screenshots
    - Handles app installation
 
-7. **AugmentOS Developer Console** (`augmentos_cloud/developer-portal/`):
+7. **MentraOS Developer Console** (`mentraos_cloud/developer-portal/`):
    - Web application for developers to register and manage apps
    - Provides tools for app submission and updates
    - Includes documentation and SDK resources
 
 8. **Third-Party Apps**:
-   - External web servers that connect to AugmentOS cloud
+   - External web servers that connect to MentraOS cloud
    - Use webhooks and websockets for real-time communication
-   - Leverage AugmentOS SDK for display and input handling
+   - Leverage MentraOS SDK for display and input handling
 
 ## Data Flow
 
@@ -107,7 +107,7 @@ graph TD
 sequenceDiagram
     participant SG as Smart Glasses
     participant Phone as Phone App
-    participant Cloud as AugmentOS Cloud
+    participant Cloud as MentraOS Cloud
     participant TPA as Third-Party App
     
     SG->>Phone: Input (audio, sensors)
@@ -120,7 +120,7 @@ sequenceDiagram
 
 ## Third-Party App Architecture
 
-Third-party apps in the AugmentOS ecosystem follow a specific pattern:
+Third-party apps in the MentraOS ecosystem follow a specific pattern:
 
 1. **Webhook Endpoint** - Entry point for starting an app session
 2. **WebSocket Connection** - Real-time communication channel
@@ -138,16 +138,16 @@ Third-party apps in the AugmentOS ecosystem follow a specific pattern:
 
 ### Project Links
 
-- [GitHub Project Board for General Tasks](https://github.com/orgs/AugmentOS-Community/projects/2)
-- [GitHub Project Board for iOS Specific Tasks](https://github.com/orgs/AugmentOS-Community/projects/1)
-- [All GitHub Projects](https://github.com/AugmentOS-Community/AugmentOS/projects?query=is%3Aopen)
+- [GitHub Project Board for General Tasks](https://github.com/orgs/Mentra-Community/projects/2)
+- [GitHub Project Board for iOS Specific Tasks](https://github.com/orgs/Mentra-Community/projects/1)
+- [All GitHub Projects](https://github.com/Mentra-Community/MentraOS/projects?query=is%3Aopen)
 
 ### Setting Up the Manager App
 
 ```bash
 # Clone the repository
-git clone https://github.com/AugmentOS-Community/AugmentOS.git
-cd AugmentOS/augmentos_manager
+git clone https://github.com/Mentra-Community/MentraOS.git
+cd MentraOS/mentraos_manager
 
 # Install dependencies
 npm install
@@ -167,7 +167,7 @@ npm run ios
 ### Setting Up the Cloud Backend
 
 ```bash
-cd AugmentOS/augmentos_cloud
+cd MentraOS/mentraos_cloud
 
 # Install dependencies
 bun install
@@ -207,7 +207,7 @@ npm run lint
 
 ## Contribution Workflow
 
-1. **Fork the Repository**: Create your own fork of the AugmentOS repository.
+1. **Fork the Repository**: Create your own fork of the MentraOS repository.
 2. **Create a Branch**: Make your changes in a new branch.
 3. **Develop and Test**: Make your changes and test thoroughly.
 4. **Submit a Pull Request**: Create a PR with a clear description of your changes.
@@ -216,8 +216,8 @@ npm run lint
 
 ### Naming Conventions
 
-- Top-level folders follow the pattern: `augmentos_${component}`
-- User-facing names use CamelCase: "AugmentOS App", "AugmentOS Store", "AugmentOS Manager"
+- Top-level folders follow the pattern: `mentraos_${component}`
+- User-facing names use CamelCase: "MentraOS App", "MentraOS Store", "MentraOS Manager"
 - Code follows language-specific conventions (Java, TypeScript, Swift, etc.)
 
 ### Code Style
@@ -262,4 +262,4 @@ npm run lint
 
 ## License
 
-By contributing to AugmentOS, you agree that your contributions will be licensed under the MIT License, which is the project's license. The full license text can be found [here](https://github.com/AugmentOS-Community/AugmentOS/blob/main/LICENSE).
+By contributing to MentraOS, you agree that your contributions will be licensed under the MIT License, which is the project's license. The full license text can be found [here](https://github.com/Mentra-Community/MentraOS/blob/main/LICENSE).

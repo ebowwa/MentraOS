@@ -62,7 +62,7 @@ table {
   font-size: 0.875rem;
 }
 
-/* Make AugmentOSArchImage responsive on mobile */
+/* Make MentraOSArchImage responsive on mobile */
 @media screen and (max-width: 600px) {
   [data-theme='light'] img[alt*="architecture-light"], 
   [data-theme='dark'] img[alt*="architecture-dark"] {

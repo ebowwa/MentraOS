@@ -5,12 +5,12 @@ title: Token Utilities
 
 # Token Utilities
 
-The AugmentOS SDK provides utility functions for creating and validating JWT tokens used for TPA authentication. These utilities are primarily used for implementing secure authentication mechanisms, especially for webviews.
+The MentraOS SDK provides utility functions for creating and validating JWT tokens used for TPA authentication. These utilities are primarily used for implementing secure authentication mechanisms, especially for webviews.
 
 ## TokenUtils Namespace
 
 ```typescript
-import { TokenUtils } from '@augmentos/sdk';
+import { TokenUtils } from '@mentraos/sdk';
 ```
 
 ### createToken()
@@ -39,7 +39,7 @@ const token = TokenUtils.createToken(
     sessionId: 'session456'
   },
   {
-    secretKey: 'my-tpa-secret-key', // Should match your secret key in AugmentOS Cloud
+    secretKey: 'my-tpa-secret-key', // Should match your secret key in MentraOS Cloud
     expiresIn: 3600 // 1 hour in seconds
   }
 );
