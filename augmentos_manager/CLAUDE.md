@@ -1,7 +1,7 @@
-# AugmentOS Manager Guidelines
+# MentraOS Manager Guidelines
 
 ## Overview
-AugmentOS Manager is a React Native app built with Expo and expo-router for file-based routing. The app was recently migrated from vanilla React Native to Expo.
+MentraOS Manager is a React Native app built with Expo and expo-router for file-based routing. The app was recently migrated from vanilla React Native to Expo.
 
 ## Build and Test Commands
 
@@ -88,7 +88,7 @@ pnpm start
 - State management: Context API for app-wide state
 - Error handling: Try/catch blocks with meaningful error messages
 
-## Working with AugmentOS
+## Working with MentraOS
 - Backend server required for local testing
 - Port forwarding: `pnpm adb` (sets up tcp:9090, tcp:3000, tcp:9001, tcp:8081)
 - Bluetooth functionality for glasses pairing
