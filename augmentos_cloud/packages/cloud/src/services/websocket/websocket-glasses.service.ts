@@ -453,9 +453,11 @@ export class GlassesWebSocketService {
         userSession.isTranscribing = true;
         transcriptionService.startTranscription(userSession);
       } else {
-        userSession.logger.info('🤫 VAD detected silence - stopping transcription');
-        userSession.isTranscribing = false;
-        transcriptionService.stopTranscription(userSession);
+        // TODO: Temporarily commented out to prevent frequent stream creation/destruction
+        // This reduces Azure connection churn and improves transcription performance
+        userSession.logger.info('🤫 VAD detected silence - keeping transcription active (streams persistent)');
+        // userSession.isTranscribing = false;
+        // transcriptionService.stopTranscription(userSession);
       }
     } catch (error) {
       userSession.logger.error({ error }, '❌ Error handling VAD state change');
