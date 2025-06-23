@@ -40,17 +40,13 @@ export const mentraLive: Capabilities = {
   microphone: {
     count: 1,
     hasVAD: true,
-    sampleRate: 16000,
-    channels: 1
   },
 
   // Speaker capabilities - Mentra Live has one standard speaker
   hasSpeaker: true,
   speaker: {
     count: 1,
-    isPrivate: false,
-    maxVolume: 100,
-    supportedFormats: ["wav", "mp3"]
+    isPrivate: false
   },
 
   // IMU capabilities - Mentra Live has 6-axis IMU

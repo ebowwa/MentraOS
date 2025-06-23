@@ -34,8 +34,6 @@ export const evenRealitiesG1: Capabilities = {
   microphone: {
     count: 1,
     hasVAD: true,
-    sampleRate: 16000,
-    channels: 1
   },
 
   // Speaker capabilities - G1 does not have a speaker

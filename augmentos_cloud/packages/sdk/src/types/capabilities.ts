@@ -31,15 +31,11 @@ export interface ScreenCapabilities {
 export interface MicrophoneCapabilities {
   count?: number;
   hasVAD?: boolean; // Voice Activity Detection
-  sampleRate?: number; // e.g., 16000 Hz
-  channels?: number; // e.g., 1 for mono, 2 for stereo
 }
 
 export interface SpeakerCapabilities {
   count?: number;
   isPrivate?: boolean; // e.g., bone conduction
-  maxVolume?: number;
-  supportedFormats?: string[]; // e.g., ["wav", "mp3"]
 }
 
 export interface IMUCapabilities {
