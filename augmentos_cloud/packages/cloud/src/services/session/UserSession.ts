@@ -5,7 +5,7 @@
 
 import { Logger } from 'pino';
 import WebSocket from 'ws';
-import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@augmentos/sdk';
+import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@mentra/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import AppManager from './AppManager';
 import AudioManager from './AudioManager';
@@ -194,7 +194,7 @@ export class UserSession {
 
   /**
    * Send error message to glasses
-   * 
+   *
    * @param message Error message
    * @param code Error code
    */
