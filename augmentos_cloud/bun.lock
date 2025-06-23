@@ -53,7 +53,7 @@
     },
     "packages/augmentos-react": {
       "name": "@mentra/react",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@types/jsrsasign": "^10.5.15",
         "@types/react": "^19.1.6",
