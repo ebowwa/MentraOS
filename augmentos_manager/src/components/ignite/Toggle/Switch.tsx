@@ -189,6 +189,17 @@ function SwitchInput(props: SwitchInputProps) {
           {transform: [{translateX: $animatedSwitchKnob}]},
           {width: knobWidth, height: knobHeight},
           {backgroundColor: knobBackgroundColor},
+          // Add shadow only in light theme
+          !isDark && {
+            shadowColor: "#000",
+            shadowOffset: {
+              width: 0,
+              height: 2,
+            },
+            shadowOpacity: 0.15,
+            shadowRadius: 3,
+            elevation: 3, // For Android
+          },
         ]}
       />
     </View>

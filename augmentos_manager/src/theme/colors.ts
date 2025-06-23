@@ -210,11 +210,11 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: "#9E9E9E", // Darker gray for OFF track
-  switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
-  switchThumb: palette.gray600,
-  switchThumbOn: palette.gray700, // Dark gray thumb for ON state (better contrast on light bg)
-  switchThumbOff: palette.gray600, // Medium gray handle for OFF state
+  switchTrackOff: "#E0E0E0", // Light gray for OFF track
+  switchTrackOn: "#6C6AFF", // Slightly lighter purple-blue for ON track
+  switchThumb: palette.neutral100, // White thumb for better contrast
+  switchThumbOn: palette.neutral100, // White thumb for ON state
+  switchThumbOff: palette.neutral100, // White thumb for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,

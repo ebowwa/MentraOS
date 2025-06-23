@@ -213,12 +213,14 @@ const $settingItem: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) =
 })
 
 const $glassesImage: ThemedStyle<ImageStyle> = ({colors, spacing}) => ({
-  width: 100,
-  height: 100,
+  width: 80,
+  height: 80,
   resizeMode: "contain",
   marginRight: 10,
   position: "absolute",
   padding: spacing.sm,
+  top: 10,
+  left: 10,
 })
 
 const styles = StyleSheet.create({
