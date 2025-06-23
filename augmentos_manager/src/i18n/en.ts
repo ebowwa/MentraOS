@@ -97,6 +97,8 @@ const en = {
     sensingSubtitle: "Enable the usage of sensors including camera, microphone, etc.",
     calendarLabel: "Calendar Access",
     calendarSubtitle: "Display calendar events on your smart glasses.",
+    locationLabel: "Location Access",
+    locationSubtitle: "Display navigation and weather information on your smart glasses.",
     autoBrightnessLabel: "Auto Brightness",
     autoBrightnessSubtitle: "Automatically adjust the brightness of your smart glasses based on the ambient light.",
     notificationsLabel: "Notifications Access",

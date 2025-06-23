@@ -168,18 +168,22 @@ export default function PairingPrepScreen() {
         return
       }
 
-      // Request location permission (needed for both platforms)
-      console.log("Requesting location permission...")
+      // Request location permission (needed for Android BLE scanning)
+      if (Platform.OS === "android") {
+        console.log("Requesting location permission for Android BLE scanning...")
 
-      // This now handles showing alerts for previously denied permissions internally
-      const locGranted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
+        // This now handles showing alerts for previously denied permissions internally
+        const locGranted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
 
-      console.log("Location permission result:", locGranted)
+        console.log("Location permission result:", locGranted)
 
-      if (!locGranted) {
-        // The specific alert for previously denied permission is already handled in requestFeaturePermissions
-        // We just need to stop the flow here
-        return
+        if (!locGranted) {
+          // The specific alert for previously denied permission is already handled in requestFeaturePermissions
+          // We just need to stop the flow here
+          return
+        }
+      } else {
+        console.log("Skipping location permission on iOS - not needed after BLE fix")
       }
     } catch (error) {
       console.error("Error requesting permissions:", error)
