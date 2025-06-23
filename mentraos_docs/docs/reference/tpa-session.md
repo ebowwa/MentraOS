@@ -9,7 +9,7 @@ title: TpaSession
 `TpaSession` (also known as `TpaClient` in older documentation) manages an active WebSocket connection (session) between an app instance and MentraOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
 
 ```typescript
-import { TpaSession } from '@mentraos/sdk';
+import { TpaSession } from '@mentra/sdk';
 ```
 
 ## Constructor
