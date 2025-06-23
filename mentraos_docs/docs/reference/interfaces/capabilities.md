@@ -273,8 +273,8 @@ Interface defining Inertial Measurement Unit capabilities.
 
 ```typescript
 interface IMUCapabilities {
-  /** Number of sensor axes (3 or 6) */
-  axisCount?: 3 | 6;
+  /** Number of sensor axes (likely 3 or 6) */
+  axisCount?: number;
 
   /** Whether accelerometer is available */
   hasAccelerometer?: boolean;

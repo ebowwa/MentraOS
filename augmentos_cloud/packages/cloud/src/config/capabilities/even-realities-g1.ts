@@ -30,18 +30,18 @@ export const evenRealitiesG1: Capabilities = {
     adjustBrightness: true
   },
 
-  // Microphone capabilities - G1 has one microphone with VAD
+  // Microphone capabilities - G1 has one microphone without VAD
   hasMicrophone: true,
   microphone: {
     count: 1,
-    hasVAD: true,
+    hasVAD: false,
   },
 
   // Speaker capabilities - G1 does not have a speaker
   hasSpeaker: false,
   speaker: null,
 
-  // IMU capabilities - G1 has 6-axis IMU
+  // IMU capabilities - G1 does not have access to its IMU
   hasIMU: false,
   imu: null,
 

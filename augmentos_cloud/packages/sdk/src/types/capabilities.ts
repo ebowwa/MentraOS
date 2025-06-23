@@ -40,7 +40,7 @@ export interface SpeakerCapabilities {
 }
 
 export interface IMUCapabilities {
-  axisCount?: 3 | 6 | 9;
+  axisCount?: number;
   hasAccelerometer?: boolean;
   hasCompass?: boolean;
   hasGyroscope?: boolean;
