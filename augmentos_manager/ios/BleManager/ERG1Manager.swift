@@ -260,7 +260,7 @@ enum GlassesError: Error {
         CBCentralManagerScanOptionAllowDuplicatesKey: false,  // Don't allow duplicate advertisements
     ]
     
-    centralManager!.scanForPeripherals(withServices: nil, options: scanOptions)
+    centralManager!.scanForPeripherals(withServices: [UART_SERVICE_UUID], options: scanOptions)
     return true
   }
   

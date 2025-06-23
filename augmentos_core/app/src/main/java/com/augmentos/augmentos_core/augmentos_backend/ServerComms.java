@@ -673,7 +673,7 @@ public class ServerComms {
 
             case "microphone_state_change":
                 boolean isMicrophoneEnabled = msg.optBoolean("isMicrophoneEnabled", true);
-                //Log.d(TAG, "Received turn_microphone_on message." + isMicrophoneEnabled);
+                Log.d(TAG, "Received microphone_state_change message." + isMicrophoneEnabled);
                 if (serverCommsCallback != null)
                     serverCommsCallback.onMicrophoneStateChange(isMicrophoneEnabled);
                 break;

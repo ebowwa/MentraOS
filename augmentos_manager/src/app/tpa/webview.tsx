@@ -1,5 +1,5 @@
-import React, {useRef, useState, useEffect} from "react"
-import {View, StyleSheet, Text} from "react-native"
+import React, {useRef, useState, useEffect, useCallback} from "react"
+import {View, StyleSheet, Text, BackHandler} from "react-native"
 import {WebView} from "react-native-webview"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
@@ -8,7 +8,7 @@ import FontAwesome from "react-native-vector-icons/FontAwesome"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, useLocalSearchParams} from "expo-router"
+import {router, useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
 
 export default function AppWebView() {
@@ -30,6 +30,21 @@ export default function AppWebView() {
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
     return <Text>Missing required parameters</Text>
   }
+
+  // Handle Android back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // Always go back to home when back is pressed
+        router.replace("/(tabs)/home")
+        return true
+      }
+
+      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+
+      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+    }, [])
+  )
 
   // Set up the header with settings button if we came from app settings
   //   useEffect(() => {
@@ -200,14 +215,12 @@ export default function AppWebView() {
 
   // Render WebView only when finalUrl is ready
   return (
-    // <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
-    <View style={{flex: 1}}>
+    <Screen preset="fixed" safeAreaEdges={[]}>
       <Header
         title={appName}
         titleMode="center"
         leftIcon="caretLeft"
-        style={{paddingLeft: 16}}
-        onLeftPress={() => router.back()}
+        onLeftPress={() => router.replace("/(tabs)/home")}
         rightIcon="settings"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
@@ -248,7 +261,7 @@ export default function AppWebView() {
            <LoadingOverlay message={`Loading ${appName}...`} isDarkTheme={isDarkTheme} />
         )} */}
       </View>
-    </View>
+    </Screen>
   )
 }
 

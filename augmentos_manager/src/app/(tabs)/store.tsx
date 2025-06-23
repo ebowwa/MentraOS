@@ -78,15 +78,9 @@ export default function AppStoreWeb() {
   // Show loading state while getting the URL
   if (!appStoreUrl) {
     return (
-      <Screen 
-        preset="fixed" 
-        style={{paddingHorizontal: 0}}
-        gradientColors={[theme.colors.tabBarGradientStart, theme.colors.tabBarGradientEnd]}
-      >
-        <View style={{paddingHorizontal: theme.spacing.lg}}>
-          <Header leftTx="store:title" />
-        </View>
-        <View style={[styles.loadingContainer, {backgroundColor: theme.colors.background, paddingHorizontal: theme.spacing.lg}]}>
+      <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+        <Header leftTx="store:title" />
+        <View style={[styles.loadingContainer, {backgroundColor: theme.colors.background}]}>
           <ActivityIndicator size="large" color={theme2.primaryColor} />
           <Text text="Preparing App Store..." style={[styles.loadingText, {color: theme2.textColor}]} />
         </View>
@@ -96,18 +90,12 @@ export default function AppStoreWeb() {
 
   // If the prefetched WebView is ready, show it in the correct style
   return (
-    <Screen 
-      preset="fixed" 
-      style={{paddingHorizontal: 0}}
-      gradientColors={[theme.colors.tabBarGradientStart, theme.colors.tabBarGradientEnd]}
-    >
-      <View style={{paddingHorizontal: theme.spacing.lg}}>
-        <Header leftTx="store:title" />
-      </View>
+    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.lg}}>
+      <Header leftTx="store:title" />
       {hasError ? (
         <InternetConnectionFallbackComponent retry={() => setHasError(false)} />
       ) : (
-        <View style={[styles.webViewContainer, {backgroundColor: theme.colors.background}]}>
+        <View style={[styles.webViewContainer, {backgroundColor: theme.colors.background, marginHorizontal: -theme.spacing.lg}]}>
           {/* Show the prefetched WebView, but now visible and full size */}
           <WebView
             ref={prefetchedWebviewRef}

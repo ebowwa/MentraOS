@@ -87,17 +87,6 @@ public class SmartGlassesManager extends Service {
 
     // Connection handling
     private String translationLanguage;
-    private Handler micDebounceHandler;
-    private Runnable micTurnOffRunnable;
-    private boolean pendingMicTurnOff = false;
-    
-    // Get handler with lazy initialization
-    private Handler getMicDebounceHandler() {
-        if (micDebounceHandler == null) {
-            micDebounceHandler = new Handler(Looper.getMainLooper());
-        }
-        return micDebounceHandler;
-    }
     
     private long currTime = 0;
     private long lastPressed = 0;
@@ -311,11 +300,6 @@ public class SmartGlassesManager extends Service {
             textToSpeechSystem = null; // BATTERY OPTIMIZATION: Set to null to avoid memory leaks
         }
 
-        // Clean up micDebounceHandler
-        if (micDebounceHandler != null) {
-            micDebounceHandler.removeCallbacksAndMessages(null);
-            micDebounceHandler = null;
-        }
         
         // Clear window manager
         if (windowManager != null) {
@@ -731,75 +715,22 @@ public class SmartGlassesManager extends Service {
 
 
     public void changeMicrophoneState(boolean isMicrophoneEnabled) {
-        Log.d(TAG, "Want to changing microphone state to " + isMicrophoneEnabled);
-        Log.d(TAG, "Force core onboard mic: " + getForceCoreOnboardMic(this));
+        Log.d(TAG, "Changing microphone state to " + isMicrophoneEnabled);
 
-        if (smartGlassesRepresentative == null || smartGlassesRepresentative.smartGlassesDevice == null) {
-            Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative or smartGlassesDevice is null");
+        if (smartGlassesRepresentative == null) {
+            Log.d(TAG, "Cannot change microphone state: smartGlassesRepresentative is null");
             return;
         }
 
-        // If we're trying to turn ON the microphone
-        if (isMicrophoneEnabled) {
-            // Cancel any pending turn-off operations
-            if (pendingMicTurnOff) {
-                Log.d(TAG, "Cancelling pending microphone turn-off");
-                getMicDebounceHandler().removeCallbacks(micTurnOffRunnable);
-                pendingMicTurnOff = false;
-            }
-
-            // Immediately turn on the microphone
-            applyMicrophoneState(true);
-        }
-        // If we're trying to turn OFF the microphone
-        else {
-            // If there's already a pending turn-off, do nothing (debounce is already in progress)
-            if (!pendingMicTurnOff) {
-                Log.d(TAG, "Scheduling microphone turn-off with debounce");
-                pendingMicTurnOff = true;
-
-                // Define the runnable that will turn off the mic after the delay
-                micTurnOffRunnable = new Runnable() {
-                    @Override
-                    public void run() {
-                        Log.d(TAG, "Executing debounced microphone turn-off");
-                        pendingMicTurnOff = false;
-                        applyMicrophoneState(false);
-                    }
-                };
-
-                // Schedule the delayed turn-off
-                getMicDebounceHandler().postDelayed(micTurnOffRunnable, 10000); // 10 seconds
-            }
-        }
-    }
-
-    public void applyMicrophoneState(boolean isMicrophoneEnabled) {
-        Log.d(TAG, "Want to change microphone state to " + isMicrophoneEnabled);
-        Log.d(TAG, "Force core onboard mic: " + getForceCoreOnboardMic(this));
-
-        // Prevent NullPointerException
-        if (smartGlassesRepresentative == null || smartGlassesRepresentative.smartGlassesDevice == null) {
-            Log.e(TAG, "SmartGlassesRepresentative or its device is null, cannot apply microphone state");
-            return;
-        }
-
-        if (smartGlassesRepresentative.smartGlassesDevice.getHasInMic() && !getForceCoreOnboardMic(this)) {
-            // If we should be using the glasses microphone
-            smartGlassesRepresentative.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(isMicrophoneEnabled);
-        } else {
-            if (smartGlassesRepresentative.smartGlassesDevice.getHasInMic()) {
-                smartGlassesRepresentative.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
-            }
-
-            // If we should be using the phone's mic
-            Log.d(TAG, "111 Changing microphone state to " + isMicrophoneEnabled);
-            smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
-        }
-
-        // Tell speech rec system that we stopped
+        // Simply delegate to the representative which will use PhoneMicrophoneManager
+        // PhoneMicrophoneManager handles all the complexity of choosing the right mic
+        smartGlassesRepresentative.changeBluetoothMicState(isMicrophoneEnabled);
+        
+        // Tell speech rec system about the state change
         speechRecSwitchSystem.microphoneStateChanged(isMicrophoneEnabled);
     }
+
+    // applyMicrophoneState method removed - all mic logic now handled by PhoneMicrophoneManager
 
     public void clearScreen() {
         sendHomeScreen();
