@@ -437,6 +437,87 @@ The refactor plan centralizes all microphone management into a renamed UnifiedMi
 - Respects user preferences while adapting to system constraints
 - Provides a simple on/off interface to the rest of the system
 
+## NEW ISSUE: Rapid Server Commands Being Ignored
+
+### Problem Description
+When starting an app that uses the microphone, the server sends rapid commands:
+1. `microphone_state_change: false` (turn off mic)
+2. `microphone_state_change: true` (turn on mic)
+
+These come within milliseconds of each other. The current debouncing logic simply ignores any request within 2 seconds of the last change, causing the mic to stay off when it should turn on.
+
+### Log Evidence
+```
+19:47:19.591 Changing microphone state to false
+19:47:19.722 Changing microphone state to true  
+19:47:19.722 Ignoring mode change request - too soon after previous change
+```
+
+### Root Cause
+The debouncing in `PhoneMicrophoneManager.startPreferredMicMode()` is too simplistic:
+```java
+if (now - lastModeChangeTime < MODE_CHANGE_DEBOUNCE_MS) {
+    Log.d(TAG, "Ignoring mode change request - too soon after previous change");
+    return;
+}
+```
+
+### Solution: Smart Debouncing
+Instead of ignoring rapid changes, we should:
+
+1. **Check for actual state changes**: If mic is off and server says "turn off" then "turn on", the second command is a real state change and shouldn't be ignored
+
+2. **Queue the last request**: For truly rapid oscillations (off→on→off→on), execute the final state after a delay
+
+3. **Reduce debounce time**: 2 seconds is too long; 500ms should be sufficient
+
+### Implementation Plan
+
+1. Track requested state vs actual state
+2. If requested state differs from current state, allow immediate execution
+3. If rapid same-state requests, ignore duplicates
+4. For rapid oscillating requests, queue the last one with a delay
+
+### Code Changes Needed
+
+In `PhoneMicrophoneManager`:
+- Add `pendingStatus` and `pendingModeChangeRunnable` fields
+- Modify `startPreferredMicMode()` to implement smart debouncing
+- Check if the requested state actually differs from current state
+- Queue final state for delayed execution if needed
+
+### Implementation Complete (✓)
+
+Changes made to `PhoneMicrophoneManager`:
+
+1. **Reduced debounce time** from 2000ms to 500ms
+2. **Added smart debouncing fields**:
+   - `pendingMicRequest`: tracks if there's a pending request
+   - `pendingModeChangeRunnable`: holds delayed execution
+
+3. **Updated `startPreferredMicMode()`**:
+   - Checks current state vs requested state
+   - If mic is PAUSED and we get enable request → execute immediately
+   - If mic is enabled and we get duplicate enable → skip it
+   - If rapid changes while enabled → queue for later execution
+   - Cancels any pending requests when new one arrives
+
+4. **Updated `pauseRecording()`**:
+   - Similar smart logic for disable requests
+   - If already paused → skip duplicate
+   - If enabled → pause immediately (no delay for safety)
+   - Cancels any pending enable requests
+
+5. **Added helper methods**:
+   - `executeMicEnable()`: actual enable logic
+   - `executePause()`: actual pause logic with glasses mic cleanup
+
+The system now handles rapid server commands intelligently:
+- Off→On transitions execute immediately (real state change)
+- Duplicate requests are ignored
+- Rapid oscillations queue the final state
+- Pause requests execute immediately for safety
+
 ## PROGRESS
 
 ### Completed Changes

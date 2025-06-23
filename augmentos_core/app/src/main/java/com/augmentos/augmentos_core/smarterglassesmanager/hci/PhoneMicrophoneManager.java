@@ -89,9 +89,11 @@ public class PhoneMicrophoneManager {
     private final List<Integer> ourAudioClientIds = new ArrayList<>();
     private boolean isAudioRecordingCallbackRegistered = false;
     
-    // Debounce for mode changes to prevent feedback loops
+    // Smart debouncing for mode changes
     private long lastModeChangeTime = 0;
-    private static final long MODE_CHANGE_DEBOUNCE_MS = 2000; // 2 second minimum between mode changes
+    private boolean pendingMicRequest = false;
+    private Runnable pendingModeChangeRunnable = null;
+    private static final long MODE_CHANGE_DEBOUNCE_MS = 500; // 500ms debounce for rapid changes
     
     // Retry logic
     private int scoRetries = 0;
@@ -209,12 +211,45 @@ public class PhoneMicrophoneManager {
             return;
         }
         
-        // Check if we've changed modes too recently (debounce)
+        // Smart debouncing logic
         long now = System.currentTimeMillis();
-        if (now - lastModeChangeTime < MODE_CHANGE_DEBOUNCE_MS) {
-            Log.d(TAG, "Ignoring mode change request - too soon after previous change");
+        long timeSinceLastChange = now - lastModeChangeTime;
+        
+        // If we're already in a non-paused state and this is a duplicate request, skip it
+        if (currentStatus != MicStatus.PAUSED && pendingMicRequest && 
+            timeSinceLastChange < MODE_CHANGE_DEBOUNCE_MS) {
+            Log.d(TAG, "Duplicate mic enable request within debounce period - skipping");
             return;
         }
+        
+        // Cancel any pending mode change since we have a new request
+        if (pendingModeChangeRunnable != null) {
+            mainHandler.removeCallbacks(pendingModeChangeRunnable);
+            pendingModeChangeRunnable = null;
+        }
+        
+        // If this is a rapid change but represents a real state change (e.g., off→on), execute it
+        if (currentStatus == MicStatus.PAUSED) {
+            Log.d(TAG, "Mic is currently paused - executing enable request immediately");
+            executeMicEnable();
+        } else if (timeSinceLastChange < MODE_CHANGE_DEBOUNCE_MS) {
+            // Rapid change while mic is already on - queue it
+            Log.d(TAG, "Rapid mic enable request - queuing for execution after debounce");
+            pendingMicRequest = true;
+            pendingModeChangeRunnable = this::executeMicEnable;
+            mainHandler.postDelayed(pendingModeChangeRunnable, MODE_CHANGE_DEBOUNCE_MS - timeSinceLastChange);
+        } else {
+            // Normal request - execute immediately
+            executeMicEnable();
+        }
+    }
+    
+    /**
+     * Actually executes the mic enable logic
+     */
+    private void executeMicEnable() {
+        pendingMicRequest = false;
+        pendingModeChangeRunnable = null;
         
         // Determine which mic to use based on:
         // 1. User preference
@@ -226,7 +261,7 @@ public class PhoneMicrophoneManager {
                                 glassesRep.smartGlassesDevice != null && 
                                 glassesRep.smartGlassesDevice.getHasInMic();
         
-        Log.d(TAG, "Determining preferred mic - User prefers phone: " + userPrefersPhoneMic + 
+        Log.d(TAG, "Executing mic enable - User prefers phone: " + userPrefersPhoneMic + 
                    ", Glasses have mic: " + glassesHaveMic);
         
         if (!userPrefersPhoneMic && glassesHaveMic) {
@@ -403,7 +438,36 @@ public class PhoneMicrophoneManager {
             return;
         }
         
-        Log.d(TAG, "Pausing microphone recording");
+        // Smart debouncing for pause requests
+        long now = System.currentTimeMillis();
+        long timeSinceLastChange = now - lastModeChangeTime;
+        
+        // If already paused and this is a duplicate request, skip it
+        if (currentStatus == MicStatus.PAUSED && timeSinceLastChange < MODE_CHANGE_DEBOUNCE_MS) {
+            Log.d(TAG, "Duplicate pause request within debounce period - skipping");
+            return;
+        }
+        
+        // Cancel any pending enable since we're now pausing
+        if (pendingModeChangeRunnable != null) {
+            mainHandler.removeCallbacks(pendingModeChangeRunnable);
+            pendingModeChangeRunnable = null;
+            pendingMicRequest = false;
+        }
+        
+        // If mic is enabled and this is a rapid disable, execute immediately
+        // (We don't want to delay turning off the mic)
+        if (currentStatus != MicStatus.PAUSED) {
+            Log.d(TAG, "Mic is currently enabled - executing pause immediately");
+            executePause();
+        }
+    }
+    
+    /**
+     * Actually executes the pause logic
+     */
+    private void executePause() {
+        Log.d(TAG, "Executing microphone pause");
         
         // Check if we're coming from SCO mode
         boolean wasScoMode = currentStatus == MicStatus.SCO_MODE;
@@ -413,6 +477,17 @@ public class PhoneMicrophoneManager {
         
         // Stop microphone service - no mic hardware needed when paused
         stopMicrophoneService();
+        
+        // Disable glasses mic if it was active
+        if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && 
+            glassesRep.smartGlassesCommunicator != null) {
+            try {
+                Log.d(TAG, "Disabling glasses microphone");
+                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
+            } catch (Exception e) {
+                Log.e(TAG, "Error disabling glasses mic", e);
+            }
+        }
         
         // Make sure all audio-related resources are released
         if (audioManager != null) {
