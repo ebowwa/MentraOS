@@ -714,12 +714,13 @@ export class AppManager {
       // Get user's AugmentOS system settings with fallback to defaults
       const userAugmentosSettings = user.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
 
-      // Send connection acknowledgment
+      // Send connection acknowledgment with capabilities
       const ackMessage = {
         type: CloudToTpaMessageType.CONNECTION_ACK,
         sessionId: sessionId,
         settings: userSettings,
         augmentosSettings: userAugmentosSettings,
+        capabilities: this.userSession.capabilities || undefined,
         timestamp: new Date()
       };
 
