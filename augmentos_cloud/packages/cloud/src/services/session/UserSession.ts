@@ -5,7 +5,7 @@
 
 import { Logger } from 'pino';
 import WebSocket from 'ws';
-import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@augmentos/sdk';
+import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@mentra/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { Capabilities } from '@augmentos/sdk';
 import AppManager from './AppManager';

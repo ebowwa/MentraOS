@@ -15,7 +15,7 @@ import {
   AppI,
   WebhookRequestType,
   SessionWebhookRequest
-} from '@augmentos/sdk';
+} from '@mentra/sdk';
 import { Logger } from 'pino';
 import subscriptionService from './subscription.service';
 import appService from '../core/app.service';
@@ -332,14 +332,14 @@ export class AppManager {
 
     } catch (error) {
       // Log the error but don't crash the application
-      this.logger.error({ 
-        userId: this.userSession.userId, 
-        packageName, 
-        service: 'AppManager', 
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName,
+        service: 'AppManager',
         error: error instanceof Error ? error.message : String(error),
         errorName: error instanceof Error ? error.name : 'Unknown'
       }, `Error updating last active for app ${packageName} - continuing without crash`);
-      
+
       // Don't throw the error - this is a non-critical operation
       return;
     }

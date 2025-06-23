@@ -14,7 +14,7 @@ import {
   DataStream,
   CloudToTpaMessageType,
   GlassesToCloudMessage
-} from '@augmentos/sdk';
+} from '@mentra/sdk';
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../logging/pino-logger';
 import { DebugService } from '../debug/debug-service';
