@@ -2374,7 +2374,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void setServerUrl(String url) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs.edit().putString("augmentos_server_url_override", url).apply();
+        if (url == null || url.trim().isEmpty()) {
+            // Reset to default by removing the override
+            prefs.edit().remove("augmentos_server_url_override").apply();
+            Log.d(TAG, "Server URL override cleared, using default URL");
+        } else {
+            // Set the custom URL override
+            prefs.edit().putString("augmentos_server_url_override", url).apply();
+            Log.d(TAG, "Server URL override set to: " + url);
+        }
         // Disconnect and reconnect websocket to use new URL
         ServerComms.getInstance().disconnectWebSocket();
         if (authHandler != null && authHandler.getCoreToken() != null) {

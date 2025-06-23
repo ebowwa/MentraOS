@@ -247,6 +247,7 @@ export default function DeviceSettings() {
                   coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
                 }}
                 containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
+                disableBorder
               />
             </>
           )}

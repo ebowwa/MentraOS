@@ -39,6 +39,8 @@ export default function PrivacySettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = React.useState(true)
   const [calendarEnabled, setCalendarEnabled] = React.useState(true)
   const [calendarPermissionPending, setCalendarPermissionPending] = React.useState(false)
+  const [locationEnabled, setLocationEnabled] = React.useState(true)
+  const [locationPermissionPending, setLocationPermissionPending] = React.useState(false)
   const [appState, setAppState] = React.useState(AppState.currentState)
   const {theme} = useAppTheme()
   const {goBack, push} = useNavigationHistory()
@@ -55,6 +57,10 @@ export default function PrivacySettingsScreen() {
       // Check calendar permissions
       const hasCalendar = await checkFeaturePermissions(PermissionFeatures.CALENDAR)
       setCalendarEnabled(hasCalendar)
+
+      // Check location permissions
+      const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
+      setLocationEnabled(hasLocation)
     }
 
     checkPermissions()
@@ -112,6 +118,21 @@ export default function PrivacySettingsScreen() {
               setCalendarEnabled(hasCalendar)
             }
           }
+
+          // Also recheck location permissions
+          const hasLocation = await checkFeaturePermissions(PermissionFeatures.LOCATION)
+          if (Platform.OS === "ios" && locationPermissionPending) {
+            // If we're in the middle of requesting permissions, don't flip back to false
+            if (hasLocation) {
+              setLocationEnabled(true)
+            }
+            // Don't set to false even if hasLocation is false temporarily
+          } else {
+            // Normal case - update if different
+            if (hasLocation !== locationEnabled) {
+              setLocationEnabled(hasLocation)
+            }
+          }
         })()
       }
       setAppState(nextAppState)
@@ -120,7 +141,7 @@ export default function PrivacySettingsScreen() {
     return () => {
       subscription.remove()
     }
-  }, [appState, notificationsEnabled, calendarEnabled])
+  }, [appState, notificationsEnabled, calendarEnabled, locationEnabled])
 
   const toggleSensing = async () => {
     const newSensing = !isSensingEnabled
@@ -206,6 +227,48 @@ export default function PrivacySettingsScreen() {
     }
   }
 
+  const handleToggleLocation = async () => {
+    if (locationEnabled) {
+      // We can't revoke the permission, but we can provide info and a way to open settings
+      showAlert(
+        "Permission Management",
+        "To revoke location permission, please go to your device settings and modify app permissions.",
+        [
+          {text: "Cancel", style: "cancel"},
+          {
+            text: "Go to Settings",
+            onPress: () => {
+              Linking.openSettings()
+            },
+          },
+        ],
+      )
+      return
+    }
+
+    if (!locationEnabled) {
+      // Immediately set pending state to prevent toggle flicker
+      setLocationPermissionPending(true)
+      try {
+        const granted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
+        console.log(`Location permission request result:`, granted)
+        if (granted) {
+          setLocationEnabled(true)
+        } else {
+          setLocationEnabled(false)
+        }
+      } catch (error) {
+        console.error("Error requesting location permissions:", error)
+        setLocationEnabled(false)
+      } finally {
+        // Make sure we're setting pending to false after everything else is done
+        setTimeout(() => {
+          setLocationPermissionPending(false)
+        }, 300)
+      }
+    }
+  }
+
   return (
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header titleTx="privacySettings:title" leftIcon="caretLeft" onLeftPress={goBack} />
@@ -228,6 +291,15 @@ export default function PrivacySettingsScreen() {
           subtitle={translate("settings:calendarSubtitle")}
           value={calendarEnabled}
           onValueChange={handleToggleCalendar}
+        />
+
+        <Spacer height={theme.spacing.md} />
+
+        <ToggleSetting
+          label={translate("settings:locationLabel")}
+          subtitle={translate("settings:locationSubtitle")}
+          value={locationEnabled}
+          onValueChange={handleToggleLocation}
         />
 
         <Spacer height={theme.spacing.md} />

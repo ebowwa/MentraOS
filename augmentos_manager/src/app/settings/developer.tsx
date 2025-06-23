@@ -142,6 +142,7 @@ export default function DeveloperSettingsScreen() {
 
   const handleResetUrl = async () => {
     await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+    await coreCommunicator.setServerUrl("") // Clear Android service override
     setSavedCustomUrl(null)
     setCustomUrlInput("")
     showAlert("Success", "Backend URL reset to default.", [{text: "OK"}])
@@ -160,7 +161,7 @@ export default function DeveloperSettingsScreen() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
 
-      <View style={[styles.warningContainer, {backgroundColor: theme.colors.warningBackgroundDestructive}]}>
+      <View style={[styles.warningContainer, {backgroundColor: theme.colors.warningBackgroundDestructive, borderWidth: theme.spacing.xxxs, borderColor: theme.colors.warningBorderDestructive}]}>
         <View style={styles.warningContent}>
           <Icon name="alert" size={16} color={theme.colors.text} />
           <Text style={[styles.warningTitle, {color: theme.colors.text}]}>Warning</Text>
@@ -191,7 +192,7 @@ export default function DeveloperSettingsScreen() {
 
         <Spacer height={theme.spacing.md} />
 
-        <View style={[styles.settingContainer, {backgroundColor: theme.colors.background}]}>
+        <View style={[styles.settingContainer, {backgroundColor: theme.colors.background, borderWidth: theme.spacing.xxxs, borderColor: theme.colors.border}]}>
           <View style={styles.settingTextContainer}>
             <Text style={[styles.label, {color: theme.colors.text}]}>Custom Backend URL</Text>
             <Text style={[styles.value, {color: theme.colors.textDim}]}>

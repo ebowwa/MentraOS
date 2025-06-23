@@ -112,9 +112,9 @@ const palette = {
   iosSwitchTrack: "#D1D1D6", // iOS switch track color (off state)
   iosBackground: "#f9f9f9", // Light gray background color
 
-  // Tab bar gradient colors (light theme - less aggressive orange)
-  tabBarGradientStart: "#F5E6D3", // Very light peachy orange for light theme tab bar start
-  tabBarGradientEnd: "#FEFCFA", // Almost white with hint of warmth for light theme tab bar end
+  // Tab bar gradient colors (light theme - plain white, no gradient)
+  tabBarGradientStart: "#FFFFFF", // White for light theme (no gradient effect)
+  tabBarGradientEnd: "#FFFFFF", // White for light theme (no gradient effect)
 
   altTabBarGradientStart: "#F5E6D3",
   altTabBarGradientEnd: "#FEFCFA",
@@ -196,7 +196,7 @@ export const colors = {
   loginGradientEnd: palette.neutral100, // White
 
   // Semantic color mappings for common UI elements
-  buttonPrimary: palette.primary500,
+  buttonPrimary: palette.buttonPillPrimary,
   buttonSecondary: palette.blue500,
   buttonDisabled: palette.lightGray,
   buttonDanger: palette.angry500,
@@ -210,11 +210,11 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: "#9E9E9E", // Darker gray for OFF track
-  switchTrackOn: "#5A57FF", // Brighter purple-blue for switch track when on
-  switchThumb: palette.gray350,
+  switchTrackOff: "#E0E0E0", // Light gray for OFF track
+  switchTrackOn: "#6C6AFF", // Slightly lighter purple-blue for ON track
+  switchThumb: palette.neutral100, // White thumb for better contrast
   switchThumbOn: palette.neutral100, // White thumb for ON state
-  switchThumbOff: palette.gray350, // More noticeable gray handle for OFF state
+  switchThumbOff: palette.neutral100, // White thumb for OFF state
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
@@ -277,6 +277,7 @@ export const colors = {
   // Warning background
   warningBackground: palette.warningBackground,
   warningBackgroundDestructive: "rgba(254, 152, 235, 0.4)", // Pink warning background with 40% opacity
+  warningBorderDestructive: "rgba(254, 152, 235, 0.16)", // Faded pink border (40% of background opacity)
 
   // Input border highlight
   inputBorderHighlight: palette.inputBorderHighlight,
@@ -290,6 +291,8 @@ export const colors = {
   // Checkmark color
   checkmark: palette.blue500, // Bright blue for checkmarks in light theme
 
-  // Slider thumb color
-  sliderThumb: palette.gray350, // Match toggle switch knob color
+  // Slider colors
+  sliderThumb: palette.gray700, // Dark gray for better contrast on light background
+  sliderTrackActive: palette.primary300, // Default track color for light theme
+  sliderTrackInactive: palette.neutral300, // Default inactive track color for light theme
 } as const

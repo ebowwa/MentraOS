@@ -2941,13 +2941,18 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
     @Override
     public void changeSmartGlassesMicrophoneState(boolean isMicrophoneEnabled) {
         Log.d(TAG, "Microphone state changed: " + isMicrophoneEnabled);
+        
+        // Update the shouldUseGlassesMic flag to reflect the current state
+        this.shouldUseGlassesMic = isMicrophoneEnabled && SmartGlassesManager.getSensingEnabled(context);// && !SmartGlassesManager.getForceCoreOnboardMic(context);
+        Log.d(TAG, "Updated shouldUseGlassesMic to: " + shouldUseGlassesMic);
+        
         if (isMicrophoneEnabled) {
             Log.d(TAG, "Microphone enabled, starting audio input handling");
-            // setMicEnabled(true, 10);
+            setMicEnabled(true, 10);
             startMicBeat((int) MICBEAT_INTERVAL_MS);
         } else {
             Log.d(TAG, "Microphone disabled, stopping audio input handling");
-            // setMicEnabled(false, 10);
+            setMicEnabled(false, 10);
             stopMicBeat();
         }
     }

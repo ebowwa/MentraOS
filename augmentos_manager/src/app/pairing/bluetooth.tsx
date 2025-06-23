@@ -28,6 +28,8 @@ import showAlert from "@/utils/AlertUtils"
 import {router, useLocalSearchParams} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {Header, Screen, Text} from "@/components/ignite"
+import {PillButton} from "@/components/ignite/PillButton"
+import GlassesTroubleshootingModal from "@/components/misc/GlassesTroubleshootingModal"
 import {ThemedStyle} from "@/theme"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
@@ -38,6 +40,7 @@ export default function SelectGlassesBluetoothScreen() {
   const {glassesModelName}: {glassesModelName: string} = useLocalSearchParams()
   const {theme, themed} = useAppTheme()
   const {goBack, push, clearHistory} = useNavigationHistory()
+  const [showTroubleshootingModal, setShowTroubleshootingModal] = useState(false)
   // Create a ref to track the current state of searchResults
   const searchResultsRef = useRef<string[]>(searchResults)
 
@@ -234,7 +237,18 @@ export default function SelectGlassesBluetoothScreen() {
       style={{paddingHorizontal: theme.spacing.md}}
       safeAreaEdges={["bottom"]}
       gradientColors={[theme.colors.altTabBarBackground1, theme.colors.altTabBarBackground2]}>
-      <Header leftIcon="caretLeft" onLeftPress={handleForgetGlasses} />
+      <Header 
+        leftIcon="caretLeft" 
+        onLeftPress={handleForgetGlasses}
+        RightActionComponent={
+          <PillButton
+            text="Help"
+            variant="secondary"
+            onPress={() => setShowTroubleshootingModal(true)}
+            buttonStyle={{marginRight: theme.spacing.md}}
+          />
+        }
+      />
       <View style={styles.contentContainer}>
         <PairingDeviceInfo glassesModelName={glassesModelName} />
       </View>
@@ -268,6 +282,12 @@ export default function SelectGlassesBluetoothScreen() {
           </>
         )}
       </ScrollView>
+      
+      <GlassesTroubleshootingModal
+        isVisible={showTroubleshootingModal}
+        onClose={() => setShowTroubleshootingModal(false)}
+        glassesModelName={glassesModelName}
+      />
     </Screen>
   )
 }

@@ -1,6 +1,6 @@
 // src/AppSettings.tsx
 import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Animated} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Animated, BackHandler} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -70,7 +70,17 @@ export default function AppSettings() {
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
+      // Handle Android back button
+      const onBackPress = () => {
+        // Always go back to home when back is pressed
+        router.replace("/(tabs)/home")
+        return true
+      }
+
+      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+
       return () => {
+        BackHandler.removeEventListener("hardwareBackPress", onBackPress)
         refreshAppStatus()
       }
     }, []),
@@ -454,7 +464,7 @@ export default function AppSettings() {
         <Header
           title=""
           leftIcon="caretLeft"
-          onLeftPress={() => router.back()}
+          onLeftPress={() => router.replace("/(tabs)/home")}
           RightActionComponent={
             serverAppInfo?.webviewURL ? (
               <TouchableOpacity
@@ -592,9 +602,22 @@ export default function AppSettings() {
           </View>
 
           {/* Uninstall Button at the bottom */}
-          {serverAppInfo?.uninstallable && (
-            <ActionButton label="Uninstall" variant="destructive" onPress={handleUninstallApp} />
-          )}
+          <ActionButton 
+            label="Uninstall" 
+            variant="destructive" 
+            onPress={() => {
+              if (serverAppInfo?.uninstallable) {
+                handleUninstallApp()
+              } else {
+                showAlert(
+                  "Cannot Uninstall",
+                  "This app cannot be uninstalled.",
+                  [{text: "OK", style: "default"}]
+                )
+              }
+            }}
+            disabled={!serverAppInfo?.uninstallable}
+          />
 
           {/* Bottom safe area padding */}
           <View style={{height: Math.max(40, insets.bottom + 20)}} />

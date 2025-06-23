@@ -20,6 +20,7 @@ import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.augmentos.augmentos_core.microphone.MicrophoneService;
+import com.augmentos.augmentos_core.smarterglassesmanager.speechrecognition.SpeechRecSwitchSystem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,9 +89,11 @@ public class PhoneMicrophoneManager {
     private final List<Integer> ourAudioClientIds = new ArrayList<>();
     private boolean isAudioRecordingCallbackRegistered = false;
     
-    // Debounce for mode changes to prevent feedback loops
+    // Smart debouncing for mode changes
     private long lastModeChangeTime = 0;
-    private static final long MODE_CHANGE_DEBOUNCE_MS = 2000; // 2 second minimum between mode changes
+    private boolean pendingMicRequest = false;
+    private Runnable pendingModeChangeRunnable = null;
+    private static final long MODE_CHANGE_DEBOUNCE_MS = 500; // 500ms debounce for rapid changes
     
     // Retry logic
     private int scoRetries = 0;
@@ -199,7 +202,7 @@ public class PhoneMicrophoneManager {
     }
     
     /**
-     * Starts recording with the preferred microphone mode (SCO first, with fallbacks)
+     * Starts recording with the preferred microphone mode based on user preferences and availability
      */
     public void startPreferredMicMode() {
         // Always execute on main thread to prevent Handler threading issues
@@ -208,15 +211,69 @@ public class PhoneMicrophoneManager {
             return;
         }
         
-        // Check if we've changed modes too recently (debounce)
+        // Smart debouncing logic
         long now = System.currentTimeMillis();
-        if (now - lastModeChangeTime < MODE_CHANGE_DEBOUNCE_MS) {
-            Log.d(TAG, "Ignoring mode change request - too soon after previous change");
+        long timeSinceLastChange = now - lastModeChangeTime;
+        
+        // If we're already in a non-paused state and this is a duplicate request, skip it
+        if (currentStatus != MicStatus.PAUSED && pendingMicRequest && 
+            timeSinceLastChange < MODE_CHANGE_DEBOUNCE_MS) {
+            Log.d(TAG, "Duplicate mic enable request within debounce period - skipping");
             return;
         }
         
-        // Try SCO first (will fall back if unavailable)
-        switchToScoMode();
+        // Cancel any pending mode change since we have a new request
+        if (pendingModeChangeRunnable != null) {
+            mainHandler.removeCallbacks(pendingModeChangeRunnable);
+            pendingModeChangeRunnable = null;
+        }
+        
+        // If this is a rapid change but represents a real state change (e.g., off→on), execute it
+        if (currentStatus == MicStatus.PAUSED) {
+            Log.d(TAG, "Mic is currently paused - executing enable request immediately");
+            executeMicEnable();
+        } else if (timeSinceLastChange < MODE_CHANGE_DEBOUNCE_MS) {
+            // Rapid change while mic is already on - queue it
+            Log.d(TAG, "Rapid mic enable request - queuing for execution after debounce");
+            pendingMicRequest = true;
+            pendingModeChangeRunnable = this::executeMicEnable;
+            mainHandler.postDelayed(pendingModeChangeRunnable, MODE_CHANGE_DEBOUNCE_MS - timeSinceLastChange);
+        } else {
+            // Normal request - execute immediately
+            executeMicEnable();
+        }
+    }
+    
+    /**
+     * Actually executes the mic enable logic
+     */
+    private void executeMicEnable() {
+        pendingMicRequest = false;
+        pendingModeChangeRunnable = null;
+        
+        // Determine which mic to use based on:
+        // 1. User preference
+        // 2. Device availability
+        // 3. System constraints
+        
+        boolean userPrefersPhoneMic = SmartGlassesManager.getForceCoreOnboardMic(context);
+        boolean glassesHaveMic = glassesRep != null && 
+                                glassesRep.smartGlassesDevice != null && 
+                                glassesRep.smartGlassesDevice.getHasInMic();
+        
+        Log.d(TAG, "Executing mic enable - User prefers phone: " + userPrefersPhoneMic + 
+                   ", Glasses have mic: " + glassesHaveMic);
+        
+        if (!userPrefersPhoneMic && glassesHaveMic) {
+            // User prefers glasses mic and glasses have one
+            Log.d(TAG, "User prefers glasses mic - switching to glasses mic");
+            switchToGlassesMic();
+        } else {
+            // User prefers phone mic or glasses don't have mic
+            // Try SCO first (will fall back if unavailable)
+            Log.d(TAG, "Using phone mic (user preference or no glasses mic available)");
+            switchToScoMode();
+        }
     }
     
     /**
@@ -238,6 +295,16 @@ public class PhoneMicrophoneManager {
         
         // Clean up existing instance
         cleanUpCurrentMic();
+        
+        // If we were using glasses mic, disable it
+        if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
+            Log.d(TAG, "Disabling glasses microphone before switching to phone mic");
+            try {
+                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
+            } catch (Exception e) {
+                Log.e(TAG, "Error disabling glasses mic", e);
+            }
+        }
         
         // Start microphone service for phone mic hardware access
         startMicrophoneService();
@@ -279,6 +346,16 @@ public class PhoneMicrophoneManager {
         
         // Clean up existing instance
         cleanUpCurrentMic();
+        
+        // If we were using glasses mic, disable it
+        if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
+            Log.d(TAG, "Disabling glasses microphone before switching to phone mic");
+            try {
+                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
+            } catch (Exception e) {
+                Log.e(TAG, "Error disabling glasses mic", e);
+            }
+        }
         
         // Start microphone service for phone mic hardware access
         startMicrophoneService();
@@ -325,12 +402,26 @@ public class PhoneMicrophoneManager {
         
         try {
             Log.d(TAG, "Switching to glasses onboard microphone");
-            // Tell system to use glasses mic
-            SmartGlassesManager.setForceCoreOnboardMic(context, false);
             
-            currentStatus = MicStatus.GLASSES_MIC;
-            lastModeChangeTime = System.currentTimeMillis(); // Track mode change time  
-            notifyStatusChange();
+            // Actually enable the glasses microphone
+            if (glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
+                Log.d(TAG, "Enabling glasses microphone");
+                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(true);
+                
+                // Update our status
+                currentStatus = MicStatus.GLASSES_MIC;
+                lastModeChangeTime = System.currentTimeMillis(); // Track mode change time  
+                notifyStatusChange();
+                
+                // Notify speech recognition system that mic is active
+                // This is important because glasses mic audio comes through a different path
+                if (audioProcessingCallback instanceof SpeechRecSwitchSystem) {
+                    ((SpeechRecSwitchSystem) audioProcessingCallback).microphoneStateChanged(true);
+                }
+            } else {
+                Log.e(TAG, "SmartGlassesRepresentative or communicator is null, cannot enable glasses mic");
+                pauseRecording();
+            }
         } catch (Exception e) {
             Log.e(TAG, "Failed to switch to glasses mic", e);
             pauseRecording();
@@ -347,7 +438,36 @@ public class PhoneMicrophoneManager {
             return;
         }
         
-        Log.d(TAG, "Pausing microphone recording");
+        // Smart debouncing for pause requests
+        long now = System.currentTimeMillis();
+        long timeSinceLastChange = now - lastModeChangeTime;
+        
+        // If already paused and this is a duplicate request, skip it
+        if (currentStatus == MicStatus.PAUSED && timeSinceLastChange < MODE_CHANGE_DEBOUNCE_MS) {
+            Log.d(TAG, "Duplicate pause request within debounce period - skipping");
+            return;
+        }
+        
+        // Cancel any pending enable since we're now pausing
+        if (pendingModeChangeRunnable != null) {
+            mainHandler.removeCallbacks(pendingModeChangeRunnable);
+            pendingModeChangeRunnable = null;
+            pendingMicRequest = false;
+        }
+        
+        // If mic is enabled and this is a rapid disable, execute immediately
+        // (We don't want to delay turning off the mic)
+        if (currentStatus != MicStatus.PAUSED) {
+            Log.d(TAG, "Mic is currently enabled - executing pause immediately");
+            executePause();
+        }
+    }
+    
+    /**
+     * Actually executes the pause logic
+     */
+    private void executePause() {
+        Log.d(TAG, "Executing microphone pause");
         
         // Check if we're coming from SCO mode
         boolean wasScoMode = currentStatus == MicStatus.SCO_MODE;
@@ -357,6 +477,17 @@ public class PhoneMicrophoneManager {
         
         // Stop microphone service - no mic hardware needed when paused
         stopMicrophoneService();
+        
+        // Disable glasses mic if it was active
+        if (currentStatus == MicStatus.GLASSES_MIC && glassesRep != null && 
+            glassesRep.smartGlassesCommunicator != null) {
+            try {
+                Log.d(TAG, "Disabling glasses microphone");
+                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
+            } catch (Exception e) {
+                Log.e(TAG, "Error disabling glasses mic", e);
+            }
+        }
         
         // Make sure all audio-related resources are released
         if (audioManager != null) {
@@ -729,11 +860,30 @@ public class PhoneMicrophoneManager {
                         } else {
                             Log.d(TAG, "🎤 External apps released microphone - can return to preferred mode");
                             
-                            // Only switch back if we're not already in SCO and there's no phone call
-                            if (currentStatus != MicStatus.SCO_MODE && !isPhoneCallActive) {
-                                // Add a slightly longer delay before reclaiming preferred mode
+                            // If we're currently using glasses mic due to conflict, return to preferred mode
+                            if (currentStatus == MicStatus.GLASSES_MIC) {
+                                // We were using glasses mic as fallback, return to preferred mode
                                 mainHandler.postDelayed(() -> {
-                                    // Double-check we still want to do this and that debounce has passed
+                                    if (!isExternalAudioActive && !isPhoneCallActive && 
+                                        System.currentTimeMillis() - lastModeChangeTime >= MODE_CHANGE_DEBOUNCE_MS) {
+                                        Log.d(TAG, "Returning from glasses mic to preferred mode after external mic release");
+                                        
+                                        // Disable glasses mic first
+                                        if (glassesRep != null && glassesRep.smartGlassesCommunicator != null) {
+                                            try {
+                                                glassesRep.smartGlassesCommunicator.changeSmartGlassesMicrophoneState(false);
+                                            } catch (Exception e) {
+                                                Log.e(TAG, "Error disabling glasses mic", e);
+                                            }
+                                        }
+                                        
+                                        // Return to preferred mode
+                                        startPreferredMicMode();
+                                    }
+                                }, 1000); // 1000ms delay to let other app fully release resources
+                            } else if (currentStatus != MicStatus.SCO_MODE && !isPhoneCallActive) {
+                                // We're in some other state, try to return to preferred
+                                mainHandler.postDelayed(() -> {
                                     if (!isExternalAudioActive && !isPhoneCallActive && 
                                         System.currentTimeMillis() - lastModeChangeTime >= MODE_CHANGE_DEBOUNCE_MS) {
                                         Log.d(TAG, "Returning to preferred mode after external mic release");

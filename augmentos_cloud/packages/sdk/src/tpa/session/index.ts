@@ -57,7 +57,9 @@ import { DashboardAPI } from '../../types/dashboard';
 import { AugmentosSettingsUpdate } from '../../types/messages/cloud-to-tpa';
 import { Logger } from 'pino';
 import { TpaServer } from '../server';
+import axios from 'axios';
 import EventEmitter from 'events';
+
 
 // Import the cloud-to-tpa specific type guards
 import { isPhotoResponse, isRtmpStreamStatus } from '../../types/messages/cloud-to-tpa';
@@ -1194,7 +1196,7 @@ export class TpaSession {
         }
       } catch (processingError: unknown) {
         // Catch any errors during message processing to prevent TPA crashes
-        this.logger.error('Error processing message:', processingError);
+        this.logger.error(processingError, 'Error processing message:');
         const errorMessage = processingError instanceof Error ? processingError.message : String(processingError);
         this.events.emit('error', new Error(`Error processing message: ${errorMessage}`));
       }
@@ -1472,6 +1474,20 @@ export class TpaSession {
     }
   }
 
+  /**
+   * Fetch the onboarding instructions for this session from the backend.
+   * @returns Promise resolving to the instructions string or null
+   */
+  public async getInstructions(): Promise<string | null> {
+    try {
+      const baseUrl = this.getServerUrl();
+      const response = await axios.get(`${baseUrl}/api/instructions`, { params: { userId: this.userId } });
+      return response.data.instructions || null;
+    } catch (err) {
+      this.logger.error('Error fetching instructions from backend:', err);
+      return null;
+    }
+  }
   // =====================================
   // 👥 TPA-to-TPA Communication Interface
   // =====================================
@@ -1537,7 +1553,7 @@ export class TpaSession {
       const userList = await this.discoverTpaUsers(domain, false);
       return userList.totalUsers;
     } catch (error) {
-      this.logger.error({ error }, 'Error getting user count');
+      this.logger.error(error, 'Error getting user count');
       return 0;
     }
   }

@@ -28,9 +28,13 @@ export default class BackendServerComms {
       return customUrl
     }
 
-    const secure = Config.MENTRAOS_SECURE === 'true';
-    const host = Config.MENTRAOS_HOST;
-    const port = Config.MENTRAOS_PORT;
+    // Debug logging for environment variables
+    console.log(`${this.TAG}: Config values - HOST: ${Config.MENTRAOS_HOST}, PORT: ${Config.MENTRAOS_PORT}, SECURE: ${Config.MENTRAOS_SECURE}`)
+    
+    // Use fallback values if Config values are undefined
+    const secure = Config.MENTRAOS_SECURE ? Config.MENTRAOS_SECURE === 'true' : true;
+    const host = Config.MENTRAOS_HOST || 'api.mentra.glass';
+    const port = Config.MENTRAOS_PORT || '443';
     const protocol = secure ? "https" : "http"
     const defaultServerUrl = `${protocol}://${host}:${port}`
     console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`)
@@ -82,7 +86,7 @@ export default class BackendServerComms {
       throw new Error("No core token available for authentication")
     }
 
-    const url = `${this.serverUrl}/api/gallery/${photoId}`
+    const url = `${await this.getServerUrl()}/api/gallery/${photoId}`
     console.log("Deleting gallery photo:", photoId)
 
     const config: AxiosRequestConfig = {
