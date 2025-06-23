@@ -24,7 +24,8 @@ export const evenRealitiesG1: Capabilities = {
     isColor: false,
     color: 'green',
     canDisplayBitmap: false,
-    resolution: { width: 640, height: 400 },
+    resolution: { width: 640, height: 200 },
+    fieldOfView: { horizontal: 25 },
     maxTextLines: 5,
     adjustBrightness: true
   },

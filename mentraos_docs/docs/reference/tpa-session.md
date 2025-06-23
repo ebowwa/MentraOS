@@ -57,6 +57,18 @@ readonly dashboard: DashboardAPI
 
 The dashboard is a persistent UI surface that appears when users look up, allowing your app to display status updates and information even when other apps are active. See the [Dashboard Tutorial](/dashboard) for a quick start guide and the [Dashboard API Reference](/reference/dashboard-api) for complete documentation.
 
+### capabilities
+
+Provides access to the device capabilities of the connected smart glasses.
+
+```typescript
+readonly capabilities: Capabilities | null
+```
+
+The capabilities object contains information about what hardware features are available on the connected device, allowing your app to adapt its behavior accordingly.
+
+See the [Device Capabilities Guide](/capabilities) for usage examples and the [Capabilities Reference](/reference/interfaces/capabilities) for complete type documentation.
+
 ### logger
 
 Provides access to a pre-configured [Pino](https://getpino.io) logger instance for session-specific logging.

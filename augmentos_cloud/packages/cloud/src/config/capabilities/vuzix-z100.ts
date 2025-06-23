@@ -24,8 +24,9 @@ export const vuzixZ100: Capabilities = {
     isColor: false,
     color: 'green',
     canDisplayBitmap: false,
-    resolution: { width: 640, height: 400 },
-    maxTextLines: 5,
+    resolution: { width: 640, height: 480 },
+    fieldOfView: { horizontal: 30 },
+    maxTextLines: 7,
     adjustBrightness: true
   },
 

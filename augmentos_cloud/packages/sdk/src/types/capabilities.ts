@@ -24,6 +24,7 @@ export interface ScreenCapabilities {
   color?: string; // e.g., "green", "full_color", "pallet"
   canDisplayBitmap?: boolean;
   resolution?: { width: number; height: number; };
+  fieldOfView?: { horizontal?: number; vertical?: number; };
   maxTextLines?: number;
   adjustBrightness?: boolean;
 }
