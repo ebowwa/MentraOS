@@ -554,11 +554,4 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         }
     }
     
-    /**
-     * Getter for PhoneMicrophoneManager instance
-     * Allows external access for immediate microphone switching
-     */
-    public PhoneMicrophoneManager getPhoneMicrophoneManager() {
-        return phoneMicManager;
-    }
 }

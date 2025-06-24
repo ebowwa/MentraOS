@@ -21,7 +21,9 @@ const GlassesDisplayMirror: React.FC<GlassesDisplayMirrorProps> = ({
       {layout && layout.layoutType ? (
         renderLayout(layout, containerStyle, themed($glassesText))
       ) : (
-        <Text style={themed($glassesText)}>{fallbackMessage}</Text>
+        <View style={themed($emptyContainer)}>
+          <Text style={themed($emptyText)}>{fallbackMessage}</Text>
+        </View>
       )}
     </View>
   )
@@ -102,6 +104,19 @@ const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
   textShadowColor: "rgba(0, 0, 0, 0.9)",
   textShadowOffset: {width: 1, height: 1},
   textShadowRadius: 2,
+})
+
+const $emptyContainer: ThemedStyle<ViewStyle> = () => ({
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+})
+
+const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
+  color: colors.textDim,
+  fontFamily: "Montserrat-Regular",
+  fontSize: 16,
+  opacity: 0.5,
 })
 
 const styles = StyleSheet.create({

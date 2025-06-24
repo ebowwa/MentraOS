@@ -20,10 +20,8 @@ const TempActivateAppWindow = () => {
           <Text tx="home:activateAnAppMessage" style={[themed($appName1), themed($appFlexBox)]} numberOfLines={2} />
         </View>
         <View style={themed($animatedToggle)}>
-          <View style={[themed($toggleBarIcon), themed($toggleIconLayout)]} />
-          <View style={[themed($toggleCircleIcon), themed($toggleIconLayout), {left: "44.44%"}]}>
-            <View style={{flex: 1, borderRadius: 12, backgroundColor: "#CED2ED"}} />
-          </View>
+          <View style={themed($toggleBarIcon)} />
+          <View style={[themed($toggleCircleIcon), {backgroundColor: theme.colors.switchThumbOff || theme.colors.palette.neutral300}]} />
         </View>
       </View>
       <TouchableOpacity onPress={() => setVisible(false)} style={[themed($xIcon), {display: "none"}]}>
@@ -71,30 +69,27 @@ const $appNameParent: ThemedStyle<ViewStyle> = () => ({
 })
 
 const $toggleBarIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
-  height: "70%",
-  width: "94.53%",
-  top: "15%",
-  right: "5.47%",
-  bottom: "15%",
-  left: "0%",
-  borderRadius: 8,
-  maxHeight: "100%",
-  backgroundColor: colors.palette.primary400,
+  height: 16,
+  width: 32,
+  borderRadius: 16,
+  backgroundColor: colors.switchTrackOff,
+  position: "absolute",
 })
 
 const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
-  width: "55.47%",
-  top: 0,
-  right: "0.06%",
-  left: "44.47%",
+  width: 24,
+  height: 24,
+  top: -2,
+  left: -2,
   borderRadius: 12,
-  height: 21,
+  position: "absolute",
 })
 
 const $animatedToggle: ThemedStyle<ViewStyle> = () => ({
-  width: 38,
-  height: 20,
+  width: 32,
+  height: 16,
   zIndex: 1,
+  position: "relative",
 })
 
 const $xIcon: ThemedStyle<ViewStyle> = () => ({
