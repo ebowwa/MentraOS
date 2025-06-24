@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 import appService from '../services/core/app.service';
 import App, { AppI } from '../models/app.model';
 

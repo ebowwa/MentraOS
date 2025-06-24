@@ -7,9 +7,8 @@
 import EventEmitter from 'events';
 import { AppSetting, AppSettings } from '../../types';
 import { ApiClient } from './api-client';
-// import { logger } from '@mentra/utils'; // Ensure logger is available
-// Note(Isaiah): Let's not import @mentra/utils in the SDK to avoid circular dependencies. Also i'm deprecating it in favor of the new logging system.
 import { logger } from "../../logging/logger"; // Adjust import path as needed
+// Note(Isaiah): Let's not import @mentra/utils in the SDK to avoid circular dependencies. Also i'm deprecating it in favor of the new logging system.
 
 /**
  * Change information for a single setting

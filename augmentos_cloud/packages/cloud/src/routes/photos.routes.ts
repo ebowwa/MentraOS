@@ -7,7 +7,7 @@ import multer from 'multer';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
 import photoRequestService from '../services/core/photo-request.service';
 import photoTakenService from '../services/core/photo-taken.service';

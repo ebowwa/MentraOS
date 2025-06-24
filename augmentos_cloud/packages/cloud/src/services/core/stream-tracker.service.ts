@@ -1,3 +1,5 @@
+// NOTE(isaiah): This file is deprecated and not used, any logic should be in services/session/VideoManager.
+
 // augmentos_cloud/packages/cloud/src/services/core/stream-tracker.service.ts
 
 /**
@@ -5,7 +7,7 @@
  * This service tracks active streams, manages keep-alive timers, and handles stream cleanup.
  */
 
-import { logger } from '@mentra/utils';
+import { logger  } from '../logging/pino-logger';
 import crypto from 'crypto';
 
 interface StreamInfo {

@@ -6,7 +6,7 @@
  */
 import express, { type Express } from 'express';
 import path from 'path';
-import { TpaSession } from '../session';
+import { TpaSession } from '../session/index';
 import { createAuthMiddleware } from '../webview';
 import {
   WebhookRequest,

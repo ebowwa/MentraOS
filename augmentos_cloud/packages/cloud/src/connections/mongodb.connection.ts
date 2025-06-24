@@ -1,4 +1,4 @@
-import { logger } from "@mentra/utils";
+import { logger } from "../services/logging/pino-logger";
 import dotenv from "dotenv";
 import mongoose from 'mongoose';
 

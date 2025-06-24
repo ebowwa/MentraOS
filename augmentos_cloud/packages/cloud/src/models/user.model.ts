@@ -2,7 +2,7 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import { AppSettingType, type AppSetting } from '@mentra/sdk';
 import { MongoSanitizer } from '../utils/mongoSanitizer';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 
 interface Location {
   lat: number;

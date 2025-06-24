@@ -13,7 +13,6 @@ import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-// import { HeartbeatManager } from './HeartbeatManager';
 import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';

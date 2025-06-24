@@ -10,11 +10,9 @@ services:
       - node_modules:/app/node_modules
       - bun_cache:/root/.bun
     # this command installs everything and then builds the shared packages one by one
-    command: >
-      bash -c "bun install && 
-      cd packages/sdk && bun run build && cd ../.. &&
-      cd packages/utils && bun run build && cd ../.. &&
-      cd packages/agents && bun run build"
+    # command: >
+    #   bash -c "bun install && 
+    #   cd packages/sdk && bun run build" 
 
   # Cloud service
   cloud:

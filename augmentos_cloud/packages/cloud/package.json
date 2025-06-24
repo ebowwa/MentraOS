@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "mkdir -p dist && bun x tsc -p tsconfig.json",
-    "postbuild": "cp -r src/public dist/public",
+    "postbuild": "cp -r src/public dist/public && cp src/services/lc3/liblc3.wasm dist/services/lc3/liblc3.wasm",
     "start": "bun dist/index.js",
     "dev": "bun --watch src/index.ts",
     "staging": "NODE_ENV=staging tsx watch src/index.ts",
@@ -49,7 +49,6 @@
   },
   "dependencies": {
     "@mentra/sdk": "workspace:*",
-    "@mentra/utils": "workspace:*",
     "@logtail/pino": "^0.5.4",
     "@sentry/bun": "^9.1.0",
     "@sentry/cli": "^2.42.1",

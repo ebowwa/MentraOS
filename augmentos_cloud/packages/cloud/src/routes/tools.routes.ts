@@ -1,6 +1,6 @@
 // routes/tools.routes.ts
 import { Router, Request, Response } from 'express';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 import appService from '../services/core/app.service';
 import { User } from '../models/user.model';
 import { ToolCall } from '@mentra/sdk';
