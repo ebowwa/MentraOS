@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
 import { Search, X, Building, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import api, { AppFilterOptions } from '../api';
 import { AppI } from '../types';
 import Header from '../components/Header';
@@ -15,6 +16,7 @@ import { Button } from '../components/ui/button';
 const AppStore: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { theme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get organization ID from URL query parameter
@@ -259,26 +261,31 @@ const AppStore: React.FC = () => {
   };
 
   return (
-      <div className="min-h-screen bg-[#030514] text-white">      
+      <div className="min-h-screen text-white" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>      
       {/* Header */}
       <Header />
 
       {/* Main Content */}
       <main className="container mx-auto py-8">
         {/* Heading + Search */}
-        <div className="flex flex-col border-b border-[#0c0c25] lg:flex-row mb-8 lg:items-center lg:justify-between gap-4 px-4 pb-8">
+        <div className="flex flex-col lg:flex-row mb-8 lg:items-center lg:justify-between gap-4 px-4 pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
           {/* App Store heading */}
-          <h1 className="text-4xl font-light text-[#E2E4FF]" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px'}}>App Store</h1>
+          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>App Store</h1>
 
           {/* Search bar */}
           <form onSubmit={handleSearch} className="flex-1 lg:max-w-md flex items-center space-x-3">
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                <Search className="h-5 w-5 text-white" />
+                <Search className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
               </div>
               <input
                 type="text"
-                className="bg-[#141834] w-full pl-10 pr-4 py-2 rounded-3xl text-white placeholder-[#B3B3B3] focus:outline-none focus:ring-2 focus:ring-[#47478E]"
+                className="theme-search-input w-full pl-10 pr-4 py-2 rounded-3xl focus:outline-none focus:ring-2 focus:ring-[#47478E] border"
+                style={{ 
+                  backgroundColor: theme === 'light' ? 'var(--bg-secondary)' : '#141834',
+                  color: 'var(--text-primary)', 
+                  borderColor: 'var(--border-color)'
+                }}
                 placeholder="Search"
                 value={searchQuery}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
@@ -287,7 +294,8 @@ const AppStore: React.FC = () => {
             {searchQuery && (
               <button
                 type="button"
-                className="text-[#ABAAFF] text-[15px] font-normal tracking-[0.1em]"
+                className="text-[15px] font-normal tracking-[0.1em]"
+                style={{ color: 'var(--text-primary)' }}
                 onClick={() => {
                   setSearchQuery('');
                   fetchApps();
@@ -352,7 +360,8 @@ const AppStore: React.FC = () => {
         {!isLoading && !error && (
           <div className="mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12 px-0">
             {filteredApps.map(app => (
-              <div key={app.packageName} className="p-6 flex gap-3 border-b border-[#0c0d24] hover:bg-[#0d1029] transition-colors rounded-lg">
+              <div key={app.packageName} className="p-6 flex gap-3 transition-colors rounded-lg relative" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
                 {/* Image Column */}
                 <div className="shrink-0 flex items-start pt-2">
                   <img
@@ -368,9 +377,9 @@ const AppStore: React.FC = () => {
                 {/* Content Column */}
                 <div className="flex-1 flex flex-col gap-2">
                   <div onClick={() => handleOpen(app.packageName)} role="button" className="cursor-pointer">
-                    <h3 className="text-[15px] text-white font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em'}}>{app.name}</h3>
+                    <h3 className="text-[15px] font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: 'var(--text-primary)'}}>{app.name}</h3>
                     {app.description && (
-                      <p className="text-[15px] text-[#9A9CAC] font-normal leading-[1.3] line-clamp-2" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em'}}>{app.description}</p>
+                      <p className="text-[15px] font-normal leading-[1.3] line-clamp-2" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: theme === 'light' ? '#4a4a4a' : '#9A9CAC'}}>{app.description}</p>
                     )}
                   </div>
 
@@ -381,7 +390,13 @@ const AppStore: React.FC = () => {
                         <Button
                           onClick={() => handleOpen(app.packageName)}
                           disabled={installingApp === app.packageName}
-                          className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          style={{ 
+                            backgroundColor: 'var(--button-bg)', 
+                            color: 'var(--button-text)' 
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
                         >
                           <>Open</>
                         </Button>
@@ -389,11 +404,17 @@ const AppStore: React.FC = () => {
                         <Button
                           onClick={() => handleInstall(app.packageName)}
                           disabled={installingApp === app.packageName}
-                          className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          style={{ 
+                            backgroundColor: 'var(--button-bg)', 
+                            color: 'var(--button-text)' 
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
                         >
                           {installingApp === app.packageName ? (
                             <>
-                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                              <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full mr-2" style={{ borderColor: 'var(--button-text)', borderTopColor: 'transparent' }}></div>
                               Installing
                             </>
                           ) : (
@@ -404,7 +425,13 @@ const AppStore: React.FC = () => {
                     ) : (
                       <Button
                         onClick={() => navigate('/login')}
-                        className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center flex items-center gap-2"
+                        className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center flex items-center gap-2"
+                        style={{ 
+                          backgroundColor: 'var(--button-bg)', 
+                          color: 'var(--button-text)' 
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
                       >
                         <Lock className="h-4 w-4 mr-1" />
                         Sign in

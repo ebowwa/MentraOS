@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import api from '../api';
 import { AppI } from '../types';
 import { toast } from 'sonner';
@@ -14,6 +15,7 @@ const AppDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  const { theme } = useTheme();
 
   const [app, setApp] = useState<AppI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -156,7 +158,7 @@ const AppDetails: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#030514] flex items-center justify-center p-4">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* Gradient Panel */}
       {!isLoading && error && (
         <div className="text-red-500">{error}</div>
@@ -170,17 +172,21 @@ const AppDetails: React.FC = () => {
         <div
           className="w-full max-w-[90vw] md:w-[720px] md:max-w-[720px] max-h-[90vh] overflow-y-auto rounded-[24px] custom-scrollbar relative"
           style={{
-            background:
-              'linear-gradient(180deg, #0A0B19 0%, #080B27 100%)',
-            boxShadow:
-              'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 32px rgba(0, 0, 0, 0.25)',
+            background: theme === 'light' ? 'transparent' : 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)',
+            boxShadow: theme === 'light' ? 'none' : 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 32px rgba(0, 0, 0, 0.25)',
+            border: theme === 'light' ? '2px solid #e5e5e5' : 'none',
             padding: '48px 48px 56px'
           }}
         >
           {/* Close Button */}
           <button
             onClick={() => navigate(-1)}
-            className="absolute top-6 right-6 text-[#9CA3AF] hover:text-white transition-colors"
+            className="absolute top-6 right-6 transition-colors"
+            style={{ 
+              color: theme === 'light' ? '#000000' : '#9CA3AF'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = theme === 'light' ? '#000000' : '#9CA3AF'}
             aria-label="Close"
           >
             <X className="h-6 w-6" />
@@ -200,10 +206,11 @@ const AppDetails: React.FC = () => {
               />
               <h2
                 id="app-modal-title"
-                className="text-[32px] text-[#E4E4E7] font-medium leading-[1.2] max-[840px]:text-center"
+                className="text-[32px] font-medium leading-[1.2] max-[840px]:text-center"
                 style={{
                   fontFamily: '"SF Pro Rounded", sans-serif',
-                  letterSpacing: '0.02em'
+                  letterSpacing: '0.02em',
+                  color: 'var(--text-primary)'
                 }}
               >
                 {app.name}
@@ -246,8 +253,8 @@ const AppDetails: React.FC = () => {
           {/* Description */}
           <div className="mb-12">
             <p
-              className="text-[16px] text-[#E4E4E7] font-normal leading-[1.6] max-w-[480px]"
-              style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+              className="text-[16px] font-normal leading-[1.6] max-w-[480px]"
+              style={{ fontFamily: '"SF Pro Rounded", sans-serif', color: theme === 'light' ? '#000000' : '#E4E4E7' }}
             >
               {app.description || 'No description available.'}
             </p>
@@ -256,10 +263,11 @@ const AppDetails: React.FC = () => {
           {/* Information Section */}
           <div className="mb-12">
             <h3
-              className="text-[12px] text-[#9CA3AF] font-semibold uppercase mb-6"
+              className="text-[12px] font-semibold uppercase mb-6"
               style={{
                 fontFamily: '"SF Pro Rounded", sans-serif',
-                letterSpacing: '0.05em'
+                letterSpacing: '0.05em',
+                color: theme === 'light' ? '#000000' : '#9CA3AF'
               }}
             >
               Information
@@ -267,20 +275,21 @@ const AppDetails: React.FC = () => {
 
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[#9CA3AF] font-medium">Company</span>
-                <span className="text-[14px] text-[#E4E4E7] font-normal text-right">
+                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Company</span>
+                <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
                   {app.orgName || app.developerProfile?.company || 'Mentra'}
                 </span>
               </div>
 
               {app.developerProfile?.website && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-[#9CA3AF] font-medium">Website</span>
+                  <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Website</span>
                   <a
                     href={app.developerProfile.website}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[14px] text-[#E4E4E7] font-normal hover:underline text-right"
+                    className="text-[14px] font-normal hover:underline text-right"
+                    style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
                   >
                     {app.developerProfile.website}
                   </a>
@@ -289,10 +298,11 @@ const AppDetails: React.FC = () => {
 
               {app.developerProfile?.contactEmail && (
                 <div className="flex justify-between items-center">
-                  <span className="text-[14px] text-[#9CA3AF] font-medium">Contact</span>
+                  <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Contact</span>
                   <a
                     href={`mailto:${app.developerProfile.contactEmail}`}
-                    className="text-[14px] text-[#E4E4E7] font-normal hover:underline text-right"
+                    className="text-[14px] font-normal hover:underline text-right"
+                    style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
                   >
                     {app.developerProfile.contactEmail}
                   </a>
@@ -300,15 +310,15 @@ const AppDetails: React.FC = () => {
               )}
 
               <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[#9CA3AF] font-medium">App Type</span>
-                <span className="text-[14px] text-[#E4E4E7] font-normal text-right capitalize">
+                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>App Type</span>
+                <span className="text-[14px] font-normal text-right capitalize" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
                   {app.tpaType || 'Standard'}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
-                <span className="text-[14px] text-[#9CA3AF] font-medium">Package</span>
-                <span className="text-[14px] text-[#E4E4E7] font-normal text-right">
+                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Package</span>
+                <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
                   {app.packageName}
                 </span>
               </div>
@@ -318,8 +328,8 @@ const AppDetails: React.FC = () => {
           {/* Required Permissions */}
           <div>
             <h3
-              className="text-[12px] text-[#9CA3AF] font-semibold uppercase mb-6"
-              style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.05em' }}
+              className="text-[12px] font-semibold uppercase mb-6"
+              style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.05em', color: theme === 'light' ? '#000000' : '#9CA3AF' }}
             >
               Required Permissions
             </h3>
@@ -328,16 +338,17 @@ const AppDetails: React.FC = () => {
                 app.permissions.map((permission, index) => (
                   <div
                     key={index}
-                    className="text-[14px] text-[#9CA3AF] font-normal leading-[1.5]"
+                    className="text-[14px] font-normal leading-[1.5]"
+                    style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}
                   >
-                    <strong className="text-[#E4E4E7]">
+                    <strong style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
                       {permission.type || 'Microphone'}
                     </strong>{' '}
                     {permission.description || 'For voice import and audio processing.'}
                   </div>
                 ))
               ) : (
-                <div className="text-[14px] text-[#9CA3AF] font-normal">None</div>
+                <div className="text-[14px] font-normal" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>None</div>
               )}
             </div>
           </div>
