@@ -323,7 +323,7 @@ const AppStore: React.FC = () => {
         )}
 
         {/* Search result indicator */}
-        {searchQuery && (
+        {searchQuery && filteredApps.length > 0 && (
           <div className="my-4 max-w-2xl mx-auto">
             <p className="text-gray-600">
               {filteredApps.length} {filteredApps.length === 1 ? 'result' : 'results'} for "{searchQuery}"

@@ -245,6 +245,32 @@ public class PhoneMicrophoneManager {
     }
     
     /**
+     * Force immediate microphone switch regardless of current state or debouncing
+     * Used when user explicitly changes microphone preference
+     */
+    public void forceSwitchToPreferredMic() {
+        Log.d(TAG, "Force switching to preferred microphone - bypassing debouncing");
+        
+        // Always execute on main thread to prevent Handler threading issues
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(this::forceSwitchToPreferredMic);
+            return;
+        }
+        
+        // Cancel any pending operations
+        if (pendingModeChangeRunnable != null) {
+            mainHandler.removeCallbacks(pendingModeChangeRunnable);
+            pendingModeChangeRunnable = null;
+        }
+        
+        // Reset debouncing flags
+        pendingMicRequest = false;
+        
+        // Execute immediately
+        executeMicEnable();
+    }
+    
+    /**
      * Actually executes the mic enable logic
      */
     private void executeMicEnable() {
@@ -994,6 +1020,12 @@ public class PhoneMicrophoneManager {
     public void onMicrophonePreferenceChanged() {
         Log.d(TAG, "Microphone preference changed, current status: " + currentStatus);
         
+        // Ensure we're on the main thread for Handler operations
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(this::onMicrophonePreferenceChanged);
+            return;
+        }
+        
         // Only take action if we're currently recording
         if (currentStatus == MicStatus.PAUSED) {
             Log.d(TAG, "Not recording, preference will take effect on next start");
@@ -1016,11 +1048,18 @@ public class PhoneMicrophoneManager {
         if (shouldUseGlassesMic != currentlyUsingGlassesMic) {
             Log.d(TAG, "Switching microphone based on new preference");
             
+            // Clear any pending operations since this is user-initiated
+            if (pendingModeChangeRunnable != null) {
+                mainHandler.removeCallbacks(pendingModeChangeRunnable);
+                pendingModeChangeRunnable = null;
+                pendingMicRequest = false;
+            }
+            
             if (shouldUseGlassesMic) {
                 // Switch to glasses mic
                 switchToGlassesMic();
             } else {
-                // Switch to phone mic - prefer SCO if available
+                // Switch to phone mic - this will use smart debouncing
                 startPreferredMicMode();
             }
         } else {

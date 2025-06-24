@@ -13,7 +13,8 @@ const en = {
     permissionRequired: "Permission Required",
     bluetoothPermissionRequiredTitle: "Permission Required",
     bluetoothPermissionRequiredMessage: "Bluetooth permissions are required to connect to glasses",
-    bluetoothPermissionRequiredMessageAlt: "Bluetooth permission is required to connect to smart glasses.\n\nAlso, check that Bluetooth is enabled in device settings.",
+    bluetoothPermissionRequiredMessageAlt:
+      "Bluetooth permission is required to connect to smart glasses.\n\nAlso, check that Bluetooth is enabled in device settings.",
     errorTitle: "Error",
     permissionsError: "Failed to request necessary permissions",
     connectionIssueTitle: "Connection Issue",
@@ -70,7 +71,8 @@ const en = {
     activateAnApp: "Activate an app",
     activateAnAppMessage: "Switch the toggle to run an app on your glasses.",
     search: "Search",
-    noAppsFoundForQuery: "No apps found for \"{{query}}\"",
+    noAppsFoundForQuery: 'No apps found for "{{query}}"',
+    clearSearch: "Clear Search",
     movedToActive: "Moved to Active",
     movedToInactive: "Moved to Inactive",
     foreground: "Foreground",
@@ -156,9 +158,11 @@ const en = {
     deleteAccountTitle: "Delete Account",
     deleteAccountMessage: "Are you sure you want to delete your account? This action cannot be undone.",
     deleteAccountWarning1Title: "⚠️ WARNING",
-    deleteAccountWarning1Message: "You are about to permanently delete your AugmentOS account. This action is IRREVERSIBLE.",
+    deleteAccountWarning1Message:
+      "You are about to permanently delete your AugmentOS account. This action is IRREVERSIBLE.",
     deleteAccountWarning2Title: "🚨 FINAL WARNING",
-    deleteAccountWarning2Message: "This will PERMANENTLY DELETE:\n• All your data\n• All your settings\n• All your app configurations\n• Your entire account history\n\nThere is NO way to recover this data!",
+    deleteAccountWarning2Message:
+      "This will PERMANENTLY DELETE:\n• All your data\n• All your settings\n• All your app configurations\n• Your entire account history\n\nThere is NO way to recover this data!",
     deleteAccountSuccessTitle: "Account Deleted",
     deleteAccountSuccessMessage: "Your account has been successfully deleted.",
     deleteAccountPendingTitle: "Account Deletion Requested",

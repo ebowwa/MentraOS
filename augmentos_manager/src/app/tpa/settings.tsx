@@ -593,7 +593,7 @@ export default function AppSettings() {
               <InfoRow
                 label="App Type"
                 value={
-                  appInfo?.tpaType === "standard" ? "Standard" : appInfo?.tpaType === "background" ? "Background" : "-"
+                  appInfo?.tpaType === "standard" ? "Foreground" : appInfo?.tpaType === "background" ? "Background" : "-"
                 }
                 showDivider={false}
               />

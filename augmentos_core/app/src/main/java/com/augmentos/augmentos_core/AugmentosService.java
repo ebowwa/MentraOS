@@ -101,6 +101,7 @@ import java.util.Map;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneManager;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesRepresentative;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -2145,11 +2146,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         preferredMic = mic;
         SmartGlassesManager.setPreferredMic(this, mic);
         
-        // Trigger immediate microphone switch if glasses are connected and recording
+        // Trigger immediate microphone switch using direct getter approach
         if (smartGlassesManager != null && smartGlassesManagerBound) {
-            smartGlassesManager.onMicrophonePreferenceChanged();
+            SmartGlassesRepresentative rep = smartGlassesManager.getSmartGlassesRepresentative();
+            if (rep != null) {
+                PhoneMicrophoneManager micManager = rep.getPhoneMicrophoneManager();
+                if (micManager != null) {
+                    Log.d("AugmentOsService", "Notifying PhoneMicrophoneManager of preference change");
+                    micManager.onMicrophonePreferenceChanged();
+                } else {
+                    Log.d("AugmentOsService", "No PhoneMicrophoneManager available - preference will take effect on next connection");
+                }
+            } else {
+                Log.d("AugmentOsService", "No SmartGlassesRepresentative available - preference will take effect on next connection");
+            }
         }
     }
+    
 
     @Override
     public void setAuthSecretKey(String uniqueUserId, String authSecretKey) {

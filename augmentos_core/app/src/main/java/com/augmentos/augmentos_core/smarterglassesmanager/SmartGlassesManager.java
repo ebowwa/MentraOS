@@ -737,6 +737,14 @@ public class SmartGlassesManager extends Service {
     }
     
     /**
+     * Getter for SmartGlassesRepresentative instance
+     * Allows external access for immediate microphone switching
+     */
+    public SmartGlassesRepresentative getSmartGlassesRepresentative() {
+        return smartGlassesRepresentative;
+    }
+    
+    /**
      * Sends a custom command to the connected smart glasses
      * This is used for device-specific commands like WiFi configuration
      * 
@@ -879,25 +887,4 @@ public class SmartGlassesManager extends Service {
         return null;
     }
     
-    /**
-     * Notify the system that microphone preference has changed
-     * This will trigger an immediate switch if recording is active
-     */
-    public void onMicrophonePreferenceChanged() {
-        Log.d(TAG, "Microphone preference changed notification received");
-        
-        // Check if we have an active glasses connection with a phone mic manager
-        if (smartGlassesRepresentative != null) {
-            var phoneMicManager = smartGlassesRepresentative.getPhoneMicrophoneManager();
-                
-            if (phoneMicManager != null) {
-                Log.d(TAG, "Notifying PhoneMicrophoneManager of preference change");
-                phoneMicManager.onMicrophonePreferenceChanged();
-            } else {
-                Log.d(TAG, "No PhoneMicrophoneManager available - preference will take effect on next connection");
-            }
-        } else {
-            Log.d(TAG, "No glasses connected - preference will take effect on next connection");
-        }
-    }
 }

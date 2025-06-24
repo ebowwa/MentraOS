@@ -10,7 +10,7 @@
 import { evenRealitiesG1 } from './capabilities/even-realities-g1';
 import { mentraLive } from './capabilities/mentra-live';
 import { vuzixZ100 } from './capabilities/vuzix-z100';
-import { Capabilities } from '@augmentos/sdk';
+import { Capabilities } from '@mentra/sdk';
 
 /**
  * Hardware capability profiles for supported glasses models
