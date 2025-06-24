@@ -44,7 +44,6 @@ import path from 'path';
 
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
-// import { logger } from "@mentra/utils";
 import { logger as rootLogger } from './services/logging/pino-logger';
 const logger = rootLogger.child({ service: 'index' });
 

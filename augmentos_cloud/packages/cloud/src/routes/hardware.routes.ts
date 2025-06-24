@@ -3,7 +3,7 @@
  */
 
 import express, { Request, Response } from 'express';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 import { validateGlassesAuth } from '../middleware/glasses-auth.middleware';
 import sessionService from '../services/session/session.service';
 import subscriptionService from '../services/session/subscription.service';

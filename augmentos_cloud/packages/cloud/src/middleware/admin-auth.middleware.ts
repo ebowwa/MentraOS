@@ -1,7 +1,7 @@
 // middleware/admin-auth.middleware.ts
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
 

@@ -27,11 +27,9 @@ import {
   Vad
 } from '@mentra/sdk';
 import UserSession from '../session/UserSession';
-// import { SessionService } from '../session/session.service';
 import { logger as rootLogger } from '../logging/pino-logger';
 import subscriptionService from '../session/subscription.service';
 import { PosthogService } from '../logging/posthog.service';
-// import { systemApps } from '../core/system-apps';
 import { sessionService } from '../session/session.service';
 import transcriptionService from '../processing/transcription.service';
 import { User } from '../../models/user.model';

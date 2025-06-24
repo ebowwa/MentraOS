@@ -646,6 +646,48 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         return shouldRestartOnKill ? Service.START_STICKY : Service.START_NOT_STICKY;
     }
 
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        Log.d(TAG, "onTaskRemoved called - app is being closed");
+        
+        // Check if glasses are connected
+        boolean glassesConnected = false;
+        if (smartGlassesManager != null) {
+            SmartGlassesConnectionState connectionState = smartGlassesManager.getSmartGlassesConnectState();
+            glassesConnected = (connectionState == SmartGlassesConnectionState.CONNECTED);
+            Log.d(TAG, "Glasses connection state: " + connectionState + ", connected: " + glassesConnected);
+        } else {
+            Log.d(TAG, "SmartGlassesManager is null, assuming no glasses connected");
+        }
+        
+        // Check if there are any active third-party apps running
+        boolean hasActiveApps = false;
+        if (edgeTpaSystem != null) {
+            // Check if any third-party apps are currently running
+            ArrayList<ThirdPartyEdgeApp> thirdPartyApps = edgeTpaSystem.getThirdPartyApps();
+            for (ThirdPartyEdgeApp app : thirdPartyApps) {
+                if (edgeTpaSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName)) {
+                    hasActiveApps = true;
+                    Log.d(TAG, "Found active third-party app: " + app.packageName);
+                    break;
+                }
+            }
+            Log.d(TAG, "Active third-party apps: " + hasActiveApps);
+        }
+        
+        // If no glasses are connected and no active apps, stop the service
+        if (!glassesConnected && !hasActiveApps) {
+            Log.d(TAG, "No glasses connected and no active apps - stopping service");
+            shouldRestartOnKill = false; // Prevent restart
+            cleanupAllResources();
+            stopForeground(true);
+            stopSelf();
+        } else {
+            Log.d(TAG, "Keeping service running - glasses connected: " + glassesConnected + ", active apps: " + hasActiveApps);
+        }
+    }
+
     private Notification updateNotification() {
         Context context = getApplicationContext();
 

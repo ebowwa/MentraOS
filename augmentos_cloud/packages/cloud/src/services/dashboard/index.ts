@@ -5,7 +5,7 @@
  * Uses a per-session approach where each user session has its own DashboardManager.
  */
 import { TpaToCloudMessage } from '@mentra/sdk';
-import { logger } from '@mentra/utils';
+import { logger } from "../logging/pino-logger";
 // import { ExtendedUserSession } from '../session/session.service';
 import { DashboardManager } from './DashboardManager';
 import UserSession from '../session/UserSession';

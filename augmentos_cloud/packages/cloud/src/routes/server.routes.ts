@@ -1,6 +1,6 @@
 // routes/admin.routes.ts
 import { Router, Request, Response } from 'express';
-import { logger } from '@mentra/utils';
+import { logger  } from '../services/logging/pino-logger';
 // import { getSessionStats } from '../services/debug/server-stats';
 
 const router = Router();

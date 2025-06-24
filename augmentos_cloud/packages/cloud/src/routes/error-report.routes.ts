@@ -1,6 +1,6 @@
 // cloud/src/routes/apps.routes.ts
 import express, { Request, Response } from 'express';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { PosthogService } from '../services/logging/posthog.service';
 

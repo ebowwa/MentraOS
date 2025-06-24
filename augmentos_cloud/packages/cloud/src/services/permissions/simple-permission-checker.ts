@@ -1,7 +1,7 @@
 import { PermissionType, LEGACY_PERMISSION_MAP } from '@mentra/sdk';
 import { ExtendedStreamType, StreamType, isLanguageStream, parseLanguageStream } from '@mentra/sdk';
 import { AppI } from '../../models/app.model';
-import { logger } from '@mentra/utils';
+import { logger } from "../../services/logging/pino-logger";
 
 /**
  * SimplePermissionChecker

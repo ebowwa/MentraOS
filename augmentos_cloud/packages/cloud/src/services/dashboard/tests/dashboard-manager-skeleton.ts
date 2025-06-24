@@ -16,8 +16,9 @@ import {
   DashboardMode,
   LayoutType
 } from '@mentra/sdk';
-import { logger, wrapText } from '@mentra/utils';
+import { wrapText } from '@mentra/utils';
 import { tzlookup } from 'tz-lookup';
+import { logger  } from '../../../services/logging/pino-logger';
 
 // Configuration
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 80;

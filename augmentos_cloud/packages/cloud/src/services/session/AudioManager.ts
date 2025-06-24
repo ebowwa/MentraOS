@@ -13,7 +13,7 @@ import {
 import { Logger } from 'pino';
 import subscriptionService from './subscription.service';
 import transcriptionService from '../processing/transcription.service';
-import { createLC3Service } from '@mentra/utils';
+import { createLC3Service } from "../lc3/lc3.service";
 import { AudioWriter } from '../debug/audio-writer';
 import UserSession from './UserSession';
 
