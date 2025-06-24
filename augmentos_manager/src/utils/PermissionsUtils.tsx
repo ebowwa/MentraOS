@@ -713,3 +713,5 @@ export const doesHaveAllPermissions = async (): Promise<boolean> => {
   // If we reach here, we have basic permissions or they've been requested already
   return true
 }
+
+export {PERMISSION_CONFIG}

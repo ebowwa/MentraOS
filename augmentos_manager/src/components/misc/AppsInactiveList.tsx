@@ -11,6 +11,7 @@ import {
   TextStyle,
   ActivityIndicator,
   Easing,
+  Keyboard,
 } from "react-native"
 import {Text} from "@/components/ignite"
 import MessageModal from "./MessageModal"
@@ -49,10 +50,12 @@ export default function InactiveAppList({
   isSearchPage = false,
   searchQuery,
   liveCaptionsRef,
+  onClearSearch,
 }: {
   isSearchPage?: boolean
   searchQuery?: string
   liveCaptionsRef?: React.RefObject<any>
+  onClearSearch?: () => void
 }) {
   const {
     appStatus,
@@ -454,16 +457,16 @@ export default function InactiveAppList({
   if (Platform.OS === "ios") {
     availableApps = availableApps.filter(app => app.packageName !== "cloud.augmentos.notify" && app.name !== "Notify")
   }
-  
+
   // Sort apps: during onboarding, put Live Captions first, otherwise alphabetical
   if (!onboardingCompleted) {
     availableApps.sort((a, b) => {
       // Check if either app is Live Captions
-      const aIsLiveCaptions = a.packageName === "com.augmentos.livecaptions" || 
-                              a.packageName === "com.mentra.livecaptions"
-      const bIsLiveCaptions = b.packageName === "com.augmentos.livecaptions" || 
-                              b.packageName === "com.mentra.livecaptions"
-      
+      const aIsLiveCaptions =
+        a.packageName === "com.augmentos.livecaptions" || a.packageName === "com.mentra.livecaptions"
+      const bIsLiveCaptions =
+        b.packageName === "com.augmentos.livecaptions" || b.packageName === "com.mentra.livecaptions"
+
       // If a is Live Captions, it should come first
       if (aIsLiveCaptions && !bIsLiveCaptions) return -1
       // If b is Live Captions, it should come first
@@ -506,7 +509,9 @@ export default function InactiveAppList({
       {availableApps.map((app, index) => {
         // Check if this is the LiveCaptions app
         const isLiveCaptions =
-          app.packageName === "com.augmentos.livecaptions" || app.packageName === "cloud.augmentos.live-captions"  || app.packageName === "com.mentra.livecaptions"
+          app.packageName === "com.augmentos.livecaptions" ||
+          app.packageName === "cloud.augmentos.live-captions" ||
+          app.packageName === "com.mentra.livecaptions"
 
         // Only set ref for LiveCaptions app
         const ref = isLiveCaptions ? actualLiveCaptionsRef : null
@@ -555,9 +560,23 @@ export default function InactiveAppList({
       {/* Show "No apps found" message when searching returns no results */}
       {isSearchPage && searchQuery && availableApps.length === 0 && (
         <View style={themed($noAppsContainer)}>
-          <Text style={themed($noAppsText)}>
-            {translate("home:noAppsFoundForQuery", {query: searchQuery})}
-          </Text>
+          <Text style={themed($noAppsText)}>{translate("home:noAppsFoundForQuery", {query: searchQuery})}</Text>
+          {onClearSearch && (
+            <>
+              <Spacer height={16} />
+              <TouchableOpacity 
+                style={themed($clearSearchButton)} 
+                onPress={() => {
+                  Keyboard.dismiss()
+                  onClearSearch()
+                }}
+                activeOpacity={0.7}
+                hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}
+              >
+                <Text style={themed($clearSearchButtonText)}>{translate("home:clearSearch")}</Text>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       )}
 
@@ -584,6 +603,21 @@ const $noAppsContainer: ThemedStyle<ViewStyle> = ({spacing}) => ({
 const $noAppsText: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   fontSize: 16,
   color: colors.textDim,
+  textAlign: "center",
+})
+
+const $clearSearchButton: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+  backgroundColor: colors.buttonPrimary,
+  paddingHorizontal: spacing.lg,
+  paddingVertical: spacing.sm,
+  borderRadius: 8,
+  alignSelf: "center",
+})
+
+const $clearSearchButtonText: ThemedStyle<TextStyle> = ({colors}) => ({
+  fontSize: 14,
+  fontWeight: "600",
+  color: colors.textAlt,
   textAlign: "center",
 })
 
