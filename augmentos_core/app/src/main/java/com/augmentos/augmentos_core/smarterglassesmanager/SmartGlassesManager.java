@@ -886,4 +886,5 @@ public class SmartGlassesManager extends Service {
 
         return null;
     }
+    
 }

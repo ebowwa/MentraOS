@@ -221,7 +221,7 @@ export default function AppWebView() {
         titleMode="center"
         leftIcon="caretLeft"
         onLeftPress={() => router.replace("/(tabs)/home")}
-        rightIcon="settings"
+        rightIcon="more"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
           router.replace({
@@ -233,6 +233,8 @@ export default function AppWebView() {
             },
           })
         }}
+        style={{height: 44}}
+        containerStyle={{paddingTop: 0}}
       />
       <View style={styles.container}>
         {finalUrl ? (
@@ -250,6 +252,21 @@ export default function AppWebView() {
               // Show loading overlay while WebView itself loads
               <LoadingOverlay message={`Loading ${appName}...`} />
             )}
+            // Disable zooming and scaling
+            scalesPageToFit={false}
+            scrollEnabled={true}
+            bounces={false}
+            // iOS specific props to disable zoom
+            automaticallyAdjustContentInsets={false}
+            contentInsetAdjustmentBehavior="never"
+            // Inject meta viewport tag to prevent zooming
+            injectedJavaScript={`
+              const meta = document.createElement('meta');
+              meta.setAttribute('name', 'viewport');
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              document.getElementsByTagName('head')[0].appendChild(meta);
+              true;
+            `}
           />
         ) : (
           // This state should ideally not be reached if isLoadingToken handles it,

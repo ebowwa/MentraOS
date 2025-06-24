@@ -1,8 +1,9 @@
 import {createContext, useCallback, useContext, useEffect, useMemo, useState} from "react"
-import {StyleProp, useColorScheme} from "react-native"
+import {Platform, StyleProp, useColorScheme} from "react-native"
 import {DarkTheme, DefaultTheme, useTheme as useNavTheme} from "@react-navigation/native"
 import {type Theme, type ThemeContexts, type ThemedStyle, type ThemedStyleArray, lightTheme, darkTheme} from "@/theme"
 import * as SystemUI from "expo-system-ui"
+import * as NavigationBar from "expo-navigation-bar"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 
@@ -21,8 +22,23 @@ export const ThemeContext = createContext<ThemeContextType>({
 
 const themeContextToTheme = (themeContext: ThemeContexts): Theme => (themeContext === "dark" ? darkTheme : lightTheme)
 
-const setImperativeTheming = (theme: Theme) => {
+const setImperativeTheming = async (theme: Theme) => {
   SystemUI.setBackgroundColorAsync(theme.colors.background)
+  
+  // Set navigation bar color for Android
+  if (Platform.OS === "android") {
+    try {
+      // For dark theme, use the darker start of the gradient to better match the tab bar appearance
+      // For light theme, use white
+      const navBarColor = theme.isDark ? "#090A14" : "#FFFFFF"
+      await NavigationBar.setBackgroundColorAsync(navBarColor)
+      
+      // Set button colors based on theme
+      await NavigationBar.setButtonStyleAsync(theme.isDark ? "light" : "dark")
+    } catch (error) {
+      console.warn("Failed to set navigation bar color:", error)
+    }
+  }
 }
 
 export type ThemeType = "light" | "dark" | "system"
@@ -109,6 +125,11 @@ export const useAppTheme = (): UseAppThemeValue => {
   )
 
   const themeVariant: Theme = useMemo(() => themeContextToTheme(themeContext), [themeContext])
+
+  // Update navigation bar color when theme changes
+  useEffect(() => {
+    setImperativeTheming(themeVariant)
+  }, [themeVariant])
 
   const themed = useCallback(
     <T>(styleOrStyleFn: ThemedStyle<T> | StyleProp<T> | ThemedStyleArray<T>) => {
