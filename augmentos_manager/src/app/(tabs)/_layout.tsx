@@ -125,7 +125,7 @@ export default function Layout() {
             <LinearGradient
               colors={
                 theme.isDark
-                  ? [theme.colors.tabBarGradientStart, theme.colors.tabBarGradientEnd]
+                  ? [theme.colors.tabBarBackground1, theme.colors.tabBarBackground2]
                   : [whiteColor, whiteColor]
               }
               style={{

@@ -216,7 +216,7 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
         brightnessValue = getSavedBrightnessValue(context);
         shouldUseAutoBrightness = getSavedAutoBrightnessValue(context);
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        this.shouldUseGlassesMic = SmartGlassesManager.getSensingEnabled(context) && !SmartGlassesManager.getForceCoreOnboardMic(context);
+        this.shouldUseGlassesMic = SmartGlassesManager.getSensingEnabled(context) && !"phone".equals(SmartGlassesManager.getPreferredMic(context));
 
         //setup LC3 decoder
         if (lc3DecoderPtr == 0) {

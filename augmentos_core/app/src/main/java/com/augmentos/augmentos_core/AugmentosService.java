@@ -1335,7 +1335,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
-            coreInfo.put("force_core_onboard_mic", SmartGlassesManager.getForceCoreOnboardMic(this));
+            coreInfo.put("force_core_onboard_mic", "phone".equals(SmartGlassesManager.getPreferredMic(this))); // Deprecated - use preferred_mic instead
             coreInfo.put("preferred_mic", preferredMic);
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
@@ -2144,7 +2144,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Setting preferred mic: " + mic);
         preferredMic = mic;
         SmartGlassesManager.setPreferredMic(this, mic);
-        setForceCoreOnboardMic(mic.equals("phone"));
+        
+        // Trigger immediate microphone switch if glasses are connected and recording
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            smartGlassesManager.onMicrophonePreferenceChanged();
+        }
     }
 
     @Override

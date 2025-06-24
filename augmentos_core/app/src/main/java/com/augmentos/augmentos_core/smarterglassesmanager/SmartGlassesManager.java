@@ -878,4 +878,26 @@ public class SmartGlassesManager extends Service {
 
         return null;
     }
+    
+    /**
+     * Notify the system that microphone preference has changed
+     * This will trigger an immediate switch if recording is active
+     */
+    public void onMicrophonePreferenceChanged() {
+        Log.d(TAG, "Microphone preference changed notification received");
+        
+        // Check if we have an active glasses connection with a phone mic manager
+        if (smartGlassesRepresentative != null) {
+            var phoneMicManager = smartGlassesRepresentative.getPhoneMicrophoneManager();
+                
+            if (phoneMicManager != null) {
+                Log.d(TAG, "Notifying PhoneMicrophoneManager of preference change");
+                phoneMicManager.onMicrophonePreferenceChanged();
+            } else {
+                Log.d(TAG, "No PhoneMicrophoneManager available - preference will take effect on next connection");
+            }
+        } else {
+            Log.d(TAG, "No glasses connected - preference will take effect on next connection");
+        }
+    }
 }

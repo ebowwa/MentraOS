@@ -274,7 +274,7 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             Log.d(TAG, "Switching to normal phone mic mode via PhoneMicrophoneManager");
             
             // Check if phone mic is explicitly forced by the user
-            if (SmartGlassesManager.getForceCoreOnboardMic(context)) {
+            if ("phone".equals(SmartGlassesManager.getPreferredMic(context))) {
                 // If user explicitly wants phone mic, switch to normal (non-SCO) mode
                 phoneMicManager.switchToNormalMode();
             } else {
@@ -417,6 +417,11 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
         } else {
             return smartGlassesCommunicator.getConnectionState();
         }
+    }
+    
+    //get the PhoneMicrophoneManager for preference changes
+    public PhoneMicrophoneManager getPhoneMicrophoneManager() {
+        return phoneMicManager;
     }
 
     public void showReferenceCard(String title, String body){

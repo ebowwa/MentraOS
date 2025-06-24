@@ -256,7 +256,7 @@ public class PhoneMicrophoneManager {
         // 2. Device availability
         // 3. System constraints
         
-        boolean userPrefersPhoneMic = SmartGlassesManager.getForceCoreOnboardMic(context);
+        boolean userPrefersPhoneMic = "phone".equals(SmartGlassesManager.getPreferredMic(context));
         boolean glassesHaveMic = glassesRep != null && 
                                 glassesRep.smartGlassesDevice != null && 
                                 glassesRep.smartGlassesDevice.getHasInMic();
@@ -701,7 +701,7 @@ public class PhoneMicrophoneManager {
                     if (wasCallActive != isPhoneCallActive) {
                         if (isPhoneCallActive) {
                             // Check if we can switch to glasses mic during the call
-                            boolean usingForcedPhoneMic = SmartGlassesManager.getForceCoreOnboardMic(context);
+                            boolean usingForcedPhoneMic = "phone".equals(SmartGlassesManager.getPreferredMic(context));
                             boolean glassesWithMicAvailable = glassesRep != null && 
                                                            glassesRep.smartGlassesDevice != null && 
                                                            glassesRep.smartGlassesDevice.getHasInMic();
@@ -985,5 +985,46 @@ public class PhoneMicrophoneManager {
         
         // Clear tracked audio client IDs
         ourAudioClientIds.clear();
+    }
+    
+    /**
+     * Called when user changes their microphone preference
+     * Immediately switches to the preferred microphone if recording is active
+     */
+    public void onMicrophonePreferenceChanged() {
+        Log.d(TAG, "Microphone preference changed, current status: " + currentStatus);
+        
+        // Only take action if we're currently recording
+        if (currentStatus == MicStatus.PAUSED) {
+            Log.d(TAG, "Not recording, preference will take effect on next start");
+            return;
+        }
+        
+        // Get the new preference
+        boolean userPrefersPhoneMic = "phone".equals(SmartGlassesManager.getPreferredMic(context));
+        boolean glassesHaveMic = glassesRep != null && 
+                                glassesRep.smartGlassesDevice != null && 
+                                glassesRep.smartGlassesDevice.getHasInMic();
+        
+        Log.d(TAG, "User prefers phone mic: " + userPrefersPhoneMic + ", Glasses have mic: " + glassesHaveMic);
+        
+        // Determine what mic we should be using based on new preference
+        boolean shouldUseGlassesMic = !userPrefersPhoneMic && glassesHaveMic && !isExternalAudioActive;
+        boolean currentlyUsingGlassesMic = (currentStatus == MicStatus.GLASSES_MIC);
+        
+        // If we need to change mic source
+        if (shouldUseGlassesMic != currentlyUsingGlassesMic) {
+            Log.d(TAG, "Switching microphone based on new preference");
+            
+            if (shouldUseGlassesMic) {
+                // Switch to glasses mic
+                switchToGlassesMic();
+            } else {
+                // Switch to phone mic - prefer SCO if available
+                startPreferredMicMode();
+            }
+        } else {
+            Log.d(TAG, "Already using the preferred microphone");
+        }
     }
 }
