@@ -548,4 +548,12 @@ public class SmartGlassesRepresentative implements PhoneMicListener {
             Log.e(TAG, "Error handling permission error", e);
         }
     }
+    
+    /**
+     * Getter for PhoneMicrophoneManager instance
+     * Allows external access for immediate microphone switching
+     */
+    public PhoneMicrophoneManager getPhoneMicrophoneManager() {
+        return phoneMicManager;
+    }
 }

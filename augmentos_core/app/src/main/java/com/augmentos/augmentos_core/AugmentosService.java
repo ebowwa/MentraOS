@@ -2145,6 +2145,77 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         preferredMic = mic;
         SmartGlassesManager.setPreferredMic(this, mic);
         setForceCoreOnboardMic(mic.equals("phone"));
+        
+        // NEW: Trigger immediate microphone switch
+        triggerImmediateMicrophoneSwitch();
+    }
+    
+    /**
+     * Get PhoneMicrophoneManager instance for immediate microphone switching
+     */
+    private PhoneMicrophoneManager getPhoneMicrophoneManager() {
+        if (smartGlassesManager != null && 
+            smartGlassesManager.getSmartGlassesRepresentative() != null) {
+            return smartGlassesManager.getSmartGlassesRepresentative().getPhoneMicrophoneManager();
+        }
+        return null;
+    }
+    
+    /**
+     * Trigger immediate microphone switch when user changes preference
+     */
+    private void triggerImmediateMicrophoneSwitch() {
+        Log.d("AugmentOsService", "=== MICROPHONE SWITCH FLOW ===");
+        Log.d("AugmentOsService", "User selected: " + preferredMic);
+        Log.d("AugmentOsService", "Glasses connected: " + (smartGlassesManager != null && 
+            smartGlassesManager.getConnectedSmartGlasses() != null));
+        
+        PhoneMicrophoneManager phoneMicManager = getPhoneMicrophoneManager();
+        Log.d("AugmentOsService", "PhoneMicManager available: " + (phoneMicManager != null));
+        
+        if (phoneMicManager != null) {
+            // Check if glasses are connected
+            if (smartGlassesManager != null && 
+                smartGlassesManager.getConnectedSmartGlasses() != null) {
+                
+                Log.d("AugmentOsService", "Triggering immediate microphone switch");
+                
+                // Check if sensing is enabled - if not, we need to enable it temporarily
+                boolean sensingWasEnabled = SmartGlassesManager.getSensingEnabled(this);
+                Log.d("AugmentOsService", "Sensing enabled: " + sensingWasEnabled);
+                
+                if (!sensingWasEnabled) {
+                    // Temporarily enable sensing to allow microphone switching
+                    Log.d("AugmentOsService", "Temporarily enabling sensing for microphone switch");
+                    SmartGlassesManager.saveSensingEnabled(this, true);
+                }
+                
+                // Notify the user that the switch is happening
+                blePeripheral.sendNotifyManager("Switching microphone...", "info");
+                
+                // Trigger the microphone switch
+                phoneMicManager.forceSwitchToPreferredMic();
+                
+                if (!sensingWasEnabled) {
+                    // Restore original sensing state after a short delay
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        Log.d("AugmentOsService", "Restoring original sensing state");
+                        SmartGlassesManager.saveSensingEnabled(this, sensingWasEnabled);
+                        phoneMicManager.pauseRecording();
+                    }, 2000); // 2 second delay to ensure switch completes
+                }
+                
+                // Send status updates
+                sendStatusToBackend();
+                sendStatusToAugmentOsManager();
+            } else {
+                Log.w("AugmentOsService", "No glasses connected - cannot switch microphone");
+                blePeripheral.sendNotifyManager("No glasses connected - cannot switch microphone", "warning");
+            }
+        } else {
+            Log.w("AugmentOsService", "PhoneMicrophoneManager not available for immediate switch");
+            blePeripheral.sendNotifyManager("Microphone manager not available", "warning");
+        }
     }
 
     @Override

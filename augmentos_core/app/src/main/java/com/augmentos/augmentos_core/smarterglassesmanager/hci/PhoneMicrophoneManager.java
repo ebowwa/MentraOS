@@ -245,6 +245,32 @@ public class PhoneMicrophoneManager {
     }
     
     /**
+     * Force immediate microphone switch regardless of current state or debouncing
+     * Used when user explicitly changes microphone preference
+     */
+    public void forceSwitchToPreferredMic() {
+        Log.d(TAG, "Force switching to preferred microphone - bypassing debouncing");
+        
+        // Always execute on main thread to prevent Handler threading issues
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post(this::forceSwitchToPreferredMic);
+            return;
+        }
+        
+        // Cancel any pending operations
+        if (pendingModeChangeRunnable != null) {
+            mainHandler.removeCallbacks(pendingModeChangeRunnable);
+            pendingModeChangeRunnable = null;
+        }
+        
+        // Reset debouncing flags
+        pendingMicRequest = false;
+        
+        // Execute immediately
+        executeMicEnable();
+    }
+    
+    /**
      * Actually executes the mic enable logic
      */
     private void executeMicEnable() {

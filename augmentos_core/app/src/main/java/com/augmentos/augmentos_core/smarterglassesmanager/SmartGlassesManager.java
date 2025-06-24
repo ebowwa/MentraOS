@@ -737,6 +737,14 @@ public class SmartGlassesManager extends Service {
     }
     
     /**
+     * Getter for SmartGlassesRepresentative instance
+     * Allows external access for immediate microphone switching
+     */
+    public SmartGlassesRepresentative getSmartGlassesRepresentative() {
+        return smartGlassesRepresentative;
+    }
+    
+    /**
      * Sends a custom command to the connected smart glasses
      * This is used for device-specific commands like WiFi configuration
      * 
