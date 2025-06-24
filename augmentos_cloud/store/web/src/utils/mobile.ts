@@ -39,7 +39,7 @@ export function generateDeeplink(packageName?: string): string {
   
   if (packageName) {
     // Return the web URL that will be handled by app links/universal links
-    return `${baseUrl}/app/${packageName}`;
+    return `${baseUrl}/package/${packageName}`;
   }
   
   return baseUrl;

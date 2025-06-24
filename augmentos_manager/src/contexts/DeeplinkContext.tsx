@@ -37,8 +37,8 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
           
           const pathParts = urlObj.pathname.split("/").filter(Boolean)
           
-          // Check if it's an app detail page: /app/[packageName]
-          if (pathParts[0] === "app" && pathParts[1]) {
+          // Check if it's an app detail page: /package/[packageName]
+          if (pathParts[0] === "package" && pathParts[1]) {
             const packageName = pathParts[1]
             // Navigate to store tab with the packageName parameter
             router.push({
