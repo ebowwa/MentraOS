@@ -30,8 +30,7 @@ export class CoreCommunicator extends EventEmitter {
   async isBluetoothEnabled(): Promise<boolean> {
     try {
       console.log("Checking Bluetooth state...")
-
-      // Try to check state without initialization first (like iOS)
+      
       try {
         const state = await BleManager.checkState()
         console.log("Bluetooth state:", state)
@@ -103,36 +102,27 @@ export class CoreCommunicator extends EventEmitter {
   async checkConnectivityRequirements(): Promise<{
     isReady: boolean
     message?: string
+    requirement?: "bluetooth" | "location" | "locationServices" | "permissions"
   }> {
     console.log("Checking connectivity requirements")
 
-    // Check Bluetooth
+    // Check Bluetooth state on both iOS and Android
     const isBtEnabled = await this.isBluetoothEnabled()
     console.log("Is Bluetooth enabled:", isBtEnabled)
     if (!isBtEnabled) {
-      console.log("Bluetooth is disabled, showing alert")
-
-      // Show alert to user
-      showAlert(
-        translate("connectivity:bluetoothRequiredTitle"),
-        translate("connectivity:bluetoothRequiredMessage"),
-        [
-          {
-            text: translate("common:ok"),
-            style: "default",
-          },
-        ],
-        {
-          iconName: "bluetooth-off",
-          iconColor: "#F56565",
-        },
-      )
-
+      console.log("Bluetooth is disabled, showing error")
       return {
         isReady: false,
-        message: translate("connectivity:bluetoothRequiredMessage"),
+        message: "Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.",
+        requirement: "bluetooth",
       }
     }
+
+    // iOS doesn't require location permission for BLE scanning since iOS 13
+    if (Platform.OS === "ios") {
+      return {isReady: true}
+    }
+
 
     // Only check location on Android
     if (Platform.OS === "android") {
@@ -140,26 +130,11 @@ export class CoreCommunicator extends EventEmitter {
       const isLocationPermissionGranted = await this.isLocationPermissionGranted()
       console.log("Is Location permission granted:", isLocationPermissionGranted)
       if (!isLocationPermissionGranted) {
-        console.log("Location permission missing, showing alert")
-
-        showAlert(
-          translate("connectivity:locationPermissionRequiredTitle"),
-          translate("connectivity:locationPermissionRequiredMessage"),
-          [
-            {
-              text: translate("common:ok"),
-              style: "default",
-            },
-          ],
-          {
-            iconName: "map-marker-off",
-            iconColor: "#F56565",
-          },
-        )
-
+        console.log("Location permission missing, showing error")
         return {
           isReady: false,
-          message: translate("connectivity:locationPermissionRequiredMessage"),
+          message: "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
+          requirement: "location",
         }
       }
 
@@ -167,26 +142,11 @@ export class CoreCommunicator extends EventEmitter {
       const isLocationServicesEnabled = await this.isLocationServicesEnabled()
       console.log("Are Location services enabled:", isLocationServicesEnabled)
       if (!isLocationServicesEnabled) {
-        console.log("Location services disabled, showing alert")
-
-        showAlert(
-          translate("connectivity:locationServicesRequiredTitle"),
-          translate("connectivity:locationServicesRequiredMessage"),
-          [
-            {
-              text: translate("common:ok"),
-              style: "default",
-            },
-          ],
-          {
-            iconName: "crosshairs-gps",
-            iconColor: "#F56565",
-          },
-        )
-
+        console.log("Location services disabled, showing error")
         return {
           isReady: false,
-          message: translate("connectivity:locationServicesRequiredMessage"),
+          message: "Location services are disabled. Please enable location services in your device settings and try again.",
+          requirement: "locationServices",
         }
       }
     }

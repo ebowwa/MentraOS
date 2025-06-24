@@ -1,10 +1,11 @@
 import React from "react"
-import {Alert, AlertButton} from "react-native"
+import {Alert, Platform} from "react-native"
 import BasicDialog from "@/components/ignite/BasicDialog"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {StyleSheet, View} from "react-native"
 import {useAppTheme} from "./useAppTheme"
 import {BackHandler} from "react-native"
+import {SettingsNavigationUtils} from "./SettingsNavigationUtils"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -177,50 +178,223 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
   )
 }
 
-export const showAlert = (
+export interface AlertButton {
+  text: string
+  onPress?: () => void
+  style?: "default" | "cancel" | "destructive"
+}
+
+export interface AlertOptions {
+  cancelable?: boolean
+  iconName?: string
+  iconColor?: string
+  iconSize?: number
+}
+
+export interface ConnectivityAlertOptions extends AlertOptions {
+  requirement?: "bluetooth" | "location" | "locationServices" | "permissions"
+  showTurnOnButton?: boolean
+  turnOnButtonText?: string
+}
+
+/**
+ * Shows a standard alert with custom buttons
+ */
+const showAlert = (
   title: string,
   message: string,
-  buttons: AlertButton[] = [{text: "OK"}],
-  options?: {
-    cancelable?: boolean
-    onDismiss?: () => void
-    useNativeAlert?: boolean
-    iconName?: string
-    iconSize?: number
-    iconColor?: string
-    icon?: React.ReactNode
-  },
-): Promise<void> => {
-  return new Promise(resolve => {
-    const handleDismiss = () => {
-      options?.onDismiss?.()
-      resolve()
-    }
+  buttons: AlertButton[],
+  options?: AlertOptions,
+) => {
+  Alert.alert(title, message, buttons, options)
+}
 
-    // Fall back to native Alert if modalRef is not set or if explicitly requested
-    if (!modalRef || options?.useNativeAlert) {
-      return Alert.alert(title, message, buttons, {
-        cancelable: options?.cancelable ?? true,
-        onDismiss: handleDismiss,
+/**
+ * Shows a connectivity-related alert with a "Turn On" button that opens the appropriate settings
+ */
+const showConnectivityAlert = (
+  title: string,
+  message: string,
+  requirement: "bluetooth" | "location" | "locationServices" | "permissions",
+  options?: ConnectivityAlertOptions,
+) => {
+  const buttons: AlertButton[] = []
+
+  // Add "Turn On" button if enabled
+  if (options?.showTurnOnButton !== false) {
+    buttons.push({
+      text: options?.turnOnButtonText || "Turn On",
+      onPress: () => {
+        SettingsNavigationUtils.openSettingsForRequirement(requirement)
+      },
+    })
+  }
+
+  // Add "Cancel" button
+  buttons.push({
+    text: "Cancel",
+    style: "cancel",
+  })
+
+  showAlert(title, message, buttons, options)
+}
+
+/**
+ * Shows a Bluetooth-related alert with a "Turn On Bluetooth" button
+ * Uses the new modal system with BasicDialog for consistent design
+ */
+const showBluetoothAlert = (
+  title: string,
+  message: string,
+  options?: ConnectivityAlertOptions,
+) => {
+  if (modalRef) {
+    const buttons: AlertButton[] = []
+
+    // Add "Cancel" button first (left side)
+    buttons.push({
+      text: "Cancel",
+      style: "cancel",
+    })
+
+    // Add "Turn On" button second (right side)
+    if (options?.showTurnOnButton !== false) {
+      buttons.push({
+        text: options?.turnOnButtonText || "Turn On Bluetooth",
+        onPress: () => {
+          SettingsNavigationUtils.openSettingsForRequirement("bluetooth")
+        },
       })
     }
 
-    const wrappedButtons = buttons.map(button => ({
-      ...button,
-      onPress: () => {
-        button.onPress?.()
-        resolve()
-      },
-    }))
+    modalRef.showModal(title, message, buttons, {
+      iconName: "bluetooth",
+      iconColor: "#007AFF",
+      iconSize: 32,
+      ...options,
+    })
+  } else {
+    // Fallback to old alert system if modal is not available
+    showConnectivityAlert(title, message, "bluetooth", {
+      turnOnButtonText: "Turn On Bluetooth",
+      ...options,
+    })
+  }
+}
 
-    // Use custom modal implementation
-    modalRef.showModal(title, message, wrappedButtons, {
-      iconName: options?.iconName,
-      iconSize: options?.iconSize,
-      iconColor: options?.iconColor,
-      icon: options?.icon,
+/**
+ * Shows a Location-related alert with a "Turn On Location" button
+ * Uses the new modal system with BasicDialog for consistent design
+ */
+const showLocationAlert = (
+  title: string,
+  message: string,
+  options?: ConnectivityAlertOptions,
+) => {
+  if (modalRef) {
+    const buttons: AlertButton[] = []
+
+    // Add "Turn On" button if enabled
+    if (options?.showTurnOnButton !== false) {
+      buttons.push({
+        text: options?.turnOnButtonText || "Turn On Location",
+        onPress: () => {
+          SettingsNavigationUtils.openSettingsForRequirement("location")
+        },
+      })
+    }
+
+    // Add "Cancel" button
+    buttons.push({
+      text: "Cancel",
+      style: "cancel",
+    })
+
+    modalRef.showModal(title, message, buttons, {
+      iconName: "map-marker",
+      iconColor: "#34C759",
+      iconSize: 32,
+      ...options,
+    })
+  } else {
+    // Fallback to old alert system if modal is not available
+    showConnectivityAlert(title, message, "location", {
+      turnOnButtonText: "Turn On Location",
+      ...options,
+    })
+  }
+}
+
+/**
+ * Shows a Location Services alert with a "Turn On Location Services" button
+ * Uses Google Play Services dialog on Android for better UX
+ */
+const showLocationServicesAlert = (
+  title: string,
+  message: string,
+  options?: ConnectivityAlertOptions,
+) => {
+  // Show the location services dialog directly for better UX
+  SettingsNavigationUtils.showLocationServicesDialog().catch((error) => {
+    console.error("Error showing location services dialog:", error)
+    // Fallback to regular alert if dialog fails
+    showConnectivityAlert(title, message, "locationServices", {
+      turnOnButtonText: "Turn On Location Services",
+      ...options,
     })
   })
+}
+
+/**
+ * Shows a Permissions alert with a "Open Settings" button
+ * Uses the new modal system with BasicDialog for consistent design
+ */
+const showPermissionsAlert = (
+  title: string,
+  message: string,
+  options?: ConnectivityAlertOptions,
+) => {
+  if (modalRef) {
+    const buttons: AlertButton[] = []
+
+    // Add "Turn On" button if enabled
+    if (options?.showTurnOnButton !== false) {
+      buttons.push({
+        text: options?.turnOnButtonText || "Open Settings",
+        onPress: () => {
+          SettingsNavigationUtils.openSettingsForRequirement("permissions")
+        },
+      })
+    }
+
+    // Add "Cancel" button
+    buttons.push({
+      text: "Cancel",
+      style: "cancel",
+    })
+
+    modalRef.showModal(title, message, buttons, {
+      iconName: "shield-check",
+      iconColor: "#FF9500",
+      iconSize: 32,
+      ...options,
+    })
+  } else {
+    // Fallback to old alert system if modal is not available
+    showConnectivityAlert(title, message, "permissions", {
+      turnOnButtonText: "Open Settings",
+      ...options,
+    })
+  }
+}
+
+export {
+  showAlert,
+  showConnectivityAlert,
+  showBluetoothAlert,
+  showLocationAlert,
+  showLocationServicesAlert,
+  showPermissionsAlert,
 }
 
 export default showAlert

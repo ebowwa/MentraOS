@@ -19,7 +19,7 @@ import SunIcon from "assets/icons/component/SunIcon"
 import {glassesFeatures} from "@/config/glassesFeatures"
 // import {} from "assets/icons/"
 import MaterialCommunityIcons from "react-native-vector-icons/MaterialCommunityIcons"
-import showAlert from "@/utils/AlertUtils"
+import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 
 export const ConnectDeviceButton = () => {
   const {status} = useStatus()
@@ -40,13 +40,36 @@ export const ConnectDeviceButton = () => {
       const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
       
       if (!requirementsCheck.isReady) {
-        // Show alert about missing requirements
+        // Show alert about missing requirements with "Turn On" button
         console.log("Requirements not met, showing alert with message:", requirementsCheck.message)
-        showAlert(
-          "Connection Requirements",
-          requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
-          [{text: "OK"}]
-        )
+        
+        // Use the appropriate connectivity alert based on the requirement
+        switch (requirementsCheck.requirement) {
+          case "bluetooth":
+            showBluetoothAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Bluetooth is required to connect to glasses",
+            )
+            break
+          case "location":
+            showLocationAlert(
+              "Connection Requirements", 
+              requirementsCheck.message || "Location permission is required to scan for glasses",
+            )
+            break
+          case "locationServices":
+            showLocationServicesAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Location services are required to scan for glasses",
+            )
+            break
+          default:
+            showAlert(
+              "Connection Requirements",
+              requirementsCheck.message || "Cannot connect to glasses - check Bluetooth and Location settings",
+              [{text: "OK"}]
+            )
+        }
         return
       }
 

@@ -5,7 +5,7 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
-import {showAlert} from "@/utils/AlertUtils"
+import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {Button, Header} from "@/components/ignite"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -131,12 +131,33 @@ export default function PairingPrepScreen() {
         console.log("DEBUG: Running iOS connectivity check early")
         const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
         if (!requirementsCheck.isReady) {
-          // Show alert about missing requirements
-          showAlert(
-            translate("pairing:connectionIssueTitle"),
-            requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-            [{text: translate("common:ok")}],
-          )
+          // Show alert about missing requirements with "Turn On" button
+          switch (requirementsCheck.requirement) {
+            case "bluetooth":
+              showBluetoothAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "location":
+              showLocationAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "locationServices":
+              showLocationServicesAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            default:
+              showAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+                [{text: translate("common:ok")}],
+              )
+          }
           return
         }
       }
@@ -197,12 +218,33 @@ export default function PairingPrepScreen() {
     if (needsBluetoothPermissions && Platform.OS === "android") {
       const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
       if (!requirementsCheck.isReady) {
-        // Show alert about missing requirements
-        showAlert(
-          translate("pairing:connectionIssueTitle"),
-          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-          [{text: translate("common:ok")}],
-        )
+        // Show alert about missing requirements with "Turn On" button
+        switch (requirementsCheck.requirement) {
+          case "bluetooth":
+            showBluetoothAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            )
+            break
+          case "location":
+            showLocationAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            )
+            break
+          case "locationServices":
+            showLocationServicesAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            )
+            break
+          default:
+            showAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              [{text: translate("common:ok")}],
+            )
+        }
         return
       }
     }

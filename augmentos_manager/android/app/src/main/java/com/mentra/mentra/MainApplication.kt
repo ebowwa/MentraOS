@@ -72,6 +72,7 @@ class MainApplication : Application(), ReactApplication {
             packages.add(FileProviderPackage());
             packages.add(RNViewShotPackage());
             packages.add(CreateThumbnailPackage());
+            packages.add(SettingsNavigationPackage()); // Settings Navigation Package
             return packages
           }
 

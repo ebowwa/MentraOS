@@ -87,6 +87,7 @@ export class CoreCommunicator extends EventEmitter {
   async checkConnectivityRequirements(): Promise<{
     isReady: boolean
     message?: string
+    requirement?: "bluetooth" | "location" | "locationServices" | "permissions"
   }> {
     console.log("Checking connectivity requirements")
 
@@ -98,6 +99,7 @@ export class CoreCommunicator extends EventEmitter {
       return {
         isReady: false,
         message: "Bluetooth is required to connect to glasses. Please enable Bluetooth and try again.",
+        requirement: "bluetooth",
       }
     }
 
@@ -118,6 +120,7 @@ export class CoreCommunicator extends EventEmitter {
           isReady: false,
           message:
             "Location permission is required to scan for glasses on Android. Please grant location permission and try again.",
+          requirement: "location",
         }
       }
 
@@ -130,6 +133,7 @@ export class CoreCommunicator extends EventEmitter {
           isReady: false,
           message:
             "Location services are disabled. Please enable location services in your device settings and try again.",
+          requirement: "locationServices",
         }
       }
     }

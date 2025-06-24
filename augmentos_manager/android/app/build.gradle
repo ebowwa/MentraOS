@@ -178,6 +178,10 @@ dependencies {
     implementation "androidx.lifecycle:lifecycle-service:2.6.1"
     implementation("org.greenrobot:eventbus:3.3.1")
 
+    // Google Play Services for location settings dialog
+    implementation 'com.google.android.gms:play-services-location:21.0.1'
+    implementation 'com.google.android.gms:play-services-base:18.2.0'
+
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
