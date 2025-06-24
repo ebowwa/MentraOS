@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, X, Building } from 'lucide-react';
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
+import { Search, X, Building, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import api, { AppFilterOptions } from '../api';
 import { AppI } from '../types';
 import Header from '../components/Header';
 import { toast } from 'sonner';
-import AppCard from '../components/AppCard';
+import { Button } from '../components/ui/button';
 
 /**
  * AppStore component that displays and manages available applications
@@ -185,12 +185,6 @@ const AppStore: React.FC = () => {
     setOrgName('');
   };
 
-  const handleOpen = async (packageName: string) => {
-    if (!isAuthenticated) {
-      console.log("TODO not impleneted: Open App");
-      return;
-    }
-  }
   // Handle app installation
   const handleInstall = async (packageName: string) => {
     if (!isAuthenticated) {
@@ -258,6 +252,10 @@ const AppStore: React.FC = () => {
     } finally {
       setInstallingApp(null);
     }
+  };
+
+  const handleOpen = (packageName: string) => {
+    navigate(`/package/${packageName}`);
   };
 
   return (
@@ -354,13 +352,67 @@ const AppStore: React.FC = () => {
         {!isLoading && !error && (
           <div className="mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12 px-0">
             {filteredApps.map(app => (
-              <AppCard
-                key={app.packageName}
-                app={app}
-                isInstalling={installingApp === app.packageName}
-                onInstall={handleInstall}
-                onOpen={handleOpen}
-              />
+              <div key={app.packageName} className="p-6 flex gap-3 border-b border-[#0c0d24] hover:bg-[#0d1029] transition-colors rounded-lg">
+                {/* Image Column */}
+                <div className="shrink-0 flex items-start pt-2">
+                  <img
+                    src={app.logoURL}
+                    alt={`${app.name} logo`}
+                    className="w-16 h-16 object-cover rounded-full"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/64x64/gray/white?text=App';
+                    }}
+                  />
+                </div>
+
+                {/* Content Column */}
+                <div className="flex-1 flex flex-col gap-2">
+                  <div onClick={() => handleOpen(app.packageName)} role="button" className="cursor-pointer">
+                    <h3 className="text-[15px] text-white font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em'}}>{app.name}</h3>
+                    {app.description && (
+                      <p className="text-[15px] text-[#9A9CAC] font-normal leading-[1.3] line-clamp-2" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em'}}>{app.description}</p>
+                    )}
+                  </div>
+
+                  {/* Button row */}
+                  <div className="mt-2">
+                    {isAuthenticated ? (
+                      app.isInstalled ? (
+                        <Button
+                          onClick={() => handleOpen(app.packageName)}
+                          disabled={installingApp === app.packageName}
+                          className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                        >
+                          <>Open</>
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleInstall(app.packageName)}
+                          disabled={installingApp === app.packageName}
+                          className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                        >
+                          {installingApp === app.packageName ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
+                              Installing
+                            </>
+                          ) : (
+                            <>Get</>
+                          )}
+                        </Button>
+                      )
+                    ) : (
+                      <Button
+                        onClick={() => navigate('/login')}
+                        className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center flex items-center gap-2"
+                      >
+                        <Lock className="h-4 w-4 mr-1" />
+                        Sign in
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         )}
