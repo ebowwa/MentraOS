@@ -388,6 +388,29 @@ const showPermissionsAlert = (
   }
 }
 
+/**
+ * Shows a destructive action alert with proper styling
+ * Uses the new modal system with BasicDialog for consistent design
+ */
+const showDestructiveAlert = (
+  title: string,
+  message: string,
+  buttons: AlertButton[],
+  options?: AlertOptions,
+) => {
+  if (modalRef) {
+    modalRef.showModal(title, message, buttons, {
+      iconName: "delete-forever",
+      iconColor: "#FF3B30",
+      iconSize: 32,
+      ...options,
+    })
+  } else {
+    // Fallback to old alert system if modal is not available
+    showAlert(title, message, buttons, options)
+  }
+}
+
 export {
   showAlert,
   showConnectivityAlert,
@@ -395,6 +418,7 @@ export {
   showLocationAlert,
   showLocationServicesAlert,
   showPermissionsAlert,
+  showDestructiveAlert,
 }
 
 export default showAlert
