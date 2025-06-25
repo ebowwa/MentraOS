@@ -19,7 +19,7 @@ enum VADQuality: String, CaseIterable {
 
     var threshold: Float {
         switch self {
-        case .normal: return 0.5
+        case .normal: return 0.3
         case .low_bitrate: return 0.7
         case .aggressive: return 0.8
         case .very_aggressive: return 0.90

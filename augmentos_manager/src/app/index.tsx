@@ -29,7 +29,7 @@ export default function IndexPage() {
 
       initializeCoreConnection()
 
-      replace("/auth/core-token-exchange")
+      replace("/auth/version-check")
     }
 
     if (!loading) {
