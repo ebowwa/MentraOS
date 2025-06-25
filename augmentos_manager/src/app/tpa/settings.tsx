@@ -67,6 +67,18 @@ export default function AppSettings() {
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
 
+  // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
+  useEffect(() => {
+    if (appInfo?.webviewURL && fromWebView !== "true") {
+      console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
+      replace("/tpa/webview", {
+        webviewURL: appInfo.webviewURL,
+        appName: appName,
+        packageName: packageName,
+      })
+    }
+  }, [appInfo, fromWebView, appName, packageName, replace])
+
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
@@ -254,6 +266,16 @@ export default function AppSettings() {
         setSettingsState(cached.settingsState)
         setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
         setSettingsLoading(false)
+        
+        // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
+        if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
+          replace("/tpa/webview", {
+            webviewURL: cached.serverAppInfo.webviewURL,
+            appName: appName,
+            packageName: packageName,
+          })
+          return
+        }
       } else {
         setHasCachedSettings(false)
         setSettingsLoading(true)
@@ -317,13 +339,15 @@ export default function AppSettings() {
         setHasCachedSettings(false)
       }
       setSettingsLoading(false)
-      // Auto-redirect to webview if needed
+      
+      // TACTICAL BYPASS: Execute immediate webview redirect if webviewURL detected
       if (data.webviewURL && fromWebView !== "true") {
         replace("/tpa/webview", {
           webviewURL: data.webviewURL,
           appName: appName,
           packageName: packageName,
         })
+        return
       }
     } catch (err) {
       setSettingsLoading(false)
