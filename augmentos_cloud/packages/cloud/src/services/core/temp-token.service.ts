@@ -8,7 +8,7 @@ import { appService } from './app.service';
 const logger = rootLogger.child({ service: 'temp-token.service' });
 
 // Environment variable for JWT signing
-export const APP_AUTH_JWT_PRIVATE_KEY: string | null = process.env.APP_AUTH_JWT_PRIVATE_KEY || null;
+export const APP_AUTH_JWT_PRIVATE_KEY: string | null = process.env.APP_AUTH_JWT_PRIVATE_KEY || process.env.TPA_AUTH_JWT_PRIVATE_KEY || null;
 if (!APP_AUTH_JWT_PRIVATE_KEY) {
   console.warn('[token.service] APP_AUTH_JWT_PRIVATE_KEY is not set');
 }
