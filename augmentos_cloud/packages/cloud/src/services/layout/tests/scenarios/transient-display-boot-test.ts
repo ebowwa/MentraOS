@@ -10,7 +10,8 @@ import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { strict as assert } from 'assert';
-import { systemApps } from '../../../core/system-apps';
+// import { systemApps } from '../../../core/system-apps';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../../../core/app.service';
 
 // App package names for testing
 const APP1 = 'com.example.app1'; // First app (Mira)
@@ -80,7 +81,7 @@ export async function testTransientDisplayNotRestored() {
     // Verify boot screen is showing
     // @ts-ignore: We need to access private property for testing
     const bootScreen = displayManager['displayState'].currentDisplay;
-    console.assert(bootScreen?.displayRequest.packageName === systemApps.dashboard.packageName,
+    console.assert(bootScreen?.displayRequest.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME,
       'Boot screen should be showing');
     console.log('✓ Boot screen is showing');
 

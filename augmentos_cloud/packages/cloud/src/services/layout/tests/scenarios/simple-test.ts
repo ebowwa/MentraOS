@@ -5,7 +5,6 @@
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
-import { systemApps } from '../../../core/system-apps';
 
 // Simple manual test to verify our fixes
 export async function main() {
