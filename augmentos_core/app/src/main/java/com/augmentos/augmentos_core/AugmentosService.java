@@ -2310,6 +2310,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             locationSystem.cleanup();
         }
 
+        // Clean up calendar system
+        if(calendarSystem != null) {
+            calendarSystem.cleanup();
+        }
+
         // Clean up screen capture resources
         if(screenCaptureRunnable != null) {
             screenCaptureHandler.removeCallbacks(screenCaptureRunnable);
@@ -2446,6 +2451,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         ServerComms.getInstance().disconnectWebSocket();
         if (authHandler != null && authHandler.getCoreToken() != null) {
             ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
+        }
+    }
+
+    /**
+     * Handle calendar permission changes
+     */
+    public void handleCalendarPermissionChange() {
+        if (calendarSystem != null) {
+            calendarSystem.handlePermissionChange();
         }
     }
 
