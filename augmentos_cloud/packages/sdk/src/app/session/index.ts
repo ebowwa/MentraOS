@@ -1147,9 +1147,9 @@ export class AppSession {
         else if ((message as any).type === 'connection_error') {
           // Treat 'connection_error' (string literal) like AppConnectionError
           // This handles cases where the cloud might send the type as a direct string
-          // instead of the enum's 'app_connection_error' value.
+          // instead of the enum's 'tpa_connection_error' value.
           const errorMessage = (message as any).message || 'Unknown connection error (type: connection_error)';
-          this.logger.warn(`Received 'connection_error' type directly. Consider aligning cloud to send 'app_connection_error'. Message: ${errorMessage}`);
+          this.logger.warn(`Received 'connection_error' type directly. Consider aligning cloud to send 'tpa_connection_error'. Message: ${errorMessage}`);
           this.events.emit('error', new Error(errorMessage));
         }
         else if (message.type === 'permission_error') {

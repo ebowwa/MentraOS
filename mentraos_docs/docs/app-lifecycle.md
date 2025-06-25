@@ -39,9 +39,9 @@ An MentraOS app goes through the following stages:
     });
     ```
 
-4.  **Connection Initialization:**  After connecting, your app sends a [`app_connection_init`](/reference/interfaces/message-types#appconnectioninit) message to the cloud. This message includes:
+4.  **Connection Initialization:**  After connecting, your app sends a [`tpa_connection_init`](/reference/interfaces/message-types#appconnectioninit) message to the cloud. This message includes:
 
-    *   `type`: `"app_connection_init"`
+    *   `type`: `"tpa_connection_init"`
     *   `sessionId`:  The session ID from the webhook request.
     *   `packageName`:  Your app's package name.
     *   `apiKey`:  Your app's API key.
@@ -85,8 +85,8 @@ sequenceDiagram
     Cloud->>App: Webhook: session_request
     activate App
     App->>Cloud: WebSocket Connection
-    App->>Cloud: app_connection_init
-    Cloud->>App: app_connection_ack
+    App->>Cloud: tpa_connection_init
+    Cloud->>App: tpa_connection_ack
     App->>Cloud: subscription_update
     loop Real-time Interaction
         Glasses->>Cloud: Sensor data, voice, etc.

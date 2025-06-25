@@ -85,7 +85,7 @@ export enum CloudToGlassesMessageType {
  */
 export enum AppToCloudMessageType {
   // Commands
-  CONNECTION_INIT = 'app_connection_init',
+  CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
 
   // Requests
@@ -114,8 +114,8 @@ export enum AppToCloudMessageType {
  */
 export enum CloudToAppMessageType {
   // Responses
-  CONNECTION_ACK = 'app_connection_ack',
-  CONNECTION_ERROR = 'app_connection_error',
+  CONNECTION_ACK = 'tpa_connection_ack',
+  CONNECTION_ERROR = 'tpa_connection_error',
 
   // Updates
   APP_STOPPED = 'app_stopped',

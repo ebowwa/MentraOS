@@ -29,7 +29,7 @@ The current App authentication system has several issues that impact developer e
 4. After connection, App sends a `AppConnectionInit` message with:
    ```json
    {
-     "type": "app_connection_init",
+     "type": "tpa_connection_init",
      "sessionId": "userSessionId-packageName",
      "packageName": "org.example.myapp",
      "apiKey": "api-key-value"
@@ -167,7 +167,7 @@ Maintain support for the existing message-based authentication flow while encour
 **New Error Response Format**:
 ```json
 {
-  "type": "app_connection_error",
+  "type": "tpa_connection_error",
   "code": "INVALID_API_KEY",
   "message": "The API key provided does not match the stored API key for this package",
   "timestamp": "2023-05-11T12:34:56.789Z",

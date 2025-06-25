@@ -178,7 +178,7 @@ export class WebSocketService {
                   'Content-Type: application/json\r\n' +
                   '\r\n' +
                   JSON.stringify({
-                    type: 'app_connection_error',
+                    type: 'tpa_connection_error',
                     code: 'MISSING_HEADERS',
                     message: 'Missing userId or sessionId in request headers',
                     timestamp: new Date()
@@ -217,7 +217,7 @@ export class WebSocketService {
                     'Content-Type: application/json\r\n' +
                     '\r\n' +
                     JSON.stringify({
-                      type: 'app_connection_error',
+                      type: 'tpa_connection_error',
                       code: 'JWT_INVALID',
                       message: 'Invalid JWT token: ' + jwtError.message,
                       timestamp: new Date()

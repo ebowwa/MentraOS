@@ -204,7 +204,7 @@ Message types sent FROM App TO cloud.
 
 ```typescript
 enum AppToCloudMessageType {
-  CONNECTION_INIT = 'app_connection_init',
+  CONNECTION_INIT = 'tpa_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
   DISPLAY_REQUEST = 'display_event', // Note: Reuses 'display_event' type string
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update'
@@ -217,8 +217,8 @@ Message types sent FROM cloud TO App.
 
 ```typescript
 enum CloudToAppMessageType {
-  CONNECTION_ACK = 'app_connection_ack',
-  CONNECTION_ERROR = 'app_connection_error',
+  CONNECTION_ACK = 'tpa_connection_ack',
+  CONNECTION_ERROR = 'tpa_connection_error',
   APP_STOPPED = 'app_stopped',
   SETTINGS_UPDATE = 'settings_update',
   DATA_STREAM = 'data_stream', // Wrapper for stream data
