@@ -8,9 +8,10 @@ import { assertDisplayContainsText, assertDisplayFromPackage } from '../utilitie
 import { strict as assert } from 'assert';
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
-import { systemApps } from '../../../core/system-apps';
+// import { systemApps } from '../../../core/system-apps';
 import { TpaToCloudMessageType, ViewType, LayoutType, DisplayRequest } from '@mentra/sdk';
 import { testShowThrottledAfterAppStop } from './show-throttled-after-app-stop.test';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../../../core/app.service';
 
 // Mock app package names
 const APP1 = 'com.example.app1';
@@ -42,7 +43,7 @@ export async function testBootQueueAndProcess() {
     // Verify boot screen is sent to websocket
     const bootScreenMessage = userSession.getLastSentMessage();
     console.assert(
-      bootScreenMessage?.packageName === systemApps.dashboard.packageName &&
+      bootScreenMessage?.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME &&
       bootScreenMessage?.layout?.title?.includes('Starting App'),
       'Boot screen should be showing'
     );
@@ -76,7 +77,7 @@ export async function testBootQueueAndProcess() {
     // Directly verify boot screen is still showing
     const currentMessage = userSession.getLastSentMessage();
     console.assert(
-      currentMessage?.packageName === systemApps.dashboard.packageName,
+      currentMessage?.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME,
       'Boot screen should still be showing'
     );
     console.log('✓ Boot screen is still showing');
@@ -148,7 +149,7 @@ export async function testPreBootDisplayPreservation() {
 
     // Verify boot screen is showing
     const lastMessage = userSession.getLastSentMessage();
-    console.assert(lastMessage?.packageName === systemApps.dashboard.packageName,
+    console.assert(lastMessage?.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME,
       'Boot screen should be showing');
     console.log('✓ Boot screen is showing');
 
@@ -169,7 +170,7 @@ export async function testPreBootDisplayPreservation() {
     // Look through messages to find the last non-dashboard display
     for (const msg of messages) {
       if (msg.type === TpaToCloudMessageType.DISPLAY_REQUEST &&
-          msg.packageName !== systemApps.dashboard.packageName) {
+          msg.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
         console.log(`Last app display: ${msg.packageName}`);
         if (msg.packageName === APP1) {
           app1WasRestored = true;
@@ -266,7 +267,7 @@ export async function testMultipleAppBoot() {
     // Look through messages to find first app display after boot
     for (const msg of messages) {
       if (msg.type === TpaToCloudMessageType.DISPLAY_REQUEST &&
-          msg.packageName !== systemApps.dashboard.packageName) {
+          msg.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
         console.log(`First app display was: ${msg.packageName}`);
         if (msg.packageName === CAPTIONS_APP) {
           captionsWasFirst = true;
@@ -357,7 +358,7 @@ export async function testAppStopDuringBoot() {
     // Look through messages to find last app display
     for (const msg of messages) {
       if (msg.type === TpaToCloudMessageType.DISPLAY_REQUEST &&
-          msg.packageName !== systemApps.dashboard.packageName) {
+          msg.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
         console.log(`App display shown: ${msg.packageName}`);
         if (msg.packageName === APP2) {
           app2WasShown = true;
@@ -432,7 +433,7 @@ export async function testNoDisplayRestoreForStoppedApps() {
 
     // Verify boot screen is showing
     const bootScreenMessage = userSession.getLastSentMessage();
-    console.assert(bootScreenMessage?.packageName === systemApps.dashboard.packageName,
+    console.assert(bootScreenMessage?.packageName === SYSTEM_DASHBOARD_PACKAGE_NAME,
       'Boot screen should be showing');
     console.log('✓ Boot screen is showing');
 
