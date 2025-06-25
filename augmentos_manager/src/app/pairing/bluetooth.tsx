@@ -235,8 +235,7 @@ export default function SelectGlassesBluetoothScreen() {
     <Screen
       preset="fixed"
       style={{paddingHorizontal: theme.spacing.md}}
-      safeAreaEdges={["bottom"]}
-      gradientColors={[theme.colors.altTabBarBackground1, theme.colors.altTabBarBackground2]}>
+      safeAreaEdges={["bottom"]}>
       <Header 
         leftIcon="caretLeft" 
         onLeftPress={handleForgetGlasses}
