@@ -12,11 +12,11 @@ declare global {
 }
 import webSocketService from '../services/websocket/websocket.service';
 import sessionService from '../services/session/session.service';
-import appService from '../services/core/app.service';
+import appService, { isUninstallable } from '../services/core/app.service';
 import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { DeveloperProfile, TpaType } from '@augmentos/sdk';
+import { DeveloperProfile, TpaType } from '@mentra/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import UserSession from '../services/session/UserSession';
 import { authWithOptionalSession, OptionalUserSessionRequest } from '../middleware/client/client-auth-middleware';
@@ -36,12 +36,14 @@ interface AppWithDeveloperProfile extends AppI {
 interface EnhancedAppI extends AppI {
   is_running?: boolean;
   is_foreground?: boolean;
+  lastActiveAt?: Date;
 }
 
 // Enhanced app with both developer profile and running state
 interface EnhancedAppWithDeveloperProfile extends AppWithDeveloperProfile {
   is_running?: boolean;
   is_foreground?: boolean;
+  lastActiveAt?: Date;
 }
 
 // This is annyoing to change in the env files everywhere for each region so we set it here.
@@ -58,8 +60,8 @@ if (!AUGMENTOS_AUTH_JWT_SECRET) {
   logger.error('AUGMENTOS_AUTH_JWT_SECRET is not set');
 }
 
-/** 
- * TODO(isaiah): Instead of having a unifiedAuthMiddleware, I would prefer to cleanly separate routes that are called 
+/**
+ * TODO(isaiah): Instead of having a unifiedAuthMiddleware, I would prefer to cleanly separate routes that are called
  * by either the client (mobile app, web app, etc.), system apps, or the TPA's (third-party applications), having a more clear separation of concerns.
  * This way we would be able to log, track, and debug defined actions more clearly.
  */
@@ -104,7 +106,7 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
         duration,
         allowedPackages: ALLOWED_API_KEY_PACKAGES
       }, 'Package name not in allowed list');
-      
+
       return res.status(403).json({
         success: false,
         message: 'Unauthorized package name'
@@ -173,7 +175,7 @@ async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunc
 
     const token = authHeader.substring(7);
     const tokenStartTime = Date.now();
-    
+
     try {
       const session = await getSessionFromToken(token);
       const tokenDuration = Date.now() - tokenStartTime;
@@ -308,6 +310,7 @@ const router = express.Router();
  */
 async function getAllApps(req: Request, res: Response) {
   try {
+    // console.log('getAllApps');
     // Check API key auth first
     const apiKey = req.query.apiKey as string;
     const packageName = req.query.packageName as string;
@@ -324,7 +327,9 @@ async function getAllApps(req: Request, res: Response) {
         });
       }
 
-      const enhancedApps = enhanceAppsWithSessionState(apps, userSession);
+      // Get user data for last active timestamps
+      const user = await User.findByEmail(userId);
+      const enhancedApps = enhanceAppsWithSessionState(apps, userSession, user);
       return res.json({
         success: true,
         data: enhancedApps
@@ -355,7 +360,9 @@ async function getAllApps(req: Request, res: Response) {
     const apps = await appService.getAllApps(tokenUserId);
     // const userSessions = sessionService.getSessionsForUser(tokenUserId);
     const userSession: UserSession = (req as any).userSession;
-    const enhancedApps = enhanceAppsWithSessionState(apps, userSession);
+    // Get user data for last active timestamps
+    const user = await User.findByEmail(tokenUserId);
+    const enhancedApps = enhanceAppsWithSessionState(apps, userSession, user);
     res.json({
       success: true,
       data: enhancedApps
@@ -496,6 +503,9 @@ async function getAppByPackage(req: Request, res: Response) {
       appObj.orgName = orgProfile.name;
     }
 
+    // Add uninstallable property for store frontend
+    (appObj as any).uninstallable = isUninstallable(packageName);
+
     res.json({
       success: true,
       data: appObj
@@ -514,8 +524,9 @@ async function getAppByPackage(req: Request, res: Response) {
  */
 async function startApp(req: Request, res: Response) {
   const { packageName } = req.params;
+  // console.log('@#$%^&#@42342 startApp', packageName);
   const userSession: UserSession = (req as any).userSession;
-  
+
   // Use req.log from pino-http with service context
   const routeLogger = req.log.child({
     service: SERVICE_NAME,
@@ -547,11 +558,25 @@ async function startApp(req: Request, res: Response) {
   }, 'Route entry context');
 
   try {
+    // Validate that the app exists before attempting to start it
+    const app = await appService.getApp(packageName);
+    if (!app) {
+      const totalDuration = Date.now() - startTime;
+      routeLogger.error({
+        totalDuration
+      }, `App ${packageName} not found in database`);
+
+      return res.status(404).json({
+        success: false,
+        message: 'App not found'
+      });
+    }
+
     // WARN: Already running (weird but we handle gracefully)
     if (userSession.runningApps.has(packageName)) {
       routeLogger.warn('App already in runningApps before startApp call');
     }
-    
+
     // WARN: Already loading (weird but we handle gracefully)
     if (userSession.loadingApps.has(packageName)) {
       routeLogger.warn('App already in loadingApps before startApp call');
@@ -560,10 +585,10 @@ async function startApp(req: Request, res: Response) {
     // DEBUG: AppManager call
     routeLogger.debug('Calling userSession.appManager.startApp()');
     const appManagerStartTime = Date.now();
-    
+
     const result = await userSession.appManager.startApp(packageName);
     const appManagerDuration = Date.now() - appManagerStartTime;
-    
+
     // DEBUG: AppManager result
     routeLogger.debug({
       appManagerResult: result,
@@ -578,10 +603,10 @@ async function startApp(req: Request, res: Response) {
     // DEBUG: Broadcast call
     routeLogger.debug('Calling userSession.appManager.broadcastAppState()');
     const broadcastStartTime = Date.now();
-    
+
     const appStateChange = userSession.appManager.broadcastAppState();
     const broadcastDuration = Date.now() - broadcastStartTime;
-    
+
     // DEBUG: Broadcast result
     routeLogger.debug({
       broadcastDuration,
@@ -600,7 +625,7 @@ async function startApp(req: Request, res: Response) {
           loadingApps: Array.from(userSession.loadingApps)
         }
       }, 'Broadcast failed to generate app state change - this should not happen');
-      
+
       return res.status(500).json({
         success: false,
         message: 'Error generating app state change'
@@ -608,7 +633,7 @@ async function startApp(req: Request, res: Response) {
     }
 
     const totalDuration = Date.now() - startTime;
-    
+
     // INFO: Successful completion
     routeLogger.info({
       totalDuration,
@@ -636,7 +661,7 @@ async function startApp(req: Request, res: Response) {
 
   } catch (error) {
     const totalDuration = Date.now() - startTime;
-    
+
     // ERROR: Route execution failed
     routeLogger.error({
       error: error instanceof Error ? {
@@ -699,7 +724,7 @@ async function stopApp(req: Request, res: Response) {
       userSessionExists: !!userSession,
       userIdExists: !!userSession?.userId
     }, 'User session validation failed - middleware issue');
-    
+
     return res.status(401).json({
       success: false,
       message: 'User session is required'
@@ -721,10 +746,10 @@ async function stopApp(req: Request, res: Response) {
     // DEBUG: App lookup
     routeLogger.debug('Looking up app in database');
     const appLookupStart = Date.now();
-    
+
     const app = await appService.getApp(packageName);
     const appLookupDuration = Date.now() - appLookupStart;
-    
+
     // DEBUG: App lookup result
     routeLogger.debug({
       appLookupDuration,
@@ -737,7 +762,7 @@ async function stopApp(req: Request, res: Response) {
       routeLogger.error({
         totalDuration
       }, `App ${packageName} not found in database`);
-      
+
       return res.status(404).json({
         success: false,
         message: 'App not found'
@@ -752,10 +777,10 @@ async function stopApp(req: Request, res: Response) {
     // DEBUG: AppManager stop call
     routeLogger.debug('Calling userSession.appManager.stopApp()');
     const stopStartTime = Date.now();
-    
+
     await userSession.appManager.stopApp(packageName);
     const stopDuration = Date.now() - stopStartTime;
-    
+
     // DEBUG: Stop result
     routeLogger.debug({
       stopDuration,
@@ -769,10 +794,10 @@ async function stopApp(req: Request, res: Response) {
     // DEBUG: Broadcast call
     routeLogger.debug('Calling userSession.appManager.broadcastAppState()');
     const broadcastStartTime = Date.now();
-    
+
     const appStateChange = userSession.appManager.broadcastAppState();
     const broadcastDuration = Date.now() - broadcastStartTime;
-    
+
     // DEBUG: Broadcast result
     routeLogger.debug({
       broadcastDuration,
@@ -785,7 +810,7 @@ async function stopApp(req: Request, res: Response) {
       routeLogger.error({
         totalDuration
       }, 'Failed to generate app state change - this should not happen');
-      
+
       return res.status(500).json({
         success: false,
         message: 'Error generating app state change'
@@ -793,7 +818,7 @@ async function stopApp(req: Request, res: Response) {
     }
 
     const totalDuration = Date.now() - startTime;
-    
+
     // INFO: Successful completion
     routeLogger.info({
       totalDuration
@@ -817,7 +842,7 @@ async function stopApp(req: Request, res: Response) {
 
   } catch (error) {
     const totalDuration = Date.now() - startTime;
-    
+
     // ERROR: Route execution failed
     routeLogger.error({
       error: error instanceof Error ? {
@@ -1173,7 +1198,7 @@ router.get('/search', searchApps);
 // router.post('/install/:packageName', dualModeAuthMiddleware, installApp);
 // router.post('/uninstall/:packageName', dualModeAuthMiddleware, uninstallApp);
 
-// TODO(isaiah): move appstore only 
+// TODO(isaiah): move appstore only
 // App store operations - use client-auth-middleware.ts
 router.get('/installed', authWithOptionalSession, getInstalledApps);
 router.post('/install/:packageName', authWithOptionalSession, installApp);
@@ -1190,12 +1215,12 @@ router.get('/:packageName', getAppByPackage);
 router.post('/:packageName/start', unifiedAuthMiddleware, startApp);
 router.post('/:packageName/stop', unifiedAuthMiddleware, stopApp);
 
-// Helper to enhance apps with running/foreground state
+// Helper to enhance apps with running/foreground state and activity data
 /**
- * Enhances a list of apps (SDK AppI or local AppI) with running/foreground state.
- * Accepts AppI[] from either @augmentos/sdk or local model.
+ * Enhances a list of apps (SDK AppI or local AppI) with running/foreground state and last active timestamp.
+ * Accepts AppI[] from either @mentra/sdk or local model.
  */
-function enhanceAppsWithSessionState(apps: AppI[], userSession: UserSession): EnhancedAppI[] {
+function enhanceAppsWithSessionState(apps: AppI[], userSession: UserSession, user?: any): EnhancedAppI[] {
   const plainApps = apps.map(app => {
     return (app as any).toObject?.() || app;
   });
@@ -1211,6 +1236,15 @@ function enhanceAppsWithSessionState(apps: AppI[], userSession: UserSession): En
     if (enhancedApp.is_running) {
       enhancedApp.is_foreground = app.tpaType === TpaType.STANDARD;;
     }
+
+    // Add last active timestamp if user data is available
+    if (user && user.installedApps) {
+      const installedApp = user.installedApps.find((installed: any) => installed.packageName === app.packageName);
+      if (installedApp && installedApp.lastActiveAt) {
+        enhancedApp.lastActiveAt = installedApp.lastActiveAt;
+      }
+    }
+
     return enhancedApp;
   });
 }

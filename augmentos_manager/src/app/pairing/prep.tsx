@@ -5,7 +5,7 @@ import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getPairingGuide} from "@/utils/getPairingGuide"
 import {PermissionsAndroid} from "react-native"
 import {requestFeaturePermissions, PermissionFeatures} from "@/utils/PermissionsUtils"
-import {showAlert} from "@/utils/AlertUtils"
+import {showAlert, showBluetoothAlert, showLocationAlert, showLocationServicesAlert} from "@/utils/AlertUtils"
 import {Button, Header} from "@/components/ignite"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -13,6 +13,7 @@ import {Screen} from "@/components/ignite/Screen"
 import coreCommunicator from "@/bridge/CoreCommunicator"
 import {translate} from "@/i18n"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+import {LinearGradient} from "expo-linear-gradient"
 
 // Alert handling is now done directly in PermissionsUtils.tsx
 
@@ -130,12 +131,33 @@ export default function PairingPrepScreen() {
         console.log("DEBUG: Running iOS connectivity check early")
         const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
         if (!requirementsCheck.isReady) {
-          // Show alert about missing requirements  
-          showAlert(
-            translate("pairing:connectionIssueTitle"),
-            requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-            [{text: translate("common:ok")}],
-          )
+          // Show alert about missing requirements with "Turn On" button
+          switch (requirementsCheck.requirement) {
+            case "bluetooth":
+              showBluetoothAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "location":
+              showLocationAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            case "locationServices":
+              showLocationServicesAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              )
+              break
+            default:
+              showAlert(
+                translate("pairing:connectionIssueTitle"),
+                requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+                [{text: translate("common:ok")}],
+              )
+          }
           return
         }
       }
@@ -167,18 +189,22 @@ export default function PairingPrepScreen() {
         return
       }
 
-      // Request location permission (needed for both platforms)
-      console.log("Requesting location permission...")
+      // Request location permission (needed for Android BLE scanning)
+      if (Platform.OS === "android") {
+        console.log("Requesting location permission for Android BLE scanning...")
 
-      // This now handles showing alerts for previously denied permissions internally
-      const locGranted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
+        // This now handles showing alerts for previously denied permissions internally
+        const locGranted = await requestFeaturePermissions(PermissionFeatures.LOCATION)
 
-      console.log("Location permission result:", locGranted)
+        console.log("Location permission result:", locGranted)
 
-      if (!locGranted) {
-        // The specific alert for previously denied permission is already handled in requestFeaturePermissions
-        // We just need to stop the flow here
-        return
+        if (!locGranted) {
+          // The specific alert for previously denied permission is already handled in requestFeaturePermissions
+          // We just need to stop the flow here
+          return
+        }
+      } else {
+        console.log("Skipping location permission on iOS - not needed after BLE fix")
       }
     } catch (error) {
       console.error("Error requesting permissions:", error)
@@ -192,12 +218,33 @@ export default function PairingPrepScreen() {
     if (needsBluetoothPermissions && Platform.OS === "android") {
       const requirementsCheck = await coreCommunicator.checkConnectivityRequirements()
       if (!requirementsCheck.isReady) {
-        // Show alert about missing requirements  
-        showAlert(
-          translate("pairing:connectionIssueTitle"),
-          requirementsCheck.message || translate("pairing:connectionIssueMessage"),
-          [{text: translate("common:ok")}],
-        )
+        // Show alert about missing requirements with "Turn On" button
+        switch (requirementsCheck.requirement) {
+          case "bluetooth":
+            showBluetoothAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            )
+            break
+          case "location":
+            showLocationAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            )
+            break
+          case "locationServices":
+            showLocationServicesAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+            )
+            break
+          default:
+            showAlert(
+              translate("pairing:connectionIssueTitle"),
+              requirementsCheck.message || translate("pairing:connectionIssueMessage"),
+              [{text: translate("common:ok")}],
+            )
+        }
         return
       }
     }
@@ -205,12 +252,17 @@ export default function PairingPrepScreen() {
     console.log("needsBluetoothPermissions", needsBluetoothPermissions)
 
     // slight delay for bluetooth perms
-    router.push({pathname: "/pairing/bluetooth", params: {glassesModelName}})
+    push("/pairing/bluetooth", {glassesModelName})
+    // router.push({pathname: "/pairing/bluetooth", params: {glassesModelName}})
+
   }
 
   return (
-    <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}} safeAreaEdges={["bottom"]}>
-      <Header titleTx="pairing:pairingGuide" leftIcon="caretLeft" onLeftPress={goBack} />
+    <Screen
+      preset="fixed"
+      style={{paddingHorizontal: theme.spacing.md}}
+      safeAreaEdges={["bottom"]}>
+      <Header title={glassesModelName} leftIcon="caretLeft" onLeftPress={goBack} />
       <ScrollView style={{marginRight: -theme.spacing.md, paddingRight: theme.spacing.md}}>
         <View style={styles.contentContainer}>{getPairingGuide(glassesModelName)}</View>
       </ScrollView>

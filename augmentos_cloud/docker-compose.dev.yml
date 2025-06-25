@@ -10,11 +10,9 @@ services:
       - node_modules:/app/node_modules
       - bun_cache:/root/.bun
     # this command installs everything and then builds the shared packages one by one
-    command: >
-      bash -c "bun install && 
-      cd packages/sdk && bun run build && cd ../.. &&
-      cd packages/utils && bun run build && cd ../.. &&
-      cd packages/agents && bun run build"
+    # command: >
+    #   bash -c "bun install && 
+    #   cd packages/sdk && bun run build" 
 
   # Cloud service
   cloud:
@@ -45,17 +43,17 @@ services:
       - node_modules:/app/node_modules
       - bun_cache:/root/.bun
     command: bash -c "cd packages/cloud && bun run dev"
-    networks:
-      - augmentos-network-dev
+    # networks:
+    #   - augmentos-network-dev
     depends_on:
       builder:
         condition: service_completed_successfully
 
-networks:
-  augmentos-network-dev:
-    driver: bridge
-    external: true
-    name: augmentos-network-dev
+# networks:
+#   augmentos-network-dev:
+#     driver: bridge
+#     external: true
+#     name: augmentos-network-dev
 
 volumes:
   node_modules:

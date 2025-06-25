@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { Button } from './ui/button';
+import { Baseline } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { isAuthenticated, signOut, user, isWebViewAuth } = useAuth();
@@ -29,7 +30,7 @@ const Header: React.FC = () => {
               AugmentOS
             </span>
           </div>
-          
+
           {/* Authentication */}
           {!isWebViewAuth && (
             <div className="flex items-center">
@@ -69,7 +70,7 @@ const Header: React.FC = () => {
               )}
             </div>
           )}
-          
+
         </div>
       </div>
     </header>

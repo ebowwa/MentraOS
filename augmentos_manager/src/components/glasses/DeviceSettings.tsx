@@ -220,12 +220,23 @@ export default function DeviceSettings() {
               setAutoBrightness(value)
               coreCommunicator.setGlassesBrightnessMode(brightness, value)
             }}
-            containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: autoBrightness ? 0 : undefined}}
+            containerStyle={{
+              paddingHorizontal: 0,
+              paddingTop: 0,
+              paddingBottom: autoBrightness ? 0 : undefined,
+              borderWidth: 0,
+            }}
           />
 
           {!autoBrightness && (
             <>
-              <View style={{height: 0.5, backgroundColor: theme.colors.separator, marginBottom: theme.spacing.xs}} />
+              <View
+                style={{
+                  height: StyleSheet.hairlineWidth,
+                  backgroundColor: theme.colors.separator,
+                  marginBottom: theme.spacing.xs,
+                }}
+              />
               <SliderSetting
                 label="Brightness"
                 value={brightness}
@@ -236,6 +247,7 @@ export default function DeviceSettings() {
                   coreCommunicator.setGlassesBrightnessMode(value, autoBrightness)
                 }}
                 containerStyle={{paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0}}
+                disableBorder
               />
             </>
           )}
@@ -259,7 +271,7 @@ export default function DeviceSettings() {
           />
         </TouchableOpacity>
         {/* divider */}
-        <View style={{height: 1, backgroundColor: theme.colors.separator, marginVertical: 4}} />
+        <View style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.separator, marginVertical: 4}} />
         <TouchableOpacity
           style={{
             flexDirection: "row",
@@ -287,10 +299,7 @@ export default function DeviceSettings() {
           label={translate("settings:glassesWifiSettings")}
           subtitle={translate("settings:glassesWifiDescription")}
           onPress={() => {
-            push({
-              pathname: "/pairing/glasseswifisetup",
-              params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
-            })
+            push("/pairing/glasseswifisetup", {deviceModel: status.glasses_info?.model_name || "Glasses"})
           }}
         />
       )}

@@ -1,12 +1,12 @@
 /**
  * 🚀 TPA Server Module
- * 
+ *
  * Creates and manages a server for Third Party Apps (TPAs) in the AugmentOS ecosystem.
  * Handles webhook endpoints, session management, and cleanup.
  */
 import express, { type Express } from 'express';
 import path from 'path';
-import { TpaSession } from '../session';
+import { TpaSession } from '../session/index';
 import { createAuthMiddleware } from '../webview';
 import {
   WebhookRequest,
@@ -20,10 +20,11 @@ import {
 } from '../../types';
 import { Logger } from 'pino';
 import { logger as rootLogger } from '../../logging/logger';
+import axios from 'axios';
 
 /**
  * 🔧 Configuration options for TPA Server
- * 
+ *
  * @example
  * ```typescript
  * const config: TpaServerConfig = {
@@ -35,7 +36,7 @@ import { logger as rootLogger } from '../../logging/logger';
  * ```
  */
 export interface TpaServerConfig {
-  /** 📦 Unique identifier for your TPA (e.g., 'org.company.appname') must match what you specified at https://console.augmentos.org */
+  /** 📦 Unique identifier for your TPA (e.g., 'org.company.appname') must match what you specified at https://console.mentra.glass */
   packageName: string;
   /** 🔑 API key for authentication with AugmentOS Cloud */
   apiKey: string;
@@ -44,14 +45,12 @@ export interface TpaServerConfig {
 
   /** 🛣️ [DEPRECATED] do not set: The SDK will automatically expose an endpoint at '/webhook' */
   webhookPath?: string;
-  /** 
+  /**
    * 📂 Directory for serving static files (e.g., images, logos)
    * Set to false to disable static file serving
    */
   publicDir?: string | false;
 
-  /** 🔌 [DEPRECATED] No need to set this value */
-  augmentOSWebsocketUrl?: string;
   /** ❤️ Enable health check endpoint at /health (default: true) */
   healthCheck?: boolean;
   /**
@@ -59,18 +58,20 @@ export interface TpaServerConfig {
    * This must be a strong, unique secret
    */
   cookieSecret?: string;
+  /** TPA instructions string shown to the user */
+  tpaInstructions?: string;
 }
 
 /**
  * 🎯 TPA Server Implementation
- * 
+ *
  * Base class for creating TPA servers. Handles:
  * - 🔄 Session lifecycle management
  * - 📡 Webhook endpoints for AugmentOS Cloud
  * - 📂 Static file serving
  * - ❤️ Health checks
  * - 🧹 Cleanup on shutdown
- * 
+ *
  * @example
  * ```typescript
  * class MyAppServer extends TpaServer {
@@ -81,13 +82,13 @@ export interface TpaServerConfig {
  *     });
  *   }
  * }
- * 
+ *
  * const server = new MyAppServer({
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key',
  *   publicDir: "/public",
  * });
- * 
+ *
  * await server.start();
  * ```
  */
@@ -98,6 +99,8 @@ export class TpaServer {
   private activeSessions = new Map<string, TpaSession>();
   /** Array of cleanup handlers to run on shutdown */
   private cleanupHandlers: Array<() => void> = [];
+  /** TPA instructions string shown to the user */
+  private tpaInstructions: string | null = null;
 
   public readonly logger: Logger;
 
@@ -106,7 +109,6 @@ export class TpaServer {
     this.config = {
       port: 7010,
       webhookPath: '/webhook',
-      augmentOSWebsocketUrl: "wss://staging.augmentos.org/tpa-ws",
       publicDir: false,
       healthCheck: true,
       ...config
@@ -128,6 +130,8 @@ export class TpaServer {
       cookieSecret: this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`
     }));
 
+    this.tpaInstructions = (config as any).tpaInstructions || null;
+
     // Setup server features
     this.setupWebhook();
     this.setupSettingsEndpoint();
@@ -147,20 +151,22 @@ export class TpaServer {
    * 👥 Session Handler
    * Override this method to handle new TPA sessions.
    * This is where you implement your app's core functionality.
-   * 
+   *
    * @param session - TPA session instance for the user
    * @param sessionId - Unique identifier for this session
    * @param userId - User's identifier
    */
   protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
-    this.logger.debug(`New session: ${sessionId} for user ${userId}`);
+    this.logger.info(`🚀 Starting new session handling for session ${sessionId} and user ${userId}`);
+    // Core session handling logic (onboarding removed)
+    this.logger.info(`✅ Session handling completed for session ${sessionId} and user ${userId}`);
   }
 
   /**
    * 👥 Stop Handler
    * Override this method to handle stop requests.
    * This is where you can clean up resources when a session is stopped.
-   * 
+   *
    * @param sessionId - Unique identifier for this session
    * @param userId - User's identifier
    * @param reason - Reason for stopping
@@ -180,7 +186,7 @@ export class TpaServer {
    * 🛠️ Tool Call Handler
    * Override this method to handle tool calls from AugmentOS Cloud.
    * This is where you implement your app's tool functionality.
-   * 
+   *
    * @param toolCall - The tool call request containing tool details and parameters
    * @returns Optional string response that will be sent back to AugmentOS Cloud
    */
@@ -193,7 +199,7 @@ export class TpaServer {
   /**
    * 🚀 Start the Server
    * Starts listening for incoming connections and webhook calls.
-   * 
+   *
    * @returns Promise that resolves when server is ready
    */
   public start(): Promise<void> {
@@ -221,7 +227,7 @@ export class TpaServer {
   /**
  * 🔐 Generate a TPA token for a user
  * This should be called when handling a session webhook request.
- * 
+ *
  * @param userId - User identifier
  * @param sessionId - Session identifier
  * @param secretKey - Secret key for signing the token
@@ -246,7 +252,7 @@ export class TpaServer {
   /**
    * 🧹 Add Cleanup Handler
    * Register a function to be called during server shutdown.
-   * 
+   *
    * @param handler - Function to call during cleanup
    */
   protected addCleanupHandler(handler: () => void): void {
@@ -284,10 +290,10 @@ export class TpaServer {
           } as WebhookResponse);
         }
       } catch (error) {
-        this.logger.error('❌ Error handling webhook:', error);
+        this.logger.error(error, '❌ Error handling webhook: ' + (error as Error).message);
         res.status(500).json({
           status: 'error',
-          message: 'Internal server error'
+          message: 'Error handling webhook: ' + (error as Error).message
         } as WebhookResponse);
       }
     });
@@ -312,7 +318,7 @@ export class TpaServer {
           res.json({ status: 'success', reply: null });
         }
       } catch (error) {
-        this.logger.error('❌ Error handling tool call:', error);
+        this.logger.error(error, '❌ Error handling tool call:');
         res.status(500).json({
           status: 'error',
           message: error instanceof Error ? error.message : 'Unknown error occurred calling tool'
@@ -358,7 +364,7 @@ export class TpaServer {
 
           // Call onStop with a reconnection failure reason
           this.onStop(sessionId, userId, `Connection permanently lost: ${info.reason}`).catch(error => {
-            this.logger.error(`❌ Error in onStop handler for permanent disconnection:`, error);
+            this.logger.error(error, `❌ Error in onStop handler for permanent disconnection:`);
           });
         }
       }
@@ -368,7 +374,7 @@ export class TpaServer {
     });
 
     const cleanupError = session.events.onError((error) => {
-      this.logger.error(`❌ [Session ${sessionId}] Error:`, error);
+      this.logger.error(error, `❌ [Session ${sessionId}] Error:`);
     });
 
     // Start the session
@@ -378,7 +384,7 @@ export class TpaServer {
       await this.onSession(session, sessionId, userId);
       res.status(200).json({ status: 'success' } as WebhookResponse);
     } catch (error) {
-      this.logger.error('❌ Failed to connect:', error);
+      this.logger.error(error, '❌ Failed to connect:');
       cleanupDisconnect();
       cleanupError();
       res.status(500).json({
@@ -399,7 +405,7 @@ export class TpaServer {
       await this.onStop(sessionId, userId, reason);
       res.status(200).json({ status: 'success' } as WebhookResponse);
     } catch (error) {
-      this.logger.error('❌ Error handling stop request:', error);
+      this.logger.error(error, '❌ Error handling stop request:');
       res.status(500).json({
         status: 'error',
         message: 'Failed to process stop request'
@@ -475,7 +481,7 @@ export class TpaServer {
           sessionsUpdated: userSessions.length
         });
       } catch (error) {
-        this.logger.error('❌ Error handling settings update:', error);
+        this.logger.error(error, '❌ Error handling settings update:');
         res.status(500).json({
           status: 'error',
           message: 'Internal server error processing settings update'

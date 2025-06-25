@@ -1,3 +1,5 @@
+// NOTE(isaiah): This file is deprecated and not used, any logic should be in services/session/VideoManager.
+
 // augmentos_cloud/packages/cloud/src/services/core/stream-tracker.service.ts
 
 /**
@@ -5,7 +7,7 @@
  * This service tracks active streams, manages keep-alive timers, and handles stream cleanup.
  */
 
-import { logger } from '@augmentos/utils';
+import { logger  } from '../logging/pino-logger';
 import crypto from 'crypto';
 
 interface StreamInfo {
@@ -33,10 +35,10 @@ export class StreamTrackerService {
    */
   public startTracking(streamId: string, sessionId: string, appId: string, rtmpUrl: string): void {
     logger.info(`[StreamTracker]: Starting tracking for streamId: ${streamId}, app: ${appId}`);
-    
+
     // Cancel existing stream if any
     this.stopTracking(streamId);
-    
+
     const now = new Date();
     const streamInfo: StreamInfo = {
       streamId,
@@ -49,7 +51,7 @@ export class StreamTrackerService {
       pendingAcks: new Map(),
       missedAcks: 0
     };
-    
+
     this.streams.set(streamId, streamInfo);
     this.scheduleKeepAlive(streamId);
   }
@@ -63,7 +65,7 @@ export class StreamTrackerService {
       logger.info(`[StreamTracker]: Updating stream ${streamId} status: ${stream.status} -> ${status}`);
       stream.status = status;
       stream.lastKeepAlive = new Date();
-      
+
       // If stream is stopped or timed out, stop tracking
       if (status === 'stopped' || status === 'timeout') {
         this.stopTracking(streamId);
@@ -80,18 +82,18 @@ export class StreamTrackerService {
     const stream = this.streams.get(streamId);
     if (stream) {
       logger.info(`[StreamTracker]: Stopping tracking for streamId: ${streamId}`);
-      
+
       // Cancel keep-alive timer
       if (stream.keepAliveTimer) {
         clearInterval(stream.keepAliveTimer);
       }
-      
+
       // Cancel all pending ACK timeouts
       for (const [ackId, ackInfo] of stream.pendingAcks) {
         clearTimeout(ackInfo.timeout);
       }
       stream.pendingAcks.clear();
-      
+
       this.streams.delete(streamId);
     }
   }
@@ -129,7 +131,7 @@ export class StreamTrackerService {
    * Get all active streams
    */
   public getAllActiveStreams(): StreamInfo[] {
-    return Array.from(this.streams.values()).filter(stream => 
+    return Array.from(this.streams.values()).filter(stream =>
       ['initializing', 'active'].includes(stream.status)
     );
   }
@@ -189,7 +191,7 @@ export class StreamTrackerService {
     // Send keep-alive message via websocket service
     // This will be called by the websocket service after we integrate it
     this.onKeepAliveSent?.(streamId, ackId);
-    
+
     logger.debug(`[StreamTracker]: Sent keep-alive for stream ${streamId} with ACK ${ackId}`);
   }
 
@@ -238,7 +240,7 @@ export class StreamTrackerService {
     // Clear the timeout and remove from pending
     clearTimeout(ackInfo.timeout);
     stream.pendingAcks.delete(ackId);
-    
+
     // Reset missed ACK counter on successful ACK
     stream.missedAcks = 0;
     stream.lastKeepAlive = new Date();
@@ -290,7 +292,7 @@ export class StreamTrackerService {
    */
   public cleanupSession(sessionId: string): void {
     logger.info(`[StreamTracker]: Cleaning up all streams for session: ${sessionId}`);
-    
+
     const streamsToCleanup = this.getStreamsForSession(sessionId);
     for (const stream of streamsToCleanup) {
       this.stopTracking(stream.streamId);
@@ -307,7 +309,7 @@ export class StreamTrackerService {
   } {
     const allStreams = Array.from(this.streams.values());
     const activeStreams = allStreams.filter(s => ['initializing', 'active'].includes(s.status));
-    
+
     const streamsByStatus: Record<string, number> = {};
     for (const stream of allStreams) {
       streamsByStatus[stream.status] = (streamsByStatus[stream.status] || 0) + 1;

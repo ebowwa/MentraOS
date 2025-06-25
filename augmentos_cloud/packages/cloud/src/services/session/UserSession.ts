@@ -5,19 +5,20 @@
 
 import { Logger } from 'pino';
 import WebSocket from 'ws';
-import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@augmentos/sdk';
+import { AppI, CloudToGlassesMessageType, ConnectionError, TranscriptSegment } from '@mentra/sdk';
 import { logger as rootLogger } from '../logging/pino-logger';
+import { Capabilities } from '@mentra/sdk';
 import AppManager from './AppManager';
 import AudioManager from './AudioManager';
 import MicrophoneManager from './MicrophoneManager';
 import DisplayManager from '../layout/DisplayManager6.1';
 import { DashboardManager } from '../dashboard';
-// import { HeartbeatManager } from './HeartbeatManager';
 import { ASRStreamInstance } from '../processing/transcription.service';
 import VideoManager from './VideoManager';
 import PhotoManager from './PhotoManager';
 import { GlassesErrorCode } from '../websocket/websocket-glasses.service';
 import SessionStorage from './SessionStorage';
+import { PosthogService } from '../logging/posthog.service';
 
 export const LOG_PING_PONG = false; // Set to true to enable detailed ping/pong logging
 /**
@@ -28,7 +29,7 @@ export class UserSession {
 
   // Core identification
   public readonly userId: string;
-  public readonly startTime: Date = new Date();
+  public readonly startTime: Date;// = new Date();
   public disconnectedAt: Date | null = null;
 
   // Logging
@@ -77,6 +78,9 @@ export class UserSession {
   // Other state
   public userDatetime?: string;
 
+  // Capability Discovery
+  public capabilities: Capabilities | null = null;
+
   constructor(userId: string, websocket: WebSocket) {
     this.userId = userId;
     this.websocket = websocket;
@@ -92,6 +96,7 @@ export class UserSession {
     this.videoManager = new VideoManager(this);
 
     this._reconnectionTimers = new Map();
+    this.startTime = new Date();
 
     // Set up heartbeat for glasses connection
     this.setupGlassesHeartbeat();
@@ -194,7 +199,7 @@ export class UserSession {
 
   /**
    * Send error message to glasses
-   * 
+   *
    * @param message Error message
    * @param code Error code
    */
@@ -223,9 +228,25 @@ export class UserSession {
   /**
    * Dispose of all resources and remove from sessions map
    */
-  dispose(): void {
+  async dispose(): Promise<void> {
     this.logger.warn(`[UserSession:dispose]: Disposing UserSession: ${this.userId}`);
 
+    // Log to posthog disconnected duration.
+    const now = new Date();
+    const duration = now.getTime() - this.startTime.getTime();
+    this.logger.info({ duration }, `User session ${this.userId} disconnected. Connected for ${duration}ms`);
+    try {
+      await PosthogService.trackEvent("disconnected", this.userId, {
+        duration: duration,
+        userId: this.userId,
+        sessionId: this.userId,
+        disconnectedAt: now.toISOString(),
+        startTime: this.startTime.toISOString()
+      });
+    } catch (error) {
+      this.logger.error('Error tracking disconnected event:', error); 
+    }
+    
     // Clean up all resources
     if (this.appManager) this.appManager.dispose();
     if (this.audioManager) this.audioManager.dispose();

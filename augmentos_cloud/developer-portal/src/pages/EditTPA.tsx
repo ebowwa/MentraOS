@@ -27,7 +27,7 @@ import { useOrganization } from '@/context/OrganizationContext';
 import MoveOrgDialog from '../components/dialogs/MoveOrgDialog';
 import ImageUpload from '../components/forms/ImageUpload';
 import TpaTypeTooltip from '../components/forms/TpaTypeTooltip';
-// import { TpaType } from '@augmentos/sdk';
+// import { TpaType } from '@mentra/sdk';
 
 enum TpaType {
   STANDARD = 'standard',
@@ -50,6 +50,7 @@ const EditTPA: React.FC = () => {
     packageName: '',
     name: '',
     description: '',
+    onboardingInstructions: '',
     publicUrl: '',
     logoURL: '',
     isPublic: false,
@@ -120,6 +121,7 @@ const EditTPA: React.FC = () => {
           packageName: tpaData.packageName,
           name: tpaData.name,
           description: tpaData.description || '',
+          onboardingInstructions: tpaData.onboardingInstructions || '',
           publicUrl: tpaData.publicUrl || '',
           logoURL: tpaData.logoURL,
           webviewURL: tpaData.webviewURL,
@@ -310,6 +312,7 @@ const EditTPA: React.FC = () => {
     const config: any = {
       name: formData.name,
       description: formData.description,
+      onboardingInstructions: formData.onboardingInstructions,
       publicUrl: formData.publicUrl || '',
       logoURL: formData.logoURL || '', // Cloudflare Images URL
       tpaType: formData.tpaType,
@@ -349,6 +352,7 @@ const EditTPA: React.FC = () => {
       const normalizedData = {
         name: formData.name,
         description: formData.description,
+        onboardingInstructions: formData.onboardingInstructions,
         publicUrl: formData.publicUrl ? normalizeUrl(formData.publicUrl) : '',
         logoURL: formData.logoURL ? normalizeUrl(formData.logoURL) : '',
         webviewURL: formData.webviewURL ? normalizeUrl(formData.webviewURL) : '',
@@ -875,6 +879,7 @@ const EditTPA: React.FC = () => {
           // Always update name and description if provided
           name: importConfigData.name || prev.name,
           description: importConfigData.description || prev.description,
+          onboardingInstructions: importConfigData.onboardingInstructions || prev.onboardingInstructions,
 
           // Update URLs only if they are provided and not empty
           publicUrl: (importConfigData.publicUrl !== undefined && importConfigData.publicUrl.trim() !== '')
@@ -1005,7 +1010,7 @@ const EditTPA: React.FC = () => {
                     placeholder="e.g., My Awesome App"
                   />
                   <p className="text-xs text-gray-500">
-                    The name that will be displayed to users in the AugmentOS app store.
+                    The name that will be displayed to users in the MentraOS app store.
                   </p>
                 </div>
 
@@ -1024,6 +1029,24 @@ const EditTPA: React.FC = () => {
                   </p>
                 </div>
 
+                {/* Onboarding Instructions Section */}
+                <div className="space-y-2">
+                  <Label htmlFor="onboardingInstructions">Onboarding Instructions</Label>
+                  <Textarea
+                    id="onboardingInstructions"
+                    name="onboardingInstructions"
+                    value={formData.onboardingInstructions || ''}
+                    onChange={handleChange}
+                    placeholder="Describe the onboarding steps for your app (optional)"
+                    rows={3}
+                    maxLength={2000}
+                    style={{ maxHeight: '8em', overflowY: 'auto' }}
+                  />
+                  <p className="text-xs text-gray-500">
+                    (Optional) Provide onboarding instructions that will be shown to users the first time they launch your app. Maximum 5 lines.
+                  </p>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="publicUrl">Server URL</Label>
                   <Input
@@ -1035,7 +1058,7 @@ const EditTPA: React.FC = () => {
                     placeholder="yourserver.com"
                   />
                   <p className="text-xs text-gray-500">
-                    The base URL of your server where AugmentOS will communicate with your app.
+                    The base URL of your server where MentraOS will communicate with your app.
                     We'll automatically append "/webhook" to handle events when your app is activated.
                     HTTPS is required and will be added automatically if not specified.
                     Do not include a trailing slash - it will be automatically removed.
@@ -1084,7 +1107,7 @@ const EditTPA: React.FC = () => {
                     <TpaTypeTooltip />
                   </div>
                 <p className="text-xs text-gray-500">
-                  <br/>Background apps can run alongside other apps, 
+                  <br/>Background apps can run alongside other apps,
                   <br/>Only 1 foreground app can run at a time.
                   <br/>foreground apps yield the display to background apps when displaying content.
                 </p>
@@ -1180,7 +1203,7 @@ const EditTPA: React.FC = () => {
                   </h3>
 
                   <p className="text-sm text-gray-600 mb-4">
-                    Your API key is used to authenticate your app with AugmentOS cloud services.
+                    Your API key is used to authenticate your app with MentraOS cloud services.
                     Keep it secure and never share it publicly.
                   </p>
 
@@ -1232,7 +1255,7 @@ const EditTPA: React.FC = () => {
                       ? 'Your app has been submitted for review. Once approved, it will be published to the App Store.'
                       : formData.appStoreStatus === 'REJECTED'
                       ? 'Your app has been rejected. Please review the feedback and make the necessary changes before resubmitting.'
-                      : 'Your app is published and available to all AugmentOS users in the App Store.'}
+                      : 'Your app is published and available to all MentraOS users in the App Store.'}
                   </p>
 
                   {formData.appStoreStatus === 'REJECTED' && formData.reviewNotes && (

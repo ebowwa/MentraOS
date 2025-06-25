@@ -2,7 +2,7 @@
  * @fileoverview AppManager manages app lifecycle and TPA connections within a user session.
  * It encapsulates all app-related functionality that was previously
  * scattered throughout the session and WebSocket services.
- * 
+ *
  * This follows the pattern used by other managers like MicrophoneManager and DisplayManager.
  */
 
@@ -15,7 +15,7 @@ import {
   AppI,
   WebhookRequestType,
   SessionWebhookRequest
-} from '@augmentos/sdk';
+} from '@mentra/sdk';
 import { Logger } from 'pino';
 import subscriptionService from './subscription.service';
 import appService from '../core/app.service';
@@ -245,6 +245,9 @@ export class AppManager {
       };
     }
 
+    // Update last active timestamp when app starts or stops
+    this.updateAppLastActive(packageName);
+
     // Create Promise for tracking this connection attempt
     return new Promise<AppStartResult>((resolve, reject) => {
       const startTime = Date.now();
@@ -311,6 +314,35 @@ export class AppManager {
       // Continue with webhook trigger
       this.triggerAppWebhookInternal(app, resolve, reject, startTime);
     });
+
+
+  }
+
+  private async updateAppLastActive(packageName: string): Promise<void> {
+    // Update the last active timestamp for the app in the user's record
+    try {
+      const user = await User.findByEmail(this.userSession.userId);
+      if (user) {
+        await user.updateAppLastActive(packageName);
+        return;
+      }
+      this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
+        `User ${this.userSession.userId} not found while updating last active for app ${packageName}`);
+      return;
+
+    } catch (error) {
+      // Log the error but don't crash the application
+      this.logger.error({
+        userId: this.userSession.userId,
+        packageName,
+        service: 'AppManager',
+        error: error instanceof Error ? error.message : String(error),
+        errorName: error instanceof Error ? error.name : 'Unknown'
+      }, `Error updating last active for app ${packageName} - continuing without crash`);
+
+      // Don't throw the error - this is a non-critical operation
+      return;
+    }
   }
 
   /**
@@ -323,7 +355,7 @@ export class AppManager {
     startTime: number
   ): Promise<void> {
     try {
-      // Trigger TPA webhook 
+      // Trigger TPA webhook
       const { packageName, name, publicUrl } = app;
       this.logger.debug({ packageName, name, publicUrl }, `Triggering TPA webhook for ${packageName} for user ${this.userSession.userId}`);
 
@@ -498,7 +530,7 @@ export class AppManager {
 
   /**
    * Stop an app by package name
-   * 
+   *
    * @param packageName Package name of the app to stop
    */
   async stopApp(packageName: string, restart?: boolean): Promise<void> {
@@ -578,6 +610,7 @@ export class AppManager {
       // Clean up dashboard content for stopped app
       this.userSession.dashboardManager.cleanupAppContent(packageName);
 
+      this.updateAppLastActive(packageName);
     } catch (error) {
       this.logger.error(`Error stopping app ${packageName}:`, error);
     }
@@ -585,7 +618,7 @@ export class AppManager {
 
   /**
    * Check if an app is currently running
-   * 
+   *
    * @param packageName Package name to check
    * @returns Whether the app is running
    */
@@ -595,7 +628,7 @@ export class AppManager {
 
   /**
    * Handle TPA initialization
-   * 
+   *
    * @param ws WebSocket connection
    * @param initMessage TPA initialization message
    */
@@ -681,12 +714,13 @@ export class AppManager {
       // Get user's AugmentOS system settings with fallback to defaults
       const userAugmentosSettings = user.augmentosSettings || DEFAULT_AUGMENTOS_SETTINGS;
 
-      // Send connection acknowledgment
+      // Send connection acknowledgment with capabilities
       const ackMessage = {
         type: CloudToTpaMessageType.CONNECTION_ACK,
         sessionId: sessionId,
         settings: userSettings,
         augmentosSettings: userAugmentosSettings,
+        capabilities: this.userSession.capabilities || undefined,
         timestamp: new Date()
       };
 
@@ -868,7 +902,7 @@ export class AppManager {
 
   /**
    * Handle app connection close
-   * 
+   *
    * @param packageName Package name
    * @param code Close code
    * @param reason Close reason

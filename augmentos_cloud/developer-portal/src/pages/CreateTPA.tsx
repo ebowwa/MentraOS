@@ -9,22 +9,23 @@ import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeftIcon, AlertCircle, CheckCircle, Upload } from "lucide-react";
+import { ArrowLeftIcon, AlertCircle, CheckCircle } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
 import TpaSuccessDialog from "../components/dialogs/TpaSuccessDialog";
 import api, { AppResponse } from '@/services/api.service';
-import { AppI } from '@augmentos/sdk';
+import { AppI } from '@mentra/sdk';
 import { normalizeUrl } from '@/libs/utils';
-import { toast } from 'sonner';
 import PermissionsForm from '../components/forms/PermissionsForm';
 import { Permission } from '@/types/tpa';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
+import { TPA } from '@/types/tpa';
 import ImageUpload from '../components/forms/ImageUpload';
+
 import TpaTypeTooltip from '../components/forms/TpaTypeTooltip';
-// import type { TpaType } from '@augmentos/sdk';
+// import type { TpaType } from '@mentra/sdk';
 // import { TPA } from '@/types/tpa';
 // Import the public email provider list
 // import publicEmailDomains from 'email-providers/all.json';
@@ -42,10 +43,11 @@ const CreateTPA: React.FC = () => {
   const { currentOrg } = useOrganization();
 
   // Form state
-  const [formData, setFormData] = useState<Partial<AppI>>({
+  const [formData, setFormData] = useState<Partial<TPA>>({
     packageName: '',
     name: '',
     description: '',
+    onboardingInstructions: '',
     publicUrl: '',
     logoURL: '',
     webviewURL: '',
@@ -74,7 +76,7 @@ const CreateTPA: React.FC = () => {
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target as any;
-    setFormData((prev: Partial<AppI>) => ({
+    setFormData((prev: Partial<TPA>) => ({
       ...prev,
       [name]: value
     }));
@@ -232,10 +234,11 @@ const CreateTPA: React.FC = () => {
 
     try {
       // Prepare TPA data
-      const tpaData: Partial<AppI> = {
+      const tpaData: Partial<TPA> = {
         packageName: formData.packageName,
         name: formData.name,
         description: formData.description,
+        onboardingInstructions: formData.onboardingInstructions,
         publicUrl: formData.publicUrl,
         logoURL: formData.logoURL,
         webviewURL: formData.webviewURL,
@@ -327,7 +330,7 @@ const CreateTPA: React.FC = () => {
             <CardHeader>
               <CardTitle className="text-2xl">Create New TPA</CardTitle>
               <CardDescription>
-                Fill out the form below to register your app for AugmentOS.
+                Fill out the form below to register your app for MentraOS.
               </CardDescription>
               {currentOrg && (
                 <div className="mt-2 text-sm mb-3">
@@ -380,7 +383,7 @@ const CreateTPA: React.FC = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.name}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  The name that will be displayed to users in the AugmentOS app store.
+                  The name that will be displayed to users in the MentraOS app store.
                 </p>
               </div>
 
@@ -405,6 +408,26 @@ const CreateTPA: React.FC = () => {
                 </p>
               </div>
 
+              {/* Onboarding Instructions Section */}
+              <div className="space-y-2">
+                <Label htmlFor="onboardingInstructions">
+                  Onboarding Instructions
+                </Label>
+                <Textarea
+                  id="onboardingInstructions"
+                  name="onboardingInstructions"
+                  value={formData.onboardingInstructions || ''}
+                  onChange={handleChange}
+                  placeholder="Describe the onboarding steps for your app (optional)"
+                  rows={3}
+                  maxLength={2000}
+                  style={{ maxHeight: '8em', overflowY: 'auto' }}
+                />
+                <p className="text-xs text-gray-500">
+                  (Optional) Provide onboarding instructions that will be shown to users the first time they launch your app. Maximum 5 lines.
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="publicUrl">
                   Server URL <span className="text-red-500">*</span>
@@ -422,7 +445,7 @@ const CreateTPA: React.FC = () => {
                   <p className="text-xs text-red-500 mt-1">{errors.publicUrl}</p>
                 )}
                 <p className="text-xs text-gray-500">
-                  The base URL of your server where AugmentOS will communicate with your app.
+                  The base URL of your server where MentraOS will communicate with your app.
                   We'll automatically append "/webhook" to handle events when your app is activated.
                   HTTPS is required and will be added automatically if not specified.
                   Do not include a trailing slash - it will be automatically removed.
@@ -487,7 +510,7 @@ const CreateTPA: React.FC = () => {
                   <TpaTypeTooltip />
                 </div>
                 <p className="text-xs text-gray-500">
-                  Background apps can run alongside other apps, 
+                  Background apps can run alongside other apps,
                   <br/>Only 1 foreground app can run at a time.
                   <br/>foreground apps yield the display to background apps when displaying content.
                 </p>

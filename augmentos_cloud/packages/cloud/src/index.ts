@@ -37,13 +37,13 @@ import userDataRoutes from './routes/user-data.routes';
 import permissionsRoutes from './routes/permissions.routes';
 import accountRoutes from './routes/account.routes';
 import organizationRoutes from './routes/organization.routes';
+import onboardingRoutes from './routes/onboarding.routes';
 import tpaCommunicationRoutes from './routes/tpa-communication.routes';
 
 import path from 'path';
 
 // Load configuration from environment
 import * as mongoConnection from "./connections/mongodb.connection";
-// import { logger } from "@augmentos/utils";
 import { logger as rootLogger } from './services/logging/pino-logger';
 const logger = rootLogger.child({ service: 'index' });
 
@@ -133,11 +133,37 @@ app.use(cors({
     "https://consoledev.augmentos.org",
     "https://account.augmentos.org",
     "https://accountdev.augmentos.org",
-    "https://docs.augmentos.org",
+    "https://docs.mentra.glass",
     "https://docsdev.augmentos.org",
 
     "https://augmentos.pages.dev",
     "https://augmentos-appstore-2.pages.dev",
+
+    "https://mentra.glass",
+    "https://api.mentra.glass",
+    "https://dev.api.mentra.glass",
+    "https://uscentral.api.mentra.glass",
+    "https://france.api.mentra.glass",
+    "https://asiaeast.api.mentra.glass",
+
+    "https://apps.mentra.glass",
+    "https://console.mentra.glass",
+    "https://dev.mentra.glass",
+    "https://account.mentra.glass",
+    "https://docs.mentra.glass",
+    "https://store.mentra.glass",
+
+    "https://appsdev.mentra.glass",
+    "https://consoledev.mentra.glass",
+    "https://accountdev.mentra.glass",
+    "https://docsdev.mentra.glass",
+    "https://storedev.mentra.glass",
+
+    "https://dev.apps.mentra.glass",
+    "https://dev.console.mentra.glass",
+    "https://dev.account.mentra.glass",
+    "https://dev.docs.mentra.glass",
+    "https://dev.store.mentra.glass",
   ]
 }));
 
@@ -192,6 +218,7 @@ app.use(transcriptRoutes);
 app.use(audioRoutes);
 app.use('/api/user-data', userDataRoutes);
 app.use('/api/account', accountRoutes);
+app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/tpa-communication', tpaCommunicationRoutes);
 
 // Health check endpoint

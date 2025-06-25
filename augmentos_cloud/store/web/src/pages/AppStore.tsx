@@ -194,6 +194,7 @@ const AppStore: React.FC = () => {
       return;
     }
 
+    // Use the web API
     try {
       setInstallingApp(packageName);
 

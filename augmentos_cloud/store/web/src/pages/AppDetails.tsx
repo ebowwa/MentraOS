@@ -95,6 +95,7 @@ const AppDetails: React.FC = () => {
 
     if (!app) return;
 
+    // Use the web API
     try {
       setInstallingApp(true);
 
