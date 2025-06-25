@@ -7,6 +7,16 @@ const en = {
   screenSettings: {
     title: "Display Position Settings",
   },
+  versionCheck: {
+    title: "Version Check",
+    description: "Checking for updates...",
+    updateRequired: "Update Required",
+    updateRequiredDescription: "A new version is available. Please update the app.",
+    updateRequiredButton: "Update AugmentOS",
+    update: "Update",
+    retryConnection: "Retry Connection",
+    skipUpdate: "Skip Update",
+  },
   pairing: {
     selectModel: "Select Model",
     pairingGuide: "Pairing Guide",

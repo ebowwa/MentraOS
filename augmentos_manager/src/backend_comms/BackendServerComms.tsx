@@ -1,14 +1,10 @@
 // backend_comms/BackendServerComms.ts
 import axios, {AxiosRequestConfig} from "axios"
-import {Config} from "react-native-config"
+import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {AppInterface} from "@/contexts/AppStatusProvider"
-import Toast from "react-native-toast-message"
-import {translate} from "@/i18n"
-import {colors} from "@/theme"
-import {TruckIcon} from "assets/icons/component/TruckIcon"
 
 interface Callback {
   onSuccess: (data: any) => void
@@ -28,13 +24,18 @@ export default class BackendServerComms {
       return customUrl
     }
 
+    // @ts-ignore
+    const {MENTRAOS_HOST, MENTRAOS_PORT, MENTRAOS_SECURE} = Constants.expoConfig?.extra
+
     // Debug logging for environment variables
-    console.log(`${this.TAG}: Config values - HOST: ${Config.MENTRAOS_HOST}, PORT: ${Config.MENTRAOS_PORT}, SECURE: ${Config.MENTRAOS_SECURE}`)
-    
+    console.log(
+      `${this.TAG}: Config values - HOST: ${MENTRAOS_HOST}, PORT: ${MENTRAOS_PORT}, SECURE: ${MENTRAOS_SECURE}`,
+    )
+
     // Use fallback values if Config values are undefined
-    const secure = Config.MENTRAOS_SECURE ? Config.MENTRAOS_SECURE === 'true' : true;
-    const host = Config.MENTRAOS_HOST || 'api.mentra.glass';
-    const port = Config.MENTRAOS_PORT || '443';
+    const secure = MENTRAOS_SECURE ? MENTRAOS_SECURE === "true" : true
+    const host = MENTRAOS_HOST || "api.mentra.glass"
+    const port = MENTRAOS_PORT || "443"
     const protocol = secure ? "https" : "http"
     const defaultServerUrl = `${protocol}://${host}:${port}`
     console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`)
