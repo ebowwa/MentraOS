@@ -28,5 +28,6 @@ module.exports = ({config}: ConfigContext): Partial<ExpoConfig> => {
       MENTRAOS_HOST: process.env.MENTRAOS_HOST,
       MENTRAOS_PORT: process.env.MENTRAOS_PORT,
     },
+    version: process.env.MENTRAOS_VERSION,
   }
 }
