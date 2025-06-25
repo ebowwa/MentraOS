@@ -8,6 +8,7 @@
         "@langchain/core": "^0.3.40",
         "@langchain/google-vertexai": "^0.1.8",
         "@logtail/pino": "^0.5.4",
+        "@mentra/sdk": "2.0.0",
         "@sentry/bun": "^9.1.0",
         "@sentry/cli": "^2.42.1",
         "@sentry/node": "^9.1.0",
@@ -121,7 +122,7 @@
     },
     "packages/sdk": {
       "name": "@mentra/sdk",
-      "version": "1.1.20",
+      "version": "2.0.0",
       "dependencies": {
         "@logtail/pino": "^0.5.4",
         "axios": "^1.8.1",

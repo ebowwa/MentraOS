@@ -37,6 +37,7 @@
     "@langchain/core": "^0.3.40",
     "@langchain/google-vertexai": "^0.1.8",
     "@logtail/pino": "^0.5.4",
+    "@mentra/sdk": "workspace:*",
     "@sentry/bun": "^9.1.0",
     "@sentry/cli": "^2.42.1",
     "@sentry/node": "^9.1.0",
