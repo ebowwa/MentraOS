@@ -5,7 +5,7 @@ title: AppServer
 
 # AppServer
 
-`AppServer` is the base class for creating Third Party Application (app) servers that handle webhook requests from MentraOS Cloud to manage app sessions.
+`AppServer` (also known as `TpaServer` in older versions) is the base class for creating Third Party Application (app) servers that handle webhook requests from MentraOS Cloud to manage app sessions.
 
 ```typescript
 import { AppServer } from '@mentra/sdk';

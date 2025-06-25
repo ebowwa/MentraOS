@@ -6,7 +6,7 @@ title: AppSession
 
 # AppSession
 
-`AppSession` (also known as `AppClient` in older documentation) manages an active WebSocket connection (session) between an app instance and MentraOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
+`AppSession` (also known as `TpaSession` in older versions) manages an active WebSocket connection (session) between an app instance and MentraOS Cloud. It handles event subscriptions, layout display, and connection management for a single user session.
 
 ```typescript
 import { AppSession } from '@mentra/sdk';
