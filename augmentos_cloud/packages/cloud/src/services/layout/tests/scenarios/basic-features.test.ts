@@ -11,7 +11,7 @@ import { strict as assert } from 'assert';
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
-import { systemApps } from '../../../core/system-apps';
+import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../../../core/app.service';
 
 // App package names
 const APP1 = 'com.example.app1';
@@ -32,7 +32,7 @@ export async function testBootQueueing() {
   // Verify boot screen is showing
   assert.equal(
     userSession.getLastSentMessage()?.packageName,
-    systemApps.dashboard.packageName,
+    SYSTEM_DASHBOARD_PACKAGE_NAME,
     'Boot screen should be showing'
   );
 
@@ -58,7 +58,7 @@ export async function testBootQueueing() {
   // Boot screen should still be showing
   assert.equal(
     userSession.getLastSentMessage()?.packageName,
-    systemApps.dashboard.packageName,
+    SYSTEM_DASHBOARD_PACKAGE_NAME,
     'Boot screen should still be showing after queued request'
   );
 
