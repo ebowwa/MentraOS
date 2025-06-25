@@ -15,8 +15,7 @@ pnpm install
 pnpm expo prebuild
 cd ios
 pod install
-cd ..
-open ios/AOS.xcworkspace
+cd .. && open ios/AOS.xcworkspace
 (install a dev build on your phone using xcode)
 pnpm run start
 ```
