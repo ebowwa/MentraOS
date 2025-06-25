@@ -13,7 +13,7 @@ import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import App from '../models/app.model';
 import { PermissionType } from '@mentra/sdk';
-import { logger } from '@mentra/utils';
+import { logger } from "../services/logging/pino-logger";
 import * as mongoConnection from '../connections/mongodb.connection';
 
 // Load environment variables
