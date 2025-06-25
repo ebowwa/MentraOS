@@ -184,7 +184,7 @@ export class TpaWebSocketService {
       // Process based on message type
       switch (message.type) {
         case TpaToCloudMessageType.SUBSCRIPTION_UPDATE:
-          this.handleSubscriptionUpdate(tpaWebsocket, userSession, message);
+          await this.handleSubscriptionUpdate(tpaWebsocket, userSession, message);
           break;
 
         case TpaToCloudMessageType.DISPLAY_REQUEST:
@@ -280,12 +280,27 @@ export class TpaWebSocketService {
       !subscriptionService.hasSubscription(userSession.userId, message.packageName, StreamType.LOCATION_UPDATE) &&
       message.subscriptions.includes(StreamType.LOCATION_UPDATE);
 
-    // Update subscriptions (async)
-    await subscriptionService.updateSubscriptions(
-      userSession,
-      message.packageName,
-      message.subscriptions
-    );
+    // Update subscriptions (async) with error handling to prevent crashes
+    try {
+      await subscriptionService.updateSubscriptions(
+        userSession,
+        message.packageName,
+        message.subscriptions
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      userSession.logger.error({ 
+        service: SERVICE_NAME, 
+        error: errorMessage, 
+        packageName,
+        subscriptions: message.subscriptions,
+        userId: userSession.userId 
+      }, `Failed to update subscriptions for TPA ${packageName}: ${errorMessage}`);
+      
+      // Send error response to TPA instead of crashing the service
+      this.sendError(tpaWebsocket, TpaErrorCode.MALFORMED_MESSAGE, `Invalid subscription type: ${errorMessage}`);
+      return; // Exit early to prevent further processing
+    }
 
     // Get the new minimal language subscriptions after update
     const newLanguageSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.userId);

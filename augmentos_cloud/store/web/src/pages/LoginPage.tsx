@@ -24,7 +24,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Header />
+      {/* <Header /> */}
 
       <main className="container mx-auto px-4 py-8 flex-1 flex items-center justify-center">
         <div className="max-w-md w-full bg-white p-8 rounded-lg shadow-md flex flex-col items-center">
