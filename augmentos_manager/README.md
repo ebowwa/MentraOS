@@ -1,12 +1,3 @@
-# Welcome to your new ignited app!
-
-> The latest and greatest boilerplate for Infinite Red opinions
-
-This is the boilerplate that [Infinite Red](https://infinite.red) uses as a way to test bleeding-edge changes to our React Native stack.
-
-- [Quick start documentation](https://github.com/infinitered/ignite/blob/master/docs/boilerplate/Boilerplate.md)
-- [Full documentation](https://github.com/infinitered/ignite/blob/master/docs/README.md)
-
 ### Quickstart
 
 build and run the app on android from scratch:
@@ -46,21 +37,6 @@ pnpm android
 pnpm run start
 ```
 
-## Getting Started
-
-```bash
-pnpm install
-pnpm run start
-```
-
-To make things work on your local simulator, or on your phone, you need first to [run `eas build`](https://github.com/infinitered/ignite/blob/master/docs/expo/EAS.md). We have many shortcuts on `package.json` to make it easier:
-
-```bash
-pnpm run build:ios:sim # build for ios simulator
-pnpm run build:ios:dev # build for ios device
-pnpm run build:ios:prod # build for ios device
-```
-
 ### `./assets` directory
 
 This directory is designed to organize and store various assets, making it easy for you to manage and use them in your application. The assets are further categorized into subdirectories, including `icons` and `images`:
@@ -96,21 +72,3 @@ const MyComponent = () => {
 ## Running Maestro end-to-end tests
 
 Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup) recipe.
-
-## Next Steps
-
-### Ignite Cookbook
-
-[Ignite Cookbook](https://ignitecookbook.com/) is an easy way for developers to browse and share code snippets (or “recipes”) that actually work.
-
-### Upgrade Ignite boilerplate
-
-Read our [Upgrade Guide](https://ignitecookbook.com/docs/recipes/UpdatingIgnite) to learn how to upgrade your Ignite project.
-
-
-## Overview of changes
-
-- essentially all imports have been refactored to use absolute paths instead of relative paths
-- there is no longer a src/screens folder, as screens have been replaced with expo-router's file based routing (react-navigation under the hood) 
-- most components have been categorized into folders or the misc/ folder
-- most components now use the theme/themed from the useAppTheme() hook
