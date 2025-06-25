@@ -11,22 +11,22 @@ import { Button } from "@/components/ui/button";
 import { AppResponse } from '@/services/api.service';
 import api from '@/services/api.service';
 import { toast } from 'sonner';
-import { TPA } from '@/types/tpa';
+import { App } from '@/types/app';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 import { useOrganization } from '@/context/OrganizationContext';
 
 interface PublishDialogProps {
-  tpa: TPA | AppResponse;
+  app: App | AppResponse;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPublishComplete?: (updatedTpa: AppResponse) => void;
+  onPublishComplete?: (updatedApp: AppResponse) => void;
   orgId?: string;
 }
 
 const PublishDialog: React.FC<PublishDialogProps> = ({
-  tpa,
+  app,
   open,
   onOpenChange,
   onPublishComplete,
@@ -66,16 +66,16 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
 
       // Use the provided orgId if available, otherwise fall back to currentOrg.id
       const effectiveOrgId = orgId || currentOrg?.id;
-      const result = await api.apps.publish(tpa.packageName, effectiveOrgId);
+      const result = await api.apps.publish(app.packageName, effectiveOrgId);
 
       // Get the updated app data
-      const updatedTpa = await api.apps.getByPackageName(tpa.packageName, effectiveOrgId);
+      const updatedApp = await api.apps.getByPackageName(app.packageName, effectiveOrgId);
 
       toast.success('App submitted for publication!');
 
       // Notify parent of the successful publish with updated data
       if (onPublishComplete) {
-        onPublishComplete(updatedTpa);
+        onPublishComplete(updatedApp);
       }
 
       onOpenChange(false);
@@ -101,7 +101,7 @@ const PublishDialog: React.FC<PublishDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Publish App to Store</DialogTitle>
           <DialogDescription>
-            Are you ready to publish "{tpa.name}" to the MentraOS App Store?
+            Are you ready to publish "{app.name}" to the MentraOS App Store?
           </DialogDescription>
         </DialogHeader>
 

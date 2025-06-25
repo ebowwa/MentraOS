@@ -18,7 +18,7 @@
 //// See the License for the specific language governing permissions and
 //// limitations under the License.
 //
-//package com.augmentos.augmentos_core.tpa.commands;
+//package com.augmentos.augmentos_core.app.commands;
 //
 //import android.content.Context;
 //import android.os.Handler;
@@ -440,7 +440,7 @@
 //        //trigger the command
 //        EventBus.getDefault().post(new CommandTriggeredEvent(vc, postArgs, commandTime));
 //
-//        //we should get a result from TPAs and communicate that
+//        //we should get a result from Apps and communicate that
 ////        if (!result){
 ////            cancelVoiceCommand();
 ////        }

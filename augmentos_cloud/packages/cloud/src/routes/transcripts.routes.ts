@@ -6,8 +6,8 @@ const router = express.Router();
 
 // GET /api/transcripts/:appSessionId
 // Headers:
-//   - X-API-Key: <tpa-api-key>
-//   - X-Package-Name: <tpa-package-name>
+//   - X-API-Key: <app-api-key>
+//   - X-Package-Name: <app-package-name>
 // Query Parameters:
 //   - duration: number (seconds to look back)
 //   - startTime?: ISO timestamp (optional alternative to duration)

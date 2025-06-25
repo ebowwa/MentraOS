@@ -236,14 +236,14 @@ export default class BackendServerComms {
     }
   }
 
-  public async getTpaSettings(tpaName: string): Promise<any> {
+  public async getAppSettings(appName: string): Promise<any> {
     if (!this.coreToken) {
       throw new Error("No core token available for authentication")
     }
 
     const baseUrl = await this.getServerUrl()
-    const url = `${baseUrl}/tpasettings/${tpaName}`
-    console.log("Fetching TPA settings from:", url)
+    const url = `${baseUrl}/appsettings/${appName}`
+    console.log("Fetching App settings from:", url)
 
     const config: AxiosRequestConfig = {
       method: "GET",
@@ -257,26 +257,26 @@ export default class BackendServerComms {
     try {
       const response = await axios(config)
       if (response.status === 200 && response.data) {
-        console.log("Received TPA settings:", response.data)
+        console.log("Received App settings:", response.data)
         return response.data
       } else {
         throw new Error(`Bad response: ${response.statusText}`)
       }
     } catch (error: any) {
-      console.error("Error fetching TPA settings:", error.message || error)
+      console.error("Error fetching App settings:", error.message || error)
       throw error
     }
   }
 
-  // New method to update a TPA setting on the server.
-  public async updateTpaSetting(tpaName: string, update: {key: string; value: any}): Promise<any> {
+  // New method to update a App setting on the server.
+  public async updateAppSetting(appName: string, update: {key: string; value: any}): Promise<any> {
     if (!this.coreToken) {
       throw new Error("No core token available for authentication")
     }
 
     const baseUrl = await this.getServerUrl()
-    const url = `${baseUrl}/tpasettings/${tpaName}`
-    console.log("Updating TPA settings via:", url)
+    const url = `${baseUrl}/appsettings/${appName}`
+    console.log("Updating App settings via:", url)
 
     const config: AxiosRequestConfig = {
       method: "POST",
@@ -291,13 +291,13 @@ export default class BackendServerComms {
     try {
       const response = await axios(config)
       if (response.status === 200 && response.data) {
-        console.log("Updated TPA settings:", response.data)
+        console.log("Updated App settings:", response.data)
         return response.data
       } else {
         throw new Error(`Bad response: ${response.statusText}`)
       }
     } catch (error: any) {
-      console.error("Error updating TPA settings:", error.message || error)
+      console.error("Error updating App settings:", error.message || error)
       throw error
     }
   }
@@ -470,7 +470,7 @@ export default class BackendServerComms {
 
   /**
    * Requests a temporary, single-use token for webview authentication.
-   * @param packageName The package name of the TPA the token is for.
+   * @param packageName The package name of the App the token is for.
    * @returns Promise resolving to the temporary token string.
    * @throws Error if the request fails or no core token is available.
    */

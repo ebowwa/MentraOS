@@ -61,7 +61,7 @@ class MainApplication : Application(), ReactApplication {
             packages.add(InstallApkPackage());
             // packages.add(ReactSliderPackage());
             packages.add(NotificationAccessPackage());
-            packages.add(TpaHelpersPackage());
+            packages.add(AppHelpersPackage());
             packages.add(FetchConfigHelperPackage());
             packages.add(RNCConfigPackage());
             // packages.add(RNCameraPackage());

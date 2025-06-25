@@ -83,7 +83,7 @@ export default function DashboardSettingsScreen() {
   // const fetchDashboardSettings = async () => {
   //   try {
   //     setIsLoading(true);
-  //     const data = await backendServerComms.getTpaSettings('com.augmentos.dashboard');
+  //     const data = await backendServerComms.getAppSettings('com.augmentos.dashboard');
   //     setServerSettings(data);
   //     const contentSetting = data.settings?.find((setting: any) => setting.key === 'dashboard_content');
   //     if (contentSetting) {
@@ -100,7 +100,7 @@ export default function DashboardSettingsScreen() {
   //   try {
   //     setIsUpdating(true);
   //     setDashboardContent(value);
-  //     await backendServerComms.updateTpaSetting('com.augmentos.dashboard', {
+  //     await backendServerComms.updateAppSetting('com.augmentos.dashboard', {
   //       key: 'dashboard_content',
   //       value: value
   //     });

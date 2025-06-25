@@ -5,13 +5,13 @@ title: Tool Types
 
 # Tool Types
 
-This page documents the interfaces and types used for TPA tools integration with Mira AI.
+This page documents the interfaces and types used for App tools integration with Mira AI.
 
-For a complete guide on implementing TPA tools, see [AI Tools](/tools).
+For a complete guide on implementing App tools, see [AI Tools](/tools).
 
 ## ToolSchema
 
-Interface defining the structure of a tool that a TPA can expose to Mira AI.
+Interface defining the structure of a tool that a App can expose to Mira AI.
 
 ```typescript
 interface ToolSchema {
@@ -51,7 +51,7 @@ interface ToolParameterSchema {
 
 ## ToolCall
 
-Interface representing a call to a TPA tool from Mira AI.
+Interface representing a call to a App tool from Mira AI.
 
 ```typescript
 interface ToolCall {
@@ -71,7 +71,7 @@ interface ToolCall {
 
 ## Tool Configuration
 
-Tools are defined in the devloper console.  Go to [console.mentra.glass/tpas](https://console.mentra.glass/tpas) and edit your TPA, then look for the "AI Tools" section.
+Tools are defined in the devloper console.  Go to [console.mentra.glass/apps](https://console.mentra.glass/apps) and edit your App, then look for the "AI Tools" section.
 
 ![AI Tools Section](/img/tool-editor.png)
 

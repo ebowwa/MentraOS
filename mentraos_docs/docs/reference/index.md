@@ -11,7 +11,7 @@ Welcome to the reference for the MentraOS SDK. This section provides detailed in
 
 The MentraOS SDK is organized into several main components:
 
-- **Primary Classes**: Core classes like [`TpaServer`](/reference/tpa-server) and [`TpaSession`](/reference/tpa-session) that serve as the main entry points for app development
+- **Primary Classes**: Core classes like [`AppServer`](/reference/app-server) and [`AppSession`](/reference/app-session) that serve as the main entry points for app development
 - **Manager Classes**: Component classes like [`EventManager`](/reference/managers/event-manager), [`LayoutManager`](/reference/managers/layout-manager), and [`SettingsManager`](/reference/managers/settings-manager) that handle specific functionalities
 - **Enums**: Enumeration types that define constants and options throughout the SDK
 - **Interfaces**: Type definitions for configuration objects, events, layouts, settings, and messages
@@ -21,7 +21,7 @@ The MentraOS SDK is organized into several main components:
 
 This reference is organized by component category. If you're looking for:
 
-- How to create an app server, see the [TpaServer](/reference/tpa-server)
+- How to create an app server, see the [AppServer](/reference/app-server)
 - Event handling functionality, see the [`EventManager`](/reference/managers/event-manager)
 - UI display capabilities, see the [`LayoutManager`](/reference/managers/layout-manager)
 - Settings management, see the [`SettingsManager`](/reference/managers/settings-manager)

@@ -183,7 +183,7 @@ const AppDetails: React.FC = () => {
           <button
             onClick={() => navigate(-1)}
             className="absolute top-6 right-6 transition-colors"
-            style={{ 
+            style={{
               color: theme === 'light' ? '#000000' : '#9CA3AF'
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
@@ -313,7 +313,7 @@ const AppDetails: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>App Type</span>
                 <span className="text-[14px] font-normal text-right capitalize" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                  {app.tpaType || 'Standard'}
+                  {app.appType || 'Standard'}
                 </span>
               </div>
 

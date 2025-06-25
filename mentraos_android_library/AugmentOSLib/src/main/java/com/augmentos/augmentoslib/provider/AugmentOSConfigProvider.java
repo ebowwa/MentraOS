@@ -89,7 +89,7 @@ public class AugmentOSConfigProvider extends ContentProvider {
     }
 
     /**
-     * 1) Load tpa_config.json (defaults)
+     * 1) Load app_config.json (defaults)
      * 2) Parse it
      * 3) For each setting with a 'key', read the current user value from SharedPreferences
      * 4) Insert that user value into the JSON under a field like "currentValue"
@@ -108,7 +108,7 @@ public class AugmentOSConfigProvider extends ContentProvider {
                 return rootJson.toString();
             }
 
-            // Read from TPA's SharedPreferences
+            // Read from App's SharedPreferences
             SharedPreferences prefs = getContext().getSharedPreferences("augmentos_prefs", Context.MODE_PRIVATE);
 
             // For each setting item
@@ -187,16 +187,16 @@ public class AugmentOSConfigProvider extends ContentProvider {
     }
 
     /**
-     * Loads "tpa_config.json" from res/raw and parses it into a JSONObject.
+     * Loads "app_config.json" from res/raw and parses it into a JSONObject.
      */
     private JSONObject loadRawConfigAsJson() {
         try {
             Context ctx = getContext();
             if (ctx == null) return null;
 
-            int resId = ctx.getResources().getIdentifier("tpa_config", "raw", ctx.getPackageName());
+            int resId = ctx.getResources().getIdentifier("app_config", "raw", ctx.getPackageName());
             if (resId == 0) {
-                Log.e(TAG, "No 'tpa_config.json' found in res/raw!");
+                Log.e(TAG, "No 'app_config.json' found in res/raw!");
                 return null;
             }
             InputStream inputStream = ctx.getResources().openRawResource(resId);
@@ -209,7 +209,7 @@ public class AugmentOSConfigProvider extends ContentProvider {
             return new JSONObject(jsonString);
 
         } catch (Exception e) {
-            Log.e(TAG, "Failed to parse tpa_config.json from raw", e);
+            Log.e(TAG, "Failed to parse app_config.json from raw", e);
             return null;
         }
     }
@@ -335,7 +335,7 @@ public class AugmentOSConfigProvider extends ContentProvider {
     }
 
     /**
-     * Retrieves the type of a given setting key from tpa_config.json.
+     * Retrieves the type of a given setting key from app_config.json.
      *
      * @param key The setting key.
      * @return The type of the setting, or null if not found.
@@ -361,7 +361,7 @@ public class AugmentOSConfigProvider extends ContentProvider {
     }
 
     /**
-     * Retrieves the entire setting item JSONObject from tpa_config.json.
+     * Retrieves the entire setting item JSONObject from app_config.json.
      *
      * @param key The setting key.
      * @return The JSONObject representing the setting, or null if not found.

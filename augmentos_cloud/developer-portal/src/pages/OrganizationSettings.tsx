@@ -326,7 +326,7 @@ const OrganizationSettings: React.FC = () => {
                   <li>
                     Access the organization's{' '}
                     <a
-                      href="/tpas"
+                      href="/apps"
                       className="font-medium underline hover:text-green-800"
                     >
                       apps and resources

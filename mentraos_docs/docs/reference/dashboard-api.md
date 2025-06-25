@@ -5,15 +5,15 @@ title: Dashboard API
 
 # Dashboard API Reference
 
-The Dashboard API provides an interface for displaying real-time information and status updates directly on the user's MentraOS glasses. It allows your TPA to send content to different dashboard modes and react to user interactions with the dashboard.
+The Dashboard API provides an interface for displaying real-time information and status updates directly on the user's MentraOS glasses. It allows your App to send content to different dashboard modes and react to user interactions with the dashboard.
 
 ## Import
 
 ```typescript
-import { TpaServer, TpaSession, DashboardMode } from '@mentra/sdk';
+import { AppServer, AppSession, DashboardMode } from '@mentra/sdk';
 
-export class MyTpaServer extends TpaServer {
-  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+export class MyAppServer extends AppServer {
+  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Access the dashboard API
     const dashboard = session.dashboard;
 
@@ -42,7 +42,7 @@ export class MyTpaServer extends TpaServer {
 
 ## Overview
 
-Every [`TpaSession`](/reference/tpa-session) exposes a `dashboard` property that provides access to the Dashboard API:
+Every [`AppSession`](/reference/app-session) exposes a `dashboard` property that provides access to the Dashboard API:
 
 | Property | Type | Purpose |
 | :------- | :--- | :------ |
@@ -71,11 +71,11 @@ Use these values whenever a method accepts a `mode` parameter or when checking t
 
 ## Class: DashboardContentAPI
 
-The `DashboardContentAPI` class provides methods for sending content to the dashboard and monitoring dashboard state changes. It is automatically instantiated by the `TpaSession` and available at `session.dashboard.content`.
+The `DashboardContentAPI` class provides methods for sending content to the dashboard and monitoring dashboard state changes. It is automatically instantiated by the `AppSession` and available at `session.dashboard.content`.
 
 ### Constructor
 
-The DashboardContentAPI is automatically instantiated by the TpaSession. You should not create instances directly.
+The DashboardContentAPI is automatically instantiated by the AppSession. You should not create instances directly.
 
 ```typescript
 class DashboardContentAPI {
@@ -262,7 +262,7 @@ interface DashboardAPI {
 }
 ```
 
-Every `TpaSession` constructs this object and assigns it to `session.dashboard`. Currently, it only contains the `content` API, but future versions may include additional dashboard capabilities.
+Every `AppSession` constructs this object and assigns it to `session.dashboard`. Currently, it only contains the `content` API, but future versions may include additional dashboard capabilities.
 
 ## Content Guidelines
 
@@ -327,9 +327,9 @@ The SDK handles these WebSocket messages automatically, but they are documented 
 
 | Message | `type` value | Sent By | Purpose |
 | :------ | :----------- | :------ | :------ |
-| `DashboardContentUpdate` | `dashboard_content_update` | TPA | Send new content to dashboard |
+| `DashboardContentUpdate` | `dashboard_content_update` | App | Send new content to dashboard |
 | `DashboardModeChange` | `dashboard_mode_change` | MentraOS | Notify of mode transitions |
-| `DashboardModeQuery` | `dashboard_mode_query` | TPA | Request current mode |
+| `DashboardModeQuery` | `dashboard_mode_query` | App | Request current mode |
 
 These correspond to TypeScript interfaces in `@mentra/sdk/src/types/dashboard`.
 

@@ -416,7 +416,7 @@ public class AugmentosBlePeripheral {
         }
         sendDataToAugmentOsManager(data.toString());
     }
-    
+
     public void sendWifiCredentialsRequestToManager(String deviceModel) {
         JSONObject data = new JSONObject();
         try {
@@ -471,11 +471,11 @@ public class AugmentosBlePeripheral {
         sendDataToAugmentOsManager(data.toString());
     }
 
-    public void sendAppInfoToManager(ThirdPartyEdgeApp tpa) {
+    public void sendAppInfoToManager(ThirdPartyEdgeApp app) {
 //        Log.d(TAG, "sendNotifyManager");
         JSONObject data = new JSONObject();
         try{
-            data.put("app_info", tpa.toJson(true));
+            data.put("app_info", app.toJson(true));
 
         } catch (JSONException e) {
             throw new RuntimeException(e);

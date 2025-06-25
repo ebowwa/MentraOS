@@ -10,9 +10,9 @@
 
 ```typescript
 private registerConnection(ws: WebSocket, packageName?: string): void {
-  const tpaStats: ConnectionStats = {
+  const appStats: ConnectionStats = {
     sessionId: this.userSession.sessionId, // ❌ Wrong for glasses!
-    packageName, // TPA package name
+    packageName, // App package name
     // ...
   };
 
@@ -22,21 +22,21 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
     // ...
   };
 
-  this.connectionStats.set(ws, tpaStats); // ❌ Always uses tpaStats!
+  this.connectionStats.set(ws, appStats); // ❌ Always uses appStats!
   // ...
 }
 ```
 
 **Problems**:
-1. TPA connections get `sessionId`, but glasses connections get `userId` 
-2. Both connection types are stored with the same `tpaStats` object
-3. No logic to differentiate between TPA and glasses connections
+1. App connections get `sessionId`, but glasses connections get `userId`
+2. Both connection types are stored with the same `appStats` object
+3. No logic to differentiate between App and glasses connections
 
 ### 2. **Ping/Pong Logic Errors**
 
 **Issues**:
 - **Line 297-298**: Missed pings incremented BEFORE checking if limit exceeded
-- **Line 305**: Ping sent even when `missedPings >= MAX_MISSED_PINGS`  
+- **Line 305**: Ping sent even when `missedPings >= MAX_MISSED_PINGS`
 - **Line 244**: Latency tracking fails if `lastPing` is undefined
 
 **Impact**: Connections might not be terminated when they should be, or false positives.
@@ -54,7 +54,7 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
 
 **Current Managers**:
 - **HeartbeatManager**: Session-scoped ping/pong (45s timeout)
-- **AppManager**: App-specific reconnection timers (60s grace period)  
+- **AppManager**: App-specific reconnection timers (60s grace period)
 - **WebSocketManager (Android)**: Client-side exponential backoff (1s-30s)
 - **WebSocket Services**: Connection-specific handling
 
@@ -70,7 +70,7 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
 
 **Issue**: Each manager tracks state independently:
 - UserSession tracks connection state
-- AppManager tracks app state  
+- AppManager tracks app state
 - HeartbeatManager tracks connection health
 - No centralized coordination
 
@@ -80,7 +80,7 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
 
 ### Why HeartbeatManager is Failing
 
-1. **Fundamental Design Flaw**: Trying to handle both glasses and TPA connections with the same logic
+1. **Fundamental Design Flaw**: Trying to handle both glasses and App connections with the same logic
 2. **Timing Conflicts**: 45s heartbeat timeout conflicts with other systems
 3. **State Management**: No coordination with other connection managers
 4. **Race Conditions**: Multiple timers and state modifications without synchronization
@@ -96,17 +96,17 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
 
 #### Option 1: Fix HeartbeatManager
 - Fix the registration logic bugs
-- Add proper synchronization  
+- Add proper synchronization
 - Coordinate with other managers
-- Differentiate glasses vs TPA handling
+- Differentiate glasses vs App handling
 
 #### Option 2: Remove HeartbeatManager (Recommended)
-- Let AppManager handle TPA connection health via messaging attempts
+- Let AppManager handle App connection health via messaging attempts
 - Let WebSocket services handle low-level connection issues
 - Use Android client heartbeat for glasses connections
 - Simplify architecture by removing redundant layer
 
-#### Option 3: Consolidate Connection Management  
+#### Option 3: Consolidate Connection Management
 - Make HeartbeatManager the single source of truth
 - Move all connection logic from other managers
 - Significant refactoring required
@@ -116,7 +116,7 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
 ### Rationale
 1. **Current implementation is too buggy** to fix easily
 2. **Functionality is redundant** with existing systems
-3. **Creates more problems than it solves** 
+3. **Creates more problems than it solves**
 4. **Architecture is simpler without it**
 
 ### Migration Plan
@@ -138,7 +138,7 @@ private registerConnection(ws: WebSocket, packageName?: string): void {
 Instead of heartbeat pings, use **service message attempts** as health checks:
 
 1. **Services try to send messages** via AppManager
-2. **AppManager detects connection failures** during send attempts  
+2. **AppManager detects connection failures** during send attempts
 3. **Trigger resurrection immediately** on send failure
 4. **No additional network overhead** for health checks
 5. **Real-world health testing** - if we can't send data, connection is truly unhealthy

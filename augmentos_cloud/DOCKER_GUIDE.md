@@ -1,6 +1,6 @@
 # MentraOS Cloud Docker Guide
 
-This guide explains how to use Docker to run MentraOS Cloud and TPAs (Third-Party Applications) in a consistent development and production environment.
+This guide explains how to use Docker to run MentraOS Cloud and Apps (Third-Party Applications) in a consistent development and production environment.
 
 ## Overview
 
@@ -14,10 +14,10 @@ MentraOS uses a microservices architecture with Docker to manage its various com
    - `mira`: Mira AI (port 8015)
    - `live-translation`: Live translation (port 8017)
 
-2. **Third-Party Applications (TPAs)**:
-   - `live-captions`: Live Captions TPA (port 8020)
-   - `merge`: MentraMerge TPA (port 8016)
-   - Your custom TPAs like `aughog` (port 8030)
+2. **Third-Party Applications (Apps)**:
+   - `live-captions`: Live Captions App (port 8020)
+   - `merge`: MentraMerge App (port 8016)
+   - Your custom Apps like `aughog` (port 8030)
 
 ## Directory Structure
 
@@ -26,9 +26,9 @@ Augment/
 ├── MentraOS/
 │   └── augmentos_cloud/  # Core platform services
 ├── Apps/
-│   ├── AugHog/          # AugHog TPA
-│   ├── Live-Captions/   # Live-Captions TPA
-│   └── MentraMerge/     # MentraMerge TPA
+│   ├── AugHog/          # AugHog App
+│   ├── Live-Captions/   # Live-Captions App
+│   └── MentraMerge/     # MentraMerge App
 ```
 
 ## Docker Networks
@@ -51,7 +51,7 @@ docker network create augmentos-network
 
 Use the helper scripts to quickly manage services:
 
-### For TPAs
+### For Apps
 
 ```bash
 # For Live-Captions
@@ -74,7 +74,7 @@ Use the helper scripts to quickly manage services:
    docker-compose -f docker-compose.dev.yml -p dev up -d shared-packages cloud
    ```
 
-2. **Start a Specific TPA with Core Services**:
+2. **Start a Specific App with Core Services**:
    ```bash
    ./manage-merge.sh with-cloud
    # OR
@@ -91,12 +91,12 @@ Use the helper scripts to quickly manage services:
    docker-compose -f docker-compose.dev.yml -p dev down
    ```
 
-## Adding a New TPA
+## Adding a New App
 
-To integrate a new TPA with MentraOS Cloud:
+To integrate a new App with MentraOS Cloud:
 
 1. **Update Docker Compose**:
-   Add your TPA to `docker-compose.dev.yml`:
+   Add your App to `docker-compose.dev.yml`:
 
    ```yaml
    aughog:

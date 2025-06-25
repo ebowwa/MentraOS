@@ -8,9 +8,9 @@ The MentraOS button press system provides a flexible mechanism for handling phys
 
 1. The smart glasses client detects the button press
 2. The client sends the button press event to the MentraOS Cloud
-3. The cloud checks if any Third-Party Apps (TPAs) are listening for this button event
-4. If no TPA is listening, the system performs default actions (e.g., taking a photo)
-5. If a TPA is listening, the button press is routed to that app
+3. The cloud checks if any Third-Party Apps (Apps) are listening for this button event
+4. If no App is listening, the system performs default actions (e.g., taking a photo)
+5. If a App is listening, the button press is routed to that app
 
 This design allows physical buttons to have both system-defined default behaviors and app-specific custom behaviors.
 
@@ -307,14 +307,14 @@ router.post('/button-press', validateGlassesAuth, async (req, res) => {
     // Find the user's active session
     const userSession = await sessionService.getSessionByUserId(userId);
 
-    // Check if any TPAs are listening for button events
+    // Check if any Apps are listening for button events
     const subscribedApps = await subscriptionService.getSubscribedApps(
       userSession,
       StreamType.BUTTON_PRESS
     );
 
     if (!subscribedApps || subscribedApps.length === 0) {
-      // No TPAs are subscribed, handle with system default behavior
+      // No Apps are subscribed, handle with system default behavior
       if (buttonId === 'photo' && pressType === 'short') {
         // Create a photo request
         const requestId = await photoRequestService.createSystemPhotoRequest(userId);
@@ -330,7 +330,7 @@ router.post('/button-press', validateGlassesAuth, async (req, res) => {
       // For other button types, just acknowledge
       return res.status(200).json({ success: true });
     } else {
-      // TPAs are handling this button press, just acknowledge
+      // Apps are handling this button press, just acknowledge
       return res.status(200).json({ success: true });
     }
   } catch (error) {
@@ -351,43 +351,43 @@ The photo request service manages the lifecycle of photo requests:
 
 Key functions:
 - `createSystemPhotoRequest(userId)`: Creates a photo request with system origin
-- `createAppPhotoRequest(userId, appId)`: Creates a photo request initiated by a TPA
+- `createAppPhotoRequest(userId, appId)`: Creates a photo request initiated by a App
 - `handlePhotoUpload(requestId, photoData)`: Associates uploaded photo with a request
 - `getPhotosByUserId(userId)`: Retrieves a user's photos for the gallery
 
-## TPA SDK Integration
+## App SDK Integration
 
 ### MentraOS SDK Files
 
-TPAs use the MentraOS SDK to interact with the platform, including requesting photos. The main SDK components for photo requests are:
+Apps use the MentraOS SDK to interact with the platform, including requesting photos. The main SDK components for photo requests are:
 
 1. **MentraOS SDK Client Library**
    *File: `/packages/sdk/src/client.ts`* (in augmentos_cloud repository)
-   - Main entry point for TPAs to interact with MentraOS
+   - Main entry point for Apps to interact with MentraOS
    - Handles authentication and session management
    - Provides methods for various platform features
 
 2. **Photo Request Module**
    *File: `/packages/sdk/src/modules/photoRequest.ts`* (in augmentos_cloud repository)
    - Contains methods specifically for photo capture functionality
-   - Provides a clean API for TPAs to request photos
+   - Provides a clean API for Apps to request photos
 
 3. **WebSocket Communication**
    *File: `/packages/sdk/src/websocket.ts`* (in augmentos_cloud repository)
-   - Manages real-time communication between TPAs and the MentraOS platform
-   - Used for delivering photo capture results back to the TPA
+   - Manages real-time communication between Apps and the MentraOS platform
+   - Used for delivering photo capture results back to the App
 
-4. **TPA Helper Module**
-   *Files: `TpaHelpersModule.java` and `TpaHelpersPackage.java`* (in augmentos_manager repository)
-   - Native modules that provide helper functions for TPAs
+4. **App Helper Module**
+   *Files: `AppHelpersModule.java` and `AppHelpersPackage.java`* (in augmentos_manager repository)
+   - Native modules that provide helper functions for Apps
    - Includes functionality for launching apps and checking installation status
 
 ### SDK API for Photo Requests
 
-The SDK provides an API for TPAs to request photos. Here's an example of how a TPA would use the SDK to request a photo:
+The SDK provides an API for Apps to request photos. Here's an example of how a App would use the SDK to request a photo:
 
 ```typescript
-// Example TPA code using MentraOS SDK
+// Example App code using MentraOS SDK
 import { MentraOSClient } from 'augmentos-sdk';
 
 // Initialize the client
@@ -427,46 +427,46 @@ async function capturePhoto() {
 
 *Files in `/packages/cloud/src/routes/` (in augmentos_cloud repository)*
 
-The cloud server provides these endpoints for TPA photo requests:
+The cloud server provides these endpoints for App photo requests:
 
 1. **Request Photo Capture**
-   - `POST /api/tpa/photos/request`
-   - Requires TPA authentication
+   - `POST /api/app/photos/request`
+   - Requires App authentication
    - Returns a requestId for tracking the photo
 
 2. **Get Photo Result**
-   - `GET /api/tpa/photos/:requestId`
+   - `GET /api/app/photos/:requestId`
    - Retrieves the result of a photo request
    - Returns photo URL if available or status information
 
 3. **Subscribe to Photo Events**
-   - `POST /api/tpa/subscribe`
-   - Allows TPAs to subscribe to real-time events
+   - `POST /api/app/subscribe`
+   - Allows Apps to subscribe to real-time events
    - Can be used to receive notifications when photos are ready
 
-### TPA Message Handler
-*File: `/packages/cloud/src/handlers/tpaMessage.handler.ts`* (in augmentos_cloud repository)
+### App Message Handler
+*File: `/packages/cloud/src/handlers/appMessage.handler.ts`* (in augmentos_cloud repository)
 
-Handles messages between TPAs and the MentraOS platform:
-- Processes incoming requests from TPAs
+Handles messages between Apps and the MentraOS platform:
+- Processes incoming requests from Apps
 - Routes photo requests to the appropriate services
 - Handles permissions and rate limiting
 
-## TPA Photo Request System
+## App Photo Request System
 
-When a third-party app (TPA) needs to take a photo with the MentraOS platform, it follows a different flow from the physical button press system.
+When a third-party app (App) needs to take a photo with the MentraOS platform, it follows a different flow from the physical button press system.
 
-### TPA-Initiated Photo Request Flow
+### App-Initiated Photo Request Flow
 
-1. **TPA Makes API Request to Cloud**
-   - TPA sends a request to an MentraOS Cloud API endpoint to take a photo
-   - The request includes the TPA's identification and authentication
-   - The cloud validates the TPA's permissions to request photos
+1. **App Makes API Request to Cloud**
+   - App sends a request to an MentraOS Cloud API endpoint to take a photo
+   - The request includes the App's identification and authentication
+   - The cloud validates the App's permissions to request photos
 
 2. **Cloud Generates Request ID**
    - Cloud generates a unique `requestId` for the photo request
    - This `requestId` is used to track the photo through the system
-   - The request is associated with the user's ID and the TPA's ID
+   - The request is associated with the user's ID and the App's ID
 
 3. **Cloud Forwards Request to Glasses via Mobile App**
    - The cloud sends a WebSocket message to the user's mobile app
@@ -506,18 +506,18 @@ When a third-party app (TPA) needs to take a photo with the MentraOS platform, i
 6. **Cloud Processes Uploaded Photo**
    - Photo uploads are handled by the `MediaUploadService`
    - The cloud receives the photo with the `requestId`
-   - It associates the photo with the original TPA request
+   - It associates the photo with the original App request
    - The photo is stored in the cloud's storage system
 
-7. **TPA Notification & Access**
-   - The cloud notifies the TPA that the photo is ready (via WebSocket or callback)
-   - The TPA can access the photo via a URL or download endpoint
-   - The TPA may receive temporary access credentials to view the photo
+7. **App Notification & Access**
+   - The cloud notifies the App that the photo is ready (via WebSocket or callback)
+   - The App can access the photo via a URL or download endpoint
+   - The App may receive temporary access credentials to view the photo
 
 8. **Photo Metadata & Gallery Storage**
    - The photo is stored with metadata including:
      - `requestId`: The unique identifier for this request
-     - `appId`: The ID of the TPA that requested the photo
+     - `appId`: The ID of the App that requested the photo
      - `userId`: The ID of the user who captured the photo
      - `timestamp`: When the photo was captured
    - The photo appears in the user's gallery in the MentraOS Manager app
@@ -561,25 +561,25 @@ public async getGalleryPhotos(): Promise<any> {
 }
 ```
 
-## Third-Party App (TPA) Integration
+## Third-Party App (App) Integration
 
-### TPA Subscription System
+### App Subscription System
 *File: `/packages/cloud/src/services/subscription.service.ts`* (in augmentos_cloud repository)
 
-The subscription service allows TPAs to register for specific events:
-- TPAs can subscribe to button press events via API
+The subscription service allows Apps to register for specific events:
+- Apps can subscribe to button press events via API
 - Subscriptions are associated with user sessions
-- When a subscribed event occurs, the server routes it to the TPA
+- When a subscribed event occurs, the server routes it to the App
 
-### TPA Communication
+### App Communication
 *Components across MentraOS platform*
 
-For TPAs to handle button presses:
-1. The TPA subscribes to button events via the cloud API
-2. When a button is pressed, the cloud checks for subscribed TPAs
-3. If a TPA is subscribed, the event is routed to that TPA
-4. The TPA can then respond with custom actions
-5. The TPA can also initiate its own photo requests via the cloud API
+For Apps to handle button presses:
+1. The App subscribes to button events via the cloud API
+2. When a button is pressed, the cloud checks for subscribed Apps
+3. If a App is subscribed, the event is routed to that App
+4. The App can then respond with custom actions
+5. The App can also initiate its own photo requests via the cloud API
 
 ## Complete Flow: Photo Button Press Example
 
@@ -598,14 +598,14 @@ For TPAs to handle button presses:
    - *File: `/packages/cloud/src/routes/hardware.routes.ts`*
    - Validates authentication
    - Identifies the user and their active session
-   - Checks if any TPAs are subscribed to this button event
+   - Checks if any Apps are subscribed to this button event
 
-4. **Decision point: TPA handling vs. System handling**
-   - If TPAs are subscribed:
+4. **Decision point: App handling vs. System handling**
+   - If Apps are subscribed:
      - Returns simple success response
-     - TPA handles the button press event
+     - App handles the button press event
 
-   - If no TPAs are subscribed:
+   - If no Apps are subscribed:
      - Creates a system photo request with unique requestId
      - Returns action "take_photo" with the requestId
 
@@ -658,16 +658,16 @@ Similar flow to photos but with longer duration:
 
 ## RTMP Streaming System
 
-The MentraOS platform also provides capabilities for third-party apps (TPAs) to request live video streaming via RTMP (Real-Time Messaging Protocol). This feature allows TPAs to receive live video feeds from the smart glasses for various use cases such as remote assistance, live broadcasting, and real-time analysis.
+The MentraOS platform also provides capabilities for third-party apps (Apps) to request live video streaming via RTMP (Real-Time Messaging Protocol). This feature allows Apps to receive live video feeds from the smart glasses for various use cases such as remote assistance, live broadcasting, and real-time analysis.
 
 ### RTMP Streaming Options
 
-TPAs have two main options for RTMP streaming:
+Apps have two main options for RTMP streaming:
 
-#### Option 1: Direct RTMP Streaming to TPA-provided URL
+#### Option 1: Direct RTMP Streaming to App-provided URL
 
-1. **TPA Initiates Stream Request**:
-   - TPA sends a WebSocket message to MentraOS Cloud with:
+1. **App Initiates Stream Request**:
+   - App sends a WebSocket message to MentraOS Cloud with:
      ```typescript
      {
        type: "rtmp_stream_request",
@@ -682,7 +682,7 @@ TPAs have two main options for RTMP streaming:
 
 2. **Cloud Server Processing**:
    - Cloud generates a unique `streamId` for tracking
-   - Cloud validates the request and TPA permissions
+   - Cloud validates the request and App permissions
    - Cloud routes request to the connected smart glasses
 
 3. **Smart Glasses Setup Stream**:
@@ -692,17 +692,17 @@ TPAs have two main options for RTMP streaming:
 
 4. **Status Updates**:
    - Glasses send streaming status updates to the Cloud
-   - Cloud forwards status messages to the requesting TPA
+   - Cloud forwards status messages to the requesting App
    - These include stream start, errors, and statistics
 
 5. **Stream Termination**:
-   - TPA can send explicit stop request with the `streamId`
+   - App can send explicit stop request with the `streamId`
    - Alternatively, glasses can auto-terminate based on constraints like duration, battery level, or temperature
 
 #### Option 2: Cloud-Mediated RTMP Streaming
 
-1. **TPA Initiates Generic Stream Request**:
-   - TPA sends a WebSocket message without specifying an RTMP URL:
+1. **App Initiates Generic Stream Request**:
+   - App sends a WebSocket message without specifying an RTMP URL:
      ```typescript
      {
        type: "rtmp_stream_request",
@@ -717,7 +717,7 @@ TPAs have two main options for RTMP streaming:
 2. **Cloud Server Setup**:
    - Cloud generates a unique `streamId`
    - Cloud creates a temporary RTMP ingestion endpoint
-   - Cloud creates viewable stream URLs for the TPA
+   - Cloud creates viewable stream URLs for the App
 
 3. **Cloud Initiates Glasses Stream**:
    - Cloud sends command to glasses with the cloud's RTMP ingestion URL
@@ -727,13 +727,13 @@ TPAs have two main options for RTMP streaming:
 4. **Cloud Stream Processing**:
    - Cloud receives the RTMP stream from glasses
    - Cloud optionally transcodes to different formats/qualities
-   - Cloud makes stream available to the TPA through:
+   - Cloud makes stream available to the App through:
      - Direct RTMP URL for re-streaming: `rtmp://stream.augmentos.cloud/live/{streamId}`
      - HLS URL for web playback: `https://stream.augmentos.cloud/streams/{streamId}/index.m3u8`
      - WebRTC option for ultra-low-latency playback
 
-5. **TPA Access**:
-   - TPA receives stream access details via WebSocket:
+5. **App Access**:
+   - App receives stream access details via WebSocket:
      ```typescript
      {
        type: "rtmp_stream_response",
@@ -816,7 +816,7 @@ The cloud server requires:
 
      // Handle stream status updates
      updateStreamStatus(streamId: string, status: StreamStatus): boolean {
-       // Update status and notify TPAs...
+       // Update status and notify Apps...
      }
 
      // For cloud-mediated streams, provision stream endpoint
@@ -833,14 +833,14 @@ The cloud server requires:
 
 3. **WebSocket Message Handlers**:
    - New message types for stream requests and status updates
-   - Routing between TPAs and the smart glasses
+   - Routing between Apps and the smart glasses
 
-#### TPA SDK Integration
+#### App SDK Integration
 
 The SDK would be enhanced with streaming APIs:
 
 ```typescript
-// Example TPA code using MentraOS SDK
+// Example App code using MentraOS SDK
 import { MentraOSClient } from 'augmentos-sdk';
 
 // Initialize the client
@@ -852,7 +852,7 @@ const client = new MentraOSClient({
 // Request an RTMP stream
 async function startLiveStream() {
   try {
-    // Option 1: Stream to TPA-provided RTMP URL
+    // Option 1: Stream to App-provided RTMP URL
     const { streamId } = await client.streaming.requestRtmpStream({
       rtmpUrl: 'rtmp://my-server.example.com/live/my-stream-key',
       resolution: '720p',
@@ -911,7 +911,7 @@ async function stopLiveStream(streamId) {
 3. **Privacy & Security**:
    - Visual indication when streaming (LED or on-screen)
    - Secure stream access with expiring tokens
-   - Permission system for TPA streaming capabilities
+   - Permission system for App streaming capabilities
 
 4. **Error Handling & Recovery**:
    - Network interruptions during streaming
@@ -924,12 +924,12 @@ async function stopLiveStream(streamId) {
 - ✅ Lower latency (direct path from glasses to destination)
 - ✅ Less cloud infrastructure and bandwidth costs
 - ✅ Simpler cloud implementation
-- ❌ TPA needs to handle RTMP ingestion
+- ❌ App needs to handle RTMP ingestion
 - ❌ More complex error handling
 - ❌ Higher bandwidth usage on mobile connection
 
 **Option 2 (Cloud-Mediated)**:
-- ✅ Easier for TPAs (just get a viewable URL)
+- ✅ Easier for Apps (just get a viewable URL)
 - ✅ Better monitoring and diagnostics
 - ✅ Adaptive transcoding for different clients
 - ✅ Recording capability in the cloud
@@ -939,53 +939,53 @@ async function stopLiveStream(streamId) {
 
 ## Conclusion
 
-The MentraOS platform provides a comprehensive media system that enables both photo capture and video streaming capabilities. The system prioritizes TPA integrations, allowing third-party apps to override default behaviors, but falls back to system-defined actions when no TPA is listening.
+The MentraOS platform provides a comprehensive media system that enables both photo capture and video streaming capabilities. The system prioritizes App integrations, allowing third-party apps to override default behaviors, but falls back to system-defined actions when no App is listening.
 
-For photos, TPAs can request captures through the MentraOS SDK, following a flow that ensures reliable delivery even in challenging network conditions.
+For photos, Apps can request captures through the MentraOS SDK, following a flow that ensures reliable delivery even in challenging network conditions.
 
-For real-time video, the RTMP streaming system gives TPAs flexibility in how they receive and process live video from smart glasses, either through direct streaming to their own endpoints or by leveraging cloud-mediated streaming that simplifies integration.
+For real-time video, the RTMP streaming system gives Apps flexibility in how they receive and process live video from smart glasses, either through direct streaming to their own endpoints or by leveraging cloud-mediated streaming that simplifies integration.
 
-This architecture supports both online and offline scenarios, ensuring that users can always capture photos and videos regardless of connectivity status, while providing TPAs with powerful tools to create rich, interactive experiences that leverage the smart glasses' camera capabilities.
+This architecture supports both online and offline scenarios, ensuring that users can always capture photos and videos regardless of connectivity status, while providing Apps with powerful tools to create rich, interactive experiences that leverage the smart glasses' camera capabilities.
 
 # RTMP Streaming Development Plan
 
 ## Overview
 
-This plan outlines the implementation of direct RTMP streaming from smart glasses for TPAs. The approach leverages the existing `RtmpStreamingService` in the ASG client and follows the established TPA→Cloud→Phone→Glasses communication flow, similar to the photo taking system. We'll use the existing CAMERA permission for streaming access control.
+This plan outlines the implementation of direct RTMP streaming from smart glasses for Apps. The approach leverages the existing `RtmpStreamingService` in the ASG client and follows the established App→Cloud→Phone→Glasses communication flow, similar to the photo taking system. We'll use the existing CAMERA permission for streaming access control.
 
-A key constraint is that the glasses can only support one active RTMP stream at a time, which simplifies our architecture but requires handling "BUSY" states when multiple TPAs request streaming.
+A key constraint is that the glasses can only support one active RTMP stream at a time, which simplifies our architecture but requires handling "BUSY" states when multiple Apps request streaming.
 
 ## Dual RTMP Streaming Systems
 
-MentraOS will provide two distinct RTMP streaming options to TPAs:
+MentraOS will provide two distinct RTMP streaming options to Apps:
 
-### 1. Direct RTMP Streaming (TPA-Controlled)
+### 1. Direct RTMP Streaming (App-Controlled)
 
-- **Purpose**: Simple, low-latency streaming directly to TPA-provided RTMP endpoints
-- **Control**: Only the requesting TPA can control (start/stop)
+- **Purpose**: Simple, low-latency streaming directly to App-provided RTMP endpoints
+- **Control**: Only the requesting App can control (start/stop)
 - **Use Cases**: Development, debugging, single-destination streaming
-- **Privacy Model**: Status updates are private to the requesting TPA, except "BUSY" status which is public
+- **Privacy Model**: Status updates are private to the requesting App, except "BUSY" status which is public
 
 #### Message Types (To Be Renamed)
 - Current: `RTMP_STREAM_REQUEST` → New: `START_DIRECT_RTMP_STREAM`
 - Current: `RTMP_STREAM_STOP` → New: `STOP_DIRECT_RTMP_STREAM`
 
 #### Implementation Requirements
-- When a TPA disconnects unexpectedly, the cloud should detect this and automatically send a stop command to glasses
-- This ensures streams don't continue indefinitely if a TPA crashes or loses connection
+- When a App disconnects unexpectedly, the cloud should detect this and automatically send a stop command to glasses
+- This ensures streams don't continue indefinitely if a App crashes or loses connection
 
 ### 2. Cloud-Mediated RTMP Streaming (Subscription-Based)
 
-- **Purpose**: Allow multiple TPAs to view the same stream, managed by the cloud
-- **Control**: Subscription-based (stream starts when first TPA subscribes, stops when last one unsubscribes)
+- **Purpose**: Allow multiple Apps to view the same stream, managed by the cloud
+- **Control**: Subscription-based (stream starts when first App subscribes, stops when last one unsubscribes)
 - **Use Cases**: Multiple viewers, dashboard integration, recording
 - **Privacy Model**: Fully public - all subscribers get all updates
 
 #### Message Types and Flow
-- **TPA → Cloud**: Subscribe to `StreamType.CLOUD_RTMP`
+- **App → Cloud**: Subscribe to `StreamType.CLOUD_RTMP`
 - **Cloud → Glasses**: `GET_RTMP_STREAM` (when first subscriber arrives)
   - The cloud provides the ingest URL: `rtmp://ingest.augmentos.cloud/live/{streamId}`
-- **Cloud → TPA**: `CLOUD_RTMP_STREAM_RESPONSE` with:
+- **Cloud → App**: `CLOUD_RTMP_STREAM_RESPONSE` with:
   - `streamId`: Unique identifier for the stream
   - `status`: Current stream status
   - `accessUrls`: Object containing URLs for different protocols:
@@ -1006,11 +1006,11 @@ MentraOS will provide two distinct RTMP streaming options to TPAs:
 
 1. **Connection Management**:
    - Glasses disconnect while streaming → Cloud detects and notifies subscribers
-   - TPA disconnects without unsubscribing → Automatic cleanup on WebSocket close
+   - App disconnects without unsubscribing → Automatic cleanup on WebSocket close
    - Network interruptions → Reconnection logic with backoff
 
 2. **State Synchronization**:
-   - New TPA subscribes to ongoing stream → Provide current stream state immediately
+   - New App subscribes to ongoing stream → Provide current stream state immediately
    - Stream fails to start → Notify subscribers with error status
    - Glasses can't reach RTMP ingest → Detailed error reporting
 
@@ -1027,18 +1027,18 @@ The two streaming systems will use different approaches for status updates:
    - Keep `RTMP_STATUS` subscription type for direct streaming only
    - Implement privacy filtering:
      ```typescript
-     // Only send to the originating TPA unless it's a "busy" status
+     // Only send to the originating App unless it's a "busy" status
      if (this.subscriptions.has(StreamType.RTMP_STATUS) &&
          (message.status === "busy" || message.appId === this.config.packageName)) {
        this.events.emit(StreamType.RTMP_STATUS, message);
      }
      ```
-   - Ensures TPAs only see their own stream status (except "busy")
+   - Ensures Apps only see their own stream status (except "busy")
 
 2. **Cloud Stream Status**
    - Status updates delivered as part of the `GET_RTMP_STREAM` subscription
    - No separate status subscription needed
-   - All subscribed TPAs receive all status updates
+   - All subscribed Apps receive all status updates
    - Follows the pattern of other resource subscriptions
 
 This approach keeps the APIs clean and intuitive while properly handling the different privacy requirements of both streaming methods.
@@ -1060,12 +1060,12 @@ The cloud-mediated system will build on subscription patterns already in the cod
 - [x] Define message schemas for WebSocket communication
 - [x] Create data models for streaming messages
   - Added RtmpStreamRequest and RtmpStreamStopRequest interfaces
-  - Added RtmpStreamResponse interface for TPA notifications
+  - Added RtmpStreamResponse interface for App notifications
   - Added RtmpStreamStatus interface for glasses status updates
 - [x] Implement message handler in websocket.service.ts
   - Added rtmp_stream_request and rtmp_stream_stop handlers
   - Added RTMP_STREAM_STATUS message handler for glasses status updates
-  - Implemented status forwarding to TPAs
+  - Implemented status forwarding to Apps
 
 ### Current Status: Phase 2 - Smart Glasses Client Adaptations ✅
 
@@ -1082,8 +1082,8 @@ The cloud-mediated system will build on subscription patterns already in the cod
 
 ### Current Status: Phase 5 - SDK Development ✅
 
-- [x] Design clean SDK interface for TPAs
-  - Created StreamingModule class integrated with TpaSession
+- [x] Design clean SDK interface for Apps
+  - Created StreamingModule class integrated with AppSession
   - Implemented event-based stream status updates via onStatusChange handler
   - Developed requestStream and stopStream methods following established SDK patterns
   - Added comprehensive error handling and status management
@@ -1099,16 +1099,16 @@ The cloud-mediated system will build on subscription patterns already in the cod
 
 ### Overview
 
-We will implement a standardized way for TPAs to receive RTMP streaming status updates through the regular stream subscription mechanism. This will replace the current non-standard event-based approach with a clean, consistent API that follows the same patterns used for other stream types in the MentraOS platform.
+We will implement a standardized way for Apps to receive RTMP streaming status updates through the regular stream subscription mechanism. This will replace the current non-standard event-based approach with a clean, consistent API that follows the same patterns used for other stream types in the MentraOS platform.
 
 ### Implementation Plan
 
-#### 1. Update TpaSession Class to Handle RTMP_STATUS Subscriptions
+#### 1. Update AppSession Class to Handle RTMP_STATUS Subscriptions
 
-Modify the TpaSession class to emit RTMP status updates as regular stream events when a TPA is subscribed to the RTMP_STATUS stream type:
+Modify the AppSession class to emit RTMP status updates as regular stream events when a App is subscribed to the RTMP_STATUS stream type:
 
 ```typescript
-// In TpaSession class (index.ts), modify the handleMessage method
+// In AppSession class (index.ts), modify the handleMessage method
 // Around line 930 where it handles isRtmpStreamResponse
 
 else if (isRtmpStreamResponse(message)) {
@@ -1146,7 +1146,7 @@ constructor(packageName: string, sessionId: string, send: (message: any) => void
 // Replace handleStatusUpdate with updateStreamState that only updates internal state
 /**
  * Update internal stream state based on a status message
- * For internal use by TpaSession
+ * For internal use by AppSession
  * @param message - The status message from the cloud
  */
 updateStreamState(message: any): void {
@@ -1228,12 +1228,12 @@ getStreamStatus(): StreamStatus | undefined {
 
 #### 4. Modify the StreamingModule Constructor to Accept Session Reference
 
-Update the StreamingModule constructor to accept a reference to the TpaSession:
+Update the StreamingModule constructor to accept a reference to the AppSession:
 
 ```typescript
 // In StreamingModule class (streaming.ts)
 
-private session?: any; // Reference to TpaSession
+private session?: any; // Reference to AppSession
 
 constructor(packageName: string, sessionId: string, send: (message: any) => void, session?: any) {
   this.packageName = packageName;
@@ -1243,12 +1243,12 @@ constructor(packageName: string, sessionId: string, send: (message: any) => void
 }
 ```
 
-#### 5. Update TpaSession Initialization of StreamingModule
+#### 5. Update AppSession Initialization of StreamingModule
 
-Update the TpaSession constructor to pass itself to the StreamingModule:
+Update the AppSession constructor to pass itself to the StreamingModule:
 
 ```typescript
-// In TpaSession class (index.ts), around line 228
+// In AppSession class (index.ts), around line 228
 
 // Initialize streaming module with session reference
 this.streaming = new StreamingModule(
@@ -1301,7 +1301,7 @@ Update all examples in the developer documentation to use the standard subscript
 
 ```typescript
 // Example code for streaming
-const session = new TpaSession({...});
+const session = new AppSession({...});
 
 // Subscribe to RTMP status updates
 session.subscribe(StreamType.RTMP_STATUS);
@@ -1372,16 +1372,16 @@ Search for and update any code that might be using the old EventEmitter-based ap
 
 ### Implementation Order and Dependencies
 
-1. Update the TpaSession class to handle RTMP_STATUS subscriptions
+1. Update the AppSession class to handle RTMP_STATUS subscriptions
 2. Modify StreamingModule to remove the EventEmitter and add new methods
 3. Update StreamingModule constructor to accept session reference
-4. Update TpaSession initialization of StreamingModule
+4. Update AppSession initialization of StreamingModule
 5. Update documentation
 6. Update cloud-side code (if needed)
 7. Create tests
 8. Update developer guides and examples
 
-This approach standardizes on a single subscription mechanism, following the established patterns used throughout the MentraOS SDK. By removing the non-standard event handling approach completely, we create a cleaner, more consistent API surface that will be easier for TPA developers to understand and use.
+This approach standardizes on a single subscription mechanism, following the established patterns used throughout the MentraOS SDK. By removing the non-standard event handling approach completely, we create a cleaner, more consistent API surface that will be easier for App developers to understand and use.
 
 ## RTMP Streaming Keep-Alive System with ACK Reliability
 
@@ -1424,7 +1424,7 @@ Currently, after 3 missed ACKs, the cloud marks the stream as `timeout` and **st
 #### ✅ FULLY IMPLEMENTED (Enhanced ACK System)
 - **RTMP streaming handlers**: `start_rtmp_stream` and `stop_rtmp_stream` case handlers exist in AsgClientService.java with streamId support
 - **Cloud message routing**: `rtmp_stream_request` and `rtmp_stream_stop` handlers exist in websocket.service.ts with streamId generation
-- **Status broadcasting**: `RTMP_STREAM_STATUS` broadcasts with streamId tracking using existing `broadcastToTpa()` mechanism
+- **Status broadcasting**: `RTMP_STREAM_STATUS` broadcasts with streamId tracking using existing `broadcastToApp()` mechanism
 - **Integration infrastructure**: RtmpStreamingService integration with timeout support and JSON command processing
 - **Message types**: All RTMP message types including new `KEEP_RTMP_STREAM_ALIVE` and `KEEP_ALIVE_ACK`
 - **✅ NEW: Timeout mechanism**: 60-second stream timeout with keep-alive reset functionality on glasses
@@ -1683,9 +1683,9 @@ case 'rtmp_stream_request': {
     timestamp: new Date()
   }));
 
-  // Send initial status to the TPA with streamId
+  // Send initial status to the App with streamId
   const initialResponse = {
-    type: CloudToTpaMessageType.RTMP_STREAM_STATUS,
+    type: CloudToAppMessageType.RTMP_STREAM_STATUS,
     status: "initializing", streamId,
     timestamp: new Date()
   };
@@ -1725,13 +1725,13 @@ case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
     streamTrackerService.updateStatus(streamId, trackerStatus);
   }
 
-  // Broadcast status with streamId to TPAs
+  // Broadcast status with streamId to Apps
   const rtmpStreamStatus = {
     type: message.type, status: rtmpStatusMessage.status,
     appId, streamId, sessionId: userSession.sessionId,
     timestamp: new Date()
   };
-  this.broadcastToTpa(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
+  this.broadcastToApp(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
   break;
 }
 ```
@@ -1819,7 +1819,7 @@ case GlassesToCloudMessageType.RTMP_STREAM_STATUS: {
   }
 
   // Existing broadcast logic (already implemented)...
-  this.broadcastToTpa(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
+  this.broadcastToApp(userSession.sessionId, rtmpStreamStatus.type as any, rtmpStreamStatus);
   break;
 }
 
@@ -1857,7 +1857,7 @@ export enum CloudToGlassesMessageType {
   // ... rest of existing types ...
 }
 
-// Note: TpaToCloudMessageType.RTMP_STREAM_STOP already exists (line 93)
+// Note: AppToCloudMessageType.RTMP_STREAM_STOP already exists (line 93)
 ```
 
 **In `packages/sdk/src/types/messages/cloud-to-glasses.ts`:**
@@ -1874,9 +1874,9 @@ export interface KeepRtmpStreamAlive {
 
 The RTMP message types follow a directional naming pattern that can be confusing:
 
-**TPA → Cloud Messages**: `RTMP_STREAM_[ACTION]` format
-- `RTMP_STREAM_REQUEST` (`'rtmp_stream_request'`) - TPA requests stream start
-- `RTMP_STREAM_STOP` (`'rtmp_stream_stop'`) - TPA requests stream stop
+**App → Cloud Messages**: `RTMP_STREAM_[ACTION]` format
+- `RTMP_STREAM_REQUEST` (`'rtmp_stream_request'`) - App requests stream start
+- `RTMP_STREAM_STOP` (`'rtmp_stream_stop'`) - App requests stream stop
 
 **Cloud → Glasses Messages**: `[ACTION]_RTMP_STREAM` format
 - `START_RTMP_STREAM` (`'start_rtmp_stream'`) - Cloud tells glasses to start
@@ -1884,9 +1884,9 @@ The RTMP message types follow a directional naming pattern that can be confusing
 
 **Message Flow Example:**
 ```
-1. TPA sends: RTMP_STREAM_STOP → Cloud
+1. App sends: RTMP_STREAM_STOP → Cloud
 2. Cloud forwards: STOP_RTMP_STREAM → Glasses
-3. Glasses responds: RTMP_STREAM_STATUS → Cloud → TPA
+3. Glasses responds: RTMP_STREAM_STATUS → Cloud → App
 ```
 
 This means:
@@ -1923,11 +1923,11 @@ This means:
    - **Solution**: Use relative timeouts, not absolute timestamps
 
 #### Stream Management
-7. **TPA disconnects without stopping stream**
+7. **App disconnects without stopping stream**
    - **Detection**: WebSocket close event
-   - **Solution**: Auto-stop streams for disconnected TPAs
+   - **Solution**: Auto-stop streams for disconnected Apps
 
-8. **Multiple TPAs try to start streams simultaneously**
+8. **Multiple Apps try to start streams simultaneously**
    - **Detection**: Existing active stream for device
    - **Solution**: Return "BUSY" status to second requester
 
@@ -2011,11 +2011,11 @@ This means:
 
 ### Issue: Keep-Alive ACK Warnings After Stream Stop
 
-When a TPA sends `rtmp_stream_stop`, the cloud immediately stops sending keep-alives for that stream to prevent confusing "missed ACK" warnings that make it appear the system is broken when it's actually working correctly.
+When a App sends `rtmp_stream_stop`, the cloud immediately stops sending keep-alives for that stream to prevent confusing "missed ACK" warnings that make it appear the system is broken when it's actually working correctly.
 
 ### Implementation Logic
 
-1. **TPA sends stop request**: When a TPA sends `rtmp_stream_stop`, this signals the intent to stop the stream
+1. **App sends stop request**: When a App sends `rtmp_stream_stop`, this signals the intent to stop the stream
 2. **Cloud immediately stops keep-alives**: Upon receiving the stop request, the cloud immediately ceases all keep-alive tracking for that stream
 3. **Cloud forwards stop command**: The cloud also sends the explicit stop command to glasses for fastest possible stop
 4. **Best of both worlds**:
@@ -2025,7 +2025,7 @@ When a TPA sends `rtmp_stream_stop`, the cloud immediately stops sending keep-al
 
 ### Why This Approach is Optimal
 
-- **Intent is clear**: If the TPA wants to stop, we should respect that immediately
+- **Intent is clear**: If the App wants to stop, we should respect that immediately
 - **Guaranteed stop**: Glasses will auto-stop within ~15 seconds when they don't get keep-alives
 
 ## Camera Preview Management

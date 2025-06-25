@@ -2,16 +2,16 @@
 
 ## Overview
 
-This document outlines the current implementation of the WebSocket service in MentraOS, focusing on how it manages connections, sessions, and communication between clients (glasses) and Third-Party Applications (TPAs). This service is critical for deaf and hard of hearing users who rely on the system's functionality.
+This document outlines the current implementation of the WebSocket service in MentraOS, focusing on how it manages connections, sessions, and communication between clients (glasses) and Third-Party Applications (Apps). This service is critical for deaf and hard of hearing users who rely on the system's functionality.
 
 ## Key Files
 
 - `/packages/cloud/src/services/core/websocket.service.ts`: Main WebSocket service implementation
 - `/packages/cloud/src/services/core/app.service.ts`: App management and API key validation
 - `/packages/cloud/src/services/core/session.service.ts`: Session management
-- `/packages/cloud/src/services/core/subscription.service.ts`: TPA subscription management
-- `/packages/cloud/src/services/core/tpa-registration.service.ts`: TPA server registration
-- `/packages/cloud/src/models/tpa-server.model.ts`: TPA server registration data model
+- `/packages/cloud/src/services/core/subscription.service.ts`: App subscription management
+- `/packages/cloud/src/services/core/app-registration.service.ts`: App server registration
+- `/packages/cloud/src/models/app-server.model.ts`: App server registration data model
 
 ## Session Types
 
@@ -22,9 +22,9 @@ The system uses an `ExtendedUserSession` type which appears to extend the base `
 - `sessionId`: Unique identifier for the user session
 - `userId`: User identifier (email)
 - `websocket`: WebSocket connection to the glasses client
-- `appConnections`: Map of package names to WebSocket connections for TPAs
-- `activeAppSessions`: Array of active TPA package names
-- `loadingApps`: Set of package names for TPAs in the process of loading
+- `appConnections`: Map of package names to WebSocket connections for Apps
+- `activeAppSessions`: Array of active App package names
+- `loadingApps`: Set of package names for Apps in the process of loading
 - `startTime`: When the session was started
 - `heartbeatManager`: Manages connection health monitoring
 - `displayManager`: Manages display events to glasses
@@ -40,32 +40,32 @@ The system uses an `ExtendedUserSession` type which appears to extend the base `
 4. Server validates the connection and creates a user session
 5. Server responds with `CONNECTION_ACK` if successful
 
-### TPA Connection
+### App Connection
 
 1. User initiates app start via API or WebSocket message
 2. Server calls `startAppSession` method
 3. Server looks up app information and adds it to `loadingApps`
-4. Server sends webhook to TPA server with session information and WebSocket URL
-5. TPA connects to `/tpa-ws` endpoint
-6. `handleTpaConnection` processes the connection
-7. TPA sends a `TpaConnectionInit` message with:
+4. Server sends webhook to App server with session information and WebSocket URL
+5. App connects to `/app-ws` endpoint
+6. `handleAppConnection` processes the connection
+7. App sends a `AppConnectionInit` message with:
    - sessionId (format: userSessionId-packageName)
    - packageName
    - apiKey
 8. Server validates the API key using `appService.validateApiKey`
 9. If valid, server stores the WebSocket connection in `userSession.appConnections`
-10. Server sends `TpaConnectionAck` with settings
-11. TPA is moved from `loadingApps` to `activeAppSessions`
+10. Server sends `AppConnectionAck` with settings
+11. App is moved from `loadingApps` to `activeAppSessions`
 
 ## Authentication Flow
 
-### TPA Authentication
+### App Authentication
 
-Current implementation in `handleTpaConnection` and `handleTpaInit`:
+Current implementation in `handleAppConnection` and `handleAppInit`:
 
 ```typescript
 // Extract from message
-const initMessage = message as TpaConnectionInit;
+const initMessage = message as AppConnectionInit;
 const packageName = initMessage.packageName;
 const apiKey = initMessage.apiKey;
 
@@ -93,33 +93,33 @@ The `validateApiKey` method in `app.service.ts` handles:
 
 ## Message Routing
 
-### From Glasses to TPAs
+### From Glasses to Apps
 
 1. Glasses client sends message to cloud
 2. `handleGlassesMessage` processes the message
-3. Based on the message type and subscriptions, `broadcastToTpa` is called
-4. TPAs that have subscribed to that message type receive the message
+3. Based on the message type and subscriptions, `broadcastToApp` is called
+4. Apps that have subscribed to that message type receive the message
 
-### From TPAs to Glasses
+### From Apps to Glasses
 
-1. TPA sends message to cloud
-2. `handleTpaMessage` processes the message
+1. App sends message to cloud
+2. `handleAppMessage` processes the message
 3. For display requests, the message is verified and forwarded
 4. Messages route through the session's display manager to the glasses client
 
-## TPA Server Registration
+## App Server Registration
 
-The TPA server registration system enables TPAs to recover their sessions after a server restart:
+The App server registration system enables Apps to recover their sessions after a server restart:
 
-1. TPA servers register via `POST /api/tpa-server/register`
+1. App servers register via `POST /api/app-server/register`
 2. Registration includes packageName, apiKey, webhookUrl, and serverUrls
-3. System tracks which TPAs are associated with which user sessions
-4. When a TPA server restarts, it notifies the system
-5. System triggers reconnection to restore the TPA sessions
+3. System tracks which Apps are associated with which user sessions
+4. When a App server restarts, it notifies the system
+5. System triggers reconnection to restore the App sessions
 
 ## Error Handling
 
-Current error handling for TPA connections:
+Current error handling for App connections:
 
 1. API key validation failure:
 ```typescript
@@ -139,13 +139,13 @@ if (!userSession || !userSessionId) {
 }
 ```
 
-Error responses to TPAs are limited in detail, using WebSocket close codes with brief messages.
+Error responses to Apps are limited in detail, using WebSocket close codes with brief messages.
 
 ## Other Important Components
 
 ### HeartbeatManager
 
-Monitors connection health for both glasses clients and TPAs:
+Monitors connection health for both glasses clients and Apps:
 - Tracks last activity time for each connection
 - Sends ping/pong messages to check connection status
 - Automatically closes dead connections
@@ -153,8 +153,8 @@ Monitors connection health for both glasses clients and TPAs:
 
 ### SubscriptionManager
 
-Manages which TPAs are subscribed to which data streams:
-- TPAs send subscription updates to specify which events they want
+Manages which Apps are subscribed to which data streams:
+- Apps send subscription updates to specify which events they want
 - System routes messages based on these subscriptions
 - Supports various stream types (audio, transcription, location, etc.)
 
@@ -162,7 +162,7 @@ Manages which TPAs are subscribed to which data streams:
 
 Handles display events to the glasses:
 - Manages what's shown on the glasses display
-- Handles multiple TPAs trying to display content
+- Handles multiple Apps trying to display content
 - Enforces throttling and priority rules
 - Ensures proper formatting for the glasses display
 
@@ -170,24 +170,24 @@ Handles display events to the glasses:
 
 1. Session Identifiers:
    - User sessions have a unique `sessionId`
-   - TPA sessions use a combined ID format: `userSessionId-packageName`
+   - App sessions use a combined ID format: `userSessionId-packageName`
 
 2. WebSocket URL Configuration:
    - System apps connect to internal URLs in containerized environments
-   - External TPAs connect to public URLs
+   - External Apps connect to public URLs
    - Development environments use localhost URLs
 
 3. Timeouts:
-   - TPA connection timeout: 5000ms (5 seconds)
+   - App connection timeout: 5000ms (5 seconds)
    - Various other timeouts for different operations
 
 4. Recovery Mechanisms:
-   - Auto-restart for TPAs that disconnect unexpectedly
-   - TPA server registration for recovering from server restarts
+   - Auto-restart for Apps that disconnect unexpectedly
+   - App server registration for recovering from server restarts
    - Heartbeat monitoring to detect and clean up stale connections
 
 ## Current Challenges
 
-1. Error reporting to TPAs is limited, with minimal information provided
+1. Error reporting to Apps is limited, with minimal information provided
 2. Authentication happens after the WebSocket connection is established
-3. TPAs must provide both packageName and apiKey manually
+3. Apps must provide both packageName and apiKey manually

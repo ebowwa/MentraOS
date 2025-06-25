@@ -4,7 +4,7 @@
  * Manages dashboard content and layouts across the system.
  * The dashboard provides contextual information to users through various modes:
  * - Main: Full dashboard experience with comprehensive information
- * - Expanded: More space for TPA content while maintaining essential info
+ * - Expanded: More space for App content while maintaining essential info
  * - Always-on: Persistent minimal dashboard overlay on regular content
  */
 import {
@@ -13,13 +13,13 @@ import {
   DashboardContentUpdate,
   DashboardModeChange,
   DashboardSystemUpdate,
-  TpaToCloudMessageType,
+  AppToCloudMessageType,
   CloudToGlassesMessageType,
-  CloudToTpaMessageType,
+  CloudToAppMessageType,
   LayoutType,
   ViewType,
   DisplayRequest,
-  TpaToCloudMessage,
+  AppToCloudMessage,
   // UserSession
 } from '@mentra/sdk';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../core/app.service';
@@ -27,9 +27,9 @@ import { Logger } from 'pino';
 import UserSession from '../session/UserSession';
 
 /**
- * Dashboard content from a TPA
+ * Dashboard content from a App
  */
-interface TpaContent {
+interface AppContent {
   packageName: string;
   content: string | Layout;
   timestamp: Date;
@@ -64,14 +64,14 @@ export class DashboardManager {
   private alwaysOnEnabled: boolean = false;
 
   // Content queues for each mode
-  private mainContent: Map<string, TpaContent> = new Map();
-  private expandedContent: Map<string, TpaContent> = new Map();
-  private alwaysOnContent: Map<string, TpaContent> = new Map();
+  private mainContent: Map<string, AppContent> = new Map();
+  private expandedContent: Map<string, AppContent> = new Map();
+  private alwaysOnContent: Map<string, AppContent> = new Map();
 
   // Circular queue tracking for main dashboard
   private mainContentRotationIndex: number = 0;
 
-  // System dashboard content (managed by system.augmentos.dashboard TPA)
+  // System dashboard content (managed by system.augmentos.dashboard App)
   private systemContent: SystemContent = {
     topLeft: '',
     topRight: '',
@@ -136,24 +136,24 @@ export class DashboardManager {
   // }
 
   /**
-   * Process TPA message and route to the appropriate handler
+   * Process App message and route to the appropriate handler
    * This function will be called from WebSocketService
-   * @param message TPA message
+   * @param message App message
    * @returns True if the message was handled, false otherwise
    */
-  public handleTpaMessage(message: TpaToCloudMessage): boolean {
-    this.logger.debug({ message }, `Received TPA message of type ${message.type} for user ${this.userSession.userId}`);
+  public handleAppMessage(message: AppToCloudMessage): boolean {
+    this.logger.debug({ message }, `Received App message of type ${message.type} for user ${this.userSession.userId}`);
     try {
       switch (message.type) {
-        case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
+        case AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
           this.handleDashboardContentUpdate(message as DashboardContentUpdate);
           return true;
 
-        case TpaToCloudMessageType.DASHBOARD_MODE_CHANGE:
+        case AppToCloudMessageType.DASHBOARD_MODE_CHANGE:
           this.handleDashboardModeChange(message as DashboardModeChange);
           return true;
 
-        case TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE:
+        case AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE:
           this.handleDashboardSystemUpdate(message as DashboardSystemUpdate);
           return true;
 
@@ -168,17 +168,17 @@ export class DashboardManager {
   }
 
   /**
-   * Handle TPA disconnection to clean up dashboard content
-   * @param packageName TPA package name
+   * Handle App disconnection to clean up dashboard content
+   * @param packageName App package name
    */
-  public handleTpaDisconnected(packageName: string): void {
-    // Clean up content when a TPA disconnects
+  public handleAppDisconnected(packageName: string): void {
+    // Clean up content when a App disconnects
     this.cleanupAppContent(packageName);
-    this.logger.info({ packageName }, `Cleaned up dashboard content for disconnected TPA: ${packageName}`);
+    this.logger.info({ packageName }, `Cleaned up dashboard content for disconnected App: ${packageName}`);
   }
 
   /**
-   * Handle head-up gesture to cycle through TPA content in main dashboard
+   * Handle head-up gesture to cycle through App content in main dashboard
    * This method is called from websocket-glasses service when user looks up
    */
   public onHeadsUp(): void {
@@ -188,11 +188,11 @@ export class DashboardManager {
       return;
     }
 
-    // Only cycle if we have multiple TPA content items
+    // Only cycle if we have multiple App content items
     if (this.mainContent.size <= 1) {
       this.logger.debug({
         contentCount: this.mainContent.size
-      }, 'Head-up gesture ignored - not enough TPA content to cycle');
+      }, 'Head-up gesture ignored - not enough App content to cycle');
       return;
     }
 
@@ -203,14 +203,14 @@ export class DashboardManager {
       newIndex: this.mainContentRotationIndex,
       totalItems: this.mainContent.size,
       sessionId: this.userSession.sessionId
-    }, 'Head-up gesture triggered - cycling to next TPA content');
+    }, 'Head-up gesture triggered - cycling to next App content');
 
     // Update the dashboard to show the new content
     this.updateDashboard();
   }
 
   /**
-   * Handle dashboard content update from a TPA
+   * Handle dashboard content update from a App
    * @param message Content update message
    */
   public handleDashboardContentUpdate(message: DashboardContentUpdate): void {
@@ -252,7 +252,7 @@ export class DashboardManager {
   }
 
   /**
-   * Handle dashboard mode change from system dashboard TPA
+   * Handle dashboard mode change from system dashboard App
    * @param message Mode change message
    */
   public handleDashboardModeChange(message: DashboardModeChange): void {
@@ -336,7 +336,7 @@ export class DashboardManager {
 
       // Create a display request for regular dashboard
       const displayRequest: DisplayRequest = {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.DASHBOARD,
         layout,
@@ -383,7 +383,7 @@ export class DashboardManager {
 
       // Create a display request specifically for always-on with the new view type
       const displayRequest: DisplayRequest = {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.ALWAYS_ON,  // Use the new view type
         layout,
@@ -467,7 +467,7 @@ export class DashboardManager {
     // Format the top section (combine system info and notifications)
     const leftText = this.formatSystemLeftSection();
 
-    // Format the bottom section (combine system info and TPA content)
+    // Format the bottom section (combine system info and App content)
     const rightText = this.formatSystemRightSection();
 
     // Return a DoubleTextWall layout for compatibility with existing system
@@ -495,31 +495,31 @@ export class DashboardManager {
   }
 
   /**
-   * Format the bottom section of the dashboard (system info and TPA content)
+   * Format the bottom section of the dashboard (system info and App content)
    * @returns Formatted bottom section text
    */
   private formatSystemRightSection(): string {
-    // Get the next TPA content item using circular rotation for the main dashboard
+    // Get the next App content item using circular rotation for the main dashboard
     // We only want to show one item at a time, cycling through all available content
-    const tpaContent = this.getNextMainTpaContent();
+    const appContent = this.getNextMainAppContent();
 
-    // If there's system content for the bottom right, add it before TPA content
-    // Add topRight system info to the TPA content.
+    // If there's system content for the bottom right, add it before App content
+    // Add topRight system info to the App content.
     if (this.systemContent.bottomRight) {
-      return tpaContent ? `${this.systemContent.topRight}\n${this.systemContent.bottomRight}\n\n${tpaContent}` : `${this.systemContent.topRight}\n${this.systemContent.bottomRight}`;
+      return appContent ? `${this.systemContent.topRight}\n${this.systemContent.bottomRight}\n\n${appContent}` : `${this.systemContent.topRight}\n${this.systemContent.bottomRight}`;
     }
 
-    // Add topRight system info to the TPA content.
-    return `${this.systemContent.topRight}\n${tpaContent}`;
+    // Add topRight system info to the App content.
+    return `${this.systemContent.topRight}\n${appContent}`;
   }
 
   /**
-   * Get the next TPA content for main dashboard using circular queue rotation
-   * This method implements the circular queue logic for cycling through TPA content
-   * @returns Next TPA content string, or empty string if no content available
+   * Get the next App content for main dashboard using circular queue rotation
+   * This method implements the circular queue logic for cycling through App content
+   * @returns Next App content string, or empty string if no content available
    */
-  private getNextMainTpaContent(): string {
-    // Get all available TPA content as an array
+  private getNextMainAppContent(): string {
+    // Get all available App content as an array
     const contentArray = Array.from(this.mainContent.values());
 
     // Handle empty case
@@ -561,8 +561,8 @@ export class DashboardManager {
   }
 
   /**
-   * Extract text content from TPA content (handles both string and Layout types)
-   * @param content TPA content (string or Layout)
+   * Extract text content from App content (handles both string and Layout types)
+   * @param content App content (string or Layout)
    * @returns Extracted text string
    */
   private extractTextFromContent(content: string | Layout): string {
@@ -599,7 +599,7 @@ export class DashboardManager {
     // Create first line with system info (top-left and top-right)
     const systemInfoLine = `${this.systemContent.topLeft} | ${this.systemContent.topRight}`;
 
-    // Get TPA content from expanded content queue (only the most recent item)
+    // Get App content from expanded content queue (only the most recent item)
     const content = Array.from(this.expandedContent.values())
       .sort((a, b) => {
         const aTime = a.timestamp instanceof Date ? a.timestamp.getTime() : new Date(a.timestamp).getTime();
@@ -609,11 +609,11 @@ export class DashboardManager {
       .slice(0, 1)[0];
 
     // Get text content (will always be a string now)
-    const tpaContent = content ? content.content as string : '';
+    const appContent = content ? content.content as string : '';
 
-    // Combine system info and TPA content with a line break
-    const fullText = tpaContent
-      ? `${systemInfoLine}\n${tpaContent}`
+    // Combine system info and App content with a line break
+    const fullText = appContent
+      ? `${systemInfoLine}\n${appContent}`
       : `${systemInfoLine}\nNo expanded content available`;
 
     // Return a TextWall layout for expanded mode
@@ -634,25 +634,25 @@ export class DashboardManager {
 
     // Left side shows essential system info (time)
     // const leftText = this.systemContent.topLeft; // currently it seems the client already ads this info.
-    // TODO: or if it doesn't we should add the time and battery info before the tpa content.
+    // TODO: or if it doesn't we should add the time and battery info before the app content.
 
-    // Right side combines battery status and a single TPA content item
-    const tpaContent = this.getCombinedTpaContent(this.alwaysOnContent, 1);
+    // Right side combines battery status and a single App content item
+    const appContent = this.getCombinedAppContent(this.alwaysOnContent, 1);
 
     return {
       layoutType: LayoutType.TEXT_WALL,
-      text: tpaContent
-      // title: `${leftText} | ${tpaContent}`,
+      text: appContent
+      // title: `${leftText} | ${appContent}`,
     };
   }
 
   /**
-   * Combine TPA content from a queue into a single string
-   * @param contentQueue Queue of TPA content
+   * Combine App content from a queue into a single string
+   * @param contentQueue Queue of App content
    * @param limit Optional limit on number of items to include
    * @returns Combined content string
    */
-  private getCombinedTpaContent(contentQueue: Map<string, TpaContent>, limit?: number): string {
+  private getCombinedAppContent(contentQueue: Map<string, AppContent>, limit?: number): string {
     // Sort by timestamp (newest first)
     const sortedContent = Array.from(contentQueue.values())
       .sort((a, b) => {
@@ -738,8 +738,8 @@ export class DashboardManager {
   }
 
   /**
-   * Clean up content from a specific TPA
-   * @param packageName TPA package name
+   * Clean up content from a specific App
+   * @param packageName App package name
    */
   public cleanupAppContent(packageName: string): void {
     // Log the current state before cleanup
@@ -753,12 +753,12 @@ export class DashboardManager {
       allMainContentPackages: Array.from(this.mainContent.keys())
     };
 
-    this.logger.info(beforeState, `🧹 Starting dashboard cleanup for TPA: ${packageName}`);
+    this.logger.info(beforeState, `🧹 Starting dashboard cleanup for App: ${packageName}`);
 
-    // Check if this TPA had always-on content
+    // Check if this App had always-on content
     const hadAlwaysOnContent = this.alwaysOnContent.has(packageName);
 
-    // Check if this TPA was in main content and adjust rotation index if needed
+    // Check if this App was in main content and adjust rotation index if needed
     const hadMainContent = this.mainContent.has(packageName);
     const mainContentSizeBefore = this.mainContent.size;
 
@@ -783,7 +783,7 @@ export class DashboardManager {
             newIndex: 0,
             newSize: newMainContentSize,
             removedPackage: packageName
-          }, 'Reset rotation index after TPA disconnect');
+          }, 'Reset rotation index after App disconnect');
         }
       } else {
         // No content left, reset index
@@ -809,7 +809,7 @@ export class DashboardManager {
       hadAlwaysOnContent
     };
 
-    this.logger.info(afterState, `✅ Dashboard cleanup completed for TPA: ${packageName}`);
+    this.logger.info(afterState, `✅ Dashboard cleanup completed for App: ${packageName}`);
   }
 
   /**
@@ -820,15 +820,15 @@ export class DashboardManager {
     // Update current mode
     this.currentMode = mode;
 
-    // Notify TPAs of mode change
+    // Notify Apps of mode change
     const modeChangeMessage = {
-      type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED,
+      type: CloudToAppMessageType.DASHBOARD_MODE_CHANGED,
       mode,
       timestamp: new Date()
     };
 
-    // Broadcast mode change to all connected TPAs
-    this.broadcastToAllTpas(modeChangeMessage);
+    // Broadcast mode change to all connected Apps
+    this.broadcastToAllApps(modeChangeMessage);
 
     // Update the dashboard
     this.updateDashboard();
@@ -844,15 +844,15 @@ export class DashboardManager {
 
     this.logger.info({ enabled, sessionId: this.userSession.sessionId }, `Always-on dashboard ${enabled ? 'enabled' : 'disabled'}`);
 
-    // Notify TPAs of state change
+    // Notify Apps of state change
     const alwaysOnMessage = {
-      type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED,
+      type: CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED,
       enabled,
       timestamp: new Date()
     };
 
-    // Broadcast always-on state change to all connected TPAs
-    this.broadcastToAllTpas(alwaysOnMessage);
+    // Broadcast always-on state change to all connected Apps
+    this.broadcastToAllApps(alwaysOnMessage);
 
     // Update the regular dashboard
     this.updateDashboard();
@@ -867,7 +867,7 @@ export class DashboardManager {
 
       // Send an empty layout to clear the always-on view
       const clearRequest: DisplayRequest = {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
         view: ViewType.ALWAYS_ON,
         layout: {
@@ -884,25 +884,25 @@ export class DashboardManager {
   }
 
   /**
-   * Broadcast a message to all TPAs connected to this user session
+   * Broadcast a message to all Apps connected to this user session
    * @param message Message to broadcast
    */
-  private broadcastToAllTpas(message: any): void {
+  private broadcastToAllApps(message: any): void {
     try {
-      // Use the appConnections map to send to all connected TPAs
+      // Use the appConnections map to send to all connected Apps
       // this.userSession.appConnections.forEach((ws, packageName) => {
       this.userSession.appWebsockets.forEach((ws, packageName) => {
         try {
           if (ws && ws.readyState === WebSocket.OPEN) {
-            const tpaMessage = {
+            const appMessage = {
               ...message,
               sessionId: `${this.userSession.sessionId}-${packageName}`
             };
-            ws.send(JSON.stringify(tpaMessage));
+            ws.send(JSON.stringify(appMessage));
           }
         } catch (error) {
           const logger = this.userSession.logger.child({ packageName, message });
-          logger.error(error, 'Error sending dashboard message to TPA');
+          logger.error(error, 'Error sending dashboard message to App');
         }
       });
     } catch (error) {

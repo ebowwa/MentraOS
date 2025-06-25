@@ -1,7 +1,7 @@
 /**
  * @fileoverview Capability Discovery Types
  *
- * Defines the structure for device capability profiles that TPAs can query
+ * Defines the structure for device capability profiles that Apps can query
  * to determine what hardware and software features are available on the
  * connected smart glasses.
  */

@@ -71,7 +71,7 @@ export default function AppSettings() {
   useEffect(() => {
     if (appInfo?.webviewURL && fromWebView !== "true") {
       console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
-      replace("/tpa/webview", {
+      replace("/app/webview", {
         webviewURL: appInfo.webviewURL,
         appName: appName,
         packageName: packageName,
@@ -119,10 +119,10 @@ export default function AppSettings() {
         optimisticallyStartApp(packageName)
 
         // Check if it's a standard app
-        if (appInfo.tpaType === "standard") {
+        if (appInfo.appType === "standard") {
           // Find any running standard apps
           const runningStandardApps = appStatus.filter(
-            app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName,
+            app => app.is_running && app.appType === "standard" && app.packageName !== packageName,
           )
 
           // If there's any running standard app, stop it first
@@ -249,7 +249,7 @@ export default function AppSettings() {
     hasLoadedData.current = false
   }, [packageName])
 
-  // Fetch TPA settings on mount
+  // Fetch App settings on mount
   useEffect(() => {
     // Skip if we've already loaded data for this packageName
     if (hasLoadedData.current) {
@@ -266,10 +266,10 @@ export default function AppSettings() {
         setSettingsState(cached.settingsState)
         setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
         setSettingsLoading(false)
-        
+
         // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
         if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
-          replace("/tpa/webview", {
+          replace("/app/webview", {
             webviewURL: cached.serverAppInfo.webviewURL,
             appName: appName,
             packageName: packageName,
@@ -302,9 +302,9 @@ export default function AppSettings() {
     if (!hasCachedSettings) setSettingsLoading(true)
     const startTime = Date.now() // For profiling
     try {
-      const data = await backendServerComms.getTpaSettings(packageName)
+      const data = await backendServerComms.getAppSettings(packageName)
       const elapsed = Date.now() - startTime
-      console.log(`[PROFILE] getTpaSettings for ${packageName} took ${elapsed}ms`)
+      console.log(`[PROFILE] getAppSettings for ${packageName} took ${elapsed}ms`)
       // TODO: Profile backend and optimize if slow
       // If no data is returned from the server, create a minimal app info object
       if (!data) {
@@ -339,10 +339,10 @@ export default function AppSettings() {
         setHasCachedSettings(false)
       }
       setSettingsLoading(false)
-      
+
       // TACTICAL BYPASS: Execute immediate webview redirect if webviewURL detected
       if (data.webviewURL && fromWebView !== "true") {
-        replace("/tpa/webview", {
+        replace("/app/webview", {
           webviewURL: data.webviewURL,
           appName: appName,
           packageName: packageName,
@@ -352,7 +352,7 @@ export default function AppSettings() {
     } catch (err) {
       setSettingsLoading(false)
       setHasCachedSettings(false)
-      console.error("Error fetching TPA settings:", err)
+      console.error("Error fetching App settings:", err)
       setServerAppInfo({
         name: appInfo?.name || appName,
         description: appInfo?.description || "No description available.",
@@ -377,7 +377,7 @@ export default function AppSettings() {
     }))
 
     backendServerComms
-      .updateTpaSetting(packageName, {key, value})
+      .updateAppSetting(packageName, {key, value})
       .then(data => {
         console.log("Server update response:", data)
       })
@@ -495,7 +495,7 @@ export default function AppSettings() {
                 style={{marginRight: 8}}
                 onPress={() => {
                   router.replace({
-                    pathname: "/tpa/webview",
+                    pathname: "/app/webview",
                     params: {
                       webviewURL: serverAppInfo.webviewURL,
                       appName: appName as string,
@@ -617,7 +617,7 @@ export default function AppSettings() {
               <InfoRow
                 label="App Type"
                 value={
-                  appInfo?.tpaType === "standard" ? "Foreground" : appInfo?.tpaType === "background" ? "Background" : "-"
+                  appInfo?.appType === "standard" ? "Foreground" : appInfo?.appType === "background" ? "Background" : "-"
                 }
                 showDivider={false}
               />
@@ -626,9 +626,9 @@ export default function AppSettings() {
           </View>
 
           {/* Uninstall Button at the bottom */}
-          <ActionButton 
-            label="Uninstall" 
-            variant="destructive" 
+          <ActionButton
+            label="Uninstall"
+            variant="destructive"
             onPress={() => {
               if (serverAppInfo?.uninstallable) {
                 handleUninstallApp()

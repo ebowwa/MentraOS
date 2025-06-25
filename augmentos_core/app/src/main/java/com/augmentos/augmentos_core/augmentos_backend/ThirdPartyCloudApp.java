@@ -35,23 +35,23 @@ public class ThirdPartyCloudApp {
     }
 
     public JSONObject toJson(boolean includeSettings) {
-        JSONObject tpaObj = new JSONObject();
+        JSONObject appObj = new JSONObject();
         try {
-            tpaObj.put("name", appName);
-            tpaObj.put("description", appDescription);
-            tpaObj.put("instructions", appInstructions);
-            tpaObj.put("version", version);
-            tpaObj.put("packageName", packageName);
-            tpaObj.put("type", appType);
-            tpaObj.put("is_running", isRunning);
-            tpaObj.put("iconUrl", iconUrl);
+            appObj.put("name", appName);
+            appObj.put("description", appDescription);
+            appObj.put("instructions", appInstructions);
+            appObj.put("version", version);
+            appObj.put("packageName", packageName);
+            appObj.put("type", appType);
+            appObj.put("is_running", isRunning);
+            appObj.put("iconUrl", iconUrl);
 
             if(includeSettings) {
-                //tpaObj.put("settings", settings);
+                //appObj.put("settings", settings);
             }
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-        return tpaObj;
+        return appObj;
     }
 }

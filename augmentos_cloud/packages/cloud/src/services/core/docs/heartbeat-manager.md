@@ -4,7 +4,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
 
   This document outlines the design for an improved WebSocket connection management system in MentraOS Cloud, focusing on proper disconnect
   reason detection and session recovery. The new HeartbeatManager will be a session-scoped component that replaces the global health monitor
-  service and eliminates dependencies on the tpa-registration system.
+  service and eliminates dependencies on the app-registration system.
 
   2. Current System Analysis
 
@@ -13,23 +13,23 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   The current system uses three separate components for WebSocket health:
 
   1. HealthMonitorService: A global service that sends pings to all connections and terminates inactive ones.
-  2. TpaRegistrationService: Tracks TPA sessions to enable recovery after server restarts.
-  3. TpaSession reconnection logic: Client-side exponential backoff reconnection in the SDK.
+  2. AppRegistrationService: Tracks App sessions to enable recovery after server restarts.
+  3. AppSession reconnection logic: Client-side exponential backoff reconnection in the SDK.
 
   2.2 Current Issues
 
   1. No Distinction Between Disconnect Types: The system can't distinguish between network issues, server restarts, timeouts, or deliberate
   closures.
   2. Single Timeout Threshold: Connections are abruptly terminated after 45 seconds of inactivity with no intermediate warnings.
-  3. TPA Registration Complexity: The registration system adds unnecessary complexity while not providing significant value.
+  3. App Registration Complexity: The registration system adds unnecessary complexity while not providing significant value.
   4. Limited Context for Recovery: When disconnections occur, the system lacks detailed diagnostics for intelligent recovery.
 
-  2.3 TPA Registration Dependencies
+  2.3 App Registration Dependencies
 
-  The TPA registration system currently:
-  - Validates connections via handleTpaSessionStart
-  - Tracks disconnections via handleTpaSessionEnd
-  - Provides session recovery via handleTpaServerRestart
+  The App registration system currently:
+  - Validates connections via handleAppSessionStart
+  - Tracks disconnections via handleAppSessionEnd
+  - Provides session recovery via handleAppServerRestart
 
   All of these can be safely replaced with simpler, direct session management within the HeartbeatManager.
 
@@ -48,7 +48,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
 
   export class HeartbeatManager {
     private glassesPingInterval: NodeJS.Timeout | null = null;
-    private tpaPingInterval: NodeJS.Timeout | null = null;
+    private appPingInterval: NodeJS.Timeout | null = null;
     private connectionStats: Map<WebSocket, ConnectionStats> = new Map();
 
     constructor(private userSession: ExtendedUserSession) {
@@ -62,7 +62,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   interface ConnectionStats {
     // Connection identifiers
     sessionId: string;
-    packageName?: string; // For TPA connections
+    packageName?: string; // For App connections
     startTime: number;
 
     // Activity tracking
@@ -197,9 +197,9 @@ HeartbeatManager: Improved WebSocket Reconnection Design
       this.sendHeartbeats(false); // false = glasses connections
     }, HEARTBEAT_INTERVAL_MS);
 
-    // Send pings to TPA connections
-    this.tpaPingInterval = setInterval(() => {
-      this.sendHeartbeats(true); // true = TPA connections
+    // Send pings to App connections
+    this.appPingInterval = setInterval(() => {
+      this.sendHeartbeats(true); // true = App connections
     }, HEARTBEAT_INTERVAL_MS);
 
     this.userSession.logger.info(
@@ -207,13 +207,13 @@ HeartbeatManager: Improved WebSocket Reconnection Design
     );
   }
 
-  private sendHeartbeats(isTpa: boolean): void {
+  private sendHeartbeats(isApp: boolean): void {
     const now = Date.now();
 
     for (const [ws, stats] of this.connectionStats.entries()) {
       // Skip if not the right connection type
-      if (isTpa && !stats.packageName) continue;
-      if (!isTpa && stats.packageName) continue;
+      if (isApp && !stats.packageName) continue;
+      if (!isApp && stats.packageName) continue;
 
       // Skip if not open
       if (ws.readyState !== WebSocket.OPEN) continue;
@@ -366,10 +366,10 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   }
   ```
 
-  These timers are also cleared when a TPA successfully reconnects:
+  These timers are also cleared when a App successfully reconnects:
 
   ```typescript
-  // In handleTpaInit method
+  // In handleAppInit method
   // Check if there's a pending reconnection timer and clear it
   if (userSession._reconnectionTimers && userSession._reconnectionTimers.has(initMessage.packageName)) {
     userSession.logger.info(
@@ -429,34 +429,34 @@ HeartbeatManager: Improved WebSocket Reconnection Design
     });
   });
 
-  3.5 Removing TPA Registration
+  3.5 Removing App Registration
 
-  To safely remove TPA Registration, we'll:
+  To safely remove App Registration, we'll:
 
   1. Remove initialization and imports:
   // Remove from websocket.service.ts
-  import tpaRegistrationService from './tpa-registration.service';
-  2. Remove validation in handleTpaInit:
+  import appRegistrationService from './app-registration.service';
+  2. Remove validation in handleAppInit:
   // Replace this code:
-  const isValidTpa = tpaRegistrationService.handleTpaSessionStart(initMessage);
-  if (!isSystemApp && !isValidTpa) {
-    userSession.logger.warn(`Unregistered TPA attempting to connect: ${initMessage.packageName}`);
+  const isValidApp = appRegistrationService.handleAppSessionStart(initMessage);
+  if (!isSystemApp && !isValidApp) {
+    userSession.logger.warn(`Unregistered App attempting to connect: ${initMessage.packageName}`);
   }
 
   // With simpler validation just using appService:
   const isValidApp = await appService.isValidApp(initMessage.packageName, initMessage.apiKey);
   if (!isValidApp && !isSystemApp) {
-    userSession.logger.warn(`Invalid TPA attempting to connect: ${initMessage.packageName}`);
+    userSession.logger.warn(`Invalid App attempting to connect: ${initMessage.packageName}`);
   }
-  3. Remove handleTpaSessionEnd call:
+  3. Remove handleAppSessionEnd call:
   // Remove this line in ws.on('close', ...) handler:
-  tpaRegistrationService.handleTpaSessionEnd(currentAppSession);
+  appRegistrationService.handleAppSessionEnd(currentAppSession);
   4. Remove the API Routes:
-    - Delete the entire tpa-server.routes.ts file
+    - Delete the entire app-server.routes.ts file
     - Remove the route registration in app.ts or index.ts
   5. Delete the service and model files:
-    - tpa-registration.service.ts
-    - tpa-server.model.ts
+    - app-registration.service.ts
+    - app-server.model.ts
 
   4. Implementation Plan
 
@@ -473,9 +473,9 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   2. Add disconnect information collection
   3. Update WebSocket service to use captured disconnect info
 
-  4.3 Phase 3: Safely Remove TPA Registration
+  4.3 Phase 3: Safely Remove App Registration
 
-  1. Update WebSocket service to remove tpaRegistrationService calls
+  1. Update WebSocket service to remove appRegistrationService calls
   2. Clean up imports and dependencies
   3. Remove API routes and endpoints
   4. Delete the service and model files
@@ -490,7 +490,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   5. Expected Benefits
 
   1. Clear Disconnect Information: Accurate disconnect reasons help with debugging and recovery
-  2. Simplified Architecture: Removing TPA registration reduces complexity
+  2. Simplified Architecture: Removing App registration reduces complexity
   3. Session-Scoped Management: Each session handles its own connection health
   4. Better Metrics: More detailed connection stats for monitoring and analysis
   5. Improved Recovery: Smarter reconnection based on specific disconnect reasons
@@ -501,7 +501,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
 
   ```typescript
   // Constants
-  const TPA_SESSION_TIMEOUT_MS = 5000;  // 5 seconds
+  const APP_SESSION_TIMEOUT_MS = 5000;  // 5 seconds
   const LOG_AUDIO = false;               // Whether to log audio processing details
   const AUTO_RESTART_APPS = true;        // Whether to automatically try to restart apps after disconnection
   const AUTO_RESTART_DELAY_MS = 500;     // Delay before attempting auto-restart
@@ -517,7 +517,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   During implementation review, we identified a potential issue where apps with unexpectedly terminated connections may still appear active to users.
   This "zombie app" state occurs because:
 
-  1. When a TPA connection unexpectedly drops, the WebSocket connection is removed from `userSession.appConnections`
+  1. When a App connection unexpectedly drops, the WebSocket connection is removed from `userSession.appConnections`
   2. However, the app isn't automatically removed from `userSession.activeAppSessions`
   3. The glasses client isn't notified of the connection drop with an updated `AppStateChange` message
 
@@ -546,7 +546,7 @@ HeartbeatManager: Improved WebSocket Reconnection Design
   8. Conclusion
 
   The redesigned HeartbeatManager provides a cleaner, more effective approach to WebSocket connection health monitoring, with clear disconnect
-  reason tracking and without the unnecessary complexity of the TPA registration system. The enhanced app state synchronization
+  reason tracking and without the unnecessary complexity of the App registration system. The enhanced app state synchronization
   ensures that the user interface accurately reflects the true state of application connections. By focusing on the actual needs of reliable connections,
   proper error diagnostics, and user interface consistency, we significantly improve the overall reliability and user experience of
   the MentraOS Cloud platform.

@@ -27,14 +27,14 @@ router.post('/button-press', validateGlassesAuth, async (req: Request, res: Resp
     // Find the user's active session
     const userSession = sessionService.getSessionByUserId(userId);
 
-    // Check if any TPAs are subscribed to button events
+    // Check if any Apps are subscribed to button events
     const subscribedApps = userSession
       ? subscriptionService.getSubscribedApps(userSession, StreamType.BUTTON_PRESS)
       : [];
 
     if (subscribedApps.length === 0) {
-      // No TPAs subscribed, handle as system action
-      logger.info(`No TPAs subscribed to button events for user ${userId}, handling as system action`);
+      // No Apps subscribed, handle as system action
+      logger.info(`No Apps subscribed to button events for user ${userId}, handling as system action`);
 
       // Create a system photo request using the centralized service
       const requestId = photoRequestService.createSystemPhotoRequest(userId);
@@ -45,8 +45,8 @@ router.post('/button-press', validateGlassesAuth, async (req: Request, res: Resp
         requestId
       });
     } else {
-      // TPAs are subscribed, let them handle the button press
-      logger.info(`TPAs subscribed to button events for user ${userId}: ${subscribedApps.join(', ')}`);
+      // Apps are subscribed, let them handle the button press
+      logger.info(`Apps subscribed to button events for user ${userId}: ${subscribedApps.join(', ')}`);
 
       return res.status(200).json({
         success: true
