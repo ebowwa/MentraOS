@@ -1,10 +1,10 @@
 # MentraOS Permissions System
 
-This document describes the permissions system in MentraOS, which controls what data Third-Party Applications (TPAs) can access.
+This document describes the permissions system in MentraOS, which controls what data Third-Party Applications (Apps) can access.
 
 ## Overview
 
-The permissions system ensures that TPAs can only access data streams they have explicitly declared permissions for. This provides transparency to users about what data TPAs are using and ensures TPAs are only accessing data they need.
+The permissions system ensures that Apps can only access data streams they have explicitly declared permissions for. This provides transparency to users about what data Apps are using and ensures Apps are only accessing data they need.
 
 ## Permission Types
 

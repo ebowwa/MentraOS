@@ -1,4 +1,4 @@
-package com.augmentos.augmentoslib.tpa_helpers;
+package com.augmentos.augmentoslib.app_helpers;
 
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSManagerPackageName;
 
@@ -7,7 +7,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 
-public class TpaHelpers {
+public class AppHelpers {
     public static boolean redirectToAugmentOsManagerIfAvailable(Context context){
         if (isAppInstalled(context, AugmentOSManagerPackageName)) {
             launchTargetApp(context, AugmentOSManagerPackageName);

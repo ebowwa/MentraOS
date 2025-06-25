@@ -79,8 +79,8 @@ interface DebugSessionInfo {
 interface SystemStats {
   activeSessions: number;
   totalSessions: number;
-  activeTpas: number;
-  totalTpas: number;
+  activeApps: number;
+  totalApps: number;
 }
 
 interface ApiResponse {
@@ -95,12 +95,12 @@ const mockSessions: DebugSessionInfo[] = [
     userId: 'user-1',
     startTime: new Date(Date.now() - 3600000).toISOString(),
     disconnectedAt: null,
-    activeAppSessions: ['tpa-1', 'tpa-2'],
+    activeAppSessions: ['app-1', 'app-2'],
     installedApps: [
-      { packageName: 'tpa-1', name: 'TPA 1' },
-      { packageName: 'tpa-2', name: 'TPA 2' }
+      { packageName: 'app-1', name: 'App 1' },
+      { packageName: 'app-2', name: 'App 2' }
     ],
-    loadingApps: new Set(['tpa-3']),
+    loadingApps: new Set(['app-3']),
     isTranscribing: true,
     transcript: {
       segments: [
@@ -124,17 +124,17 @@ const mockSessions: DebugSessionInfo[] = [
     },
     subscriptionManager: {
       subscriptions: {
-        'tpa-1': ['display', 'audio'],
-        'tpa-2': ['display']
+        'app-1': ['display', 'audio'],
+        'app-2': ['display']
       }
     },
     displayManager: {
       activeDisplay: {
         displayRequest: {
-          packageName: 'tpa-1',
+          packageName: 'app-1',
           layout: {
             layoutType: 'text_wall',
-            text: 'Welcome to TPA 1'
+            text: 'Welcome to App 1'
           },
           timestamp: new Date(Date.now() - 10000)
         },
@@ -143,7 +143,7 @@ const mockSessions: DebugSessionInfo[] = [
       displayHistory: [
         {
           displayRequest: {
-            packageName: 'tpa-2',
+            packageName: 'app-2',
             layout: {
               layoutType: 'reference_card',
               title: 'Reference',
@@ -158,11 +158,11 @@ const mockSessions: DebugSessionInfo[] = [
     dashboardManager: {
       dashboardMode: 'active',
       alwaysOnEnabled: true,
-      contentQueue: ['tpa-1', 'tpa-2']
+      contentQueue: ['app-1', 'app-2']
     },
     appConnections: {
-      'tpa-1': { readyState: 1 },
-      'tpa-2': { readyState: 1 }
+      'app-1': { readyState: 1 },
+      'app-2': { readyState: 1 }
     },
     lastAudioTimestamp: Date.now() - 1000,
     transcriptionStreams: {
@@ -180,11 +180,11 @@ const mockSessions: DebugSessionInfo[] = [
     recentEvents: [
       {
         time: new Date(Date.now() - 5000).toISOString(),
-        description: 'TPA 1 started'
+        description: 'App 1 started'
       },
       {
         time: new Date(Date.now() - 10000).toISOString(),
-        description: 'TPA 2 started'
+        description: 'App 2 started'
       }
     ]
   },
@@ -195,7 +195,7 @@ const mockSessions: DebugSessionInfo[] = [
     disconnectedAt: new Date(Date.now() - 3600000).toISOString(),
     activeAppSessions: [],
     installedApps: [
-      { packageName: 'tpa-1', name: 'TPA 1' }
+      { packageName: 'app-1', name: 'App 1' }
     ],
     loadingApps: new Set(),
     isTranscribing: false,
@@ -236,8 +236,8 @@ const mockSessions: DebugSessionInfo[] = [
 const mockStats: SystemStats = {
   activeSessions: 1,
   totalSessions: 2,
-  activeTpas: 2,
-  totalTpas: 3
+  activeApps: 2,
+  totalApps: 3
 };
 
 // Create mock server
@@ -276,4 +276,4 @@ const server = createServer((req, res) => {
 const PORT = 3000;
 server.listen(PORT, () => {
   console.log(`Mock server running at http://localhost:${PORT}`);
-}); 
+});

@@ -1,33 +1,33 @@
-// pages/TPAList.tsx
+// pages/AppList.tsx
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useNavigate } from 'react-router-dom';
 import { Plus } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
-import TPATable from "../components/TPATable";
+import AppTable from "../components/AppTable";
 import api, { AppResponse } from '../services/api.service';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '../context/OrganizationContext';
 
-const TPAList: React.FC = () => {
+const AppList: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated, isLoading: authLoading, tokenReady } = useAuth();
   const { currentOrg, loading: orgLoading } = useOrganization();
 
-  // State for TPA data
-  const [tpas, setTpas] = useState<AppResponse[]>([]);
+  // State for App data
+  const [apps, setApps] = useState<AppResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch TPAs from API
+  // Fetch Apps from API
   useEffect(() => {
     // Debounce timer to prevent rapid re-fetches
     let timeoutId: NodeJS.Timeout;
 
-    const fetchTPAs = async () => {
+    const fetchApps = async () => {
       if (!isAuthenticated) return;
       if (!tokenReady) {
-        console.log('Token not ready yet, waiting before fetching TPAs...');
+        console.log('Token not ready yet, waiting before fetching Apps...');
         return;
       }
       if (!currentOrg) {
@@ -37,13 +37,13 @@ const TPAList: React.FC = () => {
 
       setIsLoading(true);
       try {
-        console.log('Fetching TPAs for organization:', currentOrg.name);
-        const tpaData = await api.apps.getAll(currentOrg.id);
-        setTpas(tpaData);
+        console.log('Fetching Apps for organization:', currentOrg.name);
+        const appData = await api.apps.getAll(currentOrg.id);
+        setApps(appData);
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch TPAs:', err);
-        setError('Failed to load TPAs. Please try again.');
+        console.error('Failed to fetch Apps:', err);
+        setError('Failed to load Apps. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -51,7 +51,7 @@ const TPAList: React.FC = () => {
 
     if (!authLoading && !orgLoading) {
       // Debounce the fetch to prevent rapid re-fetches on focus changes
-      timeoutId = setTimeout(fetchTPAs, 100);
+      timeoutId = setTimeout(fetchApps, 100);
     }
 
     return () => {
@@ -61,16 +61,16 @@ const TPAList: React.FC = () => {
     };
   }, [isAuthenticated, authLoading, tokenReady, currentOrg?.id, orgLoading]);
 
-  // Handle TPA deletion
-  const handleTpaDeleted = (packageName: string) => {
-    setTpas(tpas.filter(tpa => tpa.packageName !== packageName));
+  // Handle App deletion
+  const handleAppDeleted = (packageName: string) => {
+    setApps(apps.filter(app => app.packageName !== packageName));
   };
 
-  // Handle TPA update
-  const handleTpaUpdated = (updatedTpa: AppResponse) => {
-    setTpas(prevTpas =>
-      prevTpas.map(tpa =>
-        tpa.packageName === updatedTpa.packageName ? updatedTpa : tpa
+  // Handle App update
+  const handleAppUpdated = (updatedApp: AppResponse) => {
+    setApps(prevApps =>
+      prevApps.map(app =>
+        app.packageName === updatedApp.packageName ? updatedApp : app
       )
     );
   };
@@ -82,25 +82,25 @@ const TPAList: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">My Apps</h1>
           <Button
             className="gap-2"
-            onClick={() => navigate('/tpas/create')}
+            onClick={() => navigate('/apps/create')}
           >
             <Plus className="h-4 w-4" />
             Create App
           </Button>
         </div>
 
-        <TPATable
-          tpas={tpas}
+        <AppTable
+          apps={apps}
           isLoading={isLoading}
           error={error}
           showSearch={true}
           showViewAll={false}
-          onTpaDeleted={handleTpaDeleted}
-          onTpaUpdated={handleTpaUpdated}
+          onAppDeleted={handleAppDeleted}
+          onAppUpdated={handleAppUpdated}
         />
       </div>
     </DashboardLayout>
   );
 };
 
-export default TPAList;
+export default AppList;

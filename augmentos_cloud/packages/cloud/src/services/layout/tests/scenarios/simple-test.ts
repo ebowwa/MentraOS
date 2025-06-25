@@ -4,7 +4,7 @@
 
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
-import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
+import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { systemApps } from '../../../core/system-apps';
 
 // Simple manual test to verify our fixes
@@ -19,7 +19,7 @@ export async function main() {
 
   // Create a simple display request
   const displayRequest: DisplayRequest = {
-    type: TpaToCloudMessageType.DISPLAY_REQUEST,
+    type: AppToCloudMessageType.DISPLAY_REQUEST,
     packageName: 'com.example.app1',
     view: ViewType.MAIN,
     layout: {

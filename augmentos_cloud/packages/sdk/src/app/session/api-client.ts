@@ -40,7 +40,7 @@ export class ApiClient {
   /**
    * Create a new API client
    *
-   * @param packageName TPA package name
+   * @param packageName App package name
    * @param wsUrl WebSocket URL (optional, can be set later)
    * @param userId User ID (optional, for authenticated requests)
    */
@@ -86,7 +86,7 @@ export class ApiClient {
       throw new Error('User ID is required for fetching settings');
     }
 
-    const url = `${this.baseUrl}/tpasettings/user/${this.packageName}`;
+    const url = `${this.baseUrl}/appsettings/user/${this.packageName}`;
 
     try {
       const response = await fetch(url, {

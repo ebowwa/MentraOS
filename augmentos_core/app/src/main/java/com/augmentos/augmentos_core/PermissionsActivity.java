@@ -21,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.augmentos.augmentoslib.tpa_helpers.TpaHelpers;
+import com.augmentos.augmentoslib.app_helpers.AppHelpers;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -193,7 +193,7 @@ public class PermissionsActivity extends AppCompatActivity {
     }
 
     public void redirectAndFinish(){
-        boolean redirected = TpaHelpers.redirectToAugmentOsManagerIfAvailable(this);
+        boolean redirected = AppHelpers.redirectToAugmentOsManagerIfAvailable(this);
         if (!redirected) {
             AlertDialog.Builder builder = new AlertDialog.Builder(this);
             builder.setTitle("Installation Required")

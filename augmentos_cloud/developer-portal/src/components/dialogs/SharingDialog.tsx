@@ -7,16 +7,16 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Copy, Share2, LinkIcon, CheckCircle, X, InfoIcon } from "lucide-react";
 import api from "@/services/api.service";
 import { AppI } from '@mentra/sdk';
-import { TPA } from '@/types/tpa';
+import { App } from '@/types/app';
 
 interface SharingDialogProps {
-  tpa: AppI | TPA | null;
+  app: AppI | App | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   orgId?: string;
 }
 
-const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange, orgId }) => {
+const SharingDialog: React.FC<SharingDialogProps> = ({ app, open, onOpenChange, orgId }) => {
   // Local states for dialog
   const [email, setEmail] = useState('');
   const [sharedEmails, setSharedEmails] = useState<string[]>([]);
@@ -28,21 +28,21 @@ const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange, 
   // Get shareable installation link.
   useEffect(() => {
     async function getShareLink() {
-      if (open && tpa) {
+      if (open && app) {
         setLoadingShareLink(true);
         try {
-          const link = await api.sharing.getInstallLink(tpa.packageName, orgId);
+          const link = await api.sharing.getInstallLink(app.packageName, orgId);
           setShareLink(link);
         } catch (error) {
           console.error('Failed to get share link:', error);
-          setShareLink(`https://apps.mentra.glass/package/${tpa.packageName}`); // Fallback
+          setShareLink(`https://apps.mentra.glass/package/${app.packageName}`); // Fallback
         } finally {
           setLoadingShareLink(false);
         }
       }
     }
     getShareLink();
-  }, [open, tpa, orgId]);
+  }, [open, app, orgId]);
 
   // Check if email is valid
   const validateEmail = (email: string): boolean => {
@@ -87,10 +87,10 @@ const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange, 
 
   // Track sharing with emails
   const handleTrackSharing = async () => {
-    if (!tpa || sharedEmails.length === 0) return;
+    if (!app || sharedEmails.length === 0) return;
 
     try {
-      await api.sharing.trackSharing(tpa.packageName, sharedEmails, orgId);
+      await api.sharing.trackSharing(app.packageName, sharedEmails, orgId);
       // You could show a success message here if desired
     } catch (error) {
       console.error('Error tracking sharing:', error);
@@ -100,7 +100,7 @@ const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange, 
 
   // When dialog closes, track sharing and reset states
   const handleOpenChange = (newOpen: boolean) => {
-    if (!newOpen && sharedEmails.length > 0 && tpa) {
+    if (!newOpen && sharedEmails.length > 0 && app) {
       handleTrackSharing();
       // No need to reset shared emails so users don't lose their list
       setEmail('');
@@ -127,7 +127,7 @@ const SharingDialog: React.FC<SharingDialogProps> = ({ tpa, open, onOpenChange, 
             Share with Testers
           </DialogTitle>
           <DialogDescription>
-            {tpa && `Share ${tpa.name} with testers`}
+            {app && `Share ${app.name} with testers`}
           </DialogDescription>
         </DialogHeader>
 

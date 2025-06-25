@@ -1,7 +1,7 @@
 // src/types/app.types.ts
 
-// Define TPA type enum
-export enum TpaType {
+// Define App type enum
+export enum AppType {
   STANDARD = 'standard',
   SYSTEM = 'system',
   BACKGROUND = 'background'
@@ -23,7 +23,7 @@ export interface AppI {
   publicUrl?: string;
   webviewURL?: string; // URL for phone UI
   logoURL: string;
-  tpaType?: TpaType; // Type of TPA
+  appType?: AppType; // Type of App
 
   // App details
   version?: string;

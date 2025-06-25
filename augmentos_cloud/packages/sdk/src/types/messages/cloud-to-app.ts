@@ -1,9 +1,9 @@
-// src/messages/cloud-to-tpa.ts
+// src/messages/cloud-to-app.ts
 
 import { BaseMessage } from './base';
-import { CloudToTpaMessageType, GlassesToCloudMessageType } from '../message-types';
+import { CloudToAppMessageType, GlassesToCloudMessageType } from '../message-types';
 import { StreamType } from '../streams';
-import { AppSettings, TpaConfig, PermissionType } from '../models';
+import { AppSettings, AppConfig, PermissionType } from '../models';
 import { LocationUpdate, CalendarEvent, RtmpStreamStatus, PhotoResponse } from './glasses-to-cloud';
 import { DashboardMode } from '../dashboard';
 import { Capabilities } from '../capabilities';
@@ -13,21 +13,21 @@ import { Capabilities } from '../capabilities';
 //===========================================================
 
 /**
- * Connection acknowledgment to TPA
+ * Connection acknowledgment to App
  */
-export interface TpaConnectionAck extends BaseMessage {
-  type: CloudToTpaMessageType.CONNECTION_ACK;
+export interface AppConnectionAck extends BaseMessage {
+  type: CloudToAppMessageType.CONNECTION_ACK;
   settings?: AppSettings;
   augmentosSettings?: Record<string, any>; // AugmentOS system settings
-  config?: TpaConfig; // TPA config sent from cloud
+  config?: AppConfig; // App config sent from cloud
   capabilities?: Capabilities; // Device capability profile
 }
 
 /**
- * Connection error to TPA
+ * Connection error to App
  */
-export interface TpaConnectionError extends BaseMessage {
-  type: CloudToTpaMessageType.CONNECTION_ERROR;
+export interface AppConnectionError extends BaseMessage {
+  type: CloudToAppMessageType.CONNECTION_ERROR;
   message: string;
   code?: string;
 }
@@ -49,11 +49,11 @@ export interface PermissionErrorDetail {
 }
 
 /**
- * Permission error notification to TPA
+ * Permission error notification to App
  * Sent when subscriptions are rejected due to missing permissions
  */
 export interface PermissionError extends BaseMessage {
-  type: CloudToTpaMessageType.PERMISSION_ERROR;
+  type: CloudToAppMessageType.PERMISSION_ERROR;
   /** General error message */
   message: string;
   /** Array of details for each rejected stream */
@@ -65,25 +65,25 @@ export interface PermissionError extends BaseMessage {
 //===========================================================
 
 /**
- * App stopped notification to TPA
+ * App stopped notification to App
  */
 export interface AppStopped extends BaseMessage {
-  type: CloudToTpaMessageType.APP_STOPPED;
+  type: CloudToAppMessageType.APP_STOPPED;
   reason: "user_disabled" | "system_stop" | "error";
   message?: string;
 }
 
 /**
- * Settings update to TPA
+ * Settings update to App
  */
 export interface SettingsUpdate extends BaseMessage {
-  type: CloudToTpaMessageType.SETTINGS_UPDATE;
+  type: CloudToAppMessageType.SETTINGS_UPDATE;
   packageName: string;
   settings: AppSettings;
 }
 
 /**
- * AugmentOS settings update to TPA
+ * AugmentOS settings update to App
  */
 export interface AugmentosSettingsUpdate extends BaseMessage {
   type: 'augmentos_settings_update';
@@ -136,7 +136,7 @@ export interface AudioChunk extends BaseMessage {
 }
 
 /**
- * Tool call from cloud to TPA
+ * Tool call from cloud to App
  * Represents a tool invocation with filled parameters
  */
 export interface ToolCall {
@@ -151,10 +151,10 @@ export interface ToolCall {
 //===========================================================
 
 /**
- * Stream data to TPA
+ * Stream data to App
  */
 export interface DataStream extends BaseMessage {
-  type: CloudToTpaMessageType.DATA_STREAM;
+  type: CloudToAppMessageType.DATA_STREAM;
   streamType: StreamType;
   data: unknown; // Type depends on the streamType
 }
@@ -167,7 +167,7 @@ export interface DataStream extends BaseMessage {
  * Dashboard mode changed notification
  */
 export interface DashboardModeChanged extends BaseMessage {
-  type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+  type: CloudToAppMessageType.DASHBOARD_MODE_CHANGED;
   mode: DashboardMode;
 }
 
@@ -175,7 +175,7 @@ export interface DashboardModeChanged extends BaseMessage {
  * Dashboard always-on state changed notification
  */
 export interface DashboardAlwaysOnChanged extends BaseMessage {
-  type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+  type: CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
   enabled: boolean;
 }
 
@@ -188,20 +188,20 @@ export interface StandardConnectionError extends BaseMessage {
 }
 
 /**
- * Custom message for general-purpose communication (cloud to TPA)
+ * Custom message for general-purpose communication (cloud to App)
  */
 export interface CustomMessage extends BaseMessage {
-  type: CloudToTpaMessageType.CUSTOM_MESSAGE;
+  type: CloudToAppMessageType.CUSTOM_MESSAGE;
   action: string;  // Identifies the specific action/message type
   payload: any;    // Custom data payload
 }
 
 /**
- * Union type for all messages from cloud to TPAs
+ * Union type for all messages from cloud to Apps
  */
-export type CloudToTpaMessage =
-  | TpaConnectionAck
-  | TpaConnectionError
+export type CloudToAppMessage =
+  | AppConnectionAck
+  | AppConnectionError
   | StandardConnectionError
   | DataStream
   | AppStopped
@@ -217,12 +217,12 @@ export type CloudToTpaMessage =
   | DashboardAlwaysOnChanged
   | CustomMessage
   | AugmentosSettingsUpdate
-  // New TPA-to-TPA communication response messages
-  | TpaMessageReceived
-  | TpaUserJoined
-  | TpaUserLeft
-  | TpaRoomUpdated
-  | TpaDirectMessageResponse
+  // New App-to-App communication response messages
+  | AppMessageReceived
+  | AppUserJoined
+  | AppUserLeft
+  | AppRoomUpdated
+  | AppDirectMessageResponse
   | RtmpStreamStatus
   | PhotoResponse
   | PermissionError;
@@ -231,68 +231,68 @@ export type CloudToTpaMessage =
 // Type guards
 //===========================================================
 
-export function isTpaConnectionAck(message: CloudToTpaMessage): message is TpaConnectionAck {
-  return message.type === CloudToTpaMessageType.CONNECTION_ACK;
+export function isAppConnectionAck(message: CloudToAppMessage): message is AppConnectionAck {
+  return message.type === CloudToAppMessageType.CONNECTION_ACK;
 }
 
-export function isTpaConnectionError(message: CloudToTpaMessage): message is TpaConnectionError {
-  return message.type === CloudToTpaMessageType.CONNECTION_ERROR || (message as any).type === 'connection_error';
+export function isAppConnectionError(message: CloudToAppMessage): message is AppConnectionError {
+  return message.type === CloudToAppMessageType.CONNECTION_ERROR || (message as any).type === 'connection_error';
 }
 
-export function isAppStopped(message: CloudToTpaMessage): message is AppStopped {
-  return message.type === CloudToTpaMessageType.APP_STOPPED;
+export function isAppStopped(message: CloudToAppMessage): message is AppStopped {
+  return message.type === CloudToAppMessageType.APP_STOPPED;
 }
 
-export function isSettingsUpdate(message: CloudToTpaMessage): message is SettingsUpdate {
-  return message.type === CloudToTpaMessageType.SETTINGS_UPDATE;
+export function isSettingsUpdate(message: CloudToAppMessage): message is SettingsUpdate {
+  return message.type === CloudToAppMessageType.SETTINGS_UPDATE;
 }
 
-export function isDataStream(message: CloudToTpaMessage): message is DataStream {
-  return message.type === CloudToTpaMessageType.DATA_STREAM;
+export function isDataStream(message: CloudToAppMessage): message is DataStream {
+  return message.type === CloudToAppMessageType.DATA_STREAM;
 }
 
-export function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk {
+export function isAudioChunk(message: CloudToAppMessage): message is AudioChunk {
   return message.type === StreamType.AUDIO_CHUNK;
 }
 
-export function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged {
-  return message.type === CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+export function isDashboardModeChanged(message: CloudToAppMessage): message is DashboardModeChanged {
+  return message.type === CloudToAppMessageType.DASHBOARD_MODE_CHANGED;
 }
 
-export function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is DashboardAlwaysOnChanged {
-  return message.type === CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+export function isDashboardAlwaysOnChanged(message: CloudToAppMessage): message is DashboardAlwaysOnChanged {
+  return message.type === CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
 }
 
-export function isRtmpStreamStatus(message: CloudToTpaMessage): message is RtmpStreamStatus {
+export function isRtmpStreamStatus(message: CloudToAppMessage): message is RtmpStreamStatus {
   return message.type === GlassesToCloudMessageType.RTMP_STREAM_STATUS;
 }
 
-export function isPhotoResponse(message: CloudToTpaMessage): message is PhotoResponse {
+export function isPhotoResponse(message: CloudToAppMessage): message is PhotoResponse {
   return message.type === GlassesToCloudMessageType.PHOTO_RESPONSE;
 }
 
-// New type guards for TPA-to-TPA communication
-export function isTpaMessageReceived(message: CloudToTpaMessage): message is TpaMessageReceived {
-  return message.type === CloudToTpaMessageType.TPA_MESSAGE_RECEIVED;
+// New type guards for App-to-App communication
+export function isAppMessageReceived(message: CloudToAppMessage): message is AppMessageReceived {
+  return message.type === CloudToAppMessageType.APP_MESSAGE_RECEIVED;
 }
 
-export function isTpaUserJoined(message: CloudToTpaMessage): message is TpaUserJoined {
-  return message.type === CloudToTpaMessageType.TPA_USER_JOINED;
+export function isAppUserJoined(message: CloudToAppMessage): message is AppUserJoined {
+  return message.type === CloudToAppMessageType.APP_USER_JOINED;
 }
 
-export function isTpaUserLeft(message: CloudToTpaMessage): message is TpaUserLeft {
-  return message.type === CloudToTpaMessageType.TPA_USER_LEFT;
+export function isAppUserLeft(message: CloudToAppMessage): message is AppUserLeft {
+  return message.type === CloudToAppMessageType.APP_USER_LEFT;
 }
 
 //===========================================================
-// TPA-to-TPA Communication Response Messages
+// App-to-App Communication Response Messages
 //===========================================================
 
 /**
- * Message received from another TPA user
+ * Message received from another App user
  */
-export interface TpaMessageReceived extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED;
+export interface AppMessageReceived extends BaseMessage {
+  type: CloudToAppMessageType.APP_MESSAGE_RECEIVED;
   payload: any;
   messageId: string;
   senderUserId: string;
@@ -301,10 +301,10 @@ export interface TpaMessageReceived extends BaseMessage {
 }
 
 /**
- * Notification that a user joined the TPA
+ * Notification that a user joined the App
  */
-export interface TpaUserJoined extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_USER_JOINED;
+export interface AppUserJoined extends BaseMessage {
+  type: CloudToAppMessageType.APP_USER_JOINED;
   userId: string;
   sessionId: string;
   joinedAt: Date;
@@ -313,10 +313,10 @@ export interface TpaUserJoined extends BaseMessage {
 }
 
 /**
- * Notification that a user left the TPA
+ * Notification that a user left the App
  */
-export interface TpaUserLeft extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_USER_LEFT;
+export interface AppUserLeft extends BaseMessage {
+  type: CloudToAppMessageType.APP_USER_LEFT;
   userId: string;
   sessionId: string;
   leftAt: Date;
@@ -326,8 +326,8 @@ export interface TpaUserLeft extends BaseMessage {
 /**
  * Room status update (members, config changes, etc.)
  */
-export interface TpaRoomUpdated extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_ROOM_UPDATED;
+export interface AppRoomUpdated extends BaseMessage {
+  type: CloudToAppMessageType.APP_ROOM_UPDATED;
   roomId: string;
   updateType: 'user_joined' | 'user_left' | 'config_changed' | 'room_closed';
   roomData: {
@@ -341,8 +341,8 @@ export interface TpaRoomUpdated extends BaseMessage {
 /**
  * Response to a direct message attempt
  */
-export interface TpaDirectMessageResponse extends BaseMessage {
-  type: CloudToTpaMessageType.TPA_DIRECT_MESSAGE_RESPONSE;
+export interface AppDirectMessageResponse extends BaseMessage {
+  type: CloudToAppMessageType.APP_DIRECT_MESSAGE_RESPONSE;
   messageId: string;
   success: boolean;
   error?: string;

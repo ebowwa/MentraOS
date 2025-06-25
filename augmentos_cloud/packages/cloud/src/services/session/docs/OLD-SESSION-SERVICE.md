@@ -2,7 +2,7 @@
 
 ## Overview
 
-The `session.service.ts` is a critical component of the MentraOS Cloud system, responsible for managing user sessions, audio processing, transcription integration, and display management. It serves as the central hub connecting glasses clients, TPAs, and various system services.
+The `session.service.ts` is a critical component of the MentraOS Cloud system, responsible for managing user sessions, audio processing, transcription integration, and display management. It serves as the central hub connecting glasses clients, Apps, and various system services.
 
 ## Core Responsibilities
 
@@ -44,7 +44,7 @@ The `session.service.ts` is a critical component of the MentraOS Cloud system, r
 ### 5. Display Management
 - **Function**: `updateDisplay(userSessionId: string, displayRequest: DisplayRequest): void`
 - **Purpose**: Updates display content on glasses
-- **Usage**: Called when TPAs want to display content
+- **Usage**: Called when Apps want to display content
 - **Details**: Delegates to the DisplayManager in the user session
 
 ### 6. Transcript Management
@@ -75,7 +75,7 @@ The `session.service.ts` is a critical component of the MentraOS Cloud system, r
   - Stops transcription
   - Cleans up LC3 service
   - Clears audio buffer
-  - Notifies TPAs of session end
+  - Notifies Apps of session end
   - Removes session from maps
 
 ### 9. Session Listing
@@ -224,7 +224,7 @@ The session service uses a singleton pattern:
    - Initialized for each session
 
 3. **Subscription Manager**
-   - Tracks TPA subscriptions
+   - Tracks App subscriptions
    - Initialized for each session
 
 4. **Heartbeat Manager**
@@ -286,9 +286,9 @@ These functions aren't in the old session service but need to be added:
    - Currently handled in websocket.service.ts through direct database access
 
 3. **Message Relaying**
-   - `relayMessageToTpas(userSession: ExtendedUserSession, streamType: StreamType, data: any): void`
-   - `relayAudioToTpas(userSession: ExtendedUserSession, audioData: ArrayBuffer): void`
-   - Currently implemented as `broadcastToTpa` and `broadcastToTpaAudio` in websocket.service.ts
+   - `relayMessageToApps(userSession: ExtendedUserSession, streamType: StreamType, data: any): void`
+   - `relayAudioToApps(userSession: ExtendedUserSession, audioData: ArrayBuffer): void`
+   - Currently implemented as `broadcastToApp` and `broadcastToAppAudio` in websocket.service.ts
 
 4. **App Lifecycle Management**
    - `startAppSession(userSession: ExtendedUserSession, packageName: string): Promise<void>`
@@ -296,6 +296,6 @@ These functions aren't in the old session service but need to be added:
    - Currently implemented in websocket.service.ts
 
 5. **Session State Management**
-   - `handleTpaInit(ws: WebSocket, initMessage: any, setCurrentSessionId: Function): Promise<void>`
+   - `handleAppInit(ws: WebSocket, initMessage: any, setCurrentSessionId: Function): Promise<void>`
    - `handleAppStateBroadcast(userSession: ExtendedUserSession): Promise<void>`
    - Currently implemented in websocket.service.ts

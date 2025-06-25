@@ -8,7 +8,7 @@
 
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
-import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
+import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { strict as assert } from 'assert';
 import { systemApps } from '../../../core/system-apps';
 
@@ -38,7 +38,7 @@ export async function testShowThrottledAfterAppStop() {
     console.log('2. App1 shows a display and acquires background lock');
     // Send a display request from App1
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: {
@@ -60,7 +60,7 @@ export async function testShowThrottledAfterAppStop() {
     console.log('3. Manually add a throttled request for App2');
     // Create a display request for App2
     const app2Request = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP2,
       view: ViewType.MAIN,
       layout: {
@@ -145,7 +145,7 @@ export async function testMultipleThrottledRequests() {
     console.log('2. App1 shows a display and acquires background lock');
     // Send a display request from App1
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'App1 Display' },
@@ -158,7 +158,7 @@ export async function testMultipleThrottledRequests() {
     // Manually add App2's request to the throttle queue (older)
     const app2ActiveDisplay: any = {
       displayRequest: {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: APP2,
         view: ViewType.MAIN,
         layout: { layoutType: LayoutType.TEXT_WALL, text: 'App2 Display' },
@@ -180,7 +180,7 @@ export async function testMultipleThrottledRequests() {
     // Manually add App3's request to the throttle queue (newer)
     const app3ActiveDisplay: any = {
       displayRequest: {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: 'com.example.app3',
         view: ViewType.MAIN,
         layout: { layoutType: LayoutType.TEXT_WALL, text: 'App3 Display' },
@@ -239,7 +239,7 @@ export async function testStoppedAppThrottledRequests() {
     console.log('2. App1 shows a display and acquires background lock');
     // Send a display request from App1
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'App1 Display' },
@@ -252,7 +252,7 @@ export async function testStoppedAppThrottledRequests() {
     // Manually add App3's request to the throttle queue (older but from stopped app)
     const app3ActiveDisplay: any = {
       displayRequest: {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: 'com.example.app3',
         view: ViewType.MAIN,
         layout: { layoutType: LayoutType.TEXT_WALL, text: 'App3 Display' },
@@ -274,7 +274,7 @@ export async function testStoppedAppThrottledRequests() {
     // Manually add App2's request to the throttle queue (newer but from running app)
     const app2ActiveDisplay: any = {
       displayRequest: {
-        type: TpaToCloudMessageType.DISPLAY_REQUEST,
+        type: AppToCloudMessageType.DISPLAY_REQUEST,
         packageName: APP2,
         view: ViewType.MAIN,
         layout: { layoutType: LayoutType.TEXT_WALL, text: 'App2 Display' },

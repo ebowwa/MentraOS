@@ -16,12 +16,12 @@ interface SessionListProps {
   searchTerm: string;
 }
 
-export function SessionList({ 
-  sessions, 
-  selectedSessionId, 
-  setSelectedSessionId, 
+export function SessionList({
+  sessions,
+  selectedSessionId,
+  setSelectedSessionId,
   isLoading,
-  searchTerm 
+  searchTerm
 }: SessionListProps) {
   // Safe check to see if a session is active
   const isSessionActive = (session: DebugSessionInfo) => {
@@ -53,11 +53,11 @@ export function SessionList({
   return (
     <ul className="space-y-1">
       {sessions.map(session => (
-        <li 
+        <li
           key={session.sessionId}
           className={`p-2 rounded cursor-pointer ${
-            selectedSessionId === session.sessionId 
-              ? 'bg-gray-100 border-l-2 border-gray-800' 
+            selectedSessionId === session.sessionId
+              ? 'bg-gray-100 border-l-2 border-gray-800'
               : 'hover:bg-gray-50'
           }`}
           onClick={() => setSelectedSessionId(session.sessionId)}
@@ -68,8 +68,8 @@ export function SessionList({
           </div>
           <div className="text-xs text-gray-500">User: {session.userId}</div>
           <div className="text-xs text-gray-500">
-            {isSessionActive(session) ? 
-              `Active TPAs: ${safeArrayLength(session.activeAppSessions)}` : 
+            {isSessionActive(session) ?
+              `Active Apps: ${safeArrayLength(session.activeAppSessions)}` :
               `Disconnected: ${new Date(session.disconnectedAt!).toLocaleTimeString()}`
             }
           </div>
@@ -77,4 +77,4 @@ export function SessionList({
       ))}
     </ul>
   );
-} 
+}

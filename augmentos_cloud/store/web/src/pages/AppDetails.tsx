@@ -369,12 +369,12 @@ const AppDetails: React.FC = () => {
                         </div>
                       )}
 
-                      {app.tpaType && (
+                      {app.appType && (
                         <div className="flex items-start">
                           <Star className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
                           <div>
                             <p className="text-sm font-medium text-gray-700">App Type</p>
-                            <p className="text-sm text-gray-500 capitalize">{app.tpaType}</p>
+                            <p className="text-sm text-gray-500 capitalize">{app.appType}</p>
                           </div>
                         </div>
                       )}

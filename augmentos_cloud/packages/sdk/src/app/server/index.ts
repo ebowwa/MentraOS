@@ -1,12 +1,12 @@
 /**
- * 🚀 TPA Server Module
+ * 🚀 App Server Module
  *
- * Creates and manages a server for Third Party Apps (TPAs) in the AugmentOS ecosystem.
+ * Creates and manages a server for Third Party Apps (Apps) in the AugmentOS ecosystem.
  * Handles webhook endpoints, session management, and cleanup.
  */
 import express, { type Express } from 'express';
 import path from 'path';
-import { TpaSession } from '../session/index';
+import { AppSession } from '../session/index';
 import { createAuthMiddleware } from '../webview';
 import {
   WebhookRequest,
@@ -23,11 +23,11 @@ import { logger as rootLogger } from '../../logging/logger';
 import axios from 'axios';
 
 /**
- * 🔧 Configuration options for TPA Server
+ * 🔧 Configuration options for App Server
  *
  * @example
  * ```typescript
- * const config: TpaServerConfig = {
+ * const config: AppServerConfig = {
  *   packageName: 'org.example.myapp',
  *   apiKey: 'your_api_key',
  *   port: 7010,
@@ -35,8 +35,8 @@ import axios from 'axios';
  * };
  * ```
  */
-export interface TpaServerConfig {
-  /** 📦 Unique identifier for your TPA (e.g., 'org.company.appname') must match what you specified at https://console.mentra.glass */
+export interface AppServerConfig {
+  /** 📦 Unique identifier for your App (e.g., 'org.company.appname') must match what you specified at https://console.mentra.glass */
   packageName: string;
   /** 🔑 API key for authentication with AugmentOS Cloud */
   apiKey: string;
@@ -58,14 +58,14 @@ export interface TpaServerConfig {
    * This must be a strong, unique secret
    */
   cookieSecret?: string;
-  /** TPA instructions string shown to the user */
-  tpaInstructions?: string;
+  /** App instructions string shown to the user */
+  appInstructions?: string;
 }
 
 /**
- * 🎯 TPA Server Implementation
+ * 🎯 App Server Implementation
  *
- * Base class for creating TPA servers. Handles:
+ * Base class for creating App servers. Handles:
  * - 🔄 Session lifecycle management
  * - 📡 Webhook endpoints for AugmentOS Cloud
  * - 📂 Static file serving
@@ -74,8 +74,8 @@ export interface TpaServerConfig {
  *
  * @example
  * ```typescript
- * class MyAppServer extends TpaServer {
- *   protected async onSession(session: TpaSession, sessionId: string, userId: string) {
+ * class MyAppServer extends AppServer {
+ *   protected async onSession(session: AppSession, sessionId: string, userId: string) {
  *     // Handle new user sessions here
  *     session.events.onTranscription((data) => {
  *       session.layouts.showTextWall(data.text);
@@ -92,19 +92,19 @@ export interface TpaServerConfig {
  * await server.start();
  * ```
  */
-export class TpaServer {
+export class AppServer {
   /** Express app instance */
   private app: Express;
   /** Map of active user sessions by sessionId */
-  private activeSessions = new Map<string, TpaSession>();
+  private activeSessions = new Map<string, AppSession>();
   /** Array of cleanup handlers to run on shutdown */
   private cleanupHandlers: Array<() => void> = [];
-  /** TPA instructions string shown to the user */
-  private tpaInstructions: string | null = null;
+  /** App instructions string shown to the user */
+  private appInstructions: string | null = null;
 
   public readonly logger: Logger;
 
-  constructor(private config: TpaServerConfig) {
+  constructor(private config: AppServerConfig) {
     // Set defaults and merge with provided config
     this.config = {
       port: 7010,
@@ -114,7 +114,7 @@ export class TpaServer {
       ...config
     };
 
-    this.logger = rootLogger.child({ tpa: this.config.packageName, packageName: this.config.packageName, service: 'tpa-server' });
+    this.logger = rootLogger.child({ app: this.config.packageName, packageName: this.config.packageName, service: 'app-server' });
 
     // Initialize Express app
     this.app = express();
@@ -130,7 +130,7 @@ export class TpaServer {
       cookieSecret: this.config.cookieSecret || `AOS_${this.config.packageName}_${this.config.apiKey.substring(0, 8)}`
     }));
 
-    this.tpaInstructions = (config as any).tpaInstructions || null;
+    this.appInstructions = (config as any).appInstructions || null;
 
     // Setup server features
     this.setupWebhook();
@@ -149,14 +149,14 @@ export class TpaServer {
 
   /**
    * 👥 Session Handler
-   * Override this method to handle new TPA sessions.
+   * Override this method to handle new App sessions.
    * This is where you implement your app's core functionality.
    *
-   * @param session - TPA session instance for the user
+   * @param session - App session instance for the user
    * @param sessionId - Unique identifier for this session
    * @param userId - User's identifier
    */
-  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     this.logger.info(`🚀 Starting new session handling for session ${sessionId} and user ${userId}`);
     // Core session handling logic (onboarding removed)
     this.logger.info(`✅ Session handling completed for session ${sessionId} and user ${userId}`);
@@ -205,7 +205,7 @@ export class TpaServer {
   public start(): Promise<void> {
     return new Promise((resolve) => {
       this.app.listen(this.config.port, () => {
-        this.logger.info(`🎯 TPA server running at http://localhost:${this.config.port}`);
+        this.logger.info(`🎯 App server running at http://localhost:${this.config.port}`);
         if (this.config.publicDir) {
           this.logger.info(`📂 Serving static files from ${this.config.publicDir}`);
         }
@@ -225,7 +225,7 @@ export class TpaServer {
   }
 
   /**
- * 🔐 Generate a TPA token for a user
+ * 🔐 Generate a App token for a user
  * This should be called when handling a session webhook request.
  *
  * @param userId - User identifier
@@ -337,12 +337,12 @@ export class TpaServer {
     const { sessionId, userId, augmentOSWebsocketUrl } = request;
     this.logger.info({userId}, `🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`);
 
-    // Create new TPA session
-    const session = new TpaSession({
+    // Create new App session
+    const session = new AppSession({
       packageName: this.config.packageName,
       apiKey: this.config.apiKey,
       augmentOSWebsocketUrl, // The websocket URL for the specific AugmentOS server that this userSession is connecting to.
-      tpaServer: this,
+      appServer: this,
       userId,
     });
 
@@ -448,7 +448,7 @@ export class TpaServer {
         this.logger.info(`⚙️ Received settings update for user ${userIdForSettings}`);
 
         // Find all active sessions for this user
-        const userSessions: TpaSession[] = [];
+        const userSessions: AppSession[] = [];
 
         // Look through all active sessions
         this.activeSessions.forEach((session, sessionId) => {

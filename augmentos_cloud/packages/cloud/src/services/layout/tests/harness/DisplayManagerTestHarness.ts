@@ -9,7 +9,7 @@ import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from './MockUserSession';
 import { MockDisplaySystem } from './MockDisplaySystem';
 import { TimeMachine } from './TimeMachine';
-import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType, ActiveDisplay } from '@mentra/sdk';
+import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType, ActiveDisplay } from '@mentra/sdk';
 import { systemApps } from '../../../core/system-apps';
 
 interface TimelineEvent {
@@ -49,7 +49,7 @@ export class DisplayManagerTestHarness {
       const message = JSON.parse(data.toString());
 
       // Only handle display events
-      if (message.type === TpaToCloudMessageType.DISPLAY_REQUEST) {
+      if (message.type === AppToCloudMessageType.DISPLAY_REQUEST) {
         this.handleDisplaySent(message);
       }
     });
@@ -125,7 +125,7 @@ export class DisplayManagerTestHarness {
     }
 
     const displayRequest: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName,
       view: options.view as ViewType || ViewType.MAIN,
       layout: layout,
@@ -144,7 +144,7 @@ export class DisplayManagerTestHarness {
     const messages = this.userSession.getSentMessages();
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
-      if (lastMessage.type === TpaToCloudMessageType.DISPLAY_REQUEST) {
+      if (lastMessage.type === AppToCloudMessageType.DISPLAY_REQUEST) {
         this.handleDisplaySent(lastMessage);
       }
     }

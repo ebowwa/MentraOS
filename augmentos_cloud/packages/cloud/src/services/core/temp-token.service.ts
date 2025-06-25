@@ -8,9 +8,9 @@ import { appService } from './app.service';
 const logger = rootLogger.child({ service: 'temp-token.service' });
 
 // Environment variable for JWT signing
-export const TPA_AUTH_JWT_PRIVATE_KEY: string | null = process.env.TPA_AUTH_JWT_PRIVATE_KEY || null;
-if (!TPA_AUTH_JWT_PRIVATE_KEY) {
-  console.warn('[token.service] TPA_AUTH_JWT_PRIVATE_KEY is not set');
+export const APP_AUTH_JWT_PRIVATE_KEY: string | null = process.env.APP_AUTH_JWT_PRIVATE_KEY || null;
+if (!APP_AUTH_JWT_PRIVATE_KEY) {
+  console.warn('[token.service] APP_AUTH_JWT_PRIVATE_KEY is not set');
 }
 
 /**
@@ -30,7 +30,7 @@ export class TokenService {
    * The token expires after 60 seconds and can only be used once.
    *
    * @param userId - The user ID associated with the token
-   * @param packageName - The package name of the TPA this token is intended for
+   * @param packageName - The package name of the App this token is intended for
    * @returns Promise resolving to the generated temporary token string
    * @throws Error if token generation or storage fails
    */
@@ -59,15 +59,15 @@ export class TokenService {
   }
 
   /**
-   * Exchanges a temporary token for the associated user ID, validating the requesting TPA.
+   * Exchanges a temporary token for the associated user ID, validating the requesting App.
    * Performs multiple security checks:
    * - Token existence and validity
    * - Single-use enforcement (marks token as used)
    * - Expiration check (60-second TTL)
-   * - Package name validation (prevents cross-TPA token usage)
+   * - Package name validation (prevents cross-App token usage)
    *
    * @param tempToken - The temporary token string to exchange
-   * @param requestingPackageName - The package name of the TPA making the exchange request
+   * @param requestingPackageName - The package name of the App making the exchange request
    * @returns Promise resolving to an object containing the userId if valid, null otherwise
    */
   async exchangeTemporaryToken(tempToken: string, requestingPackageName: string): Promise<ExchangeTokenResult | null> {
@@ -97,7 +97,7 @@ export class TokenService {
         return null;
       }
 
-      // **Crucial Security Check:** Verify the requesting TPA matches the one the token was issued for.
+      // **Crucial Security Check:** Verify the requesting App matches the one the token was issued for.
       if (tokenDoc.packageName !== requestingPackageName) {
         logger.error(`Token mismatch: Token for ${tokenDoc.packageName} used by ${requestingPackageName}`);
         return null; // Token not intended for this application
@@ -117,15 +117,15 @@ export class TokenService {
   }
 
   /**
-   * Issues a signed JWT token for AugmentOS users to be used in TPA webviews.
+   * Issues a signed JWT token for AugmentOS users to be used in App webviews.
    * The token contains:
    * - User ID in the 'sub' claim
    * - Frontend token in the format 'userId:hash' where hash is created using the app's API key
    *
-   * The frontend token can be verified by the TPA using their API key to ensure authenticity.
+   * The frontend token can be verified by the App using their API key to ensure authenticity.
    *
    * @param aosUserId - The AugmentOS user ID to include in the token
-   * @param packageName - The package name of the TPA to generate the frontend token for
+   * @param packageName - The package name of the App to generate the frontend token for
    * @returns Promise resolving to a signed JWT token string
    * @throws Error if private key is not configured or token generation fails
    */
@@ -135,15 +135,15 @@ export class TokenService {
 
     try {
       // Import the private key from the environment
-      if (!TPA_AUTH_JWT_PRIVATE_KEY) {
-        throw new Error('[token.service] TPA_AUTH_JWT_PRIVATE_KEY is not set');
+      if (!APP_AUTH_JWT_PRIVATE_KEY) {
+        throw new Error('[token.service] APP_AUTH_JWT_PRIVATE_KEY is not set');
       }
 
       // Import the PKCS8 private key for JWT signing
-      const privateKey = await importPKCS8(TPA_AUTH_JWT_PRIVATE_KEY, alg);
+      const privateKey = await importPKCS8(APP_AUTH_JWT_PRIVATE_KEY, alg);
 
       // Generate a frontend token using the app's API key hash instead of a shared secret
-      // This allows the TPA to verify the token using their own API key
+      // This allows the App to verify the token using their own API key
       const frontendTokenHash: string = await appService.hashWithApiKey(aosUserId, packageName);
 
       // Create and sign the JWT token with both user ID and frontend token

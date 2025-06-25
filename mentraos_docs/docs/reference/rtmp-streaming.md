@@ -4,13 +4,13 @@ The MentraOS SDK provides the capability to request RTMP streams directly from c
 
 ## Overview
 
-RTMP (Real-Time Messaging Protocol) is widely used for live streaming to platforms like YouTube, Twitch, Facebook Live, and custom streaming servers. The MentraOS SDK allows Third-Party Applications (TPAs) to request the smart glasses to stream their camera feed to any RTMP endpoint.
+RTMP (Real-Time Messaging Protocol) is widely used for live streaming to platforms like YouTube, Twitch, Facebook Live, and custom streaming servers. The MentraOS SDK allows Third-Party Applications (Apps) to request the smart glasses to stream their camera feed to any RTMP endpoint.
 
 ## Requirements
 
 - An RTMP endpoint URL (e.g., `rtmp://your-streaming-server.com/live/stream-key`)
 - Connected smart glasses with streaming capability
-- Proper permissions in your TPA's manifest
+- Proper permissions in your App's manifest
 
 ## Basic Usage
 

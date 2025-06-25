@@ -1,4 +1,4 @@
-// pages/EditTPA.tsx
+// pages/EditApp.tsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +11,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeftIcon, CheckCircle2, AlertCircle, Loader2, KeyRound, Copy, RefreshCw, Share2, LinkIcon, Upload, MoveIcon, Download, Files } from "lucide-react";
 import DashboardLayout from "../components/DashboardLayout";
 import api, { Organization } from '@/services/api.service';
-import { TPA, Permission, Setting, Tool } from '@/types/tpa';
+import { App, Permission, Setting, Tool } from '@/types/app';
 import { toast } from 'sonner';
 import ApiKeyDialog from '../components/dialogs/ApiKeyDialog';
 import SharingDialog from '../components/dialogs/SharingDialog';
@@ -26,26 +26,26 @@ import { useOrganization } from '@/context/OrganizationContext';
 // import publicEmailDomains from 'email-providers/all.json';
 import MoveOrgDialog from '../components/dialogs/MoveOrgDialog';
 import ImageUpload from '../components/forms/ImageUpload';
-import TpaTypeTooltip from '../components/forms/TpaTypeTooltip';
-// import { TpaType } from '@mentra/sdk';
+import AppTypeTooltip from '../components/forms/AppTypeTooltip';
+// import { AppType } from '@mentra/sdk';
 
-enum TpaType {
+enum AppType {
   STANDARD = 'standard',
   BACKGROUND = 'background'
 }
-// Extend TPA type locally to include sharedWithOrganization
-interface EditableTPA extends TPA {
+// Extend App type locally to include sharedWithOrganization
+interface EditableApp extends App {
   sharedWithOrganization?: boolean;
 }
 
-const EditTPA: React.FC = () => {
+const EditApp: React.FC = () => {
   const navigate = useNavigate();
   const { packageName } = useParams<{ packageName: string }>();
   const { user } = useAuth();
   const { currentOrg } = useOrganization();
 
   // Form state
-  const [formData, setFormData] = useState<EditableTPA>({
+  const [formData, setFormData] = useState<EditableApp>({
     id: '',
     packageName: '',
     name: '',
@@ -55,7 +55,7 @@ const EditTPA: React.FC = () => {
     logoURL: '',
     isPublic: false,
     appStoreStatus: 'DEVELOPMENT',
-    tpaType: 'standard' as TpaType, // Default value for TpaType with cast
+    appType: 'standard' as AppType, // Default value for AppType with cast
     createdAt: new Date().toISOString(), // Default value for AppResponse compatibility
     updatedAt: new Date().toISOString(), // Default value for AppResponse compatibility
     permissions: [], // Initialize permissions as empty array
@@ -102,7 +102,7 @@ const EditTPA: React.FC = () => {
   // Check if orgDomain is a public email provider
   // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
-  // Fetch TPA data and permissions from API + check for eligible orgs for transfer
+  // Fetch App data and permissions from API + check for eligible orgs for transfer
   useEffect(() => {
     const fetchData = async () => {
       if (!packageName || !currentOrg) return;
@@ -112,32 +112,32 @@ const EditTPA: React.FC = () => {
         setIsLoadingPermissions(true);
         setError(null);
 
-        // Fetch TPA data using organization ID
-        const tpaData = await api.apps.getByPackageName(packageName, currentOrg.id);
+        // Fetch App data using organization ID
+        const appData = await api.apps.getByPackageName(packageName, currentOrg.id);
 
-        // Convert API response to TPA type
-        const tpa: EditableTPA = {
-          id: tpaData.packageName, // Using packageName as id since API doesn't return id
-          packageName: tpaData.packageName,
-          name: tpaData.name,
-          description: tpaData.description || '',
-          onboardingInstructions: tpaData.onboardingInstructions || '',
-          publicUrl: tpaData.publicUrl || '',
-          logoURL: tpaData.logoURL,
-          webviewURL: tpaData.webviewURL,
-          isPublic: tpaData.isPublic || false,
-          appStoreStatus: tpaData.appStoreStatus || 'DEVELOPMENT',
-          tpaType: tpaData.tpaType || ('standard' as TpaType),
-          createdAt: tpaData.createdAt,
-          updatedAt: tpaData.updatedAt,
-          reviewNotes: tpaData.reviewNotes,
-          reviewedBy: tpaData.reviewedBy,
-          reviewedAt: tpaData.reviewedAt,
-          tools: tpaData.tools || [],
-          settings: tpaData.settings || [],
+        // Convert API response to App type
+        const app: EditableApp = {
+          id: appData.packageName, // Using packageName as id since API doesn't return id
+          packageName: appData.packageName,
+          name: appData.name,
+          description: appData.description || '',
+          onboardingInstructions: appData.onboardingInstructions || '',
+          publicUrl: appData.publicUrl || '',
+          logoURL: appData.logoURL,
+          webviewURL: appData.webviewURL,
+          isPublic: appData.isPublic || false,
+          appStoreStatus: appData.appStoreStatus || 'DEVELOPMENT',
+          appType: appData.appType || ('standard' as AppType),
+          createdAt: appData.createdAt,
+          updatedAt: appData.updatedAt,
+          reviewNotes: appData.reviewNotes,
+          reviewedBy: appData.reviewedBy,
+          reviewedAt: appData.reviewedAt,
+          tools: appData.tools || [],
+          settings: appData.settings || [],
         };
 
-        setFormData(tpa);
+        setFormData(app);
 
         // Fetch permissions
         try {
@@ -153,8 +153,8 @@ const EditTPA: React.FC = () => {
         }
 
         // Set sharedWithEmails
-        if (Array.isArray(tpaData.sharedWithEmails)) {
-          setSharedWithEmails(tpaData.sharedWithEmails);
+        if (Array.isArray(appData.sharedWithEmails)) {
+          setSharedWithEmails(appData.sharedWithEmails);
         }
 
         // Fetch all orgs where the user has admin access
@@ -197,8 +197,8 @@ const EditTPA: React.FC = () => {
           console.error('Error fetching organizations:', orgError);
         }
       } catch (err) {
-        console.error('Error fetching TPA:', err);
-        setError('Failed to load TPA data. Please try again.');
+        console.error('Error fetching App:', err);
+        setError('Failed to load App data. Please try again.');
       } finally {
         setIsLoading(false);
       }
@@ -263,11 +263,11 @@ const EditTPA: React.FC = () => {
     }));
   };
 
-  // Handle TpaType changes
-  const handleTpaTypeChange = (value: string) => {
+  // Handle AppType changes
+  const handleAppTypeChange = (value: string) => {
     setFormData(prev => ({
       ...prev,
-      tpaType: value as TpaType
+      appType: value as AppType
     }));
   };
 
@@ -315,7 +315,7 @@ const EditTPA: React.FC = () => {
       onboardingInstructions: formData.onboardingInstructions,
       publicUrl: formData.publicUrl || '',
       logoURL: formData.logoURL || '', // Cloudflare Images URL
-      tpaType: formData.tpaType,
+      appType: formData.appType,
       permissions: removeIdFields(formData.permissions || []),
       settings: removeIdFields(formData.settings || [], true),
       tools: removeIdFields(formData.tools || [])
@@ -330,7 +330,7 @@ const EditTPA: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${formData.packageName || 'tpa'}_config.json`;
+    a.download = `${formData.packageName || 'app'}_config.json`;
     a.click();
     URL.revokeObjectURL(url);
 
@@ -356,12 +356,12 @@ const EditTPA: React.FC = () => {
         publicUrl: formData.publicUrl ? normalizeUrl(formData.publicUrl) : '',
         logoURL: formData.logoURL ? normalizeUrl(formData.logoURL) : '',
         webviewURL: formData.webviewURL ? normalizeUrl(formData.webviewURL) : '',
-        tpaType: formData.tpaType,
+        appType: formData.appType,
         settings: formData.settings || [],
         tools: formData.tools || []
       };
 
-      // Update TPA data
+      // Update App data
       await api.apps.update(packageName, normalizedData, currentOrg.id);
 
       // Update permissions
@@ -378,7 +378,7 @@ const EditTPA: React.FC = () => {
         setIsSaved(false);
       }, 3000);
     } catch (err: any) {
-      console.error('Error updating TPA:', err);
+      console.error('Error updating App:', err);
 
       // Extract the specific error message from the API response
       let errorMessage = 'Failed to update app. Please try again.';
@@ -482,18 +482,18 @@ const EditTPA: React.FC = () => {
     if (!packageName || !currentOrg) return;
 
     try {
-      // Refresh TPA data to get updated app status
-      const updatedTpa = await api.apps.getByPackageName(packageName, currentOrg.id);
+      // Refresh App data to get updated app status
+      const updatedApp = await api.apps.getByPackageName(packageName, currentOrg.id);
 
       // Update form data with new app status
       setFormData(prev => ({
         ...prev,
-        appStoreStatus: updatedTpa.appStoreStatus || prev.appStoreStatus
+        appStoreStatus: updatedApp.appStoreStatus || prev.appStoreStatus
       }));
 
       toast.success('Publication status updated');
     } catch (err) {
-      console.error('Error refreshing TPA status:', err);
+      console.error('Error refreshing App status:', err);
     }
   };
 
@@ -568,25 +568,25 @@ const EditTPA: React.FC = () => {
     }
   };
 
-  // Handle TPA organization move
+  // Handle App organization move
   const handleMoveToOrg = async (targetOrgId: string) => {
     if (!packageName || !currentOrg) return;
 
     try {
       setIsMovingOrg(true);
 
-      // Call API to move TPA to the target organization
+      // Call API to move App to the target organization
       await api.apps.moveToOrg(packageName, targetOrgId, currentOrg.id);
 
       // Show success message
       toast.success(`App moved to new organization successfully`);
 
-      // Redirect to the TPAs list after a short delay
+      // Redirect to the Apps list after a short delay
       setTimeout(() => {
-        navigate('/tpas');
+        navigate('/apps');
       }, 1500);
     } catch (err) {
-      console.error('Error moving TPA to new organization:', err);
+      console.error('Error moving App to new organization:', err);
       throw new Error('Failed to move app to the new organization. Please try again.');
     } finally {
       setIsMovingOrg(false);
@@ -594,11 +594,11 @@ const EditTPA: React.FC = () => {
   };
 
   /**
-   * Validates a TPA configuration object structure and returns detailed error information
+   * Validates a App configuration object structure and returns detailed error information
    * @param config - Object to validate
    * @returns Object with validation result and specific error message
    */
-  const validateTpaConfig = (config: any): { isValid: boolean; error?: string } => {
+  const validateAppConfig = (config: any): { isValid: boolean; error?: string } => {
     console.log('Validating config:', config);
 
     if (!config || typeof config !== 'object') {
@@ -659,12 +659,12 @@ const EditTPA: React.FC = () => {
       return { isValid: false, error: 'Optional field "webviewURL" must be a string if provided.' };
     }
 
-    // tpaType is optional but if present, must be a valid TpaType value (excluding SYSTEM_DASHBOARD)
-    if (config.tpaType !== undefined) {
-      const validTpaTypes = [TpaType.BACKGROUND, TpaType.STANDARD];
-      if (!validTpaTypes.includes(config.tpaType)) {
-        console.log('Validation failed: tpaType is present but invalid');
-        return { isValid: false, error: 'Optional field "tpaType" must be either "background" or "standard" if provided.' };
+    // appType is optional but if present, must be a valid AppType value (excluding SYSTEM_DASHBOARD)
+    if (config.appType !== undefined) {
+      const validAppTypes = [AppType.BACKGROUND, AppType.STANDARD];
+      if (!validAppTypes.includes(config.appType)) {
+        console.log('Validation failed: appType is present but invalid');
+        return { isValid: false, error: 'Optional field "appType" must be either "background" or "standard" if provided.' };
       }
     }
 
@@ -830,7 +830,7 @@ const EditTPA: React.FC = () => {
         console.log('Parsed config:', config);
 
         // Validate configuration structure
-        const validation = validateTpaConfig(config);
+        const validation = validateAppConfig(config);
         if (!validation.isValid) {
           console.error('Validation failed for config:', config);
           setImportError(validation.error || 'Invalid app_config.json format.');
@@ -894,10 +894,10 @@ const EditTPA: React.FC = () => {
             ? importConfigData.webviewURL.trim()
             : prev.webviewURL,
 
-          // Update tpaType if provided, otherwise keep existing (defaults to BACKGROUND in form)
-          tpaType: importConfigData.tpaType !== undefined
-            ? importConfigData.tpaType
-            : prev.tpaType,
+          // Update appType if provided, otherwise keep existing (defaults to BACKGROUND in form)
+          appType: importConfigData.appType !== undefined
+            ? importConfigData.appType
+            : prev.appType,
 
           // Replace permissions if provided, otherwise keep existing
           permissions: importConfigData.permissions !== undefined
@@ -929,7 +929,7 @@ const EditTPA: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center mb-6">
-          <Link to="/tpas" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
+          <Link to="/apps" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
             Back to apps
           </Link>
@@ -982,7 +982,7 @@ const EditTPA: React.FC = () => {
                 {isSaved && (
                   <Alert className="bg-green-50 text-green-800 border-green-200">
                     <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    <AlertDescription className="text-green-700">TPA updated successfully!</AlertDescription>
+                    <AlertDescription className="text-green-700">App updated successfully!</AlertDescription>
                   </Alert>
                 )}
 
@@ -1100,29 +1100,29 @@ const EditTPA: React.FC = () => {
                   </p>
                 </div>
 
-                {/* TPA Type Selection */}
+                {/* App Type Selection */}
                 <div className="space-y-2 pb-5">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="tpaType">App Type</Label>
-                    <TpaTypeTooltip />
+                    <Label htmlFor="appType">App Type</Label>
+                    <AppTypeTooltip />
                   </div>
                 <p className="text-xs text-gray-500">
                   <br/>Background apps can run alongside other apps,
                   <br/>Only 1 foreground app can run at a time.
                   <br/>foreground apps yield the display to background apps when displaying content.
                 </p>
-                  <Select value={formData.tpaType} onValueChange={handleTpaTypeChange}>
+                  <Select value={formData.appType} onValueChange={handleAppTypeChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select app type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value={TpaType.BACKGROUND}>
+                      <SelectItem value={AppType.BACKGROUND}>
                         <div className="flex flex-col">
                           <span className="font-medium">Background App</span>
                           {/* <span className="text-xs text-gray-500">Multiple can run simultaneously</span> */}
                         </div>
                       </SelectItem>
-                      <SelectItem value={TpaType.STANDARD}>
+                      <SelectItem value={AppType.STANDARD}>
                         <div className="flex flex-col">
                           <span className="font-medium">Foreground App</span>
                           {/* <span className="text-xs text-gray-500">Only one can run at a time</span> */}
@@ -1335,7 +1335,7 @@ const EditTPA: React.FC = () => {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between border-t p-6">
-                <Button variant="outline" type="button" onClick={() => navigate('/tpas')}>
+                <Button variant="outline" type="button" onClick={() => navigate('/apps')}>
                   Back
                 </Button>
                 <Button type="submit" disabled={isSaving}>
@@ -1356,7 +1356,7 @@ const EditTPA: React.FC = () => {
       {packageName && (
         <>
           <ApiKeyDialog
-            tpa={formData}
+            app={formData}
             open={isApiKeyDialogOpen}
             onOpenChange={setIsApiKeyDialogOpen}
             apiKey={apiKey}
@@ -1364,14 +1364,14 @@ const EditTPA: React.FC = () => {
           />
 
           <SharingDialog
-            tpa={formData}
+            app={formData}
             open={isSharingDialogOpen}
             onOpenChange={setIsSharingDialogOpen}
             orgId={currentOrg?.id}
           />
 
           <PublishDialog
-            tpa={formData}
+            app={formData}
             open={isPublishDialogOpen}
             onOpenChange={(open) => {
               setIsPublishDialogOpen(open);
@@ -1382,7 +1382,7 @@ const EditTPA: React.FC = () => {
 
           {currentOrg && (
             <MoveOrgDialog
-              tpa={formData}
+              app={formData}
               open={isMoveOrgDialogOpen}
               onOpenChange={setIsMoveOrgDialogOpen}
               eligibleOrgs={eligibleOrgs}
@@ -1409,4 +1409,4 @@ const EditTPA: React.FC = () => {
   );
 };
 
-export default EditTPA;
+export default EditApp;

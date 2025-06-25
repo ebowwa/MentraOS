@@ -4,12 +4,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle, Trash2, Loader2 } from "lucide-react";
-// import { TPA } from "@/types/tpa";
+// import { App } from "@/types/app";
 import api from '@/services/api.service';
 import { AppI } from '@mentra/sdk';
 
 interface DeleteDialogProps {
-  tpa: AppI | null;
+  app: AppI | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirmDelete?: (packageName: string) => void; // Optional callback for parent component
@@ -17,7 +17,7 @@ interface DeleteDialogProps {
 }
 
 const DeleteDialog: React.FC<DeleteDialogProps> = ({
-  tpa,
+  app,
   open,
   onOpenChange,
   onConfirmDelete,
@@ -28,25 +28,25 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
 
   // Handle delete confirmation
   const handleConfirmDelete = async () => {
-    if (!tpa) return;
+    if (!app) return;
 
     setIsDeleting(true);
     setError(null);
 
     try {
-      // Call API to delete the TPA
-      await api.apps.delete(tpa.packageName, orgId);
+      // Call API to delete the App
+      await api.apps.delete(app.packageName, orgId);
 
       // Call the callback if provided (useful for updating UI)
       if (onConfirmDelete) {
-        onConfirmDelete(tpa.packageName);
+        onConfirmDelete(app.packageName);
       }
 
       // Close dialog after deletion
       onOpenChange(false);
     } catch (err) {
-      console.error("Error deleting TPA:", err);
-      setError("Failed to delete TPA. Please try again.");
+      console.error("Error deleting App:", err);
+      setError("Failed to delete App. Please try again.");
       setIsDeleting(false);
     }
   };
@@ -57,10 +57,10 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Trash2 className="h-5 w-5 text-red-500" />
-            Delete TPA
+            Delete App
           </DialogTitle>
           <DialogDescription>
-            {tpa && `Are you sure you want to delete ${tpa.name}?`}
+            {app && `Are you sure you want to delete ${app.name}?`}
           </DialogDescription>
         </DialogHeader>
 
@@ -68,7 +68,7 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
           <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
             <AlertTriangle className="h-4 w-4 text-red-600" />
             <AlertDescription className="text-red-700">
-              This action cannot be undone. This will permanently delete the TPA
+              This action cannot be undone. This will permanently delete the App
               and remove all associated data.
             </AlertDescription>
           </Alert>
@@ -78,7 +78,7 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
               To confirm, you're deleting:
             </p>
             <p className="mt-2 font-medium">
-              {tpa?.name} <span className="font-mono text-xs text-gray-500">({tpa?.packageName})</span>
+              {app?.name} <span className="font-mono text-xs text-gray-500">({app?.packageName})</span>
             </p>
           </div>
 
@@ -109,7 +109,7 @@ const DeleteDialog: React.FC<DeleteDialogProps> = ({
                 Deleting...
               </>
             ) : (
-              'Delete TPA'
+              'Delete App'
             )}
           </Button>
         </DialogFooter>

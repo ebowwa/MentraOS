@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select";
 import { Shield, Plus, Trash2 } from "lucide-react";
-import { PermissionType, Permission } from '../../types/tpa';
+import { PermissionType, Permission } from '../../types/app';
 
 // Permission display metadata
 const PERMISSION_DISPLAY_INFO: Record<PermissionType, {

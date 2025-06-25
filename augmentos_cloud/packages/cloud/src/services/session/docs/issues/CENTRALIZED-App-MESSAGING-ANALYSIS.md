@@ -1,24 +1,24 @@
-# Centralized TPA Messaging Analysis
+# Centralized App Messaging Analysis
 
-## Current TPA WebSocket Message Sending Locations
+## Current App WebSocket Message Sending Locations
 
-All of these locations currently use the scattered `userSession.appWebsockets.get(packageName)` + `readyState` check pattern and should be replaced with centralized `appManager.sendMessageToTpa()` calls.
+All of these locations currently use the scattered `userSession.appWebsockets.get(packageName)` + `readyState` check pattern and should be replaced with centralized `appManager.sendMessageToApp()` calls.
 
 ### **High Priority - Replace Immediately**
 
-#### **1. Transcription Service** 
+#### **1. Transcription Service**
 **File**: `packages/cloud/src/services/processing/transcription.service.ts:488-501`
 - **Data**: Transcription/Translation results (JSON)
 - **Current Pattern**: `userSession.appWebsockets.get(packageName)` + `readyState === 1` check
-- **Error Handling**: Logs "TPA not connected" if websocket unavailable
-- **Message Type**: `CloudToTpaMessageType.DATA_STREAM`
+- **Error Handling**: Logs "App not connected" if websocket unavailable
+- **Message Type**: `CloudToAppMessageType.DATA_STREAM`
 - **Frequency**: Medium (per speech segment)
 
 #### **2. Video Manager**
 **File**: `packages/cloud/src/services/session/VideoManager.ts:507-515`
 - **Data**: RTMP stream status updates (JSON)
 - **Current Pattern**: `userSession.appWebsockets.get(packageName)` + `readyState === WebSocket.OPEN` check
-- **Error Handling**: Logs "TPA not connected" if websocket unavailable
+- **Error Handling**: Logs "App not connected" if websocket unavailable
 - **Message Type**: Video stream status messages
 - **Frequency**: Low (status changes only)
 
@@ -26,7 +26,7 @@ All of these locations currently use the scattered `userSession.appWebsockets.ge
 **File**: `packages/cloud/src/services/session/PhotoManager.ts:74-78`
 - **Data**: Photo request responses (JSON)
 - **Current Pattern**: `userSession.appWebsockets.get(packageName)` + `readyState !== WebSocket.OPEN` check
-- **Error Handling**: Throws error "TPA WebSocket is not connected"
+- **Error Handling**: Throws error "App WebSocket is not connected"
 - **Message Type**: Photo data messages
 - **Frequency**: Low (per photo request)
 
@@ -46,8 +46,8 @@ All of these locations currently use the scattered `userSession.appWebsockets.ge
 - **Message Type**: Custom data messages
 - **Frequency**: Low (API calls only)
 
-#### **6. TPA Settings Routes**
-**File**: `packages/cloud/src/routes/tpa-settings.routes.ts:292-297`
+#### **6. App Settings Routes**
+**File**: `packages/cloud/src/routes/app-settings.routes.ts:292-297`
 - **Data**: Settings update notifications (JSON)
 - **Current Pattern**: `userSession.appWebsockets.get(packageName)` check only
 - **Error Handling**: Returns 404 HTTP error if websocket not found
@@ -59,12 +59,12 @@ All of these locations currently use the scattered `userSession.appWebsockets.ge
 - **Data**: App stopped notifications (JSON)
 - **Current Pattern**: `userSession.appWebsockets` iteration + `readyState === WebSocket.OPEN` check
 - **Error Handling**: Logs error on send failure
-- **Message Type**: `CloudToTpaMessageType.APP_STOPPED`
+- **Message Type**: `CloudToAppMessageType.APP_STOPPED`
 - **Frequency**: Very low (session cleanup only)
 
 ### **Special Case - Keep Direct Access for Performance**
 
-#### **8. Audio Manager** 
+#### **8. Audio Manager**
 **File**: `packages/cloud/src/services/session/AudioManager.ts:369-376`
 - **Data**: Raw audio data (binary chunks)
 - **Current Pattern**: `userSession.appWebsockets.get(packageName)` + `readyState === WebSocket.OPEN` check
@@ -83,7 +83,7 @@ All of these locations currently use the scattered `userSession.appWebsockets.ge
 
 ### **2. No Resurrection Logic**
 - All services just fail when websocket unavailable
-- No attempt to restart failed TPAs
+- No attempt to restart failed Apps
 - Users see broken functionality with no recovery
 
 ### **3. Duplicate Code Patterns**
@@ -93,14 +93,14 @@ All of these locations currently use the scattered `userSession.appWebsockets.ge
 
 ### **4. No Centralized Connection Health**
 - Each service checks connection health independently
-- No unified view of TPA connection status
+- No unified view of App connection status
 - Hard to debug connection issues across services
 
 ## Proposed Centralized Solution
 
-### **AppManager.sendMessageToTpa() Method**
+### **AppManager.sendMessageToApp() Method**
 ```typescript
-async sendMessageToTpa(packageName: string, message: any): Promise<{
+async sendMessageToApp(packageName: string, message: any): Promise<{
   sent: boolean;
   resurrectionTriggered: boolean;
   error?: string;
@@ -115,7 +115,7 @@ async sendMessageToTpa(packageName: string, message: any): Promise<{
 
 ### **Benefits of Centralization**
 1. **Unified Error Handling**: Consistent behavior across all services
-2. **Automatic Resurrection**: Dead TPAs automatically restarted
+2. **Automatic Resurrection**: Dead Apps automatically restarted
 3. **Better Logging**: Centralized connection health tracking
 4. **Easier Debugging**: Single point of failure analysis
 5. **Code Reduction**: Eliminate duplicate patterns
@@ -129,16 +129,16 @@ async sendMessageToTpa(packageName: string, message: any): Promise<{
 ## Implementation Plan
 
 ### **Phase 1: Core Infrastructure**
-1. ✅ Add `sendMessageToTpa()` method to AppManager
+1. ✅ Add `sendMessageToApp()` method to AppManager
 2. Add resurrection logic with new Promise-based `startApp()`
 3. Add comprehensive error handling and logging
 
 ### **Phase 2: Replace JSON Message Sending**
-1. Replace TranscriptionService TPA messaging
-2. Replace VideoManager TPA messaging  
-3. Replace PhotoManager TPA messaging
-4. Replace SubscriptionService TPA messaging
-5. Replace route-based TPA messaging
+1. Replace TranscriptionService App messaging
+2. Replace VideoManager App messaging
+3. Replace PhotoManager App messaging
+4. Replace SubscriptionService App messaging
+5. Replace route-based App messaging
 6. Update AppManager dispose method
 
 ### **Phase 3: Testing and Validation**
@@ -155,13 +155,13 @@ async sendMessageToTpa(packageName: string, message: any): Promise<{
 ## Expected Outcomes
 
 ### **Immediate Benefits**
-- Broken TPAs automatically restart
+- Broken Apps automatically restart
 - Consistent error handling across services
 - Better debugging with centralized logging
 - Reduced code duplication
 
 ### **Long-term Benefits**
-- More reliable TPA connections
+- More reliable App connections
 - Easier maintenance and updates
 - Better user experience with fewer failures
 - Simplified troubleshooting for support team

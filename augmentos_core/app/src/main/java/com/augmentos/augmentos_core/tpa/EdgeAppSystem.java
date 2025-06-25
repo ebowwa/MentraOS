@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_core.tpa;
+package com.augmentos.augmentos_core.app;
 
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSManagerPackageName;
 import static com.augmentos.augmentoslib.SmartGlassesAndroidService.INTENT_ACTION;
@@ -31,12 +31,12 @@ import com.augmentos.augmentoslib.events.FinalScrollingTextRequestEvent;
 import com.augmentos.augmentoslib.events.GlassesTapOutputEvent;
 import com.augmentos.augmentoslib.events.HomeScreenEvent;
 import com.augmentos.augmentoslib.events.IntermediateScrollingTextRequestEvent;
-import com.augmentos.augmentoslib.events.KillTpaEvent;
+import com.augmentos.augmentoslib.events.KillAppEvent;
 import com.augmentos.augmentoslib.events.NotificationEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardImageViewRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardSimpleViewRequestEvent;
 import com.augmentos.augmentoslib.events.RegisterCommandRequestEvent;
-import com.augmentos.augmentoslib.events.RegisterTpaRequestEvent;
+import com.augmentos.augmentoslib.events.RegisterAppRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStartRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStopRequestEvent;
 import com.augmentos.augmentoslib.events.SmartRingButtonOutputEvent;
@@ -47,7 +47,7 @@ import com.augmentos.augmentoslib.events.TextLineViewRequestEvent;
 import com.augmentos.augmentoslib.events.TextWallViewRequestEvent;
 import com.augmentos.augmentoslib.events.TranslateOutputEvent;
 import com.augmentos.augmentos_core.events.TriggerSendStatusToAugmentOsManagerEvent;
-import com.augmentos.augmentos_core.tpa.eventbusmessages.TPARequestEvent;
+import com.augmentos.augmentos_core.app.eventbusmessages.AppRequestEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -62,8 +62,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class EdgeTPASystem {
-    private String TAG = "AugmentOS_TPASystem";
+public class EdgeAppSystem {
+    private String TAG = "AugmentOS_AppSystem";
     private Context mContext;
     private AugmentOSLibBroadcastSender augmentOsLibBroadcastSender;
     private AugmentOSLibBroadcastReceiver augmentOsLibBroadcastReceiver;
@@ -86,7 +86,7 @@ public class EdgeTPASystem {
     private Runnable healthCheckRunnable;
     private com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager smartGlassesManager;
 
-    public EdgeTPASystem(Context context, com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager smartGlassesManager){
+    public EdgeAppSystem(Context context, com.augmentos.augmentos_core.smarterglassesmanager.SmartGlassesManager smartGlassesManager){
         mContext = context;
         this.smartGlassesManager = smartGlassesManager;
         augmentOsLibBroadcastSender = new AugmentOSLibBroadcastSender(mContext);
@@ -152,7 +152,7 @@ public class EdgeTPASystem {
                     continue;
                 }
 
-                Log.d(TAG, "AugmentOS TPA detected: " + packageName);
+                Log.d(TAG, "AugmentOS App detected: " + packageName);
 
                 String authority = packageName + ".augmentosconfigprovider";
                 Uri uri = Uri.parse("content://" + authority + "/config");
@@ -229,11 +229,11 @@ public class EdgeTPASystem {
         }
 
         if (thirdPartyApps.containsKey(packageName) && isAppInstalled(packageName)) {
-            ThirdPartyEdgeApp tpa = thirdPartyApps.get(packageName);
-            if(augmentOsLibBroadcastSender.startThirdPartyApp(Objects.requireNonNull(tpa))) {
+            ThirdPartyEdgeApp app = thirdPartyApps.get(packageName);
+            if(augmentOsLibBroadcastSender.startThirdPartyApp(Objects.requireNonNull(app))) {
                 runningApps.add(packageName);
                 if(smartGlassesManager != null)
-                    smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard("AugmentOS started app:", tpa.appName), 6);
+                    smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard("AugmentOS started app:", app.appName), 6);
                 return true;
             }
         } else {
@@ -260,7 +260,7 @@ public class EdgeTPASystem {
     }
 
     public void stopAllThirdPartyApps(){
-        for (ThirdPartyEdgeApp tpa : thirdPartyApps.values()) stopThirdPartyAppByPackageName(tpa.packageName);
+        for (ThirdPartyEdgeApp app : thirdPartyApps.values()) stopThirdPartyAppByPackageName(app.packageName);
     }
 
     public boolean isAppInstalled(String packageName) {
@@ -274,7 +274,7 @@ public class EdgeTPASystem {
     }
 
     @Subscribe
-    public void onRegisterTpaRequestEvent(RegisterTpaRequestEvent e){
+    public void onRegisterAppRequestEvent(RegisterAppRequestEvent e){
         registerThirdPartyApp((ThirdPartyEdgeApp) e.thirdPartyEdgeApp);
     }
 
@@ -287,77 +287,77 @@ public class EdgeTPASystem {
 //        long commandTriggeredTime = receivedEvent.commandTriggeredTime;
 //        if (command != null) {
 //            if (command.packageName != null){
-//                augmentOsLibBroadcastSender.sendEventToTPAs(CommandTriggeredEvent.eventId, new CommandTriggeredEvent(command, args, commandTriggeredTime));
+//                augmentOsLibBroadcastSender.sendEventToApps(CommandTriggeredEvent.eventId, new CommandTriggeredEvent(command, args, commandTriggeredTime));
 //            }
 //        }
     }
 
     @Subscribe
-    public void onKillTpaEvent(KillTpaEvent killTpaEvent) {
-        augmentOsLibBroadcastSender.sendEventToTPAs(KillTpaEvent.eventId, killTpaEvent, killTpaEvent.tpa.packageName);
+    public void onKillAppEvent(KillAppEvent killAppEvent) {
+        augmentOsLibBroadcastSender.sendEventToApps(KillAppEvent.eventId, killAppEvent, killAppEvent.app.packageName);
     }
 
 //    @Subscribe
 //    public void onIntermediateTranscript(SpeechRecIntermediateOutputEvent event){
-//        boolean tpaIsSubscribed = true; //TODO: Hash out implementation
-//        if(tpaIsSubscribed){
-//            augmentOsLibBroadcastSender.sendEventToTPAs(SpeechRecIntermediateOutputEvent.eventId, event);
+//        boolean appIsSubscribed = true; //TODO: Hash out implementation
+//        if(appIsSubscribed){
+//            augmentOsLibBroadcastSender.sendEventToApps(SpeechRecIntermediateOutputEvent.eventId, event);
 //        }
 //    }
 //
 ////    @Subscribe
 ////    public void onFocusChanged(FocusChangedEvent receivedEvent) {
-////        augmentOsLibBroadcastSender.sendEventToTPAs(FocusChangedEvent.eventId, receivedEvent, receivedEvent.appPackage);
+////        augmentOsLibBroadcastSender.sendEventToApps(FocusChangedEvent.eventId, receivedEvent, receivedEvent.appPackage);
 ////    }
 //
 //    @Subscribe
 //    public void onFinalTranscript(SpeechRecFinalOutputEvent event){
-//        boolean tpaIsSubscribed = true; //TODO: Hash out implementation
-//        if(tpaIsSubscribed){
-//            augmentOsLibBroadcastSender.sendEventToTPAs(SpeechRecFinalOutputEvent.eventId, event);
+//        boolean appIsSubscribed = true; //TODO: Hash out implementation
+//        if(appIsSubscribed){
+//            augmentOsLibBroadcastSender.sendEventToApps(SpeechRecFinalOutputEvent.eventId, event);
 //        }
 //    }
 
     @Subscribe
     public void onCoreToManagerOutputEvent(CoreToManagerOutputEvent event){
-        augmentOsLibBroadcastSender.sendEventToTPAs(CoreToManagerOutputEvent.eventId, event, AugmentOSManagerPackageName);
+        augmentOsLibBroadcastSender.sendEventToApps(CoreToManagerOutputEvent.eventId, event, AugmentOSManagerPackageName);
     }
 
-    public void sendTranscriptEventToTpa(SpeechRecOutputEvent event, String packageName) {
-        augmentOsLibBroadcastSender.sendEventToTPAs(SpeechRecOutputEvent.eventId, event, packageName);
+    public void sendTranscriptEventToApp(SpeechRecOutputEvent event, String packageName) {
+        augmentOsLibBroadcastSender.sendEventToApps(SpeechRecOutputEvent.eventId, event, packageName);
     }
 
-    public void sendTranslateEventToTpa(TranslateOutputEvent event, String packageName) {
-        augmentOsLibBroadcastSender.sendEventToTPAs(TranslateOutputEvent.eventId, event, packageName);
+    public void sendTranslateEventToApp(TranslateOutputEvent event, String packageName) {
+        augmentOsLibBroadcastSender.sendEventToApps(TranslateOutputEvent.eventId, event, packageName);
     }
 
     @Subscribe
     public void onNotificationEvent(NotificationEvent event){
-        augmentOsLibBroadcastSender.sendEventToAllTPAs(NotificationEvent.eventId, event);
+        augmentOsLibBroadcastSender.sendEventToAllApps(NotificationEvent.eventId, event);
     }
 
     @Subscribe
     public void onSmartRingButtonEvent(SmartRingButtonOutputEvent event){
-        boolean tpaIsSubscribed = true; //TODO: Hash out implementation
-        if(tpaIsSubscribed){
-            augmentOsLibBroadcastSender.sendEventToAllTPAs(SmartRingButtonOutputEvent.eventId, event);
+        boolean appIsSubscribed = true; //TODO: Hash out implementation
+        if(appIsSubscribed){
+            augmentOsLibBroadcastSender.sendEventToAllApps(SmartRingButtonOutputEvent.eventId, event);
         }
     }
 
     @Subscribe
     public void onGlassesTapEvent(GlassesTapOutputEvent event){
-        boolean tpaIsSubscribed = true; //TODO: Hash out implementation
-        if(tpaIsSubscribed){
-            augmentOsLibBroadcastSender.sendEventToAllTPAs(GlassesTapOutputEvent.eventId, event);
+        boolean appIsSubscribed = true; //TODO: Hash out implementation
+        if(appIsSubscribed){
+            augmentOsLibBroadcastSender.sendEventToAllApps(GlassesTapOutputEvent.eventId, event);
         }
     }
 
     public void registerThirdPartyApp(ThirdPartyEdgeApp app) {
-        ThirdPartyEdgeApp oldTpa = getThirdPartyAppByPackageName(app.packageName);
-        if (oldTpa != null) {
+        ThirdPartyEdgeApp oldApp = getThirdPartyAppByPackageName(app.packageName);
+        if (oldApp != null) {
             Log.d(TAG, "Replacing third party app:" + app.packageName);
             Toast.makeText(mContext, "Replacing third party app:" + app.packageName, Toast.LENGTH_LONG);
-            thirdPartyApps.remove(oldTpa.packageName);
+            thirdPartyApps.remove(oldApp.packageName);
         }
 
         thirdPartyApps.put(app.packageName, app);
@@ -389,11 +389,11 @@ public class EdgeTPASystem {
 
         ArrayList<String> preinstalledPackageNames = getAllInstalledPackageNames(mContext);
         for (String packageName : preinstalledPackageNames){
-            ThirdPartyEdgeApp foundTpa = getThirdPartyAppIfAppIsAugmentOsThirdPartyApp(packageName, mContext);
-            if(foundTpa != null) {
-                Log.d(TAG, "Discovered an unregistered TPA on device: " + packageName);
-                // Toast.makeText(mContext, "Discovered an unregistered TPA on device: " + packageName, Toast.LENGTH_LONG).show();
-                newThirdPartyAppList.put(foundTpa.packageName, foundTpa);
+            ThirdPartyEdgeApp foundApp = getThirdPartyAppIfAppIsAugmentOsThirdPartyApp(packageName, mContext);
+            if(foundApp != null) {
+                Log.d(TAG, "Discovered an unregistered App on device: " + packageName);
+                // Toast.makeText(mContext, "Discovered an unregistered App on device: " + packageName, Toast.LENGTH_LONG).show();
+                newThirdPartyAppList.put(foundApp.packageName, foundApp);
             }
         }
 
@@ -425,20 +425,20 @@ public class EdgeTPASystem {
 
     //respond and approve events below
     @Subscribe
-    public void onTPARequestEvent(TPARequestEvent receivedEvent) {
+    public void onAppRequestEvent(AppRequestEvent receivedEvent) {
         //map from id to event for all events that don't need permissions
         switch (receivedEvent.eventId) {
             case RegisterCommandRequestEvent.eventId:
                 Log.d(TAG, "Resending register command request event");
                 EventBus.getDefault().post((RegisterCommandRequestEvent) receivedEvent.serializedEvent);
                 return;
-            case RegisterTpaRequestEvent.eventId:
-                Log.d(TAG, "Resending register TPA request event");
-                EventBus.getDefault().post((RegisterTpaRequestEvent) receivedEvent.serializedEvent);
+            case RegisterAppRequestEvent.eventId:
+                Log.d(TAG, "Resending register App request event");
+                EventBus.getDefault().post((RegisterAppRequestEvent) receivedEvent.serializedEvent);
                 return;
         }
 
-        //  Check if this TPA should even be running
+        //  Check if this App should even be running
         if (!checkIsThirdPartyAppRunningByPackageName(receivedEvent.sendingPackage)) {
             Log.d(TAG, "Non-running app '" + receivedEvent.serializedEvent + "' attempting request... weird");
             stopThirdPartyAppByPackageName(receivedEvent.sendingPackage);
@@ -512,26 +512,26 @@ public class EdgeTPASystem {
                     //EventBus.getDefault().post((DisplayCustomContentRequestEvent) receivedEvent.serializedEvent);
             }
         } else {
-            Log.d(TAG, "smartGlassesManager in TPASystem is null!");
+            Log.d(TAG, "smartGlassesManager in AppSystem is null!");
         }
     }
 
     public void performHealthCheck() {
         boolean deltaFound = false;
         Log.d(TAG, "Performing health check") ;
-        for (ThirdPartyEdgeApp tpa : thirdPartyApps.values()) {
-            if (runningApps.contains(tpa.packageName) && !isThirdPartyAppServiceRunning(tpa)) {
-                Log.d(TAG, "Health Check: TPA " + tpa.packageName + " not matching expected state... " +
-                        "expected: " + runningApps.contains(tpa.packageName) + ". " +
-                        "Removing TPA from running list to repair state...");
-                //startThirdPartyAppByPackageName(tpa.packageName);
-                runningApps.remove(tpa.packageName);
+        for (ThirdPartyEdgeApp app : thirdPartyApps.values()) {
+            if (runningApps.contains(app.packageName) && !isThirdPartyAppServiceRunning(app)) {
+                Log.d(TAG, "Health Check: App " + app.packageName + " not matching expected state... " +
+                        "expected: " + runningApps.contains(app.packageName) + ". " +
+                        "Removing App from running list to repair state...");
+                //startThirdPartyAppByPackageName(app.packageName);
+                runningApps.remove(app.packageName);
                 deltaFound = true;
-            } else if (!runningApps.contains(tpa.packageName) && isThirdPartyAppServiceRunning(tpa)) {
-                Log.d(TAG, "Health Check: TPA " + tpa.packageName + " not matching " +
-                        "expected state... expected: " + runningApps.contains(tpa.packageName) + ". " +
-                        "Killing TPA to repair state...");
-                stopThirdPartyAppByPackageName(tpa.packageName);
+            } else if (!runningApps.contains(app.packageName) && isThirdPartyAppServiceRunning(app)) {
+                Log.d(TAG, "Health Check: App " + app.packageName + " not matching " +
+                        "expected state... expected: " + runningApps.contains(app.packageName) + ". " +
+                        "Killing App to repair state...");
+                stopThirdPartyAppByPackageName(app.packageName);
                 deltaFound = true;
             }
         }
@@ -543,11 +543,11 @@ public class EdgeTPASystem {
         }
     }
 
-    private boolean isThirdPartyAppServiceRunning(ThirdPartyEdgeApp tpa) {
+    private boolean isThirdPartyAppServiceRunning(ThirdPartyEdgeApp app) {
         ActivityManager manager = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (tpa.packageName.equals(service.service.getPackageName()) &&
-                    tpa.serviceName.equals(service.service.getClassName())) {
+            if (app.packageName.equals(service.service.getPackageName()) &&
+                    app.serviceName.equals(service.service.getClassName())) {
                 return true; // Service matches both packageName and serviceName
             }
         }
@@ -567,7 +567,7 @@ public class EdgeTPASystem {
                 Log.e(TAG, "Error unregistering augmentOsLibBroadcastReceiver: " + e.getMessage());
             }
         }
-        
+
         // Safely unregister the package install receiver
         if (packageInstallReceiver != null) {
             try {
@@ -577,7 +577,7 @@ public class EdgeTPASystem {
                 Log.e(TAG, "Error unregistering packageInstallReceiver: " + e.getMessage());
             }
         }
-        
+
         // Safely unregister from EventBus
         try {
             if (EventBus.getDefault().isRegistered(this)) {
@@ -586,12 +586,12 @@ public class EdgeTPASystem {
         } catch (Exception e) {
             Log.e(TAG, "Error unregistering from EventBus: " + e.getMessage());
         }
-        
+
         // Stop the health check handler
         if (healthCheckHandler != null) {
             healthCheckHandler.removeCallbacks(healthCheckRunnable);
         }
-        
-        Log.d(TAG, "TPASystem destroyed.");
+
+        Log.d(TAG, "AppSystem destroyed.");
     }
 }

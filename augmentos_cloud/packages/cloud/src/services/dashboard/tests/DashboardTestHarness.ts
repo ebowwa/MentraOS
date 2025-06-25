@@ -7,7 +7,7 @@
 import {
   DashboardMode,
   Layout,
-  TpaToCloudMessageType,
+  AppToCloudMessageType,
   DashboardContentUpdate,
   DashboardModeChange,
   DashboardSystemUpdate,
@@ -90,17 +90,17 @@ class MockDisplayManager {
 
 // Mock WebSocket service
 class MockWebSocketService {
-  private tpaMessageHandlers: Map<string, Function> = new Map();
-  private tpaDisconnectHandlers: Function[] = [];
+  private appMessageHandlers: Map<string, Function> = new Map();
+  private appDisconnectHandlers: Function[] = [];
   private glassesMessages: any[] = [];
-  private tpaMessages: any[] = [];
+  private appMessages: any[] = [];
 
-  registerTpaMessageHandler(type: string, handler: Function): void {
-    this.tpaMessageHandlers.set(type, handler);
+  registerAppMessageHandler(type: string, handler: Function): void {
+    this.appMessageHandlers.set(type, handler);
   }
 
-  onTpaDisconnected(handler: Function): void {
-    this.tpaDisconnectHandlers.push(handler);
+  onAppDisconnected(handler: Function): void {
+    this.appDisconnectHandlers.push(handler);
   }
 
   broadcastToGlasses(message: any): void {
@@ -108,15 +108,15 @@ class MockWebSocketService {
     console.log('Message to glasses:', message);
   }
 
-  broadcastToTpas(message: any): void {
-    this.tpaMessages.push(message);
-    console.log('Message to TPAs:', message);
+  broadcastToApps(message: any): void {
+    this.appMessages.push(message);
+    console.log('Message to Apps:', message);
   }
 
   // Test methods
-  simulateTpaMessage(message: any): void {
+  simulateAppMessage(message: any): void {
     const type = message.type;
-    const handler = this.tpaMessageHandlers.get(type);
+    const handler = this.appMessageHandlers.get(type);
 
     if (handler) {
       handler(message);
@@ -125,8 +125,8 @@ class MockWebSocketService {
     }
   }
 
-  simulateTpaDisconnect(packageName: string): void {
-    this.tpaDisconnectHandlers.forEach(handler => {
+  simulateAppDisconnect(packageName: string): void {
+    this.appDisconnectHandlers.forEach(handler => {
       handler(packageName);
     });
   }
@@ -135,13 +135,13 @@ class MockWebSocketService {
     return this.glassesMessages;
   }
 
-  getTpaMessages(): any[] {
-    return this.tpaMessages;
+  getAppMessages(): any[] {
+    return this.appMessages;
   }
 
   clearMessages(): void {
     this.glassesMessages = [];
-    this.tpaMessages = [];
+    this.appMessages = [];
   }
 }
 
@@ -178,29 +178,29 @@ export class DashboardTestHarness {
     );
 
     // Register DashboardManager handlers with the mock WebSocket service
-    this.wsService.registerTpaMessageHandler(
-      TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
-      (msg: any) => this.dashboardManager.handleTpaMessage(msg)
+    this.wsService.registerAppMessageHandler(
+      AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
+      (msg: any) => this.dashboardManager.handleAppMessage(msg)
     );
-    this.wsService.registerTpaMessageHandler(
-      TpaToCloudMessageType.DASHBOARD_MODE_CHANGE,
-      (msg: any) => this.dashboardManager.handleTpaMessage(msg)
+    this.wsService.registerAppMessageHandler(
+      AppToCloudMessageType.DASHBOARD_MODE_CHANGE,
+      (msg: any) => this.dashboardManager.handleAppMessage(msg)
     );
-    this.wsService.registerTpaMessageHandler(
-      TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
-      (msg: any) => this.dashboardManager.handleTpaMessage(msg)
+    this.wsService.registerAppMessageHandler(
+      AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
+      (msg: any) => this.dashboardManager.handleAppMessage(msg)
     );
-    this.wsService.onTpaDisconnected((packageName: string) => this.dashboardManager.handleTpaDisconnected(packageName));
+    this.wsService.onAppDisconnected((packageName: string) => this.dashboardManager.handleAppDisconnected(packageName));
 
     logger.info('Dashboard Test Harness initialized');
   }
 
   /**
-   * Send content from a regular TPA to the dashboard
+   * Send content from a regular App to the dashboard
    */
-  sendTpaContent(packageName: string, content: string, modes: DashboardMode[] = [DashboardMode.MAIN]): void {
+  sendAppContent(packageName: string, content: string, modes: DashboardMode[] = [DashboardMode.MAIN]): void {
     const message: DashboardContentUpdate = {
-      type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
+      type: AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE,
       packageName,
       content,
       modes,
@@ -208,7 +208,7 @@ export class DashboardTestHarness {
       sessionId: 'test-session-id'
     };
 
-    this.wsService.simulateTpaMessage(message);
+    this.wsService.simulateAppMessage(message);
   }
 
   /**
@@ -216,7 +216,7 @@ export class DashboardTestHarness {
    */
   updateSystemSection(section: 'topLeft' | 'topRight' | 'bottomLeft' | 'bottomRight', content: string): void {
     const message: DashboardSystemUpdate = {
-      type: TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
+      type: AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE,
       packageName: DASHBOARD_PACKAGE_NAME,
       section,
       content,
@@ -224,7 +224,7 @@ export class DashboardTestHarness {
       sessionId: 'test-session-id'
     };
 
-    this.wsService.simulateTpaMessage(message);
+    this.wsService.simulateAppMessage(message);
   }
 
   /**
@@ -232,21 +232,21 @@ export class DashboardTestHarness {
    */
   changeDashboardMode(mode: DashboardMode): void {
     const message: DashboardModeChange = {
-      type: TpaToCloudMessageType.DASHBOARD_MODE_CHANGE,
+      type: AppToCloudMessageType.DASHBOARD_MODE_CHANGE,
       packageName: DASHBOARD_PACKAGE_NAME,
       mode,
       timestamp: new Date(),
       sessionId: 'test-session-id'
     };
 
-    this.wsService.simulateTpaMessage(message);
+    this.wsService.simulateAppMessage(message);
   }
 
   /**
-   * Simulate a TPA disconnecting
+   * Simulate a App disconnecting
    */
-  disconnectTpa(packageName: string): void {
-    this.wsService.simulateTpaDisconnect(packageName);
+  disconnectApp(packageName: string): void {
+    this.wsService.simulateAppDisconnect(packageName);
   }
 
   /**
@@ -285,10 +285,10 @@ export class DashboardTestHarness {
     // Set dashboard mode to MAIN
     this.changeDashboardMode(DashboardMode.MAIN);
 
-    // Send content from multiple TPAs
-    this.sendTpaContent('com.example.weather', 'Weather: Sunny, 72°F');
-    this.sendTpaContent('com.example.calendar', 'Meeting with Team @ 1:00 PM');
-    this.sendTpaContent('com.example.messages', 'New message from John: "Are we still on for lunch?"');
+    // Send content from multiple Apps
+    this.sendAppContent('com.example.weather', 'Weather: Sunny, 72°F');
+    this.sendAppContent('com.example.calendar', 'Meeting with Team @ 1:00 PM');
+    this.sendAppContent('com.example.messages', 'New message from John: "Are we still on for lunch?"');
 
     // Change to expanded mode
     setTimeout(() => {
@@ -296,7 +296,7 @@ export class DashboardTestHarness {
       this.changeDashboardMode(DashboardMode.EXPANDED);
 
       // Send expanded content
-      this.sendTpaContent('com.example.tasks', 'Current tasks:\n- Finish dashboard implementation\n- Test with glasses\n- Write documentation', [DashboardMode.EXPANDED]);
+      this.sendAppContent('com.example.tasks', 'Current tasks:\n- Finish dashboard implementation\n- Test with glasses\n- Write documentation', [DashboardMode.EXPANDED]);
     }, 1000);
 
     // Change to always-on mode
@@ -304,7 +304,7 @@ export class DashboardTestHarness {
     //   console.log('\n>>> Changing to ALWAYS-ON mode');
     //   // this.changeDashboardMode(DashboardMode.ALWAYS_ON); // Commented out, not in enum
     //   // Send always-on content
-    //   // this.sendTpaContent('com.example.fitness', 'Steps: 5,280', [DashboardMode.ALWAYS_ON]);
+    //   // this.sendAppContent('com.example.fitness', 'Steps: 5,280', [DashboardMode.ALWAYS_ON]);
     // }, 2000);
 
     // Test always-on overlay
@@ -314,10 +314,10 @@ export class DashboardTestHarness {
       this.setAlwaysOnEnabled(true);
     }, 3000);
 
-    // Test TPA disconnect
+    // Test App disconnect
     setTimeout(() => {
-      console.log('\n>>> Disconnecting a TPA');
-      this.disconnectTpa('com.example.messages');
+      console.log('\n>>> Disconnecting a App');
+      this.disconnectApp('com.example.messages');
     }, 4000);
 
     // End test
@@ -337,37 +337,37 @@ export class DashboardTestHarness {
     this.updateSystemSection('topRight', 'Battery: 72%');
     this.changeDashboardMode(DashboardMode.MAIN);
 
-    // Add content from multiple TPAs
+    // Add content from multiple Apps
     console.log('\n>>> Starting apps and adding content');
-    this.sendTpaContent('app1', 'App 1 Content');
-    this.sendTpaContent('app2', 'App 2 Content');
-    this.sendTpaContent('app3', 'App 3 Content');
+    this.sendAppContent('app1', 'App 1 Content');
+    this.sendAppContent('app2', 'App 2 Content');
+    this.sendAppContent('app3', 'App 3 Content');
 
     // Simulate app updates
     setTimeout(() => {
       console.log('\n>>> Updating app content');
-      this.sendTpaContent('app1', 'App 1 Updated Content');
-      this.sendTpaContent('app3', 'App 3 Updated Content');
+      this.sendAppContent('app1', 'App 1 Updated Content');
+      this.sendAppContent('app3', 'App 3 Updated Content');
     }, 1000);
 
     // Simulate app stopping
     setTimeout(() => {
       console.log('\n>>> Stopping app2');
-      this.disconnectTpa('app2');
+      this.disconnectApp('app2');
     }, 2000);
 
     // Add new app
     setTimeout(() => {
       console.log('\n>>> Starting app4');
-      this.sendTpaContent('app4', 'App 4 Content');
+      this.sendAppContent('app4', 'App 4 Content');
     }, 3000);
 
     // Stop all apps
     setTimeout(() => {
       console.log('\n>>> Stopping all apps');
-      this.disconnectTpa('app1');
-      this.disconnectTpa('app3');
-      this.disconnectTpa('app4');
+      this.disconnectApp('app1');
+      this.disconnectApp('app3');
+      this.disconnectApp('app4');
     }, 4000);
 
     // End test

@@ -1,8 +1,8 @@
-# TPA JWT Authentication System Design
+# App JWT Authentication System Design
 
 ## Problem Statement
 
-The current TPA authentication system has several issues that impact developer experience:
+The current App authentication system has several issues that impact developer experience:
 
 1. **Authentication Complexity**: Developers must manage and correctly provide both `packageName` and `apiKey` separately during the WebSocket handshake.
 
@@ -18,18 +18,18 @@ The current TPA authentication system has several issues that impact developer e
 
 - `/packages/cloud/src/services/core/websocket.service.ts`: Handles WebSocket connections and authentication
 - `/packages/cloud/src/services/core/app.service.ts`: Validates API keys
-- `/packages/sdk/src/types/messages/tpa-to-cloud.ts`: Defines TPA connection message format
-- `/packages/sdk/src/tpa/session/index.ts`: Client-side TPA session management
+- `/packages/sdk/src/types/messages/app-to-cloud.ts`: Defines App connection message format
+- `/packages/sdk/src/app/session/index.ts`: Client-side App session management
 
 ### Current Authentication Flow
 
 1. User initiates app start through the API or WebSocket message
-2. Server sends a webhook to the TPA server with session information and WebSocket URL
-3. TPA connects to the provided WebSocket URL
-4. After connection, TPA sends a `TpaConnectionInit` message with:
+2. Server sends a webhook to the App server with session information and WebSocket URL
+3. App connects to the provided WebSocket URL
+4. After connection, App sends a `AppConnectionInit` message with:
    ```json
    {
-     "type": "tpa_connection_init",
+     "type": "app_connection_init",
      "sessionId": "userSessionId-packageName",
      "packageName": "org.example.myapp",
      "apiKey": "api-key-value"
@@ -53,7 +53,7 @@ The current TPA authentication system has several issues that impact developer e
      return;
    }
    ```
-6. The server sends a `TpaConnectionAck` on success or closes the connection with a generic error on failure
+6. The server sends a `AppConnectionAck` on success or closes the connection with a generic error on failure
 
 ### Current Error Handling
 
@@ -98,9 +98,9 @@ Move authentication from the message-based handshake to the WebSocket connection
 
 #### New Connection Flow
 
-TPAs will include the JWT in the WebSocket connection request:
+Apps will include the JWT in the WebSocket connection request:
 ```
-GET /tpa-ws HTTP/1.1
+GET /app-ws HTTP/1.1
 Host: cloud.mentra.glass
 Upgrade: websocket
 Connection: Upgrade
@@ -140,17 +140,17 @@ Maintain support for the existing message-based authentication flow while encour
 ### 1. JWT Token Generation
 
 **Files to modify**:
-- `/packages/cloud/src/routes/developer.routes.ts`: Add endpoint to generate JWT for TPAs
+- `/packages/cloud/src/routes/developer.routes.ts`: Add endpoint to generate JWT for Apps
 - `/packages/cloud/src/services/core/app.service.ts`: Add JWT generation method
 
 **New methods**:
-- `generateTpaJwt(packageName, apiKey)`: Generates a JWT containing packageName and apiKey
+- `generateAppJwt(packageName, apiKey)`: Generates a JWT containing packageName and apiKey
 
 ### 2. Connection Authentication
 
 **Files to modify**:
 - `/packages/cloud/src/services/core/websocket.service.ts`: Update WebSocket upgrade handling
-- `/packages/sdk/src/tpa/session/index.ts`: Update client connection logic
+- `/packages/sdk/src/app/session/index.ts`: Update client connection logic
 
 **Changes**:
 - Modify WebSocket server to authenticate using Authorization header
@@ -162,12 +162,12 @@ Maintain support for the existing message-based authentication flow while encour
 
 **Files to modify**:
 - `/packages/cloud/src/services/core/websocket.service.ts`: Enhance error responses
-- `/packages/sdk/src/tpa/session/index.ts`: Improve client-side error handling
+- `/packages/sdk/src/app/session/index.ts`: Improve client-side error handling
 
 **New Error Response Format**:
 ```json
 {
-  "type": "tpa_connection_error",
+  "type": "app_connection_error",
   "code": "INVALID_API_KEY",
   "message": "The API key provided does not match the stored API key for this package",
   "timestamp": "2023-05-11T12:34:56.789Z",
@@ -187,8 +187,8 @@ Maintain support for the existing message-based authentication flow while encour
 ### 4. Developer SDK Updates
 
 **Files to modify**:
-- `/packages/sdk/src/tpa/session/index.ts`: Update connection logic
-- `/packages/sdk/src/tpa/token/index.ts`: Add JWT support
+- `/packages/sdk/src/app/session/index.ts`: Update connection logic
+- `/packages/sdk/src/app/token/index.ts`: Add JWT support
 
 **New Methods**:
 - `connectWithJwt(jwt, sessionId)`: Connect to MentraOS using JWT token
@@ -218,7 +218,7 @@ Maintain support for the existing message-based authentication flow while encour
 The current `websocket.service.ts` file is very large and handles multiple responsibilities. As part of this work, we should consider splitting it into multiple files:
 
 1. **websocket.service.ts**: Core WebSocket functionality, server setup, and shared utilities
-2. **websocket-tpa.service.ts**: TPA-specific connection handling and authentication
+2. **websocket-app.service.ts**: App-specific connection handling and authentication
 3. **websocket-client.service.ts**: Glasses client connection handling
 
 This refactoring would make the code more maintainable and allow for better separation of concerns, especially as we implement the new JWT authentication system.

@@ -1,19 +1,19 @@
 /**
- * @fileoverview TPA WebSocket service that handles WebSocket connections from Third-Party Applications.
- * This service manages TPA authentication, message processing, and session management.
+ * @fileoverview App WebSocket service that handles WebSocket connections from Third-Party Applications.
+ * This service manages App authentication, message processing, and session management.
  */
 
 import WebSocket from 'ws';
 import { IncomingMessage } from 'http';
 import jwt from 'jsonwebtoken';
 import {
-  TpaConnectionInit,
-  TpaConnectionAck,
-  TpaConnectionError,
-  TpaToCloudMessage,
-  TpaToCloudMessageType,
-  CloudToTpaMessageType,
-  TpaSubscriptionUpdate,
+  AppConnectionInit,
+  AppConnectionAck,
+  AppConnectionError,
+  AppToCloudMessage,
+  AppToCloudMessageType,
+  CloudToAppMessageType,
+  AppSubscriptionUpdate,
   AppStateChange,
   StreamType,
   DataStream,
@@ -33,13 +33,13 @@ import transcriptionService from '../processing/transcription.service';
 import photoRequestService from '../core/photo-request.service';
 import e from 'express';
 
-const SERVICE_NAME = 'websocket-tpa.service';
+const SERVICE_NAME = 'websocket-app.service';
 const logger = rootLogger.child({ service: SERVICE_NAME });
 
 /**
- * Error codes for TPA connection issues
+ * Error codes for App connection issues
  */
-export enum TpaErrorCode {
+export enum AppErrorCode {
   INVALID_JWT = 'INVALID_JWT',
   JWT_SIGNATURE_FAILED = 'JWT_SIGNATURE_FAILED',
   PACKAGE_NOT_FOUND = 'PACKAGE_NOT_FOUND',
@@ -50,78 +50,78 @@ export enum TpaErrorCode {
 }
 
 /**
- * JWT payload structure for TPA authentication
+ * JWT payload structure for App authentication
  */
-interface TpaJwtPayload {
+interface AppJwtPayload {
   packageName: string;
   apiKey: string;
 }
 
-interface TpaIncomingMessage extends IncomingMessage {
-  tpaJwtPayload?: TpaJwtPayload;
+interface AppIncomingMessage extends IncomingMessage {
+  appJwtPayload?: AppJwtPayload;
   userId?: string;
   sessionId?: string;
 }
 
 /**
- * Service that handles TPA WebSocket connections
+ * Service that handles App WebSocket connections
  */
-export class TpaWebSocketService {
-  private static instance: TpaWebSocketService;
+export class AppWebSocketService {
+  private static instance: AppWebSocketService;
   private logger = rootLogger.child({ service: SERVICE_NAME });
   constructor() { }
 
   /**
-   * Get the singleton instance of TpaWebSocketService
+   * Get the singleton instance of AppWebSocketService
    */
-  static getInstance(): TpaWebSocketService {
-    if (!TpaWebSocketService.instance) {
-      TpaWebSocketService.instance = new TpaWebSocketService();
+  static getInstance(): AppWebSocketService {
+    if (!AppWebSocketService.instance) {
+      AppWebSocketService.instance = new AppWebSocketService();
     }
-    return TpaWebSocketService.instance;
+    return AppWebSocketService.instance;
   }
 
   /**
-   * Handle a new TPA WebSocket connection
+   * Handle a new App WebSocket connection
    *
    * @param ws WebSocket connection
    * @param request HTTP request object
    */
-  async handleConnection(ws: WebSocket, request: TpaIncomingMessage): Promise<void> {
-    logger.info('New TPA WebSocket connection');
+  async handleConnection(ws: WebSocket, request: AppIncomingMessage): Promise<void> {
+    logger.info('New App WebSocket connection');
 
     // Get user session if we have a sessionId
     let userSession: UserSession | undefined = undefined;
 
-    // TPAs using new SDK connecting to the cloud will send a JWT token in the request headers.
+    // Apps using new SDK connecting to the cloud will send a JWT token in the request headers.
     try {
       // Check if the request has a valid JWT token.
-      const tpaJwtPayload = request?.tpaJwtPayload as TpaJwtPayload;
+      const appJwtPayload = request?.appJwtPayload as AppJwtPayload;
 
-      if (tpaJwtPayload) {
-        logger.info('TPA WebSocket connection with JWT token');
+      if (appJwtPayload) {
+        logger.info('App WebSocket connection with JWT token');
         const userId = request?.userId as string;
         const sessionId = request?.sessionId as string;
 
-        // Enure there is an existing userSession for the tpa to connect to.
+        // Enure there is an existing userSession for the app to connect to.
         userSession = UserSession.getById(userId);
         if (!userSession) {
-          logger.error({ request }, 'User session not found for TPA message');
-          this.sendError(ws, TpaErrorCode.SESSION_NOT_FOUND, 'Session not found');
+          logger.error({ request }, 'User session not found for App message');
+          this.sendError(ws, AppErrorCode.SESSION_NOT_FOUND, 'Session not found');
           return;
         }
 
         // Create ConnectionInit message, and sent to the app manager to handle it.
-        const initMessage: TpaConnectionInit = {
-          type: TpaToCloudMessageType.CONNECTION_INIT,
-          packageName: tpaJwtPayload.packageName,
+        const initMessage: AppConnectionInit = {
+          type: AppToCloudMessageType.CONNECTION_INIT,
+          packageName: appJwtPayload.packageName,
           sessionId: sessionId,
-          apiKey: tpaJwtPayload.apiKey
+          apiKey: appJwtPayload.apiKey
         };
-        await userSession.appManager.handleTpaInit(ws, initMessage);
+        await userSession.appManager.handleAppInit(ws, initMessage);
       }
     } catch (error) {
-      logger.error(error, 'Error processing TPA connection request');
+      logger.error(error, 'Error processing App connection request');
       ws.close(1011, 'Internal server error');
       return;
     }
@@ -130,11 +130,11 @@ export class TpaWebSocketService {
     ws.on('message', async (data: WebSocket.Data) => {
       try {
         // Parse the incoming message
-        const message = JSON.parse(data.toString()) as TpaToCloudMessage;
+        const message = JSON.parse(data.toString()) as AppToCloudMessage;
 
-        // Check if it's old auth via TPA Init message.
-        if (message.type === TpaToCloudMessageType.CONNECTION_INIT) {
-          const initMessage = message as TpaConnectionInit;
+        // Check if it's old auth via App Init message.
+        if (message.type === AppToCloudMessageType.CONNECTION_INIT) {
+          const initMessage = message as AppConnectionInit;
           // Parse session ID to get user session ID
           const sessionParts = initMessage.sessionId.split('-');
           const userId = sessionParts[0];
@@ -146,27 +146,27 @@ export class TpaWebSocketService {
 
           userSession = UserSession.getById(userId);
           if (!userSession) {
-            logger.error({ request, message }, 'User session not found for TPA message');
-            this.sendError(ws, TpaErrorCode.SESSION_NOT_FOUND, 'Session not found');
+            logger.error({ request, message }, 'User session not found for App message');
+            this.sendError(ws, AppErrorCode.SESSION_NOT_FOUND, 'Session not found');
             return;
           }
-          await userSession.appManager.handleTpaInit(ws, initMessage);
+          await userSession.appManager.handleAppInit(ws, initMessage);
         }
 
         else {
           // If we don't have a user session, we can't process other messages.
           if (!userSession) {
-            logger.error({ request, data }, 'User session not found for TPA message');
-            this.sendError(ws, TpaErrorCode.SESSION_NOT_FOUND, 'Session not found');
+            logger.error({ request, data }, 'User session not found for App message');
+            this.sendError(ws, AppErrorCode.SESSION_NOT_FOUND, 'Session not found');
             return;
           }
 
           // Only handle non-connection init messages if we have a user session.
-          await this.handleTpaMessage(ws, userSession, message)
+          await this.handleAppMessage(ws, userSession, message)
         }
       } catch (error) {
-        logger.error(error, 'Unexpected error processing TPA message');
-        logger.debug({ service: SERVICE_NAME, data }, '[debug] Unexpected error processing TPA message', data);
+        logger.error(error, 'Unexpected error processing App message');
+        logger.debug({ service: SERVICE_NAME, data }, '[debug] Unexpected error processing App message', data);
         // General error handling when we can't even parse the message
         ws.close(1011, 'Internal server error');
       }
@@ -174,97 +174,97 @@ export class TpaWebSocketService {
   }
 
   /**
-   * Handle TPA message
+   * Handle App message
    *
    * @param userSession UserSession
-   * @param message TpaToCloudMessage
+   * @param message AppToCloudMessage
    */
-  private async handleTpaMessage(tpaWebsocket: WebSocket, userSession: UserSession, message: TpaToCloudMessage): Promise<void> {
+  private async handleAppMessage(appWebsocket: WebSocket, userSession: UserSession, message: AppToCloudMessage): Promise<void> {
     try {
       // Process based on message type
       switch (message.type) {
-        case TpaToCloudMessageType.SUBSCRIPTION_UPDATE:
-          this.handleSubscriptionUpdate(tpaWebsocket, userSession, message);
+        case AppToCloudMessageType.SUBSCRIPTION_UPDATE:
+          this.handleSubscriptionUpdate(appWebsocket, userSession, message);
           break;
 
-        case TpaToCloudMessageType.DISPLAY_REQUEST:
-          userSession.logger.debug({ service: SERVICE_NAME, message, packageName: message.packageName }, `Received display request from TPA: ${message.packageName}`);
+        case AppToCloudMessageType.DISPLAY_REQUEST:
+          userSession.logger.debug({ service: SERVICE_NAME, message, packageName: message.packageName }, `Received display request from App: ${message.packageName}`);
           userSession.displayManager.handleDisplayRequest(message);
           // Handle display request
           break;
 
         // Dashboard message handling
-        case TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
-        case TpaToCloudMessageType.DASHBOARD_MODE_CHANGE:
-        case TpaToCloudMessageType.DASHBOARD_SYSTEM_UPDATE: {
-          userSession.dashboardManager.handleTpaMessage(message);
+        case AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE:
+        case AppToCloudMessageType.DASHBOARD_MODE_CHANGE:
+        case AppToCloudMessageType.DASHBOARD_SYSTEM_UPDATE: {
+          userSession.dashboardManager.handleAppMessage(message);
           break;
         }
 
         // Mentra Live Photo / Video Stream Request message handling.
-        case TpaToCloudMessageType.RTMP_STREAM_REQUEST:
+        case AppToCloudMessageType.RTMP_STREAM_REQUEST:
           // Delegate to VideoManager
-          // The RtmpStreamRequest SDK type should be used by the TPA
+          // The RtmpStreamRequest SDK type should be used by the App
           try {
             const streamId = await userSession.videoManager.startRtmpStream(message as RtmpStreamRequest);
-            // Optionally send an immediate ack to TPA if startRtmpStream doesn't or if TPA expects it
+            // Optionally send an immediate ack to App if startRtmpStream doesn't or if App expects it
             // (VideoManager.startRtmpStream already sends initial status)
             this.logger.info({ streamId, packageName: message.packageName }, "RTMP Stream request processed by VideoManager.");
           } catch (e) {
             this.logger.error({ e, packageName: message.packageName }, "Error starting RTMP stream via VideoManager");
-            this.sendError(tpaWebsocket, TpaErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to start stream.");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to start stream.");
           }
           break;
 
-        case TpaToCloudMessageType.RTMP_STREAM_STOP:
+        case AppToCloudMessageType.RTMP_STREAM_STOP:
           // Delegate to VideoManager
           try {
             await userSession.videoManager.stopRtmpStream(message as RtmpStreamStopRequest);
             this.logger.info({ packageName: message.packageName, streamId: (message as RtmpStreamStopRequest).streamId }, "RTMP Stream stop request processed by VideoManager.");
           } catch (e) {
             this.logger.error({ e, packageName: message.packageName }, "Error stopping RTMP stream via VideoManager");
-            this.sendError(tpaWebsocket, TpaErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to stop stream.");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to stop stream.");
           }
           break;
 
-        case TpaToCloudMessageType.PHOTO_REQUEST:
+        case AppToCloudMessageType.PHOTO_REQUEST:
           // Delegate to PhotoManager
-          // The TpaPhotoRequestSDK type should be used by the TPA
-          // PhotoManager's requestPhoto now takes the TpaPhotoRequestSDK object
+          // The AppPhotoRequestSDK type should be used by the App
+          // PhotoManager's requestPhoto now takes the AppPhotoRequestSDK object
           try {
             const photoRequestMsg = message as PhotoRequest;
-            // The PhotoManager's requestPhoto method now takes the entire TPA request object
-            // and internally extracts what it needs, plus gets the tpaWebSocket.
-            // The old `photoRequestService.createTpaPhotoRequest` took `userId, appId, ws, config`.
-            // The new `PhotoManager.requestPhoto` will take the `TpaPhotoRequestSDK` object
-            // and the `tpaWs` is passed from `handleTpaMessage`.
-            // We need to make sure the PhotoManager has access to the tpaWs that sent this message.
+            // The PhotoManager's requestPhoto method now takes the entire App request object
+            // and internally extracts what it needs, plus gets the appWebSocket.
+            // The old `photoRequestService.createAppPhotoRequest` took `userId, appId, ws, config`.
+            // The new `PhotoManager.requestPhoto` will take the `AppPhotoRequestSDK` object
+            // and the `appWs` is passed from `handleAppMessage`.
+            // We need to make sure the PhotoManager has access to the appWs that sent this message.
             // The current PhotoManager.requestPhoto is:
-            // async requestPhoto(tpaRequest: TpaPhotoRequestSDK): Promise<string>
-            // It internally uses this.userSession.appWebsockets.get(tpaRequest.packageName) to get the websocket.
-            // This is fine if the TPA ws is already stored by AppManager.handleTpaInit.
+            // async requestPhoto(appRequest: AppPhotoRequestSDK): Promise<string>
+            // It internally uses this.userSession.appWebsockets.get(appRequest.packageName) to get the websocket.
+            // This is fine if the App ws is already stored by AppManager.handleAppInit.
             const requestId = await userSession.photoManager.requestPhoto(photoRequestMsg);
             this.logger.info({ requestId, packageName: photoRequestMsg.packageName }, "Photo request processed by PhotoManager.");
           } catch(e) {
             this.logger.error({e, packageName: message.packageName}, "Error requesting photo via PhotoManager");
-            this.sendError(tpaWebsocket, TpaErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to request photo.");
+            this.sendError(appWebsocket, AppErrorCode.INTERNAL_ERROR, (e as Error).message || "Failed to request photo.");
           }
 
         default:
-          logger.warn(`Unhandled TPA message type: ${message.type}`);
+          logger.warn(`Unhandled App message type: ${message.type}`);
           break;
       }
     } catch (error) {
-      userSession.logger.error({ error, message }, 'Error handling TPA message');
+      userSession.logger.error({ error, message }, 'Error handling App message');
     }
   }
 
   // Handle Subscription updates.
-  private async handleSubscriptionUpdate(tpaWebsocket: WebSocket, userSession: UserSession, message: TpaSubscriptionUpdate): Promise<void> {
+  private async handleSubscriptionUpdate(appWebsocket: WebSocket, userSession: UserSession, message: AppSubscriptionUpdate): Promise<void> {
     const packageName = message.packageName;
     userSession.logger.debug(
       { service: SERVICE_NAME, message, packageName },
-      `Received subscription update from TPA: ${packageName}`
+      `Received subscription update from App: ${packageName}`
     );
 
     // Get the minimal language subscriptions before update
@@ -312,16 +312,16 @@ export class TpaWebSocketService {
       if (allCalendarEvents.length > 0) {
         userSession.logger.debug({ service: SERVICE_NAME, allCalendarEvents }, `Sending ${allCalendarEvents.length} cached calendar events to newly subscribed app ${message.packageName}`);
 
-        if (tpaWebsocket && tpaWebsocket.readyState === WebSocket.OPEN) {
+        if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
           for (const event of allCalendarEvents) {
             const dataStream: DataStream = {
-              type: CloudToTpaMessageType.DATA_STREAM,
+              type: CloudToAppMessageType.DATA_STREAM,
               streamType: StreamType.CALENDAR_EVENT,
               sessionId: `${userSession.userId}-${message.packageName}`,
               data: event,
               timestamp: new Date()
             };
-            tpaWebsocket.send(JSON.stringify(dataStream));
+            appWebsocket.send(JSON.stringify(dataStream));
           }
         }
       }
@@ -333,25 +333,25 @@ export class TpaWebSocketService {
       const lastLocation = subscriptionService.getLastLocation(userSession.userId);
       if (lastLocation) {
         userSession.logger.info(`Sending cached location to newly subscribed app ${message.packageName}`);
-        const tpaSessionId = `${userSession.userId}-${message.packageName}`;
+        const appSessionId = `${userSession.userId}-${message.packageName}`;
 
-        if (tpaWebsocket && tpaWebsocket.readyState === WebSocket.OPEN) {
+        if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
           const locationUpdate: LocationUpdate = {
             type: GlassesToCloudMessageType.LOCATION_UPDATE,
-            sessionId: tpaSessionId,
+            sessionId: appSessionId,
             lat: lastLocation.latitude,
             lng: lastLocation.longitude,
             timestamp: new Date()
           };
 
           const dataStream: DataStream = {
-            type: CloudToTpaMessageType.DATA_STREAM,
-            sessionId: tpaSessionId,
+            type: CloudToAppMessageType.DATA_STREAM,
+            sessionId: appSessionId,
             streamType: StreamType.LOCATION_UPDATE,
             data: locationUpdate,
             timestamp: new Date()
           };
-          tpaWebsocket.send(JSON.stringify(dataStream));
+          appWebsocket.send(JSON.stringify(dataStream));
         }
       }
     }
@@ -361,9 +361,9 @@ export class TpaWebSocketService {
 
     if (isNewCustomMessageSubscription && userSession.userDatetime) {
       userSession.logger.info(`Sending cached userDatetime to app ${message.packageName} on custom_message subscription`);
-      if (tpaWebsocket && tpaWebsocket.readyState === WebSocket.OPEN) {
+      if (appWebsocket && appWebsocket.readyState === WebSocket.OPEN) {
         const customMessage = {
-          type: CloudToTpaMessageType.CUSTOM_MESSAGE,
+          type: CloudToAppMessageType.CUSTOM_MESSAGE,
           action: 'update_datetime',
           payload: {
             datetime: userSession.userDatetime,
@@ -371,7 +371,7 @@ export class TpaWebSocketService {
           },
           timestamp: new Date()
         };
-        tpaWebsocket.send(JSON.stringify(customMessage));
+        appWebsocket.send(JSON.stringify(customMessage));
       }
     }
 
@@ -386,16 +386,16 @@ export class TpaWebSocketService {
   }
 
   /**
-   * Send an error response to the TPA client
+   * Send an error response to the App client
    *
    * @param ws WebSocket connection
    * @param code Error code
    * @param message Error message
    */
-  private sendError(ws: WebSocket, code: TpaErrorCode, message: string): void {
+  private sendError(ws: WebSocket, code: AppErrorCode, message: string): void {
     try {
-      const errorResponse: TpaConnectionError = {
-        type: CloudToTpaMessageType.CONNECTION_ERROR,
+      const errorResponse: AppConnectionError = {
+        type: CloudToAppMessageType.CONNECTION_ERROR,
         code: code,
         message: message,
         timestamp: new Date()
@@ -416,4 +416,4 @@ export class TpaWebSocketService {
 
 }
 
-export default TpaWebSocketService;
+export default AppWebSocketService;

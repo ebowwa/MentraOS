@@ -1,4 +1,4 @@
-// components/dialogs/TpaSuccessDialog.tsx
+// components/dialogs/AppSuccessDialog.tsx
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,16 +7,16 @@ import { toast } from 'sonner';
 import { CheckCircle, KeyRound, Copy, ArrowRight, AlertCircle } from "lucide-react";
 import { useNavigate } from 'react-router-dom';
 
-interface TpaSuccessDialogProps {
-  tpa: AppResponse | null;
+interface AppSuccessDialogProps {
+  app: AppResponse | null;
   apiKey: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onViewApiKey: () => void;
 }
 
-const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
-  tpa,
+const AppSuccessDialog: React.FC<AppSuccessDialogProps> = ({
+  app,
   apiKey,
   open,
   onOpenChange,
@@ -42,9 +42,9 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
     }
   }, [open, apiKey, handleCopyApiKey]);
 
-  const handleGoToTpas = () => {
+  const handleGoToApps = () => {
     onOpenChange(false);
-    navigate('/tpas');
+    navigate('/apps');
   };
 
   return (
@@ -56,7 +56,7 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
             App Created Successfully
           </DialogTitle>
           <DialogDescription>
-            {tpa && `${tpa.name} has been created successfully.`}
+            {app && `${app.name} has been created successfully.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -124,7 +124,7 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
               <Copy className="h-4 w-4" />
             </Button>
           )}
-          <Button onClick={handleGoToTpas} className="gap-2">
+          <Button onClick={handleGoToApps} className="gap-2">
             Go to My Apps
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -134,4 +134,4 @@ const TpaSuccessDialog: React.FC<TpaSuccessDialogProps> = ({
   );
 };
 
-export default TpaSuccessDialog;
+export default AppSuccessDialog;

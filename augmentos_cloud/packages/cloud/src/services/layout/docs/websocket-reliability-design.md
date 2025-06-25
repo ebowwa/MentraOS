@@ -2,18 +2,18 @@
 
 ## Overview
 
-This document details the current WebSocket reliability design and TPA session lifecycle in the MentraOS cloud system. It covers how TPAs connect, maintain connections, and recover from disconnections.
+This document details the current WebSocket reliability design and App session lifecycle in the MentraOS cloud system. It covers how Apps connect, maintain connections, and recover from disconnections.
 
-## Current TPA Session Lifecycle
+## Current App Session Lifecycle
 
 ### Session Start Flow
 1. **User Request**:
-   - User initiates TPA start request
+   - User initiates App start request
    - Cloud checks if app is already loading/running
    - If not, adds app to `loadingApps` set
 
 2. **Webhook Trigger**:
-   - Cloud triggers TPA's webhook with session info:
+   - Cloud triggers App's webhook with session info:
      ```typescript
      {
        type: WebhookRequestType.SESSION_REQUEST,
@@ -23,12 +23,12 @@ This document details the current WebSocket reliability design and TPA session l
        augmentOSWebsocketUrl: serverUrl
      }
      ```
-   - Sets timeout for cleanup if TPA doesn't connect
+   - Sets timeout for cleanup if App doesn't connect
 
-3. **TPA Connection**:
-   - TPA receives webhook and creates `TpaSession`
-   - TPA connects to cloud WebSocket
-   - Sends `TpaConnectionInit` message with:
+3. **App Connection**:
+   - App receives webhook and creates `AppSession`
+   - App connects to cloud WebSocket
+   - Sends `AppConnectionInit` message with:
      - Session ID
      - Package name
      - API key
@@ -36,7 +36,7 @@ This document details the current WebSocket reliability design and TPA session l
 
 4. **Connection Validation**:
    - Cloud validates API key and IP
-   - Registers TPA with server registry
+   - Registers App with server registry
    - Moves app from `loadingApps` to `activeAppSessions`
    - Stores WebSocket connection
 
@@ -55,7 +55,7 @@ This document details the current WebSocket reliability design and TPA session l
 
 2. **Server Registration**:
    ```typescript
-   interface TpaServerRegistration {
+   interface AppServerRegistration {
      registrationId: string;
      packageName: string;
      apiKey: string;
@@ -73,31 +73,31 @@ This document details the current WebSocket reliability design and TPA session l
 
 ### Session End Flow
 1. **User Stop Request**:
-   - User requests to stop TPA
+   - User requests to stop App
    - Cloud removes app from active sessions
-   - Triggers stop webhook to TPA
+   - Triggers stop webhook to App
    - Closes WebSocket connection
    - Cleans up subscriptions and display state
 
-2. **TPA Disconnection**:
-   - If TPA disconnects unexpectedly:
+2. **App Disconnection**:
+   - If App disconnects unexpectedly:
      - Cloud marks session as disconnected
      - Keeps session in registry for recovery
      - Cleans up WebSocket and subscriptions
      - Notifies dashboard manager
 
 3. **Session Recovery**:
-   - TPA can reconnect using same session ID
+   - App can reconnect using same session ID
    - Cloud validates reconnection
    - Restores previous state and subscriptions
-   - If TPA server restarts, can recover sessions via registration
+   - If App server restarts, can recover sessions via registration
 
 ### Dashboard Integration
-1. **System TPA**:
-   - Dashboard is a special system TPA
+1. **System App**:
+   - Dashboard is a special system App
    - Always started when user connects
    - Manages always-on display and notifications
-   - Handles layout and content for other TPAs
+   - Handles layout and content for other Apps
 
 2. **Event Handling**:
    ```typescript
@@ -112,23 +112,23 @@ This document details the current WebSocket reliability design and TPA session l
    ```
 
 3. **Content Management**:
-   - Handles TPA display requests
+   - Handles App display requests
    - Manages content sections
    - Coordinates with layout manager
-   - Handles TPA disconnection cleanup
+   - Handles App disconnection cleanup
 
 ## Current System Operation
 
 ### 1. WebSocket Connection Management
 - Cloud maintains two WebSocket servers:
   - `glassesWss`: For glasses client connections
-  - `tpaWss`: For TPA connections
+  - `appWss`: For App connections
 
 ### 2. Connection Health Monitoring
 ```typescript
 class HealthMonitorService {
   private glassesLastSeen: Map<WebSocket, number> = new Map();
-  private tpaLastSeen: Map<WebSocket, number> = new Map();
+  private appLastSeen: Map<WebSocket, number> = new Map();
 
   registerGlassesConnection(ws: WebSocket): void {
     this.glassesLastSeen.set(ws, Date.now());
@@ -137,10 +137,10 @@ class HealthMonitorService {
     });
   }
 
-  registerTpaConnection(ws: WebSocket): void {
-    this.tpaLastSeen.set(ws, Date.now());
+  registerAppConnection(ws: WebSocket): void {
+    this.appLastSeen.set(ws, Date.now());
     ws.on('pong', () => {
-      this.tpaLastSeen.set(ws, Date.now());
+      this.appLastSeen.set(ws, Date.now());
     });
   }
 }
@@ -148,25 +148,25 @@ class HealthMonitorService {
 
 ### 3. Session Recovery
 ```typescript
-class TpaRegistrationService {
-  async handleTpaServerRestart(registrationId: string): Promise<number> {
+class AppRegistrationService {
+  async handleAppServerRestart(registrationId: string): Promise<number> {
     const registration = this.getRegistration(registrationId);
     if (!registration) return 0;
 
     let recoveredCount = 0;
-    for (const tpaSessionId of registration.activeSessions) {
+    for (const appSessionId of registration.activeSessions) {
       try {
-        const [userSessionId, packageName] = tpaSessionId.split('-');
+        const [userSessionId, packageName] = appSessionId.split('-');
         const userSession = sessionService.getSession(userSessionId);
 
         if (!userSession || !userSession.activeAppSessions.includes(packageName)) {
           continue;
         }
 
-        // Trigger TPA's webhook to restart session
+        // Trigger App's webhook to restart session
         await appService.triggerWebhook(registration.webhookUrl, {
           type: WebhookRequestType.SESSION_REQUEST,
-          sessionId: tpaSessionId,
+          sessionId: appSessionId,
           userId: userSession.userId,
           timestamp: new Date().toISOString(),
           augmentOSWebsocketUrl: this.determineServerUrl(registration, userSession),
@@ -174,7 +174,7 @@ class TpaRegistrationService {
 
         recoveredCount++;
       } catch (error) {
-        logger.error(`Error recovering session ${tpaSessionId}:`, error);
+        logger.error(`Error recovering session ${appSessionId}:`, error);
       }
     }
 
@@ -186,7 +186,7 @@ class TpaRegistrationService {
 ### 4. Error Handling
 ```typescript
 ws.on('error', (error) => {
-  logger.error('[websocket.service]: TPA WebSocket error:', error);
+  logger.error('[websocket.service]: App WebSocket error:', error);
   if (currentAppSession) {
     const userSessionId = currentAppSession.split('-')[0];
     const packageName = currentAppSession.split('-')[1];
@@ -198,9 +198,9 @@ ws.on('error', (error) => {
       subscriptionService.removeSubscriptions(userSession, packageName);
 
       // Clean up dashboard content
-      dashboardService.handleTpaDisconnected(packageName, userSession);
+      dashboardService.handleAppDisconnected(packageName, userSession);
 
-      userSession.logger.info(`[websocket.service]: TPA session ${currentAppSession} disconnected`);
+      userSession.logger.info(`[websocket.service]: App session ${currentAppSession} disconnected`);
     }
   }
   ws.close();
@@ -213,16 +213,16 @@ ws.on('error', (error) => {
 ```typescript
 class WebSocketService {
   private glassesWss: WebSocketServer;
-  private tpaWss: WebSocketServer;
+  private appWss: WebSocketServer;
   private healthMonitor: HealthMonitorService;
 
   constructor() {
     this.glassesWss = new WebSocketServer({ port: GLASSES_WS_PORT });
-    this.tpaWss = new WebSocketServer({ port: TPA_WS_PORT });
+    this.appWss = new WebSocketServer({ port: APP_WS_PORT });
     this.healthMonitor = new HealthMonitorService();
 
     this.setupGlassesServer();
-    this.setupTpaServer();
+    this.setupAppServer();
   }
 
   private setupGlassesServer(): void {
@@ -240,17 +240,17 @@ class WebSocketService {
     });
   }
 
-  private setupTpaServer(): void {
-    this.tpaWss.on('connection', (ws: WebSocket) => {
-      this.healthMonitor.registerTpaConnection(ws);
+  private setupAppServer(): void {
+    this.appWss.on('connection', (ws: WebSocket) => {
+      this.healthMonitor.registerAppConnection(ws);
 
       ws.on('message', (data: string) => {
         const message = JSON.parse(data);
-        this.handleTpaMessage(ws, message);
+        this.handleAppMessage(ws, message);
       });
 
       ws.on('close', () => {
-        this.handleTpaDisconnect(ws);
+        this.handleAppDisconnect(ws);
       });
     });
   }
@@ -276,7 +276,7 @@ class SessionService {
   removeSession(sessionId: string): void {
     const session = this.sessions.get(sessionId);
     if (session) {
-      // Clean up all TPA connections
+      // Clean up all App connections
       for (const [packageName, ws] of session.appConnections) {
         ws.close();
         session.appConnections.delete(packageName);
@@ -306,14 +306,14 @@ enum SessionState {
 }
 ```
 
-### 2. TPA States
+### 2. App States
 ```typescript
-enum TpaState {
-  LOADING = 'LOADING',           // TPA being started
-  CONNECTING = 'CONNECTING',     // TPA connecting to cloud
-  CONNECTED = 'CONNECTED',       // TPA connected and running
-  DISCONNECTED = 'DISCONNECTED', // TPA disconnected
-  ERROR = 'ERROR'                // TPA in error state
+enum AppState {
+  LOADING = 'LOADING',           // App being started
+  CONNECTING = 'CONNECTING',     // App connecting to cloud
+  CONNECTED = 'CONNECTED',       // App connected and running
+  DISCONNECTED = 'DISCONNECTED', // App disconnected
+  ERROR = 'ERROR'                // App in error state
 }
 ```
 
@@ -331,10 +331,10 @@ interface UserSession {
   glassesConnection?: WebSocket;
   appConnections: Map<string, WebSocket>;
 
-  // TPA state tracking
-  activeAppSessions: string[];      // List of running TPAs
-  loadingApps: Set<string>;         // TPAs in loading state
-  tpaStates: Map<string, TpaState>; // Current state of each TPA
+  // App state tracking
+  activeAppSessions: string[];      // List of running Apps
+  loadingApps: Set<string>;         // Apps in loading state
+  appStates: Map<string, AppState>; // Current state of each App
 
   // Subscription management
   subscriptions: Map<string, Set<StreamType>>;
@@ -353,31 +353,31 @@ interface UserSession {
 1. **INITIALIZING → CONNECTING**
    - When glasses client initiates connection
    - Cloud creates new session
-   - Starts dashboard TPA
+   - Starts dashboard App
 
 2. **CONNECTING → CONNECTED**
    - Glasses client successfully connects
    - WebSocket connection established
-   - Dashboard TPA ready
+   - Dashboard App ready
 
 3. **CONNECTED → DISCONNECTING**
    - User logs out or connection closing
-   - Clean up all TPA connections
-   - Stop all active TPAs
+   - Clean up all App connections
+   - Stop all active Apps
 
 4. **DISCONNECTING → DISCONNECTED**
    - All cleanup complete
    - Session removed from registry
    - Resources released
 
-#### TPA States
+#### App States
 1. **LOADING → CONNECTING**
-   - TPA start requested
+   - App start requested
    - Added to loadingApps
    - Webhook triggered
 
 2. **CONNECTING → CONNECTED**
-   - TPA connects to cloud
+   - App connects to cloud
    - Validates connection
    - Added to activeAppSessions
 
@@ -403,11 +403,11 @@ class SessionRecoveryService {
       await this.recoverGlassesConnection(session);
     }
 
-    // Recover TPA connections
+    // Recover App connections
     for (const packageName of session.activeAppSessions) {
-      const tpaState = session.tpaStates.get(packageName);
-      if (tpaState === TpaState.DISCONNECTED) {
-        await this.recoverTpaConnection(session, packageName);
+      const appState = session.appStates.get(packageName);
+      if (appState === AppState.DISCONNECTED) {
+        await this.recoverAppConnection(session, packageName);
       }
     }
 

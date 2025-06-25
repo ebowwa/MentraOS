@@ -1,4 +1,4 @@
-import { TpaType, ToolSchema, AppSetting } from '@mentra/sdk';
+import { AppType, ToolSchema, AppSetting } from '@mentra/sdk';
 
 // Define permission types
 export enum PermissionType {
@@ -26,7 +26,7 @@ export type Tool = ToolSchema;
 export type Setting = AppSetting;
 
 
-export interface TPA {
+export interface App {
   id: string;
   packageName: string;
   name: string;
@@ -36,7 +36,7 @@ export interface TPA {
   webviewURL?: string;
   isPublic: boolean;
   appStoreStatus?: 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
-  tpaType: TpaType;
+  appType: AppType;
   createdAt?: string; // For compatibility with AppResponse
   updatedAt?: string; // For compatibility with AppResponse
   reviewNotes?: string; // Review notes from app review

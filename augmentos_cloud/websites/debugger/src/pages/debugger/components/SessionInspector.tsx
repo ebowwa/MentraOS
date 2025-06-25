@@ -127,7 +127,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
           <div className="bg-white rounded-lg shadow-sm p-5 border border-gray-200 mb-6">
             <h2 className="text-lg font-medium mb-4">Session State Tree</h2>
             <div className="border rounded border-gray-200 overflow-x-auto">
-              <StateTreeNode 
+              <StateTreeNode
                 label="Session"
                 path="root"
                 data={session}
@@ -167,13 +167,13 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                 </div>
               </div>
             )}
-            
+
             <div className="mt-4">
               <div className="flex justify-between items-center mb-2">
                 <div className="text-sm font-medium">Display History</div>
                 <button className="text-xs text-gray-800 hover:underline">View All</button>
               </div>
-              
+
               {!session.displayManager?.displayHistory?.length ? (
                 <div className="text-gray-500 italic text-sm">No display history</div>
               ) : (
@@ -185,7 +185,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                       </div>
                       <div className="truncate">
                         {display.displayRequest.layout.layoutType === 'text_wall' && display.displayRequest.layout.text}
-                        {display.displayRequest.layout.layoutType === 'reference_card' && 
+                        {display.displayRequest.layout.layoutType === 'reference_card' &&
                           `${display.displayRequest.layout.title}: ${display.displayRequest.layout.text}`
                         }
                       </div>
@@ -195,7 +195,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
               )}
             </div>
           </div>
-          
+
           {/* Audio & Transcription State */}
           <div className="bg-white rounded-lg shadow-sm p-5 border border-gray-200 mb-6">
             <h2 className="text-lg font-medium mb-4">Audio & Transcription</h2>
@@ -206,7 +206,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                   <div className={`w-2 h-2 rounded-full mr-1 ${session.isTranscribing ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                   {session.isTranscribing ? 'Active' : 'Inactive'}
                 </div>
-                
+
                 <div className="text-sm font-medium mt-3 mb-1">Last Audio</div>
                 <div className="text-sm">
                   {session.lastAudioTimestamp ? (
@@ -220,7 +220,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                     <span className="text-gray-500 italic">No audio received</span>
                   )}
                 </div>
-                
+
                 <div className="text-sm font-medium mt-3 mb-1">LC3 Service</div>
                 <div className="text-sm">
                   {session.lc3Service ? (
@@ -230,7 +230,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                   )}
                 </div>
               </div>
-              
+
               <div>
                 <div className="text-sm font-medium mb-1">Active Streams</div>
                 {!session.transcriptionStreams || Object.keys(session.transcriptionStreams).length === 0 ? (
@@ -245,7 +245,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                     ))}
                   </div>
                 )}
-                
+
                 <div className="text-sm font-medium mt-3 mb-1">Audio Buffer</div>
                 <div className="text-sm">
                   {session.audioBuffer ? (
@@ -260,7 +260,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                 </div>
               </div>
             </div>
-            
+
             <div className="mt-4">
               <div className="text-sm font-medium mb-2">Recent Transcriptions</div>
               {!session.transcript?.segments?.length ? (
@@ -299,34 +299,34 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
         </div>
       </div>
 
-      {/* Active TPAs - At the bottom */}
+      {/* Active Apps - At the bottom */}
       <div className="bg-white rounded-lg shadow-sm p-5 border border-gray-200">
-        <h2 className="text-lg font-medium mb-4">Active TPAs</h2>
+        <h2 className="text-lg font-medium mb-4">Active Apps</h2>
         {!session.activeAppSessions || session.activeAppSessions.length === 0 ? (
-          <div className="text-gray-500 italic">No active TPAs</div>
+          <div className="text-gray-500 italic">No active Apps</div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {session.activeAppSessions.map((tpaName, index) => {
-              const subscriptions = session.subscriptionManager?.subscriptions?.[tpaName] || [];
-              const connectionState = session.appConnections?.[tpaName]?.readyState;
+            {session.activeAppSessions.map((appName, index) => {
+              const subscriptions = session.subscriptionManager?.subscriptions?.[appName] || [];
+              const connectionState = session.appConnections?.[appName]?.readyState;
               // WebSocket readyState: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED
-              const connectionStatus = connectionState === 1 ? 'connected' : 
+              const connectionStatus = connectionState === 1 ? 'connected' :
                                       connectionState === 0 ? 'connecting' :
                                       connectionState === 2 ? 'closing' : 'disconnected';
-              const isLoading = session.loadingApps && session.loadingApps.has && session.loadingApps.has(tpaName);
-              
+              const isLoading = session.loadingApps && session.loadingApps.has && session.loadingApps.has(appName);
+
               return (
-                <div key={`${tpaName}-${index}`} className="py-3 first:pt-0 last:pb-0">
+                <div key={`${appName}-${index}`} className="py-3 first:pt-0 last:pb-0">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className={`w-2 h-2 rounded-full ${
-                        connectionState === 1 ? 'bg-green-500' : 
+                        connectionState === 1 ? 'bg-green-500' :
                         connectionState === 0 ? 'bg-yellow-500' :
                         'bg-red-500'
                       }`}></div>
-                      <span className="font-medium">{tpaName}</span>
+                      <span className="font-medium">{appName}</span>
                       <span className={`text-sm ${
-                        connectionState === 1 ? 'text-green-600' : 
+                        connectionState === 1 ? 'text-green-600' :
                         connectionState === 0 ? 'text-yellow-600' :
                         'text-red-600'
                       }`}>
@@ -339,7 +339,7 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
                         </div>
                       )}
                     </div>
-                    
+
                     <div className="flex items-center gap-4">
                       <div className="text-sm">
                         <span className="text-gray-500">Subscriptions: </span>
@@ -365,4 +365,4 @@ export const SessionInspector: FC<SessionInspectorProps> = ({ session, expandedN
       </div>
     </div>
   );
-}; 
+};

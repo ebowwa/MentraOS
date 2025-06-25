@@ -8,7 +8,7 @@
 
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
-import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
+import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { strict as assert } from 'assert';
 import { systemApps } from '../../../core/system-apps';
 
@@ -27,7 +27,7 @@ export async function testTransientDisplayNotRestored() {
     const userSession = new MockUserSession('test-user');
     const displayManager = new DisplayManager(userSession as any);
 
-    console.log('1. Start App1 (simulate Mira TPA)');
+    console.log('1. Start App1 (simulate Mira App)');
     // Add App1 to active sessions and start it
     userSession.addActiveApp(APP1);
     displayManager.handleAppStart(APP1);
@@ -39,7 +39,7 @@ export async function testTransientDisplayNotRestored() {
     console.log('3. App1 sends a display request that gets shown');
     // App1 sends a display request
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: {

@@ -4,11 +4,11 @@ import com.augmentos.augmentoslib.ThirdPartyEdgeApp;
 
 import java.io.Serializable;
 
-public class RegisterTpaRequestEvent implements Serializable {
+public class RegisterAppRequestEvent implements Serializable {
     public ThirdPartyEdgeApp thirdPartyEdgeApp;
-    public static final String eventId = "registerTpaRequestEvent";
+    public static final String eventId = "registerAppRequestEvent";
 
-    public RegisterTpaRequestEvent(ThirdPartyEdgeApp thirdPartyEdgeApp){
+    public RegisterAppRequestEvent(ThirdPartyEdgeApp thirdPartyEdgeApp){
         this.thirdPartyEdgeApp = thirdPartyEdgeApp;
     }
 

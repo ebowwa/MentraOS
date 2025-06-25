@@ -1,10 +1,10 @@
-# TPA Connection Lifecycle Issues
+# App Connection Lifecycle Issues
 
 ## Current Problems
 
 ### 1. **Premature App State Transitions**
 
-**Issue**: `AppManager.startApp()` marks apps as "running" before TPA actually connects.
+**Issue**: `AppManager.startApp()` marks apps as "running" before App actually connects.
 
 **Location**: `AppManager.ts:158-161`
 ```typescript
@@ -12,22 +12,22 @@ this.userSession.runningApps.add(packageName);        // ❌ Too early!
 this.userSession.loadingApps.delete(packageName);     // ❌ Too early!
 ```
 
-**Problem**: App appears "started" even if TPA fails to connect, webhook fails, or authentication fails.
+**Problem**: App appears "started" even if App fails to connect, webhook fails, or authentication fails.
 
-**Impact**: 
+**Impact**:
 - Services try to send messages to non-existent connections
 - Users see apps as "running" when they're actually broken
 - Resurrection logic can't distinguish between "never started" and "disconnected"
 
 ### 2. **Incorrect Grace Period Timings**
 
-**Issue**: Both user sessions and TPA apps use 60-second grace periods.
+**Issue**: Both user sessions and App apps use 60-second grace periods.
 
 **Current State**:
 - User session (glasses disconnect): 60s ✅ Correct
-- TPA apps (app disconnect): 60s ❌ Should be 5s
+- App apps (app disconnect): 60s ❌ Should be 5s
 
-**Location**: `AppManager.ts:565` - TPA uses 60s instead of 5s
+**Location**: `AppManager.ts:565` - App uses 60s instead of 5s
 
 **Impact**: Apps stay in "running" state for too long after disconnection.
 
@@ -38,7 +38,7 @@ this.userSession.loadingApps.delete(packageName);     // ❌ Too early!
 **Affected Services**:
 - `transcription.service.ts:488-502`
 - `AudioManager.ts`
-- `VideoManager.ts` 
+- `VideoManager.ts`
 - `PhotoManager.ts`
 - Many others...
 
@@ -49,16 +49,16 @@ this.userSession.loadingApps.delete(packageName);     // ❌ Too early!
 
 ### 4. **No Completion Detection for startApp()**
 
-**Issue**: `startApp()` doesn't wait for TPA handshake completion.
+**Issue**: `startApp()` doesn't wait for App handshake completion.
 
 **Current Flow**:
-1. Send webhook → SUCCESS (but TPA not actually started)
-2. TPA connects separately (if it works)
+1. Send webhook → SUCCESS (but App not actually started)
+2. App connects separately (if it works)
 3. No way to know if step 2 succeeded
 
-**Impact**: 
+**Impact**:
 - Can't detect resurrection success/failure
-- No error propagation from TPA connection failures
+- No error propagation from App connection failures
 - Difficult to debug connection issues
 
 ### 5. **Poor Error Propagation and Logging**
@@ -71,7 +71,7 @@ this.userSession.loadingApps.delete(packageName);     // ❌ Too early!
 - No correlation between webhook calls and connection outcomes
 - Logs scattered across multiple services without correlation IDs
 
-**Impact**: 
+**Impact**:
 - Hard to debug why apps fail to start
 - No way to programmatically handle app start failures
 - Support requests are difficult to diagnose
@@ -114,19 +114,19 @@ async startApp(packageName: string): Promise<{
 - Reject on timeout or errors with stage information
 - Track attempts with correlation IDs
 
-### 3. **Centralized TPA Messaging Through AppManager**
+### 3. **Centralized App Messaging Through AppManager**
 
-**Concept**: All services use `appManager.sendMessageToTpa()` instead of direct websocket access.
+**Concept**: All services use `appManager.sendMessageToApp()` instead of direct websocket access.
 
 **Implementation**:
 ```typescript
-interface TpaMessageResult {
+interface AppMessageResult {
   sent: boolean;
   resurrectionTriggered: boolean;
   error?: string;
 }
 
-async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageResult>
+async sendMessageToApp(packageName: string, message: any): Promise<AppMessageResult>
 ```
 
 **Logic**:
@@ -141,7 +141,7 @@ async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageRes
 **Concept**: Every operation gets a correlation ID for full traceability.
 
 **Implementation**:
-- Generate correlation ID for each `startApp()` attempt  
+- Generate correlation ID for each `startApp()` attempt
 - Pass correlation ID through webhook → connection → authentication
 - All logs include correlation ID and operation stage
 - Structured logging for easy searching
@@ -150,7 +150,7 @@ async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageRes
 ```typescript
 {
   correlationId: "start-app-12345",
-  stage: "WEBHOOK_SENT" | "TPA_CONNECTED" | "AUTHENTICATION" | "ACK_SENT",
+  stage: "WEBHOOK_SENT" | "APP_CONNECTED" | "AUTHENTICATION" | "ACK_SENT",
   packageName: "com.example.app",
   userId: "user123",
   sessionId: "session456",
@@ -162,7 +162,7 @@ async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageRes
 
 ### 5. **Connection State Machine**
 
-**Concept**: Formal state machine for TPA connection lifecycle.
+**Concept**: Formal state machine for App connection lifecycle.
 
 **States**:
 - `IDLE` → `WEBHOOK_PENDING` → `CONNECTING` → `AUTHENTICATING` → `CONNECTED`
@@ -180,8 +180,8 @@ async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageRes
 **Concept**: Intelligent resurrection with escalating timeouts.
 
 **Strategy**:
-1. TPA disconnect detected
-2. Wait 5s for self-reconnection  
+1. App disconnect detected
+2. Wait 5s for self-reconnection
 3. If no reconnect → attempt manual resurrection
 4. Exponential backoff: 5s → 15s → 45s → give up
 5. Track resurrection attempts per app
@@ -192,7 +192,7 @@ async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageRes
 **Concept**: Regular health checks to proactively detect issues.
 
 **Implementation**:
-- Periodic ping/pong with TPAs (separate from heartbeat)
+- Periodic ping/pong with Apps (separate from heartbeat)
 - Detect zombie connections (connected but not responding)
 - Preemptive resurrection before services try to send
 - Health status in app state broadcasts
@@ -200,9 +200,9 @@ async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageRes
 ## Next Steps
 
 1. **Document current exact flow** - Map out every step from startApp to ACK
-2. **Design correlation ID system** - How to track operations across services  
+2. **Design correlation ID system** - How to track operations across services
 3. **Plan Promise-based startApp** - Define exact interface and timeout behavior
-4. **Design centralized messaging** - AppManager TPA communication interface
+4. **Design centralized messaging** - AppManager App communication interface
 5. **Plan migration strategy** - How to move services to new pattern
 6. **Design testing strategy** - How to test failure scenarios reliably
 

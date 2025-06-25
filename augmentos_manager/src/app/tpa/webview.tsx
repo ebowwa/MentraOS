@@ -83,7 +83,7 @@ export default function AppWebView() {
       cloudHostName.trim() !== "cloud" &&
       cloudHostName.includes(".")
     ) {
-      console.log(`For TPA webview token verification, using cloud host name: ${cloudHostName}`)
+      console.log(`For App webview token verification, using cloud host name: ${cloudHostName}`)
       return `https://${cloudHostName}`
     }
     return undefined
@@ -225,7 +225,7 @@ export default function AppWebView() {
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
           router.replace({
-            pathname: "/tpa/settings",
+            pathname: "/app/settings",
             params: {
               packageName: packageName as string,
               appName: appName as string,

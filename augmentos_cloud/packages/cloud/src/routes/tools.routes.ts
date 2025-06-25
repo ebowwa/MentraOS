@@ -6,8 +6,8 @@ import { User } from '../models/user.model';
 import { ToolCall } from '@mentra/sdk';
 const router = Router();
 /**
- * Trigger a tool webhook to a TPA
- * Used by Mira AI to send tools to TPAs
+ * Trigger a tool webhook to a App
+ * Used by Mira AI to send tools to Apps
  */
 const triggerTool = async (req: Request, res: Response) => {
   try {
@@ -38,11 +38,11 @@ const triggerTool = async (req: Request, res: Response) => {
     });
 
     // Call the service method to trigger the webhook
-    const result = await appService.triggerTpaToolWebhook(packageName, payload);
+    const result = await appService.triggerAppToolWebhook(packageName, payload);
 
     console.log('result', result);
 
-    // Return the response from the TPA
+    // Return the response from the App
     return res.status(result.status).json(result.data);
   } catch (error) {
     logger.error('Error triggering tool webhook:', error);
@@ -54,20 +54,20 @@ const triggerTool = async (req: Request, res: Response) => {
   };
 
   /**
-   * Get all tools for a specific TPA
+   * Get all tools for a specific App
    * Used by Mira AI to discover available tools
    */
-  const getTpaTools = async (req: Request, res: Response) => {
+  const getAppTools = async (req: Request, res: Response) => {
   try {
     const { packageName } = req.params;
 
     // Call the service method to get the tools
-    const tools = await appService.getTpaTools(packageName);
+    const tools = await appService.getAppTools(packageName);
 
     // Return the tools array
     res.json(tools);
   } catch (error) {
-    logger.error('Error fetching TPA tools:', error);
+    logger.error('Error fetching App tools:', error);
     res.status(500).json({
     error: true,
     message: error instanceof Error ? error.message : 'Unknown error occurred'
@@ -76,7 +76,7 @@ const triggerTool = async (req: Request, res: Response) => {
   };
 
   /**
-   * Get all tools for a user's installed TPAs
+   * Get all tools for a user's installed Apps
    * Used by Mira AI to discover all available tools for a user
    */
   const getUserTools = async (req: Request, res: Response) => {
@@ -114,7 +114,7 @@ const triggerTool = async (req: Request, res: Response) => {
       for (const packageName of installedPackageNames) {
       try {
         // Get tools for this app
-        const appTools = await appService.getTpaTools(packageName);
+        const appTools = await appService.getAppTools(packageName);
 
         // Add app identifier to each tool
         const toolsWithAppInfo = appTools.map(tool => ({
@@ -143,7 +143,7 @@ const triggerTool = async (req: Request, res: Response) => {
 
 // Tool webhook routes - Used by Mira AI
 router.post('/apps/:packageName/tool', triggerTool);
-router.get('/apps/:packageName/tools', getTpaTools);
+router.get('/apps/:packageName/tools', getAppTools);
 router.get('/users/:userId/tools', getUserTools);
 
 export default router;

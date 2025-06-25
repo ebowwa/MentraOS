@@ -1,7 +1,7 @@
 /**
  * @fileoverview Core WebSocket service that initializes and manages WebSocket servers.
  * This service handles connection upgrade requests and routes them to the appropriate
- * specialized handlers for glasses clients and TPAs.
+ * specialized handlers for glasses clients and Apps.
  */
 
 import { Server } from 'http';
@@ -11,7 +11,7 @@ import jwt from 'jsonwebtoken';
 import { JwtPayload } from 'jsonwebtoken';
 import { CloudToGlassesMessageType, ConnectionError } from '@mentra/sdk';
 import { GlassesWebSocketService } from './websocket-glasses.service';
-import { TpaWebSocketService } from './websocket-tpa.service';
+import { AppWebSocketService } from './websocket-app.service';
 import { logger as rootLogger } from '../logging/pino-logger';
 
 const logger = rootLogger.child({ service: 'websocket.service' });
@@ -25,9 +25,9 @@ const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET || "";
  */
 export class WebSocketService {
   private glassesWss: WebSocket.Server;
-  private tpaWss: WebSocket.Server;
+  private appWss: WebSocket.Server;
   private glassesHandler: GlassesWebSocketService;
-  private tpaHandler: TpaWebSocketService;
+  private appHandler: AppWebSocketService;
   private static instance: WebSocketService;
 
   /**
@@ -35,10 +35,10 @@ export class WebSocketService {
    */
   private constructor() {
     this.glassesWss = new WebSocket.Server({ noServer: true });
-    this.tpaWss = new WebSocket.Server({ noServer: true });
+    this.appWss = new WebSocket.Server({ noServer: true });
 
     this.glassesHandler = GlassesWebSocketService.getInstance();
-    this.tpaHandler = TpaWebSocketService.getInstance();
+    this.appHandler = AppWebSocketService.getInstance();
 
     // Set up connection handlers
     this.glassesWss.on('connection', (ws, request) => {
@@ -48,16 +48,16 @@ export class WebSocketService {
       });
     });
 
-    this.tpaWss.on('connection', (ws, request) => {
-      logger.info('New TPA WebSocket connection established');
-      this.tpaHandler.handleConnection(ws, request).catch(error => {
+    this.appWss.on('connection', (ws, request) => {
+      logger.info('New App WebSocket connection established');
+      this.appHandler.handleConnection(ws, request).catch(error => {
         logger.error({
           error: {
             name: error.name,
             message: error.message,
             stack: error.stack
           }
-        }, 'Error handling TPA connection');
+        }, 'Error handling App connection');
       });
     });
   }
@@ -158,8 +158,8 @@ export class WebSocketService {
             }, 'Failed to upgrade glasses WebSocket connection');
             socket.destroy();
           }
-        } else if (url.pathname === '/tpa-ws') {
-          logger.debug('Processing tpa-ws upgrade request');
+        } else if (url.pathname === '/app-ws') {
+          logger.debug('Processing app-ws upgrade request');
 
           try {
             // Check for JWT in Authorization header (new approach)
@@ -168,7 +168,7 @@ export class WebSocketService {
             const sessionId = request.headers['x-session-id'];
 
             if (authHeader && authHeader.startsWith('Bearer ')) {
-              const tpaJwt = authHeader.substring(7);
+              const appJwt = authHeader.substring(7);
 
               // Ensure userId and sessionId are present in headers.
               if (!userId || !sessionId) {
@@ -178,7 +178,7 @@ export class WebSocketService {
                   'Content-Type: application/json\r\n' +
                   '\r\n' +
                   JSON.stringify({
-                    type: 'tpa_connection_error',
+                    type: 'app_connection_error',
                     code: 'MISSING_HEADERS',
                     message: 'Missing userId or sessionId in request headers',
                     timestamp: new Date()
@@ -194,14 +194,14 @@ export class WebSocketService {
 
               try {
                 // Verify and extract JWT payload
-                const payload = jwt.verify(tpaJwt, AUGMENTOS_AUTH_JWT_SECRET) as {
+                const payload = jwt.verify(appJwt, AUGMENTOS_AUTH_JWT_SECRET) as {
                   packageName: string;
                   apiKey: string;
                 };
 
                 // Attach the payload to the request for use by the handler
-                (request as any).tpaJwtPayload = payload;
-                logger.debug({ packageName: payload.packageName }, `TPA JWT authentication successful for ${payload.packageName}`);
+                (request as any).appJwtPayload = payload;
+                logger.debug({ packageName: payload.packageName }, `App JWT authentication successful for ${payload.packageName}`);
               } catch (jwtError) {
 
                 // Send a specific error response for JWT verification failures
@@ -209,7 +209,7 @@ export class WebSocketService {
                   logger.warn({
                     error: jwtError,
                     request
-                  }, 'Invalid JWT token for TPA WebSocket connection');
+                  }, 'Invalid JWT token for App WebSocket connection');
 
                   // Send a 401 Unauthorized response with error details
                   socket.write(
@@ -217,7 +217,7 @@ export class WebSocketService {
                     'Content-Type: application/json\r\n' +
                     '\r\n' +
                     JSON.stringify({
-                      type: 'tpa_connection_error',
+                      type: 'app_connection_error',
                       code: 'JWT_INVALID',
                       message: 'Invalid JWT token: ' + jwtError.message,
                       timestamp: new Date()
@@ -226,7 +226,7 @@ export class WebSocketService {
                   socket.destroy();
                   return;
                 } else {
-                  logger.error({ error: jwtError, request }, 'Error verifying TPA JWT token');
+                  logger.error({ error: jwtError, request }, 'Error verifying App JWT token');
                 }
 
                 // For other types of errors, continue without failing
@@ -235,14 +235,14 @@ export class WebSocketService {
             }
 
             // Proceed with connection (authentication will be completed in the handler)
-            this.tpaWss.handleUpgrade(request, socket, head, ws => {
-              logger.debug('TPA WebSocket upgrade successful');
-              this.tpaWss.emit('connection', ws, request);
+            this.appWss.handleUpgrade(request, socket, head, ws => {
+              logger.debug('App WebSocket upgrade successful');
+              this.appWss.emit('connection', ws, request);
             });
           } catch (upgradeError) {
             logger.error({
               error: upgradeError
-            }, 'Failed to upgrade TPA WebSocket connection');
+            }, 'Failed to upgrade App WebSocket connection');
             socket.destroy();
           }
         } else {

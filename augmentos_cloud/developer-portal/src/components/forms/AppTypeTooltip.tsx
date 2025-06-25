@@ -7,7 +7,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-const TpaTypeTooltip: React.FC = () => {
+const AppTypeTooltip: React.FC = () => {
   return (
     <TooltipProvider>
       <Tooltip>
@@ -39,4 +39,4 @@ const TpaTypeTooltip: React.FC = () => {
   );
 };
 
-export default TpaTypeTooltip;
+export default AppTypeTooltip;

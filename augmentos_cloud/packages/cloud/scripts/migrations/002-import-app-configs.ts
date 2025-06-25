@@ -1,15 +1,15 @@
 /**
- * Migration script: Import TPA Configurations from Server Files
+ * Migration script: Import App Configurations from Server Files
  *
  * This migration:
  * 1. Fetches all apps from the database
- * 2. For each app that has a publicUrl, attempts to fetch tpa_config.json from {publicUrl}/tpa_config.json
+ * 2. For each app that has a publicUrl, attempts to fetch app_config.json from {publicUrl}/app_config.json
  * 3. Validates the configuration using the same logic as the frontend
  * 4. Updates the database with the imported configuration (settings, tools) only for fields that are currently empty/null/undefined
  * 5. Preserves existing database data - never overwrites non-empty settings or tools arrays
  *
  * Usage:
- * ts-node -r tsconfig-paths/register scripts/migrations/002-import-tpa-configs.ts
+ * ts-node -r tsconfig-paths/register scripts/migrations/002-import-app-configs.ts
  *
  * Options:
  * --dry-run         Check what would happen without making changes
@@ -30,7 +30,7 @@ import { AppSetting, AppSettingType, ToolSchema } from '@mentra/sdk';
 // Configure environment
 dotenv.config();
 
-const logger = rootLogger.child({ migration: '002-import-tpa-configs' });
+const logger = rootLogger.child({ migration: '002-import-app-configs' });
 const DRY_RUN = process.argv.includes('--dry-run');
 const SKIP_SSL = process.argv.includes('--skip-ssl');
 
@@ -56,24 +56,24 @@ if (SKIP_SSL) {
 logger.info(`HTTP timeout set to ${TIMEOUT_SECONDS} seconds`);
 
 /**
- * Interface for TPA configuration as expected from tpa_config.json
+ * Interface for App configuration as expected from app_config.json
  * Only includes the fields we care about: settings and tools
  */
-interface TpaConfigFile {
+interface AppConfigFile {
   settings?: AppSetting[];
   tools?: ToolSchema[];
 }
 
 /**
- * Validates a TPA configuration object structure and returns detailed error information
+ * Validates a App configuration object structure and returns detailed error information
  * Only validates settings and tools fields. Unknown setting types are filtered out rather than causing failure.
  * @param config - Object to validate
  * @returns Object with validation result, cleaned config, and specific error message
  */
-function validateTpaConfig(config: any): {
+function validateAppConfig(config: any): {
   isValid: boolean;
   error?: string;
-  cleanedConfig?: TpaConfigFile;
+  cleanedConfig?: AppConfigFile;
   skippedSettings?: Array<{ index: number; type: string; reason: string }>;
 } {
   if (!config || typeof config !== 'object') {
@@ -81,7 +81,7 @@ function validateTpaConfig(config: any): {
   }
 
   const skippedSettings: Array<{ index: number; type: string; reason: string }> = [];
-  const cleanedConfig: TpaConfigFile = {};
+  const cleanedConfig: AppConfigFile = {};
 
   // Settings array is optional but must be an array if provided
   if (config.settings !== undefined && !Array.isArray(config.settings)) {
@@ -329,12 +329,12 @@ function fetchUrl(url: string, timeoutMs: number): Promise<string> {
 }
 
 /**
- * Attempts to fetch and parse tpa_config.json from an app's server
+ * Attempts to fetch and parse app_config.json from an app's server
  * @param app - App document from database
  * @returns Promise resolving to parsed config and skipped settings info, or null if not found/invalid
  */
-async function fetchTpaConfig(app: AppI): Promise<{
-  config: TpaConfigFile;
+async function fetchAppConfig(app: AppI): Promise<{
+  config: AppConfigFile;
   skippedSettingsCount: number;
 } | null> {
   if (!app.publicUrl || app.publicUrl.trim() === '') {
@@ -344,7 +344,7 @@ async function fetchTpaConfig(app: AppI): Promise<{
 
   try {
     const normalizedUrl = normalizeUrl(app.publicUrl);
-    const configUrl = `${normalizedUrl}/tpa_config.json`;
+    const configUrl = `${normalizedUrl}/app_config.json`;
 
     logger.debug(`Fetching config from: ${configUrl}`);
 
@@ -364,7 +364,7 @@ async function fetchTpaConfig(app: AppI): Promise<{
     }
 
     // Validate configuration structure
-    const validation = validateTpaConfig(config);
+    const validation = validateAppConfig(config);
     if (!validation.isValid) {
       logger.warn(`Invalid config structure for ${app.packageName}: ${validation.error}`);
       return null;
@@ -381,7 +381,7 @@ async function fetchTpaConfig(app: AppI): Promise<{
 
     logger.info(`Successfully fetched and validated config for ${app.packageName}`);
     return {
-      config: validation.cleanedConfig as TpaConfigFile,
+      config: validation.cleanedConfig as AppConfigFile,
       skippedSettingsCount: skippedCount
     };
 
@@ -405,7 +405,7 @@ async function fetchTpaConfig(app: AppI): Promise<{
 
 /**
  * Recursively removes _id fields and empty options/enum arrays from objects and arrays
- * Based on removeIdFields function from EditTPA.tsx
+ * Based on removeIdFields function from EditApp.tsx
  * @param obj - The object or array to clean
  * @returns The cleaned object without _id fields and empty options/enum arrays
  */
@@ -435,7 +435,7 @@ function removeIdFields(obj: any): any {
  * @param config - Configuration data to import
  * @returns Promise resolving to update result summary
  */
-async function updateAppWithConfig(app: AppI, config: TpaConfigFile): Promise<{
+async function updateAppWithConfig(app: AppI, config: AppConfigFile): Promise<{
   fieldsUpdated: string[];
   fieldsSkipped: string[];
   settingsCount: number;
@@ -525,8 +525,8 @@ async function migrate() {
       logger.info(`Processing app ${appsProcessed}/${totalApps}: ${app.packageName}`);
 
       try {
-        // Attempt to fetch tpa_config.json
-        const configResult = await fetchTpaConfig(app);
+        // Attempt to fetch app_config.json
+        const configResult = await fetchAppConfig(app);
 
         if (!configResult) {
           logger.debug(`No valid config found for ${app.packageName}`);

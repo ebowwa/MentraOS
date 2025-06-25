@@ -1,4 +1,4 @@
-// src/tpa/webview/index.ts
+// src/app/webview/index.ts
 import axios from 'axios';
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../types';
@@ -28,10 +28,10 @@ export function extractTempToken(url: string): string | null {
 
 /**
  * Exchanges a temporary token for a user ID with the AugmentOS Cloud.
- * This should be called from the TPA's backend server.
+ * This should be called from the App's backend server.
  * @param cloudApiUrl The base URL of the AugmentOS Cloud API.
  * @param tempToken The temporary token obtained from the webview URL.
- * @param apiKey Your TPA's secret API key.
+ * @param apiKey Your App's secret API key.
  * @returns A Promise that resolves with an object containing the userId.
  * @throws Throws an error if the exchange fails (e.g., invalid token, expired, network error).
  */
@@ -216,7 +216,7 @@ function validateCloudApiUrlChecksum(checksum: string, cloudApiUrl: string, apiK
  *
  * @param options Configuration options.
  * @param options.cloudApiUrl The base URL of the AugmentOS Cloud API.
- * @param options.apiKey Your TPA's secret API key.
+ * @param options.apiKey Your App's secret API key.
  * @param options.tokenQueryParam The name of the query parameter containing the token (default: 'aos_temp_token').
  * @param options.cookieName The name of the cookie to store the session token (default: 'aos_session').
  * @param options.cookieSecret Secret key used to sign the session cookie. MUST be provided and kept secure.

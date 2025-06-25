@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Scanner;
 
 /**
- * Example manager to parse tpa_config.json and provide typed getters and setters
+ * Example manager to parse app_config.json and provide typed getters and setters
  * for toggle, text, slider, select, multiselect, etc.
  */
 public class AugmentOSSettingsManager {
@@ -217,7 +217,7 @@ public class AugmentOSSettingsManager {
     }
 
     /**
-     * Parse the TPA's tpa_config.json. We'll store:
+     * Parse the App's app_config.json. We'll store:
      * - key
      * - type
      * - defaultValue
@@ -228,9 +228,9 @@ public class AugmentOSSettingsManager {
     private static void loadConfig(Context context) {
         settingDefs.clear();
         try {
-            int resId = context.getResources().getIdentifier("tpa_config", "raw", context.getPackageName());
+            int resId = context.getResources().getIdentifier("app_config", "raw", context.getPackageName());
             if (resId == 0) {
-                Log.w(TAG, "No tpa_config.json found in res/raw!");
+                Log.w(TAG, "No app_config.json found in res/raw!");
                 return;
             }
 
@@ -242,7 +242,7 @@ public class AugmentOSSettingsManager {
             JSONObject root = new JSONObject(jsonString);
             JSONArray settingsArr = root.optJSONArray("settings");
             if (settingsArr == null) {
-                Log.w(TAG, "No 'settings' array in tpa_config.json");
+                Log.w(TAG, "No 'settings' array in app_config.json");
                 return;
             }
 
@@ -281,9 +281,9 @@ public class AugmentOSSettingsManager {
                 settingDefs.add(def);
             }
 
-            Log.d(TAG, "Loaded " + settingDefs.size() + " storable settings from tpa_config.json");
+            Log.d(TAG, "Loaded " + settingDefs.size() + " storable settings from app_config.json");
         } catch (Exception e) {
-            Log.e(TAG, "Error parsing tpa_config.json", e);
+            Log.e(TAG, "Error parsing app_config.json", e);
         }
     }
 

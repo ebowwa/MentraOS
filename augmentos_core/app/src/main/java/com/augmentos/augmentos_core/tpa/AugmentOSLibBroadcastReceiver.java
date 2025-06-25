@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_core.tpa;
+package com.augmentos.augmentos_core.app;
 
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.AugmentOSManagerPackageName;
 import static com.augmentos.augmentoslib.AugmentOSGlobalConstants.EVENT_ID;
@@ -22,7 +22,7 @@ import com.augmentos.augmentoslib.events.ManagerToCoreRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardImageViewRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardSimpleViewRequestEvent;
 import com.augmentos.augmentoslib.events.RegisterCommandRequestEvent;
-import com.augmentos.augmentoslib.events.RegisterTpaRequestEvent;
+import com.augmentos.augmentoslib.events.RegisterAppRequestEvent;
 import com.augmentos.augmentoslib.events.RowsCardViewRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStartRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStopRequestEvent;
@@ -33,7 +33,7 @@ import com.augmentos.augmentoslib.events.SubscribeDataStreamRequestEvent;
 import com.augmentos.augmentoslib.events.TextLineViewRequestEvent;
 import com.augmentos.augmentoslib.events.TextWallViewRequestEvent;
 import com.augmentos.augmentos_core.events.ThirdPartyEdgeAppErrorEvent;
-import com.augmentos.augmentos_core.tpa.eventbusmessages.TPARequestEvent;
+import com.augmentos.augmentos_core.app.eventbusmessages.AppRequestEvent;
 
 import org.greenrobot.eventbus.EventBus;
 
@@ -50,7 +50,7 @@ public class AugmentOSLibBroadcastReceiver extends BroadcastReceiver {
 
     public AugmentOSLibBroadcastReceiver(Context context) {
         this.context = context;
-        this.filterPkg = AugmentOSGlobalConstants.FROM_TPA_FILTER;
+        this.filterPkg = AugmentOSGlobalConstants.FROM_APP_FILTER;
         IntentFilter intentFilter = new IntentFilter(this.filterPkg);
         // Add RECEIVER_EXPORTED flag for Android 13+ compatibility
         context.registerReceiver(this, intentFilter, Context.RECEIVER_EXPORTED);
@@ -64,7 +64,7 @@ public class AugmentOSLibBroadcastReceiver extends BroadcastReceiver {
             serializedEvent = intent.getSerializableExtra(EVENT_BUNDLE);
 //        Log.d(TAG, "GOT EVENT ID: " + eventId);
         } catch (Exception e) {
-            Log.d(TAG, "ERROR: TPA BUILT FOR INCOMPATIBLE AUGMENTOSLIB VERSION");
+            Log.d(TAG, "ERROR: App BUILT FOR INCOMPATIBLE AUGMENTOSLIB VERSION");
             Log.d(TAG, "THE OFFENDING PACKAGE: " + sendingPackage);
             Log.d(TAG, e.getMessage());
             EventBus.getDefault().post(new ThirdPartyEdgeAppErrorEvent(sendingPackage, sendingPackage + " is not compatible with your version of AugmentOS. Please update or uninstall the app."));
@@ -75,7 +75,7 @@ public class AugmentOSLibBroadcastReceiver extends BroadcastReceiver {
         switch (eventId) {
             //if it's a request to run something on glasses or anything else having to do with commands, pipe this through the command system
             case RegisterCommandRequestEvent.eventId:
-            case RegisterTpaRequestEvent.eventId:
+            case RegisterAppRequestEvent.eventId:
             case ReferenceCardSimpleViewRequestEvent.eventId:
             case ReferenceCardImageViewRequestEvent.eventId:
             case BulletPointListViewRequestEvent.eventId:
@@ -93,7 +93,7 @@ public class AugmentOSLibBroadcastReceiver extends BroadcastReceiver {
             case StartAsrStreamRequestEvent.eventId:
             case StopAsrStreamRequestEvent.eventId:
 //                Log.d(TAG, "Piping command event to ThirdPartyAppSystem for verification before broadcast.");
-                EventBus.getDefault().post(new TPARequestEvent(eventId, serializedEvent, sendingPackage));
+                EventBus.getDefault().post(new AppRequestEvent(eventId, serializedEvent, sendingPackage));
                 break;
             case SubscribeDataStreamRequestEvent.eventId:
                 Log.d(TAG, "Resending subscribe to data stream request event");

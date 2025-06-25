@@ -1,14 +1,14 @@
 /**
- * Validation script: Verify TPA Configuration Import
+ * Validation script: Verify App Configuration Import
  *
- * This script validates that the TPA configuration migration was successful by:
+ * This script validates that the App configuration migration was successful by:
  * 1. Checking each app for the presence of settings, tools, and permissions
  * 2. Validating the structure of imported configurations
  * 3. Reporting statistics on the migration success
  * 4. Identifying apps that may need manual attention
  *
  * Usage:
- * ts-node -r tsconfig-paths/register scripts/migrations/validate-tpa-configs.ts
+ * ts-node -r tsconfig-paths/register scripts/migrations/validate-app-configs.ts
  *
  * Options:
  * --package-filter  Only validate apps with package name matching pattern (supports regex)
@@ -24,7 +24,7 @@ import { logger as rootLogger } from '../../src/services/logging/pino-logger';
 // Configure environment
 dotenv.config();
 
-const logger = rootLogger.child({ script: 'validate-tpa-configs' });
+const logger = rootLogger.child({ script: 'validate-app-configs' });
 const DETAILED_OUTPUT = process.argv.includes('--detailed');
 const ONLY_ISSUES = process.argv.includes('--only-issues');
 
@@ -329,7 +329,7 @@ async function validate() {
     appResults.sort((a, b) => a.score - b.score);
 
     // Display results
-    logger.info('\n=== TPA Configuration Validation Results ===\n');
+    logger.info('\n=== App Configuration Validation Results ===\n');
 
     // Show individual app results
     appResults.forEach(result => {

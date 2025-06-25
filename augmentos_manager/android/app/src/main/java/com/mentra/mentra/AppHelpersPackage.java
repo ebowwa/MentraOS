@@ -9,11 +9,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TpaHelpersPackage implements ReactPackage {
+public class AppHelpersPackage implements ReactPackage {
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
         List<NativeModule> modules = new ArrayList<>();
-        modules.add(new TpaHelpersModule(reactContext));
+        modules.add(new AppHelpersModule(reactContext));
         return modules;
     }
 

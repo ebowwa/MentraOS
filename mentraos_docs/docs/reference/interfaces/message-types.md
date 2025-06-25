@@ -15,53 +15,53 @@ The fundamental structure for all messages exchanged within the MentraOS system.
 interface BaseMessage {
   /** A string identifying the specific type of the message. */
   type: string;
-  
+
   /** Optional timestamp indicating when the message was created. */
   timestamp?: Date;
-  
+
   /** Optional session identifier, used for routing messages related to a specific user session. */
   sessionId?: string;
 }
 ```
 
-## TPA to Cloud Messages
+## App to Cloud Messages
 
-### TpaConnectionInit
+### AppConnectionInit
 
-Message sent by TPA to initiate connection with cloud.
+Message sent by App to initiate connection with cloud.
 
 ```typescript
-interface TpaConnectionInit extends BaseMessage {
-  type: TpaToCloudMessageType.CONNECTION_INIT;
+interface AppConnectionInit extends BaseMessage {
+  type: AppToCloudMessageType.CONNECTION_INIT;
   packageName: string;
   sessionId: string; // Session ID obtained from webhook
-  apiKey: string;    // TPA's API Key
+  apiKey: string;    // App's API Key
 }
 ```
 
-**Note:** This message is automatically sent by the SDK when [`tpaSession.connect()`](/reference/tpa-session#connect) is called.
+**Note:** This message is automatically sent by the SDK when [`appSession.connect()`](/reference/app-session#connect) is called.
 
-### TpaSubscriptionUpdate
+### AppSubscriptionUpdate
 
-Message sent by TPA to update its active event subscriptions.
+Message sent by App to update its active event subscriptions.
 
 ```typescript
-interface TpaSubscriptionUpdate extends BaseMessage {
-  type: TpaToCloudMessageType.SUBSCRIPTION_UPDATE;
+interface AppSubscriptionUpdate extends BaseMessage {
+  type: AppToCloudMessageType.SUBSCRIPTION_UPDATE;
   packageName: string;
   subscriptions: ExtendedStreamType[]; // List of StreamType or language-specific strings
 }
 ```
 
-**Note:** This message is automatically sent by the SDK when [`tpaSession.subscribe()`](/reference/tpa-session#subscribe) is called or when subscription settings change.
+**Note:** This message is automatically sent by the SDK when [`appSession.subscribe()`](/reference/app-session#subscribe) is called or when subscription settings change.
 
 ### DisplayRequest
 
-Message sent from a TPA to request displaying a layout. Covered in detail in the [Layout Types](/reference/interfaces/layout-types) section.
+Message sent from a App to request displaying a layout. Covered in detail in the [Layout Types](/reference/interfaces/layout-types) section.
 
 ```typescript
 interface DisplayRequest extends BaseMessage {
-  type: TpaToCloudMessageType.DISPLAY_REQUEST;
+  type: AppToCloudMessageType.DISPLAY_REQUEST;
   packageName: string;
   view: ViewType;
   layout: Layout;
@@ -70,15 +70,15 @@ interface DisplayRequest extends BaseMessage {
 }
 ```
 
-**Note:** This message is automatically sent by the SDK when using [`tpaSession.layouts`](/reference/managers/layout-manager) methods.
+**Note:** This message is automatically sent by the SDK when using [`appSession.layouts`](/reference/managers/layout-manager) methods.
 
 ### DashboardContentUpdate
 
-Message sent from a TPA to update dashboard content.
+Message sent from a App to update dashboard content.
 
 ```typescript
 interface DashboardContentUpdate extends BaseMessage {
-  type: TpaToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
+  type: AppToCloudMessageType.DASHBOARD_CONTENT_UPDATE;
   packageName: string;
   sessionId: string;
   content: string;
@@ -89,29 +89,29 @@ interface DashboardContentUpdate extends BaseMessage {
 
 **Note:** This message is automatically sent by the SDK when using [`session.dashboard.content`](/reference/dashboard-api#class-dashboardcontentapi) methods.
 
-## Cloud to TPA Messages
+## Cloud to App Messages
 
-### TpaConnectionAck
+### AppConnectionAck
 
-Message sent by cloud to TPA confirming successful connection and providing initial settings/config.
+Message sent by cloud to App confirming successful connection and providing initial settings/config.
 
 ```typescript
-interface TpaConnectionAck extends BaseMessage {
-  type: CloudToTpaMessageType.CONNECTION_ACK;
-  settings?: AppSettings; // Current user settings for this TPA
-  config?: TpaConfig;     // TPA configuration fetched by the cloud (optional)
+interface AppConnectionAck extends BaseMessage {
+  type: CloudToAppMessageType.CONNECTION_ACK;
+  settings?: AppSettings; // Current user settings for this App
+  config?: AppConfig;     // App configuration fetched by the cloud (optional)
 }
 ```
 
 When this message is received, the SDK fires the `onConnected` event handler with the settings.
 
-### TpaConnectionError
+### AppConnectionError
 
-Message sent by cloud to TPA indicating a connection failure.
+Message sent by cloud to App indicating a connection failure.
 
 ```typescript
-interface TpaConnectionError extends BaseMessage {
-  type: CloudToTpaMessageType.CONNECTION_ERROR;
+interface AppConnectionError extends BaseMessage {
+  type: CloudToAppMessageType.CONNECTION_ERROR;
   message: string; // Error description
   code?: string;    // Optional error code
 }
@@ -119,11 +119,11 @@ interface TpaConnectionError extends BaseMessage {
 
 ### AppStopped
 
-Message sent by cloud to TPA indicating the session has been stopped.
+Message sent by cloud to App indicating the session has been stopped.
 
 ```typescript
 interface AppStopped extends BaseMessage {
-  type: CloudToTpaMessageType.APP_STOPPED;
+  type: CloudToAppMessageType.APP_STOPPED;
   reason: "user_disabled" | "system_stop" | "error"; // Reason for stopping
   message?: string; // Optional additional details
 }
@@ -133,11 +133,11 @@ When this message is received, the SDK triggers the disconnect process and fires
 
 ### SettingsUpdate
 
-Message sent by cloud to TPA when the user updates the TPA's settings.
+Message sent by cloud to App when the user updates the App's settings.
 
 ```typescript
 interface SettingsUpdate extends BaseMessage {
-  type: CloudToTpaMessageType.SETTINGS_UPDATE;
+  type: CloudToAppMessageType.SETTINGS_UPDATE;
   packageName: string;
   settings: AppSettings; // The complete new set of settings
 }
@@ -147,11 +147,11 @@ When this message is received, the SDK updates its internal settings and fires t
 
 ### DataStream
 
-Wrapper message sent by cloud to TPA carrying data for a subscribed stream.
+Wrapper message sent by cloud to App carrying data for a subscribed stream.
 
 ```typescript
 interface DataStream extends BaseMessage {
-  type: CloudToTpaMessageType.DATA_STREAM; // Wrapper type
+  type: CloudToAppMessageType.DATA_STREAM; // Wrapper type
   streamType: StreamType; // The actual type of the data payload
   data: unknown; // The payload, type depends on streamType
 }
@@ -161,11 +161,11 @@ The SDK unwraps this message and dispatches it to the appropriate event handlers
 
 ### DashboardModeChanged
 
-Message sent by cloud to TPA when the dashboard mode changes.
+Message sent by cloud to App when the dashboard mode changes.
 
 ```typescript
 interface DashboardModeChanged extends BaseMessage {
-  type: CloudToTpaMessageType.DASHBOARD_MODE_CHANGED;
+  type: CloudToAppMessageType.DASHBOARD_MODE_CHANGED;
   mode: DashboardMode; // The new dashboard mode
 }
 ```
@@ -174,11 +174,11 @@ When this message is received, the SDK fires any registered `onModeChange` callb
 
 ### DashboardAlwaysOnChanged
 
-Message sent by cloud to TPA when the always-on dashboard state changes.
+Message sent by cloud to App when the always-on dashboard state changes.
 
 ```typescript
 interface DashboardAlwaysOnChanged extends BaseMessage {
-  type: CloudToTpaMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
+  type: CloudToAppMessageType.DASHBOARD_ALWAYS_ON_CHANGED;
   enabled: boolean; // Whether always-on dashboard is now enabled
 }
 ```
@@ -237,10 +237,10 @@ Structure for reporting WebSocket-specific errors.
 interface WebSocketError {
   /** An error code string. */
   code: string;
-  
+
   /** A human-readable description of the error. */
   message: string;
-  
+
   /** Optional additional details about the error. */
   details?: unknown;
 }
@@ -252,27 +252,27 @@ When a WebSocket error occurs, the SDK fires the `onError` event handler with th
 
 Four enums are used to identify the types of messages exchanged between different components:
 
-### TpaToCloudMessageType
+### AppToCloudMessageType
 
-Message types sent FROM TPA TO cloud.
+Message types sent FROM App TO cloud.
 
 ```typescript
-enum TpaToCloudMessageType {
-  CONNECTION_INIT = 'tpa_connection_init',
+enum AppToCloudMessageType {
+  CONNECTION_INIT = 'app_connection_init',
   SUBSCRIPTION_UPDATE = 'subscription_update',
   DISPLAY_REQUEST = 'display_event',
   DASHBOARD_CONTENT_UPDATE = 'dashboard_content_update'
 }
 ```
 
-### CloudToTpaMessageType
+### CloudToAppMessageType
 
-Message types sent FROM cloud TO TPA.
+Message types sent FROM cloud TO App.
 
 ```typescript
-enum CloudToTpaMessageType {
-  CONNECTION_ACK = 'tpa_connection_ack',
-  CONNECTION_ERROR = 'tpa_connection_error',
+enum CloudToAppMessageType {
+  CONNECTION_ACK = 'app_connection_ack',
+  CONNECTION_ERROR = 'app_connection_error',
   APP_STOPPED = 'app_stopped',
   SETTINGS_UPDATE = 'settings_update',
   DATA_STREAM = 'data_stream',
@@ -313,39 +313,39 @@ enum CloudToGlassesMessageType {
 The SDK provides type guard functions to identify message types:
 
 ```typescript
-// For TPA to Cloud messages
-function isTpaConnectionInit(message: TpaToCloudMessage): message is TpaConnectionInit;
-function isTpaSubscriptionUpdate(message: TpaToCloudMessage): message is TpaSubscriptionUpdate;
-function isDisplayRequest(message: TpaToCloudMessage): message is DisplayRequest;
-function isDashboardContentUpdate(message: TpaToCloudMessage): message is DashboardContentUpdate;
-function isDashboardModeChange(message: TpaToCloudMessage): message is DashboardModeChange;
-function isDashboardSystemUpdate(message: TpaToCloudMessage): message is DashboardSystemUpdate;
+// For App to Cloud messages
+function isAppConnectionInit(message: AppToCloudMessage): message is AppConnectionInit;
+function isAppSubscriptionUpdate(message: AppToCloudMessage): message is AppSubscriptionUpdate;
+function isDisplayRequest(message: AppToCloudMessage): message is DisplayRequest;
+function isDashboardContentUpdate(message: AppToCloudMessage): message is DashboardContentUpdate;
+function isDashboardModeChange(message: AppToCloudMessage): message is DashboardModeChange;
+function isDashboardSystemUpdate(message: AppToCloudMessage): message is DashboardSystemUpdate;
 
-// For Cloud to TPA messages
-function isTpaConnectionAck(message: CloudToTpaMessage): message is TpaConnectionAck;
-function isTpaConnectionError(message: CloudToTpaMessage): message is TpaConnectionError;
-function isAppStopped(message: CloudToTpaMessage): message is AppStopped;
-function isSettingsUpdate(message: CloudToTpaMessage): message is SettingsUpdate;
-function isDataStream(message: CloudToTpaMessage): message is DataStream | AudioChunk;
-function isAudioChunk(message: CloudToTpaMessage): message is AudioChunk;
-function isDashboardModeChanged(message: CloudToTpaMessage): message is DashboardModeChanged;
-function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is DashboardAlwaysOnChanged;
+// For Cloud to App messages
+function isAppConnectionAck(message: CloudToAppMessage): message is AppConnectionAck;
+function isAppConnectionError(message: CloudToAppMessage): message is AppConnectionError;
+function isAppStopped(message: CloudToAppMessage): message is AppStopped;
+function isSettingsUpdate(message: CloudToAppMessage): message is SettingsUpdate;
+function isDataStream(message: CloudToAppMessage): message is DataStream | AudioChunk;
+function isAudioChunk(message: CloudToAppMessage): message is AudioChunk;
+function isDashboardModeChanged(message: CloudToAppMessage): message is DashboardModeChanged;
+function isDashboardAlwaysOnChanged(message: CloudToAppMessage): message is DashboardAlwaysOnChanged;
 ```
 
 ## WebSocket Connection Flow
 
 1. **Initialization**:
-   - When [`tpaSession.connect()`](/reference/tpa-session#connect) is called, the SDK establishes a WebSocket connection to the URL provided
-   - It sends a [`TpaConnectionInit`](#tpaconnectioninit) message with the TPA's credentials
+   - When [`appSession.connect()`](/reference/app-session#connect) is called, the SDK establishes a WebSocket connection to the URL provided
+   - It sends a [`AppConnectionInit`](#appconnectioninit) message with the App's credentials
 
 2. **Authentication**:
    - The cloud validates the credentials
-   - If valid, it sends back a [`TpaConnectionAck`](#tpaconnectionack) with the user's settings
-   - If invalid, it sends back a [`TpaConnectionError`](#tpaconnectionerror)
+   - If valid, it sends back a [`AppConnectionAck`](#appconnectionack) with the user's settings
+   - If invalid, it sends back a [`AppConnectionError`](#appconnectionerror)
 
 3. **Subscribing to Streams**:
-   - The TPA can call [`tpaSession.subscribe()`](/reference/tpa-session#subscribe) to receive specific event types
-   - The SDK sends a [`TpaSubscriptionUpdate`](#tpasubscriptionupdate) message to the cloud
+   - The App can call [`appSession.subscribe()`](/reference/app-session#subscribe) to receive specific event types
+   - The SDK sends a [`AppSubscriptionUpdate`](#appsubscriptionupdate) message to the cloud
 
 4. **Receiving Data**:
    - The cloud sends data for subscribed streams either directly or wrapped in a [`DataStream`](#datastream) message
@@ -353,4 +353,4 @@ function isDashboardAlwaysOnChanged(message: CloudToTpaMessage): message is Dash
 
 5. **Session Termination**:
    - When a session is stopped, the cloud sends an [`AppStopped`](#appstopped) message
-   - The SDK handles cleanup and fires the `onDisconnected` event handler 
+   - The SDK handles cleanup and fires the `onDisconnected` event handler

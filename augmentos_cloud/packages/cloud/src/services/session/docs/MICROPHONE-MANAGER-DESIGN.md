@@ -72,10 +72,10 @@ Currently, microphone state management is implemented in `websocket.service.ts` 
    }
    ```
 
-2. **TPA Subscription Updates** (when a TPA subscribes to audio):
-   - Called when TPAs update their subscription preferences
-   - Enables microphone if any TPA subscribes to audio streams
-   - Disables microphone if no TPAs are subscribed to audio streams
+2. **App Subscription Updates** (when a App subscribes to audio):
+   - Called when Apps update their subscription preferences
+   - Enables microphone if any App subscribes to audio streams
+   - Disables microphone if no Apps are subscribed to audio streams
 
 3. **Session Cleanup**:
    - Clears any active debounce timers when sessions end
@@ -259,7 +259,7 @@ export class MicrophoneManager {
 
   /**
    * Handle subscription changes
-   * This should be called when TPAs update their subscriptions
+   * This should be called when Apps update their subscriptions
    */
   handleSubscriptionChange(): void {
     const hasMediaSubscriptions = this.checkMediaSubscriptions();
@@ -325,8 +325,8 @@ private async handleGlassesConnectionState(userSession: ExtendedUserSession, mes
   }
 }
 
-// In services/websocket/websocket-tpa.service.ts
-private async handleTpaSubscriptionUpdate(userSession: ExtendedUserSession, message: TpaSubscriptionUpdate): Promise<void> {
+// In services/websocket/websocket-app.service.ts
+private async handleAppSubscriptionUpdate(userSession: ExtendedUserSession, message: AppSubscriptionUpdate): Promise<void> {
   try {
     // Update subscriptions...
 
@@ -380,7 +380,7 @@ endSession(userSession: ExtendedUserSession): void {
 2. All new code will be in separate directories:
    - `/services/session/MicrophoneManager.ts`
    - `/services/websocket/websocket-glasses.service.ts`
-   - `/services/websocket/websocket-tpa.service.ts`
+   - `/services/websocket/websocket-app.service.ts`
 
 3. The new WebSocket and session services will use MicrophoneManager
 4. Once completely tested, we'll switch over to the new implementation
@@ -406,8 +406,8 @@ endSession(userSession: ExtendedUserSession): void {
    - Update session.isTranscribing flag appropriately
 
 5. **Subscription Awareness**:
-   - Enable mic when any TPA subscribes to audio streams
-   - Disable mic when no TPAs need audio anymore
+   - Enable mic when any App subscribes to audio streams
+   - Disable mic when no Apps need audio anymore
 
 6. **Cleanup**:
    - Properly dispose of timers when session ends

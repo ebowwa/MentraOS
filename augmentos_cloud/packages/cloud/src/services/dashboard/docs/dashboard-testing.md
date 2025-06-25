@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the testing strategy for the dashboard system. Testing the dashboard is done through a combination of the test harness, which simulates both TPAs and the display manager, and manual validation with actual hardware.
+This document outlines the testing strategy for the dashboard system. Testing the dashboard is done through a combination of the test harness, which simulates both Apps and the display manager, and manual validation with actual hardware.
 
 ## Testing Approach
 
@@ -23,7 +23,7 @@ The test harness includes several built-in test scenarios:
 Tests basic dashboard functionality:
 - System section updates
 - Dashboard mode changes
-- TPA content updates for different modes
+- App content updates for different modes
 - Always-on overlay functionality
 
 #### App Lifecycle Test
@@ -80,7 +80,7 @@ The test harness renders dashboard layouts to the terminal to help visualize the
 === dashboard_always_on ===
 [left]: Time: 12:34
 [right]: Battery: 85%
-[tpaContent]: Steps: 5,280
+[appContent]: Steps: 5,280
 ================
 --------------
 ```
@@ -91,7 +91,7 @@ After terminal testing, validation should be performed with actual hardware to e
 
 1. Layout rendering is correct on the glasses display
 2. Updates are properly throttled for hardware limitations
-3. Content from multiple TPAs is displayed correctly
+3. Content from multiple Apps is displayed correctly
 4. Mode transitions work as expected
 
 ## Custom Test Cases
@@ -106,8 +106,8 @@ const harness = new DashboardTestHarness();
 harness.updateSystemSection('topLeft', 'Time: 13:45');
 harness.changeDashboardMode(DashboardMode.MAIN);
 
-// Add content from a TPA
-harness.sendTpaContent('com.example.app', 'Custom test content');
+// Add content from a App
+harness.sendAppContent('com.example.app', 'Custom test content');
 
 // Check the current state
 const mode = harness.getCurrentMode();
@@ -131,25 +131,25 @@ While the current tests are interactive, they can be extended to include asserti
 ```typescript
 function runAutomatedTest() {
   const harness = new DashboardTestHarness();
-  
+
   // Set up test
   harness.updateSystemSection('topLeft', 'Test');
   harness.changeDashboardMode(DashboardMode.MAIN);
-  
+
   // Get layout
   const layout = harness.getCurrentLayout();
-  
+
   // Assert expected values
   console.assert(
     layout?.sections?.topLeft === 'Test',
     'topLeft section should contain "Test"'
   );
-  
+
   console.assert(
     harness.getCurrentMode() === DashboardMode.MAIN,
     'Dashboard mode should be MAIN'
   );
-  
+
   console.log('All tests passed!');
 }
 ```

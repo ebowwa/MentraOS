@@ -1,14 +1,14 @@
 import express, { Request, Response } from 'express';
-import { validateTpaApiKey } from '../middleware/validateApiKey';
+import { validateAppApiKey } from '../middleware/validateApiKey';
 import sessionService from '../services/session/session.service';
-import multiUserTpaService from '../services/core/multi-user-tpa.service';
+import multiUserAppService from '../services/core/multi-user-app.service';
 import appService from '../services/core/app.service';
 
 const router = express.Router();
 
 /**
- * @route POST /api/tpa-communication/discover-users
- * @desc Discover other users currently using the same TPA
+ * @route POST /api/app-communication/discover-users
+ * @desc Discover other users currently using the same App
  * @access Private (requires core token)
  * @body { packageName: string, includeUserProfiles?: boolean }
  */
@@ -19,7 +19,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({ error: 'Missing or invalid Authorization header' });
     }
-    const tpaApiKey = authHeader.replace('Bearer ', '').trim();
+    const appApiKey = authHeader.replace('Bearer ', '').trim();
     const { packageName, includeUserProfiles = false } = req.body;
     if (!packageName) {
       return res.status(400).json({ error: 'packageName is required' });
@@ -30,7 +30,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid packageName' });
     }
     // Validate the API key
-    const isValid = await appService.validateApiKey(packageName, tpaApiKey);
+    const isValid = await appService.validateApiKey(packageName, appApiKey);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid API key' });
     }
@@ -47,11 +47,11 @@ router.post('/discover-users', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'No active session found for user' });
     }
 
-    multiUserTpaService.addTpaUser(packageName, userId);
+    multiUserAppService.addAppUser(packageName, userId);
 
-    // console.log("users$#%#",  multiUserTpaService.getActiveTpaUsers(packageName))
+    // console.log("users$#%#",  multiUserAppService.getActiveAppUsers(packageName))
     // Use the service to get the user list (adapted from websocket handler)
-    const users = multiUserTpaService.getActiveTpaUsers(packageName)
+    const users = multiUserAppService.getActiveAppUsers(packageName)
       .filter((otherUserId: string) => otherUserId !== userId)
       .map((otherUserId: string) => {
         const otherSession = sessionService.getSessionByUserId(otherUserId);
@@ -59,7 +59,7 @@ router.post('/discover-users', async (req: Request, res: Response) => {
           userId: otherUserId,
           sessionId: otherSession?.sessionId || 'unknown',
           joinedAt: new Date(), // TODO: Track actual join time
-          userProfile: includeUserProfiles ? multiUserTpaService['getUserProfile'](otherUserId) : undefined
+          userProfile: includeUserProfiles ? multiUserAppService['getUserProfile'](otherUserId) : undefined
         };
       });
     return res.json({

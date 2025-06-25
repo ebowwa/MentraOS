@@ -17,7 +17,7 @@ import com.augmentos.augmentoslib.events.ManagerToCoreRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardImageViewRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardSimpleViewRequestEvent;
 import com.augmentos.augmentoslib.events.RegisterCommandRequestEvent;
-import com.augmentos.augmentoslib.events.RegisterTpaRequestEvent;
+import com.augmentos.augmentoslib.events.RegisterAppRequestEvent;
 import com.augmentos.augmentoslib.events.RowsCardViewRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStartRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStopRequestEvent;
@@ -33,14 +33,14 @@ import org.greenrobot.eventbus.Subscribe;
 
 import java.io.Serializable;
 
-public class TPABroadcastSender {
+public class AppBroadcastSender {
     private String intentPkg;
     private String packageName;
     Context context;
 
-    public TPABroadcastSender(Context context) {
+    public AppBroadcastSender(Context context) {
         this.context = context;
-        this.intentPkg = AugmentOSGlobalConstants.FROM_TPA_FILTER;
+        this.intentPkg = AugmentOSGlobalConstants.FROM_APP_FILTER;
         packageName = context.getPackageName();
 
         //register event bus subscribers
@@ -48,7 +48,7 @@ public class TPABroadcastSender {
     }
 
     public void sendEventToAugmentOS(String eventId, Serializable eventBundle) {
-//        Log.d("TPASEND event: ", this.intentPkg);
+//        Log.d("AppSEND event: ", this.intentPkg);
 
         //setup intent to send
         Intent intent = new Intent();
@@ -141,7 +141,7 @@ public class TPABroadcastSender {
 
     @Subscribe
     public void onFinalScrollingTextEvent(FinalScrollingTextRequestEvent receivedEvent){
-        Log.d("TPASEND", "FINAL SCROLL SEND");
+        Log.d("AppSEND", "FINAL SCROLL SEND");
         String eventId = receivedEvent.eventId;
         sendEventToAugmentOS(eventId, receivedEvent);
     }
@@ -157,7 +157,7 @@ public class TPABroadcastSender {
     }
 
     @Subscribe
-    public void onRegisterAppRequestEvent(RegisterTpaRequestEvent e){
+    public void onRegisterAppRequestEvent(RegisterAppRequestEvent e){
         sendEventToAugmentOS(e.eventId, e);
     }
 

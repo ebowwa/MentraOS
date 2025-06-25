@@ -56,7 +56,7 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'doc',
-          id: 'tpa-lifecycle',
+          id: 'app-lifecycle',
           label: 'App Lifecycle',
         },
         'events',
@@ -78,8 +78,8 @@ const sidebars: SidebarsConfig = {
         id: 'reference/index',
       },
       items: [
-        'reference/tpa-server',
-        'reference/tpa-session',
+        'reference/app-server',
+        'reference/app-session',
         {
           type: 'category',
           label: 'Managers',

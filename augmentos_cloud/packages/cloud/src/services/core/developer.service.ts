@@ -29,7 +29,7 @@ export function hashApiKey(apiKey: string): string {
 }
 
 /**
- * Generate a new API key for a TPA
+ * Generate a new API key for a App
  * @returns The generated API key
  */
 export function generateApiKey(): string {
@@ -37,15 +37,15 @@ export function generateApiKey(): string {
 }
 
 /**
- * Generate a JWT token for TPA authentication
- * This JWT contains both packageName and apiKey, allowing TPAs to authenticate
+ * Generate a JWT token for App authentication
+ * This JWT contains both packageName and apiKey, allowing Apps to authenticate
  * with a single token instead of separate values.
  *
- * @param packageName - The package name of the TPA
- * @param apiKey - The API key for the TPA
+ * @param packageName - The package name of the App
+ * @param apiKey - The API key for the App
  * @returns The JWT token
  */
-export function generateTpaJwt(packageName: string, apiKey: string): string {
+export function generateAppJwt(packageName: string, apiKey: string): string {
   // Generate the JWT with packageName and apiKey
   return jwt.sign(
     { packageName, apiKey },
@@ -54,8 +54,8 @@ export function generateTpaJwt(packageName: string, apiKey: string): string {
 }
 
 /**
- * Validate an API key for a TPA
- * @param packageName - The package name of the TPA
+ * Validate an API key for a App
+ * @param packageName - The package name of the App
  * @param apiKey - The API key to validate
  * @param userSession - Optional user session for tying logs to a user.
  * @returns Whether the API key is valid
@@ -161,7 +161,7 @@ export async function createApp(
     });
 
     // Generate JWT
-    const jwt = generateTpaJwt(app.packageName, apiKey);
+    const jwt = generateAppJwt(app.packageName, apiKey);
 
     return {
       app,
@@ -224,7 +224,7 @@ export async function regenerateApiKey(
     );
 
     // Generate JWT
-    const jwt = generateTpaJwt(packageName, apiKey);
+    const jwt = generateAppJwt(packageName, apiKey);
 
     return {
       apiKey,

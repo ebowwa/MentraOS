@@ -40,7 +40,7 @@ private async handleConnectionInit(userSession: UserSession, reconnection: boole
 - `userSession.heartbeatManager.registerGlassesConnection(ws)` (line 952)
 - `userSession.heartbeatManager.updateGlassesActivity(ws)` on every message (line 992)
 - Ping/pong handlers for connection health tracking (lines 1008-1017)
-- TPA heartbeat management (lines 2132-2143)
+- App heartbeat management (lines 2132-2143)
 - Graceful disconnect handling with detailed diagnostics (line 1022)
 
 **New System Has:**
@@ -83,7 +83,7 @@ WebSocket connections timing out due to lack of ping/pong keepalive mechanism.
 {
   "text": "",
   "originalText": "",
-  "from": "fr-FR", 
+  "from": "fr-FR",
   "to": "fr-FR",
   "duration": 148800000,
   "subscription": "translation:en-US-to-fr-FR"
@@ -115,12 +115,12 @@ WebSocket connections timing out due to lack of ping/pong keepalive mechanism.
 ### High Priority Issues
 1. **Connection Instability**: Frequent disconnects disrupt user experience
 2. **Resource Waste**: Unnecessary stream recreation on every reconnect
-3. **Data Loss**: Empty transcriptions provide no value to TPAs
+3. **Data Loss**: Empty transcriptions provide no value to Apps
 4. **Debugging Difficulty**: Poor visibility into connection health
 
 ### Cascading Effects
 - Unstable connections → frequent transcription restarts → potential Azure rate limiting
-- Empty results → TPAs receive useless data → poor app experience
+- Empty results → Apps receive useless data → poor app experience
 - Missing diagnostics → difficult to troubleshoot in production
 
 ## Proposed Solutions
@@ -261,7 +261,7 @@ instance.recognizer.canceled = (_sender: any, event: SpeechRecognitionCanceledEv
     lastAudioFeed: userSession.lastAudioTimestamp,
     timeSinceLastAudio: userSession.lastAudioTimestamp ? Date.now() - userSession.lastAudioTimestamp : null
   };
-  
+
   sessionLogger.error(errorDetails, 'Azure Speech Recognition canceled');
 };
 ```
@@ -352,7 +352,7 @@ docker logs cloud-1 2>&1 | grep -E "(Recognition canceled|errorCode.*4)" | tail 
 **Critical (P0):**
 - Missing heartbeat system causing connection instability
 
-**High (P1):** 
+**High (P1):**
 - Stream recreation conflicts on reconnect
 - Empty transcription results providing no value
 

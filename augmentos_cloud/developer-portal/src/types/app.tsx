@@ -1,4 +1,4 @@
-export interface TPA {
+export interface App {
     id: string;
     name: string;
     packageName: string;

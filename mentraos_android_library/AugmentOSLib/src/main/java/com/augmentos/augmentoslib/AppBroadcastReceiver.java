@@ -14,7 +14,7 @@ import com.augmentos.augmentoslib.events.CoreToManagerOutputEvent;
 import com.augmentos.augmentoslib.events.FocusChangedEvent;
 import com.augmentos.augmentoslib.events.GlassesPovImageEvent;
 import com.augmentos.augmentoslib.events.GlassesTapOutputEvent;
-import com.augmentos.augmentoslib.events.KillTpaEvent;
+import com.augmentos.augmentoslib.events.KillAppEvent;
 import com.augmentos.augmentoslib.events.NotificationEvent;
 import com.augmentos.augmentoslib.events.SmartRingButtonOutputEvent;
 import com.augmentos.augmentoslib.events.SpeechRecOutputEvent;
@@ -24,14 +24,14 @@ import org.greenrobot.eventbus.EventBus;
 
 import java.io.Serializable;
 
-public class TPABroadcastReceiver extends BroadcastReceiver {
+public class AppBroadcastReceiver extends BroadcastReceiver {
     private String filterPkg;
     private Context context;
-    public String TAG = "AugmentOSLib_TPABroadcastReceiver";
+    public String TAG = "AugmentOSLib_AppBroadcastReceiver";
 
-    public TPABroadcastReceiver(Context myContext) {
+    public AppBroadcastReceiver(Context myContext) {
         this.context = myContext;
-        this.filterPkg = AugmentOSGlobalConstants.TO_TPA_FILTER;
+        this.filterPkg = AugmentOSGlobalConstants.TO_APP_FILTER;
         IntentFilter intentFilter = new IntentFilter(this.filterPkg);
         this.context.registerReceiver(this, intentFilter, RECEIVER_EXPORTED);
     }
@@ -45,8 +45,8 @@ public class TPABroadcastReceiver extends BroadcastReceiver {
             case CommandTriggeredEvent.eventId:
                 AugmentOSLibBus.getInstance().post((CommandTriggeredEvent) serializedEvent);
                 break;
-            case KillTpaEvent.eventId:
-                AugmentOSLibBus.getInstance().post((KillTpaEvent) serializedEvent);
+            case KillAppEvent.eventId:
+                AugmentOSLibBus.getInstance().post((KillAppEvent) serializedEvent);
                 break;
             case SpeechRecOutputEvent.eventId:
                 AugmentOSLibBus.getInstance().post((SpeechRecOutputEvent) serializedEvent);

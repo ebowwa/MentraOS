@@ -1,6 +1,6 @@
 // src/index.ts
-// export { TpaSession as TpaClient } from './session';
-// export type { TpaSessionConfig as TpaClientConfig } from './session';
+// export { AppSession as AppClient } from './session';
+// export type { AppSessionConfig as AppClientConfig } from './session';
 
 export * from "./server/index";
 export * from "./session/index";

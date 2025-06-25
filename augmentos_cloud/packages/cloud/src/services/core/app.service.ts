@@ -1,13 +1,13 @@
 /**
- * @fileoverview Service for managing TPAs (Third Party Applications).
+ * @fileoverview Service for managing Apps (Third Party Applications).
  * Handles app lifecycle, authentication, and webhook interactions.
  *
- * Currently uses in-memory storage with hardcoded system TPAs.
- * Design decision: Separate system TPAs from user-created TPAs
+ * Currently uses in-memory storage with hardcoded system Apps.
+ * Design decision: Separate system Apps from user-created Apps
  * to maintain core functionality regardless of database state.
  */
 
-import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@mentra/sdk';
+import { StopWebhookRequest, AppType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@mentra/sdk';
 // TODO(isaiah): Consider splitting this into multiple services (appstore.service, developer.service, tools.service)
 import axios, { AxiosError } from 'axios';
 // import { systemApps } from './system-apps';
@@ -56,7 +56,7 @@ export function getPreInstalledForThisServer(): string[] {
 }
 
 /**
- * System TPAs that are always available.
+ * System Apps that are always available.
  * These are core applications provided by the platform.
  * @Param developerId - leaving this undefined indicates a system app.
  */
@@ -87,8 +87,8 @@ export function isUninstallable(packageName: string) {
 /**
  * Implementation of the app management service.
  * Design decisions:
- * 1. Separate system and user TPAs
- * 2. Immutable system TPA list
+ * 1. Separate system and user Apps
+ * 2. Immutable system App list
  * 3. Webhook retry logic
  * 4. API key validation
  */
@@ -98,7 +98,7 @@ export class AppService {
   private appStates = new Map<string, Map<string, AppState>>();
 
   /**
-   * Gets all available TPAs, both system and user-created.
+   * Gets all available Apps, both system and user-created.
    * @returns Promise resolving to array of all apps
    */
   async getAllApps(userId?: string): Promise<AppI[]> {
@@ -130,8 +130,8 @@ export class AppService {
   }
 
   /**
-   * Gets a specific TPA by ID.
-   * @param packageName - TPA identifier
+   * Gets a specific App by ID.
+   * @param packageName - App identifier
    * @returns Promise resolving to app if found
    */
   async getApp(packageName: string): Promise<AppI | undefined> {
@@ -141,7 +141,7 @@ export class AppService {
   }
 
   /**
- * Triggers the stop webhook for a TPA app session.
+ * Triggers the stop webhook for a App app session.
  * @param url - Stop Webhook URL
  * @param payload - Data to send
  * @throws If stop webhook fails
@@ -161,13 +161,13 @@ export class AppService {
 
   // TODO(isaiah): Move this to the new AppManager within new UserSession class.
   async triggerStopByPackageName(packageName: string, userId: string): Promise<void> {
-    // Look up the TPA by packageName
+    // Look up the App by packageName
     const app = await this.getApp(packageName);
-    const tpaSessionId = `${userId}-${packageName}`;
+    const appSessionId = `${userId}-${packageName}`;
 
     const payload: StopWebhookRequest = {
       type: WebhookRequestType.STOP_REQUEST,
-      sessionId: tpaSessionId,
+      sessionId: appSessionId,
       userId: userId,
       reason: 'user_disabled',
       timestamp: new Date().toISOString()
@@ -185,8 +185,8 @@ export class AppService {
   }
 
   /**
-   * Validates a TPA's API key.
-   * @param packageName - TPA identifier
+   * Validates a App's API key.
+   * @param packageName - App identifier
    * @param apiKey - API key to validate
    * @param clientIp - Optional IP address of the client for system app validation
    * @returns Promise resolving to validation result
@@ -761,16 +761,16 @@ export class AppService {
   }
 
   /**
-   * Triggers the TPA tool webhook for Mira AI integration
-   * @param packageName - The package name of the TPA to send the tool to
+   * Triggers the App tool webhook for Mira AI integration
+   * @param packageName - The package name of the App to send the tool to
    * @param payload - The tool webhook payload containing tool details
    * @returns Promise resolving to the webhook response or error
    */
-  async triggerTpaToolWebhook(packageName: string, payload: ToolCall): Promise<{
+  async triggerAppToolWebhook(packageName: string, payload: ToolCall): Promise<{
     status: number;
     data: any;
   }> {
-    // Look up the TPA by packageName
+    // Look up the App by packageName
     const app = await this.getApp(packageName);
 
     logger.debug('🔨 Triggering tool webhook for:', packageName);
@@ -791,7 +791,7 @@ export class AppService {
 
     // For security reasons, we can't retrieve the original API key
     // Instead, we'll use a special header that identifies this as a system request
-    // The TPA server will need to validate this using the hashedApiKey
+    // The App server will need to validate this using the hashedApiKey
 
     // Construct the webhook URL from the app's public URL
     const webhookUrl = `${app.publicUrl}/tool`;
@@ -809,7 +809,7 @@ export class AppService {
         const response = await axios.post(webhookUrl, payload, {
           headers: {
             'Content-Type': 'application/json',
-            'X-TPA-API-Key': appDoc.hashedApiKey, // Use the hashed API key for authentication
+            'X-App-API-Key': appDoc.hashedApiKey, // Use the hashed API key for authentication
           },
           timeout: 20000 // 10 second timeout
         });
@@ -873,22 +873,22 @@ export class AppService {
   }
 
   /**
-   * Gets all tool definitions for a TPA
+   * Gets all tool definitions for a App
    * Used by Mira AI to discover available tools
-   * @param packageName - The package name of the TPA
+   * @param packageName - The package name of the App
    * @returns Array of tool definitions
    */
-  async getTpaTools(packageName: string): Promise<ToolSchema[]> {
-    // Look up the TPA by packageName
+  async getAppTools(packageName: string): Promise<ToolSchema[]> {
+    // Look up the App by packageName
     const app = await this.getApp(packageName);
 
     if (!app) {
       throw new Error(`App ${packageName} not found`);
     }
 
-    logger.debug('Getting TPA tools for:', packageName);
+    logger.debug('Getting App tools for:', packageName);
 
-    // Get tools from the database instead of fetching tpa_config.json
+    // Get tools from the database instead of fetching app_config.json
     if (app.tools && Array.isArray(app.tools)) {
       logger.debug(`Found ${app.tools.length} tools in ${packageName} database`);
       return app.tools;

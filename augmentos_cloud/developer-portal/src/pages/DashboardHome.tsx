@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, PlusIcon } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
-import TPATable from "../components/TPATable";
+import AppTable from "../components/AppTable";
 import api from '../services/api.service';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '../context/OrganizationContext';
@@ -16,35 +16,35 @@ const DashboardHome: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { currentOrg, loading: orgLoading } = useOrganization();
 
-  const [tpas, setTpas] = useState<AppResponse[]>([]);
+  const [apps, setApps] = useState<AppResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Removed dialog states as they're now handled by the TPATable component
+  // Removed dialog states as they're now handled by the AppTable component
 
-  // Fetch TPAs when component mounts or organization changes
+  // Fetch Apps when component mounts or organization changes
   useEffect(() => {
-    const fetchTPAs = async () => {
+    const fetchApps = async () => {
       if (!isAuthenticated || !currentOrg) return;
 
       try {
         setIsLoading(true);
-        const tpaData = await api.apps.getAll(currentOrg.id);
-        setTpas(tpaData);
+        const appData = await api.apps.getAll(currentOrg.id);
+        setApps(appData);
         setError(null);
       } catch (err) {
-        console.error('Failed to fetch TPAs:', err);
-        setError('Failed to load TPAs. Please try again.');
+        console.error('Failed to fetch Apps:', err);
+        setError('Failed to load Apps. Please try again.');
       } finally {
         setIsLoading(false);
       }
     };
 
     if (!authLoading && !orgLoading) {
-      fetchTPAs();
+      fetchApps();
     }
   }, [isAuthenticated, authLoading, orgLoading, currentOrg]);
 
-  const hasNoTpas = tpas.length === 0 && !isLoading && !error;
+  const hasNoApps = apps.length === 0 && !isLoading && !error;
 
   return (
     <DashboardLayout>
@@ -55,7 +55,7 @@ const DashboardHome: React.FC = () => {
             className="gap-2"
             asChild
           >
-            <Link to="/tpas/create">
+            <Link to="/apps/create">
               <PlusIcon className="h-4 w-4" />
               Create App
             </Link>
@@ -101,28 +101,28 @@ const DashboardHome: React.FC = () => {
           </Card>
         </div>
 
-        {/* TPAs Section */}
-        <TPATable
-          tpas={tpas}
+        {/* Apps Section */}
+        <AppTable
+          apps={apps}
           isLoading={isLoading}
           error={error}
           maxDisplayCount={3}
           showSearch={true}
           showViewAll={true}
-          onTpaDeleted={(packageName) => {
-            setTpas(tpas.filter(tpa => tpa.packageName !== packageName));
+          onAppDeleted={(packageName) => {
+            setApps(apps.filter(app => app.packageName !== packageName));
           }}
-          onTpaUpdated={(updatedTpa) => {
-            setTpas(prevTpas =>
-              prevTpas.map(tpa =>
-                tpa.packageName === updatedTpa.packageName ? updatedTpa : tpa
+          onAppUpdated={(updatedApp) => {
+            setApps(prevApps =>
+              prevApps.map(app =>
+                app.packageName === updatedApp.packageName ? updatedApp : app
               )
             );
           }}
         />
       </div>
 
-      {/* Dialogs now handled by TPATable component */}
+      {/* Dialogs now handled by AppTable component */}
     </DashboardLayout>
   );
 };

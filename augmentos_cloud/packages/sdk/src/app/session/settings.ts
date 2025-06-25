@@ -1,7 +1,7 @@
 /**
  * 🔧 Settings Manager Module
  *
- * Manages TPA settings with automatic synchronization and change notifications.
+ * Manages App settings with automatic synchronization and change notifications.
  * Provides type-safe access to settings with default values.
  */
 import EventEmitter from 'events';
@@ -44,7 +44,7 @@ enum SettingsEvents {
 /**
  * 🔧 Settings Manager
  *
- * Provides a type-safe interface for accessing and reacting to TPA settings.
+ * Provides a type-safe interface for accessing and reacting to App settings.
  * Automatically synchronizes with AugmentOS Cloud.
  */
 export class SettingsManager {
@@ -66,7 +66,7 @@ export class SettingsManager {
    * Create a new settings manager
    *
    * @param initialSettings Initial settings values (if available)
-   * @param packageName Package name for the TPA
+   * @param packageName Package name for the App
    * @param wsUrl WebSocket URL (for deriving HTTP API URL)
    * @param userId User ID (for authenticated requests)
    * @param subscribeFn Optional function to call to subscribe to streams
@@ -90,7 +90,7 @@ export class SettingsManager {
   /**
    * Configure the API client
    *
-   * @param packageName Package name for the TPA
+   * @param packageName Package name for the App
    * @param wsUrl WebSocket URL
    * @param userId User ID
    */
@@ -399,7 +399,7 @@ export class SettingsManager {
           logger.error(`[SettingsManager] subscribeFn failed for stream '${subscriptionKey}':`, err);
         });
     } else {
-      logger.warn(`[SettingsManager] 'subscribeFn' not provided. Cannot auto-subscribe for AugmentOS setting '${key}'. Manual TPA subscription might be required.`);
+      logger.warn(`[SettingsManager] 'subscribeFn' not provided. Cannot auto-subscribe for AugmentOS setting '${key}'. Manual App subscription might be required.`);
     }
 
     return () => {

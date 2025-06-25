@@ -43,7 +43,7 @@ export default function TextEditorScreen() {
     if (router.canGoBack()) {
       router.back()
     } else {
-      router.replace("/tpa/settings")
+      router.replace("/app/settings")
     }
   }
 
@@ -51,7 +51,7 @@ export default function TextEditorScreen() {
     if (router.canGoBack()) {
       router.back()
     } else {
-      router.replace("/tpa/settings")
+      router.replace("/app/settings")
     }
   }
 

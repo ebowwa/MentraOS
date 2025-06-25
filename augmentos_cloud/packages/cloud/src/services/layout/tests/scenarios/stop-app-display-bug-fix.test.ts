@@ -7,7 +7,7 @@
 
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
-import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
+import { DisplayRequest, AppToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
 import { strict as assert } from 'assert';
 import { systemApps } from '../../../core/system-apps';
 
@@ -28,7 +28,7 @@ export async function testNoDisplayRestoreForStoppedApps() {
   // Utility function to create a display request
   function createDisplayRequest(packageName: string, text: string): DisplayRequest {
     return {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName,
       view: ViewType.MAIN,
       layout: {

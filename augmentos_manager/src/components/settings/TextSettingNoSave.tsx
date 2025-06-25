@@ -26,7 +26,7 @@ const TextSettingNoSave: React.FC<TextSettingNoSaveProps> = ({label, value, onCh
 
   const handleOpenEditor = () => {
     router.push({
-      pathname: "/tpa/text-editor",
+      pathname: "/app/text-editor",
       params: {
         label,
         value,

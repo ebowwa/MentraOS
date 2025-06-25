@@ -2,24 +2,24 @@
 
 ## Overview
 
-This document describes a set of improvements made to the MentraOS WebSocket connection system, focusing on reconnection behavior for TPAs when network interruptions occur. These improvements address issues observed both in development environments (laptop sleep causing disconnection) and in production (unexpected disconnections without proper recovery).
+This document describes a set of improvements made to the MentraOS WebSocket connection system, focusing on reconnection behavior for Apps when network interruptions occur. These improvements address issues observed both in development environments (laptop sleep causing disconnection) and in production (unexpected disconnections without proper recovery).
 
 ## Problem Statement
 
-The WebSocket connections between TPAs and MentraOS Cloud were experiencing several issues:
+The WebSocket connections between Apps and MentraOS Cloud were experiencing several issues:
 
-1. **WebSocket Closure Detection**: When WebSocket connections would close unexpectedly, the TPAs would not attempt to reconnect.
+1. **WebSocket Closure Detection**: When WebSocket connections would close unexpectedly, the Apps would not attempt to reconnect.
 
-2. **Health Monitor Tracking**: When the health monitor service would terminate stale connections, there was no coordination with the WebSocket service, and the closure had poor identification of which TPA had been disconnected.
+2. **Health Monitor Tracking**: When the health monitor service would terminate stale connections, there was no coordination with the WebSocket service, and the closure had poor identification of which App had been disconnected.
 
-3. **Client State Mismatch**: TPAs would continue attempting to use closed WebSocket connections, leading to error messages like "WebSocket not connected (current state: CLOSED)".
+3. **Client State Mismatch**: Apps would continue attempting to use closed WebSocket connections, leading to error messages like "WebSocket not connected (current state: CLOSED)".
 
 4. **Dashboard Manager Issues**: The dashboard manager was particularly affected due to its continuous update cycle, showing frequent errors when disconnected.
 
 ## Key Insights from Investigation
 
 1. **Default Reconnection Behavior**:
-   - `autoReconnect` was set to `false` by default in TpaSession class
+   - `autoReconnect` was set to `false` by default in AppSession class
    - When WebSockets closed, no reconnection attempt was made
 
 2. **Close Type Distinction**:
@@ -28,7 +28,7 @@ The WebSocket connections between TPAs and MentraOS Cloud were experiencing seve
 
 3. **Health Monitor Service Issues**:
    - Uses `ws.terminate()` instead of `ws.close()`, leading to abrupt closures
-   - Logs only generic "TPA connection timed out" without identifying which TPA
+   - Logs only generic "App connection timed out" without identifying which App
    - Doesn't update the WebSocket service's connection tracking
 
 4. **State Management Problems**:
@@ -84,7 +84,7 @@ The following areas were identified for future improvement:
    - Improve coordination with WebSocket service
 
 2. **Connection Identity Tracking**:
-   - Enhance the health monitor to track TPA identity with WebSockets
+   - Enhance the health monitor to track App identity with WebSockets
    - Add callbacks when closing connections
 
 3. **State Synchronization**:
@@ -92,12 +92,12 @@ The following areas were identified for future improvement:
    - Ensure all components know when a connection is closed
 
 4. **Client-Side Detection**:
-   - Improve how TPAs detect and handle broken connections
+   - Improve how Apps detect and handle broken connections
 
 ## Relevant Code Locations
 
-1. **TPA Session WebSocket Handling**:
-   - `/packages/sdk/src/tpa/session/index.ts` - Connection logic and reconnection
+1. **App Session WebSocket Handling**:
+   - `/packages/sdk/src/app/session/index.ts` - Connection logic and reconnection
 
 2. **Health Monitor Service**:
    - `/packages/cloud/src/services/core/health-monitor.service.ts` - Connection health tracking
@@ -106,10 +106,10 @@ The following areas were identified for future improvement:
    - `/packages/cloud/src/services/core/websocket.service.ts` - Connection management
 
 4. **Dashboard Manager**:
-   - `/packages/apps/dashboard/src/index.ts` - Example TPA affected by disconnections
+   - `/packages/apps/dashboard/src/index.ts` - Example App affected by disconnections
 
 ## Conclusion
 
-The implemented changes significantly improve the WebSocket reconnection behavior, making TPAs more resilient to network interruptions. The primary approach is enabling auto-reconnection by default and making the reconnection logic smarter about when to attempt reconnection.
+The implemented changes significantly improve the WebSocket reconnection behavior, making Apps more resilient to network interruptions. The primary approach is enabling auto-reconnection by default and making the reconnection logic smarter about when to attempt reconnection.
 
 Further architectural improvements to the health monitor service and its coordination with the WebSocket service would provide even better connection reliability and diagnostics.

@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_core.tpa.eventbusmessages;
+package com.augmentos.augmentos_core.app.eventbusmessages;
 
 public class NaturalLanguageArgsCommandViewRequestEvent {
     public String prompt;

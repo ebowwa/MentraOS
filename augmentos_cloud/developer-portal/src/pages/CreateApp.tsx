@@ -1,4 +1,4 @@
-// pages/CreateTPA.tsx
+// pages/CreateApp.tsx
 import React, { useState } from 'react';
 import { AxiosError } from 'axios';
 import { Button } from "@/components/ui/button";
@@ -13,37 +13,37 @@ import { ArrowLeftIcon, AlertCircle, CheckCircle } from "lucide-react";
 // import { Switch } from "@/components/ui/switch";
 import DashboardLayout from "../components/DashboardLayout";
 import ApiKeyDialog from "../components/dialogs/ApiKeyDialog";
-import TpaSuccessDialog from "../components/dialogs/TpaSuccessDialog";
+import AppSuccessDialog from "../components/dialogs/AppSuccessDialog";
 import api, { AppResponse } from '@/services/api.service';
 import { AppI } from '@mentra/sdk';
 import { normalizeUrl } from '@/libs/utils';
 import PermissionsForm from '../components/forms/PermissionsForm';
-import { Permission } from '@/types/tpa';
+import { Permission } from '@/types/app';
 import { useAuth } from '../hooks/useAuth';
 import { useOrganization } from '@/context/OrganizationContext';
-import { TPA } from '@/types/tpa';
+import { App } from '@/types/app';
 import ImageUpload from '../components/forms/ImageUpload';
 
-import TpaTypeTooltip from '../components/forms/TpaTypeTooltip';
-// import type { TpaType } from '@mentra/sdk';
-// import { TPA } from '@/types/tpa';
+import AppTypeTooltip from '../components/forms/AppTypeTooltip';
+// import type { AppType } from '@mentra/sdk';
+// import { App } from '@/types/app';
 // Import the public email provider list
 // import publicEmailDomains from 'email-providers/all.json';
 
-enum TpaType {
+enum AppType {
   STANDARD = 'standard',
   BACKGROUND = 'background'
 }
 /**
- * Page for creating a new TPA (Third Party Application)
+ * Page for creating a new App (Third Party Application)
  */
-const CreateTPA: React.FC = () => {
+const CreateApp: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currentOrg } = useOrganization();
 
   // Form state
-  const [formData, setFormData] = useState<Partial<TPA>>({
+  const [formData, setFormData] = useState<Partial<App>>({
     packageName: '',
     name: '',
     description: '',
@@ -51,7 +51,7 @@ const CreateTPA: React.FC = () => {
     publicUrl: '',
     logoURL: '',
     webviewURL: '',
-    tpaType: TpaType.BACKGROUND, // Default to BACKGROUND
+    appType: AppType.BACKGROUND, // Default to BACKGROUND
     permissions: [], // Initialize permissions as empty array
     // isPublic: false,
   });
@@ -63,7 +63,7 @@ const CreateTPA: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Dialog states
-  const [createdTPA, setCreatedTPA] = useState<AppResponse | null>(null);
+  const [createdApp, setCreatedApp] = useState<AppResponse | null>(null);
   const [apiKey, setApiKey] = useState<string>('');
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
@@ -76,7 +76,7 @@ const CreateTPA: React.FC = () => {
   // Handle form changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target as any;
-    setFormData((prev: Partial<TPA>) => ({
+    setFormData((prev: Partial<App>) => ({
       ...prev,
       [name]: value
     }));
@@ -129,11 +129,11 @@ const CreateTPA: React.FC = () => {
     }));
   };
 
-  // Handle TpaType changes
-  const handleTpaTypeChange = (value: string) => {
+  // Handle AppType changes
+  const handleAppTypeChange = (value: string) => {
     setFormData(prev => ({
       ...prev,
-      tpaType: value as TpaType
+      appType: value as AppType
     }));
   };
 
@@ -233,8 +233,8 @@ const CreateTPA: React.FC = () => {
     setIsLoading(true);
 
     try {
-      // Prepare TPA data
-      const tpaData: Partial<TPA> = {
+      // Prepare App data
+      const appData: Partial<App> = {
         packageName: formData.packageName,
         name: formData.name,
         description: formData.description,
@@ -242,16 +242,16 @@ const CreateTPA: React.FC = () => {
         publicUrl: formData.publicUrl,
         logoURL: formData.logoURL,
         webviewURL: formData.webviewURL,
-        tpaType: formData.tpaType,
+        appType: formData.appType,
         permissions: formData.permissions
       };
 
-      // Create TPA via API
-      const result = await api.apps.create(currentOrg.id, tpaData as AppI);
+      // Create App via API
+      const result = await api.apps.create(currentOrg.id, appData as AppI);
 
-      // Store API key and created TPA details
+      // Store API key and created App details
       setApiKey(result.apiKey);
-      setCreatedTPA(result.app);
+      setCreatedApp(result.app);
 
       // Show success message
       setSuccessMessage(`App "${formData.name}" created successfully!`);
@@ -259,7 +259,7 @@ const CreateTPA: React.FC = () => {
       // Show API key dialog
       setIsApiKeyDialogOpen(true);
     } catch (error) {
-      console.error('Error creating TPA:', error);
+      console.error('Error creating App:', error);
 
       // Handle specific error types
       if (error instanceof AxiosError && error.response) {
@@ -296,9 +296,9 @@ const CreateTPA: React.FC = () => {
     console.log("API Key dialog state changing to:", open);
     setIsApiKeyDialogOpen(open);
 
-    // If dialog is closing, navigate to TPA list
+    // If dialog is closing, navigate to App list
     if (!open) {
-      navigate('/tpas');
+      navigate('/apps');
     }
   };
 
@@ -319,7 +319,7 @@ const CreateTPA: React.FC = () => {
     <DashboardLayout>
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center mb-6">
-          <Link to="/tpas" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
+          <Link to="/apps" className="flex items-center text-sm text-gray-500 hover:text-gray-700">
             <ArrowLeftIcon className="mr-1 h-4 w-4" />
             Back to Apps
           </Link>
@@ -328,7 +328,7 @@ const CreateTPA: React.FC = () => {
         <Card className="shadow-sm card border-2 transition-colors duration-300">
           <form onSubmit={handleSubmit}>
             <CardHeader>
-              <CardTitle className="text-2xl">Create New TPA</CardTitle>
+              <CardTitle className="text-2xl">Create New App</CardTitle>
               <CardDescription>
                 Fill out the form below to register your app for MentraOS.
               </CardDescription>
@@ -503,29 +503,29 @@ const CreateTPA: React.FC = () => {
                 </p>
               </div>
 
-              {/* TPA Type Selection */}
+              {/* App Type Selection */}
               <div className="space-y-2 pb-5">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="tpaType">App Type</Label>
-                  <TpaTypeTooltip />
+                  <Label htmlFor="appType">App Type</Label>
+                  <AppTypeTooltip />
                 </div>
                 <p className="text-xs text-gray-500">
                   Background apps can run alongside other apps,
                   <br/>Only 1 foreground app can run at a time.
                   <br/>foreground apps yield the display to background apps when displaying content.
                 </p>
-                <Select value={formData.tpaType} onValueChange={handleTpaTypeChange}>
+                <Select value={formData.appType} onValueChange={handleAppTypeChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select app type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={TpaType.BACKGROUND}>
+                    <SelectItem value={AppType.BACKGROUND}>
                       <div className="flex flex-col">
                         <span className="font-medium">Background App</span>
                         {/* <span className="text-xs text-gray-500">Multiple can run simultaneously</span> */}
                       </div>
                     </SelectItem>
-                    <SelectItem value={TpaType.STANDARD}>
+                    <SelectItem value={AppType.STANDARD}>
                       <div className="flex flex-col">
                         <span className="font-medium">Foreground App</span>
                         {/* <span className="text-xs text-gray-500">Only one can run at a time</span> */}
@@ -550,7 +550,7 @@ const CreateTPA: React.FC = () => {
 
             </CardContent>
             <CardFooter className="flex justify-between border-t p-6">
-              <Button variant="outline" type="button" onClick={() => navigate('/tpas')}>
+              <Button variant="outline" type="button" onClick={() => navigate('/apps')}>
                 Back
               </Button>
               <Button type="submit" disabled={isLoading}>
@@ -577,7 +577,7 @@ const CreateTPA: React.FC = () => {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => navigate('/tpas')}
+                        onClick={() => navigate('/apps')}
                         className="border-green-500 text-green-700 hover:bg-green-50"
                       >
                         Go to My Apps
@@ -593,10 +593,10 @@ const CreateTPA: React.FC = () => {
       </div>
 
       {/* API Key Dialog after successful creation */}
-      {createdTPA && (
+      {createdApp && (
         <>
-          <TpaSuccessDialog
-            tpa={createdTPA}
+          <AppSuccessDialog
+            app={createdApp}
             apiKey={apiKey}
             open={isSuccessDialogOpen}
             onOpenChange={handleSuccessDialogClose}
@@ -604,13 +604,13 @@ const CreateTPA: React.FC = () => {
           />
 
           <ApiKeyDialog
-            tpa={createdTPA}
+            app={createdApp}
             apiKey={apiKey}
             open={isApiKeyDialogOpen}
             onOpenChange={handleApiKeyDialogClose}
             onKeyRegenerated={(newKey) => {
               setApiKey(newKey);
-              console.log(`API key regenerated for ${createdTPA?.name}`);
+              console.log(`API key regenerated for ${createdApp?.name}`);
             }}
             orgId={currentOrg?.id}
           />
@@ -620,4 +620,4 @@ const CreateTPA: React.FC = () => {
   );
 };
 
-export default CreateTPA;
+export default CreateApp;

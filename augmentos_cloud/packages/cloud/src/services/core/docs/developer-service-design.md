@@ -71,7 +71,7 @@ export function hashApiKey(apiKey: string): string {
 }
 
 /**
- * Generate a new API key for a TPA
+ * Generate a new API key for a App
  * @returns The generated API key
  */
 export function generateApiKey(): string {
@@ -79,15 +79,15 @@ export function generateApiKey(): string {
 }
 
 /**
- * Generate a JWT token for TPA authentication
- * This JWT contains both packageName and apiKey, allowing TPAs to authenticate
+ * Generate a JWT token for App authentication
+ * This JWT contains both packageName and apiKey, allowing Apps to authenticate
  * with a single token instead of separate values.
- * 
- * @param packageName - The package name of the TPA
- * @param apiKey - The API key for the TPA
+ *
+ * @param packageName - The package name of the App
+ * @param apiKey - The API key for the App
  * @returns The JWT token
  */
-export function generateTpaJwt(packageName: string, apiKey: string): string {
+export function generateAppJwt(packageName: string, apiKey: string): string {
   // Generate the JWT with packageName and apiKey
   return jwt.sign(
     { packageName, apiKey },
@@ -96,8 +96,8 @@ export function generateTpaJwt(packageName: string, apiKey: string): string {
 }
 
 /**
- * Validate an API key for a TPA
- * @param packageName - The package name of the TPA
+ * Validate an API key for a App
+ * @param packageName - The package name of the App
  * @param apiKey - The API key to validate
  * @param clientIp - Optional client IP address for system app validation
  * @returns Whether the API key is valid
@@ -110,28 +110,28 @@ export async function validateApiKey(
   try {
     // Check if this is a system app (special validation rules)
     const isSystemApp = packageName.startsWith('org.augmentos.');
-    
+
     // Find the app in the database
     const app = await AppModel.findOne({ packageName });
     if (!app) {
       serviceLogger.error(`App not found for package: ${packageName}`);
       return false;
     }
-    
+
     // Special validation for system apps (IP restrictions)
     if (isSystemApp && clientIp) {
       // System app validation logic...
       // This preserves the existing IP validation logic for system apps
     }
-    
+
     // Hash the provided API key and compare with stored hash
     const hashedKey = hashApiKey(apiKey);
     const isValid = hashedKey === app.apiKeyHash;
-    
+
     if (!isValid) {
       serviceLogger.error(`Invalid API key for package: ${packageName}`);
     }
-    
+
     return isValid;
   } catch (error) {
     serviceLogger.error(`Error validating API key for ${packageName}:`, error);
@@ -142,13 +142,13 @@ export async function validateApiKey(
 /**
  * Create a new app
  * Enhanced version that also generates a JWT
- * 
+ *
  * @param appData - The app data
  * @param developerId - The developer ID
  * @returns The created app, API key, and JWT
  */
 export async function createApp(
-  appData: any, 
+  appData: any,
   developerId: string
 ): Promise<{ app: AppI, apiKey: string, jwt: string }> {
   try {
@@ -157,17 +157,17 @@ export async function createApp(
       ...appData,
       developerId
     });
-    
+
     // Generate API key and hash
     const apiKey = generateApiKey();
     newApp.apiKeyHash = hashApiKey(apiKey);
-    
+
     // Save the app
     await newApp.save();
-    
+
     // Generate JWT
-    const jwt = generateTpaJwt(newApp.packageName, apiKey);
-    
+    const jwt = generateAppJwt(newApp.packageName, apiKey);
+
     return {
       app: newApp,
       apiKey,
@@ -182,13 +182,13 @@ export async function createApp(
 /**
  * Regenerate API key for an app
  * Enhanced version that also generates a JWT
- * 
+ *
  * @param packageName - The package name
  * @param developerId - The developer ID
  * @returns The new API key and JWT
  */
 export async function regenerateApiKey(
-  packageName: string, 
+  packageName: string,
   developerId: string
 ): Promise<{ apiKey: string, jwt: string }> {
   try {
@@ -197,17 +197,17 @@ export async function regenerateApiKey(
     if (!app) {
       throw new Error(`App not found: ${packageName}`);
     }
-    
+
     // Generate new API key and hash
     const apiKey = generateApiKey();
     app.apiKeyHash = hashApiKey(apiKey);
-    
+
     // Save the app
     await app.save();
-    
+
     // Generate JWT
-    const jwt = generateTpaJwt(packageName, apiKey);
-    
+    const jwt = generateAppJwt(packageName, apiKey);
+
     return {
       apiKey,
       jwt
@@ -264,26 +264,26 @@ import * as developerService from '../core/developer.service';
 
 // During connection upgrade
 if (authHeader && authHeader.startsWith('Bearer ')) {
-  const tpaJwt = authHeader.substring(7);
-  
+  const appJwt = authHeader.substring(7);
+
   try {
     // Verify JWT signature
-    const payload = jwt.verify(tpaJwt, AUGMENTOS_AUTH_JWT_SECRET) as { 
+    const payload = jwt.verify(appJwt, AUGMENTOS_AUTH_JWT_SECRET) as {
       packageName: string;
       apiKey: string;
     };
-    
+
     // Validate API key using developer service
     const isValid = await developerService.validateApiKey(
-      payload.packageName, 
+      payload.packageName,
       payload.apiKey,
       clientIp
     );
-    
+
     if (!isValid) {
       // Handle invalid API key
     }
-    
+
     // Continue with connection
   } catch (error) {
     // Handle JWT verification error

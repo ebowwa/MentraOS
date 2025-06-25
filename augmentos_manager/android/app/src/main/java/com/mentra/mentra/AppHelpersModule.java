@@ -18,11 +18,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public class TpaHelpersModule extends ReactContextBaseJavaModule {
-    private static final String MODULE_NAME = "TpaHelpers";
+public class AppHelpersModule extends ReactContextBaseJavaModule {
+    private static final String MODULE_NAME = "AppHelpers";
     private final ReactApplicationContext reactContext;
 
-    public TpaHelpersModule(ReactApplicationContext reactContext) {
+    public AppHelpersModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
     }

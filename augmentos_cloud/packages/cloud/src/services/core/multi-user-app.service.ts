@@ -1,28 +1,28 @@
 /**
- * Multi-User TPA Service
+ * Multi-User App Service
  *
- * Handles TPA-to-TPA communication by managing active user sessions for each TPA package
- * and routing messages between users with the same TPA active.
+ * Handles App-to-App communication by managing active user sessions for each App package
+ * and routing messages between users with the same App active.
  */
 
 import { WebSocket } from 'ws';
-import { CloudToTpaMessageType, UserSession } from '@mentra/sdk';
+import { CloudToAppMessageType, UserSession } from '@mentra/sdk';
 import {
-  TpaBroadcastMessage,
-  TpaDirectMessage,
-  TpaRoomJoin,
-  TpaRoomLeave
-} from '@mentra/sdk/src/types/messages/tpa-to-cloud';
+  AppBroadcastMessage,
+  AppDirectMessage,
+  AppRoomJoin,
+  AppRoomLeave
+} from '@mentra/sdk/src/types/messages/app-to-cloud';
 import {
-  TpaMessageReceived,
-  TpaUserJoined,
-  TpaUserLeft,
-  TpaRoomUpdated,
-} from '@mentra/sdk/src/types/messages/cloud-to-tpa';
+  AppMessageReceived,
+  AppUserJoined,
+  AppUserLeft,
+  AppRoomUpdated,
+} from '@mentra/sdk/src/types/messages/cloud-to-app';
 import { logger as rootLogger } from '../logging';
 import sessionService from '../session/session.service';
 
-const logger = rootLogger.child({ service: 'multi-user-tpa.service' });
+const logger = rootLogger.child({ service: 'multi-user-app.service' });
 
 /**
  * Room configuration for group messaging
@@ -46,14 +46,14 @@ interface RoomData {
 }
 
 /**
- * Service to manage multi-user TPA sessions and communication
+ * Service to manage multi-user App sessions and communication
  */
-export class MultiUserTpaService {
+export class MultiUserAppService {
   /** Map of packageName -> Set of active user IDs */
-  private activeTpaSessions = new Map<string, Set<string>>();
+  private activeAppSessions = new Map<string, Set<string>>();
 
   /** Map of roomId -> Room data */
-  private tpaRooms = new Map<string, RoomData>();
+  private appRooms = new Map<string, RoomData>();
 
   /** Map of packageName -> Map of roomId -> Set of userIds */
   private packageRooms = new Map<string, Map<string, Set<string>>>();
@@ -65,22 +65,22 @@ export class MultiUserTpaService {
   private readonly MAX_HISTORY = 100;
 
   /**
-   * Get all active users for a specific TPA package
+   * Get all active users for a specific App package
    */
-  getActiveTpaUsers(packageName: string): string[] {
+  getActiveAppUsers(packageName: string): string[] {
 
-    return Array.from(this.activeTpaSessions.get(packageName) || []);
+    return Array.from(this.activeAppSessions.get(packageName) || []);
   }
 
   /**
-   * Broadcast message to all users with the same TPA active
+   * Broadcast message to all users with the same App active
    */
-  async broadcastToTpaUsers(
+  async broadcastToAppUsers(
     senderSession: UserSession,
-    message: TpaBroadcastMessage
+    message: AppBroadcastMessage
   ): Promise<void> {
     const packageName = message.packageName;
-    const activeUsers = this.getActiveTpaUsers(packageName);
+    const activeUsers = this.getActiveAppUsers(packageName);
 
     // console.log("432activeUsers", activeUsers)
 
@@ -88,7 +88,7 @@ export class MultiUserTpaService {
     //   packageName,
     //   senderUserId: message.senderUserId,
     //   targetUserCount: activeUsers.length - 1, // Exclude sender
-    // }, 'Broadcasting message to TPA users');
+    // }, 'Broadcasting message to App users');
 
     let successCount = 0;
 
@@ -103,16 +103,16 @@ export class MultiUserTpaService {
 
       // console.log("432432targetSession")
 
-      const targetTpaConnection = targetSession.appWebsockets.get(packageName);
-      if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
+      const targetAppConnection = targetSession.appWebsockets.get(packageName);
+      if (!targetAppConnection || targetAppConnection.readyState !== WebSocket.OPEN) {
         continue;
       }
 
-      // console.log("432432targetTpaConnection")
+      // console.log("432432targetAppConnection")
 
       try {
-        const receivedMessage: TpaMessageReceived = {
-          type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED,
+        const receivedMessage: AppMessageReceived = {
+          type: CloudToAppMessageType.APP_MESSAGE_RECEIVED,
           payload: message.payload,
           messageId: message.messageId,
           senderUserId: message.senderUserId,
@@ -122,7 +122,7 @@ export class MultiUserTpaService {
 
         // console.log("@#$%^&*432432receivedMessage");
 
-        targetTpaConnection.send(JSON.stringify(receivedMessage));
+        targetAppConnection.send(JSON.stringify(receivedMessage));
         successCount++;
       } catch (error) {
         logger.error({ error, userId, packageName }, 'Error sending broadcast message to user');
@@ -150,7 +150,7 @@ export class MultiUserTpaService {
    */
   async sendDirectMessage(
     senderSession: UserSession,
-    message: TpaDirectMessage
+    message: AppDirectMessage
   ): Promise<boolean> {
     logger.info({
       packageName: message.packageName,
@@ -168,19 +168,19 @@ export class MultiUserTpaService {
       return false;
     }
 
-    const targetTpaConnection = targetSession.appWebsockets.get(message.packageName);
-    if (!targetTpaConnection || targetTpaConnection.readyState !== WebSocket.OPEN) {
+    const targetAppConnection = targetSession.appWebsockets.get(message.packageName);
+    if (!targetAppConnection || targetAppConnection.readyState !== WebSocket.OPEN) {
       logger.warn({
         targetUserId: message.targetUserId,
         packageName: message.packageName,
         messageId: message.messageId
-      }, 'Target TPA connection not available');
+      }, 'Target App connection not available');
       return false;
     }
 
     try {
-      const receivedMessage: TpaMessageReceived = {
-        type: CloudToTpaMessageType.TPA_MESSAGE_RECEIVED,
+      const receivedMessage: AppMessageReceived = {
+        type: CloudToAppMessageType.APP_MESSAGE_RECEIVED,
         payload: message.payload,
         messageId: message.messageId,
         senderUserId: message.senderUserId,
@@ -188,7 +188,7 @@ export class MultiUserTpaService {
         timestamp: message.timestamp
       };
 
-      targetTpaConnection.send(JSON.stringify(receivedMessage));
+      targetAppConnection.send(JSON.stringify(receivedMessage));
 
       // Store in message history
       this.addToMessageHistory(message.packageName, {
@@ -217,14 +217,14 @@ export class MultiUserTpaService {
   }
 
   /**
-   * Handle user joining TPA session
+   * Handle user joining App session
    */
-  addTpaUser(packageName: string, userId: string): void {
-    if (!this.activeTpaSessions.has(packageName)) {
-      this.activeTpaSessions.set(packageName, new Set());
+  addAppUser(packageName: string, userId: string): void {
+    if (!this.activeAppSessions.has(packageName)) {
+      this.activeAppSessions.set(packageName, new Set());
     }
 
-    const users = this.activeTpaSessions.get(packageName)!;
+    const users = this.activeAppSessions.get(packageName)!;
     const wasEmpty = users.size === 0;
     users.add(userId);
 
@@ -233,17 +233,17 @@ export class MultiUserTpaService {
       userId,
       totalActiveUsers: users.size,
       wasFirstUser: wasEmpty
-    }, 'User joined TPA session');
+    }, 'User joined App session');
 
     // Notify other users about the new user
     this.notifyUserJoined(packageName, userId);
   }
 
   /**
-   * Handle user leaving TPA session
+   * Handle user leaving App session
    */
-  removeTpaUser(packageName: string, userId: string): void {
-    const users = this.activeTpaSessions.get(packageName);
+  removeAppUser(packageName: string, userId: string): void {
+    const users = this.activeAppSessions.get(packageName);
     if (users) {
       users.delete(userId);
 
@@ -251,12 +251,12 @@ export class MultiUserTpaService {
         packageName,
         userId,
         remainingUsers: users.size
-      }, 'User left TPA session');
+      }, 'User left App session');
 
       // Clean up empty package sessions
       if (users.size === 0) {
-        this.activeTpaSessions.delete(packageName);
-        logger.info({ packageName }, 'Removed empty TPA package session');
+        this.activeAppSessions.delete(packageName);
+        logger.info({ packageName }, 'Removed empty App package session');
       }
 
       // Remove user from all rooms for this package
@@ -272,12 +272,12 @@ export class MultiUserTpaService {
    */
   async handleRoomJoin(
     senderSession: UserSession,
-    message: TpaRoomJoin
+    message: AppRoomJoin
   ): Promise<void> {
     const { packageName, roomId, roomConfig } = message;
 
     // Get or create room
-    let roomData = this.tpaRooms.get(roomId);
+    let roomData = this.appRooms.get(roomId);
     if (!roomData) {
       roomData = {
         id: roomId,
@@ -291,7 +291,7 @@ export class MultiUserTpaService {
         },
         members: new Set()
       };
-      this.tpaRooms.set(roomId, roomData);
+      this.appRooms.set(roomId, roomData);
 
       // Track room by package
       if (!this.packageRooms.has(packageName)) {
@@ -330,10 +330,10 @@ export class MultiUserTpaService {
    */
   async handleRoomLeave(
     senderSession: UserSession,
-    message: TpaRoomLeave
+    message: AppRoomLeave
   ): Promise<void> {
     const { roomId } = message;
-    const roomData = this.tpaRooms.get(roomId);
+    const roomData = this.appRooms.get(roomId);
 
     if (!roomData) {
       logger.warn({ roomId, userId: senderSession.userId }, 'Attempted to leave non-existent room');
@@ -354,7 +354,7 @@ export class MultiUserTpaService {
 
     // If room is empty, clean it up
     if (roomData.members.size === 0) {
-      this.tpaRooms.delete(roomId);
+      this.appRooms.delete(roomId);
       this.packageRooms.get(roomData.packageName)?.delete(roomId);
       logger.info({ roomId }, 'Removed empty room');
     } else {
@@ -374,13 +374,13 @@ export class MultiUserTpaService {
       if (roomUsers.has(userId)) {
         roomUsers.delete(userId);
 
-        const roomData = this.tpaRooms.get(roomId);
+        const roomData = this.appRooms.get(roomId);
         if (roomData) {
           roomData.members.delete(userId);
 
           if (roomData.members.size === 0) {
             // Clean up empty room
-            this.tpaRooms.delete(roomId);
+            this.appRooms.delete(roomId);
             packageRoomsMap.delete(roomId);
           } else {
             // Notify remaining members
@@ -392,10 +392,10 @@ export class MultiUserTpaService {
   }
 
   /**
-   * Notify users when someone joins the TPA
+   * Notify users when someone joins the App
    */
   private notifyUserJoined(packageName: string, userId: string): void {
-    const activeUsers = this.getActiveTpaUsers(packageName);
+    const activeUsers = this.getActiveAppUsers(packageName);
 
     for (const otherUserId of activeUsers) {
       if (otherUserId === userId) continue; // Don't notify the user who joined
@@ -403,19 +403,19 @@ export class MultiUserTpaService {
       const userSession = sessionService.getSessionByUserId(otherUserId);
       if (!userSession) continue;
 
-      const tpaConnection = userSession.appWebsockets.get(packageName);
-      if (!tpaConnection || tpaConnection.readyState !== WebSocket.OPEN) continue;
+      const appConnection = userSession.appWebsockets.get(packageName);
+      if (!appConnection || appConnection.readyState !== WebSocket.OPEN) continue;
 
       try {
-        const joinMessage: TpaUserJoined = {
-          type: CloudToTpaMessageType.TPA_USER_JOINED,
+        const joinMessage: AppUserJoined = {
+          type: CloudToAppMessageType.APP_USER_JOINED,
           userId,
           sessionId: sessionService.getSessionByUserId(userId)?.sessionId || 'unknown',
           joinedAt: new Date(),
           timestamp: new Date()
         };
 
-        tpaConnection.send(JSON.stringify(joinMessage));
+        appConnection.send(JSON.stringify(joinMessage));
       } catch (error) {
         logger.error({ error, packageName, userId: otherUserId }, 'Error sending user joined notification');
       }
@@ -423,28 +423,28 @@ export class MultiUserTpaService {
   }
 
   /**
-   * Notify users when someone leaves the TPA
+   * Notify users when someone leaves the App
    */
   private notifyUserLeft(packageName: string, userId: string): void {
-    const activeUsers = this.getActiveTpaUsers(packageName);
+    const activeUsers = this.getActiveAppUsers(packageName);
 
     for (const otherUserId of activeUsers) {
       const userSession = sessionService.getSessionByUserId(otherUserId);
       if (!userSession) continue;
 
-      const tpaConnection = userSession.appWebsockets.get(packageName);
-      if (!tpaConnection || tpaConnection.readyState !== WebSocket.OPEN) continue;
+      const appConnection = userSession.appWebsockets.get(packageName);
+      if (!appConnection || appConnection.readyState !== WebSocket.OPEN) continue;
 
       try {
-        const leftMessage: TpaUserLeft = {
-          type: CloudToTpaMessageType.TPA_USER_LEFT,
+        const leftMessage: AppUserLeft = {
+          type: CloudToAppMessageType.APP_USER_LEFT,
           userId,
           sessionId: 'unknown', // User already disconnected
           leftAt: new Date(),
           timestamp: new Date()
         };
 
-        tpaConnection.send(JSON.stringify(leftMessage));
+        appConnection.send(JSON.stringify(leftMessage));
       } catch (error) {
         logger.error({ error, packageName, userId: otherUserId }, 'Error sending user left notification');
       }
@@ -459,12 +459,12 @@ export class MultiUserTpaService {
       const userSession = sessionService.getSessionByUserId(userId);
       if (!userSession) continue;
 
-      const tpaConnection = userSession.appWebsockets.get(roomData.packageName);
-      if (!tpaConnection || tpaConnection.readyState !== WebSocket.OPEN) continue;
+      const appConnection = userSession.appWebsockets.get(roomData.packageName);
+      if (!appConnection || appConnection.readyState !== WebSocket.OPEN) continue;
 
       try {
-        const updateMessage: TpaRoomUpdated = {
-          type: CloudToTpaMessageType.TPA_ROOM_UPDATED,
+        const updateMessage: AppRoomUpdated = {
+          type: CloudToAppMessageType.APP_ROOM_UPDATED,
           roomId: roomData.id,
           updateType: updateType as any,
           roomData: {
@@ -476,7 +476,7 @@ export class MultiUserTpaService {
           timestamp: new Date()
         };
 
-        tpaConnection.send(JSON.stringify(updateMessage));
+        appConnection.send(JSON.stringify(updateMessage));
       } catch (error) {
         logger.error({ error, roomId: roomData.id, userId }, 'Error sending room update notification');
       }
@@ -520,7 +520,7 @@ export class MultiUserTpaService {
   }
 
   /**
-   * Get statistics about active TPA sessions
+   * Get statistics about active App sessions
    */
   getStats(): {
     totalPackages: number;
@@ -528,21 +528,21 @@ export class MultiUserTpaService {
     totalRooms: number;
     packageStats: Array<{ packageName: string; userCount: number; roomCount: number }>;
   } {
-    const packageStats = Array.from(this.activeTpaSessions.entries()).map(([packageName, users]) => ({
+    const packageStats = Array.from(this.activeAppSessions.entries()).map(([packageName, users]) => ({
       packageName,
       userCount: users.size,
       roomCount: this.packageRooms.get(packageName)?.size || 0
     }));
 
     return {
-      totalPackages: this.activeTpaSessions.size,
-      totalActiveUsers: Array.from(this.activeTpaSessions.values()).reduce((sum, users) => sum + users.size, 0),
-      totalRooms: this.tpaRooms.size,
+      totalPackages: this.activeAppSessions.size,
+      totalActiveUsers: Array.from(this.activeAppSessions.values()).reduce((sum, users) => sum + users.size, 0),
+      totalRooms: this.appRooms.size,
       packageStats
     };
   }
 }
 
 // Export singleton instance
-export const multiUserTpaService = new MultiUserTpaService();
-export default multiUserTpaService;
+export const multiUserAppService = new MultiUserAppService();
+export default multiUserAppService;

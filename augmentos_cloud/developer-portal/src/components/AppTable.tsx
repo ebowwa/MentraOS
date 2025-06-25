@@ -1,4 +1,4 @@
-// components/TPATable.tsx
+// components/AppTable.tsx
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
@@ -21,32 +21,32 @@ import SharingDialog from "./dialogs/SharingDialog";
 import DeleteDialog from "./dialogs/DeleteDialog";
 import PublishDialog from "./dialogs/PublishDialog";
 
-interface TPATableProps {
-  tpas: AppResponse[];
+interface AppTableProps {
+  apps: AppResponse[];
   isLoading: boolean;
   error: string | null;
   maxDisplayCount?: number;
   showViewAll?: boolean;
   showSearch?: boolean;
-  onTpaDeleted?: (packageName: string) => void;
-  onTpaUpdated?: (updatedTpa: AppResponse) => void;
+  onAppDeleted?: (packageName: string) => void;
+  onAppUpdated?: (updatedApp: AppResponse) => void;
 }
 
-const TPATable: React.FC<TPATableProps> = ({
-  tpas,
+const AppTable: React.FC<AppTableProps> = ({
+  apps,
   isLoading,
   error,
   maxDisplayCount = Infinity,
   showViewAll = false,
   showSearch = true,
-  onTpaDeleted,
-  onTpaUpdated
+  onAppDeleted,
+  onAppUpdated
 }) => {
   const navigate = useNavigate();
   const { currentOrg } = useOrganization();
 
   // States for dialogs
-  const [selectedTpa, setSelectedTpa] = useState<AppResponse | null>(null);
+  const [selectedApp, setSelectedApp] = useState<AppResponse | null>(null);
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -54,17 +54,17 @@ const TPATable: React.FC<TPATableProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [generatedApiKey, setGeneratedApiKey] = useState('');
 
-  // Filter TPAs based on search query
-  const filteredTpas = searchQuery
-    ? tpas.filter(tpa =>
-      tpa.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tpa.packageName.toLowerCase().includes(searchQuery.toLowerCase())
+  // Filter Apps based on search query
+  const filteredApps = searchQuery
+    ? apps.filter(app =>
+      app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.packageName.toLowerCase().includes(searchQuery.toLowerCase())
     )
-    : tpas;
+    : apps;
 
-  // Limit the number of TPAs displayed
-  const displayedTpas = filteredTpas.slice(0, maxDisplayCount);
-  const hasNoTpas = tpas.length === 0;
+  // Limit the number of Apps displayed
+  const displayedApps = filteredApps.slice(0, maxDisplayCount);
+  const hasNoApps = apps.length === 0;
 
   return (
     <Card>
@@ -86,7 +86,7 @@ const TPATable: React.FC<TPATableProps> = ({
             )}
             {showViewAll && (
               <Button variant="outline" size="sm" asChild>
-                <Link to="/tpas">
+                <Link to="/apps">
                   View All
                 </Link>
               </Button>
@@ -125,33 +125,33 @@ const TPATable: React.FC<TPATableProps> = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {displayedTpas.length > 0 ? (
-                  displayedTpas.map((tpa) => (
-                    <TableRow key={tpa.packageName}>
-                      <TableCell className="font-medium">{tpa.name}</TableCell>
-                      <TableCell className="font-mono text-xs text-gray-500">{tpa.packageName}</TableCell>
+                {displayedApps.length > 0 ? (
+                  displayedApps.map((app) => (
+                    <TableRow key={app.packageName}>
+                      <TableCell className="font-medium">{app.name}</TableCell>
+                      <TableCell className="font-mono text-xs text-gray-500">{app.packageName}</TableCell>
                       <TableCell className="text-gray-500">
-                        {new Date(tpa.createdAt).toLocaleDateString()}
+                        {new Date(app.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         <div>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            tpa.appStoreStatus === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
-                            tpa.appStoreStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' :
-                            tpa.appStoreStatus === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                            app.appStoreStatus === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                            app.appStoreStatus === 'SUBMITTED' ? 'bg-yellow-100 text-yellow-800' :
+                            app.appStoreStatus === 'REJECTED' ? 'bg-red-100 text-red-800' :
                             'bg-gray-100 text-gray-800'
                           }`}>
-                            {tpa.appStoreStatus === 'DEVELOPMENT' ? 'Development' :
-                             tpa.appStoreStatus === 'SUBMITTED' ? 'Submitted' :
-                             tpa.appStoreStatus === 'REJECTED' ? 'Rejected' :
-                             tpa.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'}
+                            {app.appStoreStatus === 'DEVELOPMENT' ? 'Development' :
+                             app.appStoreStatus === 'SUBMITTED' ? 'Submitted' :
+                             app.appStoreStatus === 'REJECTED' ? 'Rejected' :
+                             app.appStoreStatus === 'PUBLISHED' ? 'Published' : 'Development'}
                           </span>
-                          {tpa.appStoreStatus === 'REJECTED' && tpa.reviewNotes && (
+                          {app.appStoreStatus === 'REJECTED' && app.reviewNotes && (
                             <div className="mt-1">
                               <button
-                                onClick={() => navigate(`/tpas/${tpa.packageName}/edit`)}
+                                onClick={() => navigate(`/apps/${app.packageName}/edit`)}
                                 className="text-xs text-red-600 hover:underline focus:outline-none"
-                                title={tpa.reviewNotes}
+                                title={app.reviewNotes}
                               >
                                 View Rejection Reason
                               </button>
@@ -166,7 +166,7 @@ const TPATable: React.FC<TPATableProps> = ({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => navigate(`/tpas/${tpa.packageName}/edit`)}
+                                onClick={() => navigate(`/apps/${app.packageName}/edit`)}
                                 title="Edit App"
                               >
                                 <Edit className="h-4 w-4" />
@@ -185,8 +185,8 @@ const TPATable: React.FC<TPATableProps> = ({
                                 onClick={async () => {
                                   // Reset generated API key state before opening dialog
                                   setGeneratedApiKey('');
-                                  // Set selected TPA after resetting key state
-                                  setSelectedTpa(tpa);
+                                  // Set selected App after resetting key state
+                                  setSelectedApp(app);
                                   // Then open the dialog
                                   setIsApiKeyDialogOpen(true);
                                 }}
@@ -206,7 +206,7 @@ const TPATable: React.FC<TPATableProps> = ({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setSelectedTpa(tpa);
+                                  setSelectedApp(app);
                                   setIsShareDialogOpen(true);
                                 }}
                                 title="Share with Testers"
@@ -225,16 +225,16 @@ const TPATable: React.FC<TPATableProps> = ({
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setSelectedTpa(tpa);
+                                  setSelectedApp(app);
                                   setIsPublishDialogOpen(true);
                                 }}
-                                title={tpa.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}
+                                title={app.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}
                               >
                                 <Upload className="h-4 w-4" />
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent>
-                              <p>{tpa.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}</p>
+                              <p>{app.appStoreStatus === 'REJECTED' ? 'Resubmit to App Store' : 'Publish to App Store'}</p>
                             </TooltipContent>
                           </Tooltip>
 
@@ -245,7 +245,7 @@ const TPATable: React.FC<TPATableProps> = ({
                                 size="sm"
                                 className="text-red-600"
                                 onClick={() => {
-                                  setSelectedTpa(tpa);
+                                  setSelectedApp(app);
                                   setIsDeleteDialogOpen(true);
                                 }}
                                 title="Delete App"
@@ -273,11 +273,11 @@ const TPATable: React.FC<TPATableProps> = ({
           )}
         </div>
 
-        {hasNoTpas && !isLoading && !error && !searchQuery && (
+        {hasNoApps && !isLoading && !error && !searchQuery && (
           <div className="p-6 text-center">
             <p className="text-gray-500 mb-4">Get started by creating your first app</p>
             <Button
-              onClick={() => navigate('/tpas/create')}
+              onClick={() => navigate('/apps/create')}
               className="gap-2"
             >
               <Plus className="h-4 w-4" />
@@ -288,53 +288,53 @@ const TPATable: React.FC<TPATableProps> = ({
       </CardContent>
 
       {/* Dialogs */}
-      {selectedTpa && (
+      {selectedApp && (
         <>
           <ApiKeyDialog
-            tpa={selectedTpa}
+            app={selectedApp}
             open={isApiKeyDialogOpen}
             onOpenChange={setIsApiKeyDialogOpen}
             apiKey={generatedApiKey}
             onKeyRegenerated={(newKey) => {
               // Update the API key in the parent component's state
               setGeneratedApiKey(newKey);
-              console.log(`API key regenerated for ${selectedTpa?.name}`);
+              console.log(`API key regenerated for ${selectedApp?.name}`);
             }}
             orgId={currentOrg?.id}
           />
 
           <SharingDialog
-            tpa={selectedTpa}
+            app={selectedApp}
             open={isShareDialogOpen}
             onOpenChange={setIsShareDialogOpen}
             orgId={currentOrg?.id}
           />
 
           <PublishDialog
-            tpa={selectedTpa}
+            app={selectedApp}
             open={isPublishDialogOpen}
             onOpenChange={setIsPublishDialogOpen}
             orgId={currentOrg?.id}
-            onPublishComplete={(updatedTpa) => {
-              // Update the selected TPA with the new data
-              setSelectedTpa(updatedTpa);
+            onPublishComplete={(updatedApp) => {
+              // Update the selected App with the new data
+              setSelectedApp(updatedApp);
 
               // Notify parent component to update the app
-              if (onTpaUpdated) {
-                onTpaUpdated(updatedTpa);
+              if (onAppUpdated) {
+                onAppUpdated(updatedApp);
               }
             }}
           />
 
           <DeleteDialog
-            tpa={selectedTpa}
+            app={selectedApp}
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
             orgId={currentOrg?.id}
             onConfirmDelete={(packageName) => {
               // Notify parent component of deletion
-              if (onTpaDeleted) {
-                onTpaDeleted(packageName);
+              if (onAppDeleted) {
+                onAppDeleted(packageName);
               }
             }}
           />
@@ -344,4 +344,4 @@ const TPATable: React.FC<TPATableProps> = ({
   );
 };
 
-export default TPATable;
+export default AppTable;

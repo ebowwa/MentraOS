@@ -31,7 +31,7 @@ import {
   PhotoTaken
 } from '../../types';
 import { DashboardMode } from '../../types/dashboard';
-import { PermissionError, PermissionErrorDetail } from '../../types/messages/cloud-to-tpa';
+import { PermissionError, PermissionErrorDetail } from '../../types/messages/cloud-to-app';
 
 /** 🎯 Type-safe event handler function */
 type Handler<T> = (data: T) => void;
@@ -373,7 +373,7 @@ export class EventManager {
         // console.log(`((())) HandlersArray: ${JSON.stringify(handlersArray)}`);
 
         // Execute each handler in isolated try/catch to prevent one handler
-        // from crashing the entire TPA
+        // from crashing the entire App
         handlersArray.forEach(handler => {
           try {
             (handler as Handler<EventData<T>>)(data);

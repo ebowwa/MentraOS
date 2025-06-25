@@ -370,8 +370,8 @@ function getLanguageInfo(
 ### Managing Language-Specific Streams
 
 ```typescript
-class MyTpaServer extends TpaServer {
-  protected async onSession(session: TpaSession, sessionId: string, userId: string) {
+class MyAppServer extends AppServer {
+  protected async onSession(session: AppSession, sessionId: string, userId: string) {
     // Subscribe to English transcription
     const enTranscription = createTranscriptionStream("en-US");
     session.subscribe(enTranscription);
@@ -394,14 +394,14 @@ class MyTpaServer extends TpaServer {
 }
 ```
 
-### Resource Management in TPA Sessions
+### Resource Management in App Sessions
 
 ```typescript
-class MyTpaServer extends TpaServer {
+class MyAppServer extends AppServer {
   // Store active sessions with their resource trackers
   private activeSessions = new Map<string, ResourceTracker>();
 
-  protected async onSession(session: TpaSession, sessionId: string, userId: string) {
+  protected async onSession(session: AppSession, sessionId: string, userId: string) {
     // Create a resource tracker for this session
     const tracker = createResourceTracker();
     this.activeSessions.set(sessionId, tracker);

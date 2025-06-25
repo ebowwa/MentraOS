@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Trash2, GripVertical, ChevronDown, ChevronRight, Settings, Folder } from "lucide-react";
-import { Setting } from '@/types/tpa';
+import { Setting } from '@/types/app';
 import {
   DndContext,
   closestCenter,

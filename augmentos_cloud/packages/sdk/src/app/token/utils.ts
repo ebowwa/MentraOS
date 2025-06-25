@@ -1,10 +1,10 @@
 /**
- * 🔐 TPA Token Utilities
- * 
- * Provides utilities for working with TPA tokens.
+ * 🔐 App Token Utilities
+ *
+ * Provides utilities for working with App tokens.
  */
 import * as jwt from 'jsonwebtoken';
-import { TpaTokenPayload, TokenValidationResult, TokenConfig } from '../../types/token';
+import { AppTokenPayload, TokenValidationResult, TokenConfig } from '../../types/token';
 
 /**
  * Default token expiration (1 day)
@@ -12,16 +12,16 @@ import { TpaTokenPayload, TokenValidationResult, TokenConfig } from '../../types
 const DEFAULT_EXPIRATION = 60 * 60 * 24; // seconds * minutes * hours (1 day).
 
 /**
- * Create a TPA token for a user session
- * 
+ * Create a App token for a user session
+ *
  * @param payload - Token payload data
  * @param config - Token configuration
  * @returns JWT token string
- * 
+ *
  * @example
  * ```typescript
  * const token = createToken(
- *   { 
+ *   {
  *     userId: 'user123',
  *     packageName: 'org.example.myapp',
  *     sessionId: 'session789'
@@ -31,7 +31,7 @@ const DEFAULT_EXPIRATION = 60 * 60 * 24; // seconds * minutes * hours (1 day).
  * ```
  */
 export function createToken(
-  payload: Omit<TpaTokenPayload, 'iat' | 'exp'>,
+  payload: Omit<AppTokenPayload, 'iat' | 'exp'>,
   config: TokenConfig
 ): string {
   return jwt.sign(
@@ -42,12 +42,12 @@ export function createToken(
 }
 
 /**
- * Validate and decode a TPA token
- * 
+ * Validate and decode a App token
+ *
  * @param token - JWT token string
  * @param secretKey - Secret key used for validation
  * @returns Token validation result
- * 
+ *
  * @example
  * ```typescript
  * const result = validateToken('eyJhbGciOiJIUzI1...', 'your_secret_key');
@@ -61,7 +61,7 @@ export function validateToken(
   secretKey: string
 ): TokenValidationResult {
   try {
-    const decoded = jwt.verify(token, secretKey) as TpaTokenPayload;
+    const decoded = jwt.verify(token, secretKey) as AppTokenPayload;
     return {
       valid: true,
       payload: decoded
@@ -75,12 +75,12 @@ export function validateToken(
 }
 
 /**
- * Generate a webview URL with an embedded TPA token
- * 
+ * Generate a webview URL with an embedded App token
+ *
  * @param baseUrl - Base URL of the webview
  * @param token - JWT token string
  * @returns Full URL with token parameter
- * 
+ *
  * @example
  * ```typescript
  * const url = generateWebviewUrl(
@@ -97,11 +97,11 @@ export function generateWebviewUrl(baseUrl: string, token: string): string {
 }
 
 /**
- * Extract a TPA token from a URL
- * 
+ * Extract a App token from a URL
+ *
  * @param url - URL string containing a token parameter
  * @returns Token string or null if not found
- * 
+ *
  * @example
  * ```typescript
  * const token = extractTokenFromUrl(

@@ -22,7 +22,7 @@ User experiencing this error log:
 {
   "dt": "2025-06-04T20:22:59.319Z",
   "level": "error",
-  "env": "debug", 
+  "env": "debug",
   "server": "cloud-debug",
   "userId": "isaiahballah@gmail.com",
   "service": "transcription.service",
@@ -54,7 +54,7 @@ Investigation of old vs new system revealed they are **architecturally nearly id
 ### Audio Flow (Both Systems)
 - Glasses → WebSocket → AudioManager → transcriptionService.feedAudioToTranscriptionStreams() → Azure
 
-### VAD Handling (Both Systems) 
+### VAD Handling (Both Systems)
 - VAD messages properly start/stop transcription streams
 - Implementation is functionally identical
 
@@ -92,7 +92,7 @@ if (event.errorCode === 4) {
   setTimeout(() => {
     // Immediate retry for timeout errors
     const currentSubscriptions = subscriptionService.getMinimalLanguageSubscriptions(userSession.sessionId);
-    if (currentSubscriptions.includes(subscription as ExtendedStreamType) && 
+    if (currentSubscriptions.includes(subscription as ExtendedStreamType) &&
         !userSession.transcriptionStreams?.has(subscription)) {
       sessionLogger.info({ subscription }, 'Retrying after Azure timeout');
       try {
@@ -115,7 +115,7 @@ Implement periodic audio to prevent 5-minute idle timeouts:
 
 **Low Risk Fix**: Option 1 (include error code 4 in existing retry logic)
 - Minimal code change
-- Uses existing retry mechanism  
+- Uses existing retry mechanism
 - 3-second delay already implemented
 
 **Medium Risk**: Option 2 (explicit handling)
@@ -138,7 +138,7 @@ Implement periodic audio to prevent 5-minute idle timeouts:
 ## Files Involved
 
 - `/src/services/processing/transcription.service.ts` - Lines 448-449 (retry logic)
-- `/src/services/session/docs/issues/TPA-CONNECTION-STATE-MANAGEMENT-ISSUES.md` - Related connection issues
+- `/src/services/session/docs/issues/App-CONNECTION-STATE-MANAGEMENT-ISSUES.md` - Related connection issues
 
 ## Testing Plan
 

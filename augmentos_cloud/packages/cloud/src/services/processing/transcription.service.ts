@@ -18,9 +18,9 @@ import {
   ExtendedStreamType,
   getLanguageInfo,
   TranscriptSegment,
-  CloudToTpaMessage,
+  CloudToAppMessage,
   DataStream,
-  CloudToTpaMessageType
+  CloudToAppMessageType
 } from '@mentra/sdk';
 // import webSocketService from '../websocket/websocket.service';
 import subscriptionService from '../session/subscription.service';
@@ -629,12 +629,12 @@ export class TranscriptionService {
 
   // TODO(isaiah): copied from the old websocket service, Need to rethink how to cleanly implement this.
   //   /**
-  //    * 🗣️📣 Broadcasts data to all TPAs subscribed to a specific stream type.
+  //    * 🗣️📣 Broadcasts data to all Apps subscribed to a specific stream type.
   //    * @param userSessionId - ID of the user's glasses session
   //    * @param streamType - Type of data stream
   //    * @param data - Data to broadcast
   //    */
-  private broadcastToTpa(userSession: UserSession, streamType: StreamType, data: CloudToTpaMessage): void {
+  private broadcastToApp(userSession: UserSession, streamType: StreamType, data: CloudToAppMessage): void {
     // const userSession = sessionService.getSession(userSessionId);
     // if (!userSession) {
     //   logger.error(`[transcription.service]: User session not found for ${userSessionId}`);
@@ -657,12 +657,12 @@ export class TranscriptionService {
 
     // Send to all subscribed apps using centralized messaging with automatic resurrection
     subscribedApps.forEach(async (packageName) => {
-      const tpaSessionId = `${userSession.sessionId}-${packageName}`;
+      const appSessionId = `${userSession.sessionId}-${packageName}`;
 
       // CloudDataStreamMessage
       const dataStream: DataStream = {
-        type: CloudToTpaMessageType.DATA_STREAM,
-        sessionId: tpaSessionId,
+        type: CloudToAppMessageType.DATA_STREAM,
+        sessionId: appSessionId,
         streamType, // Base type remains the same in the message.
         data,      // The data now may contain language info.
         timestamp: new Date()
@@ -670,7 +670,7 @@ export class TranscriptionService {
 
       try {
         // Use centralized messaging with automatic resurrection
-        const result = await userSession.appManager.sendMessageToTpa(packageName, dataStream);
+        const result = await userSession.appManager.sendMessageToApp(packageName, dataStream);
 
         if (!result.sent) {
           userSession.logger.warn({
@@ -678,19 +678,19 @@ export class TranscriptionService {
             packageName,
             resurrectionTriggered: result.resurrectionTriggered,
             error: result.error
-          }, `Failed to send transcription data to TPA ${packageName}`);
+          }, `Failed to send transcription data to App ${packageName}`);
         } else if (result.resurrectionTriggered) {
           userSession.logger.warn({
             service: SERVICE_NAME,
             packageName
-          }, `Transcription data sent to TPA ${packageName} after resurrection`);
+          }, `Transcription data sent to App ${packageName} after resurrection`);
         }
       } catch (error) {
         userSession.logger.error({
           service: SERVICE_NAME,
           packageName,
           error: error instanceof Error ? error.message : String(error)
-        }, `Error sending transcription data to TPA ${packageName}`);
+        }, `Error sending transcription data to App ${packageName}`);
       }
     });
   }
@@ -705,7 +705,7 @@ export class TranscriptionService {
 
     try {
       const streamType = data.type === StreamType.TRANSLATION ? StreamType.TRANSLATION : StreamType.TRANSCRIPTION;
-      this.broadcastToTpa(userSession, streamType, data);
+      this.broadcastToApp(userSession, streamType, data);
     } catch (error) {
       sessionLogger.error({
         error,
