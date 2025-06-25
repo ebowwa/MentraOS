@@ -101,6 +101,7 @@ import java.util.Map;
 
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.isMicEnabledForFrontendEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.hci.PhoneMicrophoneManager;
+import com.augmentos.augmentos_core.smarterglassesmanager.smartglassesconnection.SmartGlassesRepresentative;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -643,6 +644,48 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Return START_STICKY by default for embedded hardware,
         // but the shouldRestartOnKill flag will be checked in onTaskRemoved/onDestroy
         return shouldRestartOnKill ? Service.START_STICKY : Service.START_NOT_STICKY;
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        Log.d(TAG, "onTaskRemoved called - app is being closed");
+        
+        // Check if glasses are connected
+        boolean glassesConnected = false;
+        if (smartGlassesManager != null) {
+            SmartGlassesConnectionState connectionState = smartGlassesManager.getSmartGlassesConnectState();
+            glassesConnected = (connectionState == SmartGlassesConnectionState.CONNECTED);
+            Log.d(TAG, "Glasses connection state: " + connectionState + ", connected: " + glassesConnected);
+        } else {
+            Log.d(TAG, "SmartGlassesManager is null, assuming no glasses connected");
+        }
+        
+        // Check if there are any active third-party apps running
+        boolean hasActiveApps = false;
+        if (edgeTpaSystem != null) {
+            // Check if any third-party apps are currently running
+            ArrayList<ThirdPartyEdgeApp> thirdPartyApps = edgeTpaSystem.getThirdPartyApps();
+            for (ThirdPartyEdgeApp app : thirdPartyApps) {
+                if (edgeTpaSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName)) {
+                    hasActiveApps = true;
+                    Log.d(TAG, "Found active third-party app: " + app.packageName);
+                    break;
+                }
+            }
+            Log.d(TAG, "Active third-party apps: " + hasActiveApps);
+        }
+        
+        // If no glasses are connected and no active apps, stop the service
+        if (!glassesConnected && !hasActiveApps) {
+            Log.d(TAG, "No glasses connected and no active apps - stopping service");
+            shouldRestartOnKill = false; // Prevent restart
+            cleanupAllResources();
+            stopForeground(true);
+            stopSelf();
+        } else {
+            Log.d(TAG, "Keeping service running - glasses connected: " + glassesConnected + ", active apps: " + hasActiveApps);
+        }
     }
 
     private Notification updateNotification() {
@@ -1335,7 +1378,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             coreInfo.put("bypass_audio_encoding_for_debugging", SmartGlassesManager.getBypassAudioEncodingForDebugging(this));
             coreInfo.put("contextual_dashboard_enabled", this.contextualDashboardEnabled);
             coreInfo.put("always_on_status_bar_enabled", this.alwaysOnStatusBarEnabled);
-            coreInfo.put("force_core_onboard_mic", SmartGlassesManager.getForceCoreOnboardMic(this));
+            coreInfo.put("force_core_onboard_mic", "phone".equals(SmartGlassesManager.getPreferredMic(this))); // Deprecated - use preferred_mic instead
             coreInfo.put("preferred_mic", preferredMic);
             coreInfo.put("default_wearable", SmartGlassesManager.getPreferredWearable(this));
             coreInfo.put("is_mic_enabled_for_frontend", isMicEnabledForFrontend);
@@ -2144,8 +2187,24 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Setting preferred mic: " + mic);
         preferredMic = mic;
         SmartGlassesManager.setPreferredMic(this, mic);
-        setForceCoreOnboardMic(mic.equals("phone"));
+        
+        // Trigger immediate microphone switch using direct getter approach
+        if (smartGlassesManager != null && smartGlassesManagerBound) {
+            SmartGlassesRepresentative rep = smartGlassesManager.getSmartGlassesRepresentative();
+            if (rep != null) {
+                PhoneMicrophoneManager micManager = rep.getPhoneMicrophoneManager();
+                if (micManager != null) {
+                    Log.d("AugmentOsService", "Notifying PhoneMicrophoneManager of preference change");
+                    micManager.onMicrophonePreferenceChanged();
+                } else {
+                    Log.d("AugmentOsService", "No PhoneMicrophoneManager available - preference will take effect on next connection");
+                }
+            } else {
+                Log.d("AugmentOsService", "No SmartGlassesRepresentative available - preference will take effect on next connection");
+            }
+        }
     }
+    
 
     @Override
     public void setAuthSecretKey(String uniqueUserId, String authSecretKey) {
@@ -2374,7 +2433,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void setServerUrl(String url) {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        prefs.edit().putString("augmentos_server_url_override", url).apply();
+        if (url == null || url.trim().isEmpty()) {
+            // Reset to default by removing the override
+            prefs.edit().remove("augmentos_server_url_override").apply();
+            Log.d(TAG, "Server URL override cleared, using default URL");
+        } else {
+            // Set the custom URL override
+            prefs.edit().putString("augmentos_server_url_override", url).apply();
+            Log.d(TAG, "Server URL override set to: " + url);
+        }
         // Disconnect and reconnect websocket to use new URL
         ServerComms.getInstance().disconnectWebSocket();
         if (authHandler != null && authHandler.getCoreToken() != null) {

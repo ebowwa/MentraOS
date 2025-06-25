@@ -8,7 +8,7 @@ import BackendServerComms from "@/backend_comms/BackendServerComms"
 import Config from "react-native-config"
 import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import Button from "@/components/misc/Button"
-import {loadSetting} from "@/utils/SettingsHelper"
+import {loadSetting, saveSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -22,6 +22,7 @@ export default function CoreTokenExchange() {
   const {user, session, loading: authLoading} = useAuth()
   const [connectionError, setConnectionError] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isUsingCustomUrl, setIsUsingCustomUrl] = useState(false)
   const [errorMessage, setErrorMessage] = useState(
     "Connection to AugmentOS failed. Please check your connection and try again.",
   )
@@ -67,10 +68,32 @@ export default function CoreTokenExchange() {
         replace("/onboarding/welcome")
       }
     } catch (err) {
-      // Don't log the error to console
-      setErrorMessage("Connection to AugmentOS failed. Please check your connection and try again.")
+      // Check if we're using a custom backend URL
+      const customUrl = await loadSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      const isCustom = customUrl && typeof customUrl === "string" && customUrl.trim() !== ""
+      
+      if (isCustom) {
+        setIsUsingCustomUrl(true)
+        setErrorMessage(`Connection to custom backend (${customUrl}) failed. The server may be unavailable or the URL may be incorrect.`)
+      } else {
+        setIsUsingCustomUrl(false)
+        setErrorMessage("Connection to AugmentOS failed. Please check your connection and try again.")
+      }
+      
       setConnectionError(true)
       setIsLoading(false)
+    }
+  }
+
+  const handleResetUrl = async () => {
+    try {
+      await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, null)
+      await coreCommunicator.setServerUrl("") // Clear Android service override
+      setIsUsingCustomUrl(false)
+      setErrorMessage("Backend URL reset to default. Please try connecting again.")
+    } catch (error) {
+      console.error("Failed to reset URL:", error)
+      setErrorMessage("Failed to reset URL. Please try again.")
     }
   }
 
@@ -138,6 +161,18 @@ export default function CoreTokenExchange() {
         </View>
 
         <View style={styles.setupContainer}>
+          {isUsingCustomUrl && (
+            <Button 
+              onPress={handleResetUrl}
+              isDarkTheme={theme.isDark} 
+              disabled={isLoading}
+              iconName="refresh"
+              style={styles.resetButton}
+            >
+              Reset to Default URL
+            </Button>
+          )}
+          
           <Button onPress={handleTokenExchange} isDarkTheme={theme.isDark} disabled={isLoading} iconName="reload">
             {isLoading ? "Connecting..." : "Retry Connection"}
           </Button>
@@ -195,9 +230,9 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     alignItems: "center",
-    flex: 1,
     justifyContent: "center",
-    paddingTop: 60,
+    paddingTop: 180,
+    height: 400,
   },
   loadingContainer: {
     alignItems: "center",
@@ -210,13 +245,14 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     flexDirection: "column",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     padding: 24,
   },
   setupContainer: {
     alignItems: "center",
     paddingBottom: 40,
     width: "100%",
+    marginTop: "auto",
   },
   title: {
     fontFamily: "Montserrat-Bold",
@@ -224,6 +260,9 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 28,
     textAlign: "center",
+  },
+  resetButton: {
+    marginBottom: 16,
   },
   // Removed hardcoded color styles - now using theme dynamic colors
 })

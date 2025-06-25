@@ -1,6 +1,6 @@
 // cloud/server/src/models/app.model.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType, PermissionType, Permission } from '@augmentos/sdk';
+import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType, PermissionType, Permission } from '@mentra/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 
@@ -54,6 +54,10 @@ export interface AppI extends _AppI, Document {
    * @deprecated Use organizationId with member management instead. Will be removed after migration.
    */
   sharedWithEmails?: string[];
+
+  onboardingInstructions?: string;
+
+  onboardingStatus?: Map<string, boolean>;
 }
 
 
@@ -215,6 +219,15 @@ const AppSchema = new Schema({
     type: [String],
     required: false,
     default: []
+  },
+  onboardingInstructions: {
+    type: String,
+    default: ''
+  },
+  onboardingStatus: {
+    type: Map,
+    of: Boolean,
+    default: {}
   }
 }, {
   strict: false,

@@ -1,5 +1,5 @@
 {
-  "name": "@augmentos/utils",
+  "name": "@mentra/utils",
   "version": "1.0.0",
   "private": true,
   "main": "dist/index.js",
@@ -9,12 +9,11 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "postbuild": "cp src/lc3/liblc3.wasm dist/lc3/liblc3.wasm",
     "dev": "tsc -w -p tsconfig.json",
     "link-pkg": "bun link"
   },
   "dependencies": {
-    "@augmentos/sdk": "workspace:*",
+    "@mentra/sdk": "workspace:*",
     "@logtail/pino": "^0.5.4",
     "pino": "^9.6.0",
     "posthog-node": "^4.14.0"

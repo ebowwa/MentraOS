@@ -1,5 +1,5 @@
 import React, {useState} from "react"
-import {View, ViewStyle, ScrollView, TextInput, Pressable} from "react-native"
+import {View, ViewStyle, ScrollView, TextInput, Pressable, TextStyle} from "react-native"
 import {router} from "expo-router"
 import {Screen} from "@/components/ignite"
 import AppsActiveList from "@/components/misc/AppsActiveList"
@@ -39,6 +39,7 @@ export default function SearchAppsPage() {
       </View>
 
       <ScrollView
+        keyboardShouldPersistTaps="handled"
         style={themed($scrollView)}
         contentContainerStyle={themed($scrollContent)}
         showsVerticalScrollIndicator={false}>
@@ -49,7 +50,7 @@ export default function SearchAppsPage() {
           </>
         )}
 
-        <AppsInactiveList isSearchPage={true} searchQuery={searchQuery} />
+        <AppsInactiveList isSearchPage={true} searchQuery={searchQuery} onClearSearch={() => setSearchQuery("")} />
         <Spacer height={40} />
       </ScrollView>
     </Screen>
@@ -74,7 +75,7 @@ const $searchContainer: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   marginBottom: spacing.md,
 })
 
-const $searchInput: ThemedStyle<ViewStyle> = ({colors}) => ({
+const $searchInput: ThemedStyle<TextStyle> = ({colors}) => ({
   flex: 1,
   marginLeft: 12,
   color: colors.text,

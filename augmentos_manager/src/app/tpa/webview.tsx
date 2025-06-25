@@ -1,5 +1,5 @@
-import React, {useRef, useState, useEffect} from "react"
-import {View, StyleSheet, Text} from "react-native"
+import React, {useRef, useState, useEffect, useCallback} from "react"
+import {View, StyleSheet, Text, BackHandler} from "react-native"
 import {WebView} from "react-native-webview"
 import LoadingOverlay from "@/components/misc/LoadingOverlay"
 import InternetConnectionFallbackComponent from "@/components/misc/InternetConnectionFallbackComponent"
@@ -8,7 +8,7 @@ import FontAwesome from "react-native-vector-icons/FontAwesome"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {router, useLocalSearchParams} from "expo-router"
+import {router, useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
 
 export default function AppWebView() {
@@ -30,6 +30,21 @@ export default function AppWebView() {
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
     return <Text>Missing required parameters</Text>
   }
+
+  // Handle Android back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        // Always go back to home when back is pressed
+        router.replace("/(tabs)/home")
+        return true
+      }
+
+      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+
+      return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
+    }, [])
+  )
 
   // Set up the header with settings button if we came from app settings
   //   useEffect(() => {
@@ -61,7 +76,7 @@ export default function AppWebView() {
 
   function determineCloudUrl(): string | undefined {
     const cloudHostName =
-      process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.AUGMENTOS_HOST
+      process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.MENTRAOS_HOST
     if (
       cloudHostName &&
       cloudHostName.trim() !== "prod.augmentos.cloud" &&
@@ -200,15 +215,13 @@ export default function AppWebView() {
 
   // Render WebView only when finalUrl is ready
   return (
-    // <Screen preset="auto" style={{paddingHorizontal: theme.spacing.md}}>
-    <View style={{flex: 1}}>
+    <Screen preset="fixed" safeAreaEdges={[]}>
       <Header
         title={appName}
         titleMode="center"
         leftIcon="caretLeft"
-        style={{paddingLeft: 16}}
-        onLeftPress={() => router.back()}
-        rightIcon="settings"
+        onLeftPress={() => router.replace("/(tabs)/home")}
+        rightIcon="more"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
           router.replace({
@@ -220,6 +233,8 @@ export default function AppWebView() {
             },
           })
         }}
+        style={{height: 44}}
+        containerStyle={{paddingTop: 0}}
       />
       <View style={styles.container}>
         {finalUrl ? (
@@ -237,6 +252,21 @@ export default function AppWebView() {
               // Show loading overlay while WebView itself loads
               <LoadingOverlay message={`Loading ${appName}...`} />
             )}
+            // Disable zooming and scaling
+            scalesPageToFit={false}
+            scrollEnabled={true}
+            bounces={false}
+            // iOS specific props to disable zoom
+            automaticallyAdjustContentInsets={false}
+            contentInsetAdjustmentBehavior="never"
+            // Inject meta viewport tag to prevent zooming
+            injectedJavaScript={`
+              const meta = document.createElement('meta');
+              meta.setAttribute('name', 'viewport');
+              meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+              document.getElementsByTagName('head')[0].appendChild(meta);
+              true;
+            `}
           />
         ) : (
           // This state should ideally not be reached if isLoadingToken handles it,
@@ -248,7 +278,7 @@ export default function AppWebView() {
            <LoadingOverlay message={`Loading ${appName}...`} isDarkTheme={isDarkTheme} />
         )} */}
       </View>
-    </View>
+    </Screen>
   )
 }
 

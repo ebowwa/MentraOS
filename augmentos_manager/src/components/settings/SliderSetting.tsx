@@ -19,6 +19,7 @@ type SliderSettingProps = {
   onValueChange: (value: number) => void // For immediate feedback, e.g., UI updates
   onValueSet: (value: number) => void // For BLE requests or final actions
   containerStyle?: ViewStyle
+  disableBorder?: boolean
 }
 
 const SliderSetting: React.FC<SliderSettingProps> = ({
@@ -30,6 +31,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
   onValueChange,
   onValueSet,
   containerStyle,
+  disableBorder = false,
 }) => {
   const handleValueChange = (val: number) => {
     const roundedValue = Math.round(val)
@@ -44,7 +46,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
   const {theme, themed} = useAppTheme()
 
   return (
-    <View style={[themed($container), containerStyle]}>
+    <View style={[themed($container), disableBorder && {borderWidth: 0}, containerStyle]}>
       <View style={themed($textContainer)}>
         <View style={themed($labelRow)}>
           <Text text={label} style={themed($label)} />
@@ -62,12 +64,24 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
             onSlidingComplete={handleValueSet} // Wrap the callback to round values
             minimumValue={min}
             maximumValue={max}
-            minimumTrackTintColor={theme.colors.palette.primary300}
-            maximumTrackTintColor={theme.colors.palette.neutral300}
+            minimumTrackTintColor={theme.colors.sliderTrackActive}
+            maximumTrackTintColor={theme.colors.sliderTrackInactive}
             thumbStyle={{
               width: 24,
               height: 24,
-              backgroundColor: theme.colors.sliderThumb,
+              backgroundColor: theme.isDark ? theme.colors.sliderThumb : '#FFFFFF',
+              borderRadius: 12,
+              // Add shadow only in light theme
+              ...(!theme.isDark && {
+                shadowColor: "#000",
+                shadowOffset: {
+                  width: 0,
+                  height: 2,
+                },
+                shadowOpacity: 0.15,
+                shadowRadius: 3,
+                elevation: 3, // For Android
+              }),
             }}
           />
         </View>
@@ -77,7 +91,7 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
   )
 }
 
-const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
+const $container: ThemedStyle<ViewStyle> = ({colors, spacing, borderRadius}) => ({
   flexDirection: "column",
   justifyContent: "flex-start",
   alignItems: "flex-start",
@@ -85,7 +99,9 @@ const $container: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
   backgroundColor: colors.background,
   paddingVertical: spacing.md,
   paddingHorizontal: spacing.lg,
-  borderRadius: spacing.sm,
+  borderRadius: borderRadius.md,
+  borderWidth: spacing.xxxs,
+  borderColor: colors.border,
 })
 
 const $textContainer: ThemedStyle<ViewStyle> = ({colors}) => ({

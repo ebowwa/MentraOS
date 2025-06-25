@@ -1,10 +1,13 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import { Button } from './ui/button';
+import { Baseline } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { isAuthenticated, signOut, user, isWebViewAuth } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   // Handle sign out
@@ -14,34 +17,39 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-10 bg-[#242454] border-b border-gray-200 shadow-sm">
-      <div className="mx-auto px-4 py-4">
+    <header className="sticky top-0 z-10" style={{ background: theme === 'light' ? '#ffffff' : 'linear-gradient(to bottom, #0c0d27, #030514)', borderBottom: `1px solid var(--border-color)` }}>
+      <div className="container mx-auto px-4 py-4">
         <div className="flex items-end justify-between">
 
           {/* Logo and Site Name */}
           <div className="flex flex-col items-start select-none">
             <span
-              className="text-2xl  tracking-wide text-[#F1F1F1]"
-              style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+              className="text-[26px] font-light"
+              style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.06em', color: 'var(--text-primary)' }}
             >
-              App Store
+              AugmentOS
             </span>
           </div>
-          
+
           {/* Authentication */}
           {!isWebViewAuth && (
             <div className="flex items-center">
               {isAuthenticated ? (
                 <div className="flex flex-col items-end">
-                  {user?.email && (
+                  {/* {user?.email && (
                     <span className="text-sm text-gray-600 px-3">
                       {user.email}
                     </span>
-                  )}
+                  )} */}
                   <Button
                     onClick={handleSignOut}
-                    variant="ghost"
-                    size={'sm'}
+                    variant={theme === 'light' ? 'default' : 'outline'}
+                    className="rounded-full border-[1.5px]"
+                    style={{ 
+                      backgroundColor: theme === 'light' ? '#000000' : 'transparent',
+                      borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
+                      color: theme === 'light' ? '#ffffff' : '#C0C4FF'
+                    }}
                   >
                     Sign Out
                   </Button>
@@ -49,14 +57,20 @@ const Header: React.FC = () => {
               ) : (
                 <Button
                   onClick={() => navigate('/login')}
-                  variant="default"
+                  variant={theme === 'light' ? 'default' : 'outline'}
+                  className="rounded-full border-[1.5px]"
+                  style={{ 
+                    backgroundColor: theme === 'light' ? '#000000' : 'transparent',
+                    borderColor: theme === 'light' ? '#000000' : '#C0C4FF',
+                    color: theme === 'light' ? '#ffffff' : '#C0C4FF'
+                  }}
                 >
                   Sign In
                 </Button>
               )}
             </div>
           )}
-          
+
         </div>
       </div>
     </header>

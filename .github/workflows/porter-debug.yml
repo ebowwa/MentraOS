@@ -1,7 +1,7 @@
 "on":
     push:
         branches:
-            - isaiah/dashboard-move-to-tpa
+            - ignore-vad
 name: 🚀 [debug] Porter.run Deploy
 jobs:
     porter-deploy:

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import api from '../api';
 import { AppI } from '../types';
 import { toast } from 'sonner';
@@ -14,6 +15,7 @@ const AppDetails: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
+  const { theme } = useTheme();
 
   const [app, setApp] = useState<AppI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -93,6 +95,7 @@ const AppDetails: React.FC = () => {
 
     if (!app) return;
 
+    // Use the web API
     try {
       setInstallingApp(true);
 
@@ -156,325 +159,202 @@ const AppDetails: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <Header />
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+      {/* Gradient Panel */}
+      {!isLoading && error && (
+        <div className="text-red-500">{error}</div>
+      )}
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-6">
-        {/* Back button */}
-        <button
-          onClick={() => navigate('/')}
-          className="flex items-center text-blue-600 hover:text-blue-800 mb-6"
+      {isLoading && (
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+      )}
+
+      {!isLoading && !error && app && (
+        <div
+          className="w-full max-w-[90vw] md:w-[720px] md:max-w-[720px] max-h-[90vh] overflow-y-auto rounded-[24px] custom-scrollbar relative"
+          style={{
+            background: theme === 'light' ? 'transparent' : 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)',
+            boxShadow: theme === 'light' ? 'none' : 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 32px rgba(0, 0, 0, 0.25)',
+            border: theme === 'light' ? '2px solid #e5e5e5' : 'none',
+            padding: '48px 48px 56px'
+          }}
         >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back to AugmentOS Store
-        </button>
+          {/* Close Button */}
+          <button
+            onClick={() => navigate(-1)}
+            className="absolute top-6 right-6 transition-colors"
+            style={{ 
+              color: theme === 'light' ? '#000000' : '#9CA3AF'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
+            onMouseLeave={(e) => e.currentTarget.style.color = theme === 'light' ? '#000000' : '#9CA3AF'}
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
 
-        {/* Loading state */}
-        {isLoading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8 max-[840px]:flex-col max-[840px]:gap-6">
+            <div className="flex items-center gap-4 max-[840px]:flex-col max-[840px]:items-center max-[840px]:gap-4">
+              <img
+                src={app.logoURL}
+                alt={`${app.name} logo`}
+                className="w-16 h-16 object-cover rounded-full"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://placehold.co/64x64/gray/white?text=App';
+                }}
+              />
+              <h2
+                id="app-modal-title"
+                className="text-[32px] font-medium leading-[1.2] max-[840px]:text-center"
+                style={{
+                  fontFamily: '"SF Pro Rounded", sans-serif',
+                  letterSpacing: '0.02em',
+                  color: 'var(--text-primary)'
+                }}
+              >
+                {app.name}
+              </h2>
+            </div>
+
+            <div className="flex items-center gap-4 max-[840px]:w-full max-[840px]:justify-center">
+              {isAuthenticated ? (
+                app.isInstalled ? (
+                  <Button
+                    onClick={handleUninstall}
+                    disabled={installingApp}
+                    className="w-[140px] h-[40px] bg-[#E24A24] hover:bg-[#E24A24]/90 text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                    style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+                  >
+                    Uninstall
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleInstall}
+                    disabled={installingApp}
+                    className="w-[140px] h-[40px] bg-[#242454] hover:bg-[#2d2f5a] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                    style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+                  >
+                    {installingApp ? 'Installing…' : 'Get App'}
+                  </Button>
+                )
+              ) : (
+                <Button
+                  onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
+                  className="w-[140px] h-[40px] bg-[#242454] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                  style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
+                >
+                  Sign in
+                </Button>
+              )}
+            </div>
           </div>
-        )}
 
-        {/* Error message */}
-        {error && !isLoading && (
-          <div className="my-4 max-w-2xl mx-auto p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-            <p>{error}</p>
-            <button
-              className="mt-2 text-sm font-medium text-red-700 hover:text-red-600"
-              onClick={() => packageName && fetchAppDetails(packageName)}
+          {/* Description */}
+          <div className="mb-12">
+            <p
+              className="text-[16px] font-normal leading-[1.6] max-w-[480px]"
+              style={{ fontFamily: '"SF Pro Rounded", sans-serif', color: theme === 'light' ? '#000000' : '#E4E4E7' }}
             >
-              Try Again
-            </button>
+              {app.description || 'No description available.'}
+            </p>
           </div>
-        )}
 
-        {/* App details */}
-        {!isLoading && !error && app && (
-          <div className="max-w-4xl mx-auto">
-            {/* Hero section */}
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-              <div className="p-6">
-                <div className="flex flex-col md:flex-row items-start">
-                  {/* App logo */}
-                  <img
-                    src={app.logoURL}
-                    alt={`${app.name} logo`}
-                    className="w-24 h-24 object-cover"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "https://placehold.co/96x96/gray/white?text=App";
-                    }}
-                  />
+          {/* Information Section */}
+          <div className="mb-12">
+            <h3
+              className="text-[12px] font-semibold uppercase mb-6"
+              style={{
+                fontFamily: '"SF Pro Rounded", sans-serif',
+                letterSpacing: '0.05em',
+                color: theme === 'light' ? '#000000' : '#9CA3AF'
+              }}
+            >
+              Information
+            </h3>
 
-                  {/* App info */}
-                  <div className="md:ml-6 mt-4 md:mt-0 flex-1">
-                    <h1 className="text-2xl font-bold text-gray-900">{app.name}</h1>
-
-                    {/* Organization name with link to filtered app store */}
-                    <p className="text-sm text-gray-500">
-                      {app.organizationId ? (
-                        <button
-                          onClick={() => navigateToOrgApps(app.organizationId!)}
-                          className="hover:text-blue-600 hover:underline focus:outline-none"
-                        >
-                          {app.orgName || app.developerProfile?.company || app.developerId || ''}
-                        </button>
-                      ) : (
-                        app.orgName || app.developerProfile?.company || app.developerId || ''
-                      )}
-                    </p>
-                    {/* Debug details - Remove 'hidden' class to view in browser */}
-                    <div className="text-xs text-gray-400 mt-1 hidden">
-                      DeveloperID: {JSON.stringify(app.developerId)}<br/>
-                      OrgID: {JSON.stringify(app.organizationId)}<br/>
-                      OrgName: {JSON.stringify(app.orgName)}<br/>
-                      Profile Company: {JSON.stringify(app.developerProfile?.company)}<br/>
-                      Full Profile: {JSON.stringify(app.developerProfile)}
-                    </div>
-
-                    <div className="mt-4 flex flex-col gap-2">
-                      {isAuthenticated ? (
-                        app.isInstalled ? (
-                          <Button
-                            variant="destructive"
-                            onClick={handleUninstall}
-                            disabled={installingApp}
-                            className="w-full md:w-48 bg-[#E24A24] hover:bg-[#E24A24]/90"
-                          >
-                            {installingApp ? (
-                              <>
-                                <div className="animate-spin h-4 w-4 border-2 border-gray-500 border-t-transparent rounded-full mr-2"></div>
-                                Uninstalling...
-                              </>
-                            ) : (
-                              <>
-                                <X className="h-4 w-4 mr-1" />
-                                Uninstall
-                              </>
-                            )}
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={handleInstall}
-                            disabled={installingApp}
-                            className="w-full md:w-48"
-                          >
-                            {installingApp ? (
-                              <>
-                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                                Installing...
-                              </>
-                            ) : (
-                              <>
-                                <Download className="h-4 w-4 mr-1" />
-                                Install
-                              </>
-                            )}
-                          </Button>
-                        )
-                      ) : (
-                        <Button
-                          onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
-                          className="bg-blue-600 hover:bg-blue-700 w-full md:w-48"
-                        >
-                          Sign in to install
-                        </Button>
-                      )}
-
-                      {app.webviewURL && (
-                        <Button variant="outline" asChild className="w-full md:w-48">
-                          <a href={app.webviewURL} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4 mr-1" />
-                            Open Website
-                          </a>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* App details sections */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Left side: description and permissions */}
-              <div className="md:col-span-2">
-                {/* About section */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-                  <div className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">About this app</h2>
-                    <p className="text-gray-700 whitespace-pre-line">
-                      {app.description || 'No description available.'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Permissions section - moved here from the right column */}
-                {(app.permissions && app.permissions.length > 0)  && (
-                  <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="p-6">
-                      <h2 className="text-xl font-semibold mb-4">Required Permissions</h2>
-                      <AppPermissions permissions={app.permissions} />
-                    </div>
-                  </div>
-                )}
-
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Company</span>
+                <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                  {app.orgName || app.developerProfile?.company || 'Mentra'}
+                </span>
               </div>
 
-              {/* Right side: additional details */}
-              <div>
-                {/* App Details Section */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
-                  <div className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">App Details</h2>
-
-                    <div className="space-y-4">
-                      <div className="flex items-start">
-                        <Package className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-700">Package Name</p>
-                          <p className="text-sm text-gray-500">{app.packageName}</p>
-                        </div>
-                      </div>
-
-                      {app.version && (
-                        <div className="flex items-start">
-                          <Info className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Version</p>
-                            <p className="text-sm text-gray-500">{app.version}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {app.tpaType && (
-                        <div className="flex items-start">
-                          <Star className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">App Type</p>
-                            <p className="text-sm text-gray-500 capitalize">{app.tpaType}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {app.isInstalled && app.installedDate && (
-                        <div className="flex items-start">
-                          <Calendar className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Installed Date</p>
-                            <p className="text-sm text-gray-500">{formatDate(app.installedDate)}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {app.createdAt && (
-                        <div className="flex items-start">
-                          <Clock className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Published Date</p>
-                            <p className="text-sm text-gray-500">{formatDate(app.createdAt)}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {app.developerProfile?.website && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Website</span>
+                  <a
+                    href={app.developerProfile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[14px] font-normal hover:underline text-right"
+                    style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
+                  >
+                    {app.developerProfile.website}
+                  </a>
                 </div>
+              )}
 
-                {/* Developer Info Section */}
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="p-6">
-                    <h2 className="text-xl font-semibold mb-4">Developer Info</h2>
-
-                    <div className="space-y-4">
-                      {/* Organization Section */}
-                      {(app.orgName || app.organizationId) && (
-                        <div className="flex items-start">
-                          <Building className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Organization</p>
-                            {app.organizationId ? (
-                              <button
-                                onClick={() => navigateToOrgApps(app.organizationId!)}
-                                className="text-sm text-blue-600 hover:underline focus:outline-none"
-                              >
-                                {app.orgName || 'View all apps from this organization'}
-                              </button>
-                            ) : (
-                              <p className="text-sm text-gray-500">{app.orgName}</p>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Show profile info if available */}
-                      {app.developerProfile?.company && !app.orgName && (
-                        <div className="flex items-start">
-                          <Building className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Company</p>
-                            <p className="text-sm text-gray-500">{app.developerProfile.company}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {app.developerProfile?.website && (
-                        <div className="flex items-start">
-                          <Globe className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Website</p>
-                            <a
-                              href={app.developerProfile.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-sm text-blue-500 hover:underline"
-                            >
-                              {app.developerProfile.website}
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {app.developerProfile?.contactEmail && (
-                        <div className="flex items-start">
-                          <Mail className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">Contact</p>
-                            <a
-                              href={`mailto:${app.developerProfile.contactEmail}`}
-                              className="text-sm text-blue-500 hover:underline"
-                            >
-                              {app.developerProfile.contactEmail}
-                            </a>
-                          </div>
-                        </div>
-                      )}
-
-                      {app.developerProfile?.description && (
-                        <div className="flex items-start">
-                          <FileText className="h-5 w-5 text-gray-400 mt-0.5 mr-3" />
-                          <div>
-                            <p className="text-sm font-medium text-gray-700">About</p>
-                            <p className="text-sm text-gray-500">{app.developerProfile.description}</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Show default message if no developer info available */}
-                      {!app.developerProfile && !app.orgName && !app.organizationId && (
-                        <div className="text-sm text-gray-500">
-                          No developer information available.
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {app.developerProfile?.contactEmail && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Contact</span>
+                  <a
+                    href={`mailto:${app.developerProfile.contactEmail}`}
+                    className="text-[14px] font-normal hover:underline text-right"
+                    style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}
+                  >
+                    {app.developerProfile.contactEmail}
+                  </a>
                 </div>
+              )}
+
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>App Type</span>
+                <span className="text-[14px] font-normal text-right capitalize" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                  {app.tpaType || 'Standard'}
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Package</span>
+                <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                  {app.packageName}
+                </span>
               </div>
             </div>
           </div>
-        )}
-      </main>
+
+          {/* Required Permissions */}
+          <div>
+            <h3
+              className="text-[12px] font-semibold uppercase mb-6"
+              style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.05em', color: theme === 'light' ? '#000000' : '#9CA3AF' }}
+            >
+              Required Permissions
+            </h3>
+            <div className="space-y-3">
+              {app.permissions && app.permissions.length > 0 ? (
+                app.permissions.map((permission, index) => (
+                  <div
+                    key={index}
+                    className="text-[14px] font-normal leading-[1.5]"
+                    style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}
+                  >
+                    <strong style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
+                      {permission.type || 'Microphone'}
+                    </strong>{' '}
+                    {permission.description || 'For voice import and audio processing.'}
+                  </div>
+                ))
+              ) : (
+                <div className="text-[14px] font-normal" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>None</div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

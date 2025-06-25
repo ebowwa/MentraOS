@@ -1,6 +1,6 @@
 // src/AppSettings.tsx
 import React, {useEffect, useState, useMemo, useLayoutEffect, useCallback, useRef} from "react"
-import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Animated} from "react-native"
+import {View, Text, StyleSheet, TouchableOpacity, ScrollView, ViewStyle, TextStyle, Animated, BackHandler} from "react-native"
 import {useSafeAreaInsets} from "react-native-safe-area-context"
 import GroupTitle from "@/components/settings/GroupTitle"
 import ToggleSetting from "@/components/settings/ToggleSetting"
@@ -67,10 +67,32 @@ export default function AppSettings() {
   const [settingsLoading, setSettingsLoading] = useState(true)
   const [hasCachedSettings, setHasCachedSettings] = useState(false)
 
+  // IMMEDIATE TACTICAL BYPASS: Check for webviewURL in app status data and redirect instantly
+  useEffect(() => {
+    if (appInfo?.webviewURL && fromWebView !== "true") {
+      console.log("TACTICAL BYPASS: webviewURL detected in app status, executing immediate redirect")
+      replace("/tpa/webview", {
+        webviewURL: appInfo.webviewURL,
+        appName: appName,
+        packageName: packageName,
+      })
+    }
+  }, [appInfo, fromWebView, appName, packageName, replace])
+
   // propagate any changes in app lists when this screen is unmounted:
   useFocusEffect(
     useCallback(() => {
+      // Handle Android back button
+      const onBackPress = () => {
+        // Always go back to home when back is pressed
+        router.replace("/(tabs)/home")
+        return true
+      }
+
+      BackHandler.addEventListener("hardwareBackPress", onBackPress)
+
       return () => {
+        BackHandler.removeEventListener("hardwareBackPress", onBackPress)
         refreshAppStatus()
       }
     }, []),
@@ -244,6 +266,16 @@ export default function AppSettings() {
         setSettingsState(cached.settingsState)
         setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
         setSettingsLoading(false)
+        
+        // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
+        if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
+          replace("/tpa/webview", {
+            webviewURL: cached.serverAppInfo.webviewURL,
+            appName: appName,
+            packageName: packageName,
+          })
+          return
+        }
       } else {
         setHasCachedSettings(false)
         setSettingsLoading(true)
@@ -307,13 +339,15 @@ export default function AppSettings() {
         setHasCachedSettings(false)
       }
       setSettingsLoading(false)
-      // Auto-redirect to webview if needed
+      
+      // TACTICAL BYPASS: Execute immediate webview redirect if webviewURL detected
       if (data.webviewURL && fromWebView !== "true") {
         replace("/tpa/webview", {
           webviewURL: data.webviewURL,
           appName: appName,
           packageName: packageName,
         })
+        return
       }
     } catch (err) {
       setSettingsLoading(false)
@@ -454,7 +488,7 @@ export default function AppSettings() {
         <Header
           title=""
           leftIcon="caretLeft"
-          onLeftPress={() => router.back()}
+          onLeftPress={() => router.replace("/(tabs)/home")}
           RightActionComponent={
             serverAppInfo?.webviewURL ? (
               <TouchableOpacity
@@ -577,13 +611,13 @@ export default function AppSettings() {
               <View style={{paddingVertical: theme.spacing.sm}}>
                 <Text style={{fontSize: 15, color: theme.colors.text}}>Additional Information</Text>
               </View>
-              <InfoRow label="Company" value={serverAppInfo?.company || "-"} showDivider={false} />
-              <InfoRow label="Website" value={serverAppInfo?.website || "-"} showDivider={false} />
-              <InfoRow label="Contact" value={serverAppInfo?.contact || "-"} showDivider={false} />
+              <InfoRow label="Company" value={serverAppInfo?.organization?.name || "-"} showDivider={false} />
+              <InfoRow label="Website" value={serverAppInfo?.organization?.website || "-"} showDivider={false} />
+              <InfoRow label="Contact" value={serverAppInfo?.organization?.contactEmail || "-"} showDivider={false} />
               <InfoRow
                 label="App Type"
                 value={
-                  appInfo?.tpaType === "standard" ? "Standard" : appInfo?.tpaType === "background" ? "Background" : "-"
+                  appInfo?.tpaType === "standard" ? "Foreground" : appInfo?.tpaType === "background" ? "Background" : "-"
                 }
                 showDivider={false}
               />
@@ -592,9 +626,22 @@ export default function AppSettings() {
           </View>
 
           {/* Uninstall Button at the bottom */}
-          {serverAppInfo?.uninstallable && (
-            <ActionButton label="Uninstall" variant="destructive" onPress={handleUninstallApp} />
-          )}
+          <ActionButton 
+            label="Uninstall" 
+            variant="destructive" 
+            onPress={() => {
+              if (serverAppInfo?.uninstallable) {
+                handleUninstallApp()
+              } else {
+                showAlert(
+                  "Cannot Uninstall",
+                  "This app cannot be uninstalled.",
+                  [{text: "OK", style: "default"}]
+                )
+              }
+            }}
+            disabled={!serverAppInfo?.uninstallable}
+          />
 
           {/* Bottom safe area padding */}
           <View style={{height: Math.max(40, insets.bottom + 20)}} />

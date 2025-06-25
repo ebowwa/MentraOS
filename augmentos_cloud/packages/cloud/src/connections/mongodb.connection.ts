@@ -1,4 +1,4 @@
-import { logger } from "@augmentos/utils";
+import { logger } from "../services/logging/pino-logger";
 import dotenv from "dotenv";
 import mongoose from 'mongoose';
 

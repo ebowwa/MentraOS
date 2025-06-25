@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Download, X, Lock, Building } from 'lucide-react';
+import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-dom';
+import { Search, X, Building, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../hooks/useTheme';
 import api, { AppFilterOptions } from '../api';
 import { AppI } from '../types';
 import Header from '../components/Header';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
+import { Button } from '../components/ui/button';
 
 /**
  * AppStore component that displays and manages available applications
@@ -15,6 +16,7 @@ import { Button } from '@/components/ui/button';
 const AppStore: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const { theme } = useTheme();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get organization ID from URL query parameter
@@ -185,12 +187,6 @@ const AppStore: React.FC = () => {
     setOrgName('');
   };
 
-  const handleOpen = async (packageName: string) => {
-    if (!isAuthenticated) {
-      console.log("TODO not impleneted: Open App");
-      return;
-    }
-  }
   // Handle app installation
   const handleInstall = async (packageName: string) => {
     if (!isAuthenticated) {
@@ -198,6 +194,7 @@ const AppStore: React.FC = () => {
       return;
     }
 
+    // Use the web API
     try {
       setInstallingApp(packageName);
 
@@ -260,44 +257,60 @@ const AppStore: React.FC = () => {
     }
   };
 
+  const handleOpen = (packageName: string) => {
+    navigate(`/package/${packageName}`);
+  };
+
   return (
-      <div className="min-h-screen bg-[#030514] text-white">      
+      <div className="min-h-screen text-white" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>      
       {/* Header */}
       <Header />
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-6 ">
-        {/* Search bar */}
-        <form onSubmit={handleSearch} className="mt-4 max-w-2xl mx-auto flex items-center space-x-3">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-              <Search className="h-5 w-5 text-white" />
+      <main className="container mx-auto py-8">
+        {/* Heading + Search */}
+        <div className="flex flex-col lg:flex-row mb-8 lg:items-center lg:justify-between gap-4 px-4 pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
+          {/* App Store heading */}
+          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>App Store</h1>
+
+          {/* Search bar */}
+          <form onSubmit={handleSearch} className="flex-1 lg:max-w-md flex items-center space-x-3">
+            <div className="relative w-full">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="h-5 w-5" style={{ color: 'var(--text-secondary)' }} />
+              </div>
+              <input
+                type="text"
+                className="theme-search-input w-full pl-10 pr-4 py-2 rounded-3xl focus:outline-none focus:ring-2 focus:ring-[#47478E] border"
+                style={{ 
+                  backgroundColor: theme === 'light' ? 'var(--bg-secondary)' : '#141834',
+                  color: 'var(--text-primary)', 
+                  borderColor: 'var(--border-color)'
+                }}
+                placeholder="Search"
+                value={searchQuery}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
+              />
             </div>
-            <input
-              type="text"
-              className="bg-[#141834] w-full pl-10 pr-4 py-2 rounded-3xl text-white placeholder-[#B3B3B3] focus:outline-none focus:ring-2 focus:ring-[#47478E]"
-              placeholder="Search"
-              value={searchQuery}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-            />
-          </div>
-          {searchQuery && (
-            <button
-              type="button"
-              className="text-[#ABAAFF] text-[15px] font-normal tracking-[0.1em]"
-              onClick={() => {
-                setSearchQuery('');
-                fetchApps(); // Reset to all apps
-              }}
-            >
-              Cancel
-            </button>
-          )}
-        </form>
+            {searchQuery && (
+              <button
+                type="button"
+                className="text-[15px] font-normal tracking-[0.1em]"
+                style={{ color: 'var(--text-primary)' }}
+                onClick={() => {
+                  setSearchQuery('');
+                  fetchApps();
+                }}
+              >
+                Cancel
+              </button>
+            )}
+          </form>
+        </div>
 
         {/* Organization filter indicator */}
         {activeOrgFilter && (
-          <div className="my-4 max-w-2xl mx-auto">
+          <div className="my-4 max-w-2xl mx-auto px-4">
             <div className="flex items-center text-sm bg-blue-50 text-blue-700 px-3 py-2 rounded-md">
               <Building className="h-4 w-4 mr-2" />
               <span>
@@ -316,7 +329,7 @@ const AppStore: React.FC = () => {
 
         {/* Search result indicator */}
         {searchQuery && (
-          <div className="my-4 max-w-2xl mx-auto">
+          <div className="my-4 max-w-2xl mx-auto px-4">
             <p className="text-gray-600">
               {filteredApps.length} {filteredApps.length === 1 ? 'result' : 'results'} for "{searchQuery}"
               {activeOrgFilter && ` in ${orgName}`}
@@ -326,14 +339,14 @@ const AppStore: React.FC = () => {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex justify-center items-center h-64 px-4">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
           </div>
         )}
 
         {/* Error message */}
         {error && !isLoading && (
-          <div className="my-4 max-w-2xl mx-auto p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="my-4 max-w-2xl mx-auto mx-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
             <p>{error}</p>
             <button
               className="mt-2 text-sm font-medium text-red-700 hover:text-red-600"
@@ -346,72 +359,87 @@ const AppStore: React.FC = () => {
 
         {/* App grid */}
         {!isLoading && !error && (
-          <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-3">
+          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12 px-0">
             {filteredApps.map(app => (
-              <div
-                key={app.packageName}
-                className=" shadow-sm overflow-hidden h-full flex flex-col"
-              >
-                <div className="p-3 flex flex-col flex-1">
-                  <div className="flex items-start">
-                    <div
-                      className="flex-1 cursor-pointer flex items-center"
-                      onClick={() => navigate(`/package/${app.packageName}`)}
-                    >
-                      <img
-                        src={app.logoURL}
-                        alt={`${app.name} logo`}
-                        className="w-14 h-14 object-cover rounded-full border border-[#3C3C5C]"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "https://placehold.co/48x48/gray/white?text=App";
-                        }}
-                      />
-                      <div className="ml-3">
-                        <h3 className="text-white font-semibold text-[16px]">{app.name}</h3>
-                        <p className="text-[13px] text-[#8E8EA0] mt-[2px]">
-                          {app.orgName || app.developerProfile?.company || app.developerId || ''}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="ml-3 mt-1">
-                      {isAuthenticated ? (
-                        app.isInstalled ? (
-                          <Button
-                            onClick={() => handleOpen(app.packageName)}
-                            disabled={installingApp === app.packageName}
-                            className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
-                          >
-                            <>Open</>
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => handleInstall(app.packageName)}
-                            disabled={installingApp === app.packageName}
-                            className="bg-[#242454] text-white text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
-                          >
-                            {installingApp === app.packageName ? (
-                              <>
-                                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2"></div>
-                                Installing
-                              </>
-                            ) : (
-                              <>Get</>
-                            )}
-                          </Button>
-                        )
+              <div key={app.packageName} className="p-6 flex gap-3 transition-colors rounded-lg relative" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
+                {/* Image Column */}
+                <div className="shrink-0 flex items-start pt-2">
+                  <img
+                    src={app.logoURL}
+                    alt={`${app.name} logo`}
+                    className="w-16 h-16 object-cover rounded-full"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/64x64/gray/white?text=App';
+                    }}
+                  />
+                </div>
+
+                {/* Content Column */}
+                <div className="flex-1 flex flex-col gap-2">
+                  <div onClick={() => handleOpen(app.packageName)} role="button" className="cursor-pointer">
+                    <h3 className="text-[15px] font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: 'var(--text-primary)'}}>{app.name}</h3>
+                    {app.description && (
+                      <p className="text-[15px] font-normal leading-[1.3] line-clamp-2" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: theme === 'light' ? '#4a4a4a' : '#9A9CAC'}}>{app.description}</p>
+                    )}
+                  </div>
+
+                  {/* Button row */}
+                  <div className="mt-2">
+                    {isAuthenticated ? (
+                      app.isInstalled ? (
+                        <Button
+                          onClick={() => handleOpen(app.packageName)}
+                          disabled={installingApp === app.packageName}
+                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          style={{ 
+                            backgroundColor: 'var(--button-bg)', 
+                            color: 'var(--button-text)' 
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                        >
+                          <>Open</>
+                        </Button>
                       ) : (
                         <Button
-                          onClick={() => navigate('/login')}
-                          className="w-full bg-[#2E2E5E] text-white hover:bg-[#3A3A70]"
+                          onClick={() => handleInstall(app.packageName)}
+                          disabled={installingApp === app.packageName}
+                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          style={{ 
+                            backgroundColor: 'var(--button-bg)', 
+                            color: 'var(--button-text)' 
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
                         >
-                          <Lock className="h-4 w-4 mr-1" />
-                          Sign in
+                          {installingApp === app.packageName ? (
+                            <>
+                              <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full mr-2" style={{ borderColor: 'var(--button-text)', borderTopColor: 'transparent' }}></div>
+                              Installing
+                            </>
+                          ) : (
+                            <>Get</>
+                          )}
                         </Button>
-                      )}
-                    </div>
+                      )
+                    ) : (
+                      <Button
+                        onClick={() => navigate('/login')}
+                        className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center flex items-center gap-2"
+                        style={{ 
+                          backgroundColor: 'var(--button-bg)', 
+                          color: 'var(--button-text)' 
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                      >
+                        <Lock className="h-4 w-4 mr-1" />
+                        Sign in
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <div className="border-b border-[#2D2D46] mt-2" />
               </div>
             ))}
           </div>
@@ -419,7 +447,7 @@ const AppStore: React.FC = () => {
 
         {/* Empty state */}
         {!isLoading && !error && filteredApps.length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-12 px-4">
             {searchQuery ? (
               <>
                 <p className="text-gray-500 text-lg">

@@ -74,14 +74,14 @@ export default function OnboardingWelcome() {
           onPress={handleContinue}
           tx="common:continue"
           textAlignment="center"
-          LeftAccessory={() => <FontAwesome name="chevron-right" size={16} color={theme.colors.text} />}
+          LeftAccessory={() => <FontAwesome name="chevron-right" size={16} color={theme.colors.textAlt} />}
         />
 
         <Spacer height={10} />
         <Button
           onPress={handleSkip}
           tx="welcomeScreen:skipOnboarding"
-          LeftAccessory={() => <FontAwesome name="step-forward" size={16} color={theme.colors.text} />}
+          LeftAccessory={() => <FontAwesome name="step-forward" size={16} color={theme.colors.textAlt} />}
         />
       </View>
     </Screen>

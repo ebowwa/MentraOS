@@ -28,12 +28,13 @@ export default class BackendServerComms {
       return customUrl
     }
 
-    // const secure = Config.AUGMENTOS_SECURE === 'true';
-    // const host = Config.AUGMENTOS_HOST;
-    // const port = Config.AUGMENTOS_PORT;
-    const secure = true
-    const host = "global.augmentos.cloud"
-    const port = "443"
+    // Debug logging for environment variables
+    console.log(`${this.TAG}: Config values - HOST: ${Config.MENTRAOS_HOST}, PORT: ${Config.MENTRAOS_PORT}, SECURE: ${Config.MENTRAOS_SECURE}`)
+    
+    // Use fallback values if Config values are undefined
+    const secure = Config.MENTRAOS_SECURE ? Config.MENTRAOS_SECURE === 'true' : true;
+    const host = Config.MENTRAOS_HOST || 'api.mentra.glass';
+    const port = Config.MENTRAOS_PORT || '443';
     const protocol = secure ? "https" : "http"
     const defaultServerUrl = `${protocol}://${host}:${port}`
     console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`)
@@ -85,7 +86,7 @@ export default class BackendServerComms {
       throw new Error("No core token available for authentication")
     }
 
-    const url = `${this.serverUrl}/api/gallery/${photoId}`
+    const url = `${await this.getServerUrl()}/api/gallery/${photoId}`
     console.log("Deleting gallery photo:", photoId)
 
     const config: AxiosRequestConfig = {
@@ -500,7 +501,7 @@ export default class BackendServerComms {
         throw new Error(`Failed to generate webview token: ${response.data.error || response.statusText}`)
       }
     } catch (error: any) {
-      console.error(`${this.TAG}: Error generating webview token -`, error.message || error)
+      console.log(`${this.TAG}: Error generating webview token -`, error.message || error)
       // Consider more specific error handling based on response status if available
       if (axios.isAxiosError(error) && error.response) {
         throw new Error(`Failed to generate webview token: ${error.response.data?.error || error.message}`)

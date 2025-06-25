@@ -7,12 +7,12 @@
  * to maintain core functionality regardless of database state.
  */
 
-import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@augmentos/sdk';
+import { StopWebhookRequest, TpaType, WebhookResponse, AppState, SessionWebhookRequest, ToolCall, PermissionType, WebhookRequestType, AppSetting, AppSettingType } from '@mentra/sdk';
 // TODO(isaiah): Consider splitting this into multiple services (appstore.service, developer.service, tools.service)
 import axios, { AxiosError } from 'axios';
 // import { systemApps } from './system-apps';
 import App, { AppI } from '../../models/app.model';
-import { ToolSchema, ToolParameterSchema } from '@augmentos/sdk';
+import { ToolSchema, ToolParameterSchema } from '@mentra/sdk';
 import { User } from '../../models/user.model';
 import crypto from 'crypto';
 import { logger as rootLogger } from '../logging/pino-logger';
@@ -45,6 +45,14 @@ if (process.env.NODE_ENV !== 'production' || process.env.DEBUG_APPS === 'true') 
   // If we're in debug mode, add the debug apps to the preinstalled list.
   PRE_INSTALLED.push(...PRE_INSTALLED_DEBUG);
   logger.info('Debug mode enabled - adding debug apps to preinstalled list:', PRE_INSTALLED_DEBUG);
+}
+
+/**
+ * Returns the list of apps that should be auto-installed for users on this server instance.
+ * This matches the environment - core apps only in production, core + debug in development.
+ */
+export function getPreInstalledForThisServer(): string[] {
+  return [...PRE_INSTALLED]; // Return copy of current server's pre-installed apps
 }
 
 /**
