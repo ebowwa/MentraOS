@@ -9,8 +9,6 @@
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 import { DisplayRequest, TpaToCloudMessageType, ViewType, LayoutType } from '@mentra/sdk';
-import { strict as assert } from 'assert';
-import { systemApps } from '../../../core/system-apps';
 
 // App package names for testing
 const APP1 = 'com.example.app1';

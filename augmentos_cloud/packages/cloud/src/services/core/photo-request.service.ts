@@ -16,7 +16,6 @@
 
 import WebSocket from 'ws';
 import { v4 as uuidv4 } from 'uuid';
-// import { logger } from '@mentra/utils';
 import { logger as rootLogger } from "../logging";
 const logger = rootLogger.child({ service: 'photo-request.service' });
 

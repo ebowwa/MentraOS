@@ -11,7 +11,7 @@
 // import mongoose from 'mongoose';
 // import dotenv from 'dotenv';
 // import App, { PermissionType } from '../models/app.model';
-// import { logger } from '@mentra/utils';
+// import { logger } from "../services/logging/pino-logger";
 // import * as mongoConnection from '../connections/mongodb.connection';
 
 // // Load environment variables
