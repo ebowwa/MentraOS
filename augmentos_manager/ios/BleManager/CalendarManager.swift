@@ -60,11 +60,22 @@ class CalendarManager {
   @objc private func handleAuthorizationStatusChange() {
     print("Calendar authorization status changed")
     let status = EKEventStore.authorizationStatus(for: .event)
-    if status == .fullAccess {
-      print("Calendar access now authorized, triggering callback")
-      handleCalendarChanged()
+    
+    if #available(iOS 17.0, *) {
+        if status == .fullAccess {
+            print("Calendar access now authorized, triggering callback")
+            handleCalendarChanged()
+        } else {
+            print("Calendar access status changed to: \(status)")
+        }
     } else {
-      print("Calendar access status changed to: \(status)")
+        // iOS 16 and below - use the older authorization status
+        if status == .authorized {
+            print("Calendar access now authorized, triggering callback")
+            handleCalendarChanged()
+        } else {
+            print("Calendar access status changed to: \(status)")
+        }
     }
   }
   
