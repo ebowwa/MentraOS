@@ -135,7 +135,7 @@ export default function SettingsPage() {
 
         <RouteButton label={translate("settings:privacySettings")} onPress={() => push("/settings/privacy")} />
 
-        {devMode && <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />}
+        <RouteButton label="Theme Settings" onPress={() => push("/settings/theme")} />
 
         {devMode && (
           <RouteButton
