@@ -19,6 +19,7 @@ const DashboardHome: React.FC = () => {
   const [apps, setApps] = useState<AppResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
   // Removed dialog states as they're now handled by the AppTable component
 
   // Fetch Apps when component mounts or organization changes
@@ -27,10 +28,15 @@ const DashboardHome: React.FC = () => {
       if (!isAuthenticated || !currentOrg) return;
 
       try {
-        setIsLoading(true);
+        // Only show loading state if we haven't loaded apps before or during initial load
+        if (!hasInitiallyLoaded) {
+          setIsLoading(true);
+        }
+
         const appData = await api.apps.getAll(currentOrg.id);
         setApps(appData);
         setError(null);
+        setHasInitiallyLoaded(true);
       } catch (err) {
         console.error('Failed to fetch Apps:', err);
         setError('Failed to load Apps. Please try again.');
@@ -42,7 +48,7 @@ const DashboardHome: React.FC = () => {
     if (!authLoading && !orgLoading) {
       fetchApps();
     }
-  }, [isAuthenticated, authLoading, orgLoading, currentOrg]);
+  }, [isAuthenticated, authLoading, orgLoading, currentOrg, hasInitiallyLoaded]);
 
   const hasNoApps = apps.length === 0 && !isLoading && !error;
 
