@@ -191,8 +191,8 @@ const AppDetails: React.FC = () => {
       <div className="sm:hidden">
         <Header />
       </div>
-      
-      <div 
+
+      <div
         className="min-h-screen sm:flex sm:items-center sm:justify-center sm:p-4"
         style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
       >
@@ -227,7 +227,7 @@ const AppDetails: React.FC = () => {
           <button
             onClick={() => navigate(-1)}
             className="hidden sm:block absolute top-6 right-6 transition-colors"
-            style={{ 
+            style={{
               color: theme === 'light' ? '#000000' : '#9CA3AF'
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
@@ -285,10 +285,10 @@ const AppDetails: React.FC = () => {
                       onClick={() => handleOpen(app.packageName)}
                       disabled={installingApp}
                       className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full"
-                      style={{ 
+                      style={{
                         fontFamily: '"SF Pro Rounded", sans-serif',
-                        backgroundColor: 'var(--button-bg)', 
-                        color: 'var(--button-text)' 
+                        backgroundColor: 'var(--button-bg)',
+                        color: 'var(--button-text)'
                       }}
                       onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
                       onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
@@ -300,9 +300,9 @@ const AppDetails: React.FC = () => {
                     <Button
                       disabled={true}
                       className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full opacity-30 cursor-not-allowed"
-                      style={{ 
+                      style={{
                         fontFamily: '"SF Pro Rounded", sans-serif',
-                        backgroundColor: 'var(--button-bg)', 
+                        backgroundColor: 'var(--button-bg)',
                         color: 'var(--button-text)',
                         filter: 'grayscale(100%)'
                       }}
@@ -394,14 +394,17 @@ const AppDetails: React.FC = () => {
               <div className="flex justify-between items-center">
                 <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>App Type</span>
                 <span className="text-[14px] font-normal text-right capitalize" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                  {app.appType || 'Standard'}
+                  {(() => {
+                    const appType = app.appType ?? app.tpaType ?? 'Foreground';
+                    return appType === 'standard' ? 'Foreground' : appType;
+                  })()}
                 </span>
               </div>
 
               <div className="flex justify-between items-center">
                 <span className="text-[14px] font-medium" style={{ color: theme === 'light' ? '#000000' : '#9CA3AF' }}>Package</span>
                 <span className="text-[14px] font-normal text-right" style={{ color: theme === 'light' ? '#000000' : '#E4E4E7' }}>
-                  {app.packageName}
+                  {app.packageName.replace('.augmentos.', '.mentra.')} {/* TODO: remove this once we have migrated over */}
                 </span>
               </div>
             </div>
