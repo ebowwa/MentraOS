@@ -14,7 +14,8 @@ import {
   AppStateChange,
   AppI,
   WebhookRequestType,
-  SessionWebhookRequest
+  SessionWebhookRequest,
+  AppType
 } from '@mentra/sdk';
 import { Logger } from 'pino';
 import subscriptionService from './subscription.service';
@@ -26,6 +27,8 @@ import { User } from '../../models/user.model';
 import { logger as rootLogger } from '../logging/pino-logger';
 import sessionService from './session.service';
 import axios, { AxiosError } from 'axios';
+import App from '../../models/app.model';
+
 const logger = rootLogger.child({ service: 'AppManager' });
 
 // Default AugmentOS system settings
@@ -194,12 +197,50 @@ export class AppManager {
    * @returns Promise that resolves when App successfully connects and authenticates
    */
   async startApp(packageName: string): Promise<AppStartResult> {
+    const logger = this.logger.child({ packageName });
+    logger.info({
+      packageName,
+      runningApps: Array.from(this.userSession.runningApps.values()),
+      installedApps: JSON.stringify(this.userSession.installedApps),
+    }, `🚀🚀 Starting App ${packageName} for user ${this.userSession.userId} 🚀🚀`);
+
     // Check if already running
     if (this.userSession.runningApps.has(packageName)) {
-      this.logger.info({ userId: this.userSession.userId, packageName, service: 'AppManager' },
+      logger.info({},
         `App ${packageName} already running`);
       return { success: true };
     }
+
+    // Check if this app is a foreground app, and if so, check if the user is already running a foreground app.
+    // If so, we should stop the currently running foreground app before starting a new one.
+
+    // TODO(isaiah): Test if we can use the installedApps cache instead of fetching from DB
+    const app = await appService.getApp(packageName);
+    if (!app) {
+      logger.error({ packageName }, `App ${packageName} not found`);
+      return {
+        success: false,
+        error: { stage: 'WEBHOOK', message: `App ${packageName} not found` }
+      };
+    }
+
+    // If the app is a standard app, check if any other foreground app is running
+
+    if (app.appType === AppType.STANDARD) {
+      logger.debug(`App ${packageName} is a standard app, checking for running foreground apps`);
+      // Check if any other foreground app is running
+      const runningAppsPackageNames = Array.from(this.userSession.runningApps.keys());
+      const runningForegroundApps = await App.find({ packageName: { $in: runningAppsPackageNames }, appType: AppType.STANDARD });
+      logger.debug({ runningAppsPackageNames, runningForegroundApps }, `Running foreground apps: ${JSON.stringify(runningForegroundApps)}`);
+      if (runningForegroundApps.length > 0) {
+        // Stop the currently running foreground app
+        const currentlyRunningApp = runningForegroundApps[0];
+        logger.info({ currentlyRunningApp },
+          `Stopping currently running foreground app ${currentlyRunningApp.packageName} before starting ${packageName}`);
+        await this.stopApp(currentlyRunningApp.packageName); // Restarting, so allow stopping even if not running
+      }
+    }
+
 
     // TODO(isaiah): instead of polling, we can optionally store list of other promises, or maybe just fail gracefully.
     // Check if already loading - return existing pending promise
@@ -232,17 +273,6 @@ export class AppManager {
           checkCompletion();
         });
       }
-    }
-
-    // TODO(isaiah): Test if we can use the installedApps cache instead of fetching from DB
-    const app = await appService.getApp(packageName);
-    if (!app) {
-      this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
-        `App ${packageName} not found`);
-      return {
-        success: false,
-        error: { stage: 'WEBHOOK', message: `App ${packageName} not found` }
-      };
     }
 
     // Update last active timestamp when app starts or stops
