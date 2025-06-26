@@ -276,6 +276,7 @@ export default function InactiveAppList({
           [{text: translate("common:ok")}],
           {
             iconName: "information-outline",
+            iconColor: theme.colors.textDim,
           },
         )
         return
@@ -332,6 +333,7 @@ export default function InactiveAppList({
         ],
         {
           iconName: "information-outline",
+          iconColor: theme.colors.textDim,
         },
       )
       return
