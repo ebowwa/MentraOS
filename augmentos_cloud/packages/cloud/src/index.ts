@@ -201,6 +201,7 @@ app.use('/api/auth', authRoutes);
 app.use('/apps', appRoutes);
 app.use('/auth', authRoutes);
 app.use('/appsettings', appSettingsRoutes);
+app.use('/tpasettings', appSettingsRoutes);  // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 app.use('/api/dev', devRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/orgs', organizationRoutes);
@@ -220,6 +221,7 @@ app.use('/api/user-data', userDataRoutes);
 app.use('/api/account', accountRoutes);
 app.use('/api/onboarding', onboardingRoutes);
 app.use('/api/app-communication', appCommunicationRoutes);
+app.use('/api/tpa-communication', appCommunicationRoutes); // TODO: Remove this once the old apps are fully updated in the wild (the old mobile clients will hit the old urls)
 
 // Health check endpoint
 app.get('/health', (req, res) => {
