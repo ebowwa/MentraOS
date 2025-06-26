@@ -133,7 +133,7 @@ const AppDetails: React.FC = () => {
     // If we're in webview, send message to React Native to open TPA settings
     if (isWebView && window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'OPEN_TPA_SETTINGS',
+        type: 'OPEN_APP_SETTINGS',
         packageName: packageName
       }));
     } else {
