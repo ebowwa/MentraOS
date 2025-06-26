@@ -445,7 +445,7 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running && app.appType === "standard" && app.packageName !== packageName)
+    return appStatus.filter(app => app.is_running && (app.appType == "standard") || (app["tpaType"] == "standard") && app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
@@ -542,7 +542,8 @@ export default function InactiveAppList({
               is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
               isActive={false}
               onTogglePress={async () => {
-                const res = await checkIsForegroundAppStart(app.packageName, app.appType == "standard")
+                let isForegroundApp = (app.appType == "standard") || (app["tpaType"] == "standard");
+                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp);
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
                   startApp(app.packageName)

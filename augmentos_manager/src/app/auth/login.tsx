@@ -425,6 +425,13 @@ export default function LoginScreen() {
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      // If email form is shown, close it instead of exiting
+      if (isSigningUp) {
+        setIsSigningUp(false)
+        return true
+      }
+      
+      // Otherwise, use the double-press to exit behavior
       if (backPressCount === 0) {
         setBackPressCount(1)
         setTimeout(() => setBackPressCount(0), 2000)
@@ -437,7 +444,7 @@ export default function LoginScreen() {
     })
 
     return () => backHandler.remove()
-  }, [backPressCount])
+  }, [backPressCount, isSigningUp])
 
   useEffect(() => {
     // Subscribe to auth state changes:
