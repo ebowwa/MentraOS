@@ -101,10 +101,10 @@ const {goBack, push, replace} = useNavigationHistory()
 <Screen safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
   <Text tx="settingsScreen:someSettingsText"/>
   <Button
+    tx="alerts:showAlert"
     onPress={() => {
       showAlert(translate("alerts:someError"));
     }}
-    tx="alerts:showAlert"
   />
 </Screen>
 ```
