@@ -194,7 +194,7 @@ export default function AppSettings() {
                 type: "success",
               })
 
-              goBack()
+              router.replace("/(tabs)/home")
             } catch (error: any) {
               console.error("Error uninstalling app:", error)
               clearPendingOperation(packageName)
