@@ -144,9 +144,10 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: "row",
-    gap: 16,
+    gap: 20,
     justifyContent: "space-between",
     width: "80%",
+    marginTop: -10,
   },
   closeButton: {
     fontSize: 22,
