@@ -34,6 +34,11 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
+        // Skip for app settings and webview - they handle their own back navigation
+        if (pathname === '/app/settings' || pathname === '/app/webview') {
+          return false  // Let the screen's handler execute
+        }
+        
         if (segments.length > 0 && segments[0] != "(tabs)") {
           goBack()
         }

@@ -23,7 +23,7 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons"
 import {useFocusEffect, useNavigation} from "@react-navigation/native"
 import AppIcon from "./AppIcon"
 import {NavigationProps} from "./types"
-import {AppInterface, TPAPermission, useAppStatus} from "@/contexts/AppStatusProvider"
+import {AppInterface, AppPermission, useAppStatus} from "@/contexts/AppStatusProvider"
 import {requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import {checkFeaturePermissions} from "@/utils/PermissionsUtils"
 import {PermissionFeatures} from "@/utils/PermissionsUtils"
@@ -171,7 +171,7 @@ export default function InactiveAppList({
         {type: "POST_NOTIFICATIONS", required: true},
         {type: "READ_NOTIFICATIONS", required: true},
         {type: "LOCATION", required: true},
-      ] as TPAPermission[]
+      ] as AppPermission[]
     }
 
     if (app.packageName == "cloud.augmentos.notify") {
@@ -276,6 +276,7 @@ export default function InactiveAppList({
           [{text: translate("common:ok")}],
           {
             iconName: "information-outline",
+            iconColor: theme.colors.textDim,
           },
         )
         return
@@ -311,12 +312,28 @@ export default function InactiveAppList({
             text: translate("common:next"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
-              startApp(packageName)
+
+              // Check if permissions were actually granted (for non-special permissions)
+              // Special permissions like READ_NOTIFICATIONS on Android require manual action
+              const stillNeededPermissions = await checkPermissions(appToStart)
+
+              // If we still need READ_NOTIFICATIONS, don't auto-retry
+              // The user needs to manually grant it in settings and try again
+              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+                // Permission flow is in progress, user needs to complete it manually
+                return
+              }
+
+              // For other permissions that were granted, proceed with starting the app
+              if (stillNeededPermissions.length === 0) {
+                startApp(packageName)
+              }
             },
           },
         ],
         {
           iconName: "information-outline",
+          iconColor: theme.colors.textDim,
         },
       )
       return
@@ -367,7 +384,7 @@ export default function InactiveAppList({
     optimisticallyStartApp(packageName)
 
     // Check if it's a standard app
-    if (appToStart?.tpaType === "standard") {
+    if (appToStart?.appType === "standard") {
       console.log("% appToStart", appToStart)
       // Find any running standard apps
       const runningStandardApps = getRunningStandardApps(packageName)
@@ -430,12 +447,14 @@ export default function InactiveAppList({
   }
 
   const getRunningStandardApps = (packageName: string) => {
-    return appStatus.filter(app => app.is_running && app.tpaType === "standard" && app.packageName !== packageName)
+    return appStatus.filter(app => app.is_running &&
+      (app.appType == "standard" || app["tpaType"] == "standard") &&
+      app.packageName !== packageName)
   }
   const openAppSettings = (app: any) => {
     console.log("%%% opening app settings", app)
     router.push({
-      pathname: "/tpa/settings",
+      pathname: "/app/settings",
       params: {
         packageName: app.packageName,
         appName: app.name,
@@ -523,10 +542,12 @@ export default function InactiveAppList({
           <React.Fragment key={app.packageName}>
             <AppListItem
               app={app}
-              is_foreground={app.tpaType == "standard"}
+              // @ts-ignore
+              is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
               isActive={false}
               onTogglePress={async () => {
-                const res = await checkIsForegroundAppStart(app.packageName, app.tpaType == "standard")
+                let isForegroundApp = (app.appType == "standard") || (app["tpaType"] == "standard");
+                const res = await checkIsForegroundAppStart(app.packageName, isForegroundApp);
                 if (res) {
                   // Don't animate here - let startApp handle all UI updates
                   startApp(app.packageName)
@@ -564,8 +585,8 @@ export default function InactiveAppList({
           {onClearSearch && (
             <>
               <Spacer height={16} />
-              <TouchableOpacity 
-                style={themed($clearSearchButton)} 
+              <TouchableOpacity
+                style={themed($clearSearchButton)}
                 onPress={() => {
                   Keyboard.dismiss()
                   onClearSearch()

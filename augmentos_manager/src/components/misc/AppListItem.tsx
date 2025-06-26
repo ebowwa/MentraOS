@@ -72,7 +72,7 @@ export const AppListItem = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           />
-          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
+          <Tag isActive={isActive} isForeground={is_foreground} />
         </View>
       </TouchableOpacity>
 
@@ -81,7 +81,7 @@ export const AppListItem = ({
           <Switch value={isActive} onValueChange={onTogglePress} />
         </View>
         <TouchableOpacity onPress={onSettingsPress} hitSlop={12} style={themed($chevronHitbox)}>
-          <ChevronRight color={theme.colors.text} />
+          <ChevronRight color={theme.colors.chevron} />
         </TouchableOpacity>
       </View>
     </Animated.View>
@@ -145,30 +145,30 @@ const $chevronHitbox: ThemedStyle<ViewStyle> = () => ({
 
 const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?: boolean}) => {
   const {themed, theme} = useAppTheme()
-  const mColor = /*true ? "#7674FB" : */theme.colors.textDim
+  const mColor = isActive ? theme.colors.foregroundTagText : theme.colors.textDim
 
-  if (isForeground) {
-    return (
-      <View style={themed(isActive ? $tagActive : $tag)}>
-        <TreeIcon size={16} color={mColor} />
-        <Text
-          text={isForeground ? translate("home:foreground") : ""}
-          style={[themed($disconnect), {color: mColor}]}
-          numberOfLines={1}
-        />
-        <Pressable
-          onPress={() => {
-            Toast.show({
-              type: "baseToast",
-              text1: "Not implemented",
-              position: "bottom",
-            })
-          }}></Pressable>
-      </View>
-    )
-  } else {
-    return
+  if (!isForeground) {
+    return null
   }
+
+  return (
+    <View style={themed(isActive ? $tagActive : $tag)}>
+      <TreeIcon size={16} color={mColor} />
+      <Text
+        text={isForeground ? translate("home:foreground") : ""}
+        style={[themed($disconnect), {color: mColor}]}
+        numberOfLines={1}
+      />
+      <Pressable
+        onPress={() => {
+          Toast.show({
+            type: "baseToast",
+            text1: "Not implemented",
+            position: "bottom",
+          })
+        }}></Pressable>
+    </View>
+  )
 }
 const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
   return {
@@ -180,7 +180,7 @@ const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
     justifyContent: "flex-start",
     gap: 4,
     minHeight: 28,
-    backgroundColor: colors.palette.primary200,
+    backgroundColor: colors.foregroundTagBackground,
     alignSelf: "flex-start",
   }
 }

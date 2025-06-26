@@ -29,14 +29,14 @@ The current DisplayManager implementation has several structural issues that mak
 interface DisplayState {
   // Current display showing on glasses
   activeDisplay: ActiveDisplay | null;
-  
+
   // Last valid display from system apps (e.g., captions)
   systemAppDisplay: ActiveDisplay | null;
-  
+
   // Last valid display from each app (for recovery after boot screen)
   lastDisplayByApp: Map<string, ActiveDisplay>;
-  
-  // Display priority lock 
+
+  // Display priority lock
   displayLock: {
     packageName: string;
     expiresAt: Date;
@@ -48,7 +48,7 @@ interface DisplayState {
 interface QueueState {
   // Requests queued during boot (by package name)
   bootRequests: Map<string, ActiveDisplay>;
-  
+
   // Throttled requests (by package name)
   throttledRequests: Map<string, ThrottledRequest>;
 }
@@ -60,14 +60,14 @@ interface QueueState {
 class DisplayManager implements DisplayManagerI {
   private displayState: DisplayState;
   private queueState: QueueState;
-  
+
   // Main entry point for all display requests
   public handleDisplayEvent(displayRequest: DisplayRequest, userSession: UserSession): boolean {
     // Validation and userSession setup
-    
+
     // 1. Determine display action (show now, throttle, or queue for boot)
     const action = this.determineDisplayAction(displayRequest);
-    
+
     // 2. Handle based on determined action
     switch (action) {
       case 'SHOW_NOW':
@@ -80,20 +80,20 @@ class DisplayManager implements DisplayManagerI {
         return this.handleRejectedDisplay(displayRequest);
     }
   }
-  
+
   // Clear methods for different logic flows
   private determineDisplayAction(request: DisplayRequest): 'SHOW_NOW' | 'THROTTLE' | 'QUEUE_FOR_BOOT' | 'REJECT';
   private processImmediateDisplay(request: DisplayRequest): boolean;
   private enqueueThrottledDisplay(request: DisplayRequest): boolean;
   private queueForBootCompletion(request: DisplayRequest): boolean;
   private handleRejectedDisplay(request: DisplayRequest): boolean;
-  
+
   // Boot screen handling
   public handleAppStart(packageName: string, userSession: UserSession): void;
   public handleAppStop(packageName: string, userSession: UserSession): void;
   private showBootScreen(): void;
   private processBootQueue(): void;
-  
+
   // Display queue management
   private processNextDisplay(reason: DisplayTransitionReason): void;
   private restoreDisplayState(): void;
@@ -170,7 +170,7 @@ private enqueueThrottledDisplay(displayRequest: DisplayRequest): boolean {
 
   // Create active display object
   const activeDisplay = this.createActiveDisplay(displayRequest);
-  
+
   // Store in per-app throttle map
   this.queueState.throttledRequests.set(packageName, {
     activeDisplay,
@@ -179,7 +179,7 @@ private enqueueThrottledDisplay(displayRequest: DisplayRequest): boolean {
 
   // Schedule processing after throttle window
   this.scheduleThrottledDisplayProcessing(packageName, activeDisplay);
-  
+
   // Return true to indicate request is being handled
   return true;
 }
@@ -199,7 +199,7 @@ private scheduleThrottledDisplayProcessing(packageName: string, activeDisplay: A
 
 ### 2. Boot Screen Queue Handling
 
-Current code: 
+Current code:
 ```typescript
 // Block ALL display requests if ANY app is booting (except dashboard)
 if (this.bootingApps.size > 0) {
@@ -212,13 +212,13 @@ Refactored code:
 ```typescript
 private queueForBootCompletion(displayRequest: DisplayRequest): boolean {
   const packageName = displayRequest.packageName;
-  
+
   logger.info(`[DisplayManager] - [${this.userSession.userId}] 🔄 Queuing display for after boot: ${packageName}`);
-  
+
   // Store most recent request per app in boot queue
   const activeDisplay = this.createActiveDisplay(displayRequest);
   this.queueState.bootRequests.set(packageName, activeDisplay);
-  
+
   // Return true to indicate request is acknowledged and being handled
   return true;
 }
@@ -226,17 +226,17 @@ private queueForBootCompletion(displayRequest: DisplayRequest): boolean {
 // Called when boot screen completes
 private processBootQueue(): void {
   logger.info(`[DisplayManager] - [${this.userSession?.userId}] 🔄 Processing ${this.queueState.bootRequests.size} queued boot requests`);
-  
+
   if (this.queueState.bootRequests.size === 0) {
     // No queued requests, restore previous display if available
     this.restoreDisplayState();
     return;
   }
-  
+
   // Find highest priority display from boot queue
   // Process most recent request for highest priority app
   // (Implementation details...)
-  
+
   // Clear boot queue after processing
   this.queueState.bootRequests.clear();
 }
@@ -265,17 +265,17 @@ private displayState: DisplayState = {
 // Store last display from each app
 private updateLastDisplayForApp(activeDisplay: ActiveDisplay): void {
   const packageName = activeDisplay.displayRequest.packageName;
-  
+
   // Don't track dashboard displays
   if (packageName === systemApps.dashboard.packageName) {
     return;
   }
-  
+
   // Track system app displays separately
   if (packageName === this.systemAppPackageName) {
     this.displayState.systemAppDisplay = activeDisplay;
   }
-  
+
   // Store latest display for each app (for recovery)
   this.displayState.lastDisplayByApp.set(packageName, activeDisplay);
 }
@@ -287,15 +287,15 @@ private updateLastDisplayForApp(activeDisplay: ActiveDisplay): void {
 
 ```typescript
 /**
- * Processes a display request from a TPA
- * 
+ * Processes a display request from a App
+ *
  * This is the main entry point for all display requests. It determines
  * how the request should be handled based on current system state:
  * - Show immediately if conditions allow
  * - Throttle if too soon after previous display
  * - Queue if boot screen is active
  * - Reject if permission checks fail
- * 
+ *
  * @param displayRequest - The display request to process
  * @param userSession - User session context
  * @returns boolean indicating if request was successfully handled
@@ -310,7 +310,7 @@ public handleDisplayEvent(displayRequest: DisplayRequest, userSession: UserSessi
 ```typescript
 /**
  * Display Request Flow:
- * 
+ *
  * 1. handleDisplayEvent (entry point)
  * 2. determineDisplayAction (decides handling approach)
  * 3. One of:

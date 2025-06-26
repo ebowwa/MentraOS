@@ -45,7 +45,7 @@ interface ImportConfigDialogProps {
 }
 
 /**
- * Dialog component for confirming import of TPA configuration
+ * Dialog component for confirming import of App configuration
  *
  * @param props - Component props
  * @returns JSX element

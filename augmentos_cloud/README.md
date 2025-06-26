@@ -1,6 +1,6 @@
 # MentraOS Cloud
 
-MentraOS is a cloud-based operating system for smart glasses that enables real-time interactions through Third-Party Applications (TPAs). This repository contains the cloud backend and SDK.
+MentraOS is a cloud-based operating system for smart glasses that enables real-time interactions through Third-Party Applications (Apps). This repository contains the cloud backend and SDK.
 
 ## Quick Start
 
@@ -83,8 +83,8 @@ MentraOS is a cloud-based operating system for smart glasses that enables real-t
    - Make changes to files in `packages/` directory
    - Run `bun run build` to rebuild
 
-2. **Create/modify a TPA:**
-   - Navigate to TPA directory: `cd packages/apps/<app-name>`
+2. **Create/modify a App:**
+   - Navigate to App directory: `cd packages/apps/<app-name>`
    - Start development: `bun run dev`
 
 3. **Deploy to staging:**
@@ -94,7 +94,7 @@ MentraOS is a cloud-based operating system for smart glasses that enables real-t
 
 ## Docker Setup
 
-For a comprehensive guide on running MentraOS Cloud and TPAs in Docker, see [DOCKER_GUIDE.md](./DOCKER_GUIDE.md).
+For a comprehensive guide on running MentraOS Cloud and Apps in Docker, see [DOCKER_GUIDE.md](./DOCKER_GUIDE.md).
 
 ### Docker Tips
 
@@ -109,8 +109,8 @@ For detailed documentation, see the `/docs` directory:
 
 - **System Overview**: `docs/0. OVERVIEW.md`
 - **Architecture**: `docs/1. SYSTEM-ARCHITECTURE.md`
-- **TPA Session Management**: `docs/2. TPA-SESSION-MANAGEMENT.md`
-- **Developer Guidelines**: `docs/tpa/DISPLAY-GUIDELINES.md`
+- **App Session Management**: `docs/2. App-SESSION-MANAGEMENT.md`
+- **Developer Guidelines**: `docs/app/DISPLAY-GUIDELINES.md`
 
 ## Troubleshooting
 

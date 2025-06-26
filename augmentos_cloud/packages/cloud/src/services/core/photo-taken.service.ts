@@ -4,7 +4,7 @@ import { logger as rootLogger } from "../logging";
 // import { ExtendedUserSession } from "./session.service";
 import { UserSession } from "../session/UserSession";
 import { subscriptionService } from "../session/subscription.service";
-import { StreamType, CloudToTpaMessageType } from "@mentra/sdk";
+import { StreamType, CloudToAppMessageType } from "@mentra/sdk";
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -49,21 +49,21 @@ class PhotoTakenService {
   }
 
   /**
-   * Broadcast a photo to all TPAs subscribed to PHOTO_TAKEN
+   * Broadcast a photo to all Apps subscribed to PHOTO_TAKEN
    * @param userSession The user session
    * @param photoData The photo data as ArrayBuffer
    * @param mimeType The MIME type of the photo
    */
   broadcastPhotoTaken(userSession: UserSession, photoData: Buffer<ArrayBufferLike>, mimeType: string): void {
-    // Get all TPAs subscribed to PHOTO_TAKEN
+    // Get all Apps subscribed to PHOTO_TAKEN
     const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.PHOTO_TAKEN);
 
     if (subscribedApps.length === 0) {
-      logger.debug(`No TPAs subscribed to PHOTO_TAKEN for user ${userSession.userId}`);
+      logger.debug(`No Apps subscribed to PHOTO_TAKEN for user ${userSession.userId}`);
       return;
     }
 
-    logger.info(`Broadcasting photo to ${subscribedApps.length} TPAs for user ${userSession.userId}`);
+    logger.info(`Broadcasting photo to ${subscribedApps.length} Apps for user ${userSession.userId}`);
 
     // Save the photo first
     const filename = this.savePhoto(photoData, mimeType);
@@ -74,7 +74,7 @@ class PhotoTakenService {
 
     // Create the photo taken message
     const message = {
-      type: CloudToTpaMessageType.DATA_STREAM,
+      type: CloudToAppMessageType.DATA_STREAM,
       streamType: StreamType.PHOTO_TAKEN,
       data: {
         photoData: base64Data,
@@ -84,14 +84,14 @@ class PhotoTakenService {
       }
     };
 
-    // Send to each subscribed TPA
+    // Send to each subscribed App
     for (const packageName of subscribedApps) {
       const websocket = userSession.appWebsockets.get(packageName);
       if (websocket && websocket.readyState === 1) {
         websocket.send(JSON.stringify(message));
-        logger.debug(`Sent photo to TPA ${packageName}`);
+        logger.debug(`Sent photo to App ${packageName}`);
       } else {
-        logger.warn(`TPA ${packageName} not connected or WebSocket not ready`);
+        logger.warn(`App ${packageName} not connected or WebSocket not ready`);
       }
     }
   }

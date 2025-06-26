@@ -7,7 +7,7 @@ Status: Implemented
 
 ### Problem Statement
 
-Currently, users have no visibility into what data TPAs (Third-Party Applications) access. When phone permissions are disabled, TPAs fail without clear error messages. Developers also lack a structured way to declare permission requirements.
+Currently, users have no visibility into what data Apps (Third-Party Applications) access. When phone permissions are disabled, Apps fail without clear error messages. Developers also lack a structured way to declare permission requirements.
 
 This implementation focuses on the transparency and declaration aspects of the permission system without requiring client-side changes:
 
@@ -289,7 +289,7 @@ export function PermissionsForm({ permissions, onChange }: PermissionsFormProps)
 }
 ```
 
-This component would need to be integrated into the TPA creation/editing forms.
+This component would need to be integrated into the App creation/editing forms.
 
 ### App Store Updates
 

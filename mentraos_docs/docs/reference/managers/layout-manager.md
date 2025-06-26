@@ -7,10 +7,10 @@ title: LayoutManager
 
 The `LayoutManager` is responsible for sending display requests to MentraOS Cloud to show layouts in the AR view. It provides methods for displaying different types of content in the user's field of view.
 
-You access the LayoutManager through the `layouts` property of a [`TpaSession`](/reference/tpa-session) instance:
+You access the LayoutManager through the `layouts` property of a [`AppSession`](/reference/app-session) instance:
 
 ```typescript
-const layoutManager = tpaSession.layouts;
+const layoutManager = appSession.layouts;
 ```
 
 ## Layout Methods
@@ -40,10 +40,10 @@ showTextWall(
 import { ViewType } from '@mentra/sdk';
 
 // Simple usage
-tpaSession.layouts.showTextWall('Hello, MentraOS!');
+appSession.layouts.showTextWall('Hello, MentraOS!');
 
 // With options
-tpaSession.layouts.showTextWall('This is an important message', {
+appSession.layouts.showTextWall('This is an important message', {
   view: ViewType.MAIN,
   durationMs: 5000 // Show for 5 seconds
 });
@@ -74,7 +74,7 @@ showDoubleTextWall(
 **Example:**
 ```typescript
 // Show a title and content
-tpaSession.layouts.showDoubleTextWall(
+appSession.layouts.showDoubleTextWall(
   'Weather Forecast',
   'Partly cloudy, 72°F, 10% chance of rain',
   { durationMs: 3000 }
@@ -106,7 +106,7 @@ showReferenceCard(
 **Example:**
 ```typescript
 // Show a reference card with a recipe
-tpaSession.layouts.showReferenceCard(
+appSession.layouts.showReferenceCard(
   'Chocolate Chip Cookies',
   '2 cups flour\n1 cup sugar\n1/2 cup butter\n2 eggs\n1 tsp vanilla\n2 cups chocolate chips\n\nMix ingredients. Bake at 350°F for 10-12 minutes.'
 );
@@ -136,7 +136,7 @@ showBitmapView(
 ```typescript
 // Example with a base64-encoded image
 const base64Image = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...'; // truncated for brevity
-tpaSession.layouts.showBitmapView(base64Image);
+appSession.layouts.showBitmapView(base64Image);
 ```
 
 ### showDashboardCard()
@@ -164,10 +164,10 @@ showDashboardCard(
 **Example:**
 ```typescript
 // Show current temperature in the dashboard
-tpaSession.layouts.showDashboardCard('Temperature', '72°F');
+appSession.layouts.showDashboardCard('Temperature', '72°F');
 
 // Show stock price in the main view
-tpaSession.layouts.showDashboardCard('AAPL', '$178.72', {
+appSession.layouts.showDashboardCard('AAPL', '$178.72', {
   view: ViewType.MAIN
 });
 ```

@@ -2,9 +2,9 @@
 
 ## Problem
 
-When WebSocket connections are terminated abruptly (e.g., by the HealthMonitorService or due to network issues), TPAs were not properly cleaning up resources because the TPA Server's `onStop` method was never called. This caused issues like:
+When WebSocket connections are terminated abruptly (e.g., by the HealthMonitorService or due to network issues), Apps were not properly cleaning up resources because the App Server's `onStop` method was never called. This caused issues like:
 
-1. The Dashboard TPA continuing to try to update displays even after its connection was terminated
+1. The Dashboard App continuing to try to update displays even after its connection was terminated
 2. Resources like interval timers not being cleared, potentially causing memory leaks
 3. No proper cleanup when connections failed to reconnect after multiple attempts
 
@@ -14,7 +14,7 @@ We identified two key gaps in the system design:
 
 1. **Missing Failure Detection**: When reconnection attempts were exhausted, there was no mechanism to trigger resource cleanup
 2. **Incomplete Event Flow**: The `disconnected` event didn't carry enough information to distinguish between temporary and permanent disconnections
-3. **Missing Link**: The TpaServer didn't respond to permanent disconnections by calling `onStop`
+3. **Missing Link**: The AppServer didn't respond to permanent disconnections by calling `onStop`
 
 ## Solution
 
@@ -25,25 +25,25 @@ We implemented a complete end-to-end solution that ensures proper resource clean
    - This flag indicates when a disconnection is permanent (no further reconnection attempts)
 
 2. **Modified Reconnection Handler**:
-   - Enhanced the `handleReconnection` method in TpaSession to emit a specially marked 'permanent' disconnection event when maximum reconnection attempts are reached
+   - Enhanced the `handleReconnection` method in AppSession to emit a specially marked 'permanent' disconnection event when maximum reconnection attempts are reached
    - Added a secondary check after the last failed reconnection attempt
 
-3. **Updated TpaServer Disconnect Handler**:
-   - Modified the disconnection event handler in TpaServer to check for the permanent flag
+3. **Updated AppServer Disconnect Handler**:
+   - Modified the disconnection event handler in AppServer to check for the permanent flag
    - When permanent disconnection is detected, it automatically calls `onStop` with an appropriate reason
 
 ## Benefits
 
 This solution ensures:
 
-1. TPAs automatically clean up resources after failed reconnection attempts
-2. The Dashboard TPA correctly stops updating displays when connections are permanently lost
-3. No code changes are required in individual TPAs - they get proper cleanup behavior automatically
-4. The solution is backward compatible with existing TPAs
+1. Apps automatically clean up resources after failed reconnection attempts
+2. The Dashboard App correctly stops updating displays when connections are permanently lost
+3. No code changes are required in individual Apps - they get proper cleanup behavior automatically
+4. The solution is backward compatible with existing Apps
 
 ## Implementation Details
 
-### TpaSession Event Interface
+### AppSession Event Interface
 
 ```typescript
 // in events.ts
@@ -59,7 +59,7 @@ interface SystemEvents {
 }
 ```
 
-### TpaSession Reconnection Handler
+### AppSession Reconnection Handler
 
 In the `handleReconnection` method, we now emit a special disconnection event when max attempts are reached:
 
@@ -77,9 +77,9 @@ if (this.reconnectAttempts >= maxAttempts) {
 }
 ```
 
-### TpaServer Disconnect Handler
+### AppServer Disconnect Handler
 
-The TpaServer now checks for the permanent flag and calls `onStop` accordingly:
+The AppServer now checks for the permanent flag and calls `onStop` accordingly:
 
 ```typescript
 session.events.onDisconnected((info) => {
@@ -88,7 +88,7 @@ session.events.onDisconnected((info) => {
     console.log(`🛑 Permanent disconnection detected for session ${sessionId}, calling onStop`);
     this.onStop(sessionId, userId, `Connection permanently lost: ${info.reason}`);
   }
-  
+
   // Remove from active sessions
   this.activeSessions.delete(sessionId);
 });
@@ -106,10 +106,10 @@ The HealthMonitorService continues to use `ws.terminate()` (rather than `ws.clos
 
 This solution should be tested in the following scenarios:
 
-1. When the health monitor terminates a TPA connection
+1. When the health monitor terminates a App connection
 2. When network issues cause connection loss
-3. When a TPA server restarts and the cloud service detects the stale connection
-4. When a TPA makes the maximum number of reconnection attempts and fails
+3. When a App server restarts and the cloud service detects the stale connection
+4. When a App makes the maximum number of reconnection attempts and fails
 
 ## Future Improvements
 

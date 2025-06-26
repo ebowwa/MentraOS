@@ -1,9 +1,9 @@
 /**
- * @fileoverview Service for managing TPA subscriptions to data streams.
+ * @fileoverview Service for managing App subscriptions to data streams.
  * Handles subscription lifecycle, history tracking, and access control.
  *
  * Primary responsibilities:
- * - Managing TPA data subscriptions
+ * - Managing App data subscriptions
  * - Tracking subscription history
  * - Validating subscription access
  * - Providing subscription queries for broadcasting
@@ -132,7 +132,7 @@ export class SubscriptionService {
   /**
    * Generates a unique key for subscription storage
    * @param sessionId - User session identifier
-   * @param packageName - TPA identifier
+   * @param packageName - App identifier
    * @returns Unique key for the session-app pair
    * @private
    */
@@ -147,9 +147,9 @@ export class SubscriptionService {
   private subscriptionUpdateVersion = new Map<string, number>();
 
   /**
-   * Updates subscriptions for a TPA.
+   * Updates subscriptions for a App.
    * @param sessionId - User session identifier
-   * @param packageName - TPA identifier
+   * @param packageName - App identifier
    * @param userId - User identifier for validation
    * @param subscriptions - New set of subscriptions
    * @throws If invalid subscription types are requested or permissions are missing
@@ -233,7 +233,7 @@ export class SubscriptionService {
         const appWebsocket = userSession.appWebsockets.get(packageName);
 
         if (appWebsocket && appWebsocket.readyState === 1) {
-          // Send a detailed error message to the TPA about the rejected subscriptions
+          // Send a detailed error message to the App about the rejected subscriptions
           const errorMessage = {
             type: 'permission_error',
             message: 'Some subscriptions were rejected due to missing permissions',
@@ -300,7 +300,7 @@ export class SubscriptionService {
   }
 
   /**
-   * Returns an object listing which TPAs (by package name) for a specific user (session)
+   * Returns an object listing which Apps (by package name) for a specific user (session)
    * are subscribed to "audio_chunk", "translation", and "transcription".
    */
   hasMediaSubscriptions(sessionId: string): boolean {
@@ -343,7 +343,7 @@ export class SubscriptionService {
   }
 
   /**
-   * Gets all TPAs subscribed to a specific stream type
+   * Gets all Apps subscribed to a specific stream type
    * @param session - User session identifier
    * @param subscription - Subscription type to check
    * @returns Array of app IDs subscribed to the stream
@@ -392,9 +392,9 @@ export class SubscriptionService {
   }
 
   /**
-   * Gets all active subscriptions for a TPA
+   * Gets all active subscriptions for a App
    * @param sessionId - User session identifier
-   * @param packageName - TPA identifier
+   * @param packageName - App identifier
    * @returns Array of active subscriptions
    */
   getAppSubscriptions(sessionId: string, packageName: string): ExtendedStreamType[] {
@@ -411,9 +411,9 @@ export class SubscriptionService {
   }
 
   /**
-   * Gets subscription history for a TPA
+   * Gets subscription history for a App
    * @param sessionId - User session identifier
-   * @param packageName - TPA identifier
+   * @param packageName - App identifier
    * @returns Array of historical subscription changes
    */
   getSubscriptionHistory(sessionId: string, packageName: string): SubscriptionHistory[] {
@@ -422,9 +422,9 @@ export class SubscriptionService {
   }
 
   /**
-   * Removes all subscriptions for a TPA
+   * Removes all subscriptions for a App
    * @param sessionId - User session identifier
-   * @param packageName - TPA identifier
+   * @param packageName - App identifier
    */
   removeSubscriptions(userSession: UserSession, packageName: string): void {
     const key = this.getKey(userSession.sessionId, packageName);
@@ -443,7 +443,7 @@ export class SubscriptionService {
         action: 'remove'
       });
 
-      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed all subscriptions for TPA ${packageName} for user ${userSession.userId}`);
+      logger.info({ packageName, sessionId: userSession.sessionId, userId: userSession.userId }, `Removed all subscriptions for App ${packageName} for user ${userSession.userId}`);
     }
   }
 
@@ -477,9 +477,9 @@ export class SubscriptionService {
   }
 
   /**
-   * Checks if a TPA has a specific subscription
+   * Checks if a App has a specific subscription
    * @param sessionId - User session identifier
-   * @param packageName - TPA identifier
+   * @param packageName - App identifier
    * @param subscription - Subscription type to check
    * @returns Boolean indicating if the subscription exists
    */
@@ -531,7 +531,7 @@ export class SubscriptionService {
   }
 
   /**
-   * Gets all TPAs subscribed to a specific AugmentOS setting key
+   * Gets all Apps subscribed to a specific AugmentOS setting key
    * @param userSession - User session identifier
    * @param settingKey - The augmentosSettings key (e.g., 'metricSystemEnabled')
    * @returns Array of app IDs subscribed to the augmentos setting

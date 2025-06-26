@@ -18,7 +18,7 @@ const FRONTEND_TOKEN_KEY = 'augmentos_frontendToken';
 
 interface SignedUserTokenPayload {
   sub: string; // This is the userId
-  frontendToken: string; // This is the token for TPA backend
+  frontendToken: string; // This is the token for App backend
   iss?: string;
   exp?: number;
   iat?: number;
@@ -35,7 +35,7 @@ interface ParsedJWTPayload {
 
 export interface AuthState {
   userId: string | null;
-  frontendToken: string | null; // This is the JWT to be sent to the TPA backend
+  frontendToken: string | null; // This is the JWT to be sent to the App backend
 }
 
 /**

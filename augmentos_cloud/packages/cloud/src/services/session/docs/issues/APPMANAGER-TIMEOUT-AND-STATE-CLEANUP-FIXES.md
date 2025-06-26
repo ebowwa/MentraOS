@@ -22,7 +22,7 @@ The timeout cleanup in `startApp()` (lines 188-218) was incomplete:
 3. `startApp()` called → webhook sent → 5-second timeout started
 4. **Webhook times out** → timeout cleanup runs
 5. `loadingApps` cleared, but **state remains `RESURRECTING`**
-6. `sendMessageToTpa()` forever returns "App is restarting"
+6. `sendMessageToApp()` forever returns "App is restarting"
 
 **Fix Applied:**
 Added proper state cleanup in timeout handler (line 208):
@@ -51,10 +51,10 @@ this.setAppConnectionState(app.packageName, AppConnectionState.DISCONNECTED);
 ### Issue 3: Race Condition Between Timeout and Successful Connection
 
 **Problem:**
-Timeout cleanup could potentially interfere with successful connections if the timeout fired at the exact moment a TPA connected.
+Timeout cleanup could potentially interfere with successful connections if the timeout fired at the exact moment a App connected.
 
 **Analysis:**
-While `clearTimeout()` in `handleTpaInit()` (line 617) provides protection, there was a theoretical race condition where the timeout callback could execute after successful connection.
+While `clearTimeout()` in `handleAppInit()` (line 617) provides protection, there was a theoretical race condition where the timeout callback could execute after successful connection.
 
 **Fix Applied:**
 Added race condition protection in timeout handler (lines 196-201):
@@ -90,7 +90,7 @@ Consider simplifying to 3 states: `RUNNING`, `GRACE_PERIOD`, `RESURRECTING` (rem
 
 **Discovery:**
 Multiple places modify `runningApps`/`loadingApps` outside the main lifecycle methods:
-- ✅ **Centralized**: `startApp()`, `handleTpaInit()`, `stopApp()`
+- ✅ **Centralized**: `startApp()`, `handleAppInit()`, `stopApp()`
 - ⚠️ **Leakage**: Timeout cleanups, error handlers
 
 **Analysis:**
@@ -100,7 +100,7 @@ While timeout/error cleanups are necessary, they should ideally delegate to the 
 
 ### Before Fixes
 - ❌ Apps getting stuck in `RESURRECTING` state permanently
-- ❌ Transcription service unable to send data to TPAs
+- ❌ Transcription service unable to send data to Apps
 - ❌ "App is restarting" errors persisting indefinitely
 - ❌ No recovery mechanism for failed resurrections
 
@@ -125,13 +125,13 @@ While timeout/error cleanups are necessary, they should ideally delegate to the 
 3. Verify app can be started again successfully
 
 **Race Condition:**
-1. Start app → webhook sent → TPA connects at ~4.9s
+1. Start app → webhook sent → App connects at ~4.9s
 2. Verify timeout doesn't interfere with successful connection
 3. Check logs for "Timeout fired but connection already succeeded" message
 
 **End-to-End Transcription:**
-1. Start transcription with TPAs
-2. Force TPA disconnection/reconnection
+1. Start transcription with Apps
+2. Force App disconnection/reconnection
 3. Verify transcription data flows properly after resurrection
 
 ## Files Modified
@@ -151,7 +151,7 @@ if (!this.pendingConnections.has(packageName)) {
 // ... existing cleanup ...
 this.setAppConnectionState(packageName, AppConnectionState.DISCONNECTED);
 
-// Webhook error handler - added state cleanup  
+// Webhook error handler - added state cleanup
 this.setAppConnectionState(app.packageName, AppConnectionState.DISCONNECTED);
 ```
 
@@ -159,10 +159,10 @@ this.setAppConnectionState(app.packageName, AppConnectionState.DISCONNECTED);
 
 **Primary:**
 - ✅ No more indefinitely stuck `RESURRECTING` states
-- ✅ Transcription data flows to TPAs after reconnections
+- ✅ Transcription data flows to Apps after reconnections
 - ✅ Failed resurrections can be retried
 
-**Secondary:** 
+**Secondary:**
 - ✅ Improved debugging with race condition detection
 - ✅ More robust error recovery
 - ✅ Cleaner state transitions
@@ -180,7 +180,7 @@ This fix addresses symptoms of connection instability. The root cause (lack of h
 
 ## Related Issues
 
-- **Original Problem:** "TPA not available for messaging" errors in transcription logs
+- **Original Problem:** "App not available for messaging" errors in transcription logs
 - **Root Cause:** Missing heartbeat system causing frequent disconnections
 - **This Fix:** Ensures resurrection recovery when disconnections occur
 - **Next Step:** Implement heartbeat system to prevent disconnections

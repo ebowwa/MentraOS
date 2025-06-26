@@ -136,7 +136,7 @@ interface NotesApiResponse {
  * Content component that displays authentication status and user information.
  * This component consumes the MentraosAuth context to show loading states,
  * errors, and authenticated user data. It also provides functionality to make
- * authenticated API calls to the TPA backend.
+ * authenticated API calls to the App backend.
  *
  * @returns {React.JSX.Element} The rendered content based on authentication state
  */
@@ -285,7 +285,7 @@ export default App;
 
 ## Making Authenticated API Calls
 
-The `frontendToken` from `useMentraosAuth` is a JWT token that you should include in the `Authorization` header when making requests to your TPA backend:
+The `frontendToken` from `useMentraosAuth` is a JWT token that you should include in the `Authorization` header when making requests to your App backend:
 
 ```tsx
 /**

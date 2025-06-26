@@ -139,7 +139,7 @@ export function MentraLivePairingGuide() {
               ])
             }}>
             <Text
-              text={`${translate("pairing:preorderNow")} · $219`}
+              text={`${translate("pairing:preorderNow")}`}
               style={[styles.buyButtonText, {color: theme.colors.background}]}
             />
             <Text

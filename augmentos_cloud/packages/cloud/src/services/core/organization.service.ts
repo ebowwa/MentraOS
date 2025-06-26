@@ -715,7 +715,7 @@ export class OrganizationService {
       throw new ApiError(403, 'Insufficient permissions to delete organization');
     }
 
-    // Check if the organization has any TPAs/apps
+    // Check if the organization has any Apps/apps
     const App = require('../../models/app.model').default;
     const appCount = await App.countDocuments({ organizationId: orgId });
     if (appCount > 0) {

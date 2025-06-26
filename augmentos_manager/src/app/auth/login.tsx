@@ -425,6 +425,13 @@ export default function LoginScreen() {
 
   useEffect(() => {
     const backHandler = BackHandler.addEventListener("hardwareBackPress", () => {
+      // If email form is shown, close it instead of exiting
+      if (isSigningUp) {
+        setIsSigningUp(false)
+        return true
+      }
+      
+      // Otherwise, use the double-press to exit behavior
       if (backPressCount === 0) {
         setBackPressCount(1)
         setTimeout(() => setBackPressCount(0), 2000)
@@ -437,7 +444,7 @@ export default function LoginScreen() {
     })
 
     return () => backHandler.remove()
-  }, [backPressCount])
+  }, [backPressCount, isSigningUp])
 
   useEffect(() => {
     // Subscribe to auth state changes:
@@ -512,10 +519,10 @@ export default function LoginScreen() {
                     <FontAwesome
                       name="envelope"
                       size={16}
-                      color={theme.colors.textAlt}
+                      color={theme.colors.textDim}
                       // style={themed($inputIcon)}
                     />
-                    <Spacer width={spacing.xxs} />
+                    <Spacer width={spacing.sm} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -536,10 +543,10 @@ export default function LoginScreen() {
                     <FontAwesome
                       name="lock"
                       size={16}
-                      color={theme.colors.textAlt}
+                      color={theme.colors.textDim}
                       // style={themed($inputIcon)}
                     />
-                    <Spacer width={spacing.xxs} />
+                    <Spacer width={spacing.sm} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -553,7 +560,7 @@ export default function LoginScreen() {
                     <TouchableOpacity
                       hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                       onPress={togglePasswordVisibility}>
-                      <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textAlt} />
+                      <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 </View>

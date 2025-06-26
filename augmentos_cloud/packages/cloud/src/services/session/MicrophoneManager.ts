@@ -160,7 +160,7 @@ export class MicrophoneManager {
 
   /**
    * Handle subscription changes with debouncing
-   * This should be called when TPAs update their subscriptions
+   * This should be called when Apps update their subscriptions
    */
   handleSubscriptionChange(): void {
     // Clear any existing debounce timer

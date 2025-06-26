@@ -89,8 +89,8 @@ export const Debugger: FC = () => {
   const [systemStats, setSystemStats] = useState({
     activeSessions: 0,
     totalSessions: 0,
-    activeTpas: 0,
-    totalTpas: 0
+    activeApps: 0,
+    totalApps: 0
   });
 
   // Fetch sessions data
@@ -114,7 +114,7 @@ export const Debugger: FC = () => {
   }, []);
 
   // Filter sessions based on search term
-  const filteredSessions = sessions.filter(session => 
+  const filteredSessions = sessions.filter(session =>
     session.sessionId.toLowerCase().includes(searchTerm.toLowerCase()) ||
     session.userId.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -136,7 +136,7 @@ export const Debugger: FC = () => {
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">Debugger</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Monitor and debug active sessions and TPAs
+            Monitor and debug active sessions and Apps
           </p>
         </div>
 
@@ -191,4 +191,4 @@ export const Debugger: FC = () => {
       </div>
     </div>
   );
-}; 
+};

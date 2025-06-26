@@ -359,6 +359,6 @@ type SettingValueChangeHandler<T = any> = (
 
 ## Related Documentation
 
-* [Settings Overview](/settings) - Guide to using settings in TPAs
+* [Settings Overview](/settings) - Guide to using settings in Apps
 * [Settings Manager API](/reference/managers/settings-manager) - SettingsManager class reference
-* [Getting Started](/getting-started) - Complete TPA development guide
+* [Getting Started](/getting-started) - Complete App development guide

@@ -7,7 +7,7 @@ title: Capabilities Types
 
 This page documents all the interfaces and types used for querying device capabilities in the MentraOS SDK.
 
-Device capabilities allow TPAs to discover what hardware and software features are available on the connected smart glasses, enabling adaptive experiences across different device models.
+Device capabilities allow Apps to discover what hardware and software features are available on the connected smart glasses, enabling adaptive experiences across different device models.
 
 ## Capabilities
 
@@ -72,7 +72,7 @@ interface Capabilities {
 
 **Example Usage:**
 ```typescript
-// Access capabilities from a TPA session
+// Access capabilities from a App session
 const caps = session.capabilities;
 if (caps) {
   console.log(`Connected to: ${caps.modelName}`);

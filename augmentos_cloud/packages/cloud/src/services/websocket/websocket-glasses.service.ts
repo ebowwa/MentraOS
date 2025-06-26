@@ -209,27 +209,27 @@ export class GlassesWebSocketService {
         case GlassesToCloudMessageType.GLASSES_CONNECTION_STATE:
           // TODO(isaiah): verify logic
           await this.handleGlassesConnectionState(userSession, message as GlassesConnectionState);
-          sessionService.relayMessageToTpas(userSession, message);
+          sessionService.relayMessageToApps(userSession, message);
           break;
 
         // Looks Good.
         case GlassesToCloudMessageType.VAD:
           await this.handleVad(userSession, message as Vad);
-          sessionService.relayMessageToTpas(userSession, message);
-          // TODO(isaiah): relay to TPAs
+          sessionService.relayMessageToApps(userSession, message);
+          // TODO(isaiah): relay to Apps
           break;
 
         case GlassesToCloudMessageType.LOCATION_UPDATE:
           await this.handleLocationUpdate(userSession, message as LocationUpdate);
-          sessionService.relayMessageToTpas(userSession, message);
-          // TODO(isaiah): broadcast to TPAs
+          sessionService.relayMessageToApps(userSession, message);
+          // TODO(isaiah): broadcast to Apps
           break;
 
         case GlassesToCloudMessageType.CALENDAR_EVENT:
           // TODO(isaiah): verify logic
           userSession.logger.debug({ service: SERVICE_NAME, message }, 'Calendar event received from glasses');
           subscriptionService.cacheCalendarEvent(userSession.sessionId, message as CalendarEvent);
-          sessionService.relayMessageToTpas(userSession, message);
+          sessionService.relayMessageToApps(userSession, message);
           break;
 
         // TODO(isaiah): verify logic
@@ -321,8 +321,8 @@ export class GlassesWebSocketService {
                 // userSession.logger.info('Subscribed apps for key:', key, subscribedApps);
                 for (const packageName of subscribedApps) {
                   if (notifiedApps.has(packageName)) continue;
-                  const tpaWs = userSession.appWebsockets.get(packageName);
-                  if (tpaWs && tpaWs.readyState === 1) {
+                  const appWs = userSession.appWebsockets.get(packageName);
+                  if (appWs && appWs.readyState === 1) {
                     userSession.logger.info(`[websocket.service]: Broadcasting AugmentOS settings update to ${packageName}`);
                     const augmentosSettingsUpdate = {
                       type: 'augmentos_settings_update',
@@ -330,7 +330,7 @@ export class GlassesWebSocketService {
                       settings: newSettings,
                       timestamp: new Date()
                     };
-                    tpaWs.send(JSON.stringify(augmentosSettingsUpdate));
+                    appWs.send(JSON.stringify(augmentosSettingsUpdate));
                     notifiedApps.add(packageName);
                   }
                 }
@@ -360,17 +360,17 @@ export class GlassesWebSocketService {
 
         case GlassesToCloudMessageType.HEAD_POSITION:
           await this.handleHeadPosition(userSession, message as HeadPosition);
-          // Also relay to TPAs in case they want to handle head position events
-          sessionService.relayMessageToTpas(userSession, message);
+          // Also relay to Apps in case they want to handle head position events
+          sessionService.relayMessageToApps(userSession, message);
           break;
 
         // TODO(isaiah): Add other message type handlers as needed
         default:
-          // For messages that don't need special handling, relay to TPAs
+          // For messages that don't need special handling, relay to Apps
           // based on subscriptions
-          userSession.logger.debug(`Relaying message type ${message.type} to TPAs for user: ${userId}`);
-          sessionService.relayMessageToTpas(userSession, message);
-          // TODO(isaiah): Verify Implemention message relaying to TPAs
+          userSession.logger.debug(`Relaying message type ${message.type} to Apps for user: ${userId}`);
+          sessionService.relayMessageToApps(userSession, message);
+          // TODO(isaiah): Verify Implemention message relaying to Apps
           break;
       }
     } catch (error) {

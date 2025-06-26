@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The PermissionType enum definitions are inconsistent across the MentraOS codebase, causing TypeScript compilation errors and semantic confusion between notification reading and posting permissions. This document outlines a **backward-compatible solution** that resolves the inconsistencies without requiring database migration or breaking existing TPAs.
+The PermissionType enum definitions are inconsistent across the MentraOS codebase, causing TypeScript compilation errors and semantic confusion between notification reading and posting permissions. This document outlines a **backward-compatible solution** that resolves the inconsistencies without requiring database migration or breaking existing Apps.
 
 **Impact**: TypeScript compilation errors, confused permission semantics
 **Approach**: Enum extension with legacy mapping (no breaking changes)
@@ -39,7 +39,7 @@ The current `NOTIFICATIONS` permission conflates two distinct operations:
 |----------|---------------|-------------------|-------------------|
 | **SDK** (`packages/sdk/src/types/models.ts`) | ✅ `'NOTIFICATIONS'` | ❌ Missing | ❌ Missing |
 | **Cloud Model** (`packages/cloud/src/models/app.model.ts`) | ✅ `'NOTIFICATIONS'` | ❌ Missing | ❌ Missing |
-| **Developer Portal** (`developer-portal/src/types/tpa.ts`) | ❌ Missing | ✅ `'READ_NOTIFICATIONS'` | ✅ `'POST_NOTIFICATIONS'` |
+| **Developer Portal** (`developer-portal/src/types/app.ts`) | ❌ Missing | ✅ `'READ_NOTIFICATIONS'` | ✅ `'POST_NOTIFICATIONS'` |
 | **Permission Checker** (`simple-permission-checker.ts`) | ❌ Not used | ✅ Expected | ❌ Not used |
 
 ### File-by-File Impact Assessment
@@ -98,7 +98,7 @@ Permissions are stored as strings in the `permissions` array within app document
 | Permission | Purpose | Use Cases | Stream Access |
 |------------|---------|-----------|---------------|
 | **READ_NOTIFICATIONS** | Access incoming phone notifications | Dashboard app, notification summary agents | `PHONE_NOTIFICATION`, `NOTIFICATION_DISMISSED` |
-| **POST_NOTIFICATIONS** | Send notifications to phone | Notify TPA, reminder apps | N/A (uses different API) |
+| **POST_NOTIFICATIONS** | Send notifications to phone | Notify App, reminder apps | N/A (uses different API) |
 | **NOTIFICATIONS (Legacy)** | Read phone notifications (deprecated) | Existing apps using old permission | Maps to `READ_NOTIFICATIONS` |
 
 ### Current Stream Type Mappings
@@ -124,7 +124,7 @@ Permissions are stored as strings in the `permissions` array within app document
 
 ### Key Benefits
 - ✅ **Zero database migration** required
-- ✅ **No breaking changes** for existing TPAs
+- ✅ **No breaking changes** for existing Apps
 - ✅ **Gradual migration** possible
 - ✅ **Clear upgrade path** for developers
 - ✅ **Easy rollback** if issues arise
@@ -260,7 +260,7 @@ export class SimplePermissionChecker {
 ### 3. Frontend Compatibility Layer
 
 ```typescript
-// developer-portal/src/types/tpa.ts - Add permission metadata
+// developer-portal/src/types/app.ts - Add permission metadata
 export const PERMISSION_DISPLAY_INFO = {
   [PermissionType.NOTIFICATIONS]: {
     label: 'Notifications (Legacy)',
@@ -461,7 +461,7 @@ const dashboardAppConfig = {
 };
 
 // packages/cloud/src/services/core/system-apps.ts
-// When notify TPA is re-enabled, it would use:
+// When notify App is re-enabled, it would use:
 const notifyAppConfig = {
   permissions: [
     {
@@ -537,9 +537,9 @@ const notifyAppConfig = {
    - Add explicit `READ_NOTIFICATIONS` permission declaration
    - Verify notification streams continue working
 
-2. **Prepare notify TPA** (when re-enabled)
+2. **Prepare notify App** (when re-enabled)
    - Add `POST_NOTIFICATIONS` permission declaration
-   - Update TPA configuration
+   - Update App configuration
 
 ### Phase 5: Documentation and Migration Guidance (Day 3)
 **Priority**: 🟢 Low
@@ -560,7 +560,7 @@ const notifyAppConfig = {
 ## Risk Mitigation
 
 ### Zero Breaking Changes Strategy
-- **Existing TPAs continue working**: Legacy `NOTIFICATIONS` permission maps to `READ_NOTIFICATIONS`
+- **Existing Apps continue working**: Legacy `NOTIFICATIONS` permission maps to `READ_NOTIFICATIONS`
 - **Database remains unchanged**: No data migration required
 - **Gradual adoption**: Developers can migrate when convenient
 
@@ -601,7 +601,7 @@ describe('Legacy Permission Compatibility', () => {
 
 #### Production Validation
 - Deploy to staging environment
-- Test existing TPAs continue working
+- Test existing Apps continue working
 - Verify new permission types function correctly
 - Validate no performance impact from additional permission checking
 
@@ -611,7 +611,7 @@ describe('Legacy Permission Compatibility', () => {
 
 ### Clear Migration Guidance
 
-#### For Existing TPAs
+#### For Existing Apps
 ```typescript
 // Old way (still works)
 const permissions = [
@@ -624,14 +624,14 @@ const permissions = [
 ];
 ```
 
-#### For New TPAs
+#### For New Apps
 ```typescript
 // Reading notifications (dashboard, summary apps)
 const readPermissions = [
   { type: PermissionType.READ_NOTIFICATIONS, description: 'Read phone notifications' }
 ];
 
-// Sending notifications (reminder apps, notify TPA)
+// Sending notifications (reminder apps, notify App)
 const postPermissions = [
   { type: PermissionType.POST_NOTIFICATIONS, description: 'Send notifications to phone' }
 ];
@@ -742,7 +742,7 @@ POST_NOTIFICATIONS = 'POST_NOTIFICATIONS',
 ### Technical Validation
 - ✅ **TypeScript compilation succeeds** without errors
 - ✅ **All tests pass** including new permission compatibility tests
-- ✅ **Existing TPAs continue working** without modification
+- ✅ **Existing Apps continue working** without modification
 - ✅ **New permission types function correctly** in permission checking
 
 ### Functional Validation

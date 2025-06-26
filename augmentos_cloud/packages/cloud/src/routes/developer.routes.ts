@@ -184,7 +184,7 @@ const getAuthenticatedUser = async (req: Request, res: Response): Promise<void> 
 };
 
 /**
- * Get developer's Third Party Apps (TPAs)
+ * Get developer's Third Party Apps (Apps)
  */
 const getDeveloperApps = async (req: Request, res: Response): Promise<void> => {
   try {
@@ -196,13 +196,13 @@ const getDeveloperApps = async (req: Request, res: Response): Promise<void> => {
 
     res.json(allApps);
   } catch (error) {
-    console.error('Error fetching developer TPAs:', error);
-    res.status(500).json({ error: 'Failed to fetch TPAs' });
+    console.error('Error fetching developer Apps:', error);
+    res.status(500).json({ error: 'Failed to fetch Apps' });
   }
 };
 
 /**
- * Get a specific TPA by package name
+ * Get a specific App by package name
  */
 const getAppByPackageName = async (req: Request, res: Response) => {
   try {
@@ -210,53 +210,53 @@ const getAppByPackageName = async (req: Request, res: Response) => {
     const orgId = (req as DevPortalRequest).currentOrgId;
     const { packageName } = req.params;
 
-    const tpa = await appService.getAppByPackageName(packageName, email, orgId);
+    const app = await appService.getAppByPackageName(packageName, email, orgId);
 
-    if (!tpa) {
-      return res.status(404).json({ error: 'TPA not found' });
+    if (!app) {
+      return res.status(404).json({ error: 'App not found' });
     }
 
-    res.json(tpa);
+    res.json(app);
   } catch (error) {
-    console.error('Error fetching TPA:', error);
-    return res.status(500).json({ error: 'Failed to fetch TPA' });
+    console.error('Error fetching App:', error);
+    return res.status(500).json({ error: 'Failed to fetch App' });
   }
 };
 
 /**
- * Create a new TPA
+ * Create a new App
  */
 const createApp = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
-    const tpaData = req.body;
+    const appData = req.body;
 
-    // Check if TPA with this package name already exists
-    const existingTpa = await appService.getAppByPackageName(tpaData.packageName);
-    if (existingTpa) {
+    // Check if App with this package name already exists
+    const existingApp = await appService.getAppByPackageName(appData.packageName);
+    if (existingApp) {
       return res.status(409).json({
-        error: `TPA with package name '${tpaData.packageName}' already exists`
+        error: `App with package name '${appData.packageName}' already exists`
       });
     }
 
     // Create app with organization ownership
     const result = await appService.createApp({
-      ...tpaData,
+      ...appData,
       organizationId: orgId
     }, email);
 
     // Auto-install the app for the developer who created it
-    autoInstallAppForDeveloper(tpaData.packageName, email);
+    autoInstallAppForDeveloper(appData.packageName, email);
 
     res.status(201).json(result);
   } catch (error: any) {
-    console.error('Error creating TPA:', error);
+    console.error('Error creating App:', error);
 
     // Handle duplicate key error specifically
     if (error.code === 11000 && error.keyPattern?.packageName) {
       return res.status(409).json({
-        error: `TPA with package name '${error.keyValue.packageName}' already exists`
+        error: `App with package name '${error.keyValue.packageName}' already exists`
       });
     }
 
@@ -265,20 +265,20 @@ const createApp = async (req: Request, res: Response) => {
 };
 
 /**
- * Update an existing TPA
+ * Update an existing App
  */
 const updateApp = async (req: Request, res: Response) => {
   try {
     const email = (req as DevPortalRequest).developerEmail;
     const orgId = (req as DevPortalRequest).currentOrgId;
     const { packageName } = req.params;
-    const tpaData = req.body;
+    const appData = req.body;
 
-    const updatedTpa = await appService.updateApp(packageName, tpaData, email, orgId);
+    const updatedApp = await appService.updateApp(packageName, appData, email, orgId);
 
-    res.json(updatedTpa);
+    res.json(updatedApp);
   } catch (error: any) {
-    console.error('Error updating TPA:', error);
+    console.error('Error updating App:', error);
 
     // Check for specific error types
     if (error.message.includes('not found')) {
@@ -295,12 +295,12 @@ const updateApp = async (req: Request, res: Response) => {
     }
 
     // Return the actual error message instead of a generic one
-    res.status(500).json({ error: error.message || 'Failed to update TPA' });
+    res.status(500).json({ error: error.message || 'Failed to update App' });
   }
 };
 
 /**
- * Delete a TPA
+ * Delete a App
  */
 const deleteApp = async (req: Request, res: Response) => {
   try {
@@ -310,9 +310,9 @@ const deleteApp = async (req: Request, res: Response) => {
 
     await appService.deleteApp(packageName, email, orgId);
 
-    return res.status(200).json({ message: `TPA ${packageName} deleted successfully` });
+    return res.status(200).json({ message: `App ${packageName} deleted successfully` });
   } catch (error: any) {
-    console.error('Error deleting TPA:', error);
+    console.error('Error deleting App:', error);
 
     // Check for specific error types
     if (error.message.includes('not found')) {
@@ -323,12 +323,12 @@ const deleteApp = async (req: Request, res: Response) => {
       return res.status(403).json({ error: error.message });
     }
 
-    return res.status(500).json({ error: 'Failed to delete TPA' });
+    return res.status(500).json({ error: 'Failed to delete App' });
   }
 };
 
 /**
- * Regenerate API Key for a TPA
+ * Regenerate API Key for a App
  */
 const regenerateApiKey = async (req: Request, res: Response) => {
   try {
@@ -480,7 +480,7 @@ const updateSharedEmails = async (req: Request, res: Response) => {
 };
 
 /**
- * Move a TPA to a different organization
+ * Move a App to a different organization
  */
 const moveToOrg = async (req: Request, res: Response) => {
   console.log('moveToOrg handler called with:', {
@@ -530,7 +530,7 @@ const moveToOrg = async (req: Request, res: Response) => {
     // Return updated app
     return res.json(updatedApp);
   } catch (error: any) {
-    console.error('Error moving TPA to new organization:', error);
+    console.error('Error moving App to new organization:', error);
 
     // Check for specific error types
     if (error.message.includes('not found')) {
@@ -541,7 +541,7 @@ const moveToOrg = async (req: Request, res: Response) => {
       return res.status(403).json({ error: error.message });
     }
 
-    return res.status(500).json({ error: 'Failed to move TPA to new organization' });
+    return res.status(500).json({ error: 'Failed to move App to new organization' });
   }
 };
 
@@ -723,7 +723,7 @@ router.get('/debug/apps', (req: Request, res: Response): void => {
     packageName: 'com.debug.app',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    tpaType: 'STANDARD',
+    appType: 'STANDARD',
     description: 'Debug mode app',
     publicUrl: 'http://localhost:3000'
   }]);

@@ -6,6 +6,8 @@ import {StyleSheet, View} from "react-native"
 import {useAppTheme} from "./useAppTheme"
 import {BackHandler} from "react-native"
 import {SettingsNavigationUtils} from "./SettingsNavigationUtils"
+import {StatusBar} from "expo-status-bar"
+import * as NavigationBar from "expo-navigation-bar"
 
 // Type for button style options
 type ButtonStyle = "default" | "cancel" | "destructive"
@@ -75,6 +77,7 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     iconColor?: string
     icon?: React.ReactNode
   }>({})
+  const [originalNavBarColor, setOriginalNavBarColor] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     const backHandler = () => {
@@ -88,6 +91,40 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
 
     return () => subscription.remove()
   }, [visible])
+
+  // Handle navigation bar color changes when modal visibility changes
+  React.useEffect(() => {
+    const updateNavigationBarColor = async () => {
+      if (Platform.OS === "android") {
+        try {
+          if (visible) {
+            // Store the original color before changing
+            if (!originalNavBarColor) {
+              // Get current navigation bar color based on theme
+              const currentColor = theme.isDark ? "#090A14" : "#FFFFFF"
+              setOriginalNavBarColor(currentColor)
+            }
+            
+            // Set navigation bar to match the dark overlay
+            // The modal overlay color is theme.colors.modalOverlay which is semi-transparent
+            // We need to use a solid dark color for the navigation bar
+            const overlayColor = theme.isDark ? "#000000" : "#1a1a1a"
+            await NavigationBar.setBackgroundColorAsync(overlayColor)
+            await NavigationBar.setButtonStyleAsync("light")
+          } else if (originalNavBarColor) {
+            // Restore original navigation bar color
+            await NavigationBar.setBackgroundColorAsync(originalNavBarColor)
+            await NavigationBar.setButtonStyleAsync(theme.isDark ? "light" : "dark")
+            setOriginalNavBarColor(null)
+          }
+        } catch (error) {
+          console.warn("Failed to update navigation bar color for modal:", error)
+        }
+      }
+    }
+
+    updateNavigationBarColor()
+  }, [visible, theme, originalNavBarColor])
 
   React.useEffect(() => {
     // Register the modal functions for global access
@@ -129,50 +166,53 @@ export function ModalProvider({children}: {children: React.ReactNode}) {
     <>
       {children}
       {visible && (
-        <View
-          style={{
-            ...StyleSheet.absoluteFillObject,
-            zIndex: 10,
-            justifyContent: "center",
-            alignItems: "center",
-            backgroundColor: theme.colors.modalOverlay,
-            paddingHorizontal: 24,
-          }}>
+        <>
+          <StatusBar style="light" />
           <View
             style={{
-              width: "100%",
-              maxWidth: 400,
+              ...StyleSheet.absoluteFillObject,
+              zIndex: 10,
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: theme.colors.modalOverlay,
+              paddingHorizontal: 24,
             }}>
-            <BasicDialog
-              title={title}
-              description={message}
-              icon={
-                options.icon ??
-                (options.iconName ? (
-                  <Icon name={options.iconName} size={options.iconSize ?? 24} color={options.iconColor} />
-                ) : undefined)
-              }
-              leftButtonText={buttons.length > 1 ? buttons[0].text : undefined}
-              onLeftPress={
-                buttons.length > 1
-                  ? () => {
-                      buttons[0].onPress?.()
-                      setVisible(false)
-                    }
-                  : undefined
-              }
-              rightButtonText={buttons.length > 1 ? buttons[1].text : buttons[0].text}
-              onRightPress={() => {
-                if (buttons.length > 1) {
-                  buttons[1].onPress?.()
-                } else {
-                  buttons[0].onPress?.()
+            <View
+              style={{
+                width: "100%",
+                maxWidth: 400,
+              }}>
+              <BasicDialog
+                title={title}
+                description={message}
+                icon={
+                  options.icon ??
+                  (options.iconName ? (
+                    <Icon name={options.iconName} size={options.iconSize ?? 24} color={options.iconColor} />
+                  ) : undefined)
                 }
-                setVisible(false)
-              }}
-            />
+                leftButtonText={buttons.length > 1 ? buttons[0].text : undefined}
+                onLeftPress={
+                  buttons.length > 1
+                    ? () => {
+                        buttons[0].onPress?.()
+                        setVisible(false)
+                      }
+                    : undefined
+                }
+                rightButtonText={buttons.length > 1 ? buttons[1].text : buttons[0].text}
+                onRightPress={() => {
+                  if (buttons.length > 1) {
+                    buttons[1].onPress?.()
+                  } else {
+                    buttons[0].onPress?.()
+                  }
+                  setVisible(false)
+                }}
+              />
+            </View>
           </View>
-        </View>
+        </>
       )}
     </>
   )
@@ -206,7 +246,16 @@ const showAlert = (
   buttons: AlertButton[],
   options?: AlertOptions,
 ) => {
-  Alert.alert(title, message, buttons, options)
+  if (modalRef) {
+    modalRef.showModal(title, message, buttons, {
+      iconName: options?.iconName,
+      iconColor: options?.iconColor,
+      iconSize: options?.iconSize,
+    })
+  } else {
+    // Fallback to system alert if modal is not available
+    Alert.alert(title, message, buttons, options)
+  }
 }
 
 /**
@@ -388,6 +437,29 @@ const showPermissionsAlert = (
   }
 }
 
+/**
+ * Shows a destructive action alert with proper styling
+ * Uses the new modal system with BasicDialog for consistent design
+ */
+const showDestructiveAlert = (
+  title: string,
+  message: string,
+  buttons: AlertButton[],
+  options?: AlertOptions,
+) => {
+  if (modalRef) {
+    modalRef.showModal(title, message, buttons, {
+      iconName: "delete-forever",
+      iconColor: "#FF3B30",
+      iconSize: 32,
+      ...options,
+    })
+  } else {
+    // Fallback to old alert system if modal is not available
+    showAlert(title, message, buttons, options)
+  }
+}
+
 export {
   showAlert,
   showConnectivityAlert,
@@ -395,6 +467,7 @@ export {
   showLocationAlert,
   showLocationServicesAlert,
   showPermissionsAlert,
+  showDestructiveAlert,
 }
 
 export default showAlert

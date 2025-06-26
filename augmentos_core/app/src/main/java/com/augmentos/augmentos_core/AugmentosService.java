@@ -74,7 +74,7 @@ import com.augmentos.augmentos_core.events.TriggerSendStatusToAugmentOsManagerEv
 import com.augmentos.augmentos_core.statushelpers.BatteryStatusHelper;
 import com.augmentos.augmentos_core.statushelpers.GsmStatusHelper;
 import com.augmentos.augmentos_core.statushelpers.WifiStatusHelper;
-import com.augmentos.augmentos_core.tpa.EdgeTPASystem;
+import com.augmentos.augmentos_core.app.EdgeAppSystem;
 
 
 import com.augmentos.augmentoslib.events.GlassesTapOutputEvent;
@@ -113,7 +113,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
    private final IBinder binder = new LocalBinder();
 
-    private final String notificationAppName = "AugmentOS";
+    private final String notificationAppName = "MentraOS";
     private final String notificationDescription = "";
     private final String myChannelId = "augmentos_core";
     public static final String ACTION_START_CORE = "ACTION_START_CORE";
@@ -140,7 +140,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private final long doublePressTimeConst = 420;
     private final long doubleTapTimeConst = 600;
 
-    public EdgeTPASystem edgeTpaSystem;
+    public EdgeAppSystem edgeAppSystem;
 
     private String userId;
     public SmartGlassesConnectionState previousSmartGlassesConnectionState = SmartGlassesConnectionState.DISCONNECTED;
@@ -151,7 +151,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public SmartGlassesManager smartGlassesManager;
     private boolean smartGlassesManagerBound = false;
     private final List<Runnable> smartGlassesReadyListeners = new ArrayList<>();
-    
+
     /**
      * Connection to SmartGlassesManager service
      */
@@ -162,18 +162,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager = binder.getService();
             smartGlassesManager.setLifecycleOwnerAndEventHandler(AugmentosService.this, smartGlassesEventHandler);
             smartGlassesManagerBound = true;
-            
-            // Set it in the EdgeTPASystem 
-            if (edgeTpaSystem != null) {
-                edgeTpaSystem.setSmartGlassesManager(smartGlassesManager);
+
+            // Set it in the EdgeAppSystem
+            if (edgeAppSystem != null) {
+                edgeAppSystem.setSmartGlassesManager(smartGlassesManager);
             }
-            
+
             // Execute any pending actions
             for (Runnable action : smartGlassesReadyListeners) {
                 action.run();
             }
             smartGlassesReadyListeners.clear();
-            
+
             Log.d(TAG, "SmartGlassesManager service bound");
         }
 
@@ -182,12 +182,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager = null;
             smartGlassesManagerBound = false;
             Log.d(TAG, "SmartGlassesManager service unbound");
-            
-            // Update EdgeTPASystem
-            if (edgeTpaSystem != null) {
-                edgeTpaSystem.setSmartGlassesManager(null);
+
+            // Update EdgeAppSystem
+            if (edgeAppSystem != null) {
+                edgeAppSystem.setSmartGlassesManager(null);
             }
-            
+
             // Update connection state
             if (webSocketLifecycleManager != null) {
                 webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
@@ -207,12 +207,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     private Integer headUpAngle;
     private Integer dashboardHeight;
     private Integer dashboardDepth;
-    
+
     // WiFi status for glasses that require WiFi (e.g., Mentra Live)
     private boolean glassesNeedWifiCredentials = false;
     private boolean glassesWifiConnected = false;
     private String glassesWifiSsid = "";
-    
+
     // WiFi scan results
     private List<String> wifiNetworks = new ArrayList<>();
     private String preferredMic;
@@ -237,7 +237,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     Runnable cachedDashboardDisplayRunnable;
     private String cachedDashboardTopLine;
- 
+
     List<ThirdPartyCloudApp> cachedThirdPartyAppList = new ArrayList<>(); // Initialize here to avoid NPE
     private WebSocketManager.IncomingMessageHandler.WebSocketStatus webSocketStatus = WebSocketManager.IncomingMessageHandler.WebSocketStatus.DISCONNECTED;
     private final Handler serverCommsHandler = new Handler(Looper.getMainLooper());
@@ -265,7 +265,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     // Smart glasses event handler
-    private final SmartGlassesManager.SmartGlassesEventHandler smartGlassesEventHandler = 
+    private final SmartGlassesManager.SmartGlassesEventHandler smartGlassesEventHandler =
         new SmartGlassesManager.SmartGlassesEventHandler() {
             @Override
             public void onGlassesConnectionStateChanged(SmartGlassesDevice device, SmartGlassesConnectionState connectionState) {
@@ -284,8 +284,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     asrPlanner.updateAsrLanguages();
                     ServerComms.getInstance().requestSettingsFromServer();
                 } else if (connectionState == SmartGlassesConnectionState.DISCONNECTED) {
-                    edgeTpaSystem.stopAllThirdPartyApps();
-                    
+                    edgeAppSystem.stopAllThirdPartyApps();
+
                     // Reset WiFi status when glasses disconnect
                     glassesWifiConnected = false;
                     glassesWifiSsid = "";
@@ -326,7 +326,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         long time = event.timestamp;
 
         Log.d(TAG, "GLASSES TAPPED X TIMES: " + numTaps + " SIDEOFGLASSES: " + sideOfGlasses);
-        
+
         if (smartGlassesManager == null) return;
         if (numTaps == 2 || numTaps == 3) {
             if (smartGlassesManager.windowManager.isDashboardShowing()) {
@@ -350,8 +350,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (blePeripheral != null) {
             blePeripheral.sendNotifyManager(event.text, "error");
         }
-        if (edgeTpaSystem != null) {
-            edgeTpaSystem.stopThirdPartyAppByPackageName(event.packageName);
+        if (edgeAppSystem != null) {
+            edgeAppSystem.stopThirdPartyAppByPackageName(event.packageName);
         }
         if (smartGlassesManager != null) {
             smartGlassesManager.windowManager.showAppLayer("system", () -> smartGlassesManager.sendReferenceCard("App error", event.text), 10);
@@ -425,7 +425,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         caseRemoved = event.caseRemoved;
 
         Log.d("AugmentOsService", "Case event: " + event.caseBatteryLevel + " " + event.caseCharging + " " + event.caseOpen + " " + event.caseRemoved);
-        
+
         sendStatusToAugmentOsManager();
     }
 
@@ -499,8 +499,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
         alwaysOnStatusBarEnabled = false;
 
-        edgeTpaSystem = new EdgeTPASystem(this, null); // We'll set smartGlassesManager after it's created
-        asrPlanner = new AsrPlanner(edgeTpaSystem);
+        edgeAppSystem = new EdgeAppSystem(this, null); // We'll set smartGlassesManager after it's created
+        asrPlanner = new AsrPlanner(edgeAppSystem);
 
         // Initialize BLE Peripheral
         blePeripheral = new AugmentosBlePeripheral(this, this);
@@ -523,10 +523,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             if (preferredDevice != null) {
                 // Initialize SmartGlassesManager
                 startSmartGlassesManager();
-                
+
                 // Store the device to connect when SmartGlassesManager is ready
                 final SmartGlassesDevice deviceToConnect = preferredDevice;
-                
+
                 // Add a listener that will be called when the service is connected
                 executeOnceSmartGlassesManagerReady(() -> {
                     // Connect to glasses once the manager is available
@@ -592,7 +592,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     // Flag to track if we should restart when killed
     private boolean shouldRestartOnKill = true;
-    
+
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         super.onStartCommand(intent, flags, startId);
@@ -613,12 +613,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 Log.d("TEST", "starting foreground");
                 createNotificationChannel(); // New method to ensure one-time channel creation
                 startForeground(AUGMENTOS_NOTIFICATION_ID, this.buildSharedForegroundNotification(this));
-                
+
                 // Reset restart flag to true when service starts
                 shouldRestartOnKill = true;
 
                 // Send out the status once AugmentOS_Core is ready :)
-                edgeTpaSystem.startThirdPartyAppByPackageName(AugmentOSManagerPackageName);
+                edgeAppSystem.startThirdPartyAppByPackageName(AugmentOSManagerPackageName);
 
                 if (!NewPermissionUtils.areAllPermissionsGranted(this)) {
                     blePeripheral.sendPermissionsErrorToManager();
@@ -629,7 +629,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             case ACTION_STOP_FOREGROUND_SERVICE:
                 // Set flag to not restart - this is an explicit stop request
                 shouldRestartOnKill = false;
-                
+
                 // Clean up resources before stopping
                 Log.d(TAG, "Stopping service from ACTION_STOP");
                 cleanupAllResources();
@@ -640,7 +640,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 Log.d(TAG, "Unknown action received in onStartCommand");
                 Log.d(TAG, action);
         }
-        
+
         // Return START_STICKY by default for embedded hardware,
         // but the shouldRestartOnKill flag will be checked in onTaskRemoved/onDestroy
         return shouldRestartOnKill ? Service.START_STICKY : Service.START_NOT_STICKY;
@@ -650,7 +650,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void onTaskRemoved(Intent rootIntent) {
         super.onTaskRemoved(rootIntent);
         Log.d(TAG, "onTaskRemoved called - app is being closed");
-        
+
         // Check if glasses are connected
         boolean glassesConnected = false;
         if (smartGlassesManager != null) {
@@ -660,14 +660,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } else {
             Log.d(TAG, "SmartGlassesManager is null, assuming no glasses connected");
         }
-        
+
         // Check if there are any active third-party apps running
         boolean hasActiveApps = false;
-        if (edgeTpaSystem != null) {
+        if (edgeAppSystem != null) {
             // Check if any third-party apps are currently running
-            ArrayList<ThirdPartyEdgeApp> thirdPartyApps = edgeTpaSystem.getThirdPartyApps();
+            ArrayList<ThirdPartyEdgeApp> thirdPartyApps = edgeAppSystem.getThirdPartyApps();
             for (ThirdPartyEdgeApp app : thirdPartyApps) {
-                if (edgeTpaSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName)) {
+                if (edgeAppSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName)) {
                     hasActiveApps = true;
                     Log.d(TAG, "Found active third-party app: " + app.packageName);
                     break;
@@ -675,7 +675,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
             Log.d(TAG, "Active third-party apps: " + hasActiveApps);
         }
-        
+
         // If no glasses are connected and no active apps, stop the service
         if (!glassesConnected && !hasActiveApps) {
             Log.d(TAG, "No glasses connected and no active apps - stopping service");
@@ -717,12 +717,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 .setContentIntent(action)
                 .setOngoing(true).build();
     }
-    
+
     // Replacement for buildSharedForegroundNotification that was previously imported from AugmentOSLib
     private Notification buildSharedForegroundNotification(Context context) {
         // Create a notification similar to updateNotification
         NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-        
+
         // Create the notification channel if it doesn't exist
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
@@ -737,7 +737,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 manager.createNotificationChannel(channel);
             }
         }
-        
+
         // Create the intent for when notification is tapped
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context,
@@ -745,7 +745,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 new Intent(context, MainActivity.class),
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
         );
-        
+
         // Build the notification
         NotificationCompat.Builder builder = new NotificationCompat.Builder(context, myChannelId)
                 .setContentTitle(notificationAppName)
@@ -754,7 +754,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
-                
+
         return builder.build();
     }
 
@@ -762,20 +762,20 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void startSmartGlassesManager() {
         if (!smartGlassesManagerBound && smartGlassesManager == null) {
             Log.d(TAG, "Binding to SmartGlassesManager service");
-            
+
             // Start and bind to the SmartGlassesManager service
             Intent intent = new Intent(this, SmartGlassesManager.class);
-            
+
             // Start the service as a foreground service for Android O+
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent);
             } else {
                 startService(intent);
             }
-            
+
             // Bind to the service
             bindService(intent, smartGlassesServiceConnection, Context.BIND_AUTO_CREATE);
-            
+
             // The service connection callbacks will handle the rest
         } else if (smartGlassesManager != null) {
             Log.d(TAG, "SmartGlassesManager already initialized");
@@ -786,23 +786,23 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void stopSmartGlassesManager() {
         if (smartGlassesManagerBound) {
             Log.d(TAG, "Unbinding from SmartGlassesManager service");
-            
+
             // Unbind from the service
             unbindService(smartGlassesServiceConnection);
             smartGlassesManagerBound = false;
-            
+
             // Stop the service
             Intent intent = new Intent(this, SmartGlassesManager.class);
             stopService(intent);
-            
+
             // Clean up references
             if (smartGlassesManager != null) {
                 smartGlassesManager = null;
             }
-            
+
             // Update state
-            if (edgeTpaSystem != null) {
-                edgeTpaSystem.setSmartGlassesManager(null);
+            if (edgeAppSystem != null) {
+                edgeAppSystem.setSmartGlassesManager(null);
             }
             if (webSocketLifecycleManager != null) {
                 webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
@@ -816,8 +816,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (event.turnedOn) {
             // BATTERY OPTIMIZATION: Using direct lambda instead of creating a new Runnable object
             smartGlassesManager.windowManager.showAppLayer(
-                "system", 
-                () -> smartGlassesManager.sendReferenceCard("AugmentOS Connected", "Screen back on"), 
+                "system",
+                () -> smartGlassesManager.sendReferenceCard("AugmentOS Connected", "Screen back on"),
                 4
             );
         }
@@ -854,29 +854,29 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
               ", wifiConnected=" + event.isWifiConnected +
               ", SSID=" + event.currentSsid);
 
-        
+
         // Send the dedicated WiFi status change event
         sendWifiStatusChangeEvent(glassesWifiConnected, glassesWifiSsid);
-        
+
         // Also update the general status
         sendStatusToAugmentOsManager();
     }
-    
+
     @Subscribe
     public void onGlassesWifiScanResultEvent(GlassesWifiScanResultEvent event) {
         Log.d(TAG, "Received WiFi scan results from glasses: " + event.networks.size() + " networks");
-        
+
         // Send a dedicated message for WiFi scan results (not part of status)
         try {
             JSONObject wifiScanResultObj = new JSONObject();
             JSONArray networksArray = new JSONArray();
-            
+
             for (String network : event.networks) {
                 networksArray.put(network);
             }
-            
+
             wifiScanResultObj.put("wifi_scan_results", networksArray);
-            
+
             // Send to the manager app
             if (blePeripheral != null) {
                 blePeripheral.sendDataToAugmentOsManager(wifiScanResultObj.toString());
@@ -885,7 +885,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } catch (JSONException e) {
             Log.e(TAG, "Error creating WiFi scan results JSON", e);
         }
-        
+
         // If glasses need WiFi credentials, trigger the credentials input UI in the Manager app
         // and show a message on the glasses
 //        if (!event.isWifiConnected && smartGlassesManager != null &&
@@ -905,22 +905,22 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 //            );
 //        }
     }
-    
+
     @Subscribe
     public void onRtmpStreamStatusEvent(RtmpStreamStatusEvent event) {
         Log.d(TAG, "Received RTMP stream status event: " + event.statusMessage.toString());
-        
+
         // Forward to ServerComms for cloud communication
         ServerComms.getInstance().sendRtmpStreamStatus(event.statusMessage);
-        
+
         // Update local state and notify manager
         sendStatusToAugmentOsManager();
     }
-    
+
     @Subscribe
     public void onKeepAliveAckEvent(KeepAliveAckEvent event) {
         Log.d(TAG, "Received keep-alive ACK event: " + event.ackMessage.toString());
-        
+
         // Forward to ServerComms for cloud communication
         ServerComms.getInstance().sendKeepAliveAck(event.ackMessage);
     }
@@ -933,7 +933,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     // BATTERY OPTIMIZATION: Use a single Handler instance for the service
     private final Handler uiHandler = new Handler(Looper.getMainLooper());
     private Runnable animationRunnable;
-    
+
     private void playStartupSequenceOnSmartGlasses() {
         if (smartGlassesManager == null || smartGlassesManager.windowManager == null) return;
 
@@ -941,7 +941,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (animationRunnable != null) {
             uiHandler.removeCallbacks(animationRunnable);
         }
-        
+
         int delay = 250; // Frame delay
         int totalFrames = ARROW_FRAMES.length;
         int totalCycles = 3;
@@ -1178,7 +1178,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
      * Parses the top line of a dashboard display.
      * This function extracts and processes information specifically from the top line
      * of the dashboard display, which typically contains time, date, battery status, etc.
-     * 
+     *
      * @param msg The JSON object containing the dashboard display data
      * @return The parsed top line string, or null if there was an error in parsing
      */
@@ -1188,10 +1188,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             if (msg == null || !msg.has("layout")) {
                 return generateFallbackDashboardTopLine();
             }
-            
+
             JSONObject layout = msg.getJSONObject("layout");
             String layoutType = layout.getString("layoutType");
-            
+
             // Most dashboards use double_text_wall layout
             if ("double_text_wall".equals(layoutType) && layout.has("topText")) {
                 String topText = layout.getString("topText");
@@ -1209,7 +1209,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     String formatted = sdf.format(new Date());
                     topText = topText.replace("$no_datetime$", formatted);
                 }
-                
+
                 return topText;
             } else if ("text_rows".equals(layoutType) && layout.has("text")) {
                 // For text_rows layout, the first row is typically the header
@@ -1218,22 +1218,22 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     return rowsArray.getString(0);
                 }
             }
-            
+
             // If we can't parse the dashboard format or it's not what we expect,
             // generate a fallback header line
             return generateFallbackDashboardTopLine();
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error parsing dashboard top line", e);
             return generateFallbackDashboardTopLine();
         }
     }
-    
+
     /**
      * Generates a fallback dashboard top line when the normal parsing fails.
      * This ensures that even if there are issues with the dashboard data,
      * we still display useful information to the user.
-     * 
+     *
      * @return A formatted string with time, date, and battery information
      */
     private String generateFallbackDashboardTopLine() {
@@ -1241,12 +1241,12 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         SimpleDateFormat currentDateFormat = new SimpleDateFormat("MMM d", Locale.getDefault());
         String currentTime = currentTimeFormat.format(new Date());
         String currentDate = currentDateFormat.format(new Date());
-        
+
         // Use a safe default if battery level is null
         int batteryPercentage = (batteryLevel != null) ? batteryLevel : 0;
-        
+
         // Format: "◌ h:mm MMM d, XX%"
-        return String.format(Locale.getDefault(), "◌ %s %s, %d%%", 
+        return String.format(Locale.getDefault(), "◌ %s %s, %d%%",
                 currentTime, currentDate, batteryPercentage);
     }
 
@@ -1254,49 +1254,49 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
      * Extracts specific information from a dashboard top line.
      * This function can identify and extract elements like time, battery level,
      * or other structured data from the dashboard top line.
-     * 
+     *
      * @param topLine The dashboard top line string to analyze
      * @return A JSONObject containing the extracted information
      */
     public JSONObject extractDashboardTopLineInfo(String topLine) {
         JSONObject result = new JSONObject();
-        
+
         try {
             // Check for null or empty input
             if (topLine == null || topLine.trim().isEmpty()) {
                 return result;
             }
-            
+
             // Extract time pattern (like "h:mm" or "hh:mm")
             Pattern timePattern = Pattern.compile("\\d{1,2}:\\d{2}");
             Matcher timeMatcher = timePattern.matcher(topLine);
             if (timeMatcher.find()) {
                 result.put("time", timeMatcher.group());
             }
-            
+
             // Extract date pattern (like "MMM d" or "Month day")
             Pattern datePattern = Pattern.compile("(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\\s+\\d{1,2}");
             Matcher dateMatcher = datePattern.matcher(topLine);
             if (dateMatcher.find()) {
                 result.put("date", dateMatcher.group());
             }
-            
+
             // Extract battery percentage (like "85%" or "100%")
             Pattern batteryPattern = Pattern.compile("(\\d{1,3})%");
             Matcher batteryMatcher = batteryPattern.matcher(topLine);
             if (batteryMatcher.find()) {
                 result.put("battery", Integer.parseInt(batteryMatcher.group(1)));
             }
-            
+
             // Detect if this is a status line (contains specific indicators)
-            boolean isStatusLine = topLine.contains("◌") || 
+            boolean isStatusLine = topLine.contains("◌") ||
                                  (result.has("time") && result.has("battery"));
             result.put("isStatusLine", isStatusLine);
-            
+
         } catch (JSONException e) {
             Log.e(TAG, "Error creating dashboard top line info JSON", e);
         }
-        
+
         return result;
     }
 
@@ -1353,7 +1353,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Ensure the manager is started
         startSmartGlassesManager();
     }
-    
+
     /**
      * Overloaded version that takes a context parameter (for backward compatibility)
      */
@@ -1396,7 +1396,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 connectedGlasses.put("case_charging", (caseCharging == null) ? false: caseCharging);
                 connectedGlasses.put("case_open", (caseOpen == null) ? false: caseOpen);
                 connectedGlasses.put("case_removed", (caseRemoved == null) ? true: caseRemoved);
-                
+
                 // Add WiFi status information for glasses that need WiFi
                 String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
 
@@ -1438,8 +1438,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
             glassesSettings.put("head_up_angle", headUpAngle);
             status.put("glasses_settings", glassesSettings);
-            
-            
+
+
             // Adding wifi status
             JSONObject wifi = new JSONObject();
             wifi.put("is_connected", wifiStatusHelper.isWifiConnected());
@@ -1457,21 +1457,21 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             // Adding apps array
             JSONArray apps = new JSONArray();
 
-//            for (ThirdPartyEdgeApp tpa : edgeTpaSystem.getThirdPartyApps()) {
-//                if(tpa.appType != ThirdPartyAppType.APP) continue;
+//            for (ThirdPartyEdgeApp app : edgeAppSystem.getThirdPartyApps()) {
+//                if(app.appType != ThirdPartyAppType.APP) continue;
 //
-//                JSONObject tpaObj = tpa.toJson(false);
-//                tpaObj.put("is_running", edgeTpaSystem.checkIsThirdPartyAppRunningByPackageName(tpa.packageName));
-//                tpaObj.put("is_foreground", edgeTpaSystem.checkIsThirdPartyAppRunningByPackageName(tpa.packageName));
-//                apps.put(tpaObj);
+//                JSONObject appObj = app.toJson(false);
+//                appObj.put("is_running", edgeAppSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName));
+//                appObj.put("is_foreground", edgeAppSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName));
+//                apps.put(appObj);
 //            }
 
             // Check if cachedThirdPartyAppList is not null before iterating
             if (cachedThirdPartyAppList != null) {
-                for (ThirdPartyCloudApp tpa : cachedThirdPartyAppList) {
-                    JSONObject tpaObj = tpa.toJson(false);
-                    tpaObj.put("is_foreground", false);//tpaSystem.checkIsThirdPartyAppRunningByPackageName(tpa.packageName));
-                    apps.put(tpaObj);
+                for (ThirdPartyCloudApp app : cachedThirdPartyAppList) {
+                    JSONObject appObj = app.toJson(false);
+                    appObj.put("is_foreground", false);//appSystem.checkIsThirdPartyAppRunningByPackageName(app.packageName));
+                    apps.put(appObj);
                 }
             }
 
@@ -1597,11 +1597,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         break;
                 }
             }
-            
+
             @Override
             public void onPhotoRequest(String requestId, String appId) {
                 Log.d(TAG, "Photo request received: requestId=" + requestId + ", appId=" + appId);
-                
+
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
                     boolean requestSent = smartGlassesManager.requestPhoto(requestId, appId);
@@ -1617,7 +1617,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             public void onRtmpStreamStartRequest(JSONObject message) {
                 String rtmpUrl = message.optString("rtmpUrl", "");
                 Log.d(TAG, "RTMP stream request received: rtmpUrl=" + rtmpUrl);
-                
+
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
                     boolean requestSent = smartGlassesManager.requestRtmpStream(message);
@@ -1628,11 +1628,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e(TAG, "Cannot process RTMP stream request: smartGlassesManager is null");
                 }
             }
-            
+
             @Override
             public void onRtmpStreamStop() {
                 Log.d(TAG, "RTMP stream stop request received");
-                
+
                 // Forward the request to the smart glasses manager
                 if (smartGlassesManager != null) {
                     boolean requestSent = smartGlassesManager.stopRtmpStream();
@@ -1643,11 +1643,11 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     Log.e(TAG, "Cannot process RTMP stream stop request: smartGlassesManager is null");
                 }
             }
-            
+
             @Override
             public void onRtmpStreamKeepAlive(JSONObject message) {
                 Log.d(TAG, "RTMP stream keep alive received");
-                
+
                 // Forward the keep alive to the smart glasses manager
                 if (smartGlassesManager != null) {
                     boolean messageSent = smartGlassesManager.sendRtmpStreamKeepAlive(message);
@@ -1697,7 +1697,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                         dashboardDepth = settings.getInt("dashboardDepth");
                         smartGlassesManager.updateGlassesDepthHeight(dashboardDepth, dashboardHeight);
                     }
-                    
+
                     // if (settings.has("useOnboardMic")) {
                     //     useOnboardMic = settings.getBoolean("useOnboardMic");
                     //     if (useOnboardMic) {
@@ -1824,7 +1824,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     @Override
     public void connectToWearable(String modelName, String deviceName) {
         Log.d("AugmentOsService", "Connecting to wearable: " + modelName + ". DeviceName: " + deviceName + ".");
-        
+
         SmartGlassesDevice device = SmartGlassesManager.getSmartGlassesDeviceFromModelName(modelName);
         if (device == null) {
             blePeripheral.sendNotifyManager("Incorrect model name: " + modelName, "error");
@@ -1835,7 +1835,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if (!deviceName.isEmpty()) {
             if (modelName.contains("Even Realities")) {
                 savePreferredG1DeviceId(this, deviceName);
-            } 
+            }
             else if (modelName.equals("Mentra Live")) {
                 // Save Mentra Live device name in its preferences
                 SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
@@ -1857,7 +1857,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
-        
+
         // Reset state AND completely stop the service to get a clean state
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
@@ -1871,20 +1871,20 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Forgetting wearable");
         SmartGlassesManager.savePreferredWearable(this, "");
         deleteEvenSharedPreferences(this);
-        
+
         // Clear MentraLive device name preference
         SharedPreferences mentraPrefs = getSharedPreferences("MentraLivePrefs", Context.MODE_PRIVATE);
         mentraPrefs.edit().remove("LastConnectedDeviceName").apply();
         Log.d("AugmentOsService", "Cleared MentraLive stored device name");
-        
+
         brightnessLevel = null;
         batteryLevel = null;
-        
+
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
-        
-        
+
+
         // Reset instead of stopping
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
@@ -2004,18 +2004,18 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
     @Override
     public void requestAppInfo(String packageNameToGetDetails) {
-        ThirdPartyEdgeApp tpa = edgeTpaSystem.getThirdPartyAppByPackageName(packageNameToGetDetails);
-        if (tpa == null) {
+        ThirdPartyEdgeApp app = edgeAppSystem.getThirdPartyAppByPackageName(packageNameToGetDetails);
+        if (app == null) {
             blePeripheral.sendNotifyManager("Could not find app", "error");
             sendStatusToAugmentOsManager();
             return;
         }
-        JSONArray settings = tpa.getSettings(this);
+        JSONArray settings = app.getSettings(this);
         if (settings == null) {
             blePeripheral.sendNotifyManager("Could not get app's details", "error");
             return;
         }
-        blePeripheral.sendAppInfoToManager(tpa);
+        blePeripheral.sendAppInfoToManager(app);
     }
 
     @Override
@@ -2050,14 +2050,14 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
         this.brightnessLevel = brightness;
         this.autoBrightness = false;
-        
+
         // Save brightness settings to SharedPreferences
         PreferenceManager.getDefaultSharedPreferences(this)
             .edit()
             .putString(getString(R.string.SHARED_PREF_BRIGHTNESS), String.valueOf(brightness))
             .putBoolean(getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), false)
             .apply();
-        
+
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
@@ -2069,13 +2069,13 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             smartGlassesManager.updateGlassesAutoBrightness(autoBrightness);
         }
         this.autoBrightness = autoBrightness;
-        
+
         // Save auto brightness setting to SharedPreferences
         PreferenceManager.getDefaultSharedPreferences(this)
             .edit()
             .putBoolean(getString(R.string.SHARED_PREF_AUTO_BRIGHTNESS), autoBrightness)
             .apply();
-        
+
         sendStatusToBackend();
         sendStatusToAugmentOsManager();
     }
@@ -2119,16 +2119,16 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             blePeripheral.sendNotifyManager("Connect glasses to update depth", "error");
         }
     }
-    
+
     @Override
     public void setGlassesWifiCredentials(String ssid, String password) {
         Log.d(TAG, "@#@$@ Setting WiFi credentials for glasses, SSID: " + ssid);
-        
+
         if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
             blePeripheral.sendNotifyManager("No glasses connected to set WiFi credentials", "error");
             return;
         }
-        
+
         String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
         if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
             blePeripheral.sendNotifyManager("Connected glasses do not support WiFi", "error");
@@ -2152,32 +2152,32 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         sendStatusToAugmentOsManager();
 
     }
-    
+
     @Override
     public void requestWifiScan() {
         Log.d(TAG, "Requesting WiFi scan from glasses");
-        
+
         if (smartGlassesManager == null || smartGlassesManager.getConnectedSmartGlasses() == null) {
             blePeripheral.sendNotifyManager("No glasses connected to scan for WiFi networks", "error");
             return;
         }
-        
+
         String deviceModel = smartGlassesManager.getConnectedSmartGlasses().deviceModelName;
         if (deviceModel == null || !deviceModel.contains("Mentra Live")) {
             blePeripheral.sendNotifyManager("Connected glasses do not support WiFi scanning", "error");
             return;
         }
-        
+
         // Show a message on the glasses
         smartGlassesManager.windowManager.showAppLayer(
             "system",
             () -> smartGlassesManager.sendReferenceCard("WiFi Setup", "Scanning for networks..."),
             5
         );
-        
+
         // Send the scan request to the glasses
         smartGlassesManager.requestWifiScan();
-        
+
         // Notify manager app
         blePeripheral.sendNotifyManager("Scanning for WiFi networks...", "info");
     }
@@ -2187,7 +2187,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         Log.d("AugmentOsService", "Setting preferred mic: " + mic);
         preferredMic = mic;
         SmartGlassesManager.setPreferredMic(this, mic);
-        
+
         // Trigger immediate microphone switch using direct getter approach
         if (smartGlassesManager != null && smartGlassesManagerBound) {
             SmartGlassesRepresentative rep = smartGlassesManager.getSmartGlassesRepresentative();
@@ -2204,7 +2204,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             }
         }
     }
-    
+
 
     @Override
     public void setAuthSecretKey(String uniqueUserId, String authSecretKey) {
@@ -2227,17 +2227,17 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     public void deleteAuthSecretKey() {
         Log.d("AugmentOsService", "Deleting auth secret key");
         authHandler.deleteAuthSecretKey();
-        
+
         // When auth key is deleted (sign out), reset state for the next user
         if (smartGlassesManager != null) {
             smartGlassesManager.resetState();
         }
-        
+
         // Stop all running apps
-        if (edgeTpaSystem != null) {
-            edgeTpaSystem.stopAllThirdPartyApps();
+        if (edgeAppSystem != null) {
+            edgeAppSystem.stopAllThirdPartyApps();
         }
-        
+
         // Reset cached app data
         cachedThirdPartyAppList = new ArrayList<>();
         cachedDashboardDisplayObject = null;
@@ -2247,8 +2247,8 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
 
         // Stop all running apps
-        if (edgeTpaSystem != null) {
-            edgeTpaSystem.stopAllThirdPartyApps();
+        if (edgeAppSystem != null) {
+            edgeAppSystem.stopAllThirdPartyApps();
         }
 
         // Reset cached app data
@@ -2258,15 +2258,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         // Disconnect from server
         ServerComms.getInstance().disconnectWebSocket();
         webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
-        
+
         sendStatusToAugmentOsManager();
     }
 
     @Override
     public void updateAppSettings(String targetApp, JSONObject settings) {
         Log.d("AugmentOsService", "Updating settings for app: " + targetApp);
-        ThirdPartyEdgeApp tpa = edgeTpaSystem.getThirdPartyAppByPackageName(targetApp);
-        if (tpa == null) {
+        ThirdPartyEdgeApp app = edgeAppSystem.getThirdPartyAppByPackageName(targetApp);
+        if (app == null) {
             blePeripheral.sendNotifyManager("Could not find app", "error");
             return;
         }
@@ -2278,7 +2278,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             while (keys.hasNext()) {
                 String key = keys.next();
                 Object value = settings.get(key);
-                if(!tpa.updateSetting(this, key, value)) {
+                if(!app.updateSetting(this, key, value)) {
                     allSuccess = false;
                 }
             }
@@ -2293,23 +2293,28 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
     }
 
     /**
-     * Helper method to clean up all resources, disconnect from devices, 
+     * Helper method to clean up all resources, disconnect from devices,
      * and reset the service state completely
      */
     private void cleanupAllResources() {
         Log.d(TAG, "Cleaning up all resources and connections");
-        
+
         // Stop all running apps
-        if(edgeTpaSystem != null) {
-            edgeTpaSystem.stopAllThirdPartyApps();
+        if(edgeAppSystem != null) {
+            edgeAppSystem.stopAllThirdPartyApps();
         }
-        
+
         // Stop location updates and cleanup
         if(locationSystem != null) {
             // BATTERY OPTIMIZATION: Use cleanup method instead of just stopping updates
             locationSystem.cleanup();
         }
-        
+
+        // Clean up calendar system
+        if(calendarSystem != null) {
+            calendarSystem.cleanup();
+        }
+
         // Clean up screen capture resources
         if(screenCaptureRunnable != null) {
             screenCaptureHandler.removeCallbacks(screenCaptureRunnable);
@@ -2322,7 +2327,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             mediaProjection.stop();
             mediaProjection = null;
         }
-        
+
         // BATTERY OPTIMIZATION: Clean up our animation handler
         if (animationRunnable != null) {
             uiHandler.removeCallbacks(animationRunnable);
@@ -2330,48 +2335,48 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         }
         // Remove all pending posts to avoid any UI updates after destruction
         uiHandler.removeCallbacksAndMessages(null);
-        
+
         // Reset glasses connection - unbind from the service
         if (smartGlassesManagerBound) {
             stopSmartGlassesManager(); // This method handles all the cleanup
         } else if (smartGlassesManager != null) {
             smartGlassesManager = null;
-            edgeTpaSystem.setSmartGlassesManager(null);
+            edgeAppSystem.setSmartGlassesManager(null);
         }
-        
+
         // Reset cached data
         cachedThirdPartyAppList = new ArrayList<>();
         cachedDashboardDisplayObject = null;
-        
+
         // Reset WiFi status
         glassesWifiConnected = false;
         glassesWifiSsid = "";
-        
+
         // Disconnect websockets
         if (webSocketLifecycleManager != null) {
             webSocketLifecycleManager.updateSmartGlassesState(SmartGlassesConnectionState.DISCONNECTED);
             webSocketLifecycleManager.cleanup();
         }
         ServerComms.getInstance().disconnectWebSocket();
-        
+
         // Clear BLE connections
         if (blePeripheral != null) {
             blePeripheral.destroy();
         }
-        
-        if(edgeTpaSystem != null) {
-            edgeTpaSystem.destroy();
+
+        if(edgeAppSystem != null) {
+            edgeAppSystem.destroy();
         }
     }
 
     @Override
     public void onDestroy() {
         Log.d(TAG, "Service being destroyed");
-        
+
         // BATTERY OPTIMIZATION: Cleanup resources first, then unregister from EventBus
         // This prevents unhandled EventBus events during cleanup
         cleanupAllResources();
-        
+
         // Unregister from EventBus with proper error handling
         try {
             if (EventBus.getDefault().isRegistered(this)) {
@@ -2380,10 +2385,10 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         } catch (Exception e) {
             Log.e(TAG, "Error unregistering from EventBus", e);
         }
-        
+
         // Stop periodic datetime sending
         datetimeHandler.removeCallbacks(datetimeRunnable);
-        
+
         super.onDestroy();
     }
 
@@ -2446,6 +2451,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         ServerComms.getInstance().disconnectWebSocket();
         if (authHandler != null && authHandler.getCoreToken() != null) {
             ServerComms.getInstance().connectWebSocket(authHandler.getCoreToken());
+        }
+    }
+
+    /**
+     * Handle calendar permission changes
+     */
+    public void handleCalendarPermissionChange() {
+        if (calendarSystem != null) {
+            calendarSystem.handlePermissionChange();
         }
     }
 

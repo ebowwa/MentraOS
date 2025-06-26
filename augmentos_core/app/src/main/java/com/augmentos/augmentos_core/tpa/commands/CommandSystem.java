@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_core.tpa.commands;
+package com.augmentos.augmentos_core.app.commands;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -20,14 +20,14 @@ import com.augmentos.augmentoslib.events.IntermediateScrollingTextRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardImageViewRequestEvent;
 import com.augmentos.augmentoslib.events.ReferenceCardSimpleViewRequestEvent;
 import com.augmentos.augmentoslib.events.RegisterCommandRequestEvent;
-import com.augmentos.augmentos_core.tpa.eventbusmessages.StartLiveCaptionsEvent;
-import com.augmentos.augmentos_core.tpa.eventbusmessages.StopLiveCaptionsEvent;
+import com.augmentos.augmentos_core.app.eventbusmessages.StartLiveCaptionsEvent;
+import com.augmentos.augmentos_core.app.eventbusmessages.StopLiveCaptionsEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStartRequestEvent;
 import com.augmentos.augmentoslib.events.ScrollingTextViewStopRequestEvent;
 import com.augmentos.augmentoslib.events.TextLineViewRequestEvent;
 
-import com.augmentos.augmentos_core.tpa.eventbusmessages.HomeScreenEvent;
-import com.augmentos.augmentos_core.tpa.eventbusmessages.TPARequestEvent;
+import com.augmentos.augmentos_core.app.eventbusmessages.HomeScreenEvent;
+import com.augmentos.augmentos_core.app.eventbusmessages.AppRequestEvent;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -43,7 +43,7 @@ import java.util.UUID;
 public class CommandSystem {
     private String TAG = "WearableAi_CommandSystem";
 
-    //hold all registered commands, mostly from TPAs
+    //hold all registered commands, mostly from Apps
     public AugmentOSCallbackMapper augmentosCallbackMapper;
 
     //voice command system
@@ -66,7 +66,7 @@ public class CommandSystem {
     Context mContext;
 
     final String commandStartString = "command--";
-    final int commandResponseWindowTime = 20000; //how long a TPA has to send a response request event
+    final int commandResponseWindowTime = 20000; //how long a App has to send a response request event
     final int suspendFocusTime = 8000; //how long we allow an out of focus app to display before switching back to in-focus app
     public final long NO_UNSUSPEND_DELAY = 0;
 
@@ -304,8 +304,8 @@ public class CommandSystem {
 
     //respond and approve events below
     @Subscribe
-    public void onTPARequestEvent(TPARequestEvent receivedEvent) {
-        Log.d(TAG, "onTPARequestEvent");
+    public void onAppRequestEvent(AppRequestEvent receivedEvent) {
+        Log.d(TAG, "onAppRequestEvent");
 
         //map from id to event for all events that don't need permissions
         switch (receivedEvent.eventId) {
@@ -316,7 +316,7 @@ public class CommandSystem {
         }
 
         //check if the app making the request has privilege, only run it if it does have privilege
-        if (checkAppHasPrivilege(receivedEvent.eventId, receivedEvent.sendingPackage)) { //comment out check for privilege until this is a problem - TPAs should all request check for privilege anyway
+        if (checkAppHasPrivilege(receivedEvent.eventId, receivedEvent.sendingPackage)) { //comment out check for privilege until this is a problem - Apps should all request check for privilege anyway
             Log.d(TAG, "Allowing and resending event: ," + receivedEvent.eventId + "requested by: " + receivedEvent.sendingPackage);
             //map from id to event for all events that need permissions
             switch (receivedEvent.eventId) {

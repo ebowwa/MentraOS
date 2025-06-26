@@ -2,7 +2,7 @@ import express from 'express';
 import sessionService from '../services/session/session.service';
 import { StreamType } from '@mentra/sdk';
 import subscriptionService from '../services/session/subscription.service';
-import { CloudToTpaMessageType } from '@mentra/sdk';
+import { CloudToAppMessageType } from '@mentra/sdk';
 
 const router = express.Router();
 
@@ -22,12 +22,12 @@ router.post('/set-datetime', (req, res) => {
   userSession.userDatetime = datetime;
   console.log('User session updated', userSession.userDatetime);
 
-  // Relay custom_message to all TPAs subscribed to custom_message
+  // Relay custom_message to all Apps subscribed to custom_message
   const subscribedApps = subscriptionService.getSubscribedApps(userSession, StreamType.CUSTOM_MESSAGE);
 
   console.log('4343 Subscribed apps', subscribedApps);
   const customMessage = {
-    type: CloudToTpaMessageType.CUSTOM_MESSAGE,
+    type: CloudToAppMessageType.CUSTOM_MESSAGE,
     action: 'update_datetime',
     payload: {
       datetime: datetime,
@@ -36,9 +36,9 @@ router.post('/set-datetime', (req, res) => {
     timestamp: new Date()
   };
   for (const packageName of subscribedApps) {
-    const tpaWebsocket = userSession.appWebsockets.get(packageName);
-    if (tpaWebsocket && tpaWebsocket.readyState === 1) {
-      tpaWebsocket.send(JSON.stringify(customMessage));
+    const appWebsocket = userSession.appWebsockets.get(packageName);
+    if (appWebsocket && appWebsocket.readyState === 1) {
+      appWebsocket.send(JSON.stringify(customMessage));
     }
   }
 

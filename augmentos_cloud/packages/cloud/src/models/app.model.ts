@@ -1,6 +1,6 @@
 // cloud/server/src/models/app.model.ts
 import mongoose, { Schema, Document, Types } from 'mongoose';
-import { AppI as _AppI, TpaType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType, PermissionType, Permission } from '@mentra/sdk';
+import { AppI as _AppI, AppType, ToolSchema, ToolParameterSchema, AppSetting, AppSettingType, PermissionType, Permission } from '@mentra/sdk';
 
 export type AppStoreStatus = 'DEVELOPMENT' | 'SUBMITTED' | 'REJECTED' | 'PUBLISHED';
 
@@ -65,10 +65,10 @@ export interface AppI extends _AppI, Document {
 const AppSchema = new Schema({
 
   // Type of app "background" | "standard" | "system_dashboard". "background by default"
-  tpaType: {
+  appType: {
     type: String,
-    enum: Object.values(TpaType),
-    default: TpaType.BACKGROUND
+    enum: Object.values(AppType),
+    default: AppType.BACKGROUND
   },
 
   // Appstore / Developer properties
@@ -88,7 +88,7 @@ const AppSchema = new Schema({
     type: Date
   },
 
-  // TPA AI Tools
+  // App AI Tools
   tools: [{
     id: {
       type: String,
@@ -127,7 +127,7 @@ const AppSchema = new Schema({
     }
   }],
 
-  // TPA Settings Configuration
+  // App Settings Configuration
   settings: [{
     type: {
       type: String,

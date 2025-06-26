@@ -1,8 +1,8 @@
-# Display Guidelines for MentraOS TPAs
+# Display Guidelines for MentraOS Apps
 
 ## Overview
 
-This guide provides best practices and technical guidelines for showing content on MentraOS smart glasses from your Third-Party Application (TPA). The display system has specific constraints and behaviors that must be understood for the best user experience.
+This guide provides best practices and technical guidelines for showing content on MentraOS smart glasses from your Third-Party Application (App). The display system has specific constraints and behaviors that must be understood for the best user experience.
 
 ## Smart Glasses Display Constraints
 
@@ -19,8 +19,8 @@ MentraOS smart glasses have significant hardware constraints that affect how con
 MentraOS Cloud uses a DisplayManager to coordinate what's shown on the glasses. It handles:
 
 1. **Throttling**: Ensures displays don't exceed hardware limits
-2. **Priority**: Determines which TPA's content is shown when multiple TPAs want to display
-3. **Background Locks**: Manages which TPAs can display in the background
+2. **Priority**: Determines which App's content is shown when multiple Apps want to display
+3. **Background Locks**: Manages which Apps can display in the background
 4. **Boot Screens**: Shows loading screens during app startup
 
 ## Layout Types
@@ -108,7 +108,7 @@ session.layouts.showTextWall("Message sent!", { durationMs: 3000 });
 
 1. **Core Apps vs Background Apps**:
    - Core system apps (like LiveCaptions) have priority
-   - Your TPA may need to acquire a "background lock" to display
+   - Your App may need to acquire a "background lock" to display
    - Background locks expire after inactivity
 
 2. **When Your Display Won't Show**:
@@ -192,7 +192,7 @@ Since there's no confirmation that displays were received:
 1. **Check Logs**: The server logs display requests and their status
 2. **Use Metrics**: Track display success rates and failures
 3. **Test Timing**: Verify your app works with the 200ms throttling
-4. **Try Different Loads**: Test with multiple TPAs active simultaneously
+4. **Try Different Loads**: Test with multiple Apps active simultaneously
 
 ## Common Pitfalls
 

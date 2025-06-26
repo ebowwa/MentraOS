@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_core.tpa.commands;
+package com.augmentos.augmentos_core.app.commands;
 
 import com.augmentos.augmentoslib.FocusStates;
 

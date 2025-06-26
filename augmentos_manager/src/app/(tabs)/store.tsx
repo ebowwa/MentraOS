@@ -8,7 +8,7 @@ import {RootStackParamList} from "@/components/misc/types"
 import {useAppStatus} from "@/contexts/AppStatusProvider"
 import {useAppStoreWebviewPrefetch} from "@/contexts/AppStoreWebviewPrefetchProvider"
 import {useAppTheme} from "@/utils/useAppTheme"
-import {useLocalSearchParams} from "expo-router"
+import {useLocalSearchParams, router} from "expo-router"
 import {Text, Screen, Header} from "@/components/ignite"
 
 // Define package name for the store webview
@@ -28,11 +28,11 @@ export default function AppStoreWeb() {
   const {refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
   const isDarkTheme = theme.isDark
-  
+
   // Construct the final URL with packageName if provided
   const finalUrl = React.useMemo(() => {
     if (!appStoreUrl) return appStoreUrl
-    
+
     if (packageName && typeof packageName === 'string') {
       // If packageName is provided, navigate to the app details page
       const url = new URL(appStoreUrl)
@@ -40,7 +40,7 @@ export default function AppStoreWeb() {
       url.pathname = `/app/${packageName}`
       return url.toString()
     }
-    
+
     return appStoreUrl
   }, [appStoreUrl, packageName])
 
@@ -62,6 +62,23 @@ export default function AppStoreWeb() {
   const handleError = () => {
     setWebviewLoading(false)
     setHasError(true)
+  }
+
+  // Handle messages from WebView
+  const handleWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data)
+
+      if ((data.type === 'OPEN_APP_SETTINGS' || data.type === 'OPEN_TPA_SETTINGS') && data.packageName) {
+        // Navigate to TPA settings page
+        router.push({
+          pathname: '/app/settings',
+          params: { packageName: data.packageName }
+        })
+      }
+    } catch (error) {
+      console.error('Error handling WebView message:', error)
+    }
   }
 
   // Handle Android back button press
@@ -120,6 +137,7 @@ export default function AppStoreWeb() {
             onLoadEnd={() => setWebviewLoading(false)}
             onError={handleError}
             onNavigationStateChange={navState => setCanGoBack(navState.canGoBack)}
+            onMessage={handleWebViewMessage}
             javaScriptEnabled={true}
             domStorageEnabled={true}
             startInLoadingState={true}

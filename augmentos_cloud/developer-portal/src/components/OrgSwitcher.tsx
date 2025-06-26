@@ -21,8 +21,11 @@ export function OrgSwitcher() {
   const { orgs, currentOrg, setCurrentOrg, loading } = useOrganization();
   const navigate = useNavigate();
 
+  const isInitialLoading = loading && orgs.length === 0;
+
   // If there's only one organization (personal), don't show the switcher
-  if (orgs.length <= 1 || loading) {
+  // But show it during re-authentication if we already have the data
+  if (orgs.length <= 1 || isInitialLoading) {
     return null;
   }
 
