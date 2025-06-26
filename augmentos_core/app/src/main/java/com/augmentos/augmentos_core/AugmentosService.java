@@ -113,7 +113,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
 
    private final IBinder binder = new LocalBinder();
 
-    private final String notificationAppName = "AugmentOS";
+    private final String notificationAppName = "MentraOS";
     private final String notificationDescription = "";
     private final String myChannelId = "augmentos_core";
     public static final String ACTION_START_CORE = "ACTION_START_CORE";
