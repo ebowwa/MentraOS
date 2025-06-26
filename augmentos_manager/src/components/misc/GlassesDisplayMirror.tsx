@@ -115,7 +115,7 @@ const $emptyContainer: ThemedStyle<ViewStyle> = () => ({
 const $emptyText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.textDim,
   fontFamily: "Montserrat-Regular",
-  fontSize: 16,
+  fontSize: 20,
   opacity: 0.5,
 })
 

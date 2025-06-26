@@ -34,7 +34,7 @@ const Header: React.FC = () => {
               className="text-[26px] font-light"
               style={{ fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.06em', color: 'var(--text-primary)' }}
             >
-              AugmentOS
+              MentraOS
             </span>
           </div>
 

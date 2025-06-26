@@ -21,7 +21,7 @@ const TempActivateAppWindow = () => {
         </View>
         <View style={themed($animatedToggle)}>
           <View style={themed($toggleBarIcon)} />
-          <View style={[themed($toggleCircleIcon), {backgroundColor: theme.colors.switchThumbOff || theme.colors.palette.neutral300}]} />
+          <View style={[themed($toggleCircleIcon), {backgroundColor: theme.colors.switchThumbOff}]} />
         </View>
       </View>
       <TouchableOpacity onPress={() => setVisible(false)} style={[themed($xIcon), {display: "none"}]}>
@@ -73,16 +73,20 @@ const $toggleBarIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: 32,
   borderRadius: 16,
   backgroundColor: colors.switchTrackOff,
+  borderColor: colors.switchBorder,
+  borderWidth: colors.switchBorderWidth,
   position: "absolute",
 })
 
-const $toggleCircleIcon: ThemedStyle<ViewStyle> = () => ({
+const $toggleCircleIcon: ThemedStyle<ViewStyle> = ({colors}) => ({
   width: 24,
   height: 24,
-  top: -2,
-  left: -2,
+  top: -4,
+  left: -4,
   borderRadius: 12,
   position: "absolute",
+  borderColor: colors.switchBorder,
+  borderWidth: colors.switchBorderWidth,
 })
 
 const $animatedToggle: ThemedStyle<ViewStyle> = () => ({

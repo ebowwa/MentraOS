@@ -6,7 +6,7 @@ import Constants from "expo-constants"
 import semver from "semver"
 import BackendServerComms from "@/backend_comms/BackendServerComms"
 import {saveSetting} from "@/utils/SettingsHelper"
-import {Button} from "@/components/ignite"
+import {Button, Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {TextStyle, ViewStyle} from "react-native"
@@ -154,7 +154,7 @@ export default function VersionUpdateScreen() {
   }
 
   return (
-    <View style={themed($container)}>
+    <Screen preset="fixed" contentContainerStyle={themed($container)}>
       <View style={themed($mainContainer)}>
         <View style={themed($infoContainer)}>
           <View style={themed($iconContainer)}>{getStatusIcon()}</View>
@@ -196,7 +196,7 @@ export default function VersionUpdateScreen() {
           </View>
         )}
       </View>
-    </View>
+    </Screen>
   )
 }
 

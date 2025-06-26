@@ -4,12 +4,22 @@ import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Pack
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { useIsDesktop } from '../hooks/useMediaQuery';
+import { usePlatform } from '../hooks/usePlatform';
 import api from '../api';
 import { AppI } from '../types';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import Header from '../components/Header';
 import AppPermissions from '../components/AppPermissions';
+
+// Extend window interface for React Native WebView
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
+  }
+}
 
 const AppDetails: React.FC = () => {
   const { packageName } = useParams<{ packageName: string }>();
@@ -18,6 +28,7 @@ const AppDetails: React.FC = () => {
   const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
   const isDesktop = useIsDesktop();
+  const { isWebView } = usePlatform();
 
   const [app, setApp] = useState<AppI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -114,6 +125,20 @@ const AppDetails: React.FC = () => {
       toast.error('Failed to install app');
     } finally {
       setInstallingApp(false);
+    }
+  };
+
+  // Handle opening app settings
+  const handleOpen = (packageName: string) => {
+    // If we're in webview, send message to React Native to open TPA settings
+    if (isWebView && window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'OPEN_TPA_SETTINGS',
+        packageName: packageName
+      }));
+    } else {
+      // Fallback: refresh the page
+      window.location.reload();
     }
   };
 
@@ -255,14 +280,36 @@ const AppDetails: React.FC = () => {
             <div className="flex items-center gap-4 max-[840px]:w-full max-[840px]:justify-center">
               {isAuthenticated ? (
                 app.isInstalled ? (
-                  <Button
-                    onClick={handleUninstall}
-                    disabled={installingApp}
-                    className="w-full sm:w-[140px] h-[40px] bg-[#E24A24] hover:bg-[#E24A24]/90 text-[#E2E4FF] text-[16px] font-normal rounded-full"
-                    style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
-                  >
-                    Uninstall
-                  </Button>
+                  isWebView ? (
+                    <Button
+                      onClick={() => handleOpen(app.packageName)}
+                      disabled={installingApp}
+                      className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                      style={{ 
+                        fontFamily: '"SF Pro Rounded", sans-serif',
+                        backgroundColor: 'var(--button-bg)', 
+                        color: 'var(--button-text)' 
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                    >
+                      Open
+                    </Button>
+                  ) : (
+                    // Show greyed out Installed button for installed apps on desktop/mobile
+                    <Button
+                      disabled={true}
+                      className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full opacity-30 cursor-not-allowed"
+                      style={{ 
+                        fontFamily: '"SF Pro Rounded", sans-serif',
+                        backgroundColor: 'var(--button-bg)', 
+                        color: 'var(--button-text)',
+                        filter: 'grayscale(100%)'
+                      }}
+                    >
+                      Installed
+                    </Button>
+                  )
                 ) : (
                   <Button
                     onClick={handleInstall}

@@ -291,7 +291,7 @@ const AppStore: React.FC = () => {
         {/* Heading + Search */}
         <div className="flex flex-col lg:flex-row mb-8 lg:items-center lg:justify-between gap-4 px-4 pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
           {/* App Store heading */}
-          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>App Store</h1>
+          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>Store</h1>
 
           {/* Search bar */}
           <form onSubmit={handleSearch} className="flex-1 lg:max-w-md flex items-center space-x-3">
@@ -427,16 +427,17 @@ const AppStore: React.FC = () => {
                             <>Open</>
                           </Button>
                         ) : (
-                          // Show greyed out Get button for installed apps on desktop/mobile
+                          // Show greyed out Installed button for installed apps on desktop/mobile
                           <Button
                             disabled={true}
-                            className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center opacity-50 cursor-not-allowed"
+                            className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center opacity-30 cursor-not-allowed"
                             style={{ 
                               backgroundColor: 'var(--button-bg)', 
-                              color: 'var(--button-text)' 
+                              color: 'var(--button-text)',
+                              filter: 'grayscale(100%)'
                             }}
                           >
-                            <>Get</>
+                            <>Installed</>
                           </Button>
                         )
                       ) : (
