@@ -13,7 +13,6 @@ import ConnectedSimulatedGlassesInfo from "./ConnectedSimulatedGlassesInfo"
 import SolarLineIconsSet4 from "assets/icons/component/SolarLineIconsSet4"
 import ChevronRight from "assets/icons/component/ChevronRight"
 import {Circle} from "react-native-svg"
-import {AnimatedCircularProgress} from "react-native-circular-progress"
 import {getBatteryColor} from "@/utils/getBatteryIcon"
 import SunIcon from "assets/icons/component/SunIcon"
 import {glassesFeatures} from "@/config/glassesFeatures"
@@ -371,74 +370,9 @@ export function ConnectedDeviceInfo() {
     return null
   }
 
-  let caseBattery = null
-  if (!status.glasses_info.case_removed && status.glasses_info.case_battery_level !== -1) {
-    caseBattery = (
-      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
-        <AnimatedCircularProgress
-          size={36}
-          width={3}
-          lineCap="round"
-          fillLineCap="round"
-          fill={status.glasses_info?.case_battery_level}
-          // tintColor={getBatteryColor(status.glasses_info?.case_battery_level ?? 0)}
-          tintColor={theme.colors.tint}
-          backgroundColor={theme.colors.palette.neutral300}
-          children={() => (
-            <Text style={themed($batteryValue)}>
-              {status.glasses_info?.case_battery_level}
-              {status.glasses_info?.case_charging && (
-                <MaterialCommunityIcons name="lightning-bolt" size={10} color={theme.colors.text} />
-              )}
-            </Text>
-          )}
-          rotation={0}
-        />
-      </View>
-    )
-  }
-
   return (
     <View style={themed($statusBar)}>
-      {/* <View style={styles.statusInfo}>
-            {status.glasses_info?.battery_level != null && typeof status.glasses_info?.battery_level === "number" && (
-              <>
-                <Text style={themed($statusLabel)}>Battery</Text>
-                <View style={styles.batteryContainer}>
-                  {status.glasses_info?.battery_level >= 0 && (
-                    <Icon
-                      name={getBatteryIcon(status.glasses_info?.battery_level ?? 0)}
-                      size={16}
-                      color={getBatteryColor(status.glasses_info?.battery_level ?? 0)}
-                    />
-                  )}
-                  <Text style={themed($batteryValue)}>
-                    {status.glasses_info.battery_level == -1 ? "-" : `${status.glasses_info.battery_level}%`}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View> */}
-
-      {/* battery circular progress bar */}
-      {status.glasses_info?.battery_level != -1 ? (
-        <AnimatedCircularProgress
-          size={36}
-          width={3}
-          lineCap="round"
-          fillLineCap="round"
-          fill={status.glasses_info?.battery_level}
-          // tintColor={getBatteryColor(status.glasses_info?.battery_level ?? 0)}
-          tintColor={theme.colors.palette.primary500}
-          backgroundColor={theme.colors.palette.neutral300}
-          children={() => <Text style={themed($batteryValue)}>{status.glasses_info?.battery_level}</Text>}
-          rotation={0}
-        />
-      ) : (
-        <ActivityIndicator size="small" color={theme.colors.text} />
-      )}
-
-      {caseBattery}
+      {/* Battery information moved to DeviceSettings */}
 
       {/* disconnect button */}
       {/* <TouchableOpacity
@@ -471,13 +405,6 @@ const $statusLabel: ThemedStyle<TextStyle> = ({colors}) => ({
   fontWeight: "500",
   letterSpacing: -0.08,
   fontFamily: "SF Pro",
-})
-
-const $batteryValue: ThemedStyle<TextStyle> = ({colors}) => ({
-  fontSize: 10,
-  fontWeight: "bold",
-  fontFamily: "Montserrat-Bold",
-  color: colors.text,
 })
 
 const $statusBar: ThemedStyle<ViewStyle> = ({colors}) => ({
