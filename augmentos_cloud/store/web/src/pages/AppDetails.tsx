@@ -3,6 +3,8 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft, Download, X, ExternalLink, Calendar, Clock, Info, Star, Package, Building, Globe, Mail, FileText } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { useIsDesktop } from '../hooks/useMediaQuery';
+import { usePlatform } from '../hooks/usePlatform';
 import api from '../api';
 import { AppI } from '../types';
 import { toast } from 'sonner';
@@ -10,12 +12,23 @@ import { Button } from '@/components/ui/button';
 import Header from '../components/Header';
 import AppPermissions from '../components/AppPermissions';
 
+// Extend window interface for React Native WebView
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
+  }
+}
+
 const AppDetails: React.FC = () => {
   const { packageName } = useParams<{ packageName: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
+  const isDesktop = useIsDesktop();
+  const { isWebView } = usePlatform();
 
   const [app, setApp] = useState<AppI | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -115,6 +128,20 @@ const AppDetails: React.FC = () => {
     }
   };
 
+  // Handle opening app settings
+  const handleOpen = (packageName: string) => {
+    // If we're in webview, send message to React Native to open TPA settings
+    if (isWebView && window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'OPEN_TPA_SETTINGS',
+        packageName: packageName
+      }));
+    } else {
+      // Fallback: refresh the page
+      window.location.reload();
+    }
+  };
+
   // Handle app uninstallation
   const handleUninstall = async () => {
     if (!isAuthenticated || !app) return;
@@ -159,31 +186,48 @@ const AppDetails: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
-      {/* Gradient Panel */}
-      {!isLoading && error && (
-        <div className="text-red-500">{error}</div>
-      )}
+    <>
+      {/* Show header on mobile screens */}
+      <div className="sm:hidden">
+        <Header />
+      </div>
+      
+      <div 
+        className="min-h-screen sm:flex sm:items-center sm:justify-center sm:p-4"
+        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+      >
+        {/* Error state */}
+        {!isLoading && error && (
+          <div className="text-red-500 p-4">{error}</div>
+        )}
 
-      {isLoading && (
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      )}
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex items-center justify-center min-h-[50vh]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          </div>
+        )}
 
-      {!isLoading && !error && app && (
-        <div
-          className="w-full max-w-[90vw] md:w-[720px] md:max-w-[720px] max-h-[90vh] overflow-y-auto rounded-[24px] custom-scrollbar relative"
-          style={{
-            background: theme === 'light' ? 'transparent' : 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)',
-            boxShadow: theme === 'light' ? 'none' : 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 32px rgba(0, 0, 0, 0.25)',
-            border: theme === 'light' ? '2px solid #e5e5e5' : 'none',
-            padding: '48px 48px 56px'
-          }}
-        >
-          {/* Close Button */}
+        {/* Main content */}
+        {!isLoading && !error && app && (
+          <div
+            className="w-full sm:max-w-[90vw] sm:w-[720px] sm:max-w-[720px] min-h-screen sm:min-h-0 sm:max-h-[90vh] overflow-y-auto sm:rounded-[24px] custom-scrollbar relative"
+            style={{
+              // Mobile styles (default)
+              backgroundColor: 'var(--bg-primary)',
+              // Desktop styles applied based on media query hook
+              ...(isDesktop ? {
+                background: theme === 'light' ? 'transparent' : 'linear-gradient(180deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%)',
+                boxShadow: theme === 'light' ? 'none' : 'inset 0 0 0 1px rgba(255, 255, 255, 0.1), inset 0 0 32px rgba(0, 0, 0, 0.25)',
+                border: theme === 'light' ? '2px solid #e5e5e5' : 'none',
+              } : {})
+            }}
+          >
+          {/* Desktop Close Button */}
           <button
             onClick={() => navigate(-1)}
-            className="absolute top-6 right-6 transition-colors"
-            style={{
+            className="hidden sm:block absolute top-6 right-6 transition-colors"
+            style={{ 
               color: theme === 'light' ? '#000000' : '#9CA3AF'
             }}
             onMouseEnter={(e) => e.currentTarget.style.color = theme === 'light' ? '#333333' : '#ffffff'}
@@ -193,9 +237,24 @@ const AppDetails: React.FC = () => {
             <X className="h-6 w-6" />
           </button>
 
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8 max-[840px]:flex-col max-[840px]:gap-6">
-            <div className="flex items-center gap-4 max-[840px]:flex-col max-[840px]:items-center max-[840px]:gap-4">
+          {/* Mobile Back Button */}
+          <div className="sm:hidden px-6 py-4 border-b" style={{ borderColor: 'var(--border-color)' }}>
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-2 transition-colors"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+              <span className="text-[16px]">Back</span>
+            </button>
+          </div>
+
+          {/* Content wrapper with responsive padding */}
+          <div className="px-6 py-6 pb-safe sm:p-0">
+            <div className="max-w-2xl mx-auto sm:max-w-none sm:p-12 pb-8 sm:pb-12">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-8 max-[840px]:flex-col max-[840px]:gap-6">
+              <div className="flex items-center gap-4 max-[840px]:flex-col max-[840px]:items-center max-[840px]:gap-4">
               <img
                 src={app.logoURL}
                 alt={`${app.name} logo`}
@@ -221,19 +280,41 @@ const AppDetails: React.FC = () => {
             <div className="flex items-center gap-4 max-[840px]:w-full max-[840px]:justify-center">
               {isAuthenticated ? (
                 app.isInstalled ? (
-                  <Button
-                    onClick={handleUninstall}
-                    disabled={installingApp}
-                    className="w-[140px] h-[40px] bg-[#E24A24] hover:bg-[#E24A24]/90 text-[#E2E4FF] text-[16px] font-normal rounded-full"
-                    style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
-                  >
-                    Uninstall
-                  </Button>
+                  isWebView ? (
+                    <Button
+                      onClick={() => handleOpen(app.packageName)}
+                      disabled={installingApp}
+                      className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                      style={{ 
+                        fontFamily: '"SF Pro Rounded", sans-serif',
+                        backgroundColor: 'var(--button-bg)', 
+                        color: 'var(--button-text)' 
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                    >
+                      Open
+                    </Button>
+                  ) : (
+                    // Show greyed out Installed button for installed apps on desktop/mobile
+                    <Button
+                      disabled={true}
+                      className="w-full sm:w-[140px] h-[40px] text-[#E2E4FF] text-[16px] font-normal rounded-full opacity-30 cursor-not-allowed"
+                      style={{ 
+                        fontFamily: '"SF Pro Rounded", sans-serif',
+                        backgroundColor: 'var(--button-bg)', 
+                        color: 'var(--button-text)',
+                        filter: 'grayscale(100%)'
+                      }}
+                    >
+                      Installed
+                    </Button>
+                  )
                 ) : (
                   <Button
                     onClick={handleInstall}
                     disabled={installingApp}
-                    className="w-[140px] h-[40px] bg-[#242454] hover:bg-[#2d2f5a] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                    className="w-full sm:w-[140px] h-[40px] bg-[#242454] hover:bg-[#2d2f5a] text-[#E2E4FF] text-[16px] font-normal rounded-full"
                     style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
                   >
                     {installingApp ? 'Installing…' : 'Get App'}
@@ -242,7 +323,7 @@ const AppDetails: React.FC = () => {
               ) : (
                 <Button
                   onClick={() => navigate('/login', { state: { returnTo: location.pathname } })}
-                  className="w-[140px] h-[40px] bg-[#242454] text-[#E2E4FF] text-[16px] font-normal rounded-full"
+                  className="w-full sm:w-[140px] h-[40px] bg-[#242454] text-[#E2E4FF] text-[16px] font-normal rounded-full"
                   style={{ fontFamily: '"SF Pro Rounded", sans-serif' }}
                 >
                   Sign in
@@ -254,7 +335,7 @@ const AppDetails: React.FC = () => {
           {/* Description */}
           <div className="mb-12">
             <p
-              className="text-[16px] font-normal leading-[1.6] max-w-[480px]"
+              className="text-[16px] font-normal leading-[1.6] sm:max-w-[480px]"
               style={{ fontFamily: '"SF Pro Rounded", sans-serif', color: theme === 'light' ? '#000000' : '#E4E4E7' }}
             >
               {app.description || 'No description available.'}
@@ -353,9 +434,12 @@ const AppDetails: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-      )}
-    </div>
+          </div>
+          </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 };
 

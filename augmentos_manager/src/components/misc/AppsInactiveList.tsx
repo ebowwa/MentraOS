@@ -311,7 +311,22 @@ export default function InactiveAppList({
             text: translate("common:next"),
             onPress: async () => {
               await requestPermissions(neededPermissions)
-              startApp(packageName)
+              
+              // Check if permissions were actually granted (for non-special permissions)
+              // Special permissions like READ_NOTIFICATIONS on Android require manual action
+              const stillNeededPermissions = await checkPermissions(appToStart)
+              
+              // If we still need READ_NOTIFICATIONS, don't auto-retry
+              // The user needs to manually grant it in settings and try again
+              if (stillNeededPermissions.includes(PermissionFeatures.READ_NOTIFICATIONS) && Platform.OS === "android") {
+                // Permission flow is in progress, user needs to complete it manually
+                return
+              }
+              
+              // For other permissions that were granted, proceed with starting the app
+              if (stillNeededPermissions.length === 0) {
+                startApp(packageName)
+              }
             },
           },
         ],

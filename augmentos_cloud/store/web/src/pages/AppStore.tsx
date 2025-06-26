@@ -3,11 +3,21 @@ import { useNavigate, useSearchParams, Link, useLocation } from 'react-router-do
 import { Search, X, Building, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
+import { usePlatform } from '../hooks/usePlatform';
 import api, { AppFilterOptions } from '../api';
 import { AppI } from '../types';
 import Header from '../components/Header';
 import { toast } from 'sonner';
 import { Button } from '../components/ui/button';
+
+// Extend window interface for React Native WebView
+declare global {
+  interface Window {
+    ReactNativeWebView?: {
+      postMessage: (message: string) => void;
+    };
+  }
+}
 
 /**
  * AppStore component that displays and manages available applications
@@ -17,6 +27,7 @@ const AppStore: React.FC = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
   const { theme } = useTheme();
+  const { isWebView } = usePlatform();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get organization ID from URL query parameter
@@ -258,7 +269,16 @@ const AppStore: React.FC = () => {
   };
 
   const handleOpen = (packageName: string) => {
-    navigate(`/package/${packageName}`);
+    // If we're in webview, send message to React Native to open TPA settings
+    if (isWebView && window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'OPEN_TPA_SETTINGS',
+        packageName: packageName
+      }));
+    } else {
+      // Fallback: navigate to app details page
+      navigate(`/package/${packageName}`);
+    }
   };
 
   return (
@@ -271,7 +291,7 @@ const AppStore: React.FC = () => {
         {/* Heading + Search */}
         <div className="flex flex-col lg:flex-row mb-8 lg:items-center lg:justify-between gap-4 px-4 pb-8" style={{ borderBottom: '1px solid var(--border-color)' }}>
           {/* App Store heading */}
-          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>App Store</h1>
+          <h1 className="text-4xl font-light hidden min-[850px]:block" style={{fontFamily:'"SF Pro Rounded", sans-serif', letterSpacing: '2.4px', color: 'var(--text-primary)'}}>Store</h1>
 
           {/* Search bar */}
           <form onSubmit={handleSearch} className="flex-1 lg:max-w-md flex items-center space-x-3">
@@ -359,9 +379,9 @@ const AppStore: React.FC = () => {
 
         {/* App grid */}
         {!isLoading && !error && (
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-12 px-0">
+          <div className="mt-4 sm:mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-4 sm:gap-y-12 px-0">
             {filteredApps.map(app => (
-              <div key={app.packageName} className="p-6 flex gap-3 transition-colors rounded-lg relative" onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div key={app.packageName} className="p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" onClick={() => handleOpen(app.packageName)} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                 <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
                 {/* Image Column */}
                 <div className="shrink-0 flex items-start pt-2">
@@ -377,7 +397,7 @@ const AppStore: React.FC = () => {
 
                 {/* Content Column */}
                 <div className="flex-1 flex flex-col gap-2">
-                  <div onClick={() => handleOpen(app.packageName)} role="button" className="cursor-pointer">
+                  <div>
                     <h3 className="text-[15px] font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: 'var(--text-primary)'}}>{app.name}</h3>
                     {app.description && (
                       <p className="text-[15px] font-normal leading-[1.3] line-clamp-2" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: theme === 'light' ? '#4a4a4a' : '#9A9CAC'}}>{app.description}</p>
@@ -388,22 +408,44 @@ const AppStore: React.FC = () => {
                   <div className="mt-2">
                     {isAuthenticated ? (
                       app.isInstalled ? (
-                        <Button
-                          onClick={() => handleOpen(app.packageName)}
-                          disabled={installingApp === app.packageName}
-                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
-                          style={{ 
-                            backgroundColor: 'var(--button-bg)', 
-                            color: 'var(--button-text)' 
-                          }}
-                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
-                        >
-                          <>Open</>
-                        </Button>
+                        isWebView ? (
+                          // Show Open button only in webview for installed apps
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpen(app.packageName);
+                            }}
+                            disabled={installingApp === app.packageName}
+                            className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                            style={{ 
+                              backgroundColor: 'var(--button-bg)', 
+                              color: 'var(--button-text)' 
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                          >
+                            <>Open</>
+                          </Button>
+                        ) : (
+                          // Show greyed out Installed button for installed apps on desktop/mobile
+                          <Button
+                            disabled={true}
+                            className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center opacity-30 cursor-not-allowed"
+                            style={{ 
+                              backgroundColor: 'var(--button-bg)', 
+                              color: 'var(--button-text)',
+                              filter: 'grayscale(100%)'
+                            }}
+                          >
+                            <>Installed</>
+                          </Button>
+                        )
                       ) : (
                         <Button
-                          onClick={() => handleInstall(app.packageName)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleInstall(app.packageName);
+                          }}
                           disabled={installingApp === app.packageName}
                           className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
                           style={{ 
@@ -425,7 +467,10 @@ const AppStore: React.FC = () => {
                       )
                     ) : (
                       <Button
-                        onClick={() => navigate('/login')}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/login');
+                        }}
                         className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center flex items-center gap-2"
                         style={{ 
                           backgroundColor: 'var(--button-bg)', 

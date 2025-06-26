@@ -123,6 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession({ access_token: result.tokens.supabaseToken || 'temp-token-session' } as Session);
         setUser({ id: result.userId || 'webview-user' } as User);
         setIsWebViewAuth(true);
+        localStorage.setItem('is_webview', 'true');
         
         return true;
       }
@@ -164,6 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession({ access_token: savedSupabaseToken } as Session);
           setUser({ id: 'webview-user' } as User);
           setIsWebViewAuth(true);
+          localStorage.setItem('is_webview', 'true');
           setIsLoading(false);
           return;
         }
@@ -210,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession({ access_token: token } as Session);
         setUser({ id: 'webview-user' } as User);
         setIsWebViewAuth(true);
+        localStorage.setItem('is_webview', 'true');
       });
     };
 
@@ -230,6 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       setUser({ id: 'webview-user' } as User);
       setIsWebViewAuth(true);
+      localStorage.setItem('is_webview', 'true');
     };
 
     // Set up auth state change listener

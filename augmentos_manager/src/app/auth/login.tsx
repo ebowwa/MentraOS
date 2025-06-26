@@ -512,10 +512,10 @@ export default function LoginScreen() {
                     <FontAwesome
                       name="envelope"
                       size={16}
-                      color={theme.colors.textAlt}
+                      color={theme.colors.textDim}
                       // style={themed($inputIcon)}
                     />
-                    <Spacer width={spacing.xxs} />
+                    <Spacer width={spacing.sm} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -536,10 +536,10 @@ export default function LoginScreen() {
                     <FontAwesome
                       name="lock"
                       size={16}
-                      color={theme.colors.textAlt}
+                      color={theme.colors.textDim}
                       // style={themed($inputIcon)}
                     />
-                    <Spacer width={spacing.xxs} />
+                    <Spacer width={spacing.sm} />
                     <TextInput
                       hitSlop={{top: 16, bottom: 16}}
                       style={themed($enhancedInput)}
@@ -553,7 +553,7 @@ export default function LoginScreen() {
                     <TouchableOpacity
                       hitSlop={{top: 16, bottom: 16, left: 16, right: 16}}
                       onPress={togglePasswordVisibility}>
-                      <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textAlt} />
+                      <FontAwesome name={showPassword ? "eye" : "eye-slash"} size={18} color={theme.colors.textDim} />
                     </TouchableOpacity>
                   </View>
                 </View>

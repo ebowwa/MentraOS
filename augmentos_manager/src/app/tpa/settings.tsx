@@ -31,13 +31,16 @@ import {SettingsGroup} from "@/components/settings/SettingsGroup"
 import {showAlert} from "@/utils/AlertUtils"
 
 export default function AppSettings() {
-  const {packageName, appName, fromWebView} = useLocalSearchParams()
+  const {packageName, appName: appNameParam, fromWebView} = useLocalSearchParams()
   const backendServerComms = BackendServerComms.getInstance()
   const [isUninstalling, setIsUninstalling] = useState(false)
   const {theme, themed} = useAppTheme()
   const {goBack, push, replace} = useNavigationHistory()
   const insets = useSafeAreaInsets()
   const hasLoadedData = useRef(false)
+  
+  // Use appName from params or default to empty string
+  const [appName, setAppName] = useState(appNameParam || "")
 
   // Animation values for collapsing header
   const scrollY = useRef(new Animated.Value(0)).current
@@ -46,8 +49,8 @@ export default function AppSettings() {
     outputRange: [0, 0, 1],
     extrapolate: "clamp",
   })
-  if (!packageName || !appName || typeof packageName !== "string" || typeof appName !== "string") {
-    console.error("No packageName or appName found in params")
+  if (!packageName || typeof packageName !== "string") {
+    console.error("No packageName found in params")
     return null
   }
 
@@ -266,7 +269,12 @@ export default function AppSettings() {
         setSettingsState(cached.settingsState)
         setHasCachedSettings(!!(cached.serverAppInfo?.settings && cached.serverAppInfo.settings.length > 0))
         setSettingsLoading(false)
-
+        
+        // Update appName from cached data if available
+        if (cached.serverAppInfo?.name) {
+          setAppName(cached.serverAppInfo.name)
+        }
+        
         // TACTICAL BYPASS: If webviewURL exists in cached data, execute immediate redirect
         if (cached.serverAppInfo?.webviewURL && fromWebView !== "true") {
           replace("/app/webview", {
@@ -304,7 +312,9 @@ export default function AppSettings() {
     try {
       const data = await backendServerComms.getAppSettings(packageName)
       const elapsed = Date.now() - startTime
-      console.log(`[PROFILE] getAppSettings for ${packageName} took ${elapsed}ms`)
+      console.log(`[PROFILE] getTpaSettings for ${packageName} took ${elapsed}ms`)
+      console.log("GOT TPA SETTING")
+      console.log(JSON.stringify(data));
       // TODO: Profile backend and optimize if slow
       // If no data is returned from the server, create a minimal app info object
       if (!data) {
@@ -320,6 +330,12 @@ export default function AppSettings() {
         return
       }
       setServerAppInfo(data)
+      
+      // Update appName if we got it from server
+      if (data.name) {
+        setAppName(data.name)
+      }
+      
       // Initialize local state using the "selected" property.
       if (data.settings && Array.isArray(data.settings)) {
         const initialState: {[key: string]: any} = {}
