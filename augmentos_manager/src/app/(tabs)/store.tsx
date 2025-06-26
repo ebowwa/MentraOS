@@ -37,7 +37,7 @@ export default function AppStoreWeb() {
       // If packageName is provided, navigate to the app details page
       const url = new URL(appStoreUrl)
       // Update the path to point to the app details page
-      url.pathname = `/app/${packageName}`
+      url.pathname = `/package/${packageName}`
       return url.toString()
     }
     
@@ -72,7 +72,7 @@ export default function AppStoreWeb() {
       if (data.type === 'OPEN_TPA_SETTINGS' && data.packageName) {
         // Navigate to TPA settings page
         router.push({
-          pathname: '/tpa/settings',
+          pathname: '/app/settings',
           params: { packageName: data.packageName }
         })
       }

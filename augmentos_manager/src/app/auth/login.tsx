@@ -109,107 +109,107 @@ export default function LoginScreen() {
     }
   }, [isAuthLoading, authOverlayOpacity])
 
-  useEffect(() => {
-    const handleDeepLink = async (event: any) => {
-      const authParams = parseAuthParams(event.url)
+  // useEffect(() => {
+  //   const handleDeepLink = async (event: any) => {
+      // const authParams = parseAuthParams(event.url)
 
-      if (authParams && authParams.access_token && authParams.refresh_token) {
-        try {
-          // Update the Supabase session manually
-          const {data, error} = await supabase.auth.setSession({
-            access_token: authParams.access_token,
-            refresh_token: authParams.refresh_token,
-          })
-          if (error) {
-            console.error("Error setting session:", error)
-          } else {
-            console.log("Session updated:", data.session)
-          console.log("[LOGIN DEBUG] Session set successfully, data.session exists:", !!data.session)
-            // Dismiss the WebView after successful authentication (non-blocking)
-            console.log("[LOGIN DEBUG] About to dismiss browser, platform:", Platform.OS)
-            try {
-              const dismissResult = WebBrowser.dismissBrowser()
-              console.log("[LOGIN DEBUG] dismissBrowser returned:", dismissResult, "type:", typeof dismissResult)
-              if (dismissResult && typeof dismissResult.catch === 'function') {
-                dismissResult.catch(() => {
-                  // Ignore errors - browser might not be open
-                })
-              }
-            } catch (dismissError) {
-              console.log("[LOGIN DEBUG] Error calling dismissBrowser:", dismissError)
-              // Ignore - browser might not be open or function might not exist
-            }
+      // if (authParams && authParams.access_token && authParams.refresh_token) {
+      //   try {
+      //     // Update the Supabase session manually
+      //     const {data, error} = await supabase.auth.setSession({
+      //       access_token: authParams.access_token,
+      //       refresh_token: authParams.refresh_token,
+      //     })
+      //     if (error) {
+      //       console.error("Error setting session:", error)
+      //     } else {
+      //       console.log("Session updated:", data.session)
+      //     console.log("[LOGIN DEBUG] Session set successfully, data.session exists:", !!data.session)
+      //       // Dismiss the WebView after successful authentication (non-blocking)
+      //       console.log("[LOGIN DEBUG] About to dismiss browser, platform:", Platform.OS)
+      //       try {
+      //         const dismissResult = WebBrowser.dismissBrowser()
+      //         console.log("[LOGIN DEBUG] dismissBrowser returned:", dismissResult, "type:", typeof dismissResult)
+      //         if (dismissResult && typeof dismissResult.catch === 'function') {
+      //           dismissResult.catch(() => {
+      //             // Ignore errors - browser might not be open
+      //           })
+      //         }
+      //       } catch (dismissError) {
+      //         console.log("[LOGIN DEBUG] Error calling dismissBrowser:", dismissError)
+      //         // Ignore - browser might not be open or function might not exist
+      //       }
 
-            // Small delay to ensure auth state propagates
-            console.log("[LOGIN DEBUG] About to set timeout for navigation")
-            setTimeout(() => {
-              console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
-              try {
-                router.replace("/")
-                console.log("[LOGIN DEBUG] router.replace called successfully")
-              } catch (navError) {
-                console.error("[LOGIN DEBUG] Error calling router.replace:", navError)
-              }
-            }, 100)
-            console.log("[LOGIN DEBUG] setTimeout scheduled")
-            return // Don't do the navigation below
-          }
-        } catch (err) {
-          console.error("Exception during setSession:", err)
-          console.error("[LOGIN DEBUG] setSession error details:", {
-            name: err.name,
-            message: err.message,
-            stack: err.stack
-          })
-        }
-      }
+      //       // Small delay to ensure auth state propagates
+      //       console.log("[LOGIN DEBUG] About to set timeout for navigation")
+      //       setTimeout(() => {
+      //         console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
+      //         try {
+      //           router.replace("/")
+      //           console.log("[LOGIN DEBUG] router.replace called successfully")
+      //         } catch (navError) {
+      //           console.error("[LOGIN DEBUG] Error calling router.replace:", navError)
+      //         }
+      //       }, 100)
+      //       console.log("[LOGIN DEBUG] setTimeout scheduled")
+      //       return // Don't do the navigation below
+      //     }
+      //   } catch (err) {
+      //     console.error("Exception during setSession:", err)
+      //     console.error("[LOGIN DEBUG] setSession error details:", {
+      //       name: err.name,
+      //       message: err.message,
+      //       stack: err.stack
+      //     })
+      //   }
+      // }
 
-      // Always hide the loading overlay when we get any deep link callback
-      // This ensures it gets hidden even if auth was not completed
-      setIsAuthLoading(false)
-      authOverlayOpacity.setValue(0)
+      // // Always hide the loading overlay when we get any deep link callback
+      // // This ensures it gets hidden even if auth was not completed
+      // setIsAuthLoading(false)
+      // authOverlayOpacity.setValue(0)
 
-      // Check if this is an auth callback without tokens
-      if (event.url.includes("auth/callback") && !authParams) {
-        // Try checking if user is already authenticated
-        const {
-          data: {session},
-        } = await supabase.auth.getSession()
-        if (session) {
-          router.replace("/")
-        }
-      } else if (event.url.includes("auth/callback") && authParams) {
-        // Navigation already handled above after setSession
-      }
-    }
+      // // Check if this is an auth callback without tokens
+      // if (event.url.includes("auth/callback") && !authParams) {
+      //   // Try checking if user is already authenticated
+      //   const {
+      //     data: {session},
+      //   } = await supabase.auth.getSession()
+      //   if (session) {
+      //     router.replace("/")
+      //   }
+      // } else if (event.url.includes("auth/callback") && authParams) {
+      //   // Navigation already handled above after setSession
+      // }
+  //   }
 
-    const linkingSubscription = Linking.addEventListener("url", (event) => {
-      handleDeepLink(event).catch(error => {
-        console.error("Error handling deep link:", error)
-      })
-    })
-    // Handle deep links that opened the app
-    Linking.getInitialURL().then(url => {
-      if (url) {
-        handleDeepLink({url}).catch(error => {
-          console.error("Error handling initial URL:", error)
-        })
-      }
-    }).catch(error => {
-      console.error("Error getting initial URL:", error)
-    })
+  //   const linkingSubscription = Linking.addEventListener("url", (event) => {
+  //     handleDeepLink(event).catch(error => {
+  //       console.error("Error handling deep link:", error)
+  //     })
+  //   })
+  //   // Handle deep links that opened the app
+  //   Linking.getInitialURL().then(url => {
+  //     if (url) {
+  //       handleDeepLink({url}).catch(error => {
+  //         console.error("Error handling initial URL:", error)
+  //       })
+  //     }
+  //   }).catch(error => {
+  //     console.error("Error getting initial URL:", error)
+  //   })
 
-    // Add this to see if linking is working at all
-    Linking.canOpenURL("com.mentra://auth/callback").then(supported => {
-      console.log("Can open URL:", supported)
-    }).catch(error => {
-      console.error("Error checking URL support:", error)
-    })
+  //   // Add this to see if linking is working at all
+  //   Linking.canOpenURL("com.mentra://auth/callback").then(supported => {
+  //     console.log("Can open URL:", supported)
+  //   }).catch(error => {
+  //     console.error("Error checking URL support:", error)
+  //   })
 
-    return () => {
-      linkingSubscription.remove()
-    }
-  }, [authOverlayOpacity])
+  //   return () => {
+  //     linkingSubscription.remove()
+  //   }
+  // }, [authOverlayOpacity])
 
   const parseAuthParams = (url: string) => {
     const parts = url.split("#")
