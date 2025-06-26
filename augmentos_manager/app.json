@@ -4,6 +4,7 @@
   "expo": {
     "name": "MentraOS",
     "slug": "MentraOS",
+    "version": "2.2.0",
     "scheme": "com.mentra",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",

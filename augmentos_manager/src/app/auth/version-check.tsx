@@ -99,7 +99,7 @@ export default function VersionUpdateScreen() {
       let url = ""
       // On mobile platforms, redirect to app store
       if (Platform.OS === "ios") {
-        url = "https://apps.apple.com/app/your-app-id"
+        url = "https://mentra.glass/os"
         console.log("Redirecting to App Store:", url)
       } else if (Platform.OS === "android") {
         url = "https://play.google.com/store/apps/details?id=com.mentra.mentra"
@@ -148,9 +148,9 @@ export default function VersionUpdateScreen() {
       return "Could not connect to the server. Please check your connection and try again."
     }
     if (isVersionMismatch) {
-      return "AugmentOS is outdated. An update is required to continue using the application."
+      return "MentraOS is outdated. An update is required to continue using the application."
     }
-    return "Your AugmentOS is up to date. Returning to home..."
+    return "MentraOS is up to date. Returning to home..."
   }
 
   return (
