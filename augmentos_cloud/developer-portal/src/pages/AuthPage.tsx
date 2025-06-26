@@ -143,7 +143,7 @@ const AuthPage: React.FC = () => {
           <Auth
             supabaseClient={supabase}
             appearance={{ theme: ThemeSupa }}
-            providers={['github', 'google']}
+            providers={['google', 'apple']}
             redirectTo={
               inviteToken
                 ? `${window.location.origin}/signin?token=${inviteToken}`
