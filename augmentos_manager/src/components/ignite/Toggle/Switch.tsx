@@ -165,7 +165,11 @@ function SwitchInput(props: SwitchInputProps) {
       <Animated.View
         style={[
           $inputOuter,
-          {backgroundColor: animatedTrackColor},
+          {
+            backgroundColor: animatedTrackColor,
+            borderColor: colors.switchBorder,
+            borderWidth: colors.switchBorderWidth,
+          },
           $outerStyleOverride,
           // {transform: [{translateX: -12}]},
         ]}>
@@ -188,17 +192,10 @@ function SwitchInput(props: SwitchInputProps) {
           $detailStyleOverride,
           {transform: [{translateX: $animatedSwitchKnob}]},
           {width: knobWidth, height: knobHeight},
-          {backgroundColor: knobBackgroundColor},
-          // Add shadow only in light theme
-          !isDark && {
-            shadowColor: "#000",
-            shadowOffset: {
-              width: 0,
-              height: 2,
-            },
-            shadowOpacity: 0.15,
-            shadowRadius: 3,
-            elevation: 3, // For Android
+          {
+            backgroundColor: knobBackgroundColor,
+            borderColor: colors.switchBorder,
+            borderWidth: colors.switchBorderWidth,
           },
         ]}
       />
@@ -257,7 +254,7 @@ function SwitchAccessibilityLabel(props: SwitchInputProps & {role: "on" | "off"}
   )
 }
 
-const $inputOuter: StyleProp<ViewStyle> = [$inputOuterBase, {height: 16, width: 32, borderRadius: 16, borderWidth: 0}]
+const $inputOuter: StyleProp<ViewStyle> = [$inputOuterBase, {height: 16, width: 32, borderRadius: 16}]
 
 const $switchInner: ThemedStyle<ViewStyle> = ({colors}) => ({
   borderColor: colors.transparent,

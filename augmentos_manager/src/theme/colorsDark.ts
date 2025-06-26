@@ -168,6 +168,8 @@ export const colors = {
   switchThumb: palette.neutral100,
   switchThumbOn: "#FFFFFF", // White thumb for ON state
   switchThumbOff: "#D5D8F5", // Light purple thumb for OFF state
+  switchBorder: "transparent", // No border in dark theme
+  switchBorderWidth: 0, // No border width in dark theme
 
   // Gallery specific colors
   galleryBackground: palette.darkGalleryBg,
@@ -248,4 +250,17 @@ export const colors = {
   sliderThumb: "#FFFFFF", // White handle for dark theme
   sliderTrackActive: "#7674FB", // Purple track for active/filled portion (matches switch ON)
   sliderTrackInactive: "#565E8C", // Purple-gray for inactive portion (matches switch OFF)
+
+  // Tab bar icon and text colors
+  tabBarIconActive: "#FFFFFF", // White for active tab icon in dark theme
+  tabBarTextActive: "#FFFFFF", // White for active tab text in dark theme
+  tabBarIconInactive: palette.neutral600, // Use existing textDim color for inactive
+  tabBarTextInactive: palette.neutral600, // Use existing textDim color for inactive
+
+  // Chevron color for app list items
+  chevron: "#898FB2", // Same purple-gray for both themes
+
+  // Foreground tag colors
+  foregroundTagBackground: "#0F1861", // Dark blue background
+  foregroundTagText: "#ABAAFF", // Light purple text
 } as const

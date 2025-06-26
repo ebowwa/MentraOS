@@ -112,9 +112,9 @@ const palette = {
   iosSwitchTrack: "#D1D1D6", // iOS switch track color (off state)
   iosBackground: "#f9f9f9", // Light gray background color
 
-  // Tab bar gradient colors (light theme - plain white, no gradient)
-  tabBarGradientStart: "#FFFFFF", // White for light theme (no gradient effect)
-  tabBarGradientEnd: "#FFFFFF", // White for light theme (no gradient effect)
+  // Tab bar gradient colors (light theme - subtle blue-tinted white, no gradient)
+  tabBarGradientStart: "#F8FAFF", // Blue-tinted white for light theme
+  tabBarGradientEnd: "#F8FAFF", // Blue-tinted white for light theme
 
   altTabBarGradientStart: "#F5E6D3",
   altTabBarGradientEnd: "#FEFCFA",
@@ -131,7 +131,7 @@ const palette = {
   inputBorderHighlight: "#4A90E2", // Medium blue border for input fields (light theme)
 
   // Button colors for pill-shaped buttons (light theme)
-  buttonPillPrimary: "#4A90E2", // Medium blue for primary pill buttons
+  buttonPillPrimary: "#3230A4", // Deep purple-blue for primary pill buttons
   buttonPillSecondary: "#E0E0E0", // Medium gray for secondary pill buttons (darker than before)
   buttonPillPrimaryText: "#FFFFFF", // White text for primary buttons
   buttonPillSecondaryText: "#333333", // Dark text for secondary buttons
@@ -162,11 +162,11 @@ export const colors = {
   /**
    * The default color of the screen background.
    */
-  background: palette.neutral200,
+  background: "#F9F9F9",
   /**
    * The default border color.
    */
-  border: palette.neutral400,
+  border: "#E4E8EE",
   /**
    * The main tinting color.
    */
@@ -210,11 +210,13 @@ export const colors = {
   warning: palette.warning500,
 
   // Switch/toggle colors
-  switchTrackOff: "#E0E0E0", // Light gray for OFF track
-  switchTrackOn: "#6C6AFF", // Slightly lighter purple-blue for ON track
+  switchTrackOff: "#E7E7FF", // Light purple for OFF track
+  switchTrackOn: "#7674FB", // Purple for ON track
   switchThumb: palette.neutral100, // White thumb for better contrast
   switchThumbOn: palette.neutral100, // White thumb for ON state
   switchThumbOff: palette.neutral100, // White thumb for OFF state
+  switchBorder: "#4240D1", // Purple border for both track and handle
+  switchBorderWidth: 2, // Border width for switch in light theme
 
   // Gallery specific colors
   galleryBackground: palette.lightGalleryBg,
@@ -238,7 +240,7 @@ export const colors = {
   tabBarBackground2: palette.tabBarGradientEnd,
   
   // Tab bar solid background (for native tabs)
-  tabBarBackground: palette.neutral100,
+  tabBarBackground: "#F8FAFF",
 
   altTabBarBackground1: palette.altTabBarGradientStart,
   altTabBarBackground2: palette.altTabBarGradientEnd,
@@ -251,7 +253,7 @@ export const colors = {
   permissionButton: palette.iosBlue, // iOS blue for permission requests
   shareButton: palette.blue500, // Blue for share actions
   deleteButton: palette.angry500, // Red for delete actions
-  destructiveAction: palette.errorRed, // Red for destructive actions in light theme
+  destructiveAction: "#A70088", // Purple-magenta for destructive actions in light theme
 
   // Badge and notification colors
   badgeBackground: palette.red500, // Red for notification badges
@@ -295,4 +297,17 @@ export const colors = {
   sliderThumb: palette.gray700, // Dark gray for better contrast on light background
   sliderTrackActive: palette.primary300, // Default track color for light theme
   sliderTrackInactive: palette.neutral300, // Default inactive track color for light theme
+
+  // Tab bar icon and text colors
+  tabBarIconActive: "#4240D1", // Active tab icon color
+  tabBarTextActive: "#2B29B4", // Active tab text color
+  tabBarIconInactive: "#565E8C", // Inactive tab icon color
+  tabBarTextInactive: "#4B5381", // Inactive tab text color
+
+  // Chevron color for app list items
+  chevron: "#898FB2", // Light purple-gray for chevrons
+
+  // Foreground tag colors
+  foregroundTagBackground: "rgba(66, 64, 209, 0.1)", // #4240D1 at 10% opacity
+  foregroundTagText: "#312FB4", // Dark purple text
 } as const

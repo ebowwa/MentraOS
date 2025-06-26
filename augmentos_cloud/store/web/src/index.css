@@ -8,6 +8,20 @@
   ---break--- */
 @custom-variant dark (&:is(.dark *));
 
+/* Safe area utilities for mobile devices with notches */
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .px-safe {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
 .font-cuprum {
   font-family: 'Cuprum', sans-serif;
 }
