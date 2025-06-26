@@ -34,6 +34,7 @@ export class MentraClient extends EventEmitter {
   private locationManager: LocationManager;
   private displayManager: DisplayManager;
   private connected = false;
+  private coreToken?: string;
 
   constructor(config: ClientConfig) {
     super();
@@ -91,6 +92,7 @@ export class MentraClient extends EventEmitter {
     try {
       await this.wsManager.connect(url, this.config.email, this.config.coreToken);
       this.connected = true;
+      this.coreToken = this.config.coreToken;
       
       // Start background services
       this.locationManager.start();
@@ -231,7 +233,14 @@ export class MentraClient extends EventEmitter {
   async startApp(packageName: string): Promise<void> {
     this.ensureConnected();
     
+    // Check if app is already running
+    if (this.appManager.isAppRunning(packageName)) {
+      console.log(`[MentraClient] App ${packageName} is already running`);
+      return;
+    }
+    
     this.appManager.setAppLoading(packageName);
+    this.wsManager.sendStopApp(packageName);
     this.wsManager.sendStartApp(packageName);
     
     // Wait for app to start (implementation depends on app state change events)
@@ -258,6 +267,12 @@ export class MentraClient extends EventEmitter {
   async stopApp(packageName: string): Promise<void> {
     this.ensureConnected();
     
+    // Check if app is already stopped
+    if (!this.appManager.isAppRunning(packageName)) {
+      console.log(`[MentraClient] App ${packageName} is already stopped`);
+      return;
+    }
+    
     this.wsManager.sendStopApp(packageName);
     
     // Wait for app to stop
@@ -283,6 +298,48 @@ export class MentraClient extends EventEmitter {
    */
   getRunningApps(): string[] {
     return this.appManager.getRunningApps();
+  }
+
+  /**
+   * Install an app using the REST API
+   */
+  async installApp(packageName: string): Promise<void> {
+    this.ensureConnected();
+    
+    const serverUrl = this.config.serverUrl.replace(/^ws/, 'http');
+    const response = await fetch(`${serverUrl}/apps/install/${packageName}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.coreToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to install app ${packageName}: ${response.status} ${errorText}`);
+    }
+  }
+
+  /**
+   * Uninstall an app using the REST API
+   */
+  async uninstallApp(packageName: string): Promise<void> {
+    this.ensureConnected();
+    
+    const serverUrl = this.config.serverUrl.replace(/^ws/, 'http');
+    const response = await fetch(`${serverUrl}/apps/uninstall/${packageName}`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.coreToken}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to uninstall app ${packageName}: ${response.status} ${errorText}`);
+    }
   }
 
   //===========================================================
