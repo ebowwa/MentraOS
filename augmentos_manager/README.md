@@ -71,3 +71,40 @@ const MyComponent = () => {
 ## Running Maestro end-to-end tests
 
 Follow our [Maestro Setup](https://ignitecookbook.com/docs/recipes/MaestroSetup) recipe.
+
+
+___
+
+
+### General Codebase Notes and suggestions
+
+- Don't import `theme` from `@/theme` intead:
+```tsx
+import {useAppTheme} from "@/utils/useAppTheme"
+
+// and then in the component:
+function MyComponent() {
+  const {theme, themed} = useAppTheme();
+}
+```
+
+- Don't use expo router's router.push / replace / etc. instead use the `useNavigationHistory()` hook
+```tsx
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
+const {goBack, push, replace} = useNavigationHistory()
+```
+
+- Use the Ignite Components and their tx prop where applicable for translations
+- make sure to define your strings in en.ts
+- if you have to use strings in code, use the translate() function
+```tsx
+<Screen safeAreaEdges={["top"]} contentContainerStyle={themed($container)}>
+  <Text tx="settingsScreen:someSettingsText"/>
+  <Button
+    tx="alerts:showAlert"
+    onPress={() => {
+      showAlert(translate("alerts:someError"));
+    }}
+  />
+</Screen>
+```
