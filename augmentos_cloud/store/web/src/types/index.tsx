@@ -24,6 +24,7 @@ export interface AppI {
   webviewURL?: string; // URL for phone UI
   logoURL: string;
   appType?: AppType; // Type of App
+  tpaType?: AppType; // TODO: remove this once we have migrated over
 
   // App details
   version?: string;

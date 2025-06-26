@@ -18,6 +18,7 @@ const AppList: React.FC = () => {
   const [apps, setApps] = useState<AppResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasInitiallyLoaded, setHasInitiallyLoaded] = useState(false);
 
   // Fetch Apps from API
   useEffect(() => {
@@ -35,12 +36,17 @@ const AppList: React.FC = () => {
         return;
       }
 
-      setIsLoading(true);
+      // Only show loading state if we haven't loaded apps before or during initial load
+      if (!hasInitiallyLoaded) {
+        setIsLoading(true);
+      }
+
       try {
         console.log('Fetching Apps for organization:', currentOrg.name);
         const appData = await api.apps.getAll(currentOrg.id);
         setApps(appData);
         setError(null);
+        setHasInitiallyLoaded(true);
       } catch (err) {
         console.error('Failed to fetch Apps:', err);
         setError('Failed to load Apps. Please try again.');

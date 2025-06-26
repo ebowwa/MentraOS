@@ -28,11 +28,11 @@ export default function AppStoreWeb() {
   const {refreshAppStatus} = useAppStatus()
   const {theme, themed} = useAppTheme()
   const isDarkTheme = theme.isDark
-  
+
   // Construct the final URL with packageName if provided
   const finalUrl = React.useMemo(() => {
     if (!appStoreUrl) return appStoreUrl
-    
+
     if (packageName && typeof packageName === 'string') {
       // If packageName is provided, navigate to the app details page
       const url = new URL(appStoreUrl)
@@ -40,7 +40,7 @@ export default function AppStoreWeb() {
       url.pathname = `/package/${packageName}`
       return url.toString()
     }
-    
+
     return appStoreUrl
   }, [appStoreUrl, packageName])
 
@@ -68,8 +68,8 @@ export default function AppStoreWeb() {
   const handleWebViewMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data)
-      
-      if (data.type === 'OPEN_TPA_SETTINGS' && data.packageName) {
+
+      if ((data.type === 'OPEN_APP_SETTINGS' || data.type === 'OPEN_TPA_SETTINGS') && data.packageName) {
         // Navigate to TPA settings page
         router.push({
           pathname: '/app/settings',

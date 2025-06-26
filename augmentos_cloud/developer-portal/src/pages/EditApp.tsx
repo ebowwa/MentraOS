@@ -102,10 +102,17 @@ const EditApp: React.FC = () => {
   // Check if orgDomain is a public email provider
   // const isPublicEmailDomain = publicEmailDomains.includes(orgDomain);
 
+  // Track the previous organization to detect org switches
+  const prevOrgRef = useRef<string | null>(null);
+
   // Fetch App data and permissions from API + check for eligible orgs for transfer
   useEffect(() => {
     const fetchData = async () => {
       if (!packageName || !currentOrg) return;
+
+      // If organization changed from a previous one, we're switching orgs
+      const isOrgSwitch = prevOrgRef.current && prevOrgRef.current !== currentOrg.id;
+      prevOrgRef.current = currentOrg.id;
 
       try {
         setIsLoading(true);
@@ -196,8 +203,29 @@ const EditApp: React.FC = () => {
         } catch (orgError) {
           console.error('Error fetching organizations:', orgError);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error fetching App:', err);
+
+        // Check if the error indicates the app doesn't exist in this organization
+        // This can happen when user switches orgs while editing an app
+        const isNotFoundError = err?.response?.status === 404 ||
+                               err?.response?.data?.error?.includes('not found') ||
+                               err?.response?.data?.error?.includes('does not exist') ||
+                               err?.message?.includes('not found');
+
+        if (isNotFoundError) {
+          console.log('App not found in current organization, redirecting to app list...');
+
+          // Only display toast on org switch
+          if (!isOrgSwitch) {
+            toast.error(`App "${packageName}" not found. Redirecting to app list...`);
+          }
+
+          // Redirect to app list
+          navigate('/apps');
+          return;
+        }
+
         setError('Failed to load App data. Please try again.');
       } finally {
         setIsLoading(false);
