@@ -1,4 +1,4 @@
-import React, {useRef, useState} from "react"
+import React, {useRef, useState, useEffect} from "react"
 import {
   View,
   Text,
@@ -49,11 +49,19 @@ const HeadUpAngleArcModal: React.FC<HeadUpAngleArcModalProps> = ({
 }) => {
   const {theme} = useAppTheme()
   const [angle, setAngle] = useState<number>(initialAngle)
+  const initialAngleRef = useRef(initialAngle)
   const svgSize = 500
   const radius = 300
   const cx = svgSize / 5
   const cy = svgSize / 1.2
   const startAngle = 0
+
+  useEffect(() => {
+    if (visible) {
+      setAngle(initialAngle)
+      initialAngleRef.current = initialAngle
+    }
+  }, [visible, initialAngle])
 
   const computeAngleFromTouch = (x: number, y: number): number => {
     const dx = x - cx
@@ -86,15 +94,24 @@ const HeadUpAngleArcModal: React.FC<HeadUpAngleArcModalProps> = ({
   const knobPos = pointOnCircle(cx, cy, radius, angle)
 
   return (
-    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={onCancel}>
+    <Modal visible={visible} animationType="fade" transparent={true} onRequestClose={() => {
+      setAngle(initialAngleRef.current)
+      onCancel()
+    }}>
       <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{flex: 1}}>
-        <TouchableWithoutFeedback onPress={onCancel}>
+        <TouchableWithoutFeedback onPress={() => {
+          setAngle(initialAngleRef.current)
+          onCancel()
+        }}>
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, {backgroundColor: theme.colors.background}]}>
               <TouchableWithoutFeedback>
                 <View style={styles.modalHeader}>
                   <Text style={[styles.modalLabel, {color: theme.colors.text}]}>Adjust Head-Up Angle</Text>
-                  <TouchableOpacity hitSlop={10} onPress={onCancel}>
+                  <TouchableOpacity hitSlop={10} onPress={() => {
+                    setAngle(initialAngleRef.current)
+                    onCancel()
+                  }}>
                     <Text style={[styles.closeButton, {color: theme.colors.text, marginRight: -8}]}>✕</Text>
                   </TouchableOpacity>
                 </View>
@@ -115,7 +132,6 @@ const HeadUpAngleArcModal: React.FC<HeadUpAngleArcModalProps> = ({
               <Text style={[styles.angleLabel, {color: theme.colors.text}]}>{Math.round(angle)}°</Text>
 
               <View style={styles.buttonRow}>
-                <PillButton text="Cancel" variant="secondary" onPress={onCancel} buttonStyle={styles.buttonFlex} />
                 <PillButton
                   text="Save"
                   variant="primary"
