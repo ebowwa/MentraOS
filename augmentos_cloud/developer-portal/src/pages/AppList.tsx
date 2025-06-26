@@ -65,7 +65,7 @@ const AppList: React.FC = () => {
         clearTimeout(timeoutId);
       }
     };
-  }, [isAuthenticated, authLoading, tokenReady, currentOrg?.id, orgLoading, hasInitiallyLoaded]);
+  }, [isAuthenticated, authLoading, tokenReady, currentOrg?.id, orgLoading]);
 
   // Handle App deletion
   const handleAppDeleted = (packageName: string) => {

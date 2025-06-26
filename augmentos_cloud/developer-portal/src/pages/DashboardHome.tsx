@@ -48,7 +48,7 @@ const DashboardHome: React.FC = () => {
     if (!authLoading && !orgLoading) {
       fetchApps();
     }
-  }, [isAuthenticated, authLoading, orgLoading, currentOrg, hasInitiallyLoaded]);
+  }, [isAuthenticated, authLoading, orgLoading, currentOrg]);
 
   const hasNoApps = apps.length === 0 && !isLoading && !error;
 
