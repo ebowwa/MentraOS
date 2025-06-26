@@ -9,7 +9,7 @@ import { strict as assert } from 'assert';
 import DisplayManager from '../../DisplayManager6.1';
 import { MockUserSession } from '../harness/MockUserSession';
 // import { systemApps } from '../../../core/system-apps';
-import { TpaToCloudMessageType, ViewType, LayoutType, DisplayRequest } from '@mentra/sdk';
+import { AppToCloudMessageType, ViewType, LayoutType, DisplayRequest } from '@mentra/sdk';
 import { testShowThrottledAfterAppStop } from './show-throttled-after-app-stop.test';
 import { SYSTEM_DASHBOARD_PACKAGE_NAME } from '../../../core/app.service';
 
@@ -52,7 +52,7 @@ export async function testBootQueueAndProcess() {
     console.log('2. Send a display request during boot (should be queued)');
     // Send a display request during boot
     const displayRequest: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: {
@@ -119,7 +119,7 @@ export async function testPreBootDisplayPreservation() {
 
     // App1 shows a display
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'Initial display from App1' },
@@ -169,7 +169,7 @@ export async function testPreBootDisplayPreservation() {
 
     // Look through messages to find the last non-dashboard display
     for (const msg of messages) {
-      if (msg.type === TpaToCloudMessageType.DISPLAY_REQUEST &&
+      if (msg.type === AppToCloudMessageType.DISPLAY_REQUEST &&
           msg.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
         console.log(`Last app display: ${msg.packageName}`);
         if (msg.packageName === APP1) {
@@ -214,7 +214,7 @@ export async function testMultipleAppBoot() {
 
     // Send display requests (they should be queued)
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'Hello from App1' },
@@ -224,7 +224,7 @@ export async function testMultipleAppBoot() {
     displayManager.handleDisplayRequest(app1Request);
 
     const app2Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP2,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'Hello from App2' },
@@ -234,7 +234,7 @@ export async function testMultipleAppBoot() {
     displayManager.handleDisplayRequest(app2Request);
 
     const captionsRequest: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: CAPTIONS_APP,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'Captions content' },
@@ -266,7 +266,7 @@ export async function testMultipleAppBoot() {
 
     // Look through messages to find first app display after boot
     for (const msg of messages) {
-      if (msg.type === TpaToCloudMessageType.DISPLAY_REQUEST &&
+      if (msg.type === AppToCloudMessageType.DISPLAY_REQUEST &&
           msg.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
         console.log(`First app display was: ${msg.packageName}`);
         if (msg.packageName === CAPTIONS_APP) {
@@ -312,7 +312,7 @@ export async function testAppStopDuringBoot() {
     console.log('2. Send display requests for both apps');
     // Send display requests (they should be queued)
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'Hello from App1' },
@@ -322,7 +322,7 @@ export async function testAppStopDuringBoot() {
     displayManager.handleDisplayRequest(app1Request);
 
     const app2Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP2,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'Hello from App2' },
@@ -357,7 +357,7 @@ export async function testAppStopDuringBoot() {
 
     // Look through messages to find last app display
     for (const msg of messages) {
-      if (msg.type === TpaToCloudMessageType.DISPLAY_REQUEST &&
+      if (msg.type === AppToCloudMessageType.DISPLAY_REQUEST &&
           msg.packageName !== SYSTEM_DASHBOARD_PACKAGE_NAME) {
         console.log(`App display shown: ${msg.packageName}`);
         if (msg.packageName === APP2) {
@@ -405,7 +405,7 @@ export async function testNoDisplayRestoreForStoppedApps() {
 
     // App1 shows a display
     const app1Request: DisplayRequest = {
-      type: TpaToCloudMessageType.DISPLAY_REQUEST,
+      type: AppToCloudMessageType.DISPLAY_REQUEST,
       packageName: APP1,
       view: ViewType.MAIN,
       layout: { layoutType: LayoutType.TEXT_WALL, text: 'App1 Initial Display' },

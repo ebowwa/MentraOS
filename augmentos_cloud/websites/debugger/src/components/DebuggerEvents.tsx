@@ -78,15 +78,15 @@ interface DebugSessionInfo {
 interface SystemStats {
   activeSessions: number;
   totalSessions: number;
-  activeTpas: number;
-  totalTpas: number;
+  activeApps: number;
+  totalApps: number;
 }
 
-type DebuggerEvent = 
+type DebuggerEvent =
   | { type: 'SESSION_UPDATE'; sessionId: string; data: Partial<DebugSessionInfo> }
   | { type: 'SESSION_DISCONNECTED'; sessionId: string; timestamp: string }
   | { type: 'SESSION_CONNECTED'; sessionId: string; timestamp: string }
-  | { type: 'TPA_STATE_CHANGE'; sessionId: string; tpaId: string; state: any }
+  | { type: 'APP_STATE_CHANGE'; sessionId: string; appId: string; state: any }
   | { type: 'DISPLAY_UPDATE'; sessionId: string; display: any }
   | { type: 'TRANSCRIPTION_UPDATE'; sessionId: string; transcript: any }
   | { type: 'SYSTEM_STATS_UPDATE'; stats: SystemStats };
@@ -133,8 +133,8 @@ export const DebuggerEvents: React.FC<DebuggerEventsProps> = ({ onEvent, onSessi
       onEvent?.(data);
     });
 
-    eventSource.addEventListener('tpa_state_change', (event) => {
-      console.log('🔵 TPA state change:', JSON.parse(event.data));
+    eventSource.addEventListener('app_state_change', (event) => {
+      console.log('🔵 App state change:', JSON.parse(event.data));
       const data = JSON.parse(event.data);
       setLastEvent(data);
       onEvent?.(data);
@@ -187,4 +187,4 @@ export const DebuggerEvents: React.FC<DebuggerEventsProps> = ({ onEvent, onSessi
       )}
     </div>
   );
-}; 
+};

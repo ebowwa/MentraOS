@@ -85,11 +85,11 @@ interface DebugSessionInfo {
 
 /**
  * AugmentOS Debugger Page
- * 
+ *
  * A comprehensive debugging interface for AugmentOS cloud system that allows:
  * - Viewing all active user sessions
  * - Inspecting detailed session state
- * - Monitoring TPAs and their subscriptions
+ * - Monitoring Apps and their subscriptions
  * - Checking display state and history
  * - Viewing recent events
  */
@@ -104,8 +104,8 @@ export default function DebuggerPage() {
   const [systemStats, setSystemStats] = useState({
     activeSessions: 0,
     totalSessions: 0,
-    activeTpas: 0,
-    totalTpas: 0
+    activeApps: 0,
+    totalApps: 0
   });
 
   // Handle session updates from SSE
@@ -175,10 +175,10 @@ export default function DebuggerPage() {
   }, []);
 
   // Filter sessions based on search term
-  const filteredSessions = sessions.filter(session => 
-    session.sessionId.includes(searchTerm) || 
+  const filteredSessions = sessions.filter(session =>
+    session.sessionId.includes(searchTerm) ||
     session.userId.includes(searchTerm) ||
-    (session.activeAppSessions && session.activeAppSessions.some(tpa => tpa && tpa.includes(searchTerm)))
+    (session.activeAppSessions && session.activeAppSessions.some(app => app && app.includes(searchTerm)))
   );
 
   // Get selected session
@@ -245,8 +245,8 @@ export default function DebuggerPage() {
                 )}
               </div>
             </div>
-            
-            <SessionList 
+
+            <SessionList
               sessions={filteredSessions}
               selectedSessionId={selectedSessionId}
               setSelectedSessionId={setSelectedSessionId}
@@ -264,7 +264,7 @@ export default function DebuggerPage() {
           {/* Session Inspector */}
           <div className="p-6">
             {selectedSession ? (
-              <SessionInspector 
+              <SessionInspector
                 session={selectedSession}
                 expandedNodes={expandedNodes}
                 toggleNode={toggleNode}
@@ -283,4 +283,4 @@ export default function DebuggerPage() {
       </div>
     </div>
   );
-} 
+}

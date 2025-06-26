@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 import { Request, Response } from 'express';
 import { validateCoreToken } from '../middleware/supabaseMiddleware';
 import { tokenService } from '../services/core/temp-token.service';
-import { validateTpaApiKey } from '../middleware/validateApiKey';
+import { validateAppApiKey } from '../middleware/validateApiKey';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 const logger = rootLogger.child({ service: 'auth.routes' });
 import appService from '../services/core/app.service';
@@ -68,8 +68,8 @@ router.post('/generate-webview-token', validateCoreToken, async (req: Request, r
   }
 });
 
-// Exchange a temporary token for user details (called by TPA backend)
-router.post('/exchange-user-token', validateTpaApiKey, async (req: Request, res: Response) => {
+// Exchange a temporary token for user details (called by App backend)
+router.post('/exchange-user-token', validateAppApiKey, async (req: Request, res: Response) => {
   const { aos_temp_token, packageName } = req.body;
 
   if (!aos_temp_token) {
@@ -162,13 +162,13 @@ router.post('/hash-with-api-key', validateCoreToken, async (req: Request, res: R
 });
 
 /**
- * Generate a signed JWT token for webview authentication in TPAs.
- * This token is designed to be verified client-side in TPAs using the public key.
- * The token contains a frontend token that can be verified using the TPA's API key.
+ * Generate a signed JWT token for webview authentication in Apps.
+ * This token is designed to be verified client-side in Apps using the public key.
+ * The token contains a frontend token that can be verified using the App's API key.
  *
  * @route POST /api/auth/generate-webview-signed-user-token
  * @middleware validateCoreToken - Validates the AugmentOS core token
- * @body {string} packageName - The package name of the TPA requesting the token
+ * @body {string} packageName - The package name of the App requesting the token
  * @returns {Object} Response containing the signed JWT token and expiration info
  * @throws {400} If packageName is missing
  * @throws {500} If token generation fails
@@ -183,7 +183,7 @@ router.post('/generate-webview-signed-user-token', validateCoreToken, async (req
 
   try {
     // Use the issueUserToken from tokenService with the package name
-    // This generates a token with a frontend token specific to the requesting TPA
+    // This generates a token with a frontend token specific to the requesting App
     const signedToken: string = await tokenService.issueUserToken(userId, packageName);
     console.log('[auth.service] Signed user token generated:', signedToken);
 

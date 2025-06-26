@@ -4,8 +4,8 @@ import { Server as HTTPServer } from 'http';
 interface SystemStats {
   activeSessions: number;
   totalSessions: number;
-  activeTpas: number;
-  totalTpas: number;
+  activeApps: number;
+  totalApps: number;
 }
 
 interface DebugSessionInfo {
@@ -69,7 +69,7 @@ type DebuggerEvent =
   | { type: 'SESSION_UPDATE'; sessionId: string; data: Partial<DebugSessionInfo> }
   | { type: 'SESSION_DISCONNECTED'; sessionId: string; timestamp: string }
   | { type: 'SESSION_CONNECTED'; sessionId: string; timestamp: string }
-  | { type: 'TPA_STATE_CHANGE'; sessionId: string; tpaId: string; state: any }
+  | { type: 'APP_STATE_CHANGE'; sessionId: string; appId: string; state: any }
   | { type: 'DISPLAY_UPDATE'; sessionId: string; display: any }
   | { type: 'TRANSCRIPTION_UPDATE'; sessionId: string; transcript: any }
   | { type: 'SYSTEM_STATS_UPDATE'; stats: SystemStats };
@@ -261,19 +261,19 @@ export class DebugService {
     const activeSessions = Array.from(this.sessions.values()).filter(s => !s.disconnectedAt).length;
     const totalSessions = this.sessions.size;
 
-    let activeTpas = 0;
-    let totalTpas = 0;
+    let activeApps = 0;
+    let totalApps = 0;
 
     this.sessions.forEach(session => {
-      totalTpas += (session.installedApps?.length || 0);
-      activeTpas += (session.activeAppSessions?.length || 0);
+      totalApps += (session.installedApps?.length || 0);
+      activeApps += (session.activeAppSessions?.length || 0);
     });
 
     return {
       activeSessions,
       totalSessions,
-      activeTpas,
-      totalTpas
+      activeApps,
+      totalApps
     };
   }
 
@@ -334,13 +334,13 @@ export class DebugService {
     }
   }
 
-  public updateTPAState(sessionId: string, tpaId: string, state: any) {
+  public updateAppState(sessionId: string, appId: string, state: any) {
     if (!this.isActive) return; // Skip if debug service is not active
 
     this.broadcastEvent({
-      type: 'TPA_STATE_CHANGE',
+      type: 'APP_STATE_CHANGE',
       sessionId,
-      tpaId,
+      appId,
       state
     });
   }

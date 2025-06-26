@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Trash2, Brain, ChevronDown, ChevronRight, Settings, GripVertical } from "lucide-react";
-import { Tool } from '@/types/tpa';
+import { Tool } from '@/types/app';
 
 interface ToolsEditorProps {
   tools: Tool[];

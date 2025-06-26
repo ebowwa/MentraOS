@@ -93,11 +93,11 @@ const LandingPage: React.FC = () => {
         </div>
       </section>
 
-      {/* Featured Example TPAs */}
+      {/* Featured Example Apps */}
       <section className="py-20 bg-gray-100">
         {/* <div className="container mx-auto px-4">
           <h2 className="text-3xl md:text-4xl font-bold mb-10 text-center">
-            Featured Example TPAs
+            Featured Example Apps
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
 

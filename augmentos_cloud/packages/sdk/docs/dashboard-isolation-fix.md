@@ -10,11 +10,11 @@ After extensive investigation, we've identified that the dashboard module in the
 
 1. **Static Session ID**: The SDK's dashboard module uses a static method to set the current session ID:
    ```typescript
-   dashboard.TpaSession.setSessionId(sessionId);
+   dashboard.AppSession.setSessionId(sessionId);
    ```
-   This means all TPA sessions share the same "current" session ID, leading to cross-talk between users.
+   This means all App sessions share the same "current" session ID, leading to cross-talk between users.
 
-2. **Session Identity Management**: The TpaSession class has a design flaw where the session is created first, then its identity is established later via the `connect(sessionId)` method. This separation creates the risk of connecting with the wrong session ID.
+2. **Session Identity Management**: The AppSession class has a design flaw where the session is created first, then its identity is established later via the `connect(sessionId)` method. This separation creates the risk of connecting with the wrong session ID.
 
 3. **Instance Isolation**: The dashboard module lacks proper per-instance state, instead relying on module-level shared state.
 
@@ -22,7 +22,7 @@ After extensive investigation, we've identified that the dashboard module in the
 
 We will modify the SDK to ensure proper session isolation:
 
-1. **Dashboard as Instance Property**: Make the dashboard object an instance property of each TpaSession, ensuring each session has its own isolated dashboard state.
+1. **Dashboard as Instance Property**: Make the dashboard object an instance property of each AppSession, ensuring each session has its own isolated dashboard state.
 
 2. **Remove Static Methods**: Eliminate the static `setSessionId` method and any other static state in the dashboard module.
 
@@ -31,13 +31,13 @@ We will modify the SDK to ensure proper session isolation:
 ### Implementation Details
 
 ```typescript
-// In packages/sdk/src/tpa/session/index.ts
+// In packages/sdk/src/app/session/index.ts
 import { DashboardManager } from './dashboard';
 
-class TpaSession {
+class AppSession {
   private _dashboard: DashboardManager;
 
-  constructor(config: TpaSessionConfig) {
+  constructor(config: AppSessionConfig) {
     // Other initialization...
 
     // Create a dashboard instance specific to this session with the bound send function
@@ -53,11 +53,11 @@ class TpaSession {
 ```
 
 ```typescript
-// In packages/sdk/src/tpa/session/dashboard.ts
+// In packages/sdk/src/app/session/dashboard.ts
 export class DashboardManager {
-  private session: TpaSession;
+  private session: AppSession;
 
-  constructor(session: TpaSession, send: (message: TpaToCloudMessage) => void) {
+  constructor(session: AppSession, send: (message: AppToCloudMessage) => void) {
     this.session = session;
   }
 
@@ -68,15 +68,15 @@ export class DashboardManager {
 
 ## Other Suspicious Areas to Address Later
 
-1. **TpaSession.connect Method**: This method takes a sessionId parameter, which creates the risk of connecting with the wrong ID. This should be refactored to establish identity at creation time.
+1. **AppSession.connect Method**: This method takes a sessionId parameter, which creates the risk of connecting with the wrong ID. This should be refactored to establish identity at creation time.
 
-2. **Dashboard TPA Shared Map**: The Dashboard TPA uses a class-level map to store session data:
+2. **Dashboard App Shared Map**: The Dashboard App uses a class-level map to store session data:
    ```typescript
    private _activeSessions: Map<string, {...}>
    ```
    This needs proper instance isolation and user validation.
 
-3. **WebSocketService Message Routing**: The way messages are routed between users and TPAs should be audited for proper session validation.
+3. **WebSocketService Message Routing**: The way messages are routed between users and Apps should be audited for proper session validation.
 
 4. **DisplayManager Implementation**: The DisplayManager should be checked to ensure it properly isolates user sessions when handling display requests.
 

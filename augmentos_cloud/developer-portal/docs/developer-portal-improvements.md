@@ -1,7 +1,7 @@
 # Developer Portal Improvements
 
 ## Introduction
-This document outlines the current issues with the MentraOS Developer Portal and proposes solutions to improve the overall user experience, particularly around TPA (Third-Party App) creation and management.
+This document outlines the current issues with the MentraOS Developer Portal and proposes solutions to improve the overall user experience, particularly around App (Third-Party App) creation and management.
 
 ## Current Issues
 
@@ -10,10 +10,10 @@ This document outlines the current issues with the MentraOS Developer Portal and
 - The system appends "/webhook" to these URLs automatically, resulting in invalid URLs like "https://example.com//webhook"
 - No URL sanitization is currently implemented
 
-### 2. Insufficient Feedback After TPA Creation
+### 2. Insufficient Feedback After App Creation
 - Success message appears at the top of the form, requiring users to scroll up to see it
-- Users often click "Create" multiple times, not realizing the TPA was already created
-- No toast notifications for successful TPA creation (unlike other sections of the app)
+- Users often click "Create" multiple times, not realizing the App was already created
+- No toast notifications for successful App creation (unlike other sections of the app)
 
 ### 3. API Key Management Issues
 - API key dialog opens automatically after creation, but if closed, users lose access to the initial key
@@ -23,7 +23,7 @@ This document outlines the current issues with the MentraOS Developer Portal and
 - Existing modal shows an empty area where users might expect to see their current key
 
 ### 4. Missing Tooltips/Labels on Action Buttons
-- The action buttons in the TPA table lack clear labels or tooltips
+- The action buttons in the App table lack clear labels or tooltips
 - Icons alone don't convey their purpose clearly (API key, Share, Publish, etc.)
 - New users struggle to understand what each button does
 
@@ -32,9 +32,9 @@ This document outlines the current issues with the MentraOS Developer Portal and
 - Success/error states aren't immediately visible to users
 
 ### 6. API Key Dialog State Persistence Issue
-- When regenerating API keys for multiple TPAs in sequence, the dialog incorrectly shows the previously generated API key
-- The dialog doesn't properly reset its state between different TPAs
-- This creates confusion and security risks as users might believe they're seeing the correct API key for the current TPA
+- When regenerating API keys for multiple Apps in sequence, the dialog incorrectly shows the previously generated API key
+- The dialog doesn't properly reset its state between different Apps
+- This creates confusion and security risks as users might believe they're seeing the correct API key for the current App
 
 ## Proposed Solutions
 
@@ -44,13 +44,13 @@ This document outlines the current issues with the MentraOS Developer Portal and
 - Apply this to both creation and editing flows
 
 ### 2. Improved Feedback System
-- Add toast notifications for successful TPA creation (similar to EditTPA.tsx)
+- Add toast notifications for successful App creation (similar to EditApp.tsx)
 - Keep the in-form success message, but make it more visible
 - Ensure the success state is visible without requiring scrolling
 - Consider auto-scrolling to show success message and next steps
 
 ### 3. Enhanced API Key Management
-- Create a dedicated success modal that appears after TPA creation with options to generate an API key
+- Create a dedicated success modal that appears after App creation with options to generate an API key
 - Make it explicit that the API key needs to be copied immediately, as it cannot be retrieved later
 - Clarify in the regeneration modal that generating a new key invalidates any previous keys
 - Improve visual design to make it clear that no existing key can be viewed (only regenerated)
@@ -58,7 +58,7 @@ This document outlines the current issues with the MentraOS Developer Portal and
 - Implement a more visible and user-friendly copy button
 
 ### 4. Button Labeling and Tooltip Enhancements
-- Add tooltips to all action buttons in the TPA table
+- Add tooltips to all action buttons in the App table
 - Consider text labels alongside icons for the most important actions
 - Maintain consistent styling with the rest of the application
 
@@ -68,45 +68,45 @@ This document outlines the current issues with the MentraOS Developer Portal and
 - Consider using color and animation to draw attention to important notices
 
 ### 6. Fix API Key Dialog State Management
-- Ensure the API key dialog completely resets its state when opened for a different TPA
+- Ensure the API key dialog completely resets its state when opened for a different App
 - Clear the previous API key from state when the dialog is opened or closed
-- Implement improved state management to prevent cross-TPA data leakage
-- Add proper key resets in useEffect hooks to ensure fresh state for each TPA
+- Implement improved state management to prevent cross-App data leakage
+- Add proper key resets in useEffect hooks to ensure fresh state for each App
 
 ## Implementation Plan
 
 ### URL Sanitization
 - Add a utility function in `utils.ts` to normalize URLs
-- Modify form submission in CreateTPA.tsx and EditTPA.tsx to use this function
+- Modify form submission in CreateApp.tsx and EditApp.tsx to use this function
 - Add unit tests for the URL normalization function
 
 ### Toast Notifications
 - Verify Toaster component is properly mounted in the application
-- Add toast notifications to CreateTPA similar to those in EditTPA
+- Add toast notifications to CreateApp similar to those in EditApp
 - Ensure consistent styling and behavior across the application
 
 ### API Key Dialog Improvements
-- Create a new dedicated success dialog that appears after TPA creation
+- Create a new dedicated success dialog that appears after App creation
 - Include API key generation options in this new dialog
 - Modify the existing ApiKeyDialog.tsx to improve clarity about key regeneration
 - Update the user flow to emphasize the importance of copying the key immediately
 - Improve visual design of the API key section in both dialogs
 
 ### Button and Tooltip Enhancements
-- Add tooltips to action buttons in TPATable.tsx
+- Add tooltips to action buttons in AppTable.tsx
 - Consider adding text labels for clarity
 - Ensure consistent styling across the application
 
 ### Visual Hierarchy Adjustments
-- Restructure the form success state in CreateTPA.tsx
+- Restructure the form success state in CreateApp.tsx
 - Ensure feedback is visible in the viewport
 - Consider auto-scrolling to show success message
 
 ### API Key Dialog State Management
 - Review and refactor the API key dialog component's state management
-- Implement proper state reset logic when the dialog opens for a new TPA
-- Add safeguards to prevent cross-TPA data leakage
-- Ensure the apiKey state is properly cleared and reset between different TPAs
+- Implement proper state reset logic when the dialog opens for a new App
+- Add safeguards to prevent cross-App data leakage
+- Ensure the apiKey state is properly cleared and reset between different Apps
 
 ## Implementation Checklist
 

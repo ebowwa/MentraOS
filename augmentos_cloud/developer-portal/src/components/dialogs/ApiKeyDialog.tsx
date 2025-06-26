@@ -8,7 +8,7 @@ import api from '@/services/api.service';
 import { AppI } from '@mentra/sdk';
 
 interface ApiKeyDialogProps {
-  tpa: AppI | null;
+  app: AppI | null;
   apiKey: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -17,7 +17,7 @@ interface ApiKeyDialogProps {
 }
 
 const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
-  tpa,
+  app,
   open,
   onOpenChange,
   apiKey,
@@ -32,7 +32,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [lastRegenerated, setLastRegenerated] = useState(new Date());
-  const [currentTpaId, setCurrentTpaId] = useState<string | null>(null);
+  const [currentAppId, setCurrentAppId] = useState<string | null>(null);
 
   // Format API key to be partially masked
   const formatApiKey = (key: string): string => {
@@ -67,7 +67,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
 
   // Confirm regeneration
   const handleConfirmRegenerate = async () => {
-    if (!tpa) return;
+    if (!app) return;
 
     setIsRegenerating(true);
     setError(null);
@@ -75,7 +75,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
 
     try {
       // Call API to regenerate key
-      const response = await api.apps.apiKey.regenerate(tpa.packageName, orgId);
+      const response = await api.apps.apiKey.regenerate(app.packageName, orgId);
       const newKey = response.apiKey;
 
       // Update local state
@@ -96,14 +96,14 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
     }
   };
 
-  // Complete reset of dialog state when TPA changes
+  // Complete reset of dialog state when App changes
   useEffect(() => {
-    if (tpa) {
-      const tpaId = tpa.packageName;
+    if (app) {
+      const appId = app.packageName;
 
-      // Only reset state if TPA has changed
-      if (currentTpaId !== tpaId) {
-        console.log(`TPA changed from ${currentTpaId} to ${tpaId}, resetting dialog state`);
+      // Only reset state if App has changed
+      if (currentAppId !== appId) {
+        console.log(`App changed from ${currentAppId} to ${appId}, resetting dialog state`);
 
         // Reset all state
         setApiKey('');
@@ -112,11 +112,11 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
         setShowConfirmation(false);
         setIsCopied(false);
 
-        // Update current TPA ID tracker
-        setCurrentTpaId(tpaId);
+        // Update current App ID tracker
+        setCurrentAppId(appId);
       }
     }
-  }, [tpa, currentTpaId]);
+  }, [app, currentAppId]);
 
   // Update local state when apiKey prop changes (only if it's a real key)
   useEffect(() => {
@@ -130,8 +130,8 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
   // Reset dialog state when opened
   useEffect(() => {
     if (open) {
-      if (!tpa) {
-        console.warn("ApiKeyDialog opened without a TPA");
+      if (!app) {
+        console.warn("ApiKeyDialog opened without a App");
         return;
       }
 
@@ -143,7 +143,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
       setShowConfirmation(false);
       setIsCopied(false);
     }
-  }, [open, tpa, apiKey]);
+  }, [open, app, apiKey]);
 
   // When dialog closes, reset states
   const handleOpenChange = (newOpen: boolean) => {
@@ -155,7 +155,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
       setIsCopied(false);
 
       // Important: Reset the API key when dialog closes
-      // This prevents leaking keys between different TPAs
+      // This prevents leaking keys between different Apps
       setApiKey('');
     }
     onOpenChange(newOpen);
@@ -170,7 +170,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
             API Key
           </DialogTitle>
           <DialogDescription>
-            {tpa && `API key for ${tpa.name}`}
+            {app && `API key for ${app.name}`}
           </DialogDescription>
         </DialogHeader>
 
@@ -271,7 +271,7 @@ const ApiKeyDialog: React.FC<ApiKeyDialogProps> = ({
               <div className="space-y-2">
                 <h3 className="text-sm font-medium">Webhook URL</h3>
                 <div className="font-mono text-sm p-2 border rounded-md bg-gray-50 overflow-x-auto break-all">
-                  {tpa?.publicUrl ? `${tpa.publicUrl}/webhook` : 'No server URL defined'}
+                  {app?.publicUrl ? `${app.publicUrl}/webhook` : 'No server URL defined'}
                 </div>
                 <p className="text-xs text-gray-500">
                   This is the full webhook URL where MentraOS will send events to your app.

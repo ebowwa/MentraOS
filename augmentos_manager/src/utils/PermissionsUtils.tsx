@@ -635,7 +635,7 @@ export const checkFeaturePermissions = async (featureKey: string): Promise<boole
           //   return true
           // }
           // return false
-          // skip checking this permission on iOS for now as currently no TPA needs it
+          // skip checking this permission on iOS for now as currently no App needs it
           return true
         }
 

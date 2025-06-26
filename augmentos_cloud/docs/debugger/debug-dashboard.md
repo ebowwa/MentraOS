@@ -6,19 +6,19 @@ MentraOS Cloud Debug Dashboard Design Document
 
   1.1 Objective
 
-  Design and implement a real-time debugging dashboard that provides "X-ray vision" into the MentraOS Cloud system, focusing on session state, WebSocket connections, TPA
+  Design and implement a real-time debugging dashboard that provides "X-ray vision" into the MentraOS Cloud system, focusing on session state, WebSocket connections, App
   interactions, and log collection/visualization. This tool will help developers identify and resolve issues faster and understand the system's behavior in development and
   production environments.
 
   1.2 Background
 
-  The MentraOS Cloud platform uses WebSocket connections for real-time communication between smart glasses, cloud services, and third-party applications (TPAs). The complex,
+  The MentraOS Cloud platform uses WebSocket connections for real-time communication between smart glasses, cloud services, and third-party applications (Apps). The complex,
    stateful nature of these connections makes debugging challenging, especially when issues occur in production. Currently, logs "go into the void," and there's no
   centralized way to observe the system state.
 
   1.3 Goals
 
-  - Provide real-time visibility into session state, connections, and TPA interactions
+  - Provide real-time visibility into session state, connections, and App interactions
   - Create a centralized logging system that persists and makes logs searchable
   - Enable developers to understand system behavior across components
   - Support both development and production debugging
@@ -103,13 +103,13 @@ MentraOS Cloud Debug Dashboard Design Document
   export class DebugStore {
     private logs: LogEntry[] = [];
     private sessions: Map<string, SessionState> = new Map();
-    private tpaConnections: Map<string, TPAConnectionState> = new Map();
+    private appConnections: Map<string, AppConnectionState> = new Map();
     private subscriptions: Map<string, SubscriptionState> = new Map();
     private displayState: Map<string, DisplayState> = new Map();
 
     // Methods to update state...
     updateSession(sessionId: string, state: Partial<SessionState>) {...}
-    updateConnection(id: string, state: Partial<TPAConnectionState>) {...}
+    updateConnection(id: string, state: Partial<AppConnectionState>) {...}
 
     // Methods to retrieve state...
     getSessions(): SessionState[] {...}
@@ -152,7 +152,7 @@ MentraOS Cloud Debug Dashboard Design Document
   1. Sessions Overview: List of active sessions with status indicators
   2. Session Detail: Detailed view of a selected session
   3. Connections: Visual representation of WebSocket connections
-  4. TPAs: Status of all running TPAs and their subscriptions
+  4. Apps: Status of all running Apps and their subscriptions
   5. Logs Explorer: Searchable, filterable log viewer
   6. System Overview: Summary statistics and health indicators
 
@@ -177,9 +177,9 @@ MentraOS Cloud Debug Dashboard Design Document
     };
   }
 
-  2.3.2 TPA Connection State
+  2.3.2 App Connection State
 
-  interface TPAConnectionState {
+  interface AppConnectionState {
     connectionId: string;
     sessionId: string;
     packageName: string;
@@ -319,7 +319,7 @@ MentraOS Cloud Debug Dashboard Design Document
       status: 'active'
     });
 
-    return tpaSessionId;
+    return appSessionId;
   }
 
   3. User Interface Design
@@ -334,7 +334,7 @@ MentraOS Cloud Debug Dashboard Design Document
   | ● Active (3)  | User: user@example.com                    |
   | ○ Disconn (2) | Status: Active (Connected: 1h 23m)        |
   |               |                                           |
-  | ● 1234-56..   | Active TPAs:                              |
+  | ● 1234-56..   | Active Apps:                              |
   | ● 2345-67..   | ✓ dashboard (system)                      |
   | ● 3456-78..   | ✓ mira (system)                           |
   | ○ 4567-89..   | ✓ voice-notes (user)                      |
@@ -344,7 +344,7 @@ MentraOS Cloud Debug Dashboard Design Document
   |               | Glasses Connection: WebSocket OPEN        |
   |               | Display: voice-notes (text_wall)          |
   |               |                                           |
-  |               | [View Connections] [View Logs] [View TPAs]|
+  |               | [View Connections] [View Logs] [View Apps]|
   +---------------+-------------------------------------------+
 
   3.2 Connection Visualization
@@ -379,7 +379,7 @@ MentraOS Cloud Debug Dashboard Design Document
   +-----------------------------------------------------------+
   | Filter: sessionId:1234-5678 level:error                  ↓|
   +-----------------------------------------------------------+
-  | 10:25:32 | ERROR | [websocket.service] TPA connection err |
+  | 10:25:32 | ERROR | [websocket.service] App connection err |
   | Context: { sessionId: "1234-5678", packageName: "flash"   |
   |           error: "WebSocket connection timeout" }         |
   +-----------------------------------------------------------+
@@ -389,14 +389,14 @@ MentraOS Cloud Debug Dashboard Design Document
   | 10:23:55 | WARN  | [transcription] Language not supported |
   | Context: { sessionId: "1234-5678", language: "fr-FR" }    |
   +-----------------------------------------------------------+
-  | 10:22:30 | INFO  | [app.service] Starting TPA             |
+  | 10:22:30 | INFO  | [app.service] Starting App             |
   | Context: { sessionId: "1234-5678", packageName: "flash" } |
   +-----------------------------------------------------------+
 
-  3.4 TPA Status View
+  3.4 App Status View
 
   +-----------------------------------------------------------+
-  |                      TPA Status                           |
+  |                      App Status                           |
   +-----------------------------------------------------------+
   | Session: 1234-5678-90ab-cdef                              |
   +-----------------------------------------------------------+
@@ -426,7 +426,7 @@ MentraOS Cloud Debug Dashboard Design Document
   2. Basic Integration
     - Add session lifecycle logging
     - Add connection event logging
-    - Add TPA lifecycle logging
+    - Add App lifecycle logging
   3. Simple UI
     - Create basic React app shell
     - Implement log explorer view
@@ -437,7 +437,7 @@ MentraOS Cloud Debug Dashboard Design Document
   1. Debug Store Implementation
     - Create session state tracking
     - Implement connection state modeling
-    - Add TPA and subscription state
+    - Add App and subscription state
   2. Service Integration
     - Integrate with WebSocket service
     - Add tracking to Session service
@@ -445,7 +445,7 @@ MentraOS Cloud Debug Dashboard Design Document
     - Integrate with Subscription service
   3. UI Enhancements
     - Build session detail view
-    - Implement TPA status table
+    - Implement App status table
     - Create connection visualization
 
   4.3 Phase 3: Real-time Updates and Refinement (1-2 weeks)

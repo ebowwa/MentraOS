@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-Currently, TPA developers need to manually implement REST API calls to fetch and update settings from the MentraOS Cloud. This creates several issues:
+Currently, App developers need to manually implement REST API calls to fetch and update settings from the MentraOS Cloud. This creates several issues:
 
 1. Developers are hard-coding server URLs, making apps fragile when users are on different servers
 2. Excessive boilerplate code for handling HTTP requests, authentication, and error handling
@@ -67,18 +67,18 @@ session.settings.onValueChange('transcribe_language', (newValue, oldValue) => {
 
 ### Automatic Endpoint Registration
 
-The SDK will automatically register the `/settings` endpoint in the TpaServer, requiring no configuration or implementation from developers:
+The SDK will automatically register the `/settings` endpoint in the AppServer, requiring no configuration or implementation from developers:
 
 ```typescript
 // Create and start the application - no manual endpoint handling needed
-const app = new MyTpaApp();
+const app = new MyAppApp();
 app.start();
 ```
 
 ## Implementation Details
 
 1. **Settings Manager:**
-   - Add a `SettingsManager` class to the TpaSession
+   - Add a `SettingsManager` class to the AppSession
    - Cache settings in memory
    - Derive REST API URL from WebSocket URL
 
@@ -87,7 +87,7 @@ app.start();
    - Support manual refresh if needed
 
 3. **Settings Endpoint:**
-   - Add built-in handling for the `/settings` endpoint in TpaServer
+   - Add built-in handling for the `/settings` endpoint in AppServer
    - Validate incoming settings updates
    - Dispatch changes to all affected sessions
 
@@ -99,8 +99,8 @@ app.start();
 ## Example Usage
 
 ```typescript
-class MyTranscriptionApp extends TpaServer {
-  protected async onSession(session: TpaSession, sessionId: string, userId: string): Promise<void> {
+class MyTranscriptionApp extends AppServer {
+  protected async onSession(session: AppSession, sessionId: string, userId: string): Promise<void> {
     // Settings are already loaded - access with defaults
     const language = session.settings.get<string>('transcribe_language', 'English');
     const lineWidth = session.settings.get<number>('line_width', 30);

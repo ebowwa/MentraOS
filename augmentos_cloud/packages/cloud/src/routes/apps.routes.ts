@@ -16,7 +16,7 @@ import appService, { isUninstallable } from '../services/core/app.service';
 import { User } from '../models/user.model';
 import App, { AppI } from '../models/app.model';
 import jwt, { JwtPayload } from 'jsonwebtoken';
-import { DeveloperProfile, TpaType } from '@mentra/sdk';
+import { DeveloperProfile, AppType } from '@mentra/sdk';
 import { logger as rootLogger } from '../services/logging/pino-logger';
 import UserSession from '../services/session/UserSession';
 import { authWithOptionalSession, OptionalUserSessionRequest } from '../middleware/client/client-auth-middleware';
@@ -62,12 +62,12 @@ if (!AUGMENTOS_AUTH_JWT_SECRET) {
 
 /**
  * TODO(isaiah): Instead of having a unifiedAuthMiddleware, I would prefer to cleanly separate routes that are called
- * by either the client (mobile app, web app, etc.), system apps, or the TPA's (third-party applications), having a more clear separation of concerns.
+ * by either the client (mobile app, web app, etc.), system apps, or the App's (third-party applications), having a more clear separation of concerns.
  * This way we would be able to log, track, and debug defined actions more clearly.
  */
 /**
  * Unified authentication middleware: allows either
- * (1) apiKey + packageName + userId (for allowed TPAs), or
+ * (1) apiKey + packageName + userId (for allowed Apps), or
  * (2) core token in Authorization header (for user sessions)
  */
 async function unifiedAuthMiddleware(req: Request, res: Response, next: NextFunction) {
@@ -1234,7 +1234,7 @@ function enhanceAppsWithSessionState(apps: AppI[], userSession: UserSession, use
 
     enhancedApp.is_running = userSession.runningApps.has(app.packageName);
     if (enhancedApp.is_running) {
-      enhancedApp.is_foreground = app.tpaType === TpaType.STANDARD;;
+      enhancedApp.is_foreground = app.appType === AppType.STANDARD;;
     }
 
     // Add last active timestamp if user data is available

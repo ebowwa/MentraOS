@@ -43,11 +43,11 @@ private lastLocationCache = new Map<string, Location>();
 ### getAllCalendarEvents(sessionId: string): CalendarEvent[]
 
 **Current Usage:**
-- Called when a TPA initializes to provide historical calendar events
+- Called when a App initializes to provide historical calendar events
 - Returns all cached calendar events for a specific session
 
 **Dependencies:**
-- Used during TPA initialization to provide context
+- Used during App initialization to provide context
 
 **Migration Path:**
 - Create `CacheManager.getAllCalendarEvents()` method
@@ -104,11 +104,11 @@ private lastLocationCache = new Map<string, Location>();
 ### getLastLocation(sessionId: string): Location | undefined
 
 **Current Usage:**
-- Called when TPAs initialize to provide last known location
-- Called during event broadcasting to determine if TPAs need location updates
+- Called when Apps initialize to provide last known location
+- Called during event broadcasting to determine if Apps need location updates
 
 **Dependencies:**
-- TPA initialization code
+- App initialization code
 - Location-based services
 
 **Migration Path:**
@@ -135,7 +135,7 @@ private lastLocationCache = new Map<string, Location>();
 ### updateSubscriptions(sessionId: string, packageName: string, userId: string, subscriptions: ExtendedStreamType[]): Promise<void>
 
 **Current Usage:**
-- Called when a TPA sends a subscription update message
+- Called when a App sends a subscription update message
 - Validates subscriptions against permissions
 - Updates the subscription registry
 
@@ -152,7 +152,7 @@ private lastLocationCache = new Map<string, Location>();
 ### hasMediaSubscriptions(sessionId: string): boolean
 
 **Current Usage:**
-- Called to determine if any TPAs need audio/media streams
+- Called to determine if any Apps need audio/media streams
 - Controls microphone state on glasses
 
 **Dependencies:**
@@ -167,7 +167,7 @@ private lastLocationCache = new Map<string, Location>();
 ### getSubscribedApps(userSession: UserSession, subscription: ExtendedStreamType): string[]
 
 **Current Usage:**
-- Called for every event to determine which TPAs should receive it
+- Called for every event to determine which Apps should receive it
 - Iterates through all subscriptions looking for matches
 - Core of the broadcasting mechanism
 
@@ -185,7 +185,7 @@ private lastLocationCache = new Map<string, Location>();
 ### getAppSubscriptions(sessionId: string, packageName: string): ExtendedStreamType[]
 
 **Current Usage:**
-- Called to get all active subscriptions for a specific TPA
+- Called to get all active subscriptions for a specific App
 - Used for debugging and status reporting
 
 **Dependencies:**
@@ -217,8 +217,8 @@ private lastLocationCache = new Map<string, Location>();
 ### removeSubscriptions(userSession: UserSession, packageName: string): void
 
 **Current Usage:**
-- Called when a TPA disconnects or is stopped
-- Cleans up all subscriptions for that TPA
+- Called when a App disconnects or is stopped
+- Cleans up all subscriptions for that App
 
 **Dependencies:**
 - WebSocket service connection handlers
@@ -248,7 +248,7 @@ private lastLocationCache = new Map<string, Location>();
 ### hasSubscription(sessionId: string, packageName: string, subscription: StreamType): boolean
 
 **Current Usage:**
-- Called to check if a specific TPA is subscribed to a specific stream type
+- Called to check if a specific App is subscribed to a specific stream type
 - Used for conditional logic in various handlers
 
 **Dependencies:**
@@ -278,7 +278,7 @@ private lastLocationCache = new Map<string, Location>();
 ### getSubscribedAppsForAugmentosSetting(userSession: UserSession, settingKey: string): string[]
 
 **Current Usage:**
-- Called to find TPAs subscribed to specific MentraOS settings
+- Called to find Apps subscribed to specific MentraOS settings
 - Part of the settings notification system
 
 **Dependencies:**

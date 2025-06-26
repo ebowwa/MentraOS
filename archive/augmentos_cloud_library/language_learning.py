@@ -1,7 +1,7 @@
 # AugmentOS
 import asyncio
 import json
-from augmentos_client import TPAClient
+from augmentos_client import AppClient
 
 # Custom
 import traceback
@@ -13,9 +13,9 @@ from llsg.helpers.word_frequency_percentiles import get_word_frequency_percentil
 
 db_handler = DatabaseHandler(parent_handler=True)
 
-class ExampleTPA:
+class ExampleApp:
     def __init__(self):
-        self.client = TPAClient(
+        self.client = AppClient(
             app_id="com.teamopensmartglasses.languagelearning",
             app_name="Language Learning",
             app_description="We gettin educated",
@@ -29,7 +29,7 @@ class ExampleTPA:
         self.client.on_other_received(self.on_other)
 
     async def on_transcript(self, data):
-        # print(f"[ExampleTPA on_transcript] Data received in callback: {data}")
+        # print(f"[ExampleApp on_transcript] Data received in callback: {data}")
         user_id = data['user_id']
         user = db_handler.get_user(user_id) # Make sure user created in db
         transcript = data['data']
@@ -37,7 +37,7 @@ class ExampleTPA:
         words_to_show = None
 
         ctime = time.time()
-        
+
         if db_handler.get_user_settings_value(transcript['user_id'], "is_having_language_learning_contextual_convo"):
             return
 
@@ -67,7 +67,7 @@ class ExampleTPA:
             final_words_to_show = list(filter(None, words_to_show))
             print("WORDS TO SHOW")
             print(json.dumps(final_words_to_show, indent=4))
-            
+
             ### TODO: Pull out the recent word logic from edge to here
             displayList = [f'{item["in_word"]} -> {item["in_word_translation"]}' for item in final_words_to_show]
             await self.client.send_rows_card(user_id, displayList)
@@ -86,8 +86,8 @@ class ExampleTPA:
         self.client.start()
 
 async def main():
-    example_tpa = ExampleTPA()
-    example_tpa.start()
+    example_app = ExampleApp()
+    example_app.start()
     # Run indefinitely to keep the FastAPI app running
     while True:
         await asyncio.sleep(3600)

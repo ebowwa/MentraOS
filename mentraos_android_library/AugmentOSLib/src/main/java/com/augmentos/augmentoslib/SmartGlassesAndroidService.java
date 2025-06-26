@@ -24,7 +24,7 @@ import android.util.Log;
 import androidx.core.app.NotificationCompat;
 import androidx.lifecycle.LifecycleService;
 
-import com.augmentos.augmentoslib.events.KillTpaEvent;
+import com.augmentos.augmentoslib.events.KillAppEvent;
 
 import org.greenrobot.eventbus.Subscribe;
 
@@ -37,7 +37,7 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
     private final IBinder binder = new LocalBinder();
     public static final String TAG = "SmartGlassesAndroidService_AugmentOS";
     public static final String INTENT_ACTION = "AUGMENTOS_INTENT";
-    public static final String TPA_ACTION = "tpaAction";
+    public static final String APP_ACTION = "appAction";
     public static final String ACTION_START_FOREGROUND_SERVICE = "AugmentOSLIB_ACTION_START_FOREGROUND_SERVICE";
     public static final String ACTION_STOP_FOREGROUND_SERVICE = "AugmentOSLIB_ACTION_STOP_FOREGROUND_SERVICE";
     public FocusStates focusState;
@@ -109,10 +109,10 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
         if (intent != null) {
             String action = intent.getAction();
             Bundle extras = intent.getExtras();
-           
+
             //True when service is started from AugmentOS
             if(Objects.equals(action, INTENT_ACTION) && extras != null){
-                action = (String) extras.get(TPA_ACTION);
+                action = (String) extras.get(APP_ACTION);
             }
 
             switch (action) {
@@ -134,12 +134,12 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
     }
 
     @Subscribe
-    public void onKillTpaEvent(KillTpaEvent receivedEvent){
+    public void onKillAppEvent(KillAppEvent receivedEvent){
         //if(receivedEvent.uuid == this.appUUID) //TODO: Figure out implementation here...
-        Log.d(TAG, "TPA KILLING SELF");
+        Log.d(TAG, "App KILLING SELF");
         if(true)
         {
-            Log.d(TAG, "TPA KILLING SELF received");
+            Log.d(TAG, "App KILLING SELF received");
             stopForeground(true);
             Log.d(TAG, "Foreground stopped");
             stopSelf();
@@ -169,7 +169,7 @@ public abstract class SmartGlassesAndroidService extends LifecycleService {
         super.onCreate();
         AugmentOSLibBus.getInstance().register(this);
     }
-    
+
     @Override
     public void onDestroy(){
         Log.d(TAG, "running onDestroy");

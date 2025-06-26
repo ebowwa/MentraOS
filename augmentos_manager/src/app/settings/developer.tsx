@@ -33,6 +33,7 @@ export default function DeveloperSettingsScreen() {
   const [savedCustomUrl, setSavedCustomUrl] = useState<string | null>(null)
   const [isSavingUrl, setIsSavingUrl] = useState(false) // Add loading state
   const [reconnectOnAppForeground, setReconnectOnAppForeground] = useState(true)
+  const {replace} = useNavigationHistory()
 
   // Load saved URL on mount
   useEffect(() => {
@@ -98,10 +99,17 @@ export default function DeveloperSettingsScreen() {
         await saveSetting(SETTINGS_KEYS.CUSTOM_BACKEND_URL, urlToTest)
         await coreCommunicator.setServerUrl(urlToTest)
         setSavedCustomUrl(urlToTest)
-        showAlert(
+        await showAlert(
           "Success",
           "Custom backend URL saved and verified. It will be used on the next connection attempt or app restart.",
-          [{text: "OK"}],
+          [
+            {
+              text: translate("common:ok"),
+              onPress: () => {
+                replace("/auth/core-token-exchange")
+              },
+            },
+          ],
         )
       } else {
         // Handle non-2xx responses as errors
@@ -161,7 +169,15 @@ export default function DeveloperSettingsScreen() {
     <Screen preset="fixed" style={{paddingHorizontal: theme.spacing.md}}>
       <Header title="Developer Settings" leftIcon="caretLeft" onLeftPress={() => goBack()} />
 
-      <View style={[styles.warningContainer, {backgroundColor: theme.colors.warningBackgroundDestructive, borderWidth: theme.spacing.xxxs, borderColor: theme.colors.warningBorderDestructive}]}>
+      <View
+        style={[
+          styles.warningContainer,
+          {
+            backgroundColor: theme.colors.warningBackgroundDestructive,
+            borderWidth: theme.spacing.xxxs,
+            borderColor: theme.colors.warningBorderDestructive,
+          },
+        ]}>
         <View style={styles.warningContent}>
           <Icon name="alert" size={16} color={theme.colors.text} />
           <Text style={[styles.warningTitle, {color: theme.colors.text}]}>Warning</Text>
@@ -192,7 +208,15 @@ export default function DeveloperSettingsScreen() {
 
         <Spacer height={theme.spacing.md} />
 
-        <View style={[styles.settingContainer, {backgroundColor: theme.colors.background, borderWidth: theme.spacing.xxxs, borderColor: theme.colors.border}]}>
+        <View
+          style={[
+            styles.settingContainer,
+            {
+              backgroundColor: theme.colors.background,
+              borderWidth: theme.spacing.xxxs,
+              borderColor: theme.colors.border,
+            },
+          ]}>
           <View style={styles.settingTextContainer}>
             <Text style={[styles.label, {color: theme.colors.text}]}>Custom Backend URL</Text>
             <Text style={[styles.value, {color: theme.colors.textDim}]}>

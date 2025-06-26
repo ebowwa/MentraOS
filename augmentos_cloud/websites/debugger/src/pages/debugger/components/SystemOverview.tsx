@@ -1,8 +1,8 @@
 interface SystemStats {
   activeSessions: number;
   totalSessions: number;
-  activeTpas: number;
-  totalTpas: number;
+  activeApps: number;
+  totalApps: number;
 }
 
 interface SystemOverviewProps {
@@ -20,11 +20,11 @@ export function SystemOverview({ stats }: SystemOverviewProps) {
           <div className="text-gray-500">/ {stats.totalSessions}</div>
         </div>
         <div className="bg-gray-50 rounded p-2 flex gap-2 items-center border border-gray-200">
-          <div className="font-medium">Active TPAs:</div>
-          <div className="text-gray-900 font-bold">{stats.activeTpas}</div>
-          <div className="text-gray-500">/ {stats.totalTpas}</div>
+          <div className="font-medium">Active Apps:</div>
+          <div className="text-gray-900 font-bold">{stats.activeApps}</div>
+          <div className="text-gray-500">/ {stats.totalApps}</div>
         </div>
       </div>
     </div>
   );
-} 
+}

@@ -217,7 +217,7 @@ router.post('/create-test-submission', async (req, res) => {
       description: 'This is a test app submission for development',
       appStoreStatus: 'SUBMITTED',
       isPublic: true,
-      tpaType: 'TPAWebView',
+      appType: 'AppWebView',
       hashedApiKey: 'test-key-hash',
       logoURL: 'https://placehold.co/100x100?text=Test'
     });

@@ -95,9 +95,9 @@ export default MyComponent;
 5.  These `userId` and `frontendToken` are then stored in `localStorage` and made available via the `useAugmentosAuth` hook.
 6.  If the token is not found in the URL (e.g., on a page refresh within the webview), the provider attempts to load the `userId` and `frontendToken` from `localStorage`.
 
-## Making Authenticated Calls to Your TPA Backend
+## Making Authenticated Calls to Your App Backend
 
-The `frontendToken` obtained from `useAugmentosAuth` is a JWT. You should send this token in the `Authorization` header as a Bearer token when making requests from your webview to **your TPA's backend API**.  The MentraOS SDK will automatically verify this token.
+The `frontendToken` obtained from `useAugmentosAuth` is a JWT. You should send this token in the `Authorization` header as a Bearer token when making requests from your webview to **your App's backend API**.  The MentraOS SDK will automatically verify this token.
 
 ```typescript
 // Example of an authenticated API call
@@ -110,7 +110,7 @@ async function fetchDataFromMyBackend(): Promise<void> {
   }
 
   try {
-    const response = await fetch('https://your-tpa-backend.example.com/api/data', {
+    const response = await fetch('https://your-app-backend.example.com/api/data', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -132,8 +132,8 @@ async function fetchDataFromMyBackend(): Promise<void> {
 ```
 
 > **Note:**
-> If your TPA webview is hosted on a different domain or port than your backend API, make sure your backend's CORS (Cross-Origin Resource Sharing) policy allows requests from the webview's origin.
-> For example, if your backend is at `https://your-tpa-backend.example.com` and your webview is loaded from `https://some-other-frontend.com`, your backend must explicitly allow cross-origin requests from `https://some-other-frontend.com` (or use a wildcard for development, but restrict in production).
+> If your App webview is hosted on a different domain or port than your backend API, make sure your backend's CORS (Cross-Origin Resource Sharing) policy allows requests from the webview's origin.
+> For example, if your backend is at `https://your-app-backend.example.com` and your webview is loaded from `https://some-other-frontend.com`, your backend must explicitly allow cross-origin requests from `https://some-other-frontend.com` (or use a wildcard for development, but restrict in production).
 >
 > **Example in the backend:**
 > ```typescript

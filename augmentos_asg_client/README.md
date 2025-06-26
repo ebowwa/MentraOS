@@ -3,7 +3,7 @@
 This is the Android code that runs on Android-based smart glasses (ex: Mentra Live).
 
 ## Documentation
-- [ASG_MEDIA_SYSTEM.md](./ASG_MEDIA_SYSTEM.md) - Detailed documentation about the camera button press system, photo/video capture workflow, and how TPAs (Third Party Applications) can interact with the media system.
+- [ASG_MEDIA_SYSTEM.md](./ASG_MEDIA_SYSTEM.md) - Detailed documentation about the camera button press system, photo/video capture workflow, and how Apps (Third Party Applications) can interact with the media system.
 
 ## Compatible Devices
 

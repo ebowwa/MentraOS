@@ -7,12 +7,12 @@ class AppConnection:
     def __init__(self, app_id: str, app_name: str, app_description: str, app_webhook_url: str, websocket_uri: str, subscriptions: List[str]):
         """
         Initialize the AppConnection with the necessary details.
-        
-        :param app_id: Unique id of the TPA.
-        :param app_name: Unique name of the TPA.
-        :param app_description: Description of the TPA.
-        :param app_webhook_url: URL to send webhooks to the TPA.
-        :param websocket_uri: WebSocket URI for the TPA.
+
+        :param app_id: Unique id of the App.
+        :param app_name: Unique name of the App.
+        :param app_description: Description of the App.
+        :param app_webhook_url: URL to send webhooks to the App.
+        :param websocket_uri: WebSocket URI for the App.
         """
 
         self.app_id = app_id
@@ -26,7 +26,7 @@ class AppConnection:
 
     async def send_webhook(self):
         """
-        Send a webhook to the TPA to trigger WebSocket connection.
+        Send a webhook to the App to trigger WebSocket connection.
         """
         # await asyncio.sleep(4)
         try:
@@ -50,7 +50,7 @@ class AppConnection:
 
     async def wait_for_connection(self):
         """
-        Wait for the TPA to establish the WebSocket connection.
+        Wait for the App to establish the WebSocket connection.
         """
         attempt = 0
         while (self.websocket is None) and attempt < 10:  # Retry a few times
@@ -59,7 +59,7 @@ class AppConnection:
                 print(f"[AppConnection - {self.app_name}] WebSocket connection established.")
                 return
             except Exception as e:
-                print(f"[AppConnection - {self.app_name}] Waiting for TPA to establish WebSocket connection... attempt {attempt + 1}")
+                print(f"[AppConnection - {self.app_name}] Waiting for App to establish WebSocket connection... attempt {attempt + 1}")
                 attempt += 1
                 await asyncio.sleep(2)  # Wait a bit before retrying
 
@@ -70,16 +70,16 @@ class AppConnection:
     async def send_data(self, data):
         """
         Send data over the WebSocket connection. Initiates connection if not active.
-        
+
         :param data: The data to send.
         """
         await self.ensure_connection()
         if self.websocket:
             try:
                 if isinstance(data, str):
-                    await self.websocket.send_text(data) 
+                    await self.websocket.send_text(data)
                 else:
-                    await self.websocket.send_json(data) 
+                    await self.websocket.send_json(data)
                 print(f"[AppConnection - {self.app_name}] Data sent: {data}")
             except Exception as e:
                 print(f"[AppConnection - {self.app_name}] Failed to send data: {e}")
@@ -107,57 +107,57 @@ class ConnectionManager:
         self.registry: Dict[str, AppConnection] = {}
         self.lock = asyncio.Lock()  # To ensure thread-safe operations on the registry
 
-    async def register_tpa(self, app_id: str, app_name: str, app_description: str, app_webhook_url: str, websocket_uri: str, subscriptions: List[str]):
+    async def register_app(self, app_id: str, app_name: str, app_description: str, app_webhook_url: str, websocket_uri: str, subscriptions: List[str]):
         """
-        Register a new TPA with AugmentOS.
-        
-        :param app_name: Unique id of the TPA.
-        :param app_name: Unique name of the TPA.
-        :param app_webhook_url: URL to send webhooks to the TPA.
-        :param websocket_uri: WebSocket URI for the TPA.
+        Register a new App with AugmentOS.
+
+        :param app_name: Unique id of the App.
+        :param app_name: Unique name of the App.
+        :param app_webhook_url: URL to send webhooks to the App.
+        :param websocket_uri: WebSocket URI for the App.
         """
         async with self.lock:
             if app_id in self.registry:
-                return f"[ConnectionManager] TPA '{app_id}' is already registered."
+                return f"[ConnectionManager] App '{app_id}' is already registered."
             app_connection = AppConnection(app_id, app_name, app_description, app_webhook_url, websocket_uri, subscriptions)
             self.registry[app_id] = app_connection
             # await app_connection.send_data("[From Server] Hello client!")
-            return f"[ConnectionManager] TPA '{app_id}' registered successfully."
+            return f"[ConnectionManager] App '{app_id}' registered successfully."
 
 
-    async def unregister_tpa(self, app_id: str):
+    async def unregister_app(self, app_id: str):
         """
-        Unregister a TPA from AugmentOS.
-        
-        :param app_name: Unique name of the TPA.
+        Unregister a App from AugmentOS.
+
+        :param app_name: Unique name of the App.
         """
         async with self.lock:
             app_connection = self.registry.pop(app_id, None)
             if app_connection:
                 await app_connection.close_connection()
-                print(f"[ConnectionManager] TPA '{app_id}' unregistered successfully.")
+                print(f"[ConnectionManager] App '{app_id}' unregistered successfully.")
             else:
-                print(f"[ConnectionManager] TPA '{app_id}' not found in registry.")
+                print(f"[ConnectionManager] App '{app_id}' not found in registry.")
 
     async def send_data(self, app_id: str, data: str):
         """
-        Send data to a registered TPA.
-        
-        :param app_name: Unique name of the TPA.
+        Send data to a registered App.
+
+        :param app_name: Unique name of the App.
         :param data: The data to send.
         """
         async with self.lock:
             app_connection = self.registry.get(app_id)
             if not app_connection:
-                print(f"[Manager] TPA '{app_id}' is not registered.")
+                print(f"[Manager] App '{app_id}' is not registered.")
                 return
 
         await app_connection.send_data(data)
 
     async def broadcast_data(self, data: str):
         """
-        Send data to all registered TPAs.
-        
+        Send data to all registered Apps.
+
         :param data: The data to send.
         """
         async with self.lock:
@@ -172,8 +172,8 @@ class ConnectionManager:
         await asyncio.gather(*(conn.close_connection() for conn in connections))
 
     async def connect(self, app_id, websocket):
-        if not self.registry.get(app_id): 
-            print("[ConnectionManager] Non-registered TPA tried to send a websocket")
+        if not self.registry.get(app_id):
+            print("[ConnectionManager] Non-registered App tried to send a websocket")
             print("REGISTRY PRINT")
             print(json.dumps(self.registry))
             return False
@@ -183,13 +183,13 @@ class ConnectionManager:
 
     async def smart_broadcast_data(self, user_id, data_type, data):
         """
-        Send data to all registered TPAs that subscribe to the specified data type.
-        
+        Send data to all registered Apps that subscribe to the specified data type.
+
         :param user_id: The ID of the user whose apps will receive the data.
         :param data_type: The type of data being sent.
         :param data: The actual data to send.
         """
-        
+
         json = {
             "type": data_type,
             "user_id": user_id,
@@ -221,30 +221,30 @@ class ConnectionManager:
 async def main():
     manager = ConnectionManager()
 
-    # Register TPAs
-    await manager.register_tpa(
+    # Register Apps
+    await manager.register_app(
         app_id="com.exampletpa.1",
-        app_name="TPA1",
+        app_name="App1",
         app_webhook_url="http://localhost:8001/trigger-websocket",
         websocket_uri="ws://localhost:8001/ws",
         subscriptions=["*"]
     )
-    await manager.register_tpa(
+    await manager.register_app(
         app_id="com.exampletpa.2",
-        app_name="TPA2",
+        app_name="App2",
         app_webhook_url="http://localhost:8002/trigger-websocket",
         websocket_uri="ws://localhost:8002/ws",
         subscriptions=["*"]
     )
 
-    # Send data to a specific TPA
-    # await manager.send_data("TPA1", "Hello TPA1!")
+    # Send data to a specific App
+    # await manager.send_data("App1", "Hello App1!")
 
-    # # Broadcast data to all TPAs
-    # await manager.broadcast_data("Hello All TPAs!")
+    # # Broadcast data to all Apps
+    # await manager.broadcast_data("Hello All Apps!")
 
-    # # Unregister a TPA
-    # await manager.unregister_tpa("TPA2")
+    # # Unregister a App
+    # await manager.unregister_app("App2")
 
 # Run the example
 if __name__ == "__main__":

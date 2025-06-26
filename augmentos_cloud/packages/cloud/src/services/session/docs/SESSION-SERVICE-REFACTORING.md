@@ -34,7 +34,7 @@ This document outlines the refactoring plan for the Session Service, which is pa
 │   │   └── IMPROVED-SESSION-SERVICE.md  # Documentation of new design
 ├── websocket/
 │   ├── websocket.service.ts     # Core WebSocket setup
-│   ├── websocket-tpa.service.ts # TPA connection handling
+│   ├── websocket-app.service.ts # App connection handling
 │   ├── websocket-glasses.service.ts # Glasses connection handling
 │   └── REFACTORING-PLAN.md      # WebSocket refactoring plan
 ```
@@ -75,13 +75,13 @@ This approach ensures we maintain compatibility with existing code while refacto
 
 ### Message Relaying
 
-4. **relayMessageToTpas(userSession, streamType, data)**
-   - Relay messages to subscribed TPAs
+4. **relayMessageToApps(userSession, streamType, data)**
+   - Relay messages to subscribed Apps
    - Filter based on subscriptions
    - Format messages appropriately
 
-5. **relayAudioToTpas(userSession, audioData)**
-   - Relay audio data to subscribed TPAs
+5. **relayAudioToApps(userSession, audioData)**
+   - Relay audio data to subscribed Apps
    - Handle binary data appropriately
    - Optimize for performance
 
@@ -105,9 +105,9 @@ This approach ensures we maintain compatibility with existing code while refacto
 
 ### Session State Management
 
-9. **handleTpaInit(ws, initMessage, setCurrentSessionId)**
-   - Handle TPA initialization
-   - Set up TPA session
+9. **handleAppInit(ws, initMessage, setCurrentSessionId)**
+   - Handle App initialization
+   - Set up App session
    - Validate authentication
    - Handle errors appropriately
 
@@ -180,7 +180,7 @@ The new WebSocket services will use the session service for:
 private async handleVad(userSession: ExtendedUserSession, message: Vad): Promise<void> {
   const userId = userSession.userId;
   const isSpeaking = message.status === true || message.status === 'true';
-  
+
   if (isSpeaking) {
     userSession.logger.info(`🎙️ VAD detected speech - starting transcription for user: ${userId}`);
     userSession.isTranscribing = true;

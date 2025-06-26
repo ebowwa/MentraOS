@@ -102,7 +102,7 @@ async def set_user_settings(request: Request):
     user_id = verify_id_token(id_token)
     if user_id is None:
         return JSONResponse(content={'success': False, 'message': 'unauthorized'}, status_code=400)
-    
+
     db_handler.update_user_settings(user_id, body)
 
     return JSONResponse(content={'success': True, 'message': "Saved your settings."}, status_code=200)
@@ -114,7 +114,7 @@ async def get_user_settings(request: Request):
     user_id = verify_id_token(id_token)
     if user_id is None:
         return JSONResponse(content={'success': False, 'message': 'unauthorized'}, status_code=400)
-    
+
     user_settings = db_handler.get_user_settings(user_id)
 
     return JSONResponse(content={'success': True, 'settings': user_settings}, status_code=200)
@@ -127,7 +127,7 @@ async def ui_poll_handler(request: Request):
     device_id = body.get('deviceId')
     id_token = body.get('Authorization')
     user_id = verify_id_token(id_token)
-    
+
     if user_id is None:
         print("user_id is None in ui_poll_handler")
         return JSONResponse(content={'success': False, 'message': 'unauthorized'}, status_code=400)
@@ -137,7 +137,7 @@ async def ui_poll_handler(request: Request):
 
     resp = dict()
     resp["success"] = True
-    
+
     db_handler.update_active_user(user_id, device_id)
 
     # add display_requests
@@ -175,12 +175,12 @@ async def ui_poll_handler(request: Request):
 
     # tell the frontend to update their local settings if needed
     resp["should_update_settings"] = db_handler.get_should_update_settings(user_id)
-    
-    
+
+
     vocabulary_upgrade_enabled = body.get('vocabulary_upgrade_enabled')
     if vocabulary_upgrade_enabled is not None:
         db_handler.update_single_user_setting(user_id, "vocabulary_upgrade_enabled", vocabulary_upgrade_enabled)
-      
+
 
     return JSONResponse(content=resp, status_code=200)
 
@@ -201,7 +201,7 @@ async def run_single_expert_agent_handler(request: Request):
     if user_id is None or user_id == '':
         print("user_id none in send_agent_chat, exiting with error response 400.")
         return JSONResponse(content={'success': False, 'message': 'unauthorized'}, status_code=400)
-    
+
     print("Got single agent request for agent: {}".format(agent_name))
 
     asyncio.ensure_future(expert_agent_runner(agent_name, user_id))
@@ -224,16 +224,16 @@ async def update_gps_location_for_user(request: Request):
     # 400 if missing params
     if not user_id:
         print("user_id none in update_gps_location_for_user, exiting with error response 400.")
-        return JSONResponse(content={'success': False, 'message': 'unauthorized'}, status_code=400)    
+        return JSONResponse(content={'success': False, 'message': 'unauthorized'}, status_code=400)
     if not location['lat'] or not location['lng']:
         print("location none in update_gps_location_for_user, exiting with error response 400.")
         return JSONResponse(content={'success': False, 'message': 'no location in request'}, status_code=400)
 
     # print("SEND UPDATE LOCATION FOR USER_ID: " + user_id)
     db_handler.add_gps_location_for_user(user_id, location)
-    
+
     # locations = db_handler.get_gps_location_results_for_user_device(user_id, device_id)
-    
+
     # print("locations: ", locations)
     # if len(locations) > 1:
     #     print("difference in locations: ", locations[-1]['lat'] - locations[-2]['lat'], locations[-1]['lng'] - locations[-2]['lng'])
@@ -326,48 +326,48 @@ async def protected_route(request: Request):
 @app.post("/register_app")
 async def register_app(app_data: RegisterAppModel):
     """t
-    Endpoint for TPAs to register themselves with AugmentOS.
+    Endpoint for Apps to register themselves with AugmentOS.
     """
-    ret = await connection_manager.register_tpa(app_data.app_id, app_data.app_name, app_data.app_description, app_data.app_webhook_url, app_data.websocket_uri, app_data.subscriptions)
+    ret = await connection_manager.register_app(app_data.app_id, app_data.app_name, app_data.app_description, app_data.app_webhook_url, app_data.websocket_uri, app_data.subscriptions)
     print (f"/Register_App: {ret}")
     return {"message": ret}
 
-@app.websocket("/ws/tpa/{app_id}")
+@app.websocket("/ws/app/{app_id}")
 async def websocket_endpoint(websocket: WebSocket, app_id: str):
     """
-    WebSocket endpoint for real-time communication with TPAs.
+    WebSocket endpoint for real-time communication with Apps.
     """
     if not await connection_manager.connect(app_id, websocket):
         print("Woah there was an ERROR processing the incoming websocket")
         return
-    
+
     try:
         while True:
             data = await websocket.receive_text()
             print(f"[server_fast.py] Received data from {app_id}...")
-            
+
             try:
                 # TODO: Do some authentication, verify app_id is allowed to send us messages
 
                 data = json.loads(data)
                 print(f"Data:\n{json.dumps(data, indent=4)}")
                 # Now handle the parsed data based on its type
-                await handle_tpa_message(data, app_id, websocket)
-                
+                await handle_app_message(data, app_id, websocket)
+
             except json.JSONDecodeError as e:
                 print(f"Failed to decode JSON: {e}")
                 await websocket.send_text("Invalid JSON format")
     except WebSocketDisconnect:
         print(f"WebSocket disconnected for {app_id}")
 
-async def handle_tpa_message(data: dict, app_id: str, websocket: WebSocket):
+async def handle_app_message(data: dict, app_id: str, websocket: WebSocket):
     """
-    Handle the incoming JSON message from a TPA.
+    Handle the incoming JSON message from a App.
     """
     message_type = data.get("type", None)
     user_id = data.get('user_id', None)
     if not user_id:
-        print("No user_id in tpa websocket message")
+        print("No user_id in app websocket message")
         return
 
     if message_type == AugmentOsDataTypes.DISPLAY_REQUEST:
@@ -386,7 +386,7 @@ async def shutdown_event():
     """
     await connection_manager.close_all_connections()
 
-# Example of how you might send data to all registered TPAs
+# Example of how you might send data to all registered Apps
 @app.get("/broadcast/{message}")
 async def broadcast_message(message: str):
     await connection_manager.broadcast_data(message)

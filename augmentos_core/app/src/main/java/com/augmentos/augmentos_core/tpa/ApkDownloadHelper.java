@@ -1,4 +1,4 @@
-package com.augmentos.augmentos_core.tpa;
+package com.augmentos.augmentos_core.app;
 
 import static com.augmentos.augmentos_core.Constants.REQUEST_APP_BY_PACKAGE_NAME_DOWNLOAD_LINK_ENDPOINT;
 

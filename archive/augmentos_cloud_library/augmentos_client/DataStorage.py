@@ -25,7 +25,7 @@ class DataStorage:
         """
         return self.db.all()
 
-# Example usage in TPA client
+# Example usage in App client
 # storage = DataStorage()
 
 # # Store a new transcript

@@ -25,7 +25,7 @@ import ToggleSetting from "../settings/ToggleSetting"
 import SliderSetting from "../settings/SliderSetting"
 import {FontAwesome, MaterialCommunityIcons} from "@expo/vector-icons"
 import {translate} from "@/i18n/translate"
-import showAlert from "@/utils/AlertUtils"
+import showAlert, {showDestructiveAlert} from "@/utils/AlertUtils"
 import {PermissionFeatures, requestFeaturePermissions} from "@/utils/PermissionsUtils"
 import RouteButton from "@/components/ui/RouteButton"
 import ActionButton from "@/components/ui/ActionButton"
@@ -154,7 +154,7 @@ export default function DeviceSettings() {
   }
 
   const confirmForgetGlasses = () => {
-    showAlert(
+    showDestructiveAlert(
       translate("settings:forgetGlasses"),
       translate("settings:forgetGlassesConfirm"),
       [

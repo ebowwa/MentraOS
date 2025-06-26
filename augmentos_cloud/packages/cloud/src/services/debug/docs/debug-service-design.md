@@ -1,7 +1,7 @@
 MentraOS Debugger UI Design Document
 1. Introduction
 1.1 Purpose
-The MentraOS Debugger UI is a web-based monitoring and debugging tool that provides real-time visibility into the MentraOS cloud system. It enables developers and operators to inspect user sessions, monitor TPAs (Third-Party Applications), track system state, and diagnose issues within the system.
+The MentraOS Debugger UI is a web-based monitoring and debugging tool that provides real-time visibility into the MentraOS cloud system. It enables developers and operators to inspect user sessions, monitor Apps (Third-Party Applications), track system state, and diagnose issues within the system.
 1.2 Scope
 This document outlines the design and implementation of the MentraOS Debugger UI, focusing on the MVP (Minimum Viable Product) requirements, architecture, and UI components. It serves as a guide for the development team working on the debugger interface.
 1.3 System Context
@@ -9,7 +9,7 @@ The debugger is a part of the MentraOS cloud ecosystem and interacts primarily w
 
 Session Service: Manages user sessions and their state
 WebSocket Service: Handles real-time communication
-TPA Service: Manages third-party applications
+App Service: Manages third-party applications
 Display Service: Controls what is shown on the glasses
 
 2. Requirements
@@ -23,11 +23,11 @@ Inspect detailed session state
 Monitor session lifecycle events
 
 
-TPA Inspection
+App Inspection
 
-View active TPAs for each session
-Monitor TPA subscriptions
-Track TPA connection status
+View active Apps for each session
+Monitor App subscriptions
+Track App connection status
 
 
 Display Visualization
@@ -47,7 +47,7 @@ View recent transcriptions
 System Overview
 
 View key system metrics
-Track active sessions and TPAs
+Track active sessions and Apps
 Monitor system health
 
 
@@ -106,7 +106,7 @@ The DebugService will be a core backend component responsible for:
 Session State Access: Providing safe access to session data
 Data Transformation: Converting internal data structures to debugger-friendly formats
 Event Generation: Creating and dispatching debug events for real-time updates
-Command Handling: Processing debug commands (stop TPA, etc.)
+Command Handling: Processing debug commands (stop App, etc.)
 Security: Enforcing access controls and data sanitization
 
 Key methods in the DebugService:
@@ -115,8 +115,8 @@ typescriptclass DebugService {
   getAllSessions(): DebugSessionInfo[];
   getSessionDetails(sessionId: string): ExtendedDebugSessionInfo;
 
-  // TPA management
-  stopTpa(sessionId: string, tpaName: string): Promise<boolean>;
+  // App management
+  stopApp(sessionId: string, appName: string): Promise<boolean>;
 
   // System stats
   getSystemStats(): SystemStats;
@@ -132,7 +132,7 @@ The DebugService will interface with the following MentraOS services:
 
 sessionService: To access user session data
 webSocketService: To monitor communication status
-tpaService: To control TPAs
+appService: To control Apps
 System monitoring tools: For resource utilization stats
 
 3.3 Components
@@ -153,7 +153,7 @@ WebSocket (Optional): For bidirectional communication if needed
 Initial data is fetched via REST API on page load
 Real-time updates are streamed via SSE
 User interactions (filtering, selection) handled client-side
-Commands (stopping TPAs, etc.) sent via REST API
+Commands (stopping Apps, etc.) sent via REST API
 
 4. UI Design
 4.1 Layout
@@ -168,7 +168,7 @@ The UI follows a split-panel layout:
 |                    |                                                  |
 | - Search           |  - Session Info                                  |
 | - Filter           |  - State Tree                                    |
-| - Session List     |  - Active TPAs                                   |
+| - Session List     |  - Active Apps                                   |
 |                    |  - Display State                                 |
 |                    |  - Audio & Transcription                         |
 |                    |  - Recent Events                                 |
@@ -185,7 +185,7 @@ System-wide controls
 4.2.2 System Overview
 
 Active sessions counter
-Active TPAs counter
+Active Apps counter
 Memory usage indicator
 System uptime display
 
@@ -200,7 +200,7 @@ Selection mechanism
 
 Session Information: Core session metadata
 State Tree: Expandable view of complete session state
-Active TPAs: List of TPAs with connection status and subscriptions
+Active Apps: List of Apps with connection status and subscriptions
 Display State: Current display and display history
 Audio & Transcription: Audio status and recent transcriptions
 Recent Events: Chronological list of session events
@@ -208,8 +208,8 @@ Recent Events: Chronological list of session events
 4.3 Interactive Elements
 
 State Tree Navigator: Expandable/collapsible tree for deep state inspection
-Search Field: For filtering sessions by ID, user, or TPA
-TPA Action Buttons: View details and stop buttons for each TPA
+Search Field: For filtering sessions by ID, user, or App
+App Action Buttons: View details and stop buttons for each App
 Live Updates Toggle: Enable/disable real-time updates
 
 5. Implementation Plan
@@ -235,12 +235,12 @@ Create session info panel
 Develop state tree visualization component
 Add error handling for missing properties
 
-5.4 Phase 4: TPA and Display Monitoring
+5.4 Phase 4: App and Display Monitoring
 
-Implement TPA status visualization
+Implement App status visualization
 Create display state visualization
 Add audio and transcription monitoring
-Build command interface for TPA control
+Build command interface for App control
 
 5.5 Phase 5: Real-time Updates
 
@@ -326,7 +326,7 @@ All debugger endpoints will be organized under the /api/debugger/* path prefix:
 
 GET /api/debugger/sessions: Fetch all active sessions
 GET /api/debugger/sessions/:id: Fetch detailed session data
-POST /api/debugger/sessions/:id/tpa/:tpaName/stop: Stop a TPA
+POST /api/debugger/sessions/:id/app/:appName/stop: Stop a App
 GET /api/debugger/system/stats: Fetch system-wide statistics
 
 7.2 SSE Endpoints
@@ -341,8 +341,8 @@ SSE will deliver the following event types:
 session_created: New session created
 session_updated: Session state changed
 session_disconnected: Session disconnected
-tpa_started: TPA started in a session
-tpa_stopped: TPA stopped in a session
+app_started: App started in a session
+app_stopped: App stopped in a session
 display_updated: Display content changed
 transcription_updated: New transcription available
 

@@ -6,7 +6,7 @@ The current health monitor service for WebSocket connections has several limitat
 
 1. **Global Singleton Pattern**:
    - The current implementation is a singleton service that manages all connections globally
-   - This makes it difficult to associate WebSockets with specific TPAs or users
+   - This makes it difficult to associate WebSockets with specific Apps or users
    - State tracking becomes complex across many different connections
 
 2. **Limited Connection Metadata**:
@@ -55,7 +55,7 @@ The current health monitor service for WebSocket connections has several limitat
 ```typescript
 class SessionHealthMonitor {
   private connections: Map<WebSocket, {
-    type: 'glasses' | 'tpa';
+    type: 'glasses' | 'app';
     lastSeen: number;
     metadata: {
       packageName?: string;
@@ -70,7 +70,7 @@ class SessionHealthMonitor {
   }
 
   // Methods for connection management
-  registerConnection(ws: WebSocket, type: 'glasses' | 'tpa', metadata: any) {...}
+  registerConnection(ws: WebSocket, type: 'glasses' | 'app', metadata: any) {...}
   unregisterConnection(ws: WebSocket) {...}
   updateActivity(ws: WebSocket) {...}
 
@@ -112,7 +112,7 @@ private handleTimeout(ws: WebSocket, metadata: ConnectionMetadata): void {
     ws.close(1001, 'Connection timeout detected');
 
     // Update session state
-    if (metadata.type === 'tpa' && metadata.packageName) {
+    if (metadata.type === 'app' && metadata.packageName) {
       this.userSession.appConnections.delete(metadata.packageName);
     }
 
@@ -167,7 +167,7 @@ To migrate from the current global health monitor to session-specific monitors:
    - After validation, phase out the global monitor
 
 2. **WebSocket Registration Refactoring**:
-   - Update the `registerTpaConnection` and `registerGlassesConnection` methods
+   - Update the `registerAppConnection` and `registerGlassesConnection` methods
    - Route registrations to the appropriate session health monitor
    - Ensure existing connections aren't disrupted during upgrade
 
@@ -182,14 +182,14 @@ The new design enables much richer diagnostics:
 
 1. **Connection Lifecycle Logging**:
    ```
-   [User: alice@example.com] TPA connection registered: com.example.app1
+   [User: alice@example.com] App connection registered: com.example.app1
    [User: alice@example.com] Heartbeat sent to com.example.app1 [f7a2e9b1]
-   [User: alice@example.com] Connection timed out: tpa com.example.app1
+   [User: alice@example.com] Connection timed out: app com.example.app1
    ```
 
 2. **Session-Based Metrics**:
    - Track health statistics per session
-   - Identify problematic TPAs or sessions
+   - Identify problematic Apps or sessions
    - Generate aggregated health reports
 
 3. **Improved API**:
@@ -199,14 +199,14 @@ The new design enables much richer diagnostics:
 
 ## Expected Benefits
 
-1. **Better TPA Reliability**:
+1. **Better App Reliability**:
    - Fewer unexplained disconnections
    - Proper reconnection behavior
    - Better handling of network interruptions
 
 2. **Improved Debugging**:
    - Clear identification of connection issues
-   - Connection events are linked to specific TPAs and sessions
+   - Connection events are linked to specific Apps and sessions
    - Detailed logs for troubleshooting
 
 3. **Better Resource Management**:
@@ -216,7 +216,7 @@ The new design enables much richer diagnostics:
 
 4. **Enhanced User Experience**:
    - Fewer disconnection errors for users
-   - More reliable dashboard and TPAs
+   - More reliable dashboard and Apps
    - Automatic recovery from temporary network issues
 
 ## Conclusion

@@ -25,7 +25,7 @@ class ServerComms {
   private var speechRecCallback: ((([String: Any]) -> Void))?
   private var serverCommsCallback: ServerCommsCallback?
   private var coreToken: String = ""
-  private var userid: String = ""
+  var userid: String = ""
   private var serverUrl: String = ""
   
   // Audio queue system
@@ -70,6 +70,15 @@ class ServerComms {
     Timer.scheduledTimer(withTimeInterval: oneHour, repeats: true) { [weak self] _ in
       print("Periodic calendar sync")
       self?.sendCalendarEvents()
+    }
+    
+    // Deploy datetime coordinates to command center every 60 seconds
+    let sixtySeconds: TimeInterval = 60
+    Timer.scheduledTimer(withTimeInterval: sixtySeconds, repeats: true) { [weak self] _ in
+      print("Periodic datetime transmission")
+      guard let self = self else { return }
+      let isoDatetime = ServerComms.getCurrentIsoDatetime()
+      self.sendUserDatetimeToBackend(userId: self.userid, isoDatetime: isoDatetime)
     }
     
     // send location updates every 15 minutes:
@@ -507,6 +516,72 @@ class ServerComms {
   }
   
   // MARK: - Helper methods
+
+  func sendUserDatetimeToBackend(userId: String, isoDatetime: String) {
+    guard let url = URL(string: getServerUrlForRest() + "/api/user-data/set-datetime") else {
+      print("ServerComms: Invalid URL for datetime transmission")
+      return
+    }
+    
+    let body: [String: Any] = [
+      "userId": userId,
+      "datetime": isoDatetime
+    ]
+    
+    do {
+      let jsonData = try JSONSerialization.data(withJSONObject: body)
+      
+      var request = URLRequest(url: url)
+      request.httpMethod = "POST"
+      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+      request.httpBody = jsonData
+      
+      print("ServerComms: Sending datetime to: \(url)")
+      
+      URLSession.shared.dataTask(with: request) { data, response, error in
+        if let error = error {
+          return
+        }
+        
+        if let httpResponse = response as? HTTPURLResponse {
+          if httpResponse.statusCode == 200 {
+            if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
+              print("ServerComms: Datetime transmission successful: \(responseString)")
+            }
+          } else {
+            print("ServerComms: Datetime transmission failed. Response code: \(httpResponse.statusCode)")
+            if let responseData = data, let responseString = String(data: responseData, encoding: .utf8) {
+              print("ServerComms: Error response: \(responseString)")
+            }
+          }
+        }
+      }.resume()
+      
+    } catch {
+      print("ServerComms: Exception during datetime transmission preparation: \(error.localizedDescription)")
+    }
+  }
+  
+  /**
+   * Retrieves the command center's REST API coordinates
+   */
+  private func getServerUrlForRest() -> String {
+    if !self.serverUrl.isEmpty {
+      // Extract base URL from WebSocket URL
+      let url = URL(string: self.serverUrl)!
+      let host = url.host!
+      let port = url.port!
+      let secure = url.scheme == "https"
+      return "\(secure ? "https" : "http")://\(host):\(port)"
+    }
+    
+    // Fallback to environment configuration
+    let host = RNCConfig.env(for: "MENTRAOS_HOST")!
+    let port = RNCConfig.env(for: "MENTRAOS_PORT")!
+    let secure = RNCConfig.env(for: "MENTRAOS_SECURE")!
+    let secureServer = secure.contains("true")
+    return "\(secureServer ? "https" : "http")://\(host):\(port)"
+  }
   
   private func getServerUrl() -> String {
     if (!self.serverUrl.isEmpty) {
@@ -592,6 +667,14 @@ class ServerComms {
     }
     
     return appList
+  }
+  
+  /// Returns the current datetime in ISO 8601 format with timezone offset (e.g., 2024-06-13T15:42:10-07:00)
+  static func getCurrentIsoDatetime() -> String {
+    let dateFormatter = DateFormatter()
+    dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssXXX"
+    dateFormatter.locale = Locale(identifier: "en_US")
+    return dateFormatter.string(from: Date())
   }
 }
 

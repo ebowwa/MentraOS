@@ -13,11 +13,11 @@ The DisplayManager (version 6.1) is responsible for coordinating content display
 
 ### 1. Missing Initial Displays
 
-**Problem**: TPAs often try to display content immediately after starting, but this content disappears or never shows up. This creates a poor first impression for both developers and users.
+**Problem**: Apps often try to display content immediately after starting, but this content disappears or never shows up. This creates a poor first impression for both developers and users.
 
 **Root causes**:
 - During boot screen (1.5s duration), ALL display requests are rejected outright, not queued
-- TPAs are not notified that their display requests were rejected
+- Apps are not notified that their display requests were rejected
 - First impressions are lost, leaving developers confused
 
 ```typescript
@@ -57,12 +57,12 @@ if (success && !isDashboard && !isBootPhase) {
 
 ### 3. Race Conditions
 
-**Problem**: Race conditions between app startup, boot screen display, and initial TPA display requests lead to unpredictable behavior.
+**Problem**: Race conditions between app startup, boot screen display, and initial App display requests lead to unpredictable behavior.
 
 **Root causes**:
-- TPAs connect via websocket almost immediately after receiving the webhook
-- Boot screen starts separately from TPA connection
-- No coordination between boot screen timing and TPA readiness
+- Apps connect via websocket almost immediately after receiving the webhook
+- Boot screen starts separately from App connection
+- No coordination between boot screen timing and App readiness
 - No mechanism to queue requests during boot phase
 
 ### 4. Poor Developer Experience
@@ -71,14 +71,14 @@ if (success && !isDashboard && !isBootPhase) {
 
 **Root causes**:
 - Silent request dropping with minimal logging
-- No status feedback to TPAs about display request state
+- No status feedback to Apps about display request state
 - No clear documentation on display lifecycle and throttling
 - No way for developers to force critical displays (except dashboard has bypass)
 
 ## Goals
 
 1. **Reliability**: Ensure ALL display requests are eventually shown, even if delayed
-2. **Consistency**: Create predictable behavior for TPA developers
+2. **Consistency**: Create predictable behavior for App developers
 3. **Transparency**: Provide clear feedback about display request status
 4. **Compatibility**: Maintain BLE stability with appropriate throttling
 5. **Simplicity**: Make the system easier to understand and debug
@@ -102,7 +102,7 @@ Instead of rejecting display requests during boot, queue them for display after 
 if (this.bootingApps.size > 0) {
   logger.info(`[DisplayManager] - [${userSession.userId}] ⏳ Queuing display request during boot: ${displayRequest.packageName}`);
   this.queueDisplayRequestForAfterBoot(displayRequest, userSession);
-  return true; // Indicate success to the TPA
+  return true; // Indicate success to the App
 }
 ```
 
@@ -118,7 +118,7 @@ private throttledRequests = new Map<string, ThrottledRequest>();
 private queueThrottledRequest(activeDisplay: ActiveDisplay, timestamp: number) {
   const packageName = activeDisplay.displayRequest.packageName;
   this.throttledRequests.set(packageName, { activeDisplay, timestamp });
-  
+
   // Schedule processing
   setTimeout(() => {
     const request = this.throttledRequests.get(packageName);
@@ -149,10 +149,10 @@ setTimeout(() => {
 
 ### 4. Implement Request Status Feedback
 
-Add a status feedback mechanism to inform TPAs about their display request status:
+Add a status feedback mechanism to inform Apps about their display request status:
 
 ```typescript
-// Inform TPA about request status
+// Inform App about request status
 private sendRequestStatus(userSession: UserSession, packageName: string, status: 'queued' | 'throttled' | 'displayed' | 'rejected', reason?: string) {
   const websocket = userSession.appConnections.get(packageName);
   if (websocket && websocket.readyState === 1) {
@@ -205,7 +205,7 @@ private displayStats = {
 private updateStats(packageName: string, status: 'displayed' | 'throttled' | 'queued' | 'rejected') {
   this.displayStats.totalRequests++;
   this.displayStats[`${status}Requests`]++;
-  
+
   // Update per-app stats
   const appStats = this.displayStats.perApp.get(packageName) || { displayed: 0, throttled: 0, queued: 0, rejected: 0 };
   appStats[status]++;
@@ -215,10 +215,10 @@ private updateStats(packageName: string, status: 'displayed' | 'throttled' | 'qu
 
 ## Expected User Experience After Fixes
 
-### For TPA Developers:
+### For App Developers:
 
 1. **Reliability**: All display requests will eventually be shown, even if delayed due to boot screen or throttling
-2. **Predictability**: Newer requests from the same TPA always replace older ones
+2. **Predictability**: Newer requests from the same App always replace older ones
 3. **Transparency**: Debug logs and webhook status updates explain display timing and state
 4. **Control**: Critical flag for important displays that should bypass certain restrictions
 

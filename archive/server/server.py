@@ -76,7 +76,7 @@ async def chat_handler(request):
     return web.Response(text=json.dumps({'success': True, 'message': message}), status=200)
 
 
-#handle new diarization data 
+#handle new diarization data
 async def chat_diarization(request):
     body = await request.json()
     transcript_meta_data = body.get('transcript_meta_data')
@@ -94,13 +94,13 @@ async def chat_diarization(request):
 async def start_recording_handler(request):
     body = await request.json()
     user_id = body.get('userId')
-    
+
     if user_id is None or user_id == '':
         print("user_id none in chat_handler, exiting with error response 400.")
         return web.Response(text='no userId in request', status=400)
-    
+
     result = db_handler.update_recording_time_for_user(user_id)
-    
+
     return web.Response(text=json.dumps({'success': result}), status=200)
 
 
@@ -108,13 +108,13 @@ async def save_recording_handler(request):
     body = await request.json()
     user_id = body.get('userId')
     recording_name = body.get('recordingName')
-    
+
     if user_id is None or user_id == '':
         print("user_id none in chat_handler, exiting with error response 400.")
         return web.Response(text='no userId in request', status=400)
-    
+
     recording = db_handler.save_recording(user_id, recording_name)
-    
+
     file_path = 'recordings/{}.json'.format(recording_name)
     with open(file_path, 'w') as file:
         json.dump(recording, file)
@@ -128,11 +128,11 @@ async def save_recording_handler(request):
 async def load_recording_handler(request):
     body = await request.json()
     recording_name = body.get('recordingName')
-    
+
     if recording_name is None or recording_name == '':
         print("recording_name none in chat_handler, exiting with error response 400.")
         return web.Response(text='no recordingName in request', status=400)
-    
+
     file_path = 'recordings/{}.json'.format(recording_name)
     return web.FileResponse(file_path, headers={
         'Content-Disposition': 'Attachment;filename={}.json'.format(recording_name)
@@ -148,7 +148,7 @@ async def set_user_settings(request):
     user_id = verify_id_token(id_token)
     if user_id is None:
         raise web.HTTPUnauthorized()
-    
+
     db_handler.update_user_settings(user_id, body)
 
     return web.Response(text=json.dumps({'success': True, 'message': "Saved your settings."}))
@@ -161,13 +161,13 @@ async def get_user_settings(request):
     user_id = verify_id_token(id_token)
     if user_id is None:
         raise web.HTTPUnauthorized()
-    
+
     user_settings = db_handler.get_user_settings(user_id)
 
     return web.Response(text=json.dumps({'success': True, 'settings': user_settings}))
 
 
-# runs when button is pressed on frontend - right now button ring on wearable or button in TPA
+# runs when button is pressed on frontend - right now button ring on wearable or button in App
 async def button_handler(request):
     body = await request.json()
     button_num = body.get('buttonNum')
@@ -217,7 +217,7 @@ async def ui_poll_handler(request, minutes=0.5):
 
     resp = dict()
     resp["success"] = True
-    
+
     db_handler.update_active_user(user_id, device_id)
 
     # add system_messages
@@ -270,11 +270,11 @@ async def ui_poll_handler(request, minutes=0.5):
     # tell the frontend to update their local settings if needed
     should_update_settings = db_handler.get_should_update_settings(user_id)
     resp["should_update_settings"] = should_update_settings
-    
+
     vocabulary_upgrade_enabled = body.get('vocabulary_upgrade_enabled')
     if vocabulary_upgrade_enabled is not None:
         db_handler.update_single_user_setting(user_id, "vocabulary_upgrade_enabled", vocabulary_upgrade_enabled)
-      
+
 
     return web.Response(text=json.dumps(resp), status=200)
 
@@ -447,9 +447,9 @@ async def update_gps_location_for_user(request):
 
     # print("SEND UPDATE LOCATION FOR USER_ID: " + user_id)
     db_handler.add_gps_location_for_user(user_id, location)
-    
+
     # locations = db_handler.get_gps_location_results_for_user_device(user_id, device_id)
-    
+
     # print("locations: ", locations)
     # if len(locations) > 1:
     #     print("difference in locations: ", locations[-1]['lat'] - locations[-2]['lat'], locations[-1]['lng'] - locations[-2]['lng'])
@@ -556,7 +556,7 @@ if __name__ == '__main__':
     print("Starting LL Word Suggest Upgrade Agents process...")
     ll_word_suggest_upgrade_background_process = multiprocessing.Process(target=start_ll_word_suggest_upgrade_agent_processing_loop)
     ll_word_suggest_upgrade_background_process.start()
-    
+
     # start the contextual convo language larning app process
     print("Starting Contextual Convo Language learning app process...")
     ll_context_convo_background_process = multiprocessing.Process(target=ll_context_convo_agent_processing_loop)

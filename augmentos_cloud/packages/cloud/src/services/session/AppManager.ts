@@ -1,5 +1,5 @@
 /**
- * @fileoverview AppManager manages app lifecycle and TPA connections within a user session.
+ * @fileoverview AppManager manages app lifecycle and App connections within a user session.
  * It encapsulates all app-related functionality that was previously
  * scattered throughout the session and WebSocket services.
  *
@@ -8,9 +8,9 @@
 
 import WebSocket from 'ws';
 import {
-  CloudToTpaMessageType,
+  CloudToAppMessageType,
   CloudToGlassesMessageType,
-  TpaConnectionInit,
+  AppConnectionInit,
   AppStateChange,
   AppI,
   WebhookRequestType,
@@ -46,10 +46,10 @@ const CLOUD_PUBLIC_HOST_NAME = process.env.CLOUD_PUBLIC_HOST_NAME; // e.g., "pro
 const CLOUD_LOCAL_HOST_NAME = process.env.CLOUD_LOCAL_HOST_NAME; // e.g., "localhost:8002" | "cloud" | "cloud-debug-cloud.default.svc.cluster.local:80"
 const AUGMENTOS_AUTH_JWT_SECRET = process.env.AUGMENTOS_AUTH_JWT_SECRET;
 
-const TPA_SESSION_TIMEOUT_MS = 5000;  // 5 seconds
+const APP_SESSION_TIMEOUT_MS = 5000;  // 5 seconds
 
 /**
- * Enum for tracking TPA connection states
+ * Enum for tracking App connection states
  */
 enum AppConnectionState {
   RUNNING = 'running',           // Active WebSocket connection
@@ -73,7 +73,7 @@ if (!AUGMENTOS_AUTH_JWT_SECRET) {
 
 
 /**
- * Manages app lifecycle and TPA connections for a user session
+ * Manages app lifecycle and App connections for a user session
  */
 interface AppStartResult {
   success: boolean;
@@ -92,7 +92,7 @@ interface PendingConnection {
   startTime: number;
 }
 
-interface TpaMessageResult {
+interface AppMessageResult {
   sent: boolean;
   resurrectionTriggered: boolean;
   error?: string;
@@ -105,10 +105,10 @@ export class AppManager {
   // Track pending app start operations
   private pendingConnections = new Map<string, PendingConnection>();
 
-  // Track connection states for TPAs
+  // Track connection states for Apps
   private connectionStates = new Map<string, AppConnectionState>();
 
-  // Track heartbeat intervals for TPA connections
+  // Track heartbeat intervals for App connections
   private heartbeatIntervals = new Map<string, NodeJS.Timeout>();
 
   // Cache of installed apps
@@ -121,13 +121,13 @@ export class AppManager {
   }
 
   /**
-   * Set up heartbeat for TPA WebSocket connection
+   * Set up heartbeat for App WebSocket connection
    */
-  private setupTpaHeartbeat(packageName: string, ws: WebSocket): void {
+  private setupAppHeartbeat(packageName: string, ws: WebSocket): void {
     const HEARTBEAT_INTERVAL = 10000; // 10 seconds
 
     // Clear any existing heartbeat for this package
-    this.clearTpaHeartbeat(packageName);
+    this.clearAppHeartbeat(packageName);
 
     // Set up new heartbeat
     const heartbeatInterval = setInterval(() => {
@@ -135,12 +135,12 @@ export class AppManager {
         ws.ping();
         if (LOG_PING_PONG) {
           // Log ping if enabled
-          this.logger.debug({ packageName, ping: true }, `[AppManager:heartbeat:ping] Sent ping to TPA ${packageName}`);
+          this.logger.debug({ packageName, ping: true }, `[AppManager:heartbeat:ping] Sent ping to App ${packageName}`);
         }
       } else {
         // WebSocket is not open, clear the interval
-        this.logger.warn({ packageName }, `[WARNING][AppManager:heartbeat] WebSocket for TPA ${packageName} is not open, clearing heartbeat`);
-        this.clearTpaHeartbeat(packageName);
+        this.logger.warn({ packageName }, `[WARNING][AppManager:heartbeat] WebSocket for App ${packageName} is not open, clearing heartbeat`);
+        this.clearAppHeartbeat(packageName);
       }
     }, HEARTBEAT_INTERVAL);
 
@@ -151,22 +151,22 @@ export class AppManager {
     ws.on('pong', () => {
       if (LOG_PING_PONG) {
         // Log pong if enabled
-        this.logger.debug({ packageName, pong: true }, `[AppManager:heartbeat:pong] Received pong from TPA ${packageName}`);
+        this.logger.debug({ packageName, pong: true }, `[AppManager:heartbeat:pong] Received pong from App ${packageName}`);
       }
     });
 
-    this.logger.debug({ packageName, HEARTBEAT_INTERVAL }, `[AppManager:setupTpaHeartbeat] Heartbeat established for TPA ${packageName}`);
+    this.logger.debug({ packageName, HEARTBEAT_INTERVAL }, `[AppManager:setupAppHeartbeat] Heartbeat established for App ${packageName}`);
   }
 
   /**
-   * Clear heartbeat for TPA connection
+   * Clear heartbeat for App connection
    */
-  private clearTpaHeartbeat(packageName: string): void {
+  private clearAppHeartbeat(packageName: string): void {
     const existingInterval = this.heartbeatIntervals.get(packageName);
     if (existingInterval) {
       clearInterval(existingInterval);
       this.heartbeatIntervals.delete(packageName);
-      this.logger.debug({ packageName }, `[AppManager:clearTpaHeartbeat] Heartbeat cleared for TPA ${packageName}`);
+      this.logger.debug({ packageName }, `[AppManager:clearAppHeartbeat] Heartbeat cleared for App ${packageName}`);
     }
   }
 
@@ -188,10 +188,10 @@ export class AppManager {
   }
 
   /**
-   * 🚀🪝 Initiates a new TPA session and triggers the TPA's webhook.
-   * Waits for TPA to connect and complete authentication before resolving.
-   * @param packageName - TPA identifier
-   * @returns Promise that resolves when TPA successfully connects and authenticates
+   * 🚀🪝 Initiates a new App session and triggers the App's webhook.
+   * Waits for App to connect and complete authentication before resolving.
+   * @param packageName - App identifier
+   * @returns Promise that resolves when App successfully connects and authenticates
    */
   async startApp(packageName: string): Promise<AppStartResult> {
     // Check if already running
@@ -259,7 +259,7 @@ export class AppManager {
           packageName,
           service: 'AppManager',
           duration: Date.now() - startTime
-        }, `App ${packageName} connection timeout after ${TPA_SESSION_TIMEOUT_MS}ms`);
+        }, `App ${packageName} connection timeout after ${APP_SESSION_TIMEOUT_MS}ms`);
 
         // Check if connection is still pending (race condition protection)
         if (!this.pendingConnections.has(packageName)) {
@@ -291,9 +291,9 @@ export class AppManager {
 
         resolve({
           success: false,
-          error: { stage: 'TIMEOUT', message: `Connection timeout after ${TPA_SESSION_TIMEOUT_MS}ms` }
+          error: { stage: 'TIMEOUT', message: `Connection timeout after ${APP_SESSION_TIMEOUT_MS}ms` }
         });
-      }, TPA_SESSION_TIMEOUT_MS);
+      }, APP_SESSION_TIMEOUT_MS);
 
       // Store pending connection
       this.pendingConnections.set(packageName, {
@@ -355,11 +355,11 @@ export class AppManager {
     startTime: number
   ): Promise<void> {
     try {
-      // Trigger TPA webhook
+      // Trigger App webhook
       const { packageName, name, publicUrl } = app;
-      this.logger.debug({ packageName, name, publicUrl }, `Triggering TPA webhook for ${packageName} for user ${this.userSession.userId}`);
+      this.logger.debug({ packageName, name, publicUrl }, `Triggering App webhook for ${packageName} for user ${this.userSession.userId}`);
 
-      // Set up the websocket URL for the TPA connection
+      // Set up the websocket URL for the App connection
       let augmentOSWebsocketUrl = '';
 
       // Determine the appropriate WebSocket URL based on the environment and app type
@@ -371,21 +371,21 @@ export class AppManager {
 
           // Porter environment (Kubernetes)
           if (process.env.PORTER_APP_NAME) {
-            augmentOSWebsocketUrl = `ws://${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80/tpa-ws`;
+            augmentOSWebsocketUrl = `ws://${process.env.PORTER_APP_NAME}-cloud.default.svc.cluster.local:80/app-ws`;
             this.logger.info(`Using Porter internal URL for system app ${packageName}`);
           } else {
             // Docker Compose environment
-            augmentOSWebsocketUrl = 'ws://cloud/tpa-ws';
+            augmentOSWebsocketUrl = 'ws://cloud/app-ws';
             this.logger.info(`Using Docker internal URL for system app ${packageName}`);
           }
         } else {
           // Local development for system apps
-          augmentOSWebsocketUrl = 'ws://localhost:8002/tpa-ws';
+          augmentOSWebsocketUrl = 'ws://localhost:8002/app-ws';
           this.logger.info(`Using local URL for system app ${packageName}`);
         }
       } else {
         // For non-system apps, use the public host
-        augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/tpa-ws`;
+        augmentOSWebsocketUrl = `wss://${CLOUD_PUBLIC_HOST_NAME}/app-ws`;
         this.logger.info({ augmentOSWebsocketUrl, packageName, name }, `Using public URL for app ${packageName}`);
       }
 
@@ -412,10 +412,10 @@ export class AppManager {
         packageName,
         service: 'AppManager',
         duration: Date.now() - startTime
-      }, `Webhook sent successfully for app ${packageName}, waiting for TPA connection`);
+      }, `Webhook sent successfully for app ${packageName}, waiting for App connection`);
 
-      // Note: Database will be updated when TPA actually connects in handleTpaInit()
-      // Note: App start message to glasses will be sent when TPA connects
+      // Note: Database will be updated when App actually connects in handleAppInit()
+      // Note: App start message to glasses will be sent when App connects
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -475,7 +475,7 @@ export class AppManager {
         service: 'AppManager',
         duration,
         stage
-      }, `TPA ${packageName} connection failed at ${stage} stage after ${duration}ms: ${message}`);
+      }, `App ${packageName} connection failed at ${stage} stage after ${duration}ms: ${message}`);
 
       pending.resolve({
         success: false,
@@ -485,7 +485,7 @@ export class AppManager {
   }
 
   /**
-   * Triggers a webhook for a TPA.
+   * Triggers a webhook for a App.
    * @param url - Webhook URL
    * @param payload - Data to send
    * @throws If webhook fails after retries
@@ -579,7 +579,7 @@ export class AppManager {
         try {
           // Send app stopped message
           const message = {
-            type: CloudToTpaMessageType.APP_STOPPED,
+            type: CloudToAppMessageType.APP_STOPPED,
             timestamp: new Date()
           };
           appWebsocket.send(JSON.stringify(message));
@@ -627,12 +627,12 @@ export class AppManager {
   }
 
   /**
-   * Handle TPA initialization
+   * Handle App initialization
    *
    * @param ws WebSocket connection
-   * @param initMessage TPA initialization message
+   * @param initMessage App initialization message
    */
-  async handleTpaInit(ws: WebSocket, initMessage: TpaConnectionInit): Promise<void> {
+  async handleAppInit(ws: WebSocket, initMessage: AppConnectionInit): Promise<void> {
     try {
       const { packageName, apiKey, sessionId } = initMessage;
 
@@ -641,14 +641,14 @@ export class AppManager {
 
       if (!isValidApiKey) {
         this.logger.error({ userId: this.userSession.userId, packageName, service: 'AppManager' },
-          `Invalid API key for TPA ${packageName}`);
+          `Invalid API key for App ${packageName}`);
 
         // Resolve pending connection with auth error
         this.resolvePendingConnectionWithError(packageName, 'AUTHENTICATION', 'Invalid API key');
 
         try {
           ws.send(JSON.stringify({
-            type: CloudToTpaMessageType.CONNECTION_ERROR,
+            type: CloudToAppMessageType.CONNECTION_ERROR,
             code: 'INVALID_API_KEY',
             message: 'Invalid API key',
             timestamp: new Date()
@@ -656,7 +656,7 @@ export class AppManager {
 
           ws.close(1008, 'Invalid API key');
         } catch (sendError) {
-          this.logger.error(`Error sending auth error to TPA ${packageName}:`, sendError);
+          this.logger.error(`Error sending auth error to App ${packageName}:`, sendError);
         }
 
         return;
@@ -672,13 +672,13 @@ export class AppManager {
 
         try {
           ws.send(JSON.stringify({
-            type: CloudToTpaMessageType.CONNECTION_ERROR,
+            type: CloudToAppMessageType.CONNECTION_ERROR,
             code: 'APP_NOT_STARTED',
             message: 'App not started for this session',
             timestamp: new Date()
           }));
         } catch (sendError) {
-          this.logger.error(`Error sending app not started error to TPA ${packageName}:`, sendError);
+          this.logger.error(`Error sending app not started error to App ${packageName}:`, sendError);
         }
         ws.close(1008, 'App not started for this session');
         return;
@@ -693,7 +693,7 @@ export class AppManager {
       });
 
       // Set up heartbeat to prevent proxy timeouts
-      this.setupTpaHeartbeat(packageName, ws);
+      this.setupAppHeartbeat(packageName, ws);
 
       // Set connection state to RUNNING
       this.setAppConnectionState(packageName, AppConnectionState.RUNNING);
@@ -716,7 +716,7 @@ export class AppManager {
 
       // Send connection acknowledgment with capabilities
       const ackMessage = {
-        type: CloudToTpaMessageType.CONNECTION_ACK,
+        type: CloudToAppMessageType.CONNECTION_ACK,
         sessionId: sessionId,
         settings: userSettings,
         augmentosSettings: userAugmentosSettings,
@@ -749,7 +749,7 @@ export class AppManager {
           sessionId: this.userSession.sessionId,
           service: 'AppManager',
           duration
-        }, `TPA ${packageName} successfully connected and authenticated in ${duration}ms`);
+        }, `App ${packageName} successfully connected and authenticated in ${duration}ms`);
 
         this.setAppConnectionState(packageName, AppConnectionState.RUNNING);
         pending.resolve({ success: true });
@@ -760,11 +760,11 @@ export class AppManager {
           packageName,
           sessionId: this.userSession.sessionId,
           service: 'AppManager'
-        }, `TPA ${packageName} connected (not from startApp) - moved to runningApps`);
+        }, `App ${packageName} connected (not from startApp) - moved to runningApps`);
       }
 
       // Track connection in analytics
-      PosthogService.trackEvent('tpa_connection', this.userSession.userId, {
+      PosthogService.trackEvent('app_connection', this.userSession.userId, {
         packageName,
         sessionId: this.userSession.sessionId,
         timestamp: new Date().toISOString()
@@ -780,14 +780,14 @@ export class AppManager {
         packageName: initMessage.packageName,
         service: 'AppManager',
         error: errorMessage
-      }, `Error handling TPA init for ${initMessage.packageName}`);
+      }, `Error handling App init for ${initMessage.packageName}`);
 
       // Resolve pending connection with general error
       this.resolvePendingConnectionWithError(initMessage.packageName, 'CONNECTION', `Internal error: ${errorMessage}`);
 
       try {
         ws.send(JSON.stringify({
-          type: CloudToTpaMessageType.CONNECTION_ERROR,
+          type: CloudToAppMessageType.CONNECTION_ERROR,
           code: 'INTERNAL_ERROR',
           message: 'Internal server error',
           timestamp: new Date()
@@ -795,7 +795,7 @@ export class AppManager {
 
         ws.close(1011, 'Internal server error');
       } catch (sendError) {
-        this.logger.error(`Error sending internal error to TPA:`, sendError);
+        this.logger.error(`Error sending internal error to App:`, sendError);
       }
     }
   }
@@ -915,8 +915,8 @@ export class AppManager {
       // Remove from app connections
       this.userSession.appWebsockets.delete(packageName);
 
-      // Clear heartbeat for this TPA connection
-      this.clearTpaHeartbeat(packageName);
+      // Clear heartbeat for this App connection
+      this.clearAppHeartbeat(packageName);
 
       // Check current connection state
       const currentState = this.getAppConnectionState(packageName);
@@ -966,13 +966,13 @@ export class AppManager {
           }
           catch (error) {
             const logger = this.logger.child({ packageName, function: 'handleAppConnectionClosed' });
-            logger.error(error, `Error starting resurrection for TPA ${packageName}`);
+            logger.error(error, `Error starting resurrection for App ${packageName}`);
           }
         }
 
         // Remove the timer from the map
         this.userSession._reconnectionTimers?.delete(packageName);
-      }, 5000); // 5 second reconnection grace period for TPAs
+      }, 5000); // 5 second reconnection grace period for Apps
 
       // Store the timer
       this.userSession._reconnectionTimers.set(packageName, reconnectionTimer);
@@ -983,12 +983,12 @@ export class AppManager {
   }
 
   /**
-   * Send a message to a TPA with automatic resurrection if connection is dead
-   * @param packageName - TPA package name
+   * Send a message to a App with automatic resurrection if connection is dead
+   * @param packageName - App package name
    * @param message - Message to send (will be JSON.stringify'd)
    * @returns Promise with send result and resurrection info
    */
-  async sendMessageToTpa(packageName: string, message: any): Promise<TpaMessageResult> {
+  async sendMessageToApp(packageName: string, message: any): Promise<AppMessageResult> {
     try {
       // Check connection state first
       const appState = this.getAppConnectionState(packageName);
@@ -1013,8 +1013,8 @@ export class AppManager {
           userId: this.userSession.userId,
           packageName,
           service: 'AppManager'
-        }, `TPA ${packageName} is still connecting, cannot send message yet`);
-        return { sent: false, resurrectionTriggered: false, error: 'TPA is still connecting' };
+        }, `App ${packageName} is still connecting, cannot send message yet`);
+        return { sent: false, resurrectionTriggered: false, error: 'App is still connecting' };
       }
 
       // Check if websocket exists and is ready
@@ -1025,13 +1025,13 @@ export class AppManager {
           this.logger.debug({
             packageName,
             messageType: message.type || 'unknown'
-          }, `[AppManager:sendMessageToTpa]: Message sent to TPA ${packageName} for user ${this.userSession.userId}`);
+          }, `[AppManager:sendMessageToApp]: Message sent to App ${packageName} for user ${this.userSession.userId}`);
 
           return { sent: true, resurrectionTriggered: false };
         } catch (sendError) {
           const logger = this.logger.child({ packageName });
           const errorMessage = sendError instanceof Error ? sendError.message : String(sendError);
-          logger.error(sendError, `[AppManager:sendMessageToTpa]: Failed to send message to TPA ${packageName}: ${errorMessage}`);
+          logger.error(sendError, `[AppManager:sendMessageToApp]: Failed to send message to App ${packageName}: ${errorMessage}`);
 
           // Fall through to resurrection logic below
         }
@@ -1041,7 +1041,7 @@ export class AppManager {
       // to handle the grace period and resurrection logic.
       this.logger.warn(
         { packageName },
-        `[AppManager:sendMessageToTpa]: Triggering handleAppConnectionClosed for ${packageName}`
+        `[AppManager:sendMessageToApp]: Triggering handleAppConnectionClosed for ${packageName}`
       );
 
       // manually trigger handleAppConnectionClosed, which will handle the grace period and resurrection logic.
@@ -1051,7 +1051,7 @@ export class AppManager {
     } catch (error) {
       const logger = this.logger.child({ packageName });
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(error, `[AppManager:sendMessageToTpa]: Internal Server Error in sendMessageToTpa: ${errorMessage} - ${this.userSession.userId} ${packageName}`);
+      logger.error(error, `[AppManager:sendMessageToApp]: Internal Server Error in sendMessageToApp: ${errorMessage} - ${this.userSession.userId} ${packageName}`);
 
       return {
         sent: false,
@@ -1100,7 +1100,7 @@ export class AppManager {
           try {
             // Send app stopped message using direct connection (no resurrection needed during dispose)
             const message = {
-              type: CloudToTpaMessageType.APP_STOPPED,
+              type: CloudToAppMessageType.APP_STOPPED,
               timestamp: new Date()
             };
             connection.send(JSON.stringify(message));

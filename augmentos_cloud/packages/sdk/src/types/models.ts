@@ -1,7 +1,7 @@
 // @mentra/sdk
 // packages/sdk/types/src/models.ts - Core models
 
-import { AppSettingType, AppState, Language, TpaType } from './enums';
+import { AppSettingType, AppState, Language, AppType } from './enums';
 
 
 // Tool parameter type definition
@@ -12,7 +12,7 @@ export interface ToolParameterSchema {
   required?: boolean;
 }
 
-// Tool schema definition for TPAs
+// Tool schema definition for Apps
 export interface ToolSchema {
   id: string;
   description: string;
@@ -70,7 +70,7 @@ export interface AppI {
 
   webviewURL?: string;            // URL for phone UI
   logoURL: string;
-  tpaType: TpaType;               // Type of app
+  appType: AppType;               // Type of app
   appStoreId?: string;            // Which app store registered this app
 
   /**
@@ -150,10 +150,10 @@ export type AppSetting =
 export type AppSettings = AppSetting[];
 
 /**
- * TPA configuration file structure
- * Represents the schema in tpa_config.json
+ * App configuration file structure
+ * Represents the schema in app_config.json
  */
-export interface TpaConfig {
+export interface AppConfig {
   name: string;
   description: string;
   version: string;
@@ -162,11 +162,11 @@ export interface TpaConfig {
 }
 
 /**
- * Validate a TPA configuration object
+ * Validate a App configuration object
  * @param config Object to validate
  * @returns True if the config is valid
  */
-export function validateTpaConfig(config: any): config is TpaConfig {
+export function validateAppConfig(config: any): config is AppConfig {
   if (!config || typeof config !== 'object') return false;
 
   // Check required string properties

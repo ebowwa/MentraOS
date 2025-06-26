@@ -11,9 +11,9 @@ import LandingPage from './pages/LandingPage';
 import DashboardHome from './pages/DashboardHome';
 
 import LoginOrSignup from './pages/AuthPage';
-import TPAList from './pages/TPAList';
-import CreateTPA from './pages/CreateTPA';
-import EditTPA from './pages/EditTPA';
+import AppList from './pages/AppList';
+import CreateApp from './pages/CreateApp';
+import EditApp from './pages/EditApp';
 import OrganizationSettings from './pages/OrganizationSettings';
 import Members from './pages/Members';
 import AdminPanel from './pages/AdminPanel';
@@ -99,19 +99,19 @@ const App: React.FC = () => {
                 <DashboardHome />
               </ProtectedRoute>
             } />
-            <Route path="/tpas" element={
+            <Route path="/apps" element={
               <ProtectedRoute>
-                <TPAList />
+                <AppList />
               </ProtectedRoute>
             } />
-            <Route path="/tpas/create" element={
+            <Route path="/apps/create" element={
               <ProtectedRoute>
-                <CreateTPA />
+                <CreateApp />
               </ProtectedRoute>
             } />
-            <Route path="/tpas/:packageName/edit" element={
+            <Route path="/apps/:packageName/edit" element={
               <ProtectedRoute>
-                <EditTPA />
+                <EditApp />
               </ProtectedRoute>
             } />
 

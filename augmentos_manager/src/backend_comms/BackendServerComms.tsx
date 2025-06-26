@@ -1,14 +1,10 @@
 // backend_comms/BackendServerComms.ts
 import axios, {AxiosRequestConfig} from "axios"
-import {Config} from "react-native-config"
+import Constants from "expo-constants"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {AppInterface} from "@/contexts/AppStatusProvider"
-import Toast from "react-native-toast-message"
-import {translate} from "@/i18n"
-import {colors} from "@/theme"
-import {TruckIcon} from "assets/icons/component/TruckIcon"
 
 interface Callback {
   onSuccess: (data: any) => void
@@ -28,13 +24,18 @@ export default class BackendServerComms {
       return customUrl
     }
 
+    // @ts-ignore
+    const {MENTRAOS_HOST, MENTRAOS_PORT, MENTRAOS_SECURE} = Constants.expoConfig?.extra
+
     // Debug logging for environment variables
-    console.log(`${this.TAG}: Config values - HOST: ${Config.MENTRAOS_HOST}, PORT: ${Config.MENTRAOS_PORT}, SECURE: ${Config.MENTRAOS_SECURE}`)
-    
+    console.log(
+      `${this.TAG}: Config values - HOST: ${MENTRAOS_HOST}, PORT: ${MENTRAOS_PORT}, SECURE: ${MENTRAOS_SECURE}`,
+    )
+
     // Use fallback values if Config values are undefined
-    const secure = Config.MENTRAOS_SECURE ? Config.MENTRAOS_SECURE === 'true' : true;
-    const host = Config.MENTRAOS_HOST || 'api.mentra.glass';
-    const port = Config.MENTRAOS_PORT || '443';
+    const secure = MENTRAOS_SECURE ? MENTRAOS_SECURE === "true" : true
+    const host = MENTRAOS_HOST || "api.mentra.glass"
+    const port = MENTRAOS_PORT || "443"
     const protocol = secure ? "https" : "http"
     const defaultServerUrl = `${protocol}://${host}:${port}`
     console.log(`${this.TAG}: Using default backend URL from env: ${defaultServerUrl}`)
@@ -235,14 +236,14 @@ export default class BackendServerComms {
     }
   }
 
-  public async getTpaSettings(tpaName: string): Promise<any> {
+  public async getAppSettings(appName: string): Promise<any> {
     if (!this.coreToken) {
       throw new Error("No core token available for authentication")
     }
 
     const baseUrl = await this.getServerUrl()
-    const url = `${baseUrl}/tpasettings/${tpaName}`
-    console.log("Fetching TPA settings from:", url)
+    const url = `${baseUrl}/appsettings/${appName}`
+    console.log("Fetching App settings from:", url)
 
     const config: AxiosRequestConfig = {
       method: "GET",
@@ -256,26 +257,26 @@ export default class BackendServerComms {
     try {
       const response = await axios(config)
       if (response.status === 200 && response.data) {
-        console.log("Received TPA settings:", response.data)
+        console.log("Received App settings:", response.data)
         return response.data
       } else {
         throw new Error(`Bad response: ${response.statusText}`)
       }
     } catch (error: any) {
-      console.error("Error fetching TPA settings:", error.message || error)
+      console.error("Error fetching App settings:", error.message || error)
       throw error
     }
   }
 
-  // New method to update a TPA setting on the server.
-  public async updateTpaSetting(tpaName: string, update: {key: string; value: any}): Promise<any> {
+  // New method to update a App setting on the server.
+  public async updateAppSetting(appName: string, update: {key: string; value: any}): Promise<any> {
     if (!this.coreToken) {
       throw new Error("No core token available for authentication")
     }
 
     const baseUrl = await this.getServerUrl()
-    const url = `${baseUrl}/tpasettings/${tpaName}`
-    console.log("Updating TPA settings via:", url)
+    const url = `${baseUrl}/appsettings/${appName}`
+    console.log("Updating App settings via:", url)
 
     const config: AxiosRequestConfig = {
       method: "POST",
@@ -290,13 +291,13 @@ export default class BackendServerComms {
     try {
       const response = await axios(config)
       if (response.status === 200 && response.data) {
-        console.log("Updated TPA settings:", response.data)
+        console.log("Updated App settings:", response.data)
         return response.data
       } else {
         throw new Error(`Bad response: ${response.statusText}`)
       }
     } catch (error: any) {
-      console.error("Error updating TPA settings:", error.message || error)
+      console.error("Error updating App settings:", error.message || error)
       throw error
     }
   }
@@ -469,7 +470,7 @@ export default class BackendServerComms {
 
   /**
    * Requests a temporary, single-use token for webview authentication.
-   * @param packageName The package name of the TPA the token is for.
+   * @param packageName The package name of the App the token is for.
    * @returns Promise resolving to the temporary token string.
    * @throws Error if the request fails or no core token is available.
    */

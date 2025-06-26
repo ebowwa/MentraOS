@@ -9,14 +9,14 @@ This document outlines the refactoring plan for separating the WebSocket service
 1. **Monolithic File**: The `websocket.service.ts` file is large (over 26,000 tokens) and handles many different responsibilities.
 2. **Mixed Concerns**: WebSocket communication, session management, and business logic are intermingled.
 3. **Error Handling**: Error handling is inconsistent across various message types, making debugging difficult.
-4. **Authentication**: Authentication flows differ between glasses clients and TPAs, with TPA authentication happening after connection.
+4. **Authentication**: Authentication flows differ between glasses clients and Apps, with App authentication happening after connection.
 5. **Code Organization**: Related functions are scattered throughout the file, making maintenance challenging.
 
 ## Refactoring Goals
 
 1. **Separate WebSocket Handling from Session Logic**: Move session-related functions to session.service.ts.
 2. **Improve Error Handling**: Implement handler-level try/catch with a fallback mechanism and standardized error responses.
-3. **Implement JWT Authentication for TPAs**: Support header-based authentication for TPAs while maintaining backward compatibility.
+3. **Implement JWT Authentication for Apps**: Support header-based authentication for Apps while maintaining backward compatibility.
 4. **Ensure No Regression**: Preserve all specialized processing for each message type.
 5. **Clarify Responsibilities**: Make it clear which service handles which parts of the connection lifecycle.
 
@@ -25,7 +25,7 @@ This document outlines the refactoring plan for separating the WebSocket service
 The core WebSocket service has already been implemented in the new directory structure, with the following components:
 
 - `websocket.service.ts`: Core WebSocket setup and routing, implementing the connection upgrade handling
-- `websocket-tpa.service.ts` and `websocket-glasses.service.ts` (in progress)
+- `websocket-app.service.ts` and `websocket-glasses.service.ts` (in progress)
 
 ### Completed Implementation Elements
 
@@ -40,11 +40,11 @@ The core WebSocket service has already been implemented in the new directory str
 /packages/cloud/src/services/
 ├── websocket/
 │   ├── websocket.service.ts       # Core WebSocket setup and routing
-│   ├── websocket-tpa.service.ts   # TPA-specific connection handling
+│   ├── websocket-app.service.ts   # App-specific connection handling
 │   ├── websocket-glasses.service.ts # Glasses client connection handling
 │   ├── handlers/                   # Message-specific handlers
 │   │   ├── glasses-handlers.ts     # Handlers for glasses messages
-│   │   ├── tpa-handlers.ts         # Handlers for TPA messages
+│   │   ├── app-handlers.ts         # Handlers for App messages
 │   │   └── common-handlers.ts      # Shared handlers
 │   └── REFACTORING-PLAN.md        # This document
 ├── session/
@@ -67,17 +67,17 @@ The core WebSocket service has already been implemented in the new directory str
 
 ### Message Relaying
 
-- **Rename** `broadcastToTpa(userSessionId, streamType, data)` to `relayMessageToTpas(userSession, streamType, data)`
+- **Rename** `broadcastToApp(userSessionId, streamType, data)` to `relayMessageToApps(userSession, streamType, data)`
   - Pass userSession object directly instead of userSessionId
-  - Name reflects that we're relaying to multiple subscribed TPAs
+  - Name reflects that we're relaying to multiple subscribed Apps
 
-- **Rename** `broadcastToTpaAudio(userSession, arrayBuffer)` to `relayAudioToTpas(userSession, arrayBuffer)`
+- **Rename** `broadcastToAppAudio(userSession, arrayBuffer)` to `relayAudioToApps(userSession, arrayBuffer)`
   - Clear naming that reflects the audio-specific functionality
   - Already uses userSession object directly
 
 ### Session State Management
 
-- `handleTpaInit(ws, initMessage, setCurrentSessionId)` - TPA session setup
+- `handleAppInit(ws, initMessage, setCurrentSessionId)` - App session setup
 - `handleAppStateBroadcast(userSession)` - Broadcast app state to all connected clients
 - Parts of message handlers that update session state
 
@@ -122,32 +122,32 @@ private async handleConnectionInit(userSession: ExtendedUserSession, message: Co
 - Trigger microphone state changes based on subscriptions
 - Track detailed connection state in analytics
 - Manage device model tracking
-- Update connection status for TPAs
+- Update connection status for Apps
 
 ### VAD (Voice Activity Detection)
 - Manage transcription service start/stop
 - Update session transcription state
 - Handle errors specifically for transcription
-- Broadcast to TPAs with appropriate metadata
+- Broadcast to Apps with appropriate metadata
 
 ### LOCATION_UPDATE
 - Cache location data for future use
 - Update user's location in database
-- Broadcast to TPAs with location subscriptions
+- Broadcast to Apps with location subscriptions
 - Apply any formatting or transformation needed
 
 ### CALENDAR_EVENT
 - Cache events for future subscribers
-- Format and broadcast to TPAs
+- Format and broadcast to Apps
 - Handle different calendar providers
 
 ### PHOTO_RESPONSE
 - Process through the photoRequestService
 - Handle request matching and validation
-- Forward to requesting TPA with metadata
+- Forward to requesting App with metadata
 
 ### VIDEO_STREAM_RESPONSE
-- Forward to the specific requesting TPA
+- Forward to the specific requesting App
 - Validate required fields
 - Handle formatting and chunking if needed
 
@@ -161,10 +161,10 @@ private async handleConnectionInit(userSession: ExtendedUserSession, message: Co
 - Map complex core status to MentraOS settings
 - Detect which specific settings changed
 - Update database selectively
-- Notify only TPAs subscribed to the changed settings
+- Notify only Apps subscribed to the changed settings
 
 ### Default Case
-- Simply relay the message to all subscribed TPAs
+- Simply relay the message to all subscribed Apps
 - Apply any common transformations needed
 
 ## Functions to Keep in WebSocket Services
@@ -176,7 +176,7 @@ private async handleConnectionInit(userSession: ExtendedUserSession, message: Co
 - Routing connections to appropriate handlers
 - Shared WebSocket utilities
 
-### TPA WebSocket Service (websocket-tpa.service.ts)
+### App WebSocket Service (websocket-app.service.ts)
 
 - `handleConnection(ws, request)` - Initial connection setup
 - Message parsing and routing to session methods
@@ -311,7 +311,7 @@ if (!coreToken) {
 }
 ```
 
-### TPA Authentication
+### App Authentication
 
 - **New Approach** (JWT-based):
   - Extract JWT from Authorization header during connection upgrade
@@ -321,9 +321,9 @@ if (!coreToken) {
   - Provide detailed error messages if authentication fails
 
 - **Legacy Approach** (message-based):
-  - Accept TpaConnectionInit message with packageName and apiKey
+  - Accept AppConnectionInit message with packageName and apiKey
   - Validate apiKey against stored hash using developer.service
-  - Maintain backward compatibility for existing TPAs
+  - Maintain backward compatibility for existing Apps
   - This approach will be used as fallback if JWT is not present
 
 ## Migration Strategy

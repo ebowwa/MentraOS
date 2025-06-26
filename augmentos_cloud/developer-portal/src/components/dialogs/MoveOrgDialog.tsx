@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { AlertCircle, Loader2, MoveIcon } from "lucide-react";
 import { Organization } from '@/services/api.service';
-import { TPA } from '@/types/tpa';
+import { App } from '@/types/app';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
@@ -30,9 +30,9 @@ interface MoveOrgDialogProps {
   onOpenChange: (open: boolean) => void;
 
   /**
-   * The TPA to move
+   * The App to move
    */
-  tpa: TPA;
+  app: App;
 
   /**
    * List of organizations the user is a member of with admin rights
@@ -45,23 +45,23 @@ interface MoveOrgDialogProps {
   currentOrgId: string;
 
   /**
-   * Function to call when the TPA is successfully moved
+   * Function to call when the App is successfully moved
    */
   onMoveComplete: () => void;
 
   /**
-   * Function to move the TPA to a different organization
+   * Function to move the App to a different organization
    */
   onMove: (targetOrgId: string) => Promise<void>;
 }
 
 /**
- * Dialog for moving a TPA to a different organization
+ * Dialog for moving a App to a different organization
  */
 const MoveOrgDialog: React.FC<MoveOrgDialogProps> = ({
   open,
   onOpenChange,
-  tpa,
+  app,
   eligibleOrgs,
   currentOrgId,
   onMoveComplete,
@@ -103,7 +103,7 @@ const MoveOrgDialog: React.FC<MoveOrgDialogProps> = ({
       // Notify parent component
       onMoveComplete();
     } catch (err) {
-      console.error('Error moving TPA:', err);
+      console.error('Error moving App:', err);
       setError(err instanceof Error ? err.message : 'Failed to move app to the selected organization');
     } finally {
       setIsMoving(false);
@@ -130,7 +130,7 @@ const MoveOrgDialog: React.FC<MoveOrgDialogProps> = ({
             Move App to Another Organization
           </DialogTitle>
           <DialogDescription>
-            Move "{tpa.name}" from {currentOrgName} to another organization where you have admin access.
+            Move "{app.name}" from {currentOrgName} to another organization where you have admin access.
           </DialogDescription>
         </DialogHeader>
 

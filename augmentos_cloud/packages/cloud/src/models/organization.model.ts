@@ -1,6 +1,6 @@
 /**
  * @fileoverview Organization model - defines schema for organizations that group users
- * and own applications (TPAs). Users can be members of multiple organizations.
+ * and own applications (Apps). Users can be members of multiple organizations.
  */
 
 import mongoose, { Schema, model, Document, Types, Model } from 'mongoose';
