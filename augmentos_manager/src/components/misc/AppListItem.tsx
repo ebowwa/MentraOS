@@ -72,7 +72,7 @@ export const AppListItem = ({
             numberOfLines={1}
             ellipsizeMode="tail"
           />
-          {is_foreground && <Tag isActive={isActive} isForeground={is_foreground} />}
+          <Tag isActive={isActive} isForeground={is_foreground} />
         </View>
       </TouchableOpacity>
 
@@ -147,28 +147,28 @@ const Tag = ({isActive, isForeground = false}: {isActive: boolean; isForeground?
   const {themed, theme} = useAppTheme()
   const mColor = isActive ? theme.colors.foregroundTagText : theme.colors.textDim
 
-  if (isForeground) {
-    return (
-      <View style={themed(isActive ? $tagActive : $tag)}>
-        <TreeIcon size={16} color={mColor} />
-        <Text
-          text={isForeground ? translate("home:foreground") : ""}
-          style={[themed($disconnect), {color: mColor}]}
-          numberOfLines={1}
-        />
-        <Pressable
-          onPress={() => {
-            Toast.show({
-              type: "baseToast",
-              text1: "Not implemented",
-              position: "bottom",
-            })
-          }}></Pressable>
-      </View>
-    )
-  } else {
-    return
+  if (!isForeground) {
+    return null
   }
+
+  return (
+    <View style={themed(isActive ? $tagActive : $tag)}>
+      <TreeIcon size={16} color={mColor} />
+      <Text
+        text={isForeground ? translate("home:foreground") : ""}
+        style={[themed($disconnect), {color: mColor}]}
+        numberOfLines={1}
+      />
+      <Pressable
+        onPress={() => {
+          Toast.show({
+            type: "baseToast",
+            text1: "Not implemented",
+            position: "bottom",
+          })
+        }}></Pressable>
+    </View>
+  )
 }
 const $tagActive: ThemedStyle<ViewStyle> = ({colors}) => {
   return {

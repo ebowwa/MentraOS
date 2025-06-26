@@ -171,7 +171,8 @@ export default function AppsActiveList({
             <React.Fragment key={app.packageName}>
               <AppListItem
                 app={app}
-                is_foreground={app.appType == "standard"}
+                // @ts-ignore
+                is_foreground={(app.appType == "standard") || (app["tpaType"] == "standard")}
                 isActive={true}
                 onTogglePress={() => {
                   Animated.timing(itemOpacity, {
