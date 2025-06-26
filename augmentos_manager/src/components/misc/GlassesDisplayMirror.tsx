@@ -100,10 +100,6 @@ const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontFamily: "Montserrat-Regular",
   fontSize: 16,
-  // Add text shadow for better visibility against any background
-  textShadowColor: "rgba(0, 0, 0, 0.9)",
-  textShadowOffset: {width: 1, height: 1},
-  textShadowRadius: 2,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = () => ({
