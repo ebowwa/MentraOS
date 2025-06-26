@@ -10,6 +10,7 @@ import showAlert from "@/utils/AlertUtils"
 import {useAppTheme} from "@/utils/useAppTheme"
 import {router, useLocalSearchParams, useFocusEffect} from "expo-router"
 import {Header, Screen} from "@/components/ignite"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function AppWebView() {
   //   const webviewURL = route.params?.webviewURL;
@@ -26,6 +27,7 @@ export default function AppWebView() {
   const [finalUrl, setFinalUrl] = useState<string | null>(null)
   const [isLoadingToken, setIsLoadingToken] = useState(true)
   const [tokenError, setTokenError] = useState<string | null>(null)
+  const {replace, goBack} = useNavigationHistory()
 
   if (typeof webviewURL !== "string" || typeof appName !== "string" || typeof packageName !== "string") {
     return <Text>Missing required parameters</Text>
@@ -36,14 +38,14 @@ export default function AppWebView() {
     useCallback(() => {
       const onBackPress = () => {
         // Always go back to home when back is pressed
-        router.replace("/(tabs)/home")
+        replace("/(tabs)/home")
         return true
       }
 
       BackHandler.addEventListener("hardwareBackPress", onBackPress)
 
       return () => BackHandler.removeEventListener("hardwareBackPress", onBackPress)
-    }, [])
+    }, []),
   )
 
   // Set up the header with settings button if we came from app settings
@@ -75,8 +77,7 @@ export default function AppWebView() {
   //   }, [fromSettings, packageName, appName]);
 
   function determineCloudUrl(): string | undefined {
-    const cloudHostName =
-      process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.MENTRAOS_HOST
+    const cloudHostName = process.env.CLOUD_PUBLIC_HOST_NAME || process.env.CLOUD_HOST_NAME || process.env.MENTRAOS_HOST
     if (
       cloudHostName &&
       cloudHostName.trim() !== "prod.augmentos.cloud" &&
@@ -150,7 +151,7 @@ export default function AppWebView() {
         showAlert(
           "Authentication Error",
           `Could not securely connect to ${appName}. Please try again later. Details: ${error.message}`,
-          [{text: "OK", onPress: () => router.back()}], // Option to go back
+          [{text: "OK", onPress: () => goBack()}], // Option to go back
         )
       } finally {
         setIsLoadingToken(false)
@@ -175,7 +176,7 @@ export default function AppWebView() {
   // Render loading state while fetching token
   if (isLoadingToken) {
     return (
-      <View style={[styles.container, {backgroundColor: theme.backgroundColor}]}>
+      <View style={[styles.container, {backgroundColor: theme2.backgroundColor}]}>
         <LoadingOverlay message={`Preparing secure access to ${appName}...`} />
       </View>
     )
@@ -220,17 +221,14 @@ export default function AppWebView() {
         title={appName}
         titleMode="center"
         leftIcon="caretLeft"
-        onLeftPress={() => router.replace("/(tabs)/home")}
+        onLeftPress={() => replace("/(tabs)/home")}
         rightIcon="more"
         rightIconColor={theme.colors.icon}
         onRightPress={() => {
-          router.replace({
-            pathname: "/app/settings",
-            params: {
-              packageName: packageName as string,
-              appName: appName as string,
-              fromWebView: "true",
-            },
+          replace("/app/settings", {
+            packageName: packageName as string,
+            appName: appName as string,
+            fromWebView: "true",
           })
         }}
         style={{height: 44}}

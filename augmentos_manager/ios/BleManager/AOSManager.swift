@@ -1192,7 +1192,7 @@ struct ViewState {
       // Check if we've completed all cycles
       if cycles >= totalCycles {
         // End animation with final message
-        self.sendText("                  /// AugmentOS Connected \\\\\\")
+        self.sendText("                  /// MentraOS Connected \\\\\\")
         animationQueue.asyncAfter(deadline: .now() + 1.0) {
           self.sendText(" ")
         }
@@ -1200,7 +1200,7 @@ struct ViewState {
       }
 
       // Display current animation frame
-      let frameText = "                    \(arrowFrames[frameIndex]) AugmentOS Booting \(arrowFrames[frameIndex])"
+      let frameText = "                    \(arrowFrames[frameIndex]) MentraOS Booting \(arrowFrames[frameIndex])"
       self.sendText(frameText)
 
       // Move to next frame

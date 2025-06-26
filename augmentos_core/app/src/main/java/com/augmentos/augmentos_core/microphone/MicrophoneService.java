@@ -67,7 +67,7 @@ public class MicrophoneService extends Service {
         // Create a notification that clearly shows microphone usage
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle("Microphone Active")
-                .setContentText("AugmentOS is using the microphone")
+                .setContentText("MentraOS is using the microphone")
                 .setSmallIcon(android.R.drawable.ic_btn_speak_now) // Using system icon
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)

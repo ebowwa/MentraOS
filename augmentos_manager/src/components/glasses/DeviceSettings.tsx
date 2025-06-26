@@ -16,7 +16,6 @@ import coreCommunicator from "@/bridge/CoreCommunicator"
 import {useStatus} from "@/contexts/AugmentOSStatusProvider"
 import {getGlassesImage} from "@/utils/getGlassesImage"
 import GlobalEventEmitter from "@/utils/GlobalEventEmitter"
-import {getBatteryColor, getBatteryIcon} from "@/utils/getBatteryIcon"
 import {Slider} from "react-native-elements"
 import {router} from "expo-router"
 import {useAppTheme} from "@/utils/useAppTheme"
@@ -36,6 +35,57 @@ import {isMentraUser} from "@/utils/isMentraUser"
 import {loadSetting} from "@/utils/SettingsHelper"
 import {SETTINGS_KEYS} from "@/consts"
 import {isDeveloperBuildOrTestflight} from "@/utils/buildDetection"
+import {SvgXml} from "react-native-svg"
+
+// Icon components defined directly in this file to avoid path resolution issues
+interface CaseIconProps {
+  size?: number
+  color?: string
+  isCharging?: boolean
+  isDark?: boolean
+}
+
+const CaseIcon = ({size = 24, color, isCharging = false, isDark = false}: CaseIconProps) => {
+  const caseSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3 16.125L10.5 16.125L10.5 17.625L3 17.625L3 16.125Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3 4.875L21 4.875L21 6.375L3 6.375L3 4.875Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M3 13.125L10.5 13.125L10.5 14.625L3 14.625L3 13.125Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<rect x="1.5" y="6.375" width="1.5" height="9.75" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<rect x="21" y="6.375" width="1.5" height="4.5" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<rect x="10.5" y="10.125" width="3" height="1.5" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M13.5 12.375H21V13.875H13.5V12.375Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M13.5 13.875H21V17.625H13.5V13.875Z" fill="${isCharging ? "#FEF991" : (color || (isDark ? "#D3D3D3" : "#232323"))}"/>
+<path d="M13.5 17.625H21V19.125H13.5V17.625Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M21 13.875H22.5V17.625H21V13.875Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M22.5 14.625H23.25V16.875H22.5V14.625Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<rect x="12" y="13.875" width="1.5" height="3.75" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+</svg>`
+  return <SvgXml xml={caseSvg} width={size} height={size} />
+}
+
+interface GlassesIconProps {
+  size?: number
+  color?: string
+  isOn?: boolean
+  isDark?: boolean
+}
+
+const GlassesIcon = ({size = 24, color, isOn = false, isDark = false}: GlassesIconProps) => {
+  const glassesSvg = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M1.5 9H3.00005V15.0002H1.5V9Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M13.502 12H15.002V15.0001H13.502V12Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M12 9H13.5001V12.0001H12V9Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M10.5 9H12.0001V12.0001H10.5V9Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M10.5 10.5H13.5001V12.0001H10.5V10.5Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M9.00195 12H10.502V15.0001H9.00195V12Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M21 9H22.5001V15.0002H21V9Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M3 7.5H10.5003V9.00005H3V7.5Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M13.502 7.5H21.0022V9.00005H13.502V7.5Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M3 15H9.00021V16.5001H3V15Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+<path d="M15 15H21.0002V16.5001H15V15Z" fill="${color || (isDark ? "#D3D3D3" : "#232323")}"/>
+</svg>`
+  return <SvgXml xml={glassesSvg} width={size} height={size} />
+}
 
 export default function DeviceSettings() {
   const fadeAnim = useRef(new Animated.Value(0)).current
@@ -211,6 +261,53 @@ export default function DeviceSettings() {
         </View>
       )}
 
+      {/* Battery Status Section */}
+      {status.glasses_info?.battery_level !== undefined && status.glasses_info.battery_level !== -1 && (
+        <View style={themed($settingsGroup)}>
+          <Text style={[themed($subtitle), {marginBottom: theme.spacing.xs}]}>Battery Status</Text>
+          
+          {/* Glasses Battery */}
+          {status.glasses_info.battery_level !== -1 && (
+            <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
+              <View style={{flexDirection: "row", alignItems: "center"}}>
+                <GlassesIcon size={20} isDark={theme.isDark} />
+                <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>Glasses</Text>
+              </View>
+              <View style={{flexDirection: "row", alignItems: "center"}}>
+                <Icon icon="battery" size={16} color={theme.colors.text} />
+                <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
+                  {status.glasses_info.battery_level}%
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Case Battery */}
+          {status.glasses_info.case_battery_level !== undefined && 
+           status.glasses_info.case_battery_level !== -1 && 
+           !status.glasses_info.case_removed && (
+            <View style={{flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 4}}>
+              <View style={{flexDirection: "row", alignItems: "center"}}>
+                <CaseIcon 
+                  size={20} 
+                  isCharging={status.glasses_info.case_charging} 
+                  isDark={theme.isDark} 
+                />
+                <Text style={{color: theme.colors.text, marginLeft: theme.spacing.xs}}>
+                  Case {status.glasses_info.case_charging ? "(Charging)" : ""}
+                </Text>
+              </View>
+              <View style={{flexDirection: "row", alignItems: "center"}}>
+                <Icon icon="battery" size={16} color={theme.colors.text} />
+                <Text style={{color: theme.colors.text, marginLeft: 4, fontWeight: "500"}}>
+                  {status.glasses_info.case_battery_level}%
+                </Text>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
+
       {hasBrightness && (
         <View style={themed($settingsGroup)}>
           <ToggleSetting
@@ -378,7 +475,7 @@ const $container: ThemedStyle<ViewStyle> = () => ({
   width: "100%",
   minHeight: 240,
   justifyContent: "center",
-  marginTop: 16, // Increased space above component
+  marginTop: -13, // Reduced space above component
   // backgroundColor: colors.palette.neutral200,
   backgroundColor: "transparent",
   gap: 16,
