@@ -1035,6 +1035,56 @@ public class EvenRealitiesG1SGC extends SmartGlassesCommunicator {
                 return;
             }
 
+            // Log all available device information for debugging
+            Log.d(TAG, "=== Device Information ===");
+            Log.d(TAG, "Device Name: " + name);
+            Log.d(TAG, "Device Address: " + device.getAddress());
+            Log.d(TAG, "Device Type: " + device.getType());
+            Log.d(TAG, "Device Class: " + device.getBluetoothClass());
+            Log.d(TAG, "Bond State: " + device.getBondState());
+            
+            // Try to get additional device information using reflection
+            try {
+                // Try to get the full device name (might contain serial number)
+                Method getAliasMethod = device.getClass().getMethod("getAlias");
+                String alias = (String) getAliasMethod.invoke(device);
+                Log.d(TAG, "Device Alias: " + alias);
+            } catch (Exception e) {
+                Log.d(TAG, "Could not get device alias: " + e.getMessage());
+            }
+            
+            // Try to get manufacturer data from scan record
+            if (result.getScanRecord() != null) {
+                byte[] manufacturerData = result.getScanRecord().getManufacturerSpecificData(0x0000); // Common manufacturer ID
+                if (manufacturerData != null) {
+                    Log.d(TAG, "Manufacturer Data: " + bytesToHex(manufacturerData));
+                    
+                    // Try to decode serial number from manufacturer data
+                    String decodedSerial = decodeSerialFromManufacturerData(manufacturerData);
+                    if (decodedSerial != null) {
+                        Log.d(TAG, "DECODED SERIAL NUMBER: " + decodedSerial);
+                        String[] decoded = decodeEvenG1SerialNumber(decodedSerial);
+                        Log.d(TAG, "Style: " + decoded[0] + ", Color: " + decoded[1]);
+                    }
+                }
+                
+                // Log all manufacturer data
+                SparseArray<byte[]> allManufacturerData = result.getScanRecord().getManufacturerSpecificData();
+                for (int i = 0; i < allManufacturerData.size(); i++) {
+                    int manufacturerId = allManufacturerData.keyAt(i);
+                    byte[] data = allManufacturerData.valueAt(i);
+                    Log.d(TAG, "Manufacturer ID " + manufacturerId + ": " + bytesToHex(data));
+                    
+                    // Try to decode serial number from this manufacturer data
+                    String decodedSerial = decodeSerialFromManufacturerData(data);
+                    if (decodedSerial != null) {
+                        Log.d(TAG, "DECODED SERIAL NUMBER from ID " + manufacturerId + ": " + decodedSerial);
+                        String[] decoded = decodeEvenG1SerialNumber(decodedSerial);
+                        Log.d(TAG, "Style: " + decoded[0] + ", Color: " + decoded[1]);
+                    }
+                }
+            }
+
 //            Log.d(TAG, "PREFERRED ID: " + preferredG1DeviceId);
             if (preferredG1DeviceId == null || !name.contains(preferredG1DeviceId + "_")) {
                 Log.d(TAG, "NOT PAIRED GLASSES");
