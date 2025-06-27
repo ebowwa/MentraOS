@@ -281,6 +281,11 @@ const AppStore: React.FC = () => {
     }
   };
 
+  const handleCardClick = (packageName: string) => {
+    // Always navigate to app details page when clicking the card
+    navigate(`/package/${packageName}`);
+  };
+
   return (
       <div className="min-h-screen text-white" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* Header */}
@@ -379,75 +384,45 @@ const AppStore: React.FC = () => {
 
         {/* App grid */}
         {!isLoading && !error && (
-          <div className="mt-2 sm:mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-2 sm:gap-y-12 px-0">
+          <div className="mt-2 mb-2 sm:mt-8 sm:mb-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-2 sm:gap-y-12 px-0">
             {filteredApps.map(app => (
-              <div key={app.packageName} className="p-4 sm:p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" onClick={() => handleOpen(app.packageName)} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div key={app.packageName} className="p-4 sm:p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" onClick={() => handleCardClick(app.packageName)} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                 <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
                 {/* Image Column */}
                 <div className="shrink-0 flex items-start pt-2">
                   <img
                     src={app.logoURL}
                     alt={`${app.name} logo`}
-                    className="w-16 h-16 object-cover rounded-full"
+                    className="w-12 h-12 object-cover rounded-full"
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://placehold.co/64x64/gray/white?text=App';
+                      (e.target as HTMLImageElement).src = 'https://placehold.co/48x48/gray/white?text=App';
                     }}
                   />
                 </div>
 
                 {/* Content Column */}
-                <div className="flex-1 flex flex-col gap-2">
+                <div className="flex-1 flex flex-col justify-center">
                   <div>
                     <h3 className="text-[15px] font-medium mb-1" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: 'var(--text-primary)'}}>{app.name}</h3>
                     {app.description && (
-                      <p className="text-[15px] font-normal leading-[1.3] line-clamp-2" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: theme === 'light' ? '#4a4a4a' : '#9A9CAC'}}>{app.description}</p>
+                      <p className="text-[15px] font-normal leading-[1.3] line-clamp-3" style={{fontFamily: '"SF Pro Rounded", sans-serif', letterSpacing: '0.04em', color: theme === 'light' ? '#4a4a4a' : '#9A9CAC', WebkitLineClamp: 3, height: '3.9em', display: '-webkit-box', WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>{app.description}</p>
                     )}
                   </div>
+                </div>
 
-                  {/* Button row */}
-                  <div className="mt-1 sm:mt-2">
-                    {isAuthenticated ? (
-                      app.isInstalled ? (
-                        isWebView ? (
-                          // Show Open button only in webview for installed apps
-                          <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpen(app.packageName);
-                            }}
-                            disabled={installingApp === app.packageName}
-                            className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
-                            style={{
-                              backgroundColor: 'var(--button-bg)',
-                              color: 'var(--button-text)'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
-                          >
-                            <>Open</>
-                          </Button>
-                        ) : (
-                          // Show greyed out Installed button for installed apps on desktop/mobile
-                          <Button
-                            disabled={true}
-                            className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center opacity-30 cursor-not-allowed"
-                            style={{
-                              backgroundColor: 'var(--button-bg)',
-                              color: 'var(--button-text)',
-                              filter: 'grayscale(100%)'
-                            }}
-                          >
-                            <>Installed</>
-                          </Button>
-                        )
-                      ) : (
+                {/* Button Column */}
+                <div className="shrink-0 flex items-center">
+                  {isAuthenticated ? (
+                    app.isInstalled ? (
+                      isWebView ? (
+                        // Show Open button only in webview for installed apps
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleInstall(app.packageName);
+                            handleOpen(app.packageName);
                           }}
                           disabled={installingApp === app.packageName}
-                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center"
+                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit"
                           style={{
                             backgroundColor: 'var(--button-bg)',
                             color: 'var(--button-text)'
@@ -455,23 +430,30 @@ const AppStore: React.FC = () => {
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
                           onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
                         >
-                          {installingApp === app.packageName ? (
-                            <>
-                              <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full mr-2" style={{ borderColor: 'var(--button-text)', borderTopColor: 'transparent' }}></div>
-                              Installing
-                            </>
-                          ) : (
-                            <>Get</>
-                          )}
+                          <>Open</>
+                        </Button>
+                      ) : (
+                        // Show greyed out Installed button for installed apps on desktop/mobile
+                        <Button
+                          disabled={true}
+                          className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit opacity-30 cursor-not-allowed"
+                          style={{
+                            backgroundColor: 'var(--button-bg)',
+                            color: 'var(--button-text)',
+                            filter: 'grayscale(100%)'
+                          }}
+                        >
+                          <>Installed</>
                         </Button>
                       )
                     ) : (
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();
-                          navigate('/login');
+                          handleInstall(app.packageName);
                         }}
-                        className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit self-center flex items-center gap-2"
+                        disabled={installingApp === app.packageName}
+                        className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit"
                         style={{
                           backgroundColor: 'var(--button-bg)',
                           color: 'var(--button-text)'
@@ -479,11 +461,34 @@ const AppStore: React.FC = () => {
                         onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
                       >
-                        <Lock className="h-4 w-4 mr-1" />
-                        Sign in
+                        {installingApp === app.packageName ? (
+                          <>
+                            <div className="animate-spin h-4 w-4 border-2 border-t-transparent rounded-full mr-2" style={{ borderColor: 'var(--button-text)', borderTopColor: 'transparent' }}></div>
+                            Installing
+                          </>
+                        ) : (
+                          <>Get</>
+                        )}
                       </Button>
-                    )}
-                  </div>
+                    )
+                  ) : (
+                    <Button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate('/login');
+                      }}
+                      className="text-[15px] font-normal tracking-[0.1em] px-4 py-[6px] rounded-full w-fit h-fit flex items-center gap-2"
+                      style={{
+                        backgroundColor: 'var(--button-bg)',
+                        color: 'var(--button-text)'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--button-hover)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'var(--button-bg)'}
+                    >
+                      <Lock className="h-4 w-4 mr-1" />
+                      Sign in
+                    </Button>
+                  )}
                 </div>
               </div>
             ))}

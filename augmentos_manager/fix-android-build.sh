@@ -61,15 +61,30 @@ echo ""
 echo "🧹 Step 5: Cleaning Gradle cache..."
 cd android && ./gradlew clean && cd ..
 
-# Step 6: Build Android
+# Step 6: Restore iOS pods (since expo prebuild affects iOS too)
 echo ""
-echo "🚀 Step 6: Building Android app..."
+echo "🍎 Step 6: Restoring iOS pods..."
+if [ -d "ios" ]; then
+    cd ios && pod install && cd ..
+    if [ $? -eq 0 ]; then
+        echo "✅ iOS pods restored successfully"
+    else
+        echo "⚠️  Warning: iOS pod install failed"
+    fi
+else
+    echo "⚠️  Warning: iOS directory not found, skipping pod install"
+fi
+
+# Step 7: Build Android
+echo ""
+echo "🚀 Step 7: Building Android app..."
 pnpm android
 
 # Check if build was successful
 if [ $? -eq 0 ]; then
     echo ""
     echo "✅ Android build completed successfully!"
+    echo "✅ iOS pods have been restored too!"
     echo ""
     echo "📱 To start the development server, run:"
     echo "   pnpm run start"
@@ -79,5 +94,6 @@ else
     echo ""
     echo "Try running the following commands manually:"
     echo "1. pnpm expo prebuild"
-    echo "2. pnpm android"
+    echo "2. cd ios && pod install && cd .."
+    echo "3. pnpm android"
 fi

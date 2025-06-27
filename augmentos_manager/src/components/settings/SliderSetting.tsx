@@ -71,8 +71,10 @@ const SliderSetting: React.FC<SliderSettingProps> = ({
               height: 24,
               backgroundColor: theme.isDark ? theme.colors.sliderThumb : '#FFFFFF',
               borderRadius: 12,
-              // Add shadow only in light theme
+              // Add purple border in light theme to match toggle styling
               ...(!theme.isDark && {
+                borderColor: theme.colors.switchBorder,
+                borderWidth: theme.colors.switchBorderWidth,
                 shadowColor: "#000",
                 shadowOffset: {
                   width: 0,
