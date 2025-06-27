@@ -281,6 +281,11 @@ const AppStore: React.FC = () => {
     }
   };
 
+  const handleCardClick = (packageName: string) => {
+    // Always navigate to app details page when clicking the card
+    navigate(`/package/${packageName}`);
+  };
+
   return (
       <div className="min-h-screen text-white" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
       {/* Header */}
@@ -381,7 +386,7 @@ const AppStore: React.FC = () => {
         {!isLoading && !error && (
           <div className="mt-2 sm:mt-16 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-x-8 gap-y-2 sm:gap-y-12 px-0">
             {filteredApps.map(app => (
-              <div key={app.packageName} className="p-4 sm:p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" onClick={() => handleOpen(app.packageName)} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+              <div key={app.packageName} className="p-4 sm:p-6 flex gap-3 transition-colors rounded-lg relative cursor-pointer" onClick={() => handleCardClick(app.packageName)} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-secondary)'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                 <div className="absolute bottom-0 left-3 right-3 h-px" style={{ backgroundColor: 'var(--border-color)' }}></div>
                 {/* Image Column */}
                 <div className="shrink-0 flex items-start pt-2">
