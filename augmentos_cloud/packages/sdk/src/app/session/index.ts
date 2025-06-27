@@ -1731,3 +1731,45 @@ export class AppSession {
     return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 }
+
+
+/**
+ * @deprecated Use `AppSessionConfig` instead. `TpaSessionConfig` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * const config: TpaSessionConfig = { ... };
+ *
+ * // ✅ Use this instead
+ * const config: AppSessionConfig = { ... };
+ * ```
+ */
+export type TpaSessionConfig = AppSessionConfig;
+
+/**
+ * @deprecated Use `AppSession` instead. `TpaSession` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * const session = new TpaSession(config);
+ *
+ * // ✅ Use this instead
+ * const session = new AppSession(config);
+ * ```
+ */
+export class TpaSession extends AppSession {
+  constructor(config: TpaSessionConfig) {
+    super(config);
+    // Emit a deprecation warning to help developers migrate
+    console.warn(
+      '⚠️  DEPRECATION WARNING: TpaSession is deprecated and will be removed in a future version. ' +
+      'Please use AppSession instead. ' +
+      'Simply replace "TpaSession" with "AppSession" in your code.'
+    );
+  }
+}
+

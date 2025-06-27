@@ -334,14 +334,14 @@ export class AppServer {
    * Handle a session request webhook
    */
   private async handleSessionRequest(request: SessionWebhookRequest, res: express.Response): Promise<void> {
-    const { sessionId, userId, mentraOSWebsocketUrl } = request;
+    const { sessionId, userId, mentraOSWebsocketUrl, augmentOSWebsocketUrl } = request;
     this.logger.info({userId}, `🗣️ Received session request for user ${userId}, session ${sessionId}\n\n`);
 
     // Create new App session
     const session = new AppSession({
       packageName: this.config.packageName,
       apiKey: this.config.apiKey,
-      mentraOSWebsocketUrl, // The websocket URL for the specific MentraOS server that this userSession is connecting to.
+      mentraOSWebsocketUrl: mentraOSWebsocketUrl || augmentOSWebsocketUrl, // The websocket URL for the specific MentraOS server that this userSession is connecting to.
       appServer: this,
       userId,
     });
@@ -525,5 +525,46 @@ export class AppServer {
 
     // Run cleanup handlers
     this.cleanupHandlers.forEach(handler => handler());
+  }
+}
+
+
+/**
+ * @deprecated Use `AppServerConfig` instead. `TpaServerConfig` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * const config: TpaServerConfig = { ... };
+ *
+ * // ✅ Use this instead
+ * const config: AppServerConfig = { ... };
+ * ```
+ */
+export type TpaServerConfig = AppServerConfig;
+
+/**
+ * @deprecated Use `AppServer` instead. `TpaServer` is deprecated and will be removed in a future version.
+ * This is an alias for backward compatibility only.
+ *
+ * @example
+ * ```typescript
+ * // ❌ Deprecated - Don't use this
+ * class MyServer extends TpaServer { ... }
+ *
+ * // ✅ Use this instead
+ * class MyServer extends AppServer { ... }
+ * ```
+ */
+export class TpaServer extends AppServer {
+  constructor(config: TpaServerConfig) {
+    super(config);
+    // Emit a deprecation warning to help developers migrate
+    console.warn(
+      '⚠️  DEPRECATION WARNING: TpaServer is deprecated and will be removed in a future version. ' +
+      'Please use AppServer instead. ' +
+      'Simply replace "TpaServer" with "AppServer" in your code.'
+    );
   }
 }
