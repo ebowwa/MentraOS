@@ -1,7 +1,7 @@
 /**
  * 🚀 App Server Module
  *
- * Creates and manages a server for Third Party Apps (Apps) in the MentraOS ecosystem.
+ * Creates and manages a server for Apps in the MentraOS ecosystem.
  * Handles webhook endpoints, session management, and cleanup.
  */
 import express, { type Express } from 'express';
