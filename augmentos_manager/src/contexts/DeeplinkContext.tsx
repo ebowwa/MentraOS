@@ -6,9 +6,7 @@ import {deepLinkRoutes} from "@/utils/deepLinkRoutes"
 import {NavObject, useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {supabase} from "@/supabase/supabaseClient"
 
-interface DeeplinkContextType {
-  handleDeepLink: (url: string, navObject: NavObject) => void
-}
+interface DeeplinkContextType {}
 
 export interface DeepLinkRoute {
   pattern: string
@@ -25,9 +23,7 @@ export interface DeepLinkConfig {
   navObject: NavObject
 }
 
-const DeeplinkContext = createContext<DeeplinkContextType>({
-  handleDeepLink: () => {},
-})
+const DeeplinkContext = createContext<DeeplinkContextType>({})
 
 export const useDeeplink = () => useContext(DeeplinkContext)
 
@@ -199,9 +195,7 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
     }
   }, [user])
 
-  const contextValue: DeeplinkContextType = {
-    handleDeepLink: processUrl,
-  }
+  const contextValue: DeeplinkContextType = {}
 
   return <DeeplinkContext.Provider value={contextValue}>{children}</DeeplinkContext.Provider>
 }
