@@ -6,6 +6,7 @@ import { pinoPostHogTransport } from './transports/PostHogTransport';
 const BETTERSTACK_SOURCE_TOKEN = process.env.BETTERSTACK_SOURCE_TOKEN;
 const BETTERSTACK_ENDPOINT = process.env.BETTERSTACK_ENDPOINT || 'https://s1311181.eu-nbg-2.betterstackdata.com';
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const REGION = process.env.REGION || process.env.AZURE_SPEECH_REGION || '';
 const PORTER_APP_NAME = process.env.PORTER_APP_NAME || 'cloud-local';
 
 // Determine log level based on environment
@@ -81,6 +82,7 @@ const baseLoggerOptions: pino.LoggerOptions = {
   base: {
     env: NODE_ENV,
     server: PORTER_APP_NAME,
+    region: REGION,
   },
   timestamp: pino.stdTimeFunctions.isoTime,
 };
