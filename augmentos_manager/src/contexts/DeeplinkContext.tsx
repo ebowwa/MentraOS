@@ -1,7 +1,7 @@
 import React, {createContext, useContext, useEffect, useRef, useState} from "react"
 import {Linking} from "react-native"
 import {useRouter} from "expo-router"
-import {useAuth} from "./AuthContext"
+import {useAuth} from "@/contexts/AuthContext"
 import {deepLinkRoutes} from "@/utils/deepLinkRoutes"
 import {NavObject, useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {supabase} from "@/supabase/supabaseClient"
