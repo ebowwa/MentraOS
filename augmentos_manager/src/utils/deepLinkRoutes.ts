@@ -1,9 +1,14 @@
 import {router} from "expo-router"
-import {DeepLinkRoute} from "./DeepLinkHandler"
 import {supabase} from "@/supabase/supabaseClient"
 import {NavigationHistoryPush, NavigationHistoryReplace, NavObject} from "@/contexts/NavigationHistoryContext"
 import {Platform} from "react-native"
 import * as WebBrowser from "expo-web-browser"
+
+export interface DeepLinkRoute {
+  pattern: string
+  handler: (url: string, params: Record<string, string>, navObject: NavObject) => void | Promise<void>
+  requiresAuth?: boolean
+}
 
 /**
  * Define all deep link routes for the app
@@ -60,7 +65,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Glasses management routes
   {
     pattern: "/glasses",
-    handler: () => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       router.push("/(tabs)/glasses")
     },
     requiresAuth: true,
@@ -69,7 +74,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Pairing routes
   {
     pattern: "/pairing",
-    handler: () => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       router.push("/pairing/guide")
     },
     requiresAuth: true,
@@ -222,14 +227,14 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Mirror/Gallery routes
   {
     pattern: "/mirror/gallery",
-    handler: () => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       router.push("/mirror/gallery")
     },
     requiresAuth: true,
   },
   {
     pattern: "/mirror/video/:videoId",
-    handler: params => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {videoId} = params
       router.push(`/mirror/video-player?videoId=${videoId}`)
     },
@@ -239,7 +244,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Search routes
   {
     pattern: "/search",
-    handler: params => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {q} = params
       const route = q ? `/search/search?q=${encodeURIComponent(q)}` : "/search/search"
       router.push(route as any)
@@ -250,7 +255,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Permissions routes
   {
     pattern: "/permissions/grant",
-    handler: () => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       router.push("/permissions/grant")
     },
     requiresAuth: true,
@@ -259,13 +264,13 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Onboarding routes
   {
     pattern: "/welcome",
-    handler: () => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       router.push("/welcome")
     },
   },
   {
     pattern: "/onboarding/welcome",
-    handler: () => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       router.push("/onboarding/welcome")
     },
   },
@@ -273,7 +278,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   // Universal app link routes (for apps.mentra.glass)
   {
     pattern: "/package/:packageName",
-    handler: params => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
       router.push(`/(tabs)/store?packageName=${packageName}`)
     },
@@ -281,7 +286,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   },
   {
     pattern: "/apps/:packageName",
-    handler: params => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
       router.push(`/app/webview?packageName=${packageName}`)
     },
@@ -289,7 +294,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   },
   {
     pattern: "/apps/:packageName/settings",
-    handler: params => {
+    handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
       router.push(`/app/settings?packageName=${packageName}`)
     },
