@@ -1,10 +1,10 @@
 @import url('https://fonts.googleapis.com/css2?family=Cuprum:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
-/* 
+/*
   ---break--- */
 @plugin "tailwindcss-animate";
-/* 
+/*
   ---break--- */
 @custom-variant dark (&:is(.dark *));
 
@@ -30,7 +30,7 @@
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-/* 
+/*
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424; */
@@ -73,7 +73,7 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.87 0 0);
 }
-/* 
+/*
 a {
   font-weight: 500;
   color: #646cff;
@@ -127,7 +127,7 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 } */
-/* 
+/*
   ---break--- */
 .dark {
   --background: oklch(0.145 0 0);
@@ -163,7 +163,7 @@ button:focus-visible {
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 }
-/* 
+/*
   ---break--- */
 @theme inline {
   --color-background: var(--background);
@@ -203,7 +203,7 @@ button:focus-visible {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
-/* 
+/*
   ---break--- */
 @layer base {
   * {
@@ -232,32 +232,14 @@ button:focus-visible {
   --button-hover: #333333;
 }
 
-:root[data-theme='dark'] {
+:root[data-theme='dark'], :root {
   --bg-primary: #030514;
   --bg-secondary: #0A0B19;
   --bg-tertiary: #080B27;
   --text-primary: #E4E4E7;
   --text-secondary: #9CA3AF;
   --text-muted: #6B7280;
-  --border-color: #0c0c25;
-  --accent-primary: #242454;
-  --accent-hover: #2d2f5a;
-  --error-color: #E24A24;
-  --error-hover: #c73e1d;
-  --button-bg: #242454;
-  --button-text: #ffffff;
-  --button-hover: #2d2f5a;
-}
-
-/* Default to dark theme if no data-theme attribute */
-:root {
-  --bg-primary: #030514;
-  --bg-secondary: #0A0B19;
-  --bg-tertiary: #080B27;
-  --text-primary: #E4E4E7;
-  --text-secondary: #9CA3AF;
-  --text-muted: #6B7280;
-  --border-color: #0c0c25;
+  --border-color: #242454;
   --accent-primary: #242454;
   --accent-hover: #2d2f5a;
   --error-color: #E24A24;
