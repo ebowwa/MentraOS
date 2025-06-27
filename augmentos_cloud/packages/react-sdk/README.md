@@ -21,7 +21,7 @@ yarn add @mentra/react
 
 ## Usage
 
-### 1. Wrap your application with `MentraosAuthProvider`
+### 1. Wrap your application with `MentraAuthProvider`
 
 In your main application file (e.g., `src/main.tsx` or `src/index.tsx`):
 
@@ -30,28 +30,28 @@ In your main application file (e.g., `src/main.tsx` or `src/index.tsx`):
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import { MentraosAuthProvider } from '@mentra/react';
+import { MentraAuthProvider } from '@mentra/react';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <MentraosAuthProvider>
+    <MentraAuthProvider>
       <App />
-    </MentraosAuthProvider>
+    </MentraAuthProvider>
   </React.StrictMode>
 );
 ```
 
-### 2. Access authentication state using `useMentraosAuth`
+### 2. Access authentication state using `UseMentraAuth`
 
 In any component that needs user information:
 
 ```tsx
 // src/MyComponent.tsx
 import React from 'react';
-import { useMentraosAuth } from '@mentra/react';
+import { UseMentraAuth } from '@mentra/react';
 
 const MyComponent = () => {
-  const { userId, frontendToken, isLoading, error, isAuthenticated, logout } = useMentraosAuth();
+  const { userId, frontendToken, isLoading, error, isAuthenticated, logout } = UseMentraAuth();
 
   if (isLoading) {
     return <p>Loading authentication...</p>;
@@ -89,19 +89,19 @@ export default MyComponent;
 ## How It Works
 
 1.  When your webview is loaded by the MentraOS manager, it appends an `aos_signed_user_token` (a JWT) as a URL query parameter.
-2.  The `MentraosAuthProvider` attempts to find this token.
+2.  The `MentraAuthProvider` attempts to find this token.
 3.  It verifies the token's signature against the MentraOS Cloud public key and checks its claims (like issuer and expiration).
 4.  If valid, it extracts the `userId` (from the `sub` claim) and a `frontendToken` (another JWT from the payload).
-5.  These `userId` and `frontendToken` are then stored in `localStorage` and made available via the `useMentraosAuth` hook.
+5.  These `userId` and `frontendToken` are then stored in `localStorage` and made available via the `UseMentraAuth` hook.
 6.  If the token is not found in the URL (e.g., on a page refresh within the webview), the provider attempts to load the `userId` and `frontendToken` from `localStorage`.
 
 ## Making Authenticated Calls to Your App Backend
 
-The `frontendToken` obtained from `useMentraosAuth` is a JWT. You should send this token in the `Authorization` header as a Bearer token when making requests from your webview to **your App's backend API**.  The MentraOS SDK will automatically verify this token.
+The `frontendToken` obtained from `UseMentraAuth` is a JWT. You should send this token in the `Authorization` header as a Bearer token when making requests from your webview to **your App's backend API**.  The MentraOS SDK will automatically verify this token.
 
 ```typescript
 // Example of an authenticated API call
-const { frontendToken } = useMentraosAuth();
+const { frontendToken } = UseMentraAuth();
 
 async function fetchDataFromMyBackend(): Promise<void> {
   if (!frontendToken) {
@@ -151,10 +151,10 @@ async function fetchDataFromMyBackend(): Promise<void> {
 
 ## TypeScript Support
 
-This library includes full TypeScript support. The `useMentraosAuth` hook returns a typed object with the following interface:
+This library includes full TypeScript support. The `UseMentraAuth` hook returns a typed object with the following interface:
 
 ```typescript
-interface MentraosAuthContextType {
+interface MentraAuthContextType {
   userId: string | null;
   frontendToken: string | null;
   isLoading: boolean;

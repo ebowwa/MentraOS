@@ -2,16 +2,16 @@
 import React, { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { initializeAuth, clearStoredAuth, AuthState } from './lib/authCore';
 
-export interface MentraosAuthContextType extends AuthState {
+export interface MentraAuthContextType extends AuthState {
   isLoading: boolean;
   error: string | null;
   logout: () => void;
   isAuthenticated: boolean;
 }
 
-export const MentraosAuthContext = createContext<MentraosAuthContextType | undefined>(undefined);
+export const MentraAuthContext = createContext<MentraAuthContextType | undefined>(undefined);
 
-export const MentraosAuthProvider = ({ children }: { children: ReactNode }) => {
+export const MentraAuthProvider = ({ children }: { children: ReactNode }) => {
   const [userId, setUserId] = useState<string | null>(null);
   const [frontendToken, setFrontendToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -48,8 +48,8 @@ export const MentraosAuthProvider = ({ children }: { children: ReactNode }) => {
   const isAuthenticated = !!userId && !!frontendToken;
 
   return (
-    <MentraosAuthContext.Provider value={{ userId, frontendToken, isLoading, error, logout, isAuthenticated }}>
+    <MentraAuthContext.Provider value={{ userId, frontendToken, isLoading, error, logout, isAuthenticated }}>
       {children}
-    </MentraosAuthContext.Provider>
+    </MentraAuthContext.Provider>
   );
 };
