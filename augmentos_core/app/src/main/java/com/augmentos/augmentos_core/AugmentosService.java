@@ -817,7 +817,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
             // BATTERY OPTIMIZATION: Using direct lambda instead of creating a new Runnable object
             smartGlassesManager.windowManager.showAppLayer(
                 "system",
-                () -> smartGlassesManager.sendReferenceCard("AugmentOS Connected", "Screen back on"),
+                () -> smartGlassesManager.sendReferenceCard("MentraOS Connected", "Screen back on"),
                 4
             );
         }
@@ -961,7 +961,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                     // End animation with final message
                     smartGlassesManager.windowManager.showAppLayer(
                             "system",
-                            () -> smartGlassesManager.sendTextWall("                  /// AugmentOS Connected \\\\\\"),
+                            () -> smartGlassesManager.sendTextWall("                  /// MentraOS Connected \\\\\\"),
                             6
                     );
 
@@ -981,7 +981,7 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
                 }
 
                 // Send current frame
-                String currentAnimationTextFrame = "                    " + ARROW_FRAMES[frameIndex] + " AugmentOS Booting " + ARROW_FRAMES[frameIndex];
+                String currentAnimationTextFrame = "                    " + ARROW_FRAMES[frameIndex] + " MentraOS Booting " + ARROW_FRAMES[frameIndex];
                 smartGlassesManager.windowManager.showAppLayer(
                         "system",
                         () -> {

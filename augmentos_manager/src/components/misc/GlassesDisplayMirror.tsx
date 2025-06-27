@@ -99,7 +99,7 @@ const $glassesScreen: ThemedStyle<ViewStyle> = ({colors, spacing}) => ({
 const $glassesText: ThemedStyle<TextStyle> = ({colors}) => ({
   color: colors.text,
   fontFamily: "Montserrat-Regular",
-  fontSize: 16,
+  fontSize: 14,
 })
 
 const $emptyContainer: ThemedStyle<ViewStyle> = () => ({

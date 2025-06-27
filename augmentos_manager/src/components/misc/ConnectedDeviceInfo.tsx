@@ -278,7 +278,7 @@ export function DeviceToolbar() {
 
   return (
     <View style={themed($deviceToolbar)}>
-      {/* battery */}
+      {/* battery - always shown */}
       <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
         {status.glasses_info?.battery_level != -1 ? (
           <>
@@ -291,52 +291,52 @@ export function DeviceToolbar() {
         )}
       </View>
 
-      {/* brightness - only show for devices with displays */}
-      {hasDisplay && (
-        <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
-          <SunIcon size={18} color={theme.colors.text} />
-          {autoBrightness ? (
-            <Text style={{color: theme.colors.text}}>Auto</Text>
-          ) : (
-            <>
-              <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
-                {status.glasses_settings.brightness}%
-              </Text>
-            </>
-          )}
-        </View>
-      )}
+      {/* brightness - always rendered, conditionally show content */}
+      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+        {hasDisplay ? (
+          <>
+            <SunIcon size={18} color={theme.colors.text} />
+            {autoBrightness ? (
+              <Text style={{color: theme.colors.text}}>Auto</Text>
+            ) : (
+              <>
+                <Text style={{color: theme.colors.text, fontSize: 16, marginLeft: 4, fontFamily: "Inter-Regular"}}>
+                  {status.glasses_settings.brightness}%
+                </Text>
+              </>
+            )}
+          </>
+        ) : (
+          <View style={{width: 50, height: 18}} />
+        )}
+      </View>
 
-      {/* wifi connection - only show for devices with WiFi support */}
-      {hasWifi && (
-        <TouchableOpacity
-          style={{flexDirection: "row", alignItems: "center", gap: 6}}
-          onPress={() => {
-            router.push({
-              pathname: "/pairing/glasseswifisetup",
-              params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
-            })
-          }}
-        >
-          <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.text} />
-          <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
-            {wifiSsid || "Disconnected"}
-          </Text>
-        </TouchableOpacity>
-      )}
-
-      {/* mira button */}
-      {/* <View style={{flexDirection: "row", alignItems: "center", gap: 4}}> */}
-      {/* <Button
-        text="Mira"
-        style={{minWidth: 110}}
-        LeftAccessory={() => <Text style={{fontSize: 16}}>✨</Text>}
-        onPress={() => {}}
-      /> */}
-      {/* </View> */}
-
-      {/* volume */}
-      <View style={{}}></View>
+      {/* connection - always rendered, conditionally show WiFi or Bluetooth */}
+      <View style={{flexDirection: "row", alignItems: "center", gap: 6}}>
+        {hasWifi ? (
+          <TouchableOpacity
+            style={{flexDirection: "row", alignItems: "center", gap: 6}}
+            onPress={() => {
+              router.push({
+                pathname: "/pairing/glasseswifisetup",
+                params: {deviceModel: status.glasses_info?.model_name || "Glasses"},
+              })
+            }}
+          >
+            <MaterialCommunityIcons name="wifi" size={18} color={theme.colors.text} />
+            <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
+              {wifiSsid || "Disconnected"}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <MaterialCommunityIcons name="bluetooth" size={18} color={theme.colors.text} />
+            <Text style={{color: theme.colors.text, fontSize: 16, fontFamily: "Inter-Regular"}}>
+              Connected
+            </Text>
+          </>
+        )}
+      </View>
     </View>
   )
 }
