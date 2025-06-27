@@ -95,7 +95,7 @@ export function MentraLivePairingGuide() {
     <View style={styles.guideContainer}>
       <View style={{justifyContent: "flex-start", flexDirection: "column"}}>
         {/* <ScrollView style={{}} nestedScrollEnabled={true}> */}
-        <Text text="Mentra Live Beta" style={[styles.guideTitle, {color: theme.colors.text}]} />
+        <Text text="Mentra Live" style={[styles.guideTitle, {color: theme.colors.text}]} />
 
         {/* <Text style={[styles.guideStep, {color: theme.colors.text}]}>
         1. Make sure your Mentra Live is fully charged and turned on.

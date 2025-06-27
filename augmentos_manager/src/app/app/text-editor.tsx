@@ -83,7 +83,7 @@ export default function TextEditorScreen() {
             maxLength={10000}
             textAlignVertical="top"
             scrollEnabled={true}
-            placeholderTextColor={Platform.OS === "ios" ? "#999" : "#888"}
+            placeholderTextColor={theme.colors.textDim}
             autoCapitalize="none"
           />
         </ScrollView>
@@ -147,7 +147,7 @@ const $textInput: ThemedStyle<TextStyle> = ({colors, spacing}) => ({
   borderRadius: Platform.OS === "ios" ? 10 : 4,
   padding: spacing.md,
   textAlignVertical: "top",
-  backgroundColor: colors.palette.neutral100,
+  backgroundColor: colors.background,
   color: colors.text,
   minHeight: 150,
 })
