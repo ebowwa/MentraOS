@@ -742,7 +742,7 @@ class DisplayManager {
       packageName: SYSTEM_DASHBOARD_PACKAGE_NAME,
       layout: {
         layoutType: LayoutType.REFERENCE_CARD,
-        title: `// AugmentOS - Starting App${this.bootingApps.size > 1 ? 's' : ''}`,
+        title: `// MentraOS - Starting App${this.bootingApps.size > 1 ? 's' : ''}`,
         text: bootingAppNames.join(", ")
       },
       timestamp: new Date()
