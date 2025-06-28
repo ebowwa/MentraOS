@@ -1,12 +1,16 @@
 import React, {createContext, useContext, useEffect, useRef, useState} from "react"
-import {Linking} from "react-native"
+// import {Linking} from "react-native"
 import {useRouter} from "expo-router"
 import {useAuth} from "@/contexts/AuthContext"
 import {deepLinkRoutes} from "@/utils/deepLinkRoutes"
 import {NavObject, useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {supabase} from "@/supabase/supabaseClient"
 
-interface DeeplinkContextType {}
+import * as Linking from "expo-linking"
+
+interface DeeplinkContextType {
+  processUrl: (url: string) => Promise<void>
+}
 
 export interface DeepLinkRoute {
   pattern: string
@@ -30,10 +34,7 @@ export const useDeeplink = () => useContext(DeeplinkContext)
 export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({children}) => {
   const router = useRouter()
   const {user} = useAuth()
-  const {push, replace, goBack} = useNavigationHistory()
-  const pendingDeeplink = useRef<string | null>(null)
-  const isInitialized = useRef(false)
-
+  const {push, replace, goBack, setPendingRoute, getPendingRoute} = useNavigationHistory()
   const config = {
     scheme: "com.mentra",
     host: "apps.mentra.glass",
@@ -52,34 +53,22 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
         push("/auth/login")
       }, 100)
     },
-    navObject: {push, replace, goBack},
+    navObject: {push, replace, goBack, setPendingRoute, getPendingRoute},
   }
 
   const handleUrlRaw = async ({url}: {url: string}) => {
-    if (isInitialized.current) {
-      processUrl(url)
-    } else {
-      // Store for later if handler not ready
-      pendingDeeplink.current = url
-    }
+    processUrl(url, false)
   }
 
-  const initializeHandler = () => {
-    if (isInitialized.current) return
-
-    try {
-      const subscription = Linking.addEventListener("url", handleUrlRaw)
-      isInitialized.current = true
-
-      // return cleanup function
-      return () => {
-        subscription?.remove()
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", handleUrlRaw)
+    Linking.getInitialURL().then(url => {
+      console.log("@@@@@@@@@@@@@ INITIAL URL @@@@@@@@@@@@@@@", url)
+      if (url) {
+        processUrl(url, true)
       }
-    } catch (error) {
-      console.error("Error initializing deep link handler:", error)
-    }
-    return () => {}
-  }
+    })
+  }, [])
 
   /**
    * Find matching route for the given URL
@@ -90,9 +79,6 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
     if (host === "auth") {
       pathname = `/auth${pathname}`
     }
-
-    console.log("pathname", pathname)
-    console.log("config", config)
 
     for (const route of config.routes) {
       if (matchesPattern(pathname, route.pattern)) {
@@ -140,15 +126,14 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
     return params
   }
 
-  const processUrl = async (url: string) => {
+  const processUrl = async (url: string, initial: boolean = false) => {
     try {
       console.log("[LOGIN DEBUG] Deep link received:", url)
 
-      // if (!this.isValidUrl(url)) {
-      //   console.warn('Invalid deep link URL:', url)
-      //   this.config.fallbackHandler?.(url)
-      //   return
-      // }
+      // small hack since some sources strip the host and we want to put the url into URL object here
+      if (url.startsWith("/")) {
+        url = "https://apps.mentra.glass" + url
+      }
 
       const parsedUrl = new URL(url)
       const matchedRoute = findMatchingRoute(parsedUrl)
@@ -159,43 +144,37 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
         return
       }
 
+      const authed = await config.authCheckHandler()
+
       // Check authentication if required
-      if (matchedRoute.requiresAuth && !(await config.authCheckHandler())) {
+      if (matchedRoute.requiresAuth && !authed) {
         console.warn("Authentication required for route:", matchedRoute.pattern)
         // Store the URL for after authentication
-        pendingDeeplink.current = url
+        setPendingRoute(url)
         setTimeout(() => {
           replace("/auth/login")
         }, 100)
-        return
       }
 
       // Extract parameters from URL
-      const params = extractParams(parsedUrl, matchedRoute.pattern)
+      let params = extractParams(parsedUrl, matchedRoute.pattern)
+      if (authed) {
+        params.authed = "true"
+      }
+      if (!initial) {
+        params.preloaded = "true"
+      }
 
-      // Execute the route handler
-      matchedRoute.handler(url, params, {push, replace, goBack})
+      matchedRoute.handler(url, params, {push, replace, goBack, setPendingRoute, getPendingRoute})
     } catch (error) {
       console.error("Error handling deep link:", error)
       config.fallbackHandler?.(url)
     }
   }
 
-  useEffect(() => {
-    initializeHandler()
-  }, [user])
-
-  // Handle pending deeplink after authentication
-  useEffect(() => {
-    if (user && pendingDeeplink.current) {
-      const url = pendingDeeplink.current
-      pendingDeeplink.current = null
-      // Re-process the pending deeplink now that user is authenticated
-      setTimeout(() => processUrl(url), 1000)
-    }
-  }, [user])
-
-  const contextValue: DeeplinkContextType = {}
+  const contextValue: DeeplinkContextType = {
+    processUrl,
+  }
 
   return <DeeplinkContext.Provider value={contextValue}>{children}</DeeplinkContext.Provider>
 }

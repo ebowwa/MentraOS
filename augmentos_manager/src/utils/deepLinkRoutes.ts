@@ -113,9 +113,15 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/package/:packageName",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      const {packageName} = params
-      // Navigate to app details or app webview
-      navObject.push(`/store?packageName=${packageName}`)
+      const {packageName, preloaded, authed} = params
+      if (preloaded && authed) {
+        // we've already loaded the app, so we can just navigate there directly
+        navObject.push(`/store?packageName=${packageName}`)
+        return
+      }
+      // we probably need to login first:
+      navObject.setPendingRoute(`/store?packageName=${packageName}`)
+      navObject.push(`/`)
     },
     requiresAuth: true,
   },
@@ -148,17 +154,6 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
       }
 
       const authParams = parseAuthParams(url)
-
-      // // Handle OAuth callback with any query parameters
-      // const queryString = Object.entries(params)
-      //   .filter(([key]) => key !== 'path') // Remove path param
-      //   .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      //   .join('&')
-
-      // const route = queryString ? `/auth/callback?${queryString}` : '/auth/callback'
-      // router.replace(route as any)
-
-      // const authParams = parseAuthParams(event.url)
 
       if (authParams && authParams.access_token && authParams.refresh_token) {
         try {

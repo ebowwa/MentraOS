@@ -9,7 +9,7 @@ const en = {
   },
   versionCheck: {
     title: "Version Check",
-    description: "Checking for updates...",
+    checkingForUpdates: "Checking for updates...",
     updateRequired: "Update Required",
     updateRequiredDescription: "A new version is available. Please update the app.",
     updateRequiredButton: "Update AugmentOS",

@@ -1,4 +1,4 @@
-import React, {createContext, useCallback, useContext, useEffect, useRef} from "react"
+import React, {createContext, useCallback, useContext, useEffect, useRef, useState} from "react"
 import {useFocusEffect, usePathname, useSegments} from "expo-router"
 import {router} from "expo-router"
 import {BackHandler} from "react-native"
@@ -11,6 +11,8 @@ export type NavObject = {
   push: NavigationHistoryPush
   replace: NavigationHistoryReplace
   goBack: NavigationHistoryGoBack
+  setPendingRoute: (route: string) => void
+  getPendingRoute: () => string | null
 }
 
 interface NavigationHistoryContextType {
@@ -19,6 +21,8 @@ interface NavigationHistoryContextType {
   clearHistory: () => void
   push: (path: string, params?: any) => Promise<void>
   replace: (path: string, params?: any) => Promise<void>
+  setPendingRoute: (route: string | null) => void
+  getPendingRoute: () => string | null
 }
 
 const NavigationHistoryContext = createContext<NavigationHistoryContextType | undefined>(undefined)
@@ -27,6 +31,8 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
   const historyRef = useRef<string[]>([])
   const pathname = usePathname()
   const segments = useSegments()
+  // const [pendingRoute, setPendingRouteNonClashingName] = useState<string | null>(null)
+  const pendingRoute = useRef<string | null>(null)
 
   useEffect(() => {
     // Add current path to history if it's different from the last entry
@@ -45,10 +51,10 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     useCallback(() => {
       const onBackPress = () => {
         // Skip for app settings and webview - they handle their own back navigation
-        if (pathname === '/app/settings' || pathname === '/app/webview') {
-          return false  // Let the screen's handler execute
+        if (pathname === "/app/settings" || pathname === "/app/webview") {
+          return false // Let the screen's handler execute
         }
-        
+
         if (segments.length > 0 && segments[0] != "(tabs)") {
           goBack()
         }
@@ -108,8 +114,18 @@ export function NavigationHistoryProvider({children}: {children: React.ReactNode
     historyRef.current = []
   }
 
+  const setPendingRoute = (route: string | null) => {
+    // setPendingRouteNonClashingName(route)
+    pendingRoute.current = route
+  }
+
+  const getPendingRoute = () => {
+    return pendingRoute.current
+  }
+
   return (
-    <NavigationHistoryContext.Provider value={{goBack, getHistory, clearHistory, push, replace}}>
+    <NavigationHistoryContext.Provider
+      value={{goBack, getHistory, clearHistory, push, replace, setPendingRoute, getPendingRoute}}>
       {children}
     </NavigationHistoryContext.Provider>
   )
