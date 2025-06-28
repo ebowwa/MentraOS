@@ -134,6 +134,7 @@ export const DeeplinkProvider: React.FC<{children: React.ReactNode}> = ({childre
       if (url.startsWith("/")) {
         url = "https://apps.mentra.glass" + url
       }
+      console.log("@@@@@@@@@@@@@ URL @@@@@@@@@@@@@@@", url)
 
       const parsedUrl = new URL(url)
       const matchedRoute = findMatchingRoute(parsedUrl)
