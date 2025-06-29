@@ -215,7 +215,7 @@ export const AppStatusProvider = ({children}: {children: ReactNode}) => {
   // Initial fetch and refresh on user change or status change
   useEffect(() => {
     refreshAppStatus()
-  }, [user, status])
+  }, [user, status.core_info.cloud_connection_status])
 
   // Listen for app started/stopped events from CoreCommunicator
   useEffect(() => {

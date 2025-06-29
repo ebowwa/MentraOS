@@ -54,9 +54,9 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
 
       const route = sectionRoutes[section]
       if (route) {
-        router.push(route as any)
+        navObject.push(route as any)
       } else {
-        router.push("/(tabs)/settings")
+        navObject.push("/(tabs)/settings")
       }
     },
     requiresAuth: true,
@@ -66,7 +66,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/glasses",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      router.push("/(tabs)/glasses")
+      navObject.push("/(tabs)/glasses")
     },
     requiresAuth: true,
   },
@@ -75,7 +75,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/pairing",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      router.push("/pairing/guide")
+        navObject.push("/pairing/guide")
     },
     requiresAuth: true,
   },
@@ -106,16 +106,23 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/store",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      navObject.push("/(tabs)/store")
+      const {packageName, preloaded, authed} = params
+      navObject.push(`/store?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
   {
     pattern: "/package/:packageName",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
-      const {packageName} = params
-      // Navigate to app details or app webview
-      navObject.push(`/store?packageName=${packageName}`)
+      const {packageName, preloaded, authed} = params
+      if (preloaded && authed) {
+        // we've already loaded the app, so we can just navigate there directly
+        navObject.push(`/store?packageName=${packageName}`)
+        return
+      }
+      // we probably need to login first:
+      navObject.setPendingRoute(`/store?packageName=${packageName}`)
+      navObject.push(`/`)
     },
     requiresAuth: true,
   },
@@ -148,17 +155,6 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
       }
 
       const authParams = parseAuthParams(url)
-
-      // // Handle OAuth callback with any query parameters
-      // const queryString = Object.entries(params)
-      //   .filter(([key]) => key !== 'path') // Remove path param
-      //   .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
-      //   .join('&')
-
-      // const route = queryString ? `/auth/callback?${queryString}` : '/auth/callback'
-      // router.replace(route as any)
-
-      // const authParams = parseAuthParams(event.url)
 
       if (authParams && authParams.access_token && authParams.refresh_token) {
         try {
@@ -228,7 +224,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/mirror/gallery",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      router.push("/mirror/gallery")
+      navObject.push("/mirror/gallery")
     },
     requiresAuth: true,
   },
@@ -236,7 +232,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/mirror/video/:videoId",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {videoId} = params
-      router.push(`/mirror/video-player?videoId=${videoId}`)
+      navObject.push(`/mirror/video-player?videoId=${videoId}`)
     },
     requiresAuth: true,
   },
@@ -247,7 +243,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {q} = params
       const route = q ? `/search/search?q=${encodeURIComponent(q)}` : "/search/search"
-      router.push(route as any)
+      navObject.push(route as any)
     },
     requiresAuth: true,
   },
@@ -256,7 +252,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/permissions/grant",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      router.push("/permissions/grant")
+      navObject.push("/permissions/grant")
     },
     requiresAuth: true,
   },
@@ -265,13 +261,13 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
   {
     pattern: "/welcome",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      router.push("/welcome")
+      navObject.push("/welcome")
     },
   },
   {
     pattern: "/onboarding/welcome",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
-      router.push("/onboarding/welcome")
+      navObject.push("/onboarding/welcome")
     },
   },
 
@@ -280,7 +276,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/package/:packageName",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      router.push(`/(tabs)/store?packageName=${packageName}`)
+      navObject.push(`/(tabs)/store?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
@@ -288,7 +284,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/apps/:packageName",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      router.push(`/app/webview?packageName=${packageName}`)
+      navObject.push(`/app/webview?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
@@ -296,7 +292,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/apps/:packageName/settings",
     handler: async (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName} = params
-      router.push(`/app/settings?packageName=${packageName}`)
+      navObject.push(`/app/settings?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
