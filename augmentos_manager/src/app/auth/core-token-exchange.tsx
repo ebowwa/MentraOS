@@ -15,6 +15,7 @@ import {Screen} from "@/components/ignite"
 import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 import {translate} from "@/i18n/translate"
 import {useDeeplink} from "@/contexts/DeeplinkContext"
+import { router } from "expo-router"
 
 export default function CoreTokenExchange() {
   const {status} = useStatus()
@@ -40,7 +41,11 @@ export default function CoreTokenExchange() {
         processUrl(pendingRoute)
       }, 2000)
     } else {
-      replace("/(tabs)/home")
+      // less jarring if the nav isn't instant
+      setTimeout(() => {
+        router.dismissAll()
+        replace("/(tabs)/home")
+      }, 1000)
     }
   }
 
@@ -154,7 +159,7 @@ export default function CoreTokenExchange() {
       <Screen preset="fixed" safeAreaEdges={["bottom"]}>
         <View style={{flex: 1, justifyContent: "center", alignItems: "center"}}>
           <ActivityIndicator size="large" color={theme.colors.loadingIndicator} />
-          <Text style={themed($loadingText)}>{translate("login:connectingToAugmentOS")}</Text>
+          <Text style={themed($loadingText)}>{translate("login:connectingToServer")}</Text>
         </View>
       </Screen>
     )
@@ -169,7 +174,7 @@ export default function CoreTokenExchange() {
             <Icon name="wifi-off" size={80} color={theme.colors.error} />
           </View>
 
-          <Text style={[styles.title, {color: theme.colors.text}]}>Connection Error</Text>
+          <Text style={[styles.title, {color: theme.colors.text}]}>{translate("login:connectionError")}</Text>
 
           <Text style={[styles.description, {color: theme.colors.textDim}]}>{errorMessage}</Text>
         </View>

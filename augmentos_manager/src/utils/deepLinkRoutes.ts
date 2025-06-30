@@ -107,7 +107,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
     pattern: "/store",
     handler: (url: string, params: Record<string, string>, navObject: NavObject) => {
       const {packageName, preloaded, authed} = params
-      navObject.push(`/store?packageName=${packageName}`)
+      navObject.replace(`/store?packageName=${packageName}`)
     },
     requiresAuth: true,
   },
@@ -117,12 +117,12 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
       const {packageName, preloaded, authed} = params
       if (preloaded && authed) {
         // we've already loaded the app, so we can just navigate there directly
-        navObject.push(`/store?packageName=${packageName}`)
+        navObject.replace(`/store?packageName=${packageName}`)
         return
       }
       // we probably need to login first:
       navObject.setPendingRoute(`/store?packageName=${packageName}`)
-      navObject.push(`/`)
+      navObject.replace(`/`)
     },
     requiresAuth: true,
   },
@@ -188,7 +188,7 @@ export const deepLinkRoutes: DeepLinkRoute[] = [
             setTimeout(() => {
               console.log("[LOGIN DEBUG] Inside setTimeout, about to call router.replace('/')")
               try {
-                router.replace("/")
+                navObject.replace("/")
                 console.log("[LOGIN DEBUG] router.replace called successfully")
               } catch (navError) {
                 console.error("[LOGIN DEBUG] Error calling router.replace:", navError)

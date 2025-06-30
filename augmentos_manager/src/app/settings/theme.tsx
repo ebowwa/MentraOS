@@ -10,10 +10,12 @@ import {SETTINGS_KEYS} from "@/consts"
 import {router} from "expo-router"
 import {type ThemeType} from "@/utils/useAppTheme"
 import {StyleSheet} from "react-native"
+import {useNavigationHistory} from "@/contexts/NavigationHistoryContext"
 
 export default function ThemeSettingsPage() {
   const {theme, themed, setThemeContextOverride} = useAppTheme()
   const [selectedTheme, setSelectedTheme] = useState<ThemeType>("light")
+  const {replace} = useNavigationHistory()
 
   useEffect(() => {
     // Load saved theme preference
@@ -50,13 +52,21 @@ export default function ThemeSettingsPage() {
         />
       </TouchableOpacity>
       {/* @ts-ignore */}
-      {!isLast && <View style={{height: StyleSheet.hairlineWidth, backgroundColor: theme.colors.palette.neutral300, marginVertical: 4}} />}
+      {!isLast && (
+        <View
+          style={{
+            height: StyleSheet.hairlineWidth,
+            backgroundColor: theme.colors.palette.neutral300,
+            marginVertical: 4,
+          }}
+        />
+      )}
     </>
   )
 
   return (
     <Screen preset="scroll" style={{paddingHorizontal: 20}}>
-      <Header title="Theme Settings" leftIcon="caretLeft" onLeftPress={() => router.replace("/(tabs)/settings")} />
+      <Header title="Theme Settings" leftIcon="caretLeft" onLeftPress={() => replace("/(tabs)/settings")} />
 
       <View style={themed($settingsGroup)}>
         {renderThemeOption("light", "Light Theme", undefined, false)}
