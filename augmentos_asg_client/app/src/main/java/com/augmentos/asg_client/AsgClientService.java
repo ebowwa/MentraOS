@@ -1560,21 +1560,7 @@ public class AsgClientService extends Service implements NetworkStateListener, B
     public void parseK900Command(String command){
         switch (command) {
             case "cs_pho":
-                Log.d(TAG, "\uD83D\uDCE6 Payload is cs_pho (short press)");
-
-                // If recording video, treat any button press as stop command
-                if (getMediaCaptureService() != null && getMediaCaptureService().isRecordingVideo()) {
-                    Log.d(TAG, "Stopping video recording due to button press");
-                    getMediaCaptureService().stopVideoRecording();
-                } else {
-                    // Otherwise handle as normal photo capture
-                    // Check camera permissions before trying to take a photo
-                    if (!ensureCameraPermissions()) {
-                        Log.e(TAG, "Camera permissions denied - attempting to fix before capture");
-                        // Still try to take photo - the internal handler will check again
-                    }
-                    handlePhotoCaptureWithMode();
-                }
+                handleButtonPress(false);
                 break;
 
             case "hm_htsp":
@@ -1584,25 +1570,32 @@ public class AsgClientService extends Service implements NetworkStateListener, B
                 break;
 
             case "cs_vdo":
-                Log.d(TAG, "📦 Payload is cs_vdo (long press)");
-
-                MediaCaptureService mediaService = getMediaCaptureService();
-                if (mediaService != null) {
-                    if (mediaService.isRecordingVideo()) {
-                        // If already recording, stop
-                        Log.d(TAG, "Stopping video recording due to long press");
-                        mediaService.stopVideoRecording();
-                    } else {
-                        // Otherwise start recording
-                        Log.d(TAG, "Starting video recording due to long press");
-                        mediaService.handleVideoButtonPress();
-                    }
-                }
-                break;
+                handleButtonPress(true);
 
             default:
                 Log.d(TAG, "📦 Unknown payload: " + command);
                 break;
+        }
+    }
+
+    private void handleButtonPress(boolean isLongPress) {
+        if (bluetoothManager != null && bluetoothManager.isConnected()) {
+            try {
+                JSONObject buttonObject = new JSONObject();
+                buttonObject.put("type", "button_press");
+                buttonObject.put("buttonId", "camera"); // Specify which button was pressed
+                buttonObject.put("pressType", isLongPress ? "long" : "short"); // Use pressType field instead of overwriting type
+                buttonObject.put("timestamp", System.currentTimeMillis());
+
+                // Convert to string
+                String jsonString = buttonObject.toString();
+                Log.d(TAG, "Formatted button press response: " + jsonString);
+
+                // Send the JSON response
+                bluetoothManager.sendData(jsonString.getBytes());
+            } catch (JSONException e) {
+                Log.e(TAG, "Error creating button press response", e);
+            }
         }
     }
 

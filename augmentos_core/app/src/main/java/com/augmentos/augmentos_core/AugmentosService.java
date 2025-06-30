@@ -46,6 +46,7 @@ import com.augmentos.augmentos_core.augmentos_backend.ThirdPartyCloudApp;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketLifecycleManager;
 import com.augmentos.augmentos_core.augmentos_backend.WebSocketManager;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BatteryLevelEvent;
+import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.ButtonPressEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.CaseEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.BrightnessLevelEvent;
 import com.augmentos.augmentos_core.smarterglassesmanager.eventbusmessages.GlassesBluetoothSearchDiscoverEvent;
@@ -1037,6 +1038,15 @@ public class AugmentosService extends LifecycleService implements AugmentOsActio
         if(isDown) {
             lastPressed = System.currentTimeMillis();
         }
+    }
+
+    @Subscribe
+    public void onButtonPressEvent(ButtonPressEvent event) {
+        Log.d(TAG, "Received button press event from glasses - buttonId: " + event.buttonId +
+              ", pressType: " + event.pressType + ", device: " + event.deviceModel);
+
+        // Forward button press to cloud via ServerComms
+        ServerComms.getInstance().sendButtonPress(event.buttonId, event.pressType);
     }
 
     private JSONObject generateTemplatedJsonFromServer(JSONObject rawMsg) {
