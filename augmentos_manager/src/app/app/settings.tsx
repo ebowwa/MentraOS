@@ -570,7 +570,7 @@ export default function AppSettings() {
                 <PillButton
                   text={appInfo.is_running ? "Stop" : "Start"}
                   onPress={handleStartStopApp}
-                  variant="secondary"
+                  variant="icon"
                   buttonStyle={{paddingHorizontal: theme.spacing.lg, minWidth: 80}}
                 />
               </View>

@@ -56,7 +56,7 @@ const BasicDialog = ({
           {leftButtonText && (
             <PillButton
               text={leftButtonText}
-              variant="secondary"
+              variant="icon"
               onPress={onLeftPress}
               buttonStyle={styles.leftButtonStyle}
             />
